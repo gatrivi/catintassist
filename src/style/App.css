@@ -1,2 +1,5 @@
-background-color: #f0f0f0;
-font-family: Arial, sans-serif;
+body {
+  background-color: #3c3c3c;
+  color: #e4e4e5;
+  font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+}
