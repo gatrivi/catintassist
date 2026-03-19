@@ -8,7 +8,7 @@ import { useDeepgram } from './hooks/useDeepgram';
 import './index.css';
 
 const Dashboard = () => {
-  const { startRecording, stopRecording, captions, sttLanguage, toggleLanguage } = useDeepgram();
+  const { startRecording, stopRecording, captions, sttLanguage, toggleLanguage, connectionState, connectionMessage } = useDeepgram();
 
   // Better Hotkeys: 
   // 1. `Alt + Space` or `Escape` will toggle language from anywhere, even when typing
@@ -36,6 +36,8 @@ const Dashboard = () => {
         onStopAudio={stopRecording} 
         sttLanguage={sttLanguage}
         onToggleLanguage={toggleLanguage}
+        connectionState={connectionState}
+        connectionMessage={connectionMessage}
       />
       <main className="main-content">
         <TranscriptionBoard captions={captions} />

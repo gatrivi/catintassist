@@ -14,6 +14,12 @@ const StopIcon = () => (
   </svg>
 );
 
+const KeyIcon = () => (
+  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M21 2l-2 2m-7.61 7.61a5.5 5.5 0 1 1-7.778 7.778 5.5 5.5 0 0 1 7.777-7.777zm0 0L15.5 7.5m0 0l3 3L22 7l-3-3m-3.5 3.5L19 4"></path>
+  </svg>
+);
+
 const formatTime = (totalSeconds) => {
   const hours = Math.floor(totalSeconds / 3600);
   const minutes = Math.floor((totalSeconds % 3600) / 60);
@@ -58,7 +64,30 @@ const StatEditor = ({ label, statKey, value, updateFn, earnings }) => {
   );
 };
 
-export const DashboardHeader = ({ onStartAudio, onStopAudio, sttLanguage, onToggleLanguage }) => {
+const ConnectionIndicator = ({ state }) => {
+  let color = 'gray';
+  let title = 'Disconnected';
+  if (state === 'connected') { color = '#10b981'; title = 'Connected'; }
+  else if (state === 'connecting') { color = '#f59e0b'; title = 'Connecting...'; }
+  else if (state === 'error') { color = '#ef4444'; title = 'Error'; }
+
+  return (
+    <div 
+      style={{
+        width: '12px',
+        height: '12px',
+        borderRadius: '50%',
+        backgroundColor: color,
+        boxShadow: state === 'connected' ? '0 0 8px #10b981' : state === 'connecting' ? '0 0 8px #f59e0b' : 'none',
+        transition: 'all 0.3s ease',
+        cursor: 'help'
+      }}
+      title={title}
+    />
+  );
+};
+
+export const DashboardHeader = ({ onStartAudio, onStopAudio, sttLanguage, onToggleLanguage, connectionState, connectionMessage }) => {
   const { isActive, sessionSeconds, sessionEarnings, stats, updateStat, startSession, stopSession, RATE_PER_MINUTE } = useSession();
 
   const handleStart = async () => {
@@ -86,7 +115,13 @@ export const DashboardHeader = ({ onStartAudio, onStopAudio, sttLanguage, onTogg
     <header className="dashboard-header glass-panel">
       
       <div className="dashboard-title-row">
-        <div style={{ display: 'flex', gap: '0.5rem' }}>
+        <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+            <ConnectionIndicator state={connectionState} />
+            <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)', maxWidth: '140px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }} title={connectionMessage}>
+              {connectionMessage}
+            </span>
+          </div>
           {!isActive ? (
             <button className="btn btn-primary" onClick={handleStart}>
               <PlayIcon /> Connect
@@ -103,6 +138,21 @@ export const DashboardHeader = ({ onStartAudio, onStopAudio, sttLanguage, onTogg
             title="Press SPACE to toggle safely without clicking"
           >
             {sttLanguage === 'en' ? 'Lang: EN' : 'Lang: ES'}
+          </button>
+          <button
+            className="btn"
+            style={{ padding: '0.4rem', backgroundColor: 'var(--panel-bg)', color: 'var(--text-muted)', border: '1px solid var(--panel-border)' }}
+            onClick={() => {
+              const currentKey = localStorage.getItem('DEEPGRAM_API_KEY') || '';
+              const newKey = window.prompt("Enter your Deepgram API Key:\n(Leave blank to use the default .env key if available)", currentKey);
+              if (newKey !== null) {
+                if (newKey.trim() === '') localStorage.removeItem('DEEPGRAM_API_KEY');
+                else localStorage.setItem('DEEPGRAM_API_KEY', newKey.trim());
+              }
+            }}
+            title="Set API Key"
+          >
+            <KeyIcon />
           </button>
         </div>
         
