@@ -131,14 +131,13 @@ export const DashboardHeader = ({ onStartAudio, onStopAudio, sttLanguage, onTogg
               <StopIcon /> Stop
             </button>
           )}
-          <button 
+          <div 
             className="btn" 
-            style={{ backgroundColor: sttLanguage === 'en' ? '#3b82f6' : '#10b981' }}
-            onClick={onToggleLanguage}
-            title="Press SPACE to toggle safely without clicking"
+            style={{ backgroundColor: 'rgba(255,255,255,0.1)', cursor: 'default' }}
+            title="Dual-Stream Auto Detection Active (Pressing SPACE is no longer required)"
           >
-            {sttLanguage === 'en' ? 'Lang: EN' : 'Lang: ES'}
-          </button>
+            Auto-Detecting EN/ES
+          </div>
           <button
             className="btn"
             style={{ padding: '0.4rem', backgroundColor: 'var(--panel-bg)', color: 'var(--text-muted)', border: '1px solid var(--panel-border)' }}

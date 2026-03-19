@@ -1,21 +1,21 @@
 import React, { useEffect, useRef, useState, useLayoutEffect } from 'react';
 
-const getBubbleStyle = (text, isCurrent) => {
+const getBubbleStyle = (text, isCurrent, lang) => {
   if (!text) return {};
   const wordCount = text.trim().split(/\s+/).length;
   
+  let baseBorder = lang === 'es' ? 'rgba(16, 185, 129, 0.4)' : 'rgba(59, 130, 246, 0.4)';
+  let baseBg = lang === 'es' ? 'rgba(16, 185, 129, 0.03)' : 'rgba(59, 130, 246, 0.03)';
+
   if (wordCount >= 40) {
-    return { 
-      borderLeft: '3px solid rgba(239, 68, 68, 0.6)', 
-      backgroundColor: 'rgba(239, 68, 68, 0.03)'
-    };
+    baseBorder = 'rgba(239, 68, 68, 0.6)';
+    baseBg = 'rgba(239, 68, 68, 0.03)';
   } else if (wordCount >= 34) {
-    return { 
-      borderLeft: '3px solid rgba(245, 158, 11, 0.6)',
-      backgroundColor: 'rgba(245, 158, 11, 0.03)'
-    };
+    baseBorder = 'rgba(245, 158, 11, 0.6)';
+    baseBg = 'rgba(245, 158, 11, 0.03)';
   }
-  return {};
+
+  return { borderLeft: `3px solid ${baseBorder}`, backgroundColor: baseBg };
 };
 
 const TranslatedBubble = ({ text, lang, playTTS, isPlaying }) => {
@@ -42,11 +42,11 @@ const TranslatedBubble = ({ text, lang, playTTS, isPlaying }) => {
   return (
     <div style={{ display: 'flex', gap: '1rem', marginTop: '0.25rem' }}>
       <div style={{ flex: 1 }}>
-        <div style={{ fontWeight: 500, marginBottom: '0.5rem', lineHeight: 1.4 }}>{text}</div>
+        <div style={{ fontWeight: 400, marginBottom: '0.5rem', lineHeight: 1.4 }}>{text}</div>
       </div>
-      <div style={{ flex: 1, borderLeft: '1px dashed rgba(255,255,255,0.2)', paddingLeft: '1rem', color: '#6ee7b7' }}>
-        <div style={{ fontWeight: 500, fontStyle: 'italic', marginBottom: '0.5rem', lineHeight: 1.4 }}>
-          {translation || <span style={{ opacity: 0.5 }}>...</span>}
+      <div style={{ flex: 1, borderLeft: '1px dashed rgba(255,255,255,0.1)', paddingLeft: '1rem', color: 'rgba(255,255,255,0.3)' }}>
+        <div style={{ fontWeight: 400, fontStyle: 'italic', marginBottom: '0.5rem', lineHeight: 1.4 }}>
+          {translation || <span style={{ opacity: 0.2 }}>...</span>}
         </div>
         <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
           <button 
@@ -176,18 +176,17 @@ export const TranscriptionBoard = ({ captions }) => {
             <div key={i} className="transcript-bubble" style={{ 
               opacity: cap.isFinal === false ? 0.8 : 1,
               marginTop: isSameAsPrevious ? '0.2rem' : '1rem',
-              ...getBubbleStyle(cap.text, cap.isFinal === false)
+              ...getBubbleStyle(cap.text, cap.isFinal === false, cap.lang)
             }}>
-              {!isSameAsPrevious && (
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.25rem' }}>
-                  <span className="speaker-badge" style={{ margin: 0 }}>Speaker ({cap.lang?.toUpperCase() || 'EN'})</span>
-                </div>
-              )}
               <div style={{ 
                 display: 'flex', 
-                justifyContent: 'flex-end', 
+                justifyContent: 'space-between',
+                alignItems: 'center',
                 marginBottom: '0.2rem' 
               }}>
+                <span style={{ fontSize: '0.70rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                  {!isSameAsPrevious ? (cap.lang === 'es' ? 'Spanish' : 'English') : ''}
+                </span>
                 <span style={{ 
                   fontSize: '0.70rem', 
                   fontWeight: 600,

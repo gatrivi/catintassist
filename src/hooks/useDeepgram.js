@@ -2,31 +2,27 @@ import { useState, useRef, useCallback, useEffect } from 'react';
 
 export const useDeepgram = () => {
   const [captions, setCaptions] = useState([]);
-  const [sttLanguage, setSttLanguage] = useState('en'); // 'en' or 'es'
   const [connectionState, setConnectionState] = useState('disconnected');
   const [connectionMessage, setConnectionMessage] = useState('Disconnected');
-  const socketRef = useRef(null);
+  const socketRefEn = useRef(null);
+  const socketRefEs = useRef(null);
   const mediaRecorderRef = useRef(null);
   const streamRef = useRef(null);
   const isActiveRef = useRef(false);
   const lastTranscriptTimeRef = useRef(Date.now());
 
-  // We need a helper to safely close the existing socket if we are changing languages mid-stream
   const closeConnections = () => {
     if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
       mediaRecorderRef.current.stop();
     }
-    if (socketRef.current) {
-      socketRef.current.close();
-      socketRef.current = null;
-    }
+    if (socketRefEn.current) { socketRefEn.current.close(); socketRefEn.current = null; }
+    if (socketRefEs.current) { socketRefEs.current.close(); socketRefEs.current = null; }
     setConnectionState('disconnected');
     setConnectionMessage('Disconnected');
   };
 
-  const startDeepgram = (stream, lang) => {
-    const defaultKey = process.env.REACT_APP_DEEPGRAM_API_KEY;
-    const API_KEY = localStorage.getItem('DEEPGRAM_API_KEY') || defaultKey;
+  const startDeepgram = (stream) => {
+    const API_KEY = localStorage.getItem('DEEPGRAM_API_KEY') || process.env.REACT_APP_DEEPGRAM_API_KEY;
     if (!API_KEY || API_KEY.trim() === '' || API_KEY === 'your_deepgram_api_key_here') {
       alert("Deepgram API Key is missing! Please set it by clicking the Key icon in the header.");
       setConnectionState('error');
@@ -34,95 +30,100 @@ export const useDeepgram = () => {
       return false;
     }
 
-    const translateTarget = lang === 'en' ? 'es' : 'en';
     setConnectionState('connecting');
-    setConnectionMessage('Opening WebSocket...');
-    socketRef.current = new WebSocket(`wss://api.deepgram.com/v1/listen?model=nova-2&smart_format=true&language=${lang}&interim_results=true&endpointing=300`, [
-      'token',
-      API_KEY,
-    ]);
+    setConnectionMessage('Opening Dual WebSockets...');
 
-    socketRef.current.onopen = () => {
-      setConnectionState('connected');
-      setConnectionMessage('Connected & Ready');
-      mediaRecorderRef.current = new MediaRecorder(stream);
-      mediaRecorderRef.current.addEventListener('dataavailable', (event) => {
-        if (event.data.size > 0 && socketRef.current?.readyState === 1) {
-          socketRef.current.send(event.data);
+    let socketsOpened = 0;
+
+    const createSocket = (lang) => {
+      const ws = new WebSocket(`wss://api.deepgram.com/v1/listen?model=nova-2&smart_format=true&language=${lang}&interim_results=true&endpointing=300`, ['token', API_KEY]);
+      
+      ws.onopen = () => {
+        socketsOpened++;
+        if (socketsOpened === 1) {
+          // Initialize recorder on first successfully opened socket
+          setConnectionState('connected');
+          setConnectionMessage('Dual Stream Ready');
+          mediaRecorderRef.current = new MediaRecorder(stream);
+          mediaRecorderRef.current.addEventListener('dataavailable', (event) => {
+            if (event.data.size > 0) {
+              if (socketRefEn.current?.readyState === 1) socketRefEn.current.send(event.data);
+              if (socketRefEs.current?.readyState === 1) socketRefEs.current.send(event.data);
+            }
+          });
+          mediaRecorderRef.current.start(250);
         }
-      });
-      mediaRecorderRef.current.start(250);
-    };
+      };
 
-    socketRef.current.onmessage = (message) => {
-      const received = JSON.parse(message.data);
+      ws.onmessage = (message) => {
+        const received = JSON.parse(message.data);
+        if (received.type === 'Error' || received.error) {
+           console.error(`Deepgram ${lang} Error:`, received);
+           return;
+        }
 
-      if (received.type === 'Error' || received.error) {
-         console.error("Deepgram Error message received: ", received);
-         setConnectionState('error');
-         setConnectionMessage(`Deepgram Error: ${received.message || received.error || 'Unknown'}`);
-         return;
-      }
+        const alt = received.channel?.alternatives?.[0];
+        const transcript = alt?.transcript;
+        const confidence = alt?.confidence || 0;
+        const isFinal = received.is_final;
 
-      const transcript = received.channel?.alternatives?.[0]?.transcript;
-      const isFinal = received.is_final;
+        if (transcript) {
+          const now = Date.now();
+          const timeSinceLast = now - lastTranscriptTimeRef.current;
+          lastTranscriptTimeRef.current = now;
+          const isNewTurn = timeSinceLast > 3000;
 
-      if (transcript) {
-        const now = Date.now();
-        const timeSinceLast = now - lastTranscriptTimeRef.current;
-        lastTranscriptTimeRef.current = now;
+          setCaptions(prev => {
+            let last = prev[prev.length - 1];
+            if (!last || isNewTurn) {
+              last = { 
+                id: Date.now(), 
+                enFinalized: '', enInterim: '', enConf: 0,
+                esFinalized: '', esInterim: '', esConf: 0,
+              };
+              prev = [...prev, last];
+            }
 
-        // If there is more than 3 seconds of silence, it indicates the other speaker's turn.
-        const isNewTurn = timeSinceLast > 3000;
+            const current = { ...last };
+            if (lang === 'en') {
+              if (isFinal) { current.enFinalized = (current.enFinalized + ' ' + transcript).trim(); current.enInterim = ''; }
+              else { current.enInterim = transcript; }
+              if (confidence > 0) current.enConf = confidence; 
+            } else {
+              if (isFinal) { current.esFinalized = (current.esFinalized + ' ' + transcript).trim(); current.esInterim = ''; }
+              else { current.esInterim = transcript; }
+              if (confidence > 0) current.esConf = confidence;
+            }
 
-        setCaptions(prev => {
-          const last = prev[prev.length - 1];
-          if (!last || last.lang !== lang || isNewTurn) {
-            return [...prev, { text: transcript, finalizedText: isFinal ? transcript : '', interimText: isFinal ? '' : transcript, lang }];
-          }
+            // Derive winner
+            const enFull = (current.enFinalized + ' ' + current.enInterim).trim();
+            const esFull = (current.esFinalized + ' ' + current.esInterim).trim();
+            
+            // Bias slightly toward English if confidences are identical, or if Spanish is empty
+            const winnerLang = (current.esConf > current.enConf * 1.1 && esFull.length > 0) ? 'es' : 'en';
+            current.lang = winnerLang;
+            current.text = winnerLang === 'en' ? enFull : esFull;
+            current.isFinal = false; // We just keep updating styles actively
+            
+            const newArr = [...prev];
+            newArr[newArr.length - 1] = current;
+            return newArr;
+          });
+        }
+      };
 
-          const newArr = [...prev];
-          let current = { ...last };
-          
-          if (isFinal) {
-             current.finalizedText = (current.finalizedText + ' ' + transcript).trim();
-             current.interimText = '';
-          } else {
-             current.interimText = transcript;
-          }
-          current.text = (current.finalizedText + ' ' + current.interimText).trim();
-          
-          newArr[newArr.length - 1] = current;
-          return newArr;
-        });
-      }
-    };
-
-    socketRef.current.onerror = (error) => {
-      console.error("Deepgram WebSocket Error: ", error);
-      setConnectionState('error');
-      setConnectionMessage('WebSocket Error');
-    };
-
-    socketRef.current.onclose = (event) => {
-      // Don't overwrite an existing error state if we caught it in onmessage
-      setConnectionState(prev => prev === 'error' ? 'error' : 'disconnected');
+      ws.onclose = (event) => {
+        if (event.code === 1006) {
+          setConnectionState('error');
+          setConnectionMessage('Connection Rejected (Check API Key)');
+        }
+      };
       
-      let msg = 'WebSocket Connection Closed';
-      if (event.reason) {
-        msg = `Closed: ${event.reason}`;
-      } else if (event.code === 1006) {
-        msg = 'Connection Rejected (Check API Key or Funds)';
-      } else if (event.code) {
-        msg = `Closed: Code ${event.code}`;
-      }
-      
-      setConnectionMessage(prev => {
-        // preserve the Deepgram JSON error if it fired just before close
-        if (prev.startsWith('Deepgram Error:')) return prev;
-        return msg;
-      });
+      return ws;
     };
+
+    socketRefEn.current = createSocket('en');
+    socketRefEs.current = createSocket('es');
   };
 
   const startRecording = async () => {
@@ -163,7 +164,7 @@ export const useDeepgram = () => {
       }
 
       isActiveRef.current = true;
-      startDeepgram(stream, sttLanguage);
+      startDeepgram(stream);
       return true;
     } catch (err) {
       console.error("Error capturing audio: ", err);
@@ -178,17 +179,10 @@ export const useDeepgram = () => {
     // when clicking Connect again. Browser "Stop Sharing" handles actual track stop.
   }, []);
 
-  // When language changes, if we are actively recording, we restart the deepgram socket only
   const toggleLanguage = () => {
-    setSttLanguage(prev => {
-      const newLang = prev === 'en' ? 'es' : 'en';
-      if (isActiveRef.current && streamRef.current) {
-        closeConnections();
-        startDeepgram(streamRef.current, newLang);
-      }
-      return newLang;
-    });
+    // Legacy mapping since UI expects toggleLanguage, 
+    // but Dual-Stream handles it automatically now. Just no-op.
   };
 
-  return { startRecording, stopRecording, captions, sttLanguage, toggleLanguage, connectionState, connectionMessage };
+  return { startRecording, stopRecording, captions, sttLanguage: 'auto', toggleLanguage, connectionState, connectionMessage };
 };
