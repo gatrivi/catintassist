@@ -81,7 +81,7 @@ body {
 }
 
 .notes-area {
-  flex: 1;
+  flex: 0 0 320px;
   min-width: 0;
   display: flex;
   flex-direction: column;

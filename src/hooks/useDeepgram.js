@@ -9,6 +9,7 @@ export const useDeepgram = () => {
   const mediaRecorderRef = useRef(null);
   const streamRef = useRef(null);
   const isActiveRef = useRef(false);
+  const lastTranscriptTimeRef = useRef(Date.now());
 
   // We need a helper to safely close the existing socket if we are changing languages mid-stream
   const closeConnections = () => {
@@ -64,19 +65,35 @@ export const useDeepgram = () => {
       }
 
       const transcript = received.channel?.alternatives?.[0]?.transcript;
-      const translation = received.channel?.alternatives?.[0]?.translations?.[translateTarget];
       const isFinal = received.is_final;
 
       if (transcript) {
+        const now = Date.now();
+        const timeSinceLast = now - lastTranscriptTimeRef.current;
+        lastTranscriptTimeRef.current = now;
+
+        // If there is more than 3 seconds of silence, it indicates the other speaker's turn.
+        const isNewTurn = timeSinceLast > 3000;
+
         setCaptions(prev => {
           const last = prev[prev.length - 1];
-          if (last && !last.isFinal) {
-            const newArr = [...prev];
-            newArr[newArr.length - 1] = { text: transcript, translation, isFinal, lang };
-            return newArr;
-          } else {
-            return [...prev, { text: transcript, translation, isFinal, lang }];
+          if (!last || last.lang !== lang || isNewTurn) {
+            return [...prev, { text: transcript, finalizedText: isFinal ? transcript : '', interimText: isFinal ? '' : transcript, lang }];
           }
+
+          const newArr = [...prev];
+          let current = { ...last };
+          
+          if (isFinal) {
+             current.finalizedText = (current.finalizedText + ' ' + transcript).trim();
+             current.interimText = '';
+          } else {
+             current.interimText = transcript;
+          }
+          current.text = (current.finalizedText + ' ' + current.interimText).trim();
+          
+          newArr[newArr.length - 1] = current;
+          return newArr;
         });
       }
     };
