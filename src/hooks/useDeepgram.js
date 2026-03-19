@@ -26,7 +26,8 @@ export const useDeepgram = () => {
       return false;
     }
 
-    socketRef.current = new WebSocket(`wss://api.deepgram.com/v1/listen?model=nova-2&smart_format=true&language=${lang}&interim_results=true&endpointing=300`, [
+    const translateTarget = lang === 'en' ? 'es' : 'en';
+    socketRef.current = new WebSocket(`wss://api.deepgram.com/v1/listen?model=nova-2&smart_format=true&language=${lang}&interim_results=true&endpointing=300&translate=${translateTarget}`, [
       'token',
       API_KEY,
     ]);
@@ -44,6 +45,7 @@ export const useDeepgram = () => {
     socketRef.current.onmessage = (message) => {
       const received = JSON.parse(message.data);
       const transcript = received.channel?.alternatives?.[0]?.transcript;
+      const translation = received.channel?.alternatives?.[0]?.translations?.[translateTarget];
       const isFinal = received.is_final;
 
       if (transcript) {
@@ -51,10 +53,10 @@ export const useDeepgram = () => {
           const last = prev[prev.length - 1];
           if (last && !last.isFinal) {
             const newArr = [...prev];
-            newArr[newArr.length - 1] = { text: transcript, isFinal, lang: lang };
+            newArr[newArr.length - 1] = { text: transcript, translation, isFinal, lang };
             return newArr;
           } else {
-            return [...prev, { text: transcript, isFinal, lang: lang }];
+            return [...prev, { text: transcript, translation, isFinal, lang }];
           }
         });
       }

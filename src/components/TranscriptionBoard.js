@@ -63,7 +63,18 @@ export const TranscriptionBoard = ({ captions }) => {
                   {wordCount} words
                 </span>
               </div>
-              <p>{cap.text}</p>
+              <div style={{ fontWeight: 500, marginBottom: cap.translation ? '0.5rem' : '0' }}>{cap.text}</div>
+              {cap.translation && (
+                <div style={{ 
+                  borderTop: '1px dashed rgba(255,255,255,0.1)', 
+                  paddingTop: '0.4rem', 
+                  color: '#6ee7b7', 
+                  fontStyle: 'italic',
+                  fontSize: '1.15rem'
+                }}>
+                  {cap.translation}
+                </div>
+              )}
             </div>
           );
         })}
