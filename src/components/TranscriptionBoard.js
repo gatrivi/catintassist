@@ -1,4 +1,5 @@
 import React, { useEffect, useRef, useState, useLayoutEffect } from 'react';
+import { useAudioSettings } from '../contexts/AudioSettingsContext';
 
 const getBubbleStyle = (text, isCurrent, lang) => {
   if (!text) return {};
@@ -70,11 +71,12 @@ const TranslatedBubble = ({ text, lang, playTTS, isPlaying }) => {
   );
 };
 
-export const TranscriptionBoard = ({ captions }) => {
+export const TranscriptionBoard = ({ captions, onClear }) => {
   const bottomRef = useRef(null);
   const scrollAreaRef = useRef(null);
   const [isPlaying, setIsPlaying] = useState(false);
   const isScrolledUpRef = useRef(false);
+  const { selectedSinkId } = useAudioSettings();
 
   const playTTS = async (text, lang) => {
     if (!text || isPlaying) return;
@@ -111,6 +113,14 @@ export const TranscriptionBoard = ({ captions }) => {
       const blob = new Blob([byteArray], { type: 'audio/mp3' });
       const audioUrl = URL.createObjectURL(blob);
       const audio = new Audio(audioUrl);
+      
+      if (audio.setSinkId && selectedSinkId) {
+        try {
+          await audio.setSinkId(selectedSinkId);
+        } catch (e) {
+          console.error("setSinkId failed, falling back to default:", e);
+        }
+      }
       
       audio.onended = () => setIsPlaying(false);
       audio.play();
@@ -151,8 +161,17 @@ export const TranscriptionBoard = ({ captions }) => {
   return (
     <div className="glass-panel transcription-area">
       <div className="notepad-header" style={{ borderBottom: '1px solid var(--panel-border)', paddingBottom: '0.4rem', marginBottom: '0.5rem', display: 'flex', justifyContent: 'space-between', padding: '0.4rem 0.5rem' }}>
-        <span>Livestream Transcription</span>
-        <span style={{ fontSize: '0.65rem', color: 'var(--text-muted)' }}>Approaching 40 words will turn Orange/Red</span>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%' }}>
+          <h2 style={{ fontSize: '1rem', color: 'var(--text-muted)' }}>Livestream Transcription</h2>
+          <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
+            {onClear && (
+              <button onClick={onClear} className="btn" style={{ background: 'rgba(239, 68, 68, 0.2)', color: 'var(--danger)', padding: '0.2rem 0.6rem', fontSize: '0.75rem' }}>
+                🗑️ Clear Transcript
+              </button>
+            )}
+            <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Approaching 40 words will turn Orange/Red</span>
+          </div>
+        </div>
       </div>
       <div 
         className="scroll-area" 
@@ -164,7 +183,7 @@ export const TranscriptionBoard = ({ captions }) => {
         title="Double-click any word to instantly translate it via Linguee"
       >
         {captions.length === 0 && (
-          <div style={{ color: 'var(--text-muted)', textAlign: 'center', marginTop: '4rem', fontSize: '1.1rem' }}>
+          <div style={{ color: 'var(--text-muted)', fontStyle: 'italic', textAlign: 'center', marginTop: '20vh' }}>
             Waiting for audio capture to begin...
           </div>
         )}
@@ -199,7 +218,7 @@ export const TranscriptionBoard = ({ captions }) => {
             </div>
           );
         })}
-        <div ref={bottomRef} />
+        <div ref={bottomRef} style={{ height: '60px', flexShrink: 0 }} />
       </div>
     </div>
   );

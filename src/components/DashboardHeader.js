@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useSession } from '../contexts/SessionContext';
+import { useAudioSettings } from '../contexts/AudioSettingsContext';
 
 // Basic SVG icons
 const PlayIcon = () => (
@@ -89,6 +90,7 @@ const ConnectionIndicator = ({ state }) => {
 
 export const DashboardHeader = ({ onStartAudio, onStopAudio, sttLanguage, onToggleLanguage, connectionState, connectionMessage }) => {
   const { isActive, sessionSeconds, sessionEarnings, stats, updateStat, startSession, stopSession, RATE_PER_MINUTE } = useSession();
+  const { outputDevices, inputDevices, selectedSinkId, selectedMicId, changeSinkId, changeMicId, fetchDevices } = useAudioSettings();
 
   const handleStart = async () => {
     const success = await onStartAudio();
@@ -153,6 +155,69 @@ export const DashboardHeader = ({ onStartAudio, onStopAudio, sttLanguage, onTogg
           >
             <KeyIcon />
           </button>
+          
+          <button 
+            className="btn" 
+            style={{ 
+              backgroundColor: sttLanguage === 'auto' ? 'rgba(255, 255, 255, 0.1)' : (sttLanguage === 'en' ? 'rgba(59, 130, 246, 0.8)' : 'rgba(16, 185, 129, 0.8)'), 
+              color: sttLanguage === 'auto' ? 'var(--text-muted)' : 'white', 
+              padding: '0.4rem 1rem',
+              display: 'flex',
+              alignItems: 'center',
+              fontWeight: 600,
+              borderRadius: '6px',
+              border: sttLanguage === 'auto' ? '1px solid var(--panel-border)' : '1px solid transparent',
+              fontSize: '0.85rem',
+              cursor: 'pointer'
+            }}
+            onClick={onToggleLanguage}
+            title="Click to Force Language (Auto -> EN -> ES)"
+          >
+            {sttLanguage === 'auto' ? 'Auto Mux (EN/ES)' : (sttLanguage === 'en' ? '🔒 Forced: ENG' : '🔒 Forced: SPA')}
+          </button>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.2rem' }}>
+            <select 
+              className="btn"
+              style={{ 
+                backgroundColor: 'var(--panel-bg)', 
+                color: '#3b82f6', 
+                border: '1px solid rgba(59, 130, 246, 0.4)', 
+                padding: '0.2rem 0.4rem',
+                maxWidth: '140px',
+                fontSize: '0.70rem',
+              }}
+              value={selectedMicId}
+              onChange={(e) => changeMicId(e.target.value)}
+              onFocus={fetchDevices}
+              title="Select Physical Microphone (Input)"
+            >
+              <option value="">Default Mic</option>
+              {inputDevices.map(d => (
+                <option key={d.deviceId} value={d.deviceId}>{d.label || `Mic ${d.deviceId.slice(0,5)}`}</option>
+              ))}
+            </select>
+
+            <select 
+              className="btn"
+              style={{ 
+                backgroundColor: 'var(--panel-bg)', 
+                color: '#10b981', 
+                border: '1px solid rgba(16, 185, 129, 0.4)', 
+                padding: '0.2rem 0.4rem',
+                maxWidth: '140px',
+                fontSize: '0.70rem',
+              }}
+              value={selectedSinkId}
+              onChange={(e) => changeSinkId(e.target.value)}
+              onFocus={fetchDevices}
+              title="Select Virtual Cable (Output)"
+            >
+              <option value="">Default Speaker</option>
+              {outputDevices.map(d => (
+                <option key={d.deviceId} value={d.deviceId}>{d.label || `Speaker ${d.deviceId.slice(0,5)}`}</option>
+              ))}
+            </select>
+          </div>
         </div>
         
         <div className="stat-group" style={{ alignItems: 'flex-end' }}>

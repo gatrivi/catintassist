@@ -12,17 +12,26 @@ export const NotePad = () => {
     return () => clearTimeout(timeout);
   }, [notes]);
 
+  const clearNotes = () => {
+    if (window.confirm("Are you sure you want to clear your session notes?")) {
+      setNotes('');
+    }
+  };
+
   return (
     <div className="glass-panel notes-area">
       <div className="notepad-container">
-        <div className="notepad-header">
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{marginRight: '0.5rem'}}>
-            <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
-            <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
-          </svg>
-          Session Notes
+        <div className="notepad-header" style={{ display: 'flex', justifyContent: 'space-between' }}>
+          <span>📝 Session Notes</span>
+          <button
+            onClick={clearNotes}
+            title="Clear Notes"
+            style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', fontSize: '1rem' }}
+          >
+            🗑️
+          </button>
         </div>
-        <textarea 
+        <textarea
           className="notepad-textarea"
           placeholder="Jot down numbers, names, and medical terms here... (Auto-saves)"
           value={notes}

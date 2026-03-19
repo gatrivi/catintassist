@@ -81,7 +81,7 @@ body {
 }
 
 .notes-area {
-  flex: 0 0 320px;
+  flex: 0 0 340px;
   min-width: 0;
   display: flex;
   flex-direction: column;
@@ -231,7 +231,8 @@ body {
 .notepad-container {
   display: flex;
   flex-direction: column;
-  height: 100%;
+  flex: 1;
+  min-height: 0;
 }
 
 .notepad-header {
@@ -258,7 +259,7 @@ body {
 }
 
 /* Responsive Overrides (For truly thin windows) */
-@media (min-width: 1024px) {
+@media (min-width: 768px) {
   /* On larger desktop views, switch to side-by-side if they maximize the window */
   .main-content {
     flex-direction: row;

@@ -1,14 +1,16 @@
 import React, { useEffect } from 'react';
 import { SessionProvider } from './contexts/SessionContext';
+import { AudioSettingsProvider } from './contexts/AudioSettingsContext';
 import { DashboardHeader } from './components/DashboardHeader';
 import { TranscriptionBoard } from './components/TranscriptionBoard';
+import { GreetingsPanel } from './components/GreetingsPanel';
 import { NotePad } from './components/NotePad';
 import { DictionaryTool } from './components/DictionaryTool';
 import { useDeepgram } from './hooks/useDeepgram';
 import './index.css';
 
 const Dashboard = () => {
-  const { startRecording, stopRecording, captions, sttLanguage, toggleLanguage, connectionState, connectionMessage } = useDeepgram();
+  const { startRecording, stopRecording, captions, clearCaptions, sttLanguage, toggleLanguage, connectionState, connectionMessage } = useDeepgram();
 
   // Better Hotkeys: 
   // 1. `Alt + Space` or `Escape` will toggle language from anywhere, even when typing
@@ -40,8 +42,9 @@ const Dashboard = () => {
         connectionMessage={connectionMessage}
       />
       <main className="main-content">
-        <TranscriptionBoard captions={captions} />
+        <TranscriptionBoard captions={captions} onClear={clearCaptions} />
         <div className="notes-area glass-panel" style={{ overflow: 'hidden' }}>
+          <GreetingsPanel />
           <DictionaryTool />
           <NotePad />
         </div>
@@ -52,9 +55,11 @@ const Dashboard = () => {
 
 function App() {
   return (
-    <SessionProvider>
-      <Dashboard />
-    </SessionProvider>
+    <AudioSettingsProvider>
+      <SessionProvider>
+        <Dashboard />
+      </SessionProvider>
+    </AudioSettingsProvider>
   );
 }
 

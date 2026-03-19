@@ -4,12 +4,15 @@ export const useDeepgram = () => {
   const [captions, setCaptions] = useState([]);
   const [connectionState, setConnectionState] = useState('disconnected');
   const [connectionMessage, setConnectionMessage] = useState('Disconnected');
+  const [sttLanguage, setSttLanguage] = useState('auto');
+  const langModeRef = useRef('auto');
   const socketRefEn = useRef(null);
   const socketRefEs = useRef(null);
   const mediaRecorderRef = useRef(null);
   const streamRef = useRef(null);
   const isActiveRef = useRef(false);
   const lastTranscriptTimeRef = useRef(Date.now());
+  const overrideTimeoutRef = useRef(null);
 
   const closeConnections = () => {
     if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
@@ -99,8 +102,12 @@ export const useDeepgram = () => {
             const enFull = (current.enFinalized + ' ' + current.enInterim).trim();
             const esFull = (current.esFinalized + ' ' + current.esInterim).trim();
             
-            // Bias slightly toward English if confidences are identical, or if Spanish is empty
-            const winnerLang = (current.esConf > current.enConf * 1.1 && esFull.length > 0) ? 'es' : 'en';
+            // Just use straight confidence, with a tiny fallback check.
+            let winnerLang = (current.esConf > current.enConf && esFull.length > 0) ? 'es' : 'en';
+            if (langModeRef.current !== 'auto') {
+               winnerLang = langModeRef.current;
+            }
+            
             current.lang = winnerLang;
             current.text = winnerLang === 'en' ? enFull : esFull;
             current.isFinal = false; // We just keep updating styles actively
@@ -175,14 +182,30 @@ export const useDeepgram = () => {
   const stopRecording = useCallback(() => {
     isActiveRef.current = false;
     closeConnections();
+    setCaptions([]); // Clear transcript history after Call Ends
     // Intentionally NOT stopping tracks here so stream can be reused 
     // when clicking Connect again. Browser "Stop Sharing" handles actual track stop.
   }, []);
 
+  const clearCaptions = () => setCaptions([]);
+
   const toggleLanguage = () => {
-    // Legacy mapping since UI expects toggleLanguage, 
-    // but Dual-Stream handles it automatically now. Just no-op.
+    setSttLanguage(prev => {
+      const next = prev === 'auto' ? 'en' : (prev === 'en' ? 'es' : 'auto');
+      langModeRef.current = next;
+      
+      if (overrideTimeoutRef.current) clearTimeout(overrideTimeoutRef.current);
+      
+      if (next !== 'auto') {
+        overrideTimeoutRef.current = setTimeout(() => {
+          setSttLanguage('auto');
+          langModeRef.current = 'auto';
+        }, 15000); // Revert to auto after 15 seconds
+      }
+      
+      return next;
+    });
   };
 
-  return { startRecording, stopRecording, captions, sttLanguage: 'auto', toggleLanguage, connectionState, connectionMessage };
+  return { startRecording, stopRecording, captions, clearCaptions, sttLanguage, toggleLanguage, connectionState, connectionMessage };
 };
