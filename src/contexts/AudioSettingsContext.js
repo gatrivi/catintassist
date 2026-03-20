@@ -15,7 +15,21 @@ export const AudioSettingsProvider = ({ children }) => {
   const fetchDevices = async () => {
     try {
       // Browsers often require mic permission to access device labels reliably
-      const devices = await navigator.mediaDevices.enumerateDevices();
+      let devices = await navigator.mediaDevices.enumerateDevices();
+      
+      const needsPermission = devices.some(d => d.label === '' || d.label.toLowerCase() === 'speaker' || d.label.toLowerCase() === 'microphone');
+      
+      if (needsPermission) {
+        try {
+          const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+          stream.getTracks().forEach(t => t.stop());
+          // Re-fetch now that we have permission
+          devices = await navigator.mediaDevices.enumerateDevices();
+        } catch (e) {
+          console.warn('Microphone permission denied. Device labels may be missing.', e);
+        }
+      }
+
       const outputs = devices.filter(d => d.kind === 'audiooutput');
       const inputs = devices.filter(d => d.kind === 'audioinput');
       setOutputDevices(outputs);

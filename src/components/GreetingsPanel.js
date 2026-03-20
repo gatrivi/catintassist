@@ -26,7 +26,8 @@ export const GreetingsPanel = () => {
   const [blobs, setBlobs] = useState({});
   const [playingKey, setPlayingKey] = useState(null);
   const [recordingKey, setRecordingKey] = useState(null);
-  const audioRef = useRef(new Audio());
+  const audioRefSink = useRef(new Audio());
+  const audioRefLocal = useRef(new Audio());
   const mediaRecorderRef = useRef(null);
   const audioChunksRef = useRef([]);
 
@@ -120,33 +121,51 @@ export const GreetingsPanel = () => {
 
   const playAudioBlock = async (key, routeToVirtualMic) => {
     if (playingKey) {
-      audioRef.current.pause();
+      audioRefSink.current.pause();
+      audioRefLocal.current.pause();
       setPlayingKey(null);
       if (playingKey === key) return; // If clicking the same button twice, it stops.
     }
     
     const blob = blobs[key];
     if (!blob) {
-      if (routeToVirtualMic) alert(`No audio recorded for this slot!`);
+      if (routeToVirtualMic) alert(`No audio configured for this slot!`);
       return;
     }
     
-    const audio = audioRef.current;
-    audio.src = generateObjectUrl(blob);
+    const url = generateObjectUrl(blob);
+    audioRefSink.current.src = url;
+    audioRefLocal.current.src = url;
     
-    if (audio.setSinkId) {
-      try { 
-        await audio.setSinkId(routeToVirtualMic && selectedSinkId ? selectedSinkId : ''); 
-      } 
-      catch (e) { console.error("setSinkId failed", e); }
-    }
+    // Sync the visual 'stop' state to the local audio element finishing
+    audioRefLocal.current.onended = () => setPlayingKey(null);
+    audioRefLocal.current.onpause = () => setPlayingKey(null);
 
-    audio.onended = () => setPlayingKey(null);
-    audio.onpause = () => setPlayingKey(null);
+    if (routeToVirtualMic && selectedSinkId && audioRefSink.current.setSinkId) {
+      let routed = false;
+      try { 
+        await audioRefSink.current.setSinkId(selectedSinkId); 
+        routed = true;
+      } catch (e) { 
+        console.error("setSinkId failed", e); 
+      }
+      
+      if (routed) {
+         try {
+           setPlayingKey(key);
+           await Promise.all([audioRefSink.current.play(), audioRefLocal.current.play()]);
+         } catch(e) {
+           console.error("Playback error: ", e);
+           setPlayingKey(null);
+         }
+         return;
+      }
+    }
     
+    // Fallback: Just play local
     try {
       setPlayingKey(key);
-      await audio.play();
+      await audioRefLocal.current.play();
     } catch (err) {
       console.error("Playback error:", err);
       setPlayingKey(null);
@@ -251,6 +270,8 @@ export const GreetingsPanel = () => {
                  height: '80px',
                  borderRadius: '6px',
                  border: isItPlaying ? '2px solid #10b981' : '1px solid var(--panel-border)',
+                 boxShadow: isItPlaying ? '0 0 15px rgba(16, 185, 129, 0.8)' : 'none',
+                 animation: isItPlaying ? 'pulseGlow 1.5s infinite' : 'none',
                  background: bgImage !== 'none' ? bgImage : 'rgba(255,255,255,0.05)',
                  backgroundSize: 'cover',
                  backgroundPosition: 'center',

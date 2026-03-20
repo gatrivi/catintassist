@@ -175,6 +175,7 @@ export const DashboardHeader = ({ onStartAudio, onStopAudio, sttLanguage, onTogg
           >
             {sttLanguage === 'auto' ? 'Auto Mux (EN/ES)' : (sttLanguage === 'en' ? '🔒 Forced: ENG' : '🔒 Forced: SPA')}
           </button>
+
           <div style={{ display: 'flex', flexDirection: 'column', gap: '0.2rem' }}>
             <select 
               className="btn"

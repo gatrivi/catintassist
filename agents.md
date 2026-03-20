@@ -1,6 +1,9 @@
 cats interpreter assistant app
 
 NEXT STEPS
+[] play a ping sound when speaker goes over 40 words to let me interpret. ideally with a warning win the appropriat langugae, that has been prerecorded and approved.
+[] makeeverything a little smaller, i currently have to zoom out two or three times to have mor than a 3 mssgs visible at the same time
+
 [x] after about 8 seconds livestream trasncription snaps back to latest message. rn the very last line of transcription is hidden by the bottom of the screen. kind of defeats the app.
 [] this reading out should come out thorugh the the virtual microphone since the speakers should be able to hear it on the other side of the call that is happening on a different tab.
 [x] after calls end (when pressing stop) the message history is cleared

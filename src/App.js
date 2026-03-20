@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { SessionProvider } from './contexts/SessionContext';
 import { AudioSettingsProvider } from './contexts/AudioSettingsContext';
 import { DashboardHeader } from './components/DashboardHeader';

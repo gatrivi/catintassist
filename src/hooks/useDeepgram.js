@@ -43,8 +43,8 @@ export const useDeepgram = () => {
       
       ws.onopen = () => {
         socketsOpened++;
-        if (socketsOpened === 1) {
-          // Initialize recorder on first successfully opened socket
+        if (socketsOpened === 2) {
+          // Initialize recorder strictly when BOTH sockets are ready!
           setConnectionState('connected');
           setConnectionMessage('Dual Stream Ready');
           mediaRecorderRef.current = new MediaRecorder(stream);
@@ -102,14 +102,30 @@ export const useDeepgram = () => {
             const enFull = (current.enFinalized + ' ' + current.enInterim).trim();
             const esFull = (current.esFinalized + ' ' + current.esInterim).trim();
             
-            // Just use straight confidence, with a tiny fallback check.
-            let winnerLang = (current.esConf > current.enConf && esFull.length > 0) ? 'es' : 'en';
+            const enWordCount = enFull.length > 0 ? enFull.split(/\s+/).length : 0;
+            const esWordCount = esFull.length > 0 ? esFull.split(/\s+/).length : 0;
+            
+            let winnerLang = 'en'; // default
+            
+            // If one pipeline has significantly more transcribed words, trust it unconditionally. 
+            // This prevents sparse hallucinations from hijacking the winning language.
+            if (esWordCount >= enWordCount + 2) {
+               winnerLang = 'es';
+            } else if (enWordCount >= esWordCount + 2) {
+               winnerLang = 'en';
+            } else {
+               // If word counts are tied or very close, fall back to the boosted confidence score comparison
+               winnerLang = ((current.esConf * 1.25) > current.enConf && esWordCount > 0) ? 'es' : 'en';
+            }
+            
             if (langModeRef.current !== 'auto') {
                winnerLang = langModeRef.current;
             }
             
             current.lang = winnerLang;
             current.text = winnerLang === 'en' ? enFull : esFull;
+            current.enFull = enFull;
+            current.esFull = esFull;
             current.isFinal = false; // We just keep updating styles actively
             
             const newArr = [...prev];
@@ -200,7 +216,7 @@ export const useDeepgram = () => {
         overrideTimeoutRef.current = setTimeout(() => {
           setSttLanguage('auto');
           langModeRef.current = 'auto';
-        }, 15000); // Revert to auto after 15 seconds
+        }, 30000); // Revert to auto after 30 seconds
       }
       
       return next;

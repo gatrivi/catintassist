@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useState, useLayoutEffect } from 'react';
 import { useAudioSettings } from '../contexts/AudioSettingsContext';
+import { useTTS } from '../hooks/useTTS';
 
 const getBubbleStyle = (text, isCurrent, lang) => {
   if (!text) return {};
@@ -19,18 +20,23 @@ const getBubbleStyle = (text, isCurrent, lang) => {
   return { borderLeft: `3px solid ${baseBorder}`, backgroundColor: baseBg };
 };
 
-const TranslatedBubble = ({ text, lang, playTTS, isPlaying }) => {
+const TranslatedBubble = ({ text, lang, playTTS, isPlaying, reverse = false, ttsMode }) => {
   const [translation, setTranslation] = useState('');
+  const hasAutoPlayedRef = useRef(false);
 
   useEffect(() => {
     const timer = setTimeout(async () => {
-      if (!text.trim()) return;
+      if (!text.trim()) {
+        setTranslation('');
+        return;
+      }
       try {
         const targetLang = lang === 'en' ? 'es' : 'en';
         const url = `https://translate.googleapis.com/translate_a/single?client=gtx&sl=${lang}&tl=${targetLang}&dt=t&q=${encodeURIComponent(text)}`;
         const res = await fetch(url);
         const json = await res.json();
         setTranslation(json[0].map(x => x[0]).join(''));
+        hasAutoPlayedRef.current = false; // Reset flag so new translations can play
       } catch (e) {
         setTranslation('Error translating...');
       }
@@ -40,16 +46,32 @@ const TranslatedBubble = ({ text, lang, playTTS, isPlaying }) => {
 
   const targetLang = lang === 'en' ? 'es' : 'en';
 
+  useEffect(() => {
+    // Only autoplay if it hasn't played this exact string yet, it's not empty, and mode is auto
+    if (ttsMode === 'auto' && translation && translation !== 'Error translating...' && !hasAutoPlayedRef.current) {
+      hasAutoPlayedRef.current = true;
+      playTTS(translation, targetLang);
+    }
+  }, [translation, ttsMode, playTTS, targetLang]);
+
   return (
-    <div style={{ display: 'flex', gap: '1rem', marginTop: '0.25rem' }}>
-      <div style={{ flex: 1 }}>
+    <div style={{ display: 'flex', gap: '1rem', marginTop: '0.25rem', flexDirection: reverse ? 'row-reverse' : 'row' }}>
+      <div style={{ flex: 1, textAlign: reverse ? 'right' : 'left' }}>
         <div style={{ fontWeight: 400, marginBottom: '0.5rem', lineHeight: 1.4 }}>{text}</div>
       </div>
-      <div style={{ flex: 1, borderLeft: '1px dashed rgba(255,255,255,0.1)', paddingLeft: '1rem', color: 'rgba(255,255,255,0.3)' }}>
+      <div style={{ 
+        flex: 1, 
+        borderLeft: reverse ? 'none' : '1px dashed rgba(255,255,255,0.1)', 
+        borderRight: reverse ? '1px dashed rgba(255,255,255,0.1)' : 'none', 
+        paddingLeft: reverse ? 0 : '1rem', 
+        paddingRight: reverse ? '1rem' : 0, 
+        color: 'rgba(255,255,255,0.3)',
+        textAlign: reverse ? 'left' : 'right'
+      }}>
         <div style={{ fontWeight: 400, fontStyle: 'italic', marginBottom: '0.5rem', lineHeight: 1.4 }}>
           {translation || <span style={{ opacity: 0.2 }}>...</span>}
         </div>
-        <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+        <div style={{ display: 'flex', justifyContent: reverse ? 'flex-start' : 'flex-end' }}>
           <button 
             onClick={() => playTTS(translation, targetLang)} 
             className="btn" 
@@ -71,64 +93,12 @@ const TranslatedBubble = ({ text, lang, playTTS, isPlaying }) => {
   );
 };
 
-export const TranscriptionBoard = ({ captions, onClear }) => {
+export const TranscriptionBoard = ({ captions, onClear, viewMode }) => {
   const bottomRef = useRef(null);
   const scrollAreaRef = useRef(null);
-  const [isPlaying, setIsPlaying] = useState(false);
   const isScrolledUpRef = useRef(false);
-  const { selectedSinkId } = useAudioSettings();
-
-  const playTTS = async (text, lang) => {
-    if (!text || isPlaying) return;
-    setIsPlaying(true);
-    try {
-      const voiceId = lang === 'es' ? 'default-p8cwhu21piysovy7xa6dwg__cat2' : 'default-p8cwhu21piysovy7xa6dwg__cat1';
-      const url = 'https://api.inworld.ai/tts/v1/voice';
-      const options = {
-        method: 'POST',
-        headers: {
-          'Authorization': 'Basic a3M3bXFtUWlxakcwbmF1cTRYR0Z5emRFcGNJbGRzMVU6TmdiZkVFU2ZsQll1b0t6aFM5S2Vhb1BJMGxLbTNTNWwyNGJXYUY1Q3RCaVFKM2hSSlp0RDEwdXpkVTVkVWY0eQ==',
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          text,
-          voiceId,
-          modelId: "inworld-tts-1.5-max",
-          timestampType: "WORD",
-          speakingRate: 1,
-          temperature: 1
-        }),
-      };
-      
-      const res = await fetch(url, options);
-      if (!res.ok) throw new Error(`HTTP error ${res.status}`);
-      const result = await res.json();
-      
-      const byteCharacters = atob(result.audioContent);
-      const byteNumbers = new Array(byteCharacters.length);
-      for (let i = 0; i < byteCharacters.length; i++) {
-        byteNumbers[i] = byteCharacters.charCodeAt(i);
-      }
-      const byteArray = new Uint8Array(byteNumbers);
-      const blob = new Blob([byteArray], { type: 'audio/mp3' });
-      const audioUrl = URL.createObjectURL(blob);
-      const audio = new Audio(audioUrl);
-      
-      if (audio.setSinkId && selectedSinkId) {
-        try {
-          await audio.setSinkId(selectedSinkId);
-        } catch (e) {
-          console.error("setSinkId failed, falling back to default:", e);
-        }
-      }
-      
-      audio.onended = () => setIsPlaying(false);
-      audio.play();
-    } catch (err) {
-      console.error("TTS Error:", err);
-      setIsPlaying(false);
-    }
-  };
+  const [ttsMode, setTtsMode] = useState('manual');
+  const { playTTS, stopTTS, isPlaying } = useTTS();
 
   useEffect(() => {
     if (!isScrolledUpRef.current) {
@@ -164,6 +134,26 @@ export const TranscriptionBoard = ({ captions, onClear }) => {
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%' }}>
           <h2 style={{ fontSize: '1rem', color: 'var(--text-muted)' }}>Livestream Transcription</h2>
           <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
+            <button 
+              onClick={() => setTtsMode(m => m === 'manual' ? 'auto' : 'manual')} 
+              className="btn" 
+              style={{ 
+                background: ttsMode === 'auto' ? 'rgba(16, 185, 129, 0.2)' : 'rgba(255,255,255,0.1)', 
+                color: ttsMode === 'auto' ? 'var(--success)' : 'white', 
+                padding: '0.2rem 0.6rem', 
+                fontSize: '0.75rem' 
+              }}
+            >
+              {ttsMode === 'auto' ? '🤖 Supervised Auto-Playback' : '⚙️ Manual Playback'}
+            </button>
+            <button 
+              onClick={stopTTS} 
+              className="btn btn-danger" 
+              style={{ padding: '0.2rem 0.6rem', fontSize: '0.75rem', opacity: isPlaying ? 1 : 0.5, animation: 'none' }}
+              disabled={!isPlaying}
+            >
+              🛑 Stop AI
+            </button>
             {onClear && (
               <button onClick={onClear} className="btn" style={{ background: 'rgba(239, 68, 68, 0.2)', color: 'var(--danger)', padding: '0.2rem 0.6rem', fontSize: '0.75rem' }}>
                 🗑️ Clear Transcript
@@ -188,8 +178,9 @@ export const TranscriptionBoard = ({ captions, onClear }) => {
           </div>
         )}
         {captions.map((cap, i) => {
-          const wordCount = cap.text ? cap.text.trim().split(/\s+/).length : 0;
+          if (!cap.text || !cap.text.trim()) return null;
           const isSameAsPrevious = i > 0 && captions[i-1].lang === cap.lang;
+          const wordCount = cap.text.trim().split(/\s+/).length;
           
           return (
             <div key={i} className="transcript-bubble" style={{ 
@@ -214,7 +205,7 @@ export const TranscriptionBoard = ({ captions, onClear }) => {
                   {wordCount} words
                 </span>
               </div>
-              <TranslatedBubble text={cap.text} lang={cap.lang} playTTS={playTTS} isPlaying={isPlaying} />
+              <TranslatedBubble text={cap.text} lang={cap.lang} playTTS={playTTS} isPlaying={isPlaying} reverse={cap.lang === 'es'} ttsMode={ttsMode} />
             </div>
           );
         })}
