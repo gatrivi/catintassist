@@ -27,6 +27,7 @@ export const GreetingsPanel = () => {
   const [playingKey, setPlayingKey] = useState(null);
   const [playbackProgress, setPlaybackProgress] = useState(0);
   const [recordingKey, setRecordingKey] = useState(null);
+  const [testMode, setTestMode] = useState(false);
   
   const [localVolume, setLocalVolume] = useState(1);
   const [sinkVolume, setSinkVolume] = useState(1);
@@ -287,34 +288,44 @@ export const GreetingsPanel = () => {
     <div style={{ padding: '0.5rem', display: 'flex', flexDirection: 'column', gap: '0.5rem', flex: 1, overflowY: 'auto' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid var(--panel-border)', paddingBottom: '0.4rem' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-          <span style={{ fontWeight: 600, textTransform: 'capitalize', fontSize: '1rem' }}>Soundboard ({timeOfDay})</span>
+          <span style={{ fontWeight: 600, textTransform: 'capitalize', fontSize: '1rem', color: testMode ? '#f59e0b' : 'inherit' }}>
+            Soundboard ({timeOfDay})
+          </span>
         </div>
-        <button 
-          className="btn" 
-          onClick={() => setMode('settings')} 
-          style={{ padding: '0.2rem', background: 'transparent', color: 'var(--text-muted)', fontSize: '1rem', border: 'none' }}
-          title="Soundboard Settings"
-        >
-          ⚙️
-        </button>
+        
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+          <label style={{ display: 'flex', alignItems: 'center', gap: '0.25rem', fontSize: '0.7rem', color: testMode ? '#f59e0b' : 'var(--text-muted)', cursor: 'pointer', background: testMode ? 'rgba(245, 158, 11, 0.1)' : 'transparent', padding: '0.2rem 0.4rem', borderRadius: '4px', border: testMode ? '1px solid rgba(245, 158, 11, 0.3)' : '1px solid transparent', transition: 'all 0.2s' }} title="When Test Mode is ON, audio plays ONLY to your local speakers and is NOT sent to the Virtual Mic / Caller.">
+            <input type="checkbox" checked={testMode} onChange={e => setTestMode(e.target.checked)} style={{ cursor: 'pointer' }} />
+            🧪 Test Mode
+          </label>
+        
+          <button 
+            className="btn" 
+            onClick={() => setMode('settings')} 
+            style={{ padding: '0.2rem', background: 'transparent', color: 'var(--text-muted)', fontSize: '1rem', border: 'none' }}
+            title="Soundboard Settings"
+          >
+            ⚙️
+          </button>
+        </div>
       </div>
 
       <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', padding: '0.2rem 0', borderBottom: '1px solid rgba(255,255,255,0.05)', marginBottom: '0.2rem' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '0.75rem' }}>
-          <span style={{ color: 'var(--text-muted)' }}>🔊 You (Local)</span>
+          <span style={{ color: testMode ? '#f59e0b' : 'var(--text-muted)' }}>🔊 You (Local)</span>
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
             <input type="range" min="0" max="1" step="0.05" value={localVolume} onChange={(e) => setLocalVolume(parseFloat(e.target.value))} style={{ width: '60px', accentColor: '#3b82f6' }} title="Your Speakers Volume" />
             <div style={{ width: '30px', height: '6px', background: 'rgba(255,255,255,0.1)', borderRadius: '3px', overflow: 'hidden' }}>
-               <div style={{ width: playingKey ? `${localVolume * (40 + Math.random() * 60)}%` : '0%', height: '100%', background: '#3b82f6', transition: 'width 0.1s' }} />
+               <div style={{ width: playingKey ? `${localVolume * (40 + Math.random() * 60)}%` : '0%', height: '100%', background: testMode ? '#f59e0b' : '#3b82f6', transition: 'width 0.1s' }} />
             </div>
           </div>
         </div>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '0.75rem' }}>
-          <span style={{ color: 'var(--text-muted)' }}>🎤 Call (Virtual Mic)</span>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-            <input type="range" min="0" max="1" step="0.05" value={sinkVolume} onChange={(e) => setSinkVolume(parseFloat(e.target.value))} style={{ width: '60px', accentColor: '#10b981' }} title="Interpreter Call Volume" />
+          <span style={{ color: testMode ? 'rgba(255,255,255,0.2)' : 'var(--text-muted)' }}>🎤 Call (Virtual Mic)</span>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', opacity: testMode ? 0.3 : 1 }}>
+            <input type="range" disabled={testMode} min="0" max="1" step="0.05" value={sinkVolume} onChange={(e) => setSinkVolume(parseFloat(e.target.value))} style={{ width: '60px', accentColor: '#10b981' }} title="Interpreter Call Volume" />
             <div style={{ width: '30px', height: '6px', background: 'rgba(255,255,255,0.1)', borderRadius: '3px', overflow: 'hidden' }}>
-               <div style={{ width: playingKey && blobs[playingKey] ? `${sinkVolume * (40 + Math.random() * 60)}%` : '0%', height: '100%', background: '#10b981', transition: 'width 0.1s' }} />
+               <div style={{ width: (playingKey && blobs[playingKey] && !testMode) ? `${sinkVolume * (40 + Math.random() * 60)}%` : '0%', height: '100%', background: '#10b981', transition: 'width 0.1s' }} />
             </div>
           </div>
         </div>
@@ -335,7 +346,7 @@ export const GreetingsPanel = () => {
            return (
              <button
                key={action.id}
-               onClick={() => playAudioBlock(activeKey, true)}
+               onClick={() => playAudioBlock(activeKey, !testMode)}
                style={{
                  height: '80px',
                  borderRadius: '6px',

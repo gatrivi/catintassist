@@ -267,29 +267,33 @@ export const DashboardHeader = ({ onStartAudio, onStopAudio, sttLanguage, onTogg
           <div style={{ width: '100%', display: 'flex', flexDirection: 'column', gap: '0.2rem', marginTop: '0.2rem', padding: '0 0.2rem' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.6rem', color: 'var(--text-muted)', textTransform: 'uppercase', alignItems: 'center' }}>
               <span>9:00 AM (Start)</span>
-              <span style={{ 
+              <div style={{ 
                 color: remainingMinsToday <= 0 ? '#34d399' : '#e2e8f0', 
-                fontWeight: 600,
-                background: remainingMinsToday <= 0 ? 'rgba(16, 185, 129, 0.2)' : 'linear-gradient(90deg, rgba(0,0,0,0.4) 0%, rgba(52, 211, 153, 0.15) 100%)',
-                padding: '0.2rem 0.6rem',
+                background: remainingMinsToday <= 0 ? 'rgba(16, 185, 129, 0.2)' : 'linear-gradient(90deg, rgba(0,0,0,0.4) 0%, rgba(52, 211, 153, 0.10) 100%)',
+                padding: '0.3rem 0.8rem',
                 borderRadius: '6px',
-                letterSpacing: '0.5px',
                 border: '1px solid rgba(255,255,255,0.05)',
-                display: 'inline-flex',
+                display: 'flex',
+                flexDirection: 'column',
                 alignItems: 'center',
-                gap: '0.4rem',
+                gap: '0.2rem',
                 boxShadow: 'inset 0 0 10px rgba(52, 211, 153, 0.05)'
               }}>
-                {remainingMinsToday <= 0 
-                  ? `🎉 Shift Goal Met!` 
-                  : (
-                    <>
-                      <span>⏳ {hoursLeft.toFixed(1)}h left</span>
+                {remainingMinsToday <= 0 ? (
+                  <span style={{ fontWeight: 600, letterSpacing: '0.5px' }}>🎉 Shift Goal Met!</span>
+                ) : (
+                  <>
+                    <div style={{ fontSize: '0.55rem', opacity: 0.65, letterSpacing: '0.5px', textTransform: 'uppercase' }}>
+                      📅 Shift Cap: {workdayTotalExpectedMins}m ({(workdayTotalExpectedMins / 60).toFixed(1)}h) ≃ AR${Math.round(workdayTotalExpectedMins * RATE_PER_MINUTE * arsRate).toLocaleString('es-AR')}
+                    </div>
+                    <div style={{ fontSize: '0.65rem', fontWeight: 600, letterSpacing: '0.5px', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                      <span>⏳ {hoursLeft.toFixed(1)}H LEFT</span>
                       <span style={{opacity: 0.5}}>|</span>
-                      <span>Claim up to <strong style={{color: '#6ee7b7', textShadow: '0 0 8px rgba(110, 231, 183, 0.4)', fontSize: '1.05em'}}>AR${maxCashToClaim}</strong> today</span>
-                    </>
-                  )}
-              </span>
+                      <span>~{Math.round(realisticRemainingMins)}m ({(realisticRemainingMins / 60).toFixed(1)}h) ≃ <strong style={{color: '#6ee7b7', textShadow: '0 0 8px rgba(110, 231, 183, 0.4)', fontSize: '1.1em'}}>AR${maxCashToClaim}</strong></span>
+                    </div>
+                  </>
+                )}
+              </div>
               <span>11:00 PM (End)</span>
             </div>
             <div style={{ width: '100%', height: '6px', background: 'rgba(0,0,0,0.5)', borderRadius: '3px', position: 'relative' }} title={`Completed: ${stats.dailyMinutes}m`}>
