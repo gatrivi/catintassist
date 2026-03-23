@@ -265,3 +265,79 @@ body {
     flex-direction: row;
   }
 }
+
+/* Income Tracker Enchancements */
+.income-dashboard {
+  display: flex;
+  flex-direction: row;
+  flex-wrap: wrap;
+  justify-content: space-around;
+  align-items: center;
+  gap: 1.5rem;
+  padding: 0.75rem 1.5rem;
+  background: rgba(0, 0, 0, 0.25);
+  border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  margin-top: 0.5rem;
+  text-align: center;
+}
+
+.income-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  transition: all 0.3s ease;
+}
+
+/* Base glowing effect for actie elements */
+@keyframes incomePulse {
+  0% { text-shadow: 0 0 10px rgba(59, 130, 246, 0.4); }
+  50% { text-shadow: 0 0 25px rgba(59, 130, 246, 0.8), 0 0 10px rgba(255, 255, 255, 0.5); }
+  100% { text-shadow: 0 0 10px rgba(59, 130, 246, 0.4); }
+}
+
+.income-card.active .income-ars {
+  color: #38bdf8;
+  animation: incomePulse 2s infinite ease-in-out;
+}
+
+.income-label {
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 2px;
+  color: var(--text-muted);
+  font-weight: 600;
+  margin-bottom: 0.25rem;
+}
+
+/* Monthly is HUGE */
+.income-tier-1 .income-ars { font-size: 2.25rem; font-weight: 900; line-height: 1; color: #6ee7b7; text-shadow: 0 0 20px rgba(16, 185, 129, 0.3); }
+.income-tier-1 .income-usd { font-size: 1.1rem; color: #a78bfa; font-weight: 500; margin-top: 0.25rem; }
+
+/* Daily is BIG */
+.income-tier-2 .income-ars { font-size: 1.8rem; font-weight: 800; line-height: 1; color: #34d399; }
+.income-tier-2 .income-usd { font-size: 0.95rem; color: #c084fc; font-weight: 500; margin-top: 0.25rem; }
+
+/* Current Call is PROMINENT */
+.income-tier-3 .income-ars { font-size: 1.5rem; font-weight: 700; line-height: 1; color: #f8fafc; }
+.income-tier-3 .income-usd { font-size: 0.85rem; color: #d8b4fe; font-weight: 500; margin-top: 0.25rem; }
+
+/* Subtle edit button style */
+.stat-input-ars {
+  background: transparent;
+  border: none;
+  border-bottom: 1px dashed rgba(255, 255, 255, 0.3);
+  color: var(--text-muted);
+  font-family: inherit;
+  font-size: 0.75rem;
+  width: 50px;
+  text-align: center;
+  outline: none;
+  transition: all 0.2s;
+}
+.stat-input-ars:focus {
+  border-bottom-color: var(--accent-primary);
+  color: white;
+}

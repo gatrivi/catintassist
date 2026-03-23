@@ -20,12 +20,47 @@ export const SessionProvider = ({ children }) => {
     };
   });
 
+  const [arsRate, setArsRate] = useState(1050);
+
+  useEffect(() => {
+    fetch('https://api.exchangerate-api.com/v4/latest/USD')
+      .then(res => res.json())
+      .then(data => {
+        if (data && data.rates && data.rates.ARS) {
+          setArsRate(data.rates.ARS);
+        }
+      })
+      .catch(err => console.error("Failed to fetch ARS rate:", err));
+  }, []);
+
   const RATE_PER_MINUTE = 0.13;
   const timerRef = useRef(null);
   const accumulatorRef = useRef(0); // collects fractional seconds
 
-  const startSession = () => setIsActive(true);
-  const stopSession = () => setIsActive(false);
+  const startSession = () => {
+    setSessionSeconds(0);
+    accumulatorRef.current = 0;
+    setIsActive(true);
+  };
+  
+  const stopSession = () => {
+    setIsActive(false);
+    // On stop, add elapsed time to persistent stats
+    const minutesToAdd = sessionSeconds / 60;
+    if (minutesToAdd > 0) {
+      setStats(prev => {
+        const newStats = {
+          ...prev,
+          dailyMinutes: prev.dailyMinutes + minutesToAdd,
+          weeklyMinutes: prev.weeklyMinutes + minutesToAdd,
+          monthlyMinutes: prev.monthlyMinutes + minutesToAdd
+        };
+        // Explicitly set localStorage to ensure it saves right away
+        localStorage.setItem('catintassist_stats', JSON.stringify(newStats));
+        return newStats;
+      });
+    }
+  };
 
   useEffect(() => {
     localStorage.setItem('catintassist_stats', JSON.stringify(stats));
@@ -35,18 +70,6 @@ export const SessionProvider = ({ children }) => {
     if (isActive) {
       timerRef.current = setInterval(() => {
         setSessionSeconds(prev => prev + 1);
-        
-        accumulatorRef.current += 1;
-        if (accumulatorRef.current >= 60) {
-          // A full minute has passed, add to persistent stats
-          setStats(prev => ({
-            ...prev,
-            dailyMinutes: prev.dailyMinutes + 1,
-            weeklyMinutes: prev.weeklyMinutes + 1,
-            monthlyMinutes: prev.monthlyMinutes + 1
-          }));
-          accumulatorRef.current -= 60;
-        }
       }, 1000);
     } else {
       if (timerRef.current) clearInterval(timerRef.current);
@@ -70,7 +93,9 @@ export const SessionProvider = ({ children }) => {
     updateStat,
     startSession,
     stopSession,
-    RATE_PER_MINUTE
+    RATE_PER_MINUTE,
+    arsRate,
+    setArsRate
   };
 
   return (

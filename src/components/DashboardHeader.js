@@ -41,6 +41,10 @@ const StatEditor = ({ label, statKey, value, updateFn, earnings }) => {
     setIsEditing(false);
   };
 
+  const hours = Math.floor(value / 60);
+  const mins = value % 60;
+  const hoursDisplay = value >= 60 ? ` (${hours}h ${mins}m)` : '';
+
   return (
     <div className="stat-group">
       <span className="stat-label">{label}</span>
@@ -57,10 +61,51 @@ const StatEditor = ({ label, statKey, value, updateFn, earnings }) => {
         </form>
       ) : (
         <div className="stat-item" onClick={() => { setTempValue(value); setIsEditing(true); }} title="Click to edit">
-          <span className="stat-value">{value}m</span>
+          <span className="stat-value">{value}m <span style={{fontSize: '0.7em', opacity: 0.7, fontWeight: 'normal'}}>{hoursDisplay}</span></span>
           {earnings !== undefined && <span className="stat-earning">(${earnings.toFixed(2)})</span>}
         </div>
       )}
+    </div>
+  );
+};
+
+const EditableMinutes = ({ value, updateFn, statKey }) => {
+  const [isEditing, setIsEditing] = useState(false);
+  const [tempValue, setTempValue] = useState(value);
+
+  const handleSubmit = (e) => {
+    e.preventDefault();
+    updateFn(statKey, parseInt(tempValue, 10) || 0);
+    setIsEditing(false);
+  };
+
+  const hours = Math.floor(value / 60);
+  const mins = value % 60;
+  const hoursDisplay = value >= 60 ? ` (${hours}h ${mins}m)` : '';
+
+  if (isEditing) {
+    return (
+      <form onSubmit={handleSubmit} style={{ marginTop: '0.5rem' }}>
+        <input 
+          type="number" 
+          className="stat-input" 
+          style={{ width: '60px', padding: '0.2rem' }}
+          value={tempValue} 
+          onChange={e => setTempValue(e.target.value)}
+          onBlur={handleSubmit}
+          autoFocus
+        />
+      </form>
+    );
+  }
+
+  return (
+    <div 
+      style={{ cursor: 'pointer', fontSize: '0.9rem', color: 'var(--text-muted)', marginTop: '0.4rem', fontWeight: 500 }}
+      onClick={() => { setTempValue(value); setIsEditing(true); }}
+      title="Click to edit minutes"
+    >
+      {value}m <span style={{ fontSize: '0.8rem', opacity: 0.7, fontWeight: 400 }}>{hoursDisplay}</span>
     </div>
   );
 };
@@ -89,7 +134,7 @@ const ConnectionIndicator = ({ state }) => {
 };
 
 export const DashboardHeader = ({ onStartAudio, onStopAudio, sttLanguage, onToggleLanguage, connectionState, connectionMessage }) => {
-  const { isActive, sessionSeconds, sessionEarnings, stats, updateStat, startSession, stopSession, RATE_PER_MINUTE } = useSession();
+  const { isActive, sessionSeconds, sessionEarnings, stats, updateStat, startSession, stopSession, RATE_PER_MINUTE, arsRate, setArsRate } = useSession();
   const { outputDevices, inputDevices, selectedSinkId, selectedMicId, changeSinkId, changeMicId, fetchDevices } = useAudioSettings();
 
   const handleStart = async () => {
@@ -221,52 +266,41 @@ export const DashboardHeader = ({ onStartAudio, onStopAudio, sttLanguage, onTogg
           </div>
         </div>
         
-        <div className="stat-group" style={{ alignItems: 'flex-end' }}>
-          <span className="stat-label">Session Timer</span>
-          <div className="stat-item" style={{ cursor: 'default' }}>
-            <span className="stat-value" style={{ color: '#fff', fontSize: '1.2rem' }}>{formatTime(sessionSeconds)}</span>
-            <span className="stat-earning">(${sessionEarnings.toFixed(2)})</span>
-          </div>
-        </div>
+        {/* Removed legacy Session Timer here */}
       </div>
       
-      <div className="dashboard-stats">
-        <StatEditor 
-          label="Today" 
-          statKey="dailyMinutes" 
-          value={stats.dailyMinutes} 
-          updateFn={updateStat} 
-          earnings={stats.dailyMinutes * RATE_PER_MINUTE} 
-        />
-        
-        <StatEditor 
-          label="This Week" 
-          statKey="weeklyMinutes" 
-          value={stats.weeklyMinutes} 
-          updateFn={updateStat} 
-          earnings={stats.weeklyMinutes * RATE_PER_MINUTE} 
-        />
+      <div className="income-dashboard">
+        <div className="income-card income-tier-1">
+          <span className="income-label">This Month</span>
+          <span className="income-ars">AR${Math.round(stats.monthlyMinutes * RATE_PER_MINUTE * arsRate).toLocaleString('es-AR')}</span>
+          <span className="income-usd">${(stats.monthlyMinutes * RATE_PER_MINUTE).toFixed(2)} USD</span>
+          <EditableMinutes value={stats.monthlyMinutes} updateFn={updateStat} statKey="monthlyMinutes" />
+        </div>
 
-        <StatEditor 
-          label="This Month" 
-          statKey="monthlyMinutes" 
-          value={stats.monthlyMinutes} 
-          updateFn={updateStat} 
-          earnings={stats.monthlyMinutes * RATE_PER_MINUTE} 
-        />
+        <div className="income-card income-tier-2">
+          <span className="income-label">Today</span>
+          <span className="income-ars">AR${Math.round(stats.dailyMinutes * RATE_PER_MINUTE * arsRate).toLocaleString('es-AR')}</span>
+          <span className="income-usd">${(stats.dailyMinutes * RATE_PER_MINUTE).toFixed(2)} USD</span>
+          <EditableMinutes value={stats.dailyMinutes} updateFn={updateStat} statKey="dailyMinutes" />
+        </div>
 
-        <StatEditor 
-          label="Monthly Goal" 
-          statKey="goalMinutes" 
-          value={stats.goalMinutes} 
-          updateFn={updateStat} 
-        />
-        
-        <div className="stat-group">
-          <span className="stat-label" title="Daily average strictly needed to reach goal">Target Avg</span>
-          <div className="stat-item" style={{ cursor: 'default' }}>
-            <span className="stat-value">{requiredDailyAverage}m/day</span>
+        <div className={`income-card income-tier-3 ${isActive ? 'active' : ''}`}>
+          <span className="income-label">Current Call ({formatTime(sessionSeconds)})</span>
+          <span className="income-ars">AR${Math.round(sessionEarnings * arsRate).toLocaleString('es-AR')}</span>
+          <span className="income-usd">${sessionEarnings.toFixed(2)} USD</span>
+        </div>
+
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.8rem', opacity: 0.8, borderLeft: '1px solid rgba(255,255,255,0.1)', paddingLeft: '1.5rem' }}>
+          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.2rem' }}>
+            <span style={{ fontSize: '0.65rem', color: 'var(--text-muted)', textTransform: 'uppercase' }}>USD/ARS Rate</span>
+            <input 
+              type="number" 
+              className="stat-input-ars" 
+              value={arsRate} 
+              onChange={e => setArsRate(e.target.value)}
+            />
           </div>
+          <StatEditor label="Target Goal" statKey="goalMinutes" value={stats.goalMinutes} updateFn={updateStat} />
         </div>
       </div>
     </header>
