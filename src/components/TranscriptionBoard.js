@@ -97,6 +97,7 @@ export const TranscriptionBoard = ({ captions, onClear, viewMode }) => {
   const bottomRef = useRef(null);
   const scrollAreaRef = useRef(null);
   const isScrolledUpRef = useRef(false);
+  const scrollTimeoutRef = useRef(null);
   const [ttsMode, setTtsMode] = useState('manual');
   const { playTTS, stopTTS, isPlaying } = useTTS();
 
@@ -106,19 +107,40 @@ export const TranscriptionBoard = ({ captions, onClear, viewMode }) => {
     }
   }, [captions]);
 
+  const resetScrollTimer = () => {
+    if (scrollTimeoutRef.current) clearTimeout(scrollTimeoutRef.current);
+    scrollTimeoutRef.current = setTimeout(() => {
+      isScrolledUpRef.current = false;
+      bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
+    }, 4500); // Resume auto-scroll after 4.5 seconds of inactivity
+  };
+
   const handleScroll = () => {
     if (!scrollAreaRef.current) return;
     const { scrollTop, scrollHeight, clientHeight } = scrollAreaRef.current;
-    // If user scrolled up even slightly, stop auto-scrolling
-    isScrolledUpRef.current = scrollHeight - scrollTop - clientHeight > 5;
+    const isAtBottom = scrollHeight - scrollTop - clientHeight <= 10;
+    
+    if (isAtBottom) {
+      isScrolledUpRef.current = false;
+      if (scrollTimeoutRef.current) clearTimeout(scrollTimeoutRef.current);
+    } else {
+      isScrolledUpRef.current = true;
+      resetScrollTimer();
+    }
   };
 
   const handleWheel = (e) => {
-    // If they scroll up, instantly pause auto-scroll before Deepgram overrides it
-    if (e.deltaY < 0) {
-      isScrolledUpRef.current = true;
-    }
+    // If they scroll, INSTANTLY consider it scrolled up / reset timer
+    isScrolledUpRef.current = true;
+    resetScrollTimer();
   };
+
+  // Cleanup timeout on unmount
+  useEffect(() => {
+    return () => {
+      if (scrollTimeoutRef.current) clearTimeout(scrollTimeoutRef.current);
+    };
+  }, []);
 
   const handleDoubleClick = () => {
     const selection = window.getSelection().toString().trim();

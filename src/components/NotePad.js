@@ -1,11 +1,22 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useTTS } from '../hooks/useTTS';
+import { useSession } from '../contexts/SessionContext';
 
 export const NotePad = () => {
   const { playTTS, stopTTS, isPlaying } = useTTS();
+  const { isActive } = useSession();
   const [notes, setNotes] = useState(() => {
     return localStorage.getItem('catintassist_notes') || '';
   });
+
+  const prevActiveRef = useRef(isActive);
+
+  useEffect(() => {
+    if (prevActiveRef.current && !isActive) {
+      setNotes('');
+    }
+    prevActiveRef.current = isActive;
+  }, [isActive]);
 
   useEffect(() => {
     const timeout = setTimeout(() => {

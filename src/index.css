@@ -273,12 +273,12 @@ body {
   flex-wrap: wrap;
   justify-content: space-around;
   align-items: center;
-  gap: 1.5rem;
-  padding: 0.75rem 1.5rem;
+  gap: 0.5rem;
+  padding: 0.5rem;
   background: rgba(0, 0, 0, 0.25);
-  border-radius: 12px;
+  border-radius: 8px;
   border: 1px solid rgba(255, 255, 255, 0.05);
-  margin-top: 0.5rem;
+  margin-top: 0.25rem;
   text-align: center;
 }
 
@@ -313,16 +313,16 @@ body {
 }
 
 /* Monthly is HUGE */
-.income-tier-1 .income-ars { font-size: 2.25rem; font-weight: 900; line-height: 1; color: #6ee7b7; text-shadow: 0 0 20px rgba(16, 185, 129, 0.3); }
-.income-tier-1 .income-usd { font-size: 1.1rem; color: #a78bfa; font-weight: 500; margin-top: 0.25rem; }
+.income-tier-1 .income-ars { font-size: 1.8rem; font-weight: 900; line-height: 1; color: #6ee7b7; text-shadow: 0 0 20px rgba(16, 185, 129, 0.3); }
+.income-tier-1 .income-usd { font-size: 0.95rem; color: #a78bfa; font-weight: 500; margin-top: 0.25rem; }
 
 /* Daily is BIG */
-.income-tier-2 .income-ars { font-size: 1.8rem; font-weight: 800; line-height: 1; color: #34d399; }
-.income-tier-2 .income-usd { font-size: 0.95rem; color: #c084fc; font-weight: 500; margin-top: 0.25rem; }
+.income-tier-2 .income-ars { font-size: 1.5rem; font-weight: 800; line-height: 1; color: #34d399; }
+.income-tier-2 .income-usd { font-size: 0.85rem; color: #c084fc; font-weight: 500; margin-top: 0.25rem; }
 
 /* Current Call is PROMINENT */
-.income-tier-3 .income-ars { font-size: 1.5rem; font-weight: 700; line-height: 1; color: #f8fafc; }
-.income-tier-3 .income-usd { font-size: 0.85rem; color: #d8b4fe; font-weight: 500; margin-top: 0.25rem; }
+.income-tier-3 .income-ars { font-size: 1.3rem; font-weight: 700; line-height: 1; color: #f8fafc; }
+.income-tier-3 .income-usd { font-size: 0.75rem; color: #d8b4fe; font-weight: 500; margin-top: 0.25rem; }
 
 /* Subtle edit button style */
 .stat-input-ars {

@@ -48,16 +48,25 @@ export const GreetingsPanel = () => {
     for (const action of ACTIONS) {
        // load thumbnail
        const thumb = await loadFile(`thumb_${action.id}`);
-       if (thumb) state[`thumb_${action.id}`] = thumb;
+       if (thumb) {
+           state[`thumb_${action.id}`] = thumb;
+           state[`url_thumb_${action.id}`] = generateObjectUrl(thumb);
+       }
        
        if (action.dynamic) {
           for (const t of TIME_SLOTS) {
             const b = await loadFile(`${action.id}_${t}`);
-            if (b) state[`${action.id}_${t}`] = b;
+            if (b) {
+               state[`${action.id}_${t}`] = b;
+               state[`url_${action.id}_${t}`] = generateObjectUrl(b);
+            }
           }
        } else {
           const b = await loadFile(action.id);
-          if (b) state[action.id] = b;
+          if (b) {
+             state[action.id] = b;
+             state[`url_${action.id}`] = generateObjectUrl(b);
+          }
        }
     }
     const bgApp = await loadFile('bg_app');
@@ -133,7 +142,8 @@ export const GreetingsPanel = () => {
       return;
     }
     
-    const url = generateObjectUrl(blob);
+    // Use the cached URL if available to save resources, else generate inline with a fallback (it shouldn't happen)
+    const url = blobs[`url_${key}`] || generateObjectUrl(blob);
     audioRefSink.current.src = url;
     audioRefLocal.current.src = url;
     
@@ -258,7 +268,7 @@ export const GreetingsPanel = () => {
         paddingTop: '0.25rem'
       }}>
         {ACTIONS.map(action => {
-           const bgImage = blobs[`thumb_${action.id}`] ? `url(${generateObjectUrl(blobs[`thumb_${action.id}`])})` : 'none';
+           const bgImage = blobs[`url_thumb_${action.id}`] ? `url(${blobs[`url_thumb_${action.id}`]})` : 'none';
            const activeKey = action.dynamic ? `${action.id}_${timeOfDay}` : action.id;
            const isItPlaying = playingKey === activeKey;
            

@@ -1,137 +1,7 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { useSession } from '../contexts/SessionContext';
 import { useAudioSettings } from '../contexts/AudioSettingsContext';
-
-// Basic SVG icons
-const PlayIcon = () => (
-  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-    <polygon points="5 3 19 12 5 21 5 3"></polygon>
-  </svg>
-);
-
-const StopIcon = () => (
-  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-    <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
-  </svg>
-);
-
-const KeyIcon = () => (
-  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-    <path d="M21 2l-2 2m-7.61 7.61a5.5 5.5 0 1 1-7.778 7.778 5.5 5.5 0 0 1 7.777-7.777zm0 0L15.5 7.5m0 0l3 3L22 7l-3-3m-3.5 3.5L19 4"></path>
-  </svg>
-);
-
-const formatTime = (totalSeconds) => {
-  const hours = Math.floor(totalSeconds / 3600);
-  const minutes = Math.floor((totalSeconds % 3600) / 60);
-  const seconds = totalSeconds % 60;
-  if (hours > 0) {
-    return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
-  }
-  return `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
-};
-
-const StatEditor = ({ label, statKey, value, updateFn, earnings }) => {
-  const [isEditing, setIsEditing] = useState(false);
-  const [tempValue, setTempValue] = useState(value);
-
-  const handleSubmit = (e) => {
-    e.preventDefault();
-    updateFn(statKey, tempValue);
-    setIsEditing(false);
-  };
-
-  const hours = Math.floor(value / 60);
-  const mins = value % 60;
-  const hoursDisplay = value >= 60 ? ` (${hours}h ${mins}m)` : '';
-
-  return (
-    <div className="stat-group">
-      <span className="stat-label">{label}</span>
-      {isEditing ? (
-        <form onSubmit={handleSubmit} style={{ display: 'flex', gap: '0.2rem' }}>
-          <input 
-            type="number" 
-            className="stat-input" 
-            value={tempValue} 
-            onChange={e => setTempValue(e.target.value)}
-            onBlur={handleSubmit}
-            autoFocus
-          />
-        </form>
-      ) : (
-        <div className="stat-item" onClick={() => { setTempValue(value); setIsEditing(true); }} title="Click to edit">
-          <span className="stat-value">{value}m <span style={{fontSize: '0.7em', opacity: 0.7, fontWeight: 'normal'}}>{hoursDisplay}</span></span>
-          {earnings !== undefined && <span className="stat-earning">(${earnings.toFixed(2)})</span>}
-        </div>
-      )}
-    </div>
-  );
-};
-
-const EditableMinutes = ({ value, updateFn, statKey }) => {
-  const [isEditing, setIsEditing] = useState(false);
-  const [tempValue, setTempValue] = useState(value);
-
-  const handleSubmit = (e) => {
-    e.preventDefault();
-    updateFn(statKey, parseInt(tempValue, 10) || 0);
-    setIsEditing(false);
-  };
-
-  const hours = Math.floor(value / 60);
-  const mins = value % 60;
-  const hoursDisplay = value >= 60 ? ` (${hours}h ${mins}m)` : '';
-
-  if (isEditing) {
-    return (
-      <form onSubmit={handleSubmit} style={{ marginTop: '0.5rem' }}>
-        <input 
-          type="number" 
-          className="stat-input" 
-          style={{ width: '60px', padding: '0.2rem' }}
-          value={tempValue} 
-          onChange={e => setTempValue(e.target.value)}
-          onBlur={handleSubmit}
-          autoFocus
-        />
-      </form>
-    );
-  }
-
-  return (
-    <div 
-      style={{ cursor: 'pointer', fontSize: '0.9rem', color: 'var(--text-muted)', marginTop: '0.4rem', fontWeight: 500 }}
-      onClick={() => { setTempValue(value); setIsEditing(true); }}
-      title="Click to edit minutes"
-    >
-      {value}m <span style={{ fontSize: '0.8rem', opacity: 0.7, fontWeight: 400 }}>{hoursDisplay}</span>
-    </div>
-  );
-};
-
-const ConnectionIndicator = ({ state }) => {
-  let color = 'gray';
-  let title = 'Disconnected';
-  if (state === 'connected') { color = '#10b981'; title = 'Connected'; }
-  else if (state === 'connecting') { color = '#f59e0b'; title = 'Connecting...'; }
-  else if (state === 'error') { color = '#ef4444'; title = 'Error'; }
-
-  return (
-    <div 
-      style={{
-        width: '12px',
-        height: '12px',
-        borderRadius: '50%',
-        backgroundColor: color,
-        boxShadow: state === 'connected' ? '0 0 8px #10b981' : state === 'connecting' ? '0 0 8px #f59e0b' : 'none',
-        transition: 'all 0.3s ease',
-        cursor: 'help'
-      }}
-      title={title}
-    />
-  );
-};
+import { PlayIcon, StopIcon, KeyIcon, formatTime, GoalEditor, EditableMinutes, ConnectionIndicator } from './HeaderWidgets';
 
 export const DashboardHeader = ({ onStartAudio, onStopAudio, sttLanguage, onToggleLanguage, connectionState, connectionMessage }) => {
   const { isActive, sessionSeconds, sessionEarnings, stats, updateStat, startSession, stopSession, RATE_PER_MINUTE, arsRate, setArsRate } = useSession();
@@ -290,9 +160,9 @@ export const DashboardHeader = ({ onStartAudio, onStopAudio, sttLanguage, onTogg
           <span className="income-usd">${sessionEarnings.toFixed(2)} USD</span>
         </div>
 
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.8rem', opacity: 0.8, borderLeft: '1px solid rgba(255,255,255,0.1)', paddingLeft: '1.5rem' }}>
-          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.2rem' }}>
-            <span style={{ fontSize: '0.65rem', color: 'var(--text-muted)', textTransform: 'uppercase' }}>USD/ARS Rate</span>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem', opacity: 0.8, borderLeft: '1px solid rgba(255,255,255,0.1)', paddingLeft: '0.8rem' }}>
+          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.1rem' }}>
+            <span style={{ fontSize: '0.6rem', color: 'var(--text-muted)', textTransform: 'uppercase' }}>USD/ARS Rate</span>
             <input 
               type="number" 
               className="stat-input-ars" 
@@ -300,7 +170,7 @@ export const DashboardHeader = ({ onStartAudio, onStopAudio, sttLanguage, onTogg
               onChange={e => setArsRate(e.target.value)}
             />
           </div>
-          <StatEditor label="Target Goal" statKey="goalMinutes" value={stats.goalMinutes} updateFn={updateStat} />
+          <GoalEditor label="Target Goal" statKey="goalMinutes" valueMinutes={stats.goalMinutes} updateFn={updateStat} ratePerMinute={RATE_PER_MINUTE} dailyAverage={requiredDailyAverage} />
         </div>
       </div>
     </header>

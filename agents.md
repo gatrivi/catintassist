@@ -1,5 +1,10 @@
 cats interpreter assistant app
 
+CORE VALUES
+- keep your messages brief, i can seldom dedicate more htan 10% attention to this.
+- code as if for a toddler, simple, clear, organize, anottated, and in all manners try to economize tokens, it makes no sense to set a data center on fire to change a font on an invisible sub menu.
+
+
 NEXT STEPS
 [] play a ping sound when speaker goes over 40 words to let me interpret. ideally with a warning win the appropriat langugae, that has been prerecorded and approved.
 [] makeeverything a little smaller, i currently have to zoom out two or three times to have mor than a 3 mssgs visible at the same time
