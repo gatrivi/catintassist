@@ -20,7 +20,7 @@ const getBubbleStyle = (text, isCurrent, lang) => {
   return { borderLeft: `3px solid ${baseBorder}`, backgroundColor: baseBg };
 };
 
-const TranslatedBubble = ({ text, lang, playTTS, isPlaying, reverse = false, ttsMode }) => {
+const TranslatedBubble = ({ text, lang, playTTS, isPlaying, reverse = false, ttsMode, wordCount }) => {
   const [translation, setTranslation] = useState('');
   const hasAutoPlayedRef = useRef(false);
 
@@ -55,45 +55,57 @@ const TranslatedBubble = ({ text, lang, playTTS, isPlaying, reverse = false, tts
   }, [translation, ttsMode, playTTS, targetLang]);
 
   return (
-    <div style={{ display: 'flex', gap: '1rem', marginTop: '0.25rem', flexDirection: reverse ? 'row-reverse' : 'row' }}>
+    <div style={{ display: 'flex', gap: '0.25rem', marginTop: '0.1rem', flexDirection: reverse ? 'row-reverse' : 'row', alignItems: 'center' }}>
       <div style={{ flex: 1, textAlign: reverse ? 'right' : 'left' }}>
-        <div style={{ fontWeight: 400, marginBottom: '0.5rem', lineHeight: 1.4 }}>{text}</div>
+        <div style={{ fontWeight: 400, lineHeight: 1.3, fontSize: '0.9rem' }}>{text}</div>
       </div>
+
+      <div style={{ 
+        display: 'flex', 
+        flexDirection: 'column', 
+        alignItems: 'center', 
+        justifyContent: 'center',
+        padding: '0 0.5rem',
+        opacity: 0.6
+      }}>
+        <span style={{ 
+          fontSize: '0.65rem', 
+          fontWeight: 700, 
+          color: wordCount >= 40 ? 'var(--danger)' : wordCount >= 34 ? '#f59e0b' : 'var(--text-muted)'
+        }}>
+          {wordCount}
+        </span>
+        <button 
+          onClick={() => playTTS(translation, targetLang)} 
+          disabled={isPlaying || !translation}
+          style={{
+            background: 'transparent',
+            border: 'none',
+            cursor: (isPlaying || !translation) ? 'not-allowed' : 'pointer',
+            fontSize: '1.2rem',
+            padding: 0,
+            opacity: (isPlaying || !translation) ? 0.3 : 1
+          }}
+          title="Play Translation (TTS)"
+        >
+          🔊
+        </button>
+      </div>
+
       <div style={{ 
         flex: 1, 
-        borderLeft: reverse ? 'none' : '1px dashed rgba(255,255,255,0.1)', 
-        borderRight: reverse ? '1px dashed rgba(255,255,255,0.1)' : 'none', 
-        paddingLeft: reverse ? 0 : '1rem', 
-        paddingRight: reverse ? '1rem' : 0, 
-        color: 'rgba(255,255,255,0.3)',
+        color: 'rgba(255,255,255,0.4)',
         textAlign: reverse ? 'left' : 'right'
       }}>
-        <div style={{ fontWeight: 400, fontStyle: 'italic', marginBottom: '0.5rem', lineHeight: 1.4 }}>
+        <div style={{ fontWeight: 400, fontStyle: 'italic', lineHeight: 1.3, fontSize: '0.85rem' }}>
           {translation || <span style={{ opacity: 0.2 }}>...</span>}
-        </div>
-        <div style={{ display: 'flex', justifyContent: reverse ? 'flex-start' : 'flex-end' }}>
-          <button 
-            onClick={() => playTTS(translation, targetLang)} 
-            className="btn" 
-            disabled={isPlaying || !translation}
-            style={{
-              backgroundColor: 'rgba(255,255,255,0.05)', 
-              border: '1px solid rgba(255,255,255,0.1)', 
-              fontSize: '0.75rem', 
-              padding: '0.2rem 0.6rem',
-              opacity: isPlaying || !translation ? 0.5 : 1
-            }}
-            title="Play Translated Audio via Inworld TTS"
-          >
-            🔊 Synthesize ({targetLang.toUpperCase()})
-          </button>
         </div>
       </div>
     </div>
   );
 };
 
-export const TranscriptionBoard = ({ captions, onClear, viewMode }) => {
+export const TranscriptionBoard = ({ captions, onClear, isToolsOpen, onToggleTools }) => {
   const bottomRef = useRef(null);
   const scrollAreaRef = useRef(null);
   const isScrolledUpRef = useRef(false);
@@ -154,8 +166,13 @@ export const TranscriptionBoard = ({ captions, onClear, viewMode }) => {
     <div className="glass-panel transcription-area">
       <div className="notepad-header" style={{ borderBottom: '1px solid var(--panel-border)', paddingBottom: '0.4rem', marginBottom: '0.5rem', display: 'flex', justifyContent: 'space-between', padding: '0.4rem 0.5rem' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%' }}>
-          <h2 style={{ fontSize: '1rem', color: 'var(--text-muted)' }}>Livestream Transcription</h2>
-          <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
+          <h2 style={{ fontSize: '1rem', color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+            Livestream 
+            <button onClick={onToggleTools} className="btn" style={{ padding: '0.1rem 0.4rem', fontSize: '0.7rem', background: 'rgba(59, 130, 246, 0.2)', color: '#60a5fa' }} title="Toggle Soundboard and Notes">
+              {isToolsOpen ? '▶ Hide Tools' : '◀ Show Tools'}
+            </button>
+          </h2>
+          <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
             <button 
               onClick={() => setTtsMode(m => m === 'manual' ? 'auto' : 'manual')} 
               className="btn" 
@@ -210,24 +227,14 @@ export const TranscriptionBoard = ({ captions, onClear, viewMode }) => {
               marginTop: isSameAsPrevious ? '0.2rem' : '1rem',
               ...getBubbleStyle(cap.text, cap.isFinal === false, cap.lang)
             }}>
-              <div style={{ 
-                display: 'flex', 
-                justifyContent: 'space-between',
-                alignItems: 'center',
-                marginBottom: '0.2rem' 
-              }}>
-                <span style={{ fontSize: '0.70rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-                  {!isSameAsPrevious ? (cap.lang === 'es' ? 'Spanish' : 'English') : ''}
-                </span>
-                <span style={{ 
-                  fontSize: '0.70rem', 
-                  fontWeight: 600,
-                  color: wordCount >= 40 ? 'var(--danger)' : wordCount >= 34 ? '#f59e0b' : 'var(--text-muted)'
-                }}>
-                  {wordCount} words
-                </span>
-              </div>
-              <TranslatedBubble text={cap.text} lang={cap.lang} playTTS={playTTS} isPlaying={isPlaying} reverse={cap.lang === 'es'} ttsMode={ttsMode} />
+              {(!isSameAsPrevious) && (
+                <div style={{ display: 'flex', marginBottom: '0.1rem' }}>
+                  <span style={{ fontSize: '0.65rem', color: 'rgba(255,255,255,0.3)', textTransform: 'uppercase', letterSpacing: '0.05em', lineHeight: 1 }}>
+                    {cap.lang === 'es' ? 'Spanish' : 'English'}
+                  </span>
+                </div>
+              )}
+              <TranslatedBubble text={cap.text} lang={cap.lang} playTTS={playTTS} isPlaying={isPlaying} reverse={cap.lang === 'es'} ttsMode={ttsMode} wordCount={wordCount} />
             </div>
           );
         })}

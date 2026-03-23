@@ -63,7 +63,7 @@ export const AudioSettingsProvider = ({ children }) => {
       }
 
       // 2. Feed the actual Physical Mic into the pipeline
-      if (selectedMicId) {
+      if (selectedMicId && isMounted) {
         try {
           stream = await navigator.mediaDevices.getUserMedia({ 
              audio: { deviceId: { exact: selectedMicId }, echoCancellation: false, noiseSuppression: false, autoGainControl: false } 
@@ -71,6 +71,53 @@ export const AudioSettingsProvider = ({ children }) => {
           if (isMounted) {
             passthroughAudioRef.current.srcObject = stream;
             passthroughAudioRef.current.play().catch(e => console.error(e));
+            
+            // Attach visualizer without React state to avoid massive re-renders
+            const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            const source = audioCtx.createMediaStreamSource(stream);
+            const analyzer = audioCtx.createAnalyser();
+            analyzer.fftSize = 256;
+            source.connect(analyzer);
+            
+            const dataArray = new Uint8Array(analyzer.frequencyBinCount);
+            
+            const updateVolume = () => {
+              if (!isMounted) {
+                audioCtx.close().catch(console.error);
+                return;
+              }
+              analyzer.getByteFrequencyData(dataArray);
+              let sum = 0;
+              for (let i = 0; i < dataArray.length; i++) sum += dataArray[i];
+              const avg = sum / dataArray.length;
+              
+              // Scale volume. Average is rarely > 60 in normal talking.
+              const vol = Math.min(100, (avg / 60) * 100);
+              
+              const bar = document.getElementById('top-mic-bar');
+              if (bar) {
+                if (vol > 2) {
+                  bar.style.width = `${vol}%`;
+                  bar.style.opacity = Math.min(1, (vol / 40) + 0.2).toString();
+                  // Change color based on clipping
+                  if (vol > 90) {
+                     bar.style.background = '#ef4444';
+                     bar.style.boxShadow = '0 0 10px #ef4444';
+                  } else if (vol > 70) {
+                     bar.style.background = '#f59e0b';
+                     bar.style.boxShadow = '0 0 10px #f59e0b';
+                  } else {
+                     bar.style.background = '#10b981';
+                     bar.style.boxShadow = '0 0 10px #10b981';
+                  }
+                } else {
+                  bar.style.width = '0%';
+                  bar.style.opacity = '0';
+                }
+              }
+              requestAnimationFrame(updateVolume);
+            };
+            updateVolume();
           }
         } catch (e) {
           console.error("Failed to capture physical mic for passthrough", e);

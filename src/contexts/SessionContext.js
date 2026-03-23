@@ -9,14 +9,21 @@ export const SessionProvider = ({ children }) => {
   // Persistent stats
   const [stats, setStats] = useState(() => {
     const saved = localStorage.getItem('catintassist_stats');
+    const today = new Date().toDateString();
     if (saved) {
-      return JSON.parse(saved);
+      const parsed = JSON.parse(saved);
+      if (parsed.lastDate !== today) {
+        parsed.dailyMinutes = 0;
+        parsed.lastDate = today;
+      }
+      return parsed;
     }
     return {
       dailyMinutes: 0,
       weeklyMinutes: 0,
       monthlyMinutes: 0,
-      goalMinutes: 5500
+      goalMinutes: 5500,
+      lastDate: today
     };
   });
 
@@ -49,11 +56,14 @@ export const SessionProvider = ({ children }) => {
     const minutesToAdd = sessionSeconds / 60;
     if (minutesToAdd > 0) {
       setStats(prev => {
+        const today = new Date().toDateString();
+        const isNewDay = prev.lastDate && prev.lastDate !== today;
         const newStats = {
           ...prev,
-          dailyMinutes: prev.dailyMinutes + minutesToAdd,
-          weeklyMinutes: prev.weeklyMinutes + minutesToAdd,
-          monthlyMinutes: prev.monthlyMinutes + minutesToAdd
+          dailyMinutes: (isNewDay ? 0 : (prev.dailyMinutes || 0)) + minutesToAdd,
+          weeklyMinutes: (prev.weeklyMinutes || 0) + minutesToAdd,
+          monthlyMinutes: (prev.monthlyMinutes || 0) + minutesToAdd,
+          lastDate: today
         };
         // Explicitly set localStorage to ensure it saves right away
         localStorage.setItem('catintassist_stats', JSON.stringify(newStats));

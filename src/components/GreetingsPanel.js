@@ -25,11 +25,17 @@ export const GreetingsPanel = () => {
   const [timeOfDay, setTimeOfDay] = useState('morning');
   const [blobs, setBlobs] = useState({});
   const [playingKey, setPlayingKey] = useState(null);
+  const [playbackProgress, setPlaybackProgress] = useState(0);
   const [recordingKey, setRecordingKey] = useState(null);
+  
+  const [localVolume, setLocalVolume] = useState(1);
+  const [sinkVolume, setSinkVolume] = useState(1);
+
   const audioRefSink = useRef(new Audio());
   const audioRefLocal = useRef(new Audio());
   const mediaRecorderRef = useRef(null);
   const audioChunksRef = useRef([]);
+  const animationRef = useRef(null);
 
   useEffect(() => {
     const updateTime = () => {
@@ -46,13 +52,11 @@ export const GreetingsPanel = () => {
   const reloadData = async () => {
     const state = {};
     for (const action of ACTIONS) {
-       // load thumbnail
        const thumb = await loadFile(`thumb_${action.id}`);
        if (thumb) {
            state[`thumb_${action.id}`] = thumb;
            state[`url_thumb_${action.id}`] = generateObjectUrl(thumb);
        }
-       
        if (action.dynamic) {
           for (const t of TIME_SLOTS) {
             const b = await loadFile(`${action.id}_${t}`);
@@ -86,6 +90,12 @@ export const GreetingsPanel = () => {
     reloadData();
   }, []);
 
+  // Sync volumes when sliders change
+  useEffect(() => {
+    audioRefLocal.current.volume = localVolume;
+    audioRefSink.current.volume = sinkVolume;
+  }, [localVolume, sinkVolume]);
+
   const handleFileUpload = async (key, file) => {
     if (!file) return;
     await saveFile(key, file);
@@ -100,7 +110,9 @@ export const GreetingsPanel = () => {
   const startRecording = async (key) => {
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      const mediaRecorder = new MediaRecorder(stream);
+      // Use higher bitrate and webm/opus for better reliability
+      const options = { mimeType: 'audio/webm;codecs=opus', audioBitsPerSecond: 128000 };
+      const mediaRecorder = new MediaRecorder(stream, MediaRecorder.isTypeSupported(options.mimeType) ? options : undefined);
       mediaRecorderRef.current = mediaRecorder;
       audioChunksRef.current = [];
       
@@ -109,7 +121,7 @@ export const GreetingsPanel = () => {
       };
       
       mediaRecorder.onstop = () => {
-        const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/webm' });
+        const audioBlob = new Blob(audioChunksRef.current, { type: mediaRecorderRef.current.mimeType || 'audio/webm' });
         handleFileUpload(key, audioBlob);
         stream.getTracks().forEach(track => track.stop());
       };
@@ -128,28 +140,53 @@ export const GreetingsPanel = () => {
     }
   };
 
+  const trackProgress = () => {
+    if (audioRefLocal.current && audioRefLocal.current.duration) {
+      setPlaybackProgress(audioRefLocal.current.currentTime / audioRefLocal.current.duration);
+    }
+    animationRef.current = requestAnimationFrame(trackProgress);
+  };
+
+  const clearPlaybackState = () => {
+    setPlayingKey(null);
+    setPlaybackProgress(0);
+    if (animationRef.current) cancelAnimationFrame(animationRef.current);
+  };
+
   const playAudioBlock = async (key, routeToVirtualMic) => {
+    // If clicking the same button twice, it stops.
+    if (playingKey === key) {
+      audioRefSink.current.pause();
+      audioRefLocal.current.pause();
+      clearPlaybackState();
+      return; 
+    }
+    
+    // Stop any current audio
     if (playingKey) {
       audioRefSink.current.pause();
       audioRefLocal.current.pause();
-      setPlayingKey(null);
-      if (playingKey === key) return; // If clicking the same button twice, it stops.
+      clearPlaybackState();
     }
     
     const blob = blobs[key];
     if (!blob) {
-      if (routeToVirtualMic) alert(`No audio configured for this slot!`);
+      // Empty button shortcut
+      setMode('settings');
       return;
     }
     
-    // Use the cached URL if available to save resources, else generate inline with a fallback (it shouldn't happen)
     const url = blobs[`url_${key}`] || generateObjectUrl(blob);
     audioRefSink.current.src = url;
     audioRefLocal.current.src = url;
     
     // Sync the visual 'stop' state to the local audio element finishing
-    audioRefLocal.current.onended = () => setPlayingKey(null);
-    audioRefLocal.current.onpause = () => setPlayingKey(null);
+    audioRefLocal.current.onended = clearPlaybackState;
+    audioRefLocal.current.onpause = clearPlaybackState;
+
+    // Start progress loop
+    if (animationRef.current) cancelAnimationFrame(animationRef.current);
+    animationRef.current = requestAnimationFrame(trackProgress);
 
     if (routeToVirtualMic && selectedSinkId && audioRefSink.current.setSinkId) {
       let routed = false;
@@ -166,7 +203,7 @@ export const GreetingsPanel = () => {
            await Promise.all([audioRefSink.current.play(), audioRefLocal.current.play()]);
          } catch(e) {
            console.error("Playback error: ", e);
-           setPlayingKey(null);
+           clearPlaybackState();
          }
          return;
       }
@@ -178,66 +215,67 @@ export const GreetingsPanel = () => {
       await audioRefLocal.current.play();
     } catch (err) {
       console.error("Playback error:", err);
-      setPlayingKey(null);
+      clearPlaybackState();
     }
   };
 
   const renderRecordingRow = (key, label) => (
-    <div key={key} style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem', marginTop: '0.5rem', padding: '0.5rem', background: 'rgba(0,0,0,0.3)', borderRadius: '4px' }}>
+    <div key={key} style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem', marginTop: '0.5rem', padding: '0.75rem', background: 'rgba(0,0,0,0.3)', borderRadius: '6px', border: '1px solid rgba(255,255,255,0.05)' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <span style={{ textTransform: 'capitalize', fontWeight: 600 }}>{label}</span>
-        <span style={{ color: blobs[key] ? '#10b981' : '#ef4444' }}>{blobs[key] ? '✅ Saved' : '❌ Missing'}</span>
+        <span style={{ textTransform: 'capitalize', fontWeight: 600, fontSize: '0.85rem' }}>🔈 {label}</span>
+        <span style={{ color: blobs[key] ? '#10b981' : '#ef4444', fontSize: '0.75rem', fontWeight: 600 }}>{blobs[key] ? '✅ SAVED' : '❌ MISSING'}</span>
       </div>
       
-      <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.25rem' }}>
+      <div style={{ display: 'flex', gap: '0.5rem' }}>
         {recordingKey === key ? (
-          <button onClick={stopRecording} style={{ flex: 1, padding: '0.3rem', background: 'var(--danger)', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer', fontWeight: 600, animation: 'pulseGlow 2s infinite' }}>⏹ Stop Recording</button>
+          <button onClick={stopRecording} style={{ flex: 1, padding: '0.4rem', background: 'var(--danger)', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer', fontWeight: 600, animation: 'pulseGlow 2s infinite' }}>⏹ Stop</button>
         ) : (
-          <button onClick={() => startRecording(key)} disabled={recordingKey !== null} style={{ flex: 1, padding: '0.3rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: '4px', cursor: recordingKey ? 'not-allowed' : 'pointer' }}>🎙️ Record</button>
+          <button onClick={() => startRecording(key)} disabled={recordingKey !== null} style={{ flex: 1, padding: '0.4rem', background: 'rgba(59, 130, 246, 0.8)', color: 'white', border: '1px solid #3b82f6', borderRadius: '4px', cursor: recordingKey ? 'not-allowed' : 'pointer' }}>🎙️ Record</button>
         )}
         
         {blobs[key] && (
-          <button onClick={() => playAudioBlock(key, false)} style={{ flex: 1, padding: '0.3rem', background: '#10b981', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer' }}>{playingKey === key ? '⏹ Stop' : '▶ Preview'}</button>
+          <button onClick={() => playAudioBlock(key, false)} style={{ flex: 1, padding: '0.4rem', background: 'rgba(16, 185, 129, 0.8)', color: 'white', border: '1px solid #10b981', borderRadius: '4px', cursor: 'pointer' }}>{playingKey === key ? '⏹ Stop' : '▶ Preview'}</button>
         )}
       </div>
       
-      <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.25rem', fontSize: '0.7rem', color: 'var(--text-muted)', alignItems: 'center' }}>
-        <span>Or upload file:</span>
-        <input type="file" accept="audio/*" onChange={(e) => handleFileUpload(key, e.target.files[0])} style={{ maxWidth: '120px' }} />
-        {blobs[key] && <button onClick={() => handleClear(key)} style={{ color: 'var(--danger)', background: 'transparent', border: 'none', cursor: 'pointer', marginLeft: 'auto' }}>Delete</button>}
+      <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.25rem', fontSize: '0.75rem', color: 'var(--text-muted)', alignItems: 'center' }}>
+        <input type="file" accept="audio/*" onChange={(e) => handleFileUpload(key, e.target.files[0])} style={{ maxWidth: '160px', fontSize: '0.7rem' }} />
+        {blobs[key] && <button onClick={() => handleClear(key)} style={{ color: '#ef4444', background: 'rgba(239, 68, 68, 0.1)', border: '1px solid rgba(239, 68, 68, 0.3)', borderRadius: '4px', padding: '0.1rem 0.5rem', cursor: 'pointer', marginLeft: 'auto' }}>Delete</button>}
       </div>
     </div>
   );
 
   if (mode === 'settings') {
     return (
-      <div style={{ padding: '0.5rem', display: 'flex', flexDirection: 'column', gap: '0.5rem', overflowY: 'auto', maxHeight: '500px' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid var(--panel-border)', paddingBottom: '0.5rem', position: 'sticky', top: 0, background: 'var(--panel-bg)', zIndex: 10 }}>
-          <span style={{ fontWeight: 600 }}>Soundboard Settings</span>
-          <button className="btn" onClick={() => setMode('play')} style={{ padding: '0.2rem 0.5rem', background: '#3b82f6' }}>Save & Go Back</button>
+      <div className="glass-panel" style={{ padding: '0.75rem', display: 'flex', flexDirection: 'column', gap: '0.75rem', overflowY: 'auto', maxHeight: '500px', border: 'none' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid rgba(255,255,255,0.1)', paddingBottom: '0.5rem', position: 'sticky', top: 0, zIndex: 10, background: 'var(--panel-bg)'}}>
+          <span style={{ fontWeight: 600, fontSize: '1.1rem' }}>⚙️ Setup Soundboard</span>
+          <button className="btn" onClick={() => setMode('play')} style={{ padding: '0.3rem 0.8rem', background: '#3b82f6', borderRadius: '20px', fontSize: '0.8rem' }}>Save & Back</button>
         </div>
         
-        <div style={{ fontSize: '0.85rem', marginBottom: '1rem', padding: '0.5rem', background: 'rgba(0,0,0,0.2)', borderRadius: '4px' }}>
-          <strong style={{ color: 'var(--accent-primary)' }}>App Background Image</strong>
-          <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.25rem' }}>
-            <input type="file" accept="image/*" onChange={(e) => handleFileUpload('bg_app', e.target.files[0])} style={{ fontSize: '0.75rem' }} />
-            {blobs['bg_app'] && <button onClick={() => handleClear('bg_app')} className="btn btn-danger" style={{ padding: '0.2rem 0.5rem' }}>Clear</button>}
+        <div style={{ fontSize: '0.85rem', padding: '0.75rem', background: 'rgba(255,255,255,0.05)', borderRadius: '8px', border: '1px solid rgba(255,255,255,0.1)' }}>
+          <strong style={{ color: 'var(--accent-primary)', display: 'block', marginBottom: '0.5rem' }}>🖼️ Global App Background Image</strong>
+          <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+            <input type="file" accept="image/*" onChange={(e) => handleFileUpload('bg_app', e.target.files[0])} style={{ fontSize: '0.75rem', flex: 1 }} />
+            {blobs['bg_app'] && <button onClick={() => handleClear('bg_app')} className="btn btn-danger" style={{ padding: '0.2rem 0.5rem', fontSize: '0.7rem' }}>Clear Image</button>}
           </div>
         </div>
 
         {ACTIONS.map(action => (
-          <div key={action.id} style={{ padding: '0.5rem', background: 'rgba(0,0,0,0.2)', borderRadius: '4px', marginTop: '0.5rem' }}>
-            <div style={{ fontWeight: 600, color: '#6ee7b7', marginBottom: '0.5rem' }}>{action.label}</div>
+          <div key={action.id} style={{ padding: '0.75rem', background: 'rgba(30, 41, 59, 0.5)', borderRadius: '8px', border: '1px solid rgba(255,255,255,0.05)' }}>
+            <div style={{ fontWeight: 700, color: '#6ee7b7', marginBottom: '0.75rem', fontSize: '1rem', borderBottom: '1px solid rgba(255,255,255,0.1)', paddingBottom: '0.4rem' }}>{action.label}</div>
             
-            <div style={{ fontSize: '0.75rem', marginBottom: '0.5rem', display: 'flex', flexDirection: 'column', gap: '0.25rem', borderBottom: '1px dashed rgba(255,255,255,0.1)', paddingBottom: '0.5rem' }}>
-              <strong style={{ color: 'var(--text-muted)' }}>Button Thumbnail (Photo of family, etc)</strong>
-              <div style={{ display: 'flex', gap: '0.5rem' }}>
-                <input type="file" accept="image/*" onChange={(e) => handleFileUpload(`thumb_${action.id}`, e.target.files[0])} style={{ fontSize: '0.7rem' }} />
-                {blobs[`thumb_${action.id}`] && <button onClick={() => handleClear(`thumb_${action.id}`)} style={{ color: 'var(--danger)', background: 'transparent', border: 'none', cursor: 'pointer' }}>Clear</button>}
+            <div style={{ fontSize: '0.8rem', marginBottom: '0.5rem', display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
+              <span style={{ color: 'var(--text-main)', opacity: 0.9 }}>🖼️ Button Thumbnail Cover</span>
+              <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+                <input type="file" accept="image/*" onChange={(e) => handleFileUpload(`thumb_${action.id}`, e.target.files[0])} style={{ fontSize: '0.75rem' }} />
+                {blobs[`thumb_${action.id}`] && <button onClick={() => handleClear(`thumb_${action.id}`)} style={{ color: '#ef4444', background: 'rgba(239, 68, 68, 0.1)', border: '1px solid rgba(239, 68, 68, 0.3)', borderRadius: '4px', padding: '0.1rem 0.5rem', cursor: 'pointer' }}>Clear</button>}
               </div>
             </div>
 
-            {action.dynamic ? TIME_SLOTS.map(t => renderRecordingRow(`${action.id}_${t}`, `${t} Audio`)) : renderRecordingRow(action.id, 'Audio Clip')}
+            <div style={{ marginTop: '0.5rem' }}>
+              {action.dynamic ? TIME_SLOTS.map(t => renderRecordingRow(`${action.id}_${t}`, `${t} Audio`)) : renderRecordingRow(action.id, 'Audio Clip')}
+            </div>
           </div>
         ))}
       </div>
@@ -247,18 +285,39 @@ export const GreetingsPanel = () => {
   // Play Mode
   return (
     <div style={{ padding: '0.5rem', display: 'flex', flexDirection: 'column', gap: '0.5rem', flex: 1, overflowY: 'auto' }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid var(--panel-border)', paddingBottom: '0.25rem' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid var(--panel-border)', paddingBottom: '0.4rem' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-          <span style={{ fontWeight: 600, textTransform: 'capitalize' }}>Soundboard ({timeOfDay})</span>
+          <span style={{ fontWeight: 600, textTransform: 'capitalize', fontSize: '1rem' }}>Soundboard ({timeOfDay})</span>
         </div>
         <button 
           className="btn" 
           onClick={() => setMode('settings')} 
-          style={{ padding: '0.2rem', background: 'transparent', color: 'var(--text-muted)', fontSize: '1rem' }}
+          style={{ padding: '0.2rem', background: 'transparent', color: 'var(--text-muted)', fontSize: '1rem', border: 'none' }}
           title="Soundboard Settings"
         >
           ⚙️
         </button>
+      </div>
+
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', padding: '0.2rem 0', borderBottom: '1px solid rgba(255,255,255,0.05)', marginBottom: '0.2rem' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '0.75rem' }}>
+          <span style={{ color: 'var(--text-muted)' }}>🔊 You (Local)</span>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+            <input type="range" min="0" max="1" step="0.05" value={localVolume} onChange={(e) => setLocalVolume(parseFloat(e.target.value))} style={{ width: '60px', accentColor: '#3b82f6' }} title="Your Speakers Volume" />
+            <div style={{ width: '30px', height: '6px', background: 'rgba(255,255,255,0.1)', borderRadius: '3px', overflow: 'hidden' }}>
+               <div style={{ width: playingKey ? `${localVolume * (40 + Math.random() * 60)}%` : '0%', height: '100%', background: '#3b82f6', transition: 'width 0.1s' }} />
+            </div>
+          </div>
+        </div>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '0.75rem' }}>
+          <span style={{ color: 'var(--text-muted)' }}>🎤 Call (Virtual Mic)</span>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+            <input type="range" min="0" max="1" step="0.05" value={sinkVolume} onChange={(e) => setSinkVolume(parseFloat(e.target.value))} style={{ width: '60px', accentColor: '#10b981' }} title="Interpreter Call Volume" />
+            <div style={{ width: '30px', height: '6px', background: 'rgba(255,255,255,0.1)', borderRadius: '3px', overflow: 'hidden' }}>
+               <div style={{ width: playingKey && blobs[playingKey] ? `${sinkVolume * (40 + Math.random() * 60)}%` : '0%', height: '100%', background: '#10b981', transition: 'width 0.1s' }} />
+            </div>
+          </div>
+        </div>
       </div>
       
       <div style={{ 
@@ -268,8 +327,9 @@ export const GreetingsPanel = () => {
         paddingTop: '0.25rem'
       }}>
         {ACTIONS.map(action => {
-           const bgImage = blobs[`url_thumb_${action.id}`] ? `url(${blobs[`url_thumb_${action.id}`]})` : 'none';
            const activeKey = action.dynamic ? `${action.id}_${timeOfDay}` : action.id;
+           const hasAudio = !!blobs[activeKey];
+           const bgImage = blobs[`url_thumb_${action.id}`] ? `url(${blobs[`url_thumb_${action.id}`]})` : 'none';
            const isItPlaying = playingKey === activeKey;
            
            return (
@@ -289,6 +349,7 @@ export const GreetingsPanel = () => {
                  fontWeight: 600,
                  textShadow: '0 2px 4px rgba(0,0,0,1)',
                  cursor: 'pointer',
+                 opacity: hasAudio ? 1 : 0.4,
                  display: 'flex',
                  alignItems: 'center',
                  justifyContent: 'center',
@@ -297,10 +358,22 @@ export const GreetingsPanel = () => {
                  fontSize: '0.8rem',
                  lineHeight: 1.2
                }}
+               title={hasAudio ? "Play Audio" : "Empty Audio - Click to add"}
              >
-                <div style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.4)', transition: 'background 0.2s' }} />
+                <div style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.5)', transition: 'background 0.2s' }} />
+                {isItPlaying && (
+                  <div style={{ 
+                    position: 'absolute', 
+                    top: 0, left: 0, bottom: 0, 
+                    width: `${playbackProgress * 100}%`,
+                    background: 'rgba(16, 185, 129, 0.4)',
+                    transition: 'width 0.1s linear',
+                    zIndex: 0
+                  }} />
+                )}
+                
                 <span style={{ position: 'relative', zIndex: 1, textAlign: 'center', padding: '0.2rem' }}>
-                  {isItPlaying ? '⏹ STOP' : action.label}
+                  {!hasAudio ? `➕ Add ${action.label}` : (isItPlaying ? '⏹ STOP' : action.label)}
                 </span>
              </button>
            )
