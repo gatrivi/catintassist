@@ -20,14 +20,16 @@ const getBubbleStyle = (text, isCurrent, lang) => {
   return { borderLeft: `3px solid ${baseBorder}`, backgroundColor: baseBg };
 };
 
-const TranslatedBubble = ({ text, lang, playTTS, isPlaying, reverse = false, ttsMode, wordCount }) => {
+const TranslatedBubble = ({ text, lang, playTTS, stopTTS, playingUrl, prefetchTTS, reverse = false, ttsMode, wordCount }) => {
   const [translation, setTranslation] = useState('');
+  const [audioUrl, setAudioUrl] = useState(null);
   const hasAutoPlayedRef = useRef(false);
 
   useEffect(() => {
     const timer = setTimeout(async () => {
       if (!text.trim()) {
         setTranslation('');
+        setAudioUrl(null);
         return;
       }
       try {
@@ -35,24 +37,31 @@ const TranslatedBubble = ({ text, lang, playTTS, isPlaying, reverse = false, tts
         const url = `https://translate.googleapis.com/translate_a/single?client=gtx&sl=${lang}&tl=${targetLang}&dt=t&q=${encodeURIComponent(text)}`;
         const res = await fetch(url);
         const json = await res.json();
-        setTranslation(json[0].map(x => x[0]).join(''));
+        const translatedText = json[0].map(x => x[0]).join('');
+        setTranslation(translatedText);
         hasAutoPlayedRef.current = false; // Reset flag so new translations can play
+        
+        // Prefetch audio in the background!
+        const urlObj = await prefetchTTS(translatedText, targetLang);
+        setAudioUrl(urlObj);
       } catch (e) {
         setTranslation('Error translating...');
       }
     }, 600);
     return () => clearTimeout(timer);
-  }, [text, lang]);
+  }, [text, lang, prefetchTTS]);
 
   const targetLang = lang === 'en' ? 'es' : 'en';
 
   useEffect(() => {
     // Only autoplay if it hasn't played this exact string yet, it's not empty, and mode is auto
-    if (ttsMode === 'auto' && translation && translation !== 'Error translating...' && !hasAutoPlayedRef.current) {
+    if (ttsMode === 'auto' && translation && audioUrl && translation !== 'Error translating...' && !hasAutoPlayedRef.current) {
       hasAutoPlayedRef.current = true;
-      playTTS(translation, targetLang);
+      playTTS(translation, targetLang, audioUrl);
     }
-  }, [translation, ttsMode, playTTS, targetLang]);
+  }, [translation, ttsMode, playTTS, targetLang, audioUrl]);
+
+  const isThisPlaying = playingUrl && audioUrl && playingUrl === audioUrl;
 
   return (
     <div style={{ display: 'flex', gap: '0.25rem', marginTop: '0.1rem', flexDirection: reverse ? 'row-reverse' : 'row', alignItems: 'center' }}>
@@ -76,19 +85,19 @@ const TranslatedBubble = ({ text, lang, playTTS, isPlaying, reverse = false, tts
           {wordCount}
         </span>
         <button 
-          onClick={() => playTTS(translation, targetLang)} 
-          disabled={isPlaying || !translation}
+          onClick={() => isThisPlaying ? stopTTS() : playTTS(translation, targetLang, audioUrl)} 
+          disabled={!isThisPlaying && (!translation || !audioUrl)}
           style={{
             background: 'transparent',
             border: 'none',
-            cursor: (isPlaying || !translation) ? 'not-allowed' : 'pointer',
+            cursor: (!isThisPlaying && (!translation || !audioUrl)) ? 'not-allowed' : 'pointer',
             fontSize: '1.2rem',
             padding: 0,
-            opacity: (isPlaying || !translation) ? 0.3 : 1
+            opacity: (!isThisPlaying && (!translation || !audioUrl)) ? 0.3 : 1
           }}
-          title="Play Translation (TTS)"
+          title={isThisPlaying ? "Stop TTS" : (!audioUrl ? "Buffering audio..." : "Play Translation (TTS)")}
         >
-          🔊
+          {isThisPlaying ? '⏹️' : '🔊'}
         </button>
       </div>
 
@@ -111,7 +120,7 @@ export const TranscriptionBoard = ({ captions, onClear, isToolsOpen, onToggleToo
   const isScrolledUpRef = useRef(false);
   const scrollTimeoutRef = useRef(null);
   const [ttsMode, setTtsMode] = useState('manual');
-  const { playTTS, stopTTS, isPlaying } = useTTS();
+  const { playTTS, stopTTS, isPlaying, playingUrl, prefetchTTS } = useTTS();
 
   useEffect(() => {
     if (!isScrolledUpRef.current) {
@@ -237,7 +246,7 @@ export const TranscriptionBoard = ({ captions, onClear, isToolsOpen, onToggleToo
                   </span>
                 </div>
               )}
-              <TranslatedBubble text={cap.text} lang={cap.lang} playTTS={playTTS} isPlaying={isPlaying} reverse={cap.lang === 'es'} ttsMode={ttsMode} wordCount={wordCount} />
+              <TranslatedBubble text={cap.text} lang={cap.lang} playTTS={playTTS} stopTTS={stopTTS} playingUrl={playingUrl} prefetchTTS={prefetchTTS} reverse={cap.lang === 'es'} ttsMode={ttsMode} wordCount={wordCount} />
             </div>
           );
         })}

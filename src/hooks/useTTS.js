@@ -3,6 +3,7 @@ import { useAudioSettings } from '../contexts/AudioSettingsContext';
 
 export const useTTS = () => {
   const [isPlaying, setIsPlaying] = useState(false);
+  const [playingUrl, setPlayingUrl] = useState(null);
   const activeAudioLocalRef = useRef(null);
   const activeAudioSinkRef = useRef(null);
   const { selectedSinkId, localVolume, sinkVolume } = useAudioSettings();
@@ -18,17 +19,12 @@ export const useTTS = () => {
     }
     window.__CAT_AUDIO_VOL = 0;
     setIsPlaying(false);
+    setPlayingUrl(null);
   };
 
-  const playTTS = async (text, lang) => {
-    if (!text) return;
-    
-    // Stop any currently playing audio before starting a new one
-    stopTTS();
-    
-    setIsPlaying(true);
+  const prefetchTTS = async (text, lang) => {
+    if (!text) return null;
     try {
-      // Use the newly cloned custom voices. Fallback to default if they fail.
       const voiceId = lang === 'es' ? 'default-p8cwhu21piysovy7xa6dwg__catspa0' : 'default-p8cwhu21piysovy7xa6dwg__cateng0';
       const url = 'https://api.inworld.ai/tts/v1/voice';
       const options = {
@@ -58,7 +54,33 @@ export const useTTS = () => {
       }
       const byteArray = new Uint8Array(byteNumbers);
       const blob = new Blob([byteArray], { type: 'audio/mp3' });
-      const audioUrl = URL.createObjectURL(blob);
+      return URL.createObjectURL(blob);
+    } catch (err) {
+      console.error("Prefetch TTS Error:", err);
+      return null;
+    }
+  };
+
+  const playTTS = async (text, lang, preloadedAudioUrl = null) => {
+    if (!text && !preloadedAudioUrl) return;
+    
+    // Stop any currently playing audio before starting a new one
+    stopTTS();
+    
+    setIsPlaying(true);
+    try {
+      let audioUrl = preloadedAudioUrl;
+      if (!audioUrl) {
+        audioUrl = await prefetchTTS(text, lang);
+      }
+      if (!audioUrl) {
+        setIsPlaying(false);
+        setPlayingUrl(null);
+        return;
+      }
+      
+      setPlayingUrl(audioUrl);
+      
       const audioLocal = new Audio(audioUrl);
       const audioSink = new Audio(audioUrl);
       
@@ -89,6 +111,7 @@ export const useTTS = () => {
         clearInterval(ttsTimer);
         window.__CAT_AUDIO_VOL = 0;
         setIsPlaying(false);
+        setPlayingUrl(null);
         activeAudioLocalRef.current = null;
         activeAudioSinkRef.current = null;
       };
@@ -106,8 +129,9 @@ export const useTTS = () => {
       window.__CAT_AUDIO_VOL = 0;
       console.error("TTS Error:", err);
       setIsPlaying(false);
+      setPlayingUrl(null);
     }
   };
 
-  return { playTTS, stopTTS, isPlaying };
+  return { playTTS, prefetchTTS, stopTTS, isPlaying, playingUrl };
 };
