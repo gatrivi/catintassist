@@ -12,8 +12,7 @@ import './index.css';
 const Dashboard = () => {
   const { startRecording, stopRecording, captions, clearCaptions, sttLanguage, toggleLanguage, connectionState, connectionMessage } = useDeepgram();
   const [isToolsOpen, setIsToolsOpen] = useState(false); // Default false, maximizing transcription
-
-
+  
   // Better Hotkeys: 
   // 1. `Alt + Space` or `Escape` will toggle language from anywhere, even when typing
   // 2. Spacebar works if not typing

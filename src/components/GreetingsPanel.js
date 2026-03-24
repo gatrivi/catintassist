@@ -20,7 +20,7 @@ export const ACTIONS = [
 ];
 
 export const GreetingsPanel = () => {
-  const { selectedSinkId } = useAudioSettings();
+  const { selectedSinkId, localVolume, sinkVolume, changeLocalVolume, changeSinkVolume } = useAudioSettings();
   const [mode, setMode] = useState('play'); // 'play' | 'settings'
   const [timeOfDay, setTimeOfDay] = useState('morning');
   const [blobs, setBlobs] = useState({});
@@ -28,9 +28,6 @@ export const GreetingsPanel = () => {
   const [playbackProgress, setPlaybackProgress] = useState(0);
   const [recordingKey, setRecordingKey] = useState(null);
   const [testMode, setTestMode] = useState(false);
-  
-  const [localVolume, setLocalVolume] = useState(1);
-  const [sinkVolume, setSinkVolume] = useState(1);
 
   const audioRefSink = useRef(new Audio());
   const audioRefLocal = useRef(new Audio());
@@ -144,6 +141,13 @@ export const GreetingsPanel = () => {
   const trackProgress = () => {
     if (audioRefLocal.current && audioRefLocal.current.duration) {
       setPlaybackProgress(audioRefLocal.current.currentTime / audioRefLocal.current.duration);
+      if (!testMode && playingKey) {
+        window.__CAT_AUDIO_VOL = (40 + Math.random() * 60) * sinkVolume;
+      } else {
+        window.__CAT_AUDIO_VOL = 0;
+      }
+    } else {
+      window.__CAT_AUDIO_VOL = 0;
     }
     animationRef.current = requestAnimationFrame(trackProgress);
   };
@@ -151,6 +155,7 @@ export const GreetingsPanel = () => {
   const clearPlaybackState = () => {
     setPlayingKey(null);
     setPlaybackProgress(0);
+    window.__CAT_AUDIO_VOL = 0;
     if (animationRef.current) cancelAnimationFrame(animationRef.current);
   };
 
@@ -314,7 +319,7 @@ export const GreetingsPanel = () => {
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '0.75rem' }}>
           <span style={{ color: testMode ? '#f59e0b' : 'var(--text-muted)' }}>🔊 You (Local)</span>
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-            <input type="range" min="0" max="1" step="0.05" value={localVolume} onChange={(e) => setLocalVolume(parseFloat(e.target.value))} style={{ width: '60px', accentColor: '#3b82f6' }} title="Your Speakers Volume" />
+            <input type="range" min="0" max="1" step="0.05" value={localVolume} onChange={(e) => changeLocalVolume(parseFloat(e.target.value))} style={{ width: '60px', accentColor: '#3b82f6' }} title="Your Speakers Volume" />
             <div style={{ width: '30px', height: '6px', background: 'rgba(255,255,255,0.1)', borderRadius: '3px', overflow: 'hidden' }}>
                <div style={{ width: playingKey ? `${localVolume * (40 + Math.random() * 60)}%` : '0%', height: '100%', background: testMode ? '#f59e0b' : '#3b82f6', transition: 'width 0.1s' }} />
             </div>
@@ -323,7 +328,7 @@ export const GreetingsPanel = () => {
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '0.75rem' }}>
           <span style={{ color: testMode ? 'rgba(255,255,255,0.2)' : 'var(--text-muted)' }}>🎤 Call (Virtual Mic)</span>
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', opacity: testMode ? 0.3 : 1 }}>
-            <input type="range" disabled={testMode} min="0" max="1" step="0.05" value={sinkVolume} onChange={(e) => setSinkVolume(parseFloat(e.target.value))} style={{ width: '60px', accentColor: '#10b981' }} title="Interpreter Call Volume" />
+            <input type="range" disabled={testMode} min="0" max="1" step="0.05" value={sinkVolume} onChange={(e) => changeSinkVolume(parseFloat(e.target.value))} style={{ width: '60px', accentColor: '#10b981' }} title="Interpreter Call Volume" />
             <div style={{ width: '30px', height: '6px', background: 'rgba(255,255,255,0.1)', borderRadius: '3px', overflow: 'hidden' }}>
                <div style={{ width: (playingKey && blobs[playingKey] && !testMode) ? `${sinkVolume * (40 + Math.random() * 60)}%` : '0%', height: '100%', background: '#10b981', transition: 'width 0.1s' }} />
             </div>
@@ -348,7 +353,7 @@ export const GreetingsPanel = () => {
                key={action.id}
                onClick={() => playAudioBlock(activeKey, !testMode)}
                style={{
-                 height: '80px',
+                 height: '55px',
                  borderRadius: '6px',
                  border: isItPlaying ? '2px solid #10b981' : '1px solid var(--panel-border)',
                  boxShadow: isItPlaying ? '0 0 15px rgba(16, 185, 129, 0.8)' : 'none',

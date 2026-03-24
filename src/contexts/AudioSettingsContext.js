@@ -8,6 +8,12 @@ export const AudioSettingsProvider = ({ children }) => {
   const [selectedSinkId, setSelectedSinkId] = useState(() => localStorage.getItem('CATINTASSIST_SINK_ID') || '');
   const [selectedMicId, setSelectedMicId] = useState(() => localStorage.getItem('CATINTASSIST_MIC_ID') || '');
   
+  const [localVolume, setLocalVolume] = useState(() => parseFloat(localStorage.getItem('CATINTASSIST_LOCAL_VOL') || '1'));
+  const [sinkVolume, setSinkVolume] = useState(() => parseFloat(localStorage.getItem('CATINTASSIST_SINK_VOL') || '1'));
+
+  const changeLocalVolume = (vol) => { setLocalVolume(vol); localStorage.setItem('CATINTASSIST_LOCAL_VOL', vol); };
+  const changeSinkVolume = (vol) => { setSinkVolume(vol); localStorage.setItem('CATINTASSIST_SINK_VOL', vol); };
+  
   // We use a hidden audio element as a pipeline to push Mic data into the Sink
   const passthroughAudioRef = useRef(new Audio());
 
@@ -92,7 +98,9 @@ export const AudioSettingsProvider = ({ children }) => {
               const avg = sum / dataArray.length;
               
               // Scale volume. Average is rarely > 60 in normal talking.
-              const vol = Math.min(100, (avg / 60) * 100);
+              const micVol = Math.min(100, (avg / 60) * 100);
+              const appVol = window.__CAT_AUDIO_VOL || 0;
+              const vol = Math.min(100, micVol + appVol);
               
               const bar = document.getElementById('top-mic-bar');
               if (bar) {
@@ -147,7 +155,7 @@ export const AudioSettingsProvider = ({ children }) => {
   };
 
   return (
-    <AudioSettingsContext.Provider value={{ outputDevices, inputDevices, selectedSinkId, selectedMicId, changeSinkId, changeMicId, fetchDevices }}>
+    <AudioSettingsContext.Provider value={{ outputDevices, inputDevices, selectedSinkId, selectedMicId, changeSinkId, changeMicId, fetchDevices, localVolume, sinkVolume, changeLocalVolume, changeSinkVolume }}>
       {children}
     </AudioSettingsContext.Provider>
   );

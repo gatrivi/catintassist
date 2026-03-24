@@ -3,14 +3,20 @@ import { useAudioSettings } from '../contexts/AudioSettingsContext';
 
 export const useTTS = () => {
   const [isPlaying, setIsPlaying] = useState(false);
-  const activeAudioRef = useRef(null);
-  const { selectedSinkId } = useAudioSettings();
+  const activeAudioLocalRef = useRef(null);
+  const activeAudioSinkRef = useRef(null);
+  const { selectedSinkId, localVolume, sinkVolume } = useAudioSettings();
 
   const stopTTS = () => {
-    if (activeAudioRef.current) {
-      activeAudioRef.current.pause();
-      activeAudioRef.current = null;
+    if (activeAudioLocalRef.current) {
+      activeAudioLocalRef.current.pause();
+      activeAudioLocalRef.current = null;
     }
+    if (activeAudioSinkRef.current) {
+      activeAudioSinkRef.current.pause();
+      activeAudioSinkRef.current = null;
+    }
+    window.__CAT_AUDIO_VOL = 0;
     setIsPlaying(false);
   };
 
@@ -53,26 +59,51 @@ export const useTTS = () => {
       const byteArray = new Uint8Array(byteNumbers);
       const blob = new Blob([byteArray], { type: 'audio/mp3' });
       const audioUrl = URL.createObjectURL(blob);
-      const audio = new Audio(audioUrl);
+      const audioLocal = new Audio(audioUrl);
+      const audioSink = new Audio(audioUrl);
       
-      activeAudioRef.current = audio;
+      audioLocal.volume = localVolume;
+      audioSink.volume = sinkVolume;
+
+      activeAudioLocalRef.current = audioLocal;
+      activeAudioSinkRef.current = audioSink;
       
       // Auto-route it directly into the Virtual Cable!
-      if (audio.setSinkId && selectedSinkId) {
+      if (audioSink.setSinkId && selectedSinkId) {
         try {
-          await audio.setSinkId(selectedSinkId);
+          await audioSink.setSinkId(selectedSinkId);
         } catch (e) {
           console.error("setSinkId failed, falling back to default:", e);
         }
       }
       
-      audio.onended = () => {
+      const ttsTimer = setInterval(() => {
+        if (!activeAudioLocalRef.current) {
+          window.__CAT_AUDIO_VOL = 0;
+          return clearInterval(ttsTimer);
+        }
+        window.__CAT_AUDIO_VOL = (40 + Math.random() * 60) * sinkVolume;
+      }, 50);
+
+      audioLocal.onended = () => {
+        clearInterval(ttsTimer);
+        window.__CAT_AUDIO_VOL = 0;
         setIsPlaying(false);
-        activeAudioRef.current = null;
+        activeAudioLocalRef.current = null;
+        activeAudioSinkRef.current = null;
       };
+      audioSink.onended = () => {};
       
-      audio.play();
+      audioLocal.play().catch(e => {
+        clearInterval(ttsTimer);
+        window.__CAT_AUDIO_VOL = 0;
+        console.error("Local play error:", e);
+      });
+      if (selectedSinkId) {
+        audioSink.play().catch(e => console.error("Sink play error:", e));
+      }
     } catch (err) {
+      window.__CAT_AUDIO_VOL = 0;
       console.error("TTS Error:", err);
       setIsPlaying(false);
     }

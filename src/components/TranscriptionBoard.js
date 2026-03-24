@@ -57,7 +57,7 @@ const TranslatedBubble = ({ text, lang, playTTS, isPlaying, reverse = false, tts
   return (
     <div style={{ display: 'flex', gap: '0.25rem', marginTop: '0.1rem', flexDirection: reverse ? 'row-reverse' : 'row', alignItems: 'center' }}>
       <div style={{ flex: 1, textAlign: reverse ? 'right' : 'left' }}>
-        <div style={{ fontWeight: 400, lineHeight: 1.3, fontSize: '0.9rem' }}>{text}</div>
+        <div style={{ color: '#ffffff', fontWeight: 400, lineHeight: 1.3, fontSize: '0.9rem' }}>{text}</div>
       </div>
 
       <div style={{ 
@@ -177,13 +177,16 @@ export const TranscriptionBoard = ({ captions, onClear, isToolsOpen, onToggleToo
               onClick={() => setTtsMode(m => m === 'manual' ? 'auto' : 'manual')} 
               className="btn" 
               style={{ 
-                background: ttsMode === 'auto' ? 'rgba(16, 185, 129, 0.2)' : 'rgba(255,255,255,0.1)', 
-                color: ttsMode === 'auto' ? 'var(--success)' : 'white', 
-                padding: '0.2rem 0.6rem', 
-                fontSize: '0.75rem' 
+                background: ttsMode === 'auto' ? 'rgba(16, 185, 129, 0.4)' : 'rgba(255,255,255,0.1)', 
+                color: ttsMode === 'auto' ? 'white' : 'var(--text-muted)', 
+                border: ttsMode === 'auto' ? '1px solid var(--success)' : '1px solid transparent',
+                boxShadow: ttsMode === 'auto' ? '0 0 10px rgba(16, 185, 129, 0.5)' : 'none',
+                animation: ttsMode === 'auto' ? 'pulseGlow 2s infinite' : 'none',
+                padding: '0.25rem 0.6rem', 
+                fontSize: '0.7rem' 
               }}
             >
-              {ttsMode === 'auto' ? '🤖 Supervised Auto-Playback' : '⚙️ Manual Playback'}
+              {ttsMode === 'auto' ? '🤖 AUTO MODE ACTIVE' : '⚙️ Auto Mode OFF'}
             </button>
             <button 
               onClick={stopTTS} 
