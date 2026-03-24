@@ -32,34 +32,32 @@ export const NotePad = () => {
   };
 
   return (
-    <div className="glass-panel notes-area">
-      <div className="notepad-container">
-        <div className="notepad-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <span>📝 Session Notes</span>
-          <div style={{ display: 'flex', gap: '0.4rem', alignItems: 'center' }}>
-            {notes.trim().length > 0 && (
-              <>
-                <button onClick={() => playTTS(notes, 'en')} disabled={isPlaying} className="btn" style={{ background: 'rgba(59, 130, 246, 0.2)', color: '#60a5fa', padding: '0.1rem 0.4rem', fontSize: '0.65rem' }}>🔊 Play ENG</button>
-                <button onClick={() => playTTS(notes, 'es')} disabled={isPlaying} className="btn" style={{ background: 'rgba(16, 185, 129, 0.2)', color: '#34d399', padding: '0.1rem 0.4rem', fontSize: '0.65rem' }}>🔊 Play SPA</button>
-              </>
-            )}
-            <button onClick={stopTTS} disabled={!isPlaying} className="btn" style={{ background: 'rgba(239, 68, 68, 0.2)', color: '#f87171', padding: '0.1rem 0.4rem', fontSize: '0.65rem' }}>🛑</button>
-            <button
-              onClick={clearNotes}
-              title="Clear Notes"
-              style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', fontSize: '1rem', marginLeft: '0.5rem' }}
-            >
-              🗑️
-            </button>
-          </div>
+    <div className="notepad-container">
+      <div className="notepad-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <span>📝 Session Notes</span>
+        <div style={{ display: 'flex', gap: '0.4rem', alignItems: 'center' }}>
+          {notes.trim().length > 0 && (
+            <>
+              <button onClick={() => playTTS(notes, 'en')} disabled={isPlaying} className="btn" style={{ background: 'rgba(59, 130, 246, 0.2)', color: '#60a5fa', padding: '0.1rem 0.4rem', fontSize: '0.65rem' }}>🔊 Play ENG</button>
+              <button onClick={() => playTTS(notes, 'es')} disabled={isPlaying} className="btn" style={{ background: 'rgba(16, 185, 129, 0.2)', color: '#34d399', padding: '0.1rem 0.4rem', fontSize: '0.65rem' }}>🔊 Play SPA</button>
+            </>
+          )}
+          <button onClick={stopTTS} disabled={!isPlaying} className="btn" style={{ background: 'rgba(239, 68, 68, 0.2)', color: '#f87171', padding: '0.1rem 0.4rem', fontSize: '0.65rem' }}>🛑</button>
+          <button
+            onClick={clearNotes}
+            title="Clear Notes"
+            style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', fontSize: '1rem', marginLeft: '0.5rem' }}
+          >
+            🗑️
+          </button>
         </div>
-        <textarea
-          className="notepad-textarea"
-          placeholder="Jot down numbers, names, and medical terms here... (Auto-saves)"
-          value={notes}
-          onChange={(e) => setNotes(e.target.value)}
-        />
       </div>
+      <textarea
+        className="notepad-textarea"
+        placeholder="Jot down numbers, names, and medical terms here... (Auto-saves)"
+        value={notes}
+        onChange={(e) => setNotes(e.target.value)}
+      />
     </div>
   );
 };

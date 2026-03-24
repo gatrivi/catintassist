@@ -177,40 +177,42 @@ export const TranscriptionBoard = ({ captions, onClear, isToolsOpen, onToggleToo
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%' }}>
           <h2 style={{ fontSize: '1rem', color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
             Livestream 
-            <button onClick={onToggleTools} className="btn" style={{ padding: '0.1rem 0.4rem', fontSize: '0.7rem', background: 'rgba(59, 130, 246, 0.2)', color: '#60a5fa' }} title="Toggle Soundboard and Notes">
+            <button onClick={onToggleTools} className="btn" style={{ padding: '0.1rem 0.5rem', fontSize: '0.7rem', background: 'rgba(59, 130, 246, 0.1)', color: '#60a5fa', border: '1px solid rgba(59,130,246,0.3)' }} title="Toggle Soundboard and Notes">
               {isToolsOpen ? '▶ Hide Tools' : '◀ Show Tools'}
             </button>
           </h2>
-          <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+          <div style={{ display: 'flex', gap: '0.4rem', alignItems: 'center' }}>
             <button 
               onClick={() => setTtsMode(m => m === 'manual' ? 'auto' : 'manual')} 
               className="btn" 
               style={{ 
-                background: ttsMode === 'auto' ? 'rgba(16, 185, 129, 0.4)' : 'rgba(255,255,255,0.1)', 
-                color: ttsMode === 'auto' ? 'white' : 'var(--text-muted)', 
-                border: ttsMode === 'auto' ? '1px solid var(--success)' : '1px solid transparent',
-                boxShadow: ttsMode === 'auto' ? '0 0 10px rgba(16, 185, 129, 0.5)' : 'none',
-                animation: ttsMode === 'auto' ? 'pulseGlow 2s infinite' : 'none',
-                padding: '0.25rem 0.6rem', 
+                background: ttsMode === 'auto' ? 'rgba(16, 185, 129, 0.2)' : 'rgba(255,255,255,0.05)', 
+                color: ttsMode === 'auto' ? '#10b981' : 'var(--text-muted)', 
+                border: ttsMode === 'auto' ? '1px solid rgba(16, 185, 129, 0.5)' : '1px solid var(--panel-border)',
+                boxShadow: ttsMode === 'auto' ? '0 0 8px rgba(16, 185, 129, 0.3)' : 'none',
+                padding: '0.2rem 0.5rem', 
                 fontSize: '0.7rem' 
               }}
+              title="Toggle Auto TTS Mode"
             >
-              {ttsMode === 'auto' ? '🤖 AUTO MODE ACTIVE' : '⚙️ Auto Mode OFF'}
+              {ttsMode === 'auto' ? '🤖 Auto AI' : '⚙️ Auto OFF'}
             </button>
             <button 
               onClick={stopTTS} 
-              className="btn btn-danger" 
-              style={{ padding: '0.2rem 0.6rem', fontSize: '0.75rem', opacity: isPlaying ? 1 : 0.5, animation: 'none' }}
+              className="btn" 
+              style={{ padding: '0.2rem 0.5rem', fontSize: '0.7rem', background: 'rgba(239, 68, 68, 0.2)', color: '#ef4444', border: '1px solid rgba(239,68,68,0.3)', opacity: isPlaying ? 1 : 0.5 }}
               disabled={!isPlaying}
             >
               🛑 Stop AI
             </button>
             {onClear && (
-              <button onClick={onClear} className="btn" style={{ background: 'rgba(239, 68, 68, 0.2)', color: 'var(--danger)', padding: '0.2rem 0.6rem', fontSize: '0.75rem' }}>
-                🗑️ Clear Transcript
+              <button onClick={onClear} className="btn" style={{ background: 'transparent', color: 'var(--text-muted)', border: '1px solid var(--panel-border)', padding: '0.2rem 0.5rem', fontSize: '0.7rem' }}>
+                🗑️ Clear
               </button>
             )}
-            <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Approaching 40 words will turn Orange/Red</span>
+            <span style={{ fontSize: '0.65rem', color: 'var(--text-muted)', opacity: 0.6, marginLeft: '0.2rem' }} title="Translating long bubbles over 40 words is not recommended. Turns orange at 34 words.">
+              ⚠️ 40 words limit
+            </span>
           </div>
         </div>
       </div>

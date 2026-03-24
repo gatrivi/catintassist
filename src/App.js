@@ -45,7 +45,7 @@ const Dashboard = () => {
         connectionState={connectionState}
         connectionMessage={connectionMessage}
       />
-      <main className="main-content">
+      <main className={`main-content ${isToolsOpen ? 'tools-open' : ''}`}>
         <TranscriptionBoard 
           captions={captions} 
           onClear={clearCaptions} 
@@ -53,11 +53,15 @@ const Dashboard = () => {
           onToggleTools={() => setIsToolsOpen(!isToolsOpen)}
         />
         {isToolsOpen && (
-          <div className="notes-area glass-panel" style={{ overflow: 'hidden' }}>
-            <GreetingsPanel />
-            <DictionaryTool />
-            <NotePad />
-          </div>
+          <>
+            <div className="glass-panel tools-soundboard" style={{ overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
+              <GreetingsPanel />
+            </div>
+            <div className="glass-panel tools-notes" style={{ overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
+              <DictionaryTool />
+              <NotePad />
+            </div>
+          </>
         )}
       </main>
     </div>
