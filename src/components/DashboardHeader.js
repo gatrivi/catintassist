@@ -76,6 +76,10 @@ export const DashboardHeader = ({ onStartAudio, onStopAudio, sttLanguage, onTogg
   const dailyMaxArs = Math.round(realisticMaxToday * RATE_PER_MINUTE * arsRate).toLocaleString('es-AR');
   const monthlyMaxArs = Math.round(monthlyMaxMins * RATE_PER_MINUTE * arsRate).toLocaleString('es-AR');
 
+  const monthElapsedRatio = currentDay / daysInMonth;
+  const isMonthlyGoalMet = stats.monthlyMinutes >= stats.goalMinutes;
+  const monthlyProgressRatio = stats.goalMinutes > 0 ? Math.min(1, Math.max(0, stats.monthlyMinutes) / stats.goalMinutes) : 0;
+
   return (
     <header className="dashboard-header glass-panel">
       
@@ -83,9 +87,11 @@ export const DashboardHeader = ({ onStartAudio, onStopAudio, sttLanguage, onTogg
         <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
             <ConnectionIndicator state={connectionState} />
-            <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)', maxWidth: '140px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }} title={connectionMessage}>
-              {connectionMessage}
-            </span>
+            {connectionState !== 'connected' && (
+              <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)', maxWidth: '140px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }} title={connectionMessage}>
+                {connectionMessage}
+              </span>
+            )}
           </div>
           {!isActive ? (
             <button className="btn btn-primary" onClick={handleStart}>
@@ -112,13 +118,7 @@ export const DashboardHeader = ({ onStartAudio, onStopAudio, sttLanguage, onTogg
               </button>
             </div>
           )}
-          <div 
-            className="btn" 
-            style={{ backgroundColor: 'rgba(255,255,255,0.1)', cursor: 'default' }}
-            title="Dual-Stream Auto Detection Active (Pressing SPACE is no longer required)"
-          >
-            Auto-Detecting EN/ES
-          </div>
+
           <button
             className="btn"
             style={{ padding: '0.4rem', backgroundColor: 'var(--panel-bg)', color: 'var(--text-muted)', border: '1px solid var(--panel-border)' }}
@@ -207,46 +207,29 @@ export const DashboardHeader = ({ onStartAudio, onStopAudio, sttLanguage, onTogg
         <div className="income-card income-tier-1">
           <span className="income-label">This Month</span>
           <span className="income-ars">AR${Math.round(stats.monthlyMinutes * RATE_PER_MINUTE * arsRate).toLocaleString('es-AR')}</span>
-          <span className="income-usd" title={`Realistic max monthly capacity based on 35m/hr flow (${Math.round(monthlyMaxMins)}m)`}>
-            ${(stats.monthlyMinutes * RATE_PER_MINUTE).toFixed(2)} USD
-            <span style={{opacity: 0.5, marginLeft: '0.4rem'}}>| Est Max AR${monthlyMaxArs}</span>
-          </span>
-          <EditableMinutes value={stats.monthlyMinutes} updateFn={updateStat} statKey="monthlyMinutes" />
-          <div style={{ width: '80%', height: '2px', background: 'rgba(255,255,255,0.1)', marginTop: '0.2rem', borderRadius: '1px', overflow: 'hidden' }}>
-            <div style={{ height: '100%', width: `${Math.min(100, (stats.monthlyMinutes / monthlyMaxMins)*100)}%`, background: '#6ee7b7' }}/>
-          </div>
-          <div style={{ 
-            background: 'linear-gradient(90deg, rgba(0,0,0,0.4) 0%, rgba(139, 92, 246, 0.15) 100%)',
-            padding: '0.1rem 0.4rem',
-            borderRadius: '4px',
-            border: '1px solid rgba(255,255,255,0.05)',
-            fontSize: '0.55rem',
-            color: '#e2e8f0',
-            marginTop: '0.4rem',
-            boxShadow: 'inset 0 0 10px rgba(139, 92, 246, 0.05)'
-          }}>
-            <span style={{opacity: 0.8}}>Total Remaining: </span>
-            <strong style={{color: '#c4b5fd', textShadow: '0 0 8px rgba(196, 181, 253, 0.4)', fontSize: '1.05em'}}>AR${monthlyRemainingCash}</strong>
+          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', opacity: 0.85 }}>
+            <span className="income-usd" title={`Realistic max monthly capacity based on 35m/hr flow (${Math.round(monthlyMaxMins)}m)`}>
+              ${(stats.monthlyMinutes * RATE_PER_MINUTE).toFixed(2)} USD <span style={{opacity: 0.5}}>| Max AR${monthlyMaxArs}</span>
+            </span>
+            <EditableMinutes value={stats.monthlyMinutes} updateFn={updateStat} statKey="monthlyMinutes" />
           </div>
         </div>
 
         <div className="income-card income-tier-2">
           <span className="income-label">Today</span>
           <span className="income-ars">AR${Math.round(stats.dailyMinutes * RATE_PER_MINUTE * arsRate).toLocaleString('es-AR')}</span>
-          <span className="income-usd" title={`Realistic max daily capacity given remaining hours at 35m/hr (${Math.round(realisticMaxToday)}m)`}>
-            ${(stats.dailyMinutes * RATE_PER_MINUTE).toFixed(2)} USD
-            <span style={{opacity: 0.5, marginLeft: '0.4rem'}}>| Est Max AR${dailyMaxArs}</span>
-          </span>
-          <EditableMinutes value={stats.dailyMinutes} updateFn={updateStat} statKey="dailyMinutes" />
-          <div style={{ width: '80%', height: '2px', background: 'rgba(255,255,255,0.1)', marginTop: '0.2rem', borderRadius: '1px', overflow: 'hidden' }}>
-            <div style={{ height: '100%', width: `${Math.min(100, (stats.dailyMinutes / realisticMaxToday)*100)}%`, background: '#34d399' }}/>
+          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', opacity: 0.85 }}>
+            <span className="income-usd" title={`Realistic max daily capacity given remaining hours at 35m/hr (${Math.round(realisticMaxToday)}m)`}>
+              ${(stats.dailyMinutes * RATE_PER_MINUTE).toFixed(2)} USD <span style={{opacity: 0.5}}>| Max AR${dailyMaxArs}</span>
+            </span>
+            <EditableMinutes value={stats.dailyMinutes} updateFn={updateStat} statKey="dailyMinutes" />
           </div>
         </div>
 
         <div className={`income-card income-tier-3 ${isActive ? 'active' : ''}`}>
           <span className="income-label">Current Call ({formatTime(sessionSeconds)})</span>
           <span className="income-ars">AR${Math.round(sessionEarnings * arsRate).toLocaleString('es-AR')}</span>
-          <span className="income-usd">${sessionEarnings.toFixed(2)} USD</span>
+          <span className="income-usd" style={{ opacity: 0.8 }}>${sessionEarnings.toFixed(2)} USD</span>
         </div>
 
         <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem', borderLeft: '1px solid rgba(255,255,255,0.1)', paddingLeft: '0.6rem', justifyContent: 'center' }}>
@@ -264,42 +247,54 @@ export const DashboardHeader = ({ onStartAudio, onStopAudio, sttLanguage, onTogg
         </div>
 
         {dailyGoal > 0 && (
-          <div style={{ width: '100%', display: 'flex', flexDirection: 'column', gap: '0.2rem', marginTop: '0.2rem', padding: '0 0.2rem' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.6rem', color: 'var(--text-muted)', textTransform: 'uppercase', alignItems: 'center' }}>
-              <span>9:00 AM (Start)</span>
-              <div style={{ 
-                color: remainingMinsToday <= 0 ? '#34d399' : '#e2e8f0', 
-                background: remainingMinsToday <= 0 ? 'rgba(16, 185, 129, 0.2)' : 'linear-gradient(90deg, rgba(0,0,0,0.4) 0%, rgba(52, 211, 153, 0.10) 100%)',
-                padding: '0.3rem 0.8rem',
-                borderRadius: '6px',
-                border: '1px solid rgba(255,255,255,0.05)',
-                display: 'flex',
-                flexDirection: 'column',
-                alignItems: 'center',
-                gap: '0.2rem',
-                boxShadow: 'inset 0 0 10px rgba(52, 211, 153, 0.05)'
-              }}>
-                {remainingMinsToday <= 0 ? (
-                  <span style={{ fontWeight: 600, letterSpacing: '0.5px' }}>🎉 Shift Goal Met!</span>
-                ) : (
-                  <>
-                    <div style={{ fontSize: '0.55rem', opacity: 0.65, letterSpacing: '0.5px', textTransform: 'uppercase' }}>
-                      📅 Shift Cap: {workdayTotalExpectedMins}m ({(workdayTotalExpectedMins / 60).toFixed(1)}h) ≃ AR${Math.round(workdayTotalExpectedMins * RATE_PER_MINUTE * arsRate).toLocaleString('es-AR')}
-                    </div>
-                    <div style={{ fontSize: '0.65rem', fontWeight: 600, letterSpacing: '0.5px', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+          <div style={{ width: '100%', display: 'flex', flexDirection: 'column', gap: '0.6rem', marginTop: '0.6rem', padding: '0 0.2rem' }}>
+            
+            {/* Monthly Progress */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.2rem' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.65rem', color: 'var(--text-muted)', textTransform: 'uppercase', alignItems: 'center' }}>
+                <span title="Days elapsed in current month" style={{ fontWeight: 600 }}>🗓️ Day {currentDay}/{daysInMonth}</span>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                  {!isMonthlyGoalMet ? (
+                    <>
+                      <span title="Minutes left to hit goal">Need: {Math.round(remainingMinutes)}m</span>
+                      <span style={{opacity: 0.5}}>|</span>
+                      <span title="Estimated potential total considering current trajectory">Paced Max: <strong style={{color: '#c4b5fd'}}>AR${monthlyRemainingCash}</strong></span>
+                    </>
+                  ) : (
+                    <span style={{ color: '#34d399', fontWeight: 600 }}>🎉 Monthly Goal Met!</span>
+                  )}
+                </div>
+                <span style={{ opacity: 0.6 }}>Goal: {stats.goalMinutes}m</span>
+              </div>
+              <div style={{ width: '100%', height: '8px', background: 'rgba(0,0,0,0.5)', borderRadius: '4px', position: 'relative' }} title={`Completed: ${Math.round(stats.monthlyMinutes)}m`}>
+                <div style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: `${monthlyProgressRatio * 100}%`, backgroundColor: isMonthlyGoalMet ? '#34d399' : '#a855f7', borderRadius: '4px', transition: 'width 1s' }} />
+                <div style={{ position: 'absolute', top: '-4px', bottom: '-4px', left: `${monthElapsedRatio * 100}%`, width: '2px', backgroundColor: '#fff', zIndex: 10, borderRadius: '1px', boxShadow: '0 0 4px rgba(0,0,0,0.5)' }} />
+              </div>
+            </div>
+
+            {/* Daily Progress */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.2rem' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.6rem', color: 'var(--text-muted)', textTransform: 'uppercase', alignItems: 'center' }}>
+                <span style={{ fontWeight: 600 }}>☀️ 09:00</span>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                  {remainingMinsToday <= 0 ? (
+                    <span style={{ color: '#34d399', fontWeight: 600 }}>🎉 Daily Shift Met!</span>
+                  ) : (
+                    <>
                       <span>⏳ {hoursLeft.toFixed(1)}H LEFT</span>
                       <span style={{opacity: 0.5}}>|</span>
-                      <span>~{Math.round(realisticRemainingMins)}m ({(realisticRemainingMins / 60).toFixed(1)}h) ≃ <strong style={{color: '#6ee7b7', textShadow: '0 0 8px rgba(110, 231, 183, 0.4)', fontSize: '1.1em'}}>AR${maxCashToClaim}</strong></span>
-                    </div>
-                  </>
-                )}
+                      <span>Cap: <strong style={{color: '#6ee7b7'}}>AR${maxCashToClaim}</strong></span>
+                    </>
+                  )}
+                </div>
+                <span style={{ opacity: 0.6 }}>23:00</span>
               </div>
-              <span>11:00 PM (End)</span>
+              <div style={{ width: '100%', height: '6px', background: 'rgba(0,0,0,0.5)', borderRadius: '3px', position: 'relative' }} title={`Completed: ${stats.dailyMinutes}m`}>
+                <div style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: `${dailyProgressRatio * 100}%`, backgroundColor: remainingMinsToday <= 0 ? '#34d399' : '#3b82f6', borderRadius: '3px', transition: 'width 1s' }} />
+                <div style={{ position: 'absolute', top: '-3px', bottom: '-3px', left: `${timeElapsedRatio * 100}%`, width: '2px', backgroundColor: '#fff', zIndex: 10, borderRadius: '1px', boxShadow: '0 0 4px rgba(0,0,0,0.5)' }} />
+              </div>
             </div>
-            <div style={{ width: '100%', height: '6px', background: 'rgba(0,0,0,0.5)', borderRadius: '3px', position: 'relative' }} title={`Completed: ${stats.dailyMinutes}m`}>
-              <div style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: `${dailyProgressRatio * 100}%`, backgroundColor: remainingMinsToday <= 0 ? '#34d399' : '#3b82f6', borderRadius: '3px', transition: 'width 1s' }} />
-              <div style={{ position: 'absolute', top: '-3px', bottom: '-3px', left: `${timeElapsedRatio * 100}%`, width: '2px', backgroundColor: '#fff', zIndex: 10, borderRadius: '1px', boxShadow: '0 0 4px rgba(0,0,0,0.8)' }} />
-            </div>
+
           </div>
         )}
       </div>

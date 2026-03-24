@@ -137,11 +137,11 @@ export const GoalEditor = ({ statKey, valueMinutes, updateFn, ratePerMinute, dai
           <button type="submit" className="btn btn-primary" style={{ padding: '0.2rem 1rem', fontSize: '0.65rem', width: '100%', marginTop: '0.2rem' }}>Save & Close</button>
         </form>
       ) : (
-        <div style={{ cursor: 'pointer', display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '0.2rem' }} onClick={() => { setTempMins(valueMinutes); setTempDailyAvg(dailyAverage); setIsEditing(true); }} title="Click to edit goal or ARS rate">
-          <div style={{ fontSize: '0.85rem', fontWeight: 600, color: '#6ee7b7' }}>🎯 {valueMinutes}m <span style={{ opacity: 0.7, fontSize: '0.75em' }}>/ AR${currentArs}</span></div>
+        <div style={{ cursor: 'pointer', display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '0.3rem' }} onClick={() => { setTempMins(valueMinutes); setTempDailyAvg(dailyAverage); setIsEditing(true); }} title="Click to edit goal or ARS rate">
+          <div style={{ fontSize: '0.8rem', fontWeight: 500, color: 'var(--text-muted)' }}>🎯 Goal: <strong style={{ color: '#6ee7b7' }}>{valueMinutes}m</strong> <span style={{ opacity: 0.6, fontSize: '0.85em' }}>(AR${currentArs})</span></div>
           {dailyAverage > 0 && (
-            <div style={{ fontSize: '0.9rem', fontWeight: 600, color: '#c4b5fd', background: 'rgba(0,0,0,0.4)', padding: '0.3rem 0.5rem', borderRadius: '4px' }} title="Daily Average Needed">
-              📈 <strong style={{color: '#a78bfa'}}>{dailyAverage}m</strong> <span style={{opacity: 0.8, fontSize: '0.8em'}}>(AR${dailyArs})</span>
+            <div style={{ fontSize: '0.8rem', fontWeight: 600, color: '#c4b5fd', background: 'rgba(139, 92, 246, 0.1)', border: '1px solid rgba(139, 92, 246, 0.2)', padding: '0.2rem 0.5rem', borderRadius: '6px' }} title="Daily Average Needed">
+              ⚡ Needed: <strong style={{color: '#a78bfa'}}>{dailyAverage}m/day</strong>
             </div>
           )}
         </div>
@@ -183,11 +183,11 @@ export const EditableMinutes = ({ value, updateFn, statKey }) => {
 
   return (
     <div 
-      style={{ cursor: 'pointer', fontSize: '0.8rem', color: 'var(--text-muted)', marginTop: '0.4rem', fontWeight: 500 }}
+      style={{ cursor: 'pointer', fontSize: '0.8rem', color: 'var(--text-muted)', marginTop: '0.2rem', fontWeight: 500 }}
       onClick={() => { setTempValue(value); setIsEditing(true); }}
       title="Click to edit minutes"
     >
-      {Math.round(value)}m <span style={{ fontSize: '0.7rem', opacity: 0.7, fontWeight: 400 }}>{hoursDisplay}</span>
+      📝 {Math.round(value)}m <span style={{ fontSize: '0.7rem', opacity: 0.6, fontWeight: 400 }}>{hoursDisplay}</span>
     </div>
   );
 };
