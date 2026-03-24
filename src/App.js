@@ -53,18 +53,37 @@ const Dashboard = () => {
           onToggleTools={() => setIsToolsOpen(!isToolsOpen)}
         />
         {isToolsOpen && (
-          <>
-            <div className="glass-panel tools-soundboard" style={{ overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
-              <GreetingsPanel />
-            </div>
-            <div className="glass-panel tools-notes" style={{ overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
-              <DictionaryTool />
-              <NotePad />
-            </div>
-          </>
+          <SoundboardAndNotesWrapper />
         )}
       </main>
     </div>
+  );
+};
+
+// Extracted wrapper to manage expanded state
+const SoundboardAndNotesWrapper = () => {
+  const [isEditingBg, setIsEditingBg] = useState(false);
+  
+  return (
+    <>
+      <div 
+        className="glass-panel tools-soundboard" 
+        style={{ 
+          overflow: 'hidden', 
+          display: 'flex', 
+          flexDirection: 'column',
+          gridRow: isEditingBg ? '1 / span 2' : '1'
+        }}
+      >
+        <GreetingsPanel onEditModeChange={setIsEditingBg} />
+      </div>
+      {!isEditingBg && (
+        <div className="glass-panel tools-notes" style={{ overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
+          <DictionaryTool />
+          <NotePad />
+        </div>
+      )}
+    </>
   );
 };
 

@@ -19,7 +19,7 @@ export const ACTIONS = [
   { id: 'limit_40_es', label: '40 Word Limit (ES)', dynamic: false },
 ];
 
-export const GreetingsPanel = () => {
+export const GreetingsPanel = ({ onEditModeChange }) => {
   const { selectedSinkId, localVolume, sinkVolume, changeLocalVolume, changeSinkVolume } = useAudioSettings();
   const [mode, setMode] = useState('play'); // 'play' | 'settings'
   const [timeOfDay, setTimeOfDay] = useState('morning');
@@ -46,6 +46,12 @@ export const GreetingsPanel = () => {
     const intv = setInterval(updateTime, 60000);
     return () => clearInterval(intv);
   }, []);
+
+  useEffect(() => {
+    if (onEditModeChange) {
+      onEditModeChange(mode === 'settings');
+    }
+  }, [mode, onEditModeChange]);
 
   const reloadData = async () => {
     const state = {};
@@ -179,6 +185,10 @@ export const GreetingsPanel = () => {
     if (!blob) {
       // Empty button shortcut
       setMode('settings');
+      setTimeout(() => {
+        const el = document.getElementById(`settings-row-${key}`);
+        if(el) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }, 100);
       return;
     }
     
@@ -226,7 +236,7 @@ export const GreetingsPanel = () => {
   };
 
   const renderRecordingRow = (key, label) => (
-    <div key={key} style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem', marginTop: '0.5rem', padding: '0.75rem', background: 'rgba(0,0,0,0.3)', borderRadius: '6px', border: '1px solid rgba(255,255,255,0.05)' }}>
+    <div key={key} id={`settings-row-${key}`} style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem', marginTop: '0.5rem', padding: '0.75rem', background: 'rgba(0,0,0,0.3)', borderRadius: '6px', border: '1px solid rgba(255,255,255,0.05)' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <span style={{ textTransform: 'capitalize', fontWeight: 600, fontSize: '0.85rem' }}>🔈 {label}</span>
         <span style={{ color: blobs[key] ? '#10b981' : '#ef4444', fontSize: '0.75rem', fontWeight: 600 }}>{blobs[key] ? '✅ SAVED' : '❌ MISSING'}</span>
@@ -234,13 +244,13 @@ export const GreetingsPanel = () => {
       
       <div style={{ display: 'flex', gap: '0.5rem' }}>
         {recordingKey === key ? (
-          <button onClick={stopRecording} style={{ flex: 1, padding: '0.4rem', background: 'var(--danger)', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer', fontWeight: 600, animation: 'pulseGlow 2s infinite' }}>⏹ Stop</button>
+          <button onClick={stopRecording} style={{ flex: 1, padding: '0.4rem', background: 'rgba(239, 68, 68, 0.2)', color: '#f87171', border: '1px solid rgba(239, 68, 68, 0.4)', borderRadius: '4px', cursor: 'pointer', fontWeight: 600, animation: 'pulseGlow 2s infinite' }}>⏹ Stop</button>
         ) : (
-          <button onClick={() => startRecording(key)} disabled={recordingKey !== null} style={{ flex: 1, padding: '0.4rem', background: 'rgba(59, 130, 246, 0.8)', color: 'white', border: '1px solid #3b82f6', borderRadius: '4px', cursor: recordingKey ? 'not-allowed' : 'pointer' }}>🎙️ Record</button>
+          <button onClick={() => startRecording(key)} disabled={recordingKey !== null} style={{ flex: 1, padding: '0.4rem', background: 'rgba(59, 130, 246, 0.2)', color: '#60a5fa', border: '1px solid rgba(59, 130, 246, 0.4)', borderRadius: '4px', cursor: recordingKey ? 'not-allowed' : 'pointer' }}>🎙️ Record</button>
         )}
         
         {blobs[key] && (
-          <button onClick={() => playAudioBlock(key, false)} style={{ flex: 1, padding: '0.4rem', background: 'rgba(16, 185, 129, 0.8)', color: 'white', border: '1px solid #10b981', borderRadius: '4px', cursor: 'pointer' }}>{playingKey === key ? '⏹ Stop' : '▶ Preview'}</button>
+          <button onClick={() => playAudioBlock(key, false)} style={{ flex: 1, padding: '0.4rem', background: 'rgba(16, 185, 129, 0.2)', color: '#34d399', border: '1px solid rgba(16, 185, 129, 0.4)', borderRadius: '4px', cursor: 'pointer' }}>{playingKey === key ? '⏹ Stop' : '▶ Preview'}</button>
         )}
       </div>
       
@@ -253,7 +263,7 @@ export const GreetingsPanel = () => {
 
   if (mode === 'settings') {
     return (
-      <div className="glass-panel" style={{ padding: '0.75rem', display: 'flex', flexDirection: 'column', gap: '0.75rem', overflowY: 'auto', maxHeight: '500px', border: 'none' }}>
+      <div className="glass-panel" style={{ padding: '0.75rem', display: 'flex', flexDirection: 'column', gap: '0.75rem', overflowY: 'auto', flex: 1, border: 'none' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid rgba(255,255,255,0.1)', paddingBottom: '0.5rem', position: 'sticky', top: 0, zIndex: 10, background: 'var(--panel-bg)'}}>
           <span style={{ fontWeight: 600, fontSize: '1.1rem' }}>⚙️ Setup Soundboard</span>
           <button className="btn" onClick={() => setMode('play')} style={{ padding: '0.3rem 0.8rem', background: '#3b82f6', borderRadius: '20px', fontSize: '0.8rem' }}>Save & Back</button>

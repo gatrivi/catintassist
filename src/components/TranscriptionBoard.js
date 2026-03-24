@@ -20,7 +20,7 @@ const getBubbleStyle = (text, isCurrent, lang) => {
   return { borderLeft: `3px solid ${baseBorder}`, backgroundColor: baseBg };
 };
 
-const TranslatedBubble = ({ text, lang, playTTS, stopTTS, playingUrl, prefetchTTS, reverse = false, ttsMode, wordCount }) => {
+const TranslatedBubble = ({ text, lang, playTTS, stopTTS, playingUrl, prefetchTTS, reverse = false, ttsMode, wordCount, shouldPrefetch }) => {
   const [translation, setTranslation] = useState('');
   const [audioUrl, setAudioUrl] = useState(null);
   const hasAutoPlayedRef = useRef(false);
@@ -42,8 +42,10 @@ const TranslatedBubble = ({ text, lang, playTTS, stopTTS, playingUrl, prefetchTT
         hasAutoPlayedRef.current = false; // Reset flag so new translations can play
         
         // Prefetch audio in the background!
-        const urlObj = await prefetchTTS(translatedText, targetLang);
-        setAudioUrl(urlObj);
+        if (shouldPrefetch) {
+          const urlObj = await prefetchTTS(translatedText, targetLang);
+          setAudioUrl(urlObj);
+        }
       } catch (e) {
         setTranslation('Error translating...');
       }
@@ -248,7 +250,7 @@ export const TranscriptionBoard = ({ captions, onClear, isToolsOpen, onToggleToo
                   </span>
                 </div>
               )}
-              <TranslatedBubble text={cap.text} lang={cap.lang} playTTS={playTTS} stopTTS={stopTTS} playingUrl={playingUrl} prefetchTTS={prefetchTTS} reverse={cap.lang === 'es'} ttsMode={ttsMode} wordCount={wordCount} />
+              <TranslatedBubble text={cap.text} lang={cap.lang} playTTS={playTTS} stopTTS={stopTTS} playingUrl={playingUrl} prefetchTTS={prefetchTTS} reverse={cap.lang === 'es'} ttsMode={ttsMode} wordCount={wordCount} shouldPrefetch={i >= captions.length - 3} />
             </div>
           );
         })}
