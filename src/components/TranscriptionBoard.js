@@ -240,7 +240,7 @@ export const TranscriptionBoard = ({ captions, onClear, isToolsOpen, onToggleToo
           const wordCount = cap.text.trim().split(/\s+/).length;
           
           return (
-            <div key={i} className="transcript-bubble" style={{ 
+            <div key={cap.id || i} className="transcript-bubble" style={{ 
               opacity: cap.isFinal === false ? 0.8 : 1,
               marginTop: isSameAsPrevious ? '0.2rem' : '1rem',
               ...getBubbleStyle(cap.text, cap.isFinal === false, cap.lang)

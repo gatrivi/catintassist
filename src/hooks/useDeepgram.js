@@ -128,8 +128,13 @@ export const useDeepgram = () => {
             current.esFull = esFull;
             current.isFinal = false; // We just keep updating styles actively
             
-            const newArr = [...prev];
+            let newArr = [...prev];
             newArr[newArr.length - 1] = current;
+            
+            // Limit to 150 bubbles to prevent intense memory and DOM growth over long sessions
+            if (newArr.length > 150) {
+               newArr = newArr.slice(newArr.length - 150);
+            }
             return newArr;
           });
         }

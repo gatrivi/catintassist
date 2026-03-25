@@ -267,14 +267,24 @@ export const DashboardHeader = ({ onStartAudio, onStopAudio, sttLanguage, onTogg
                       <span title="Estimated potential total considering current trajectory" style={{ fontSize: '0.75rem', background: 'rgba(139, 92, 246, 0.15)', padding: '0.2rem 0.5rem', borderRadius: '4px', border: '1px solid rgba(139, 92, 246, 0.3)' }}>Paced Max: <strong style={{color: '#d8b4fe', fontSize: '0.95rem', textShadow: '0 0 10px rgba(139, 92, 246, 0.5)'}}>AR${monthlyRemainingCash}</strong></span>
                     </>
                   ) : (
-                    <span style={{ color: '#34d399', fontWeight: 600 }}>🎉 Monthly Goal Met!</span>
+                    <span style={{ 
+                      color: stats.monthlyMinutes > stats.goalMinutes * 1.2 ? '#fcd34d' : '#34d399', 
+                      fontWeight: 800, 
+                      animation: stats.monthlyMinutes > stats.goalMinutes * 1.1 ? 'pulseDanger 1s infinite' : 'none',
+                      textShadow: stats.monthlyMinutes > stats.goalMinutes * 1.2 ? '0 0 15px #f59e0b' : '0 0 10px #10b981'
+                    }}>
+                      {stats.monthlyMinutes > stats.goalMinutes * 1.2 ? '🔥 UNSTOPPABLE JUGGERNAUT!' : (stats.monthlyMinutes > stats.goalMinutes * 1.1 ? '🚀 ORBIT REACHED (110%!)' : '🎉 Monthly Goal Met!')}
+                    </span>
                   )}
                 </div>
                 <span style={{ opacity: 0.6 }}>Goal: {stats.goalMinutes}m</span>
               </div>
-              <div style={{ width: '100%', height: '8px', background: 'rgba(0,0,0,0.5)', borderRadius: '4px', position: 'relative' }} title={`Completed: ${Math.round(stats.monthlyMinutes)}m`}>
-                <div style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: `${monthlyProgressRatio * 100}%`, backgroundColor: isMonthlyGoalMet ? '#34d399' : '#a855f7', borderRadius: '4px', transition: 'width 1s' }} />
-                <div style={{ position: 'absolute', top: '-4px', bottom: '-4px', left: `${monthElapsedRatio * 100}%`, width: '2px', backgroundColor: '#fff', zIndex: 10, borderRadius: '1px', boxShadow: '0 0 4px rgba(0,0,0,0.5)' }} />
+              <div style={{ width: '100%', height: '8px', background: 'rgba(0,0,0,0.5)', borderRadius: '4px', position: 'relative', overflow: 'hidden', boxShadow: isMonthlyGoalMet ? '0 0 12px rgba(16, 185, 129, 0.4)' : 'none' }} title={`Completed: ${Math.round(stats.monthlyMinutes)}m`}>
+                <div style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: `${monthlyProgressRatio * 100}%`, backgroundColor: isMonthlyGoalMet ? '#10b981' : '#a855f7', borderRadius: '4px', transition: 'width 1s' }} />
+                {stats.monthlyMinutes > stats.goalMinutes && (
+                   <div style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: `${Math.min(1, (stats.monthlyMinutes - stats.goalMinutes) / (stats.goalMinutes * 0.2)) * 100}%`, backgroundColor: 'rgba(245, 158, 11, 0.8)', borderRadius: '4px', transition: 'width 1s' }} />
+                )}
+                <div style={{ position: 'absolute', top: 0, bottom: 0, left: `${monthElapsedRatio * 100}%`, width: '2px', backgroundColor: 'rgba(255,255,255,0.7)', zIndex: 10, boxShadow: '0 0 4px rgba(0,0,0,1)' }} />
               </div>
             </div>
 
@@ -284,7 +294,13 @@ export const DashboardHeader = ({ onStartAudio, onStopAudio, sttLanguage, onTogg
                 <span style={{ fontWeight: 600 }}>☀️ 09:00</span>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
                   {remainingMinsToday <= 0 ? (
-                    <span style={{ color: '#34d399', fontWeight: 600 }}>🎉 Daily Shift Met!</span>
+                    <span style={{ 
+                      color: stats.dailyMinutes > dailyGoal + 120 ? '#fb923c' : (stats.dailyMinutes > dailyGoal + 60 ? '#fde047' : '#34d399'), 
+                      fontWeight: 800,
+                      textShadow: stats.dailyMinutes > dailyGoal + 60 ? '0 0 8px rgba(253, 224, 71, 0.8)' : 'none'
+                    }}>
+                      {stats.dailyMinutes > dailyGoal + 120 ? '👑 KING OF THE WARD (+2h!)' : (stats.dailyMinutes > dailyGoal + 60 ? '⚡ OVERDRIVE (+1h!)' : '🎉 Daily Shift Met!')}
+                    </span>
                   ) : (
                     <>
                       <span>⏳ {hoursLeft.toFixed(1)}H LEFT</span>
@@ -295,9 +311,12 @@ export const DashboardHeader = ({ onStartAudio, onStopAudio, sttLanguage, onTogg
                 </div>
                 <span style={{ opacity: 0.6 }}>23:00</span>
               </div>
-              <div style={{ width: '100%', height: '6px', background: 'rgba(0,0,0,0.5)', borderRadius: '3px', position: 'relative' }} title={`Completed: ${stats.dailyMinutes}m`}>
-                <div style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: `${dailyProgressRatio * 100}%`, backgroundColor: remainingMinsToday <= 0 ? '#34d399' : '#3b82f6', borderRadius: '3px', transition: 'width 1s' }} />
-                <div style={{ position: 'absolute', top: '-3px', bottom: '-3px', left: `${timeElapsedRatio * 100}%`, width: '2px', backgroundColor: '#fff', zIndex: 10, borderRadius: '1px', boxShadow: '0 0 4px rgba(0,0,0,0.5)' }} />
+              <div style={{ width: '100%', height: '6px', background: 'rgba(0,0,0,0.5)', borderRadius: '3px', position: 'relative', overflow: 'hidden', boxShadow: remainingMinsToday <= 0 ? '0 0 10px rgba(59, 130, 246, 0.4)' : 'none' }} title={`Completed: ${stats.dailyMinutes}m`}>
+                <div style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: `${Math.min(1, stats.dailyMinutes / dailyGoal) * 100}%`, backgroundColor: remainingMinsToday <= 0 ? '#3b82f6' : '#3b82f6', borderRadius: '3px', transition: 'width 1s' }} />
+                {stats.dailyMinutes > dailyGoal && (
+                   <div style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: `${Math.min(1, (stats.dailyMinutes - dailyGoal) / 120) * 100}%`, backgroundColor: 'rgba(253, 224, 71, 0.8)', borderRadius: '3px', transition: 'width 1s' }} />
+                )}
+                <div style={{ position: 'absolute', top: 0, bottom: 0, left: `${timeElapsedRatio * 100}%`, width: '2px', backgroundColor: 'rgba(255,255,255,0.7)', zIndex: 10, boxShadow: '0 0 4px rgba(0,0,0,1)' }} />
               </div>
             </div>
 
