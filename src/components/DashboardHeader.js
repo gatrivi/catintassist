@@ -207,9 +207,12 @@ export const DashboardHeader = ({ onStartAudio, onStopAudio, sttLanguage, onTogg
         <div className="income-card income-tier-1">
           <span className="income-label">This Month</span>
           <span className="income-ars">AR${Math.round(stats.monthlyMinutes * RATE_PER_MINUTE * arsRate).toLocaleString('es-AR')}</span>
-          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', opacity: 0.85 }}>
-            <span className="income-usd" title={`Realistic max monthly capacity based on 35m/hr flow (${Math.round(monthlyMaxMins)}m)`}>
-              ${(stats.monthlyMinutes * RATE_PER_MINUTE).toFixed(2)} USD <span style={{opacity: 0.5}}>| Max AR${monthlyMaxArs}</span>
+          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', marginTop: '0.2rem' }}>
+            <span style={{ fontSize: '0.9rem', color: '#d8b4fe', fontWeight: 600, textShadow: '0 0 10px rgba(139, 92, 246, 0.4)' }} title={`Realistic max monthly capacity based on 35m/hr flow (${Math.round(monthlyMaxMins)}m)`}>
+               🚀 Max: AR${monthlyMaxArs}
+            </span>
+            <span className="income-usd" style={{ opacity: 0.4, fontSize: '0.65rem', marginTop: '0.1rem' }}>
+              ${(stats.monthlyMinutes * RATE_PER_MINUTE).toFixed(2)} USD
             </span>
             <EditableMinutes value={stats.monthlyMinutes} updateFn={updateStat} statKey="monthlyMinutes" />
           </div>
@@ -218,9 +221,12 @@ export const DashboardHeader = ({ onStartAudio, onStopAudio, sttLanguage, onTogg
         <div className="income-card income-tier-2">
           <span className="income-label">Today</span>
           <span className="income-ars">AR${Math.round(stats.dailyMinutes * RATE_PER_MINUTE * arsRate).toLocaleString('es-AR')}</span>
-          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', opacity: 0.85 }}>
-            <span className="income-usd" title={`Realistic max daily capacity given remaining hours at 35m/hr (${Math.round(realisticMaxToday)}m)`}>
-              ${(stats.dailyMinutes * RATE_PER_MINUTE).toFixed(2)} USD <span style={{opacity: 0.5}}>| Max AR${dailyMaxArs}</span>
+          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', marginTop: '0.2rem' }}>
+            <span style={{ fontSize: '0.85rem', color: '#d8b4fe', fontWeight: 600, textShadow: '0 0 10px rgba(139, 92, 246, 0.4)' }} title={`Realistic max daily capacity given remaining hours at 35m/hr (${Math.round(realisticMaxToday)}m)`}>
+               🚀 Max: AR${dailyMaxArs}
+            </span>
+            <span className="income-usd" style={{ opacity: 0.4, fontSize: '0.65rem', marginTop: '0.1rem' }}>
+              ${(stats.dailyMinutes * RATE_PER_MINUTE).toFixed(2)} USD
             </span>
             <EditableMinutes value={stats.dailyMinutes} updateFn={updateStat} statKey="dailyMinutes" />
           </div>
@@ -258,7 +264,7 @@ export const DashboardHeader = ({ onStartAudio, onStopAudio, sttLanguage, onTogg
                     <>
                       <span title="Minutes left to hit goal">Need: {Math.round(remainingMinutes)}m</span>
                       <span style={{opacity: 0.5}}>|</span>
-                      <span title="Estimated potential total considering current trajectory">Paced Max: <strong style={{color: '#c4b5fd'}}>AR${monthlyRemainingCash}</strong></span>
+                      <span title="Estimated potential total considering current trajectory" style={{ fontSize: '0.75rem', background: 'rgba(139, 92, 246, 0.15)', padding: '0.2rem 0.5rem', borderRadius: '4px', border: '1px solid rgba(139, 92, 246, 0.3)' }}>Paced Max: <strong style={{color: '#d8b4fe', fontSize: '0.95rem', textShadow: '0 0 10px rgba(139, 92, 246, 0.5)'}}>AR${monthlyRemainingCash}</strong></span>
                     </>
                   ) : (
                     <span style={{ color: '#34d399', fontWeight: 600 }}>🎉 Monthly Goal Met!</span>

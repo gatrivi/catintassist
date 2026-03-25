@@ -10,24 +10,103 @@ export const SessionProvider = ({ children }) => {
   const [stats, setStats] = useState(() => {
     const saved = localStorage.getItem('catintassist_stats');
     const today = new Date().toDateString();
-    if (saved) {
-      const parsed = JSON.parse(saved);
-      if (parsed.lastDate !== today) {
-        parsed.dailyMinutes = 0;
-        parsed.lastDate = today;
-      }
-      return parsed;
-    }
-    return {
+    let initialStats = {
       dailyMinutes: 0,
       weeklyMinutes: 0,
       monthlyMinutes: 0,
       goalMinutes: 5500,
       lastDate: today
     };
+    if (saved) {
+    if (saved) {
+      try {
+        const parsed = JSON.parse(saved);
+        if (parsed.lastDate !== today) {
+          parsed.dailyMinutes = 0;
+          parsed.lastDate = today;
+        }
+        initialStats = { ...initialStats, ...parsed };
+      } catch(e) {}
+    }
+    return initialStats;
   });
 
   const [arsRate, setArsRate] = useState(1050);
+
+  // ----- CLOUD SYNC LOGIC (ntfy.sh zero-auth) -----
+  const lastSyncHashRef = useRef('');
+  const stateRef = useRef({ isActive, sessionSeconds, stats });
+  
+  useEffect(() => {
+    stateRef.current = { isActive, sessionSeconds, stats };
+  }, [isActive, sessionSeconds, stats]);
+
+  useEffect(() => {
+    const topic = 'catintassist_v1_syncroom';
+    
+    // 1. Initial Pull
+    fetch(`https://ntfy.sh/${topic}/json?poll=1`)
+      .then(res => res.text())
+      .then(text => {
+         const lines = text.trim().split('\n');
+         const lastLine = lines[lines.length - 1];
+         if (lastLine) {
+           const data = JSON.parse(lastLine);
+           if (data.event === 'message') {
+             const payload = data.message;
+             lastSyncHashRef.current = payload;
+             const remoteState = JSON.parse(payload);
+             setIsActive(remoteState.isActive);
+             setSessionSeconds(remoteState.sessionSeconds);
+             if (remoteState.stats && remoteState.stats.lastDate) setStats(remoteState.stats);
+           }
+         }
+      }).catch(() => {});
+
+    // 2. Realtime Subscription
+    const es = new EventSource(`https://ntfy.sh/${topic}/sse`);
+    es.onmessage = (e) => {
+      try {
+        const data = JSON.parse(e.data);
+        if (data.event === 'message') {
+          const payload = data.message;
+          if (payload === lastSyncHashRef.current) return; // ignore our own
+          lastSyncHashRef.current = payload;
+          const remoteState = JSON.parse(payload);
+          setIsActive(remoteState.isActive);
+          setSessionSeconds(remoteState.sessionSeconds);
+          if (remoteState.stats && remoteState.stats.lastDate) {
+            setStats(prev => JSON.stringify(prev) === JSON.stringify(remoteState.stats) ? prev : remoteState.stats);
+          }
+        }
+      } catch (err) {}
+    };
+    return () => es.close();
+  }, []);
+
+  useEffect(() => {
+    // 3. Instant Push on Major Events (Start/Stop/Edit)
+    const payload = JSON.stringify(stateRef.current);
+    if (payload !== lastSyncHashRef.current) {
+      lastSyncHashRef.current = payload;
+      fetch(`https://ntfy.sh/catintassist_v1_syncroom`, { method: 'POST', body: payload }).catch(()=>{});
+    }
+  }, [isActive, stats]);
+
+  useEffect(() => {
+    // 4. Background Tick Push for Timer
+    const interval = setInterval(() => {
+       if (stateRef.current.isActive) {
+         const payload = JSON.stringify(stateRef.current);
+         if (payload !== lastSyncHashRef.current) {
+            lastSyncHashRef.current = payload;
+            fetch(`https://ntfy.sh/catintassist_v1_syncroom`, { method: 'POST', body: payload }).catch(()=>{});
+         }
+       }
+    }, 5000);
+    return () => clearInterval(interval);
+  }, []);
+  // -------------------------------------------------
 
   useEffect(() => {
     fetch('https://api.exchangerate-api.com/v4/latest/USD')

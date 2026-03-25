@@ -220,15 +220,17 @@ export const TranscriptionBoard = ({ captions, onClear, isToolsOpen, onToggleToo
       </div>
       <div 
         className="scroll-area" 
-        style={{ flex: 1, overflowY: 'auto' }} 
+        style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column' }} 
         onScroll={handleScroll}
         onWheel={handleWheel}
         ref={scrollAreaRef}
         onDoubleClick={handleDoubleClick} 
         title="Double-click any word to instantly translate it via Linguee"
       >
+        <div style={{ flex: '1 1 auto' }} />
+        
         {captions.length === 0 && (
-          <div style={{ color: 'var(--text-muted)', fontStyle: 'italic', textAlign: 'center', marginTop: '20vh' }}>
+          <div style={{ color: 'var(--text-muted)', fontStyle: 'italic', textAlign: 'center', marginBottom: '20vh' }}>
             Waiting for audio capture to begin...
           </div>
         )}
