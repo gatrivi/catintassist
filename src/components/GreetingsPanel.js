@@ -32,6 +32,7 @@ export const GreetingsPanel = ({ onEditModeChange }) => {
   const audioRefSink = useRef(new Audio());
   const audioRefLocal = useRef(new Audio());
   const mediaRecorderRef = useRef(null);
+  const audioCtxRef = useRef(null);
   const audioChunksRef = useRef([]);
   const animationRef = useRef(null);
 
@@ -120,6 +121,29 @@ export const GreetingsPanel = ({ onEditModeChange }) => {
       mediaRecorderRef.current = mediaRecorder;
       audioChunksRef.current = [];
       
+      const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+      audioCtxRef.current = audioCtx;
+      const analyser = audioCtx.createAnalyser();
+      const source = audioCtx.createMediaStreamSource(stream);
+      source.connect(analyser);
+      analyser.fftSize = 256;
+      const dataArray = new Uint8Array(analyser.frequencyBinCount);
+      
+      const updateLevel = () => {
+        if (!mediaRecorderRef.current || mediaRecorderRef.current.state !== 'recording') return;
+        analyser.getByteFrequencyData(dataArray);
+        let sum = 0;
+        for (let i = 0; i < dataArray.length; i++) sum += dataArray[i];
+        let avg = sum / dataArray.length;
+        
+        let width = Math.min(100, Math.max(0, (avg / 100) * 100));
+        if (width < 2 && avg > 0) width = 2; // small indicator it's alive
+        
+        const bar = document.getElementById('record-vol-bar');
+        if (bar) bar.style.width = width + '%';
+        requestAnimationFrame(updateLevel);
+      };
+
       mediaRecorder.ondataavailable = (e) => {
         if (e.data.size > 0) audioChunksRef.current.push(e.data);
       };
@@ -132,6 +156,7 @@ export const GreetingsPanel = ({ onEditModeChange }) => {
       
       mediaRecorder.start();
       setRecordingKey(key);
+      updateLevel();
     } catch (e) {
       alert("Microphone access denied. Please allow microphone permissions.");
     }
@@ -141,6 +166,10 @@ export const GreetingsPanel = ({ onEditModeChange }) => {
     if (mediaRecorderRef.current && mediaRecorderRef.current.state === 'recording') {
       mediaRecorderRef.current.stop();
       setRecordingKey(null);
+      if (audioCtxRef.current) {
+        audioCtxRef.current.close().catch(()=>{});
+        audioCtxRef.current = null;
+      }
     }
   };
 
@@ -242,15 +271,22 @@ export const GreetingsPanel = ({ onEditModeChange }) => {
         <span style={{ color: blobs[key] ? '#10b981' : '#ef4444', fontSize: '0.75rem', fontWeight: 600 }}>{blobs[key] ? '✅ SAVED' : '❌ MISSING'}</span>
       </div>
       
-      <div style={{ display: 'flex', gap: '0.5rem' }}>
-        {recordingKey === key ? (
-          <button onClick={stopRecording} style={{ flex: 1, padding: '0.4rem', background: 'rgba(239, 68, 68, 0.2)', color: '#f87171', border: '1px solid rgba(239, 68, 68, 0.4)', borderRadius: '4px', cursor: 'pointer', fontWeight: 600, animation: 'pulseGlow 2s infinite' }}>⏹ Stop</button>
-        ) : (
-          <button onClick={() => startRecording(key)} disabled={recordingKey !== null} style={{ flex: 1, padding: '0.4rem', background: 'rgba(59, 130, 246, 0.2)', color: '#60a5fa', border: '1px solid rgba(59, 130, 246, 0.4)', borderRadius: '4px', cursor: recordingKey ? 'not-allowed' : 'pointer' }}>🎙️ Record</button>
-        )}
-        
-        {blobs[key] && (
-          <button onClick={() => playAudioBlock(key, false)} style={{ flex: 1, padding: '0.4rem', background: 'rgba(16, 185, 129, 0.2)', color: '#34d399', border: '1px solid rgba(16, 185, 129, 0.4)', borderRadius: '4px', cursor: 'pointer' }}>{playingKey === key ? '⏹ Stop' : '▶ Preview'}</button>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
+        <div style={{ display: 'flex', gap: '0.5rem' }}>
+          {recordingKey === key ? (
+            <button onClick={stopRecording} style={{ flex: 1, padding: '0.4rem', background: 'rgba(239, 68, 68, 0.2)', color: '#f87171', border: '1px solid rgba(239, 68, 68, 0.4)', borderRadius: '4px', cursor: 'pointer', fontWeight: 600, animation: 'pulseGlow 2s infinite' }}>⏹ Stop</button>
+          ) : (
+            <button onClick={() => startRecording(key)} disabled={recordingKey !== null} style={{ flex: 1, padding: '0.4rem', background: 'rgba(59, 130, 246, 0.2)', color: '#60a5fa', border: '1px solid rgba(59, 130, 246, 0.4)', borderRadius: '4px', cursor: recordingKey ? 'not-allowed' : 'pointer' }}>🎙️ Record</button>
+          )}
+          
+          {blobs[key] && (
+            <button onClick={() => playAudioBlock(key, false)} style={{ flex: 1, padding: '0.4rem', background: 'rgba(16, 185, 129, 0.2)', color: '#34d399', border: '1px solid rgba(16, 185, 129, 0.4)', borderRadius: '4px', cursor: 'pointer' }}>{playingKey === key ? '⏹ Stop' : '▶ Preview'}</button>
+          )}
+        </div>
+        {recordingKey === key && (
+          <div style={{ width: '100%', height: '4px', background: 'rgba(0,0,0,0.5)', borderRadius: '2px', overflow: 'hidden' }}>
+             <div id="record-vol-bar" style={{ height: '100%', width: '0%', backgroundColor: '#6ee7b7', transition: 'width 0.05s ease' }} />
+          </div>
         )}
       </div>
       
