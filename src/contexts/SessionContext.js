@@ -7,6 +7,7 @@ export const SessionProvider = ({ children }) => {
   const [sessionSeconds, setSessionSeconds] = useState(0);
   const [isBreakActive, setIsBreakActive] = useState(false);
   const [breakSeconds, setBreakSeconds] = useState(0);
+  const [availSeconds, setAvailSeconds] = useState(0);
 
   // Persistent stats
   const [stats, setStats] = useState(() => {
@@ -15,6 +16,7 @@ export const SessionProvider = ({ children }) => {
     let initialStats = {
       dailyMinutes: 0,
       dailyBreakMinutes: 0,
+      dailyAvailMinutes: 0,
       weeklyMinutes: 0,
       monthlyMinutes: 0,
       goalMinutes: 5500,
@@ -26,6 +28,7 @@ export const SessionProvider = ({ children }) => {
         if (parsed.lastDate !== today) {
           parsed.dailyMinutes = 0;
           parsed.dailyBreakMinutes = 0;
+          parsed.dailyAvailMinutes = 0;
           parsed.lastDate = today;
         }
         initialStats = { ...initialStats, ...parsed };
@@ -38,11 +41,11 @@ export const SessionProvider = ({ children }) => {
 
   // ----- CLOUD SYNC LOGIC (ntfy.sh zero-auth) -----
   const lastSyncHashRef = useRef('');
-  const stateRef = useRef({ isActive, sessionSeconds, stats, isBreakActive, breakSeconds });
+  const stateRef = useRef({ isActive, sessionSeconds, stats, isBreakActive, breakSeconds, availSeconds });
   
   useEffect(() => {
-    stateRef.current = { isActive, sessionSeconds, stats, isBreakActive, breakSeconds };
-  }, [isActive, sessionSeconds, stats, isBreakActive, breakSeconds]);
+    stateRef.current = { isActive, sessionSeconds, stats, isBreakActive, breakSeconds, availSeconds };
+  }, [isActive, sessionSeconds, stats, isBreakActive, breakSeconds, availSeconds]);
 
   useEffect(() => {
     const topic = 'catintassist_v1_syncroom';
@@ -63,6 +66,7 @@ export const SessionProvider = ({ children }) => {
              setSessionSeconds(remoteState.sessionSeconds);
              if (remoteState.isBreakActive !== undefined) setIsBreakActive(remoteState.isBreakActive);
              if (remoteState.breakSeconds !== undefined) setBreakSeconds(remoteState.breakSeconds);
+             if (remoteState.availSeconds !== undefined) setAvailSeconds(remoteState.availSeconds);
              if (remoteState.stats && remoteState.stats.lastDate) setStats(remoteState.stats);
            }
          }
@@ -82,6 +86,7 @@ export const SessionProvider = ({ children }) => {
           setSessionSeconds(remoteState.sessionSeconds);
           if (remoteState.isBreakActive !== undefined) setIsBreakActive(remoteState.isBreakActive);
           if (remoteState.breakSeconds !== undefined) setBreakSeconds(remoteState.breakSeconds);
+          if (remoteState.availSeconds !== undefined) setAvailSeconds(remoteState.availSeconds);
           if (remoteState.stats && remoteState.stats.lastDate) {
             setStats(prev => JSON.stringify(prev) === JSON.stringify(remoteState.stats) ? prev : remoteState.stats);
           }
@@ -130,7 +135,22 @@ export const SessionProvider = ({ children }) => {
   const timerRef = useRef(null);
   const accumulatorRef = useRef(0); // collects fractional seconds
 
+  const commitAvailTime = () => {
+    setAvailSeconds(currentAvail => {
+      if (currentAvail > 0) {
+        const minutesToAdd = currentAvail / 60;
+        setStats(prev => {
+          const newStats = { ...prev, dailyAvailMinutes: (prev.dailyAvailMinutes || 0) + minutesToAdd };
+          localStorage.setItem('catintassist_stats', JSON.stringify(newStats));
+          return newStats;
+        });
+      }
+      return 0;
+    });
+  };
+
   const startSession = () => {
+    commitAvailTime();
     setSessionSeconds(0);
     accumulatorRef.current = 0;
     setIsActive(true);
@@ -159,8 +179,9 @@ export const SessionProvider = ({ children }) => {
 
   // End of Day: commit daily total to monthly (called explicitly or auto on new day)
   const endDay = (onDayEnded) => {
+    commitAvailTime();
     setStats(prev => {
-      const newStats = { ...prev, dailyMinutes: 0, dailyBreakMinutes: 0, lastDate: new Date().toDateString() };
+      const newStats = { ...prev, dailyMinutes: 0, dailyBreakMinutes: 0, dailyAvailMinutes: 0, lastDate: new Date().toDateString() };
       localStorage.setItem('catintassist_stats', JSON.stringify(newStats));
       if (onDayEnded) onDayEnded(prev.dailyMinutes);
       return newStats;
@@ -198,8 +219,23 @@ export const SessionProvider = ({ children }) => {
     };
   }, [isBreakActive]);
 
+  const availTimerRef = useRef(null);
+  useEffect(() => {
+    if (!isActive && !isBreakActive) {
+      availTimerRef.current = setInterval(() => {
+        setAvailSeconds(prev => prev + 1);
+      }, 1000);
+    } else {
+      if (availTimerRef.current) clearInterval(availTimerRef.current);
+    }
+    return () => {
+      if (availTimerRef.current) clearInterval(availTimerRef.current);
+    };
+  }, [isActive, isBreakActive]);
+
   const startBreak = () => {
     if (isActive) return;
+    commitAvailTime();
     setBreakSeconds(0);
     setIsBreakActive(true);
   };
@@ -240,7 +276,8 @@ export const SessionProvider = ({ children }) => {
     isBreakActive,
     breakSeconds,
     startBreak,
-    stopBreak
+    stopBreak,
+    availSeconds
   };
 
   return (

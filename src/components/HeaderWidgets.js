@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { DialGoalSelector } from './DialGoalSelector';
 
 // Basic SVG icons
 export const PlayIcon = () => (
@@ -29,115 +30,27 @@ export const formatTime = (totalSeconds) => {
   return `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
 };
 
-export const GoalEditor = ({ statKey, valueMinutes, updateFn, ratePerMinute, dailyAverage, arsRate, setArsRate, monthlyMinutes, remainingDays }) => {
+export const GoalEditor = ({ statKey, valueMinutes, updateFn, ratePerMinute, dailyAverage, arsRate, setArsRate, monthlyMinutes, dailyMinutes = 0, remainingDays }) => {
   const [isEditing, setIsEditing] = useState(false);
-  const [tempMins, setTempMins] = useState(valueMinutes.toString());
-  const [tempDailyAvg, setTempDailyAvg] = useState(dailyAverage.toString());
-
-  const [editHours, setEditHours] = useState(Math.floor(valueMinutes / 60).toString());
-  const [editMinsRemainder, setEditMinsRemainder] = useState((valueMinutes % 60).toFixed(0));
-  
-  const [editArsTotal, setEditArsTotal] = useState((valueMinutes * ratePerMinute * (arsRate || 1000)).toFixed(0));
-
   const currentArs = Math.round(valueMinutes * ratePerMinute * (arsRate || 1000)).toLocaleString('es-AR');
-  const dailyArs = Math.round(dailyAverage * ratePerMinute * (arsRate || 1000)).toLocaleString('es-AR');
 
-  const handleDirectMinChange = (v) => {
-    setTempMins(v);
-    const targetMins = parseFloat(v) || 0;
-    
-    setEditHours(Math.floor(targetMins / 60).toString());
-    setEditMinsRemainder((targetMins % 60).toFixed(1).replace(/\.0$/, ''));
-    setEditArsTotal((targetMins * ratePerMinute * (arsRate || 1000)).toFixed(0));
-    
-    const remainingMins = Math.max(0, targetMins - monthlyMinutes);
-    setTempDailyAvg(remainingDays > 0 ? (remainingMins / remainingDays).toFixed(0) : 0);
-  };
-
-  const handleTimeChange = (type, val) => {
-    let newH = editHours;
-    let newM = editMinsRemainder;
-    
-    if (type === 'h') {
-      newH = val;
-      setEditHours(val);
-    } else {
-      newM = val;
-      setEditMinsRemainder(val);
-    }
-    
-    const targetMins = (parseInt(newH) || 0) * 60 + (parseFloat(newM) || 0);
-    setTempMins(targetMins.toString());
-    setEditArsTotal((targetMins * ratePerMinute * (arsRate || 1000)).toFixed(0));
-    
-    const remainingMins = Math.max(0, targetMins - monthlyMinutes);
-    setTempDailyAvg(remainingDays > 0 ? (remainingMins / remainingDays).toFixed(0) : 0);
-  };
-
-  const handleTargetArsChange = (v) => {
-    setEditArsTotal(v);
-    const targetArs = parseFloat(v) || 0;
-    const targetMins = targetArs / (ratePerMinute * (arsRate || 1000));
-    
-    setTempMins(targetMins.toFixed(0));
-    setEditHours(Math.floor(targetMins / 60).toString());
-    setEditMinsRemainder((targetMins % 60).toFixed(1).replace(/\.0$/, ''));
-    
-    const remainingMins = Math.max(0, targetMins - monthlyMinutes);
-    setTempDailyAvg(remainingDays > 0 ? (remainingMins / remainingDays).toFixed(0) : 0);
-  };
-
-  const handleDailyAvgChange = (v) => {
-    setTempDailyAvg(v);
-    const parsedAvg = parseFloat(v) || 0;
-    const projectedGoal = monthlyMinutes + (parsedAvg * remainingDays);
-    
-    setTempMins(projectedGoal.toFixed(0));
-    setEditHours(Math.floor(projectedGoal / 60).toString());
-    setEditMinsRemainder((projectedGoal % 60).toFixed(0));
-    setEditArsTotal((projectedGoal * ratePerMinute * (arsRate || 1000)).toFixed(0));
-  };
-
-  const handleSubmit = (e) => {
-    e.preventDefault();
-    updateFn(statKey, parseFloat(tempMins));
-    setIsEditing(false);
+  const handleSave = (monthlyMins) => {
+     updateFn(statKey, monthlyMins);
+     setIsEditing(false);
   };
 
   return (
     <div className="stat-group" style={{ textAlign: 'right', alignItems: 'flex-end', justifyContent: 'center', position: 'relative' }}>
       {isEditing ? (
-        <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '0.3rem', alignItems: 'flex-end', background: 'rgba(0,0,0,0.85)', padding: '0.6rem', borderRadius: '8px', border: '1px solid var(--panel-border)', zIndex: 100, position: 'absolute', top: '100%', right: 0, backdropFilter: 'blur(10px)', boxShadow: '0 8px 32px rgba(0,0,0,0.5)' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.3rem' }}>
-            <span style={{fontSize: '0.65rem', color: 'var(--text-muted)'}} title="Total Target Cash">🎯 AR$</span>
-            <input type="number" step="any" className="stat-input" style={{ width: '80px', padding: '0.1rem', fontSize: '0.65rem', color: '#6ee7b7' }} value={editArsTotal} onChange={e => handleTargetArsChange(e.target.value)} />
-          </div>
-          
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.3rem' }}>
-            <span style={{fontSize: '0.65rem', color: 'var(--text-muted)'}}>⏱</span>
-            <input type="number" step="any" className="stat-input" style={{ width: '55px', padding: '0.1rem', fontSize: '0.65rem' }} value={tempMins} onChange={e => handleDirectMinChange(e.target.value)} title="Total Minutes" />
-            <span style={{fontSize: '0.65rem', color: 'var(--text-muted)'}}>m /</span>
-            <input type="number" className="stat-input" style={{ width: '45px', padding: '0.1rem', fontSize: '0.65rem' }} value={editHours} onChange={e => handleTimeChange('h', e.target.value)} title="Hours" />
-            <span style={{fontSize: '0.65rem', color: 'var(--text-muted)'}}>h</span>
-            <input type="number" step="any" className="stat-input" style={{ width: '45px', padding: '0.1rem', fontSize: '0.65rem' }} value={editMinsRemainder} onChange={e => handleTimeChange('m', e.target.value)} title="Minutes" />
-            <span style={{fontSize: '0.65rem', color: 'var(--text-muted)'}}>m</span>
-          </div>
-
-          <hr style={{ width: '100%', border: 'none', borderTop: '1px solid rgba(255,255,255,0.1)', margin: '0.1rem 0' }} />
-          
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.3rem' }}>
-            <span style={{fontSize: '0.65rem', color: 'var(--text-muted)'}} title="Daily Average">📈 avg</span>
-            <input type="number" step="any" className="stat-input" style={{ width: '50px', padding: '0.1rem', fontSize: '0.65rem' }} value={tempDailyAvg} onChange={e => handleDailyAvgChange(e.target.value)} />
-          </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.3rem' }}>
-            <span style={{fontSize: '0.65rem', color: 'var(--text-muted)'}} title="Conversion Rate">💱 ARS</span>
-            <input type="number" step="any" className="stat-input" style={{ width: '50px', padding: '0.1rem', fontSize: '0.65rem' }} value={arsRate} onChange={e => setArsRate(e.target.value)} />
-          </div>
-          
-          <button type="submit" className="btn btn-primary" style={{ padding: '0.2rem 1rem', fontSize: '0.65rem', width: '100%', marginTop: '0.2rem' }}>Save & Close</button>
-        </form>
+        <DialGoalSelector 
+          ratePerMinute={ratePerMinute} 
+          arsRate={arsRate} 
+          setArsRate={setArsRate}
+          onSave={handleSave} 
+          onCancel={() => setIsEditing(false)} 
+        />
       ) : (
-        <div style={{ cursor: 'pointer', display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '0.3rem' }} onClick={() => { setTempMins(valueMinutes); setTempDailyAvg(dailyAverage); setIsEditing(true); }} title="Click to edit goal or ARS rate">
+        <div style={{ cursor: 'pointer', display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '0.3rem' }} onClick={() => setIsEditing(true)} title="Click to edit goal or ARS rate">
           <div style={{ fontSize: '0.8rem', fontWeight: 500, color: 'var(--text-muted)' }}>🎯 Goal: <strong style={{ color: '#6ee7b7' }}>{valueMinutes}m</strong> <span style={{ opacity: 0.6, fontSize: '0.85em' }}>(AR${currentArs})</span></div>
           {dailyAverage > 0 && (
             <div style={{ fontSize: '0.8rem', fontWeight: 600, color: '#c4b5fd', background: 'rgba(139, 92, 246, 0.1)', border: '1px solid rgba(139, 92, 246, 0.2)', padding: '0.2rem 0.5rem', borderRadius: '6px' }} title="Daily Average Needed">

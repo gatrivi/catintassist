@@ -4,7 +4,7 @@ import { useAudioSettings } from '../contexts/AudioSettingsContext';
 import { PlayIcon, StopIcon, KeyIcon, formatTime, GoalEditor, EditableMinutes, ConnectionIndicator } from './HeaderWidgets';
 
 export const DashboardHeader = ({ onStartAudio, onStopAudio, sttLanguage, onToggleLanguage, connectionState, connectionMessage }) => {
-  const { isActive, sessionSeconds, sessionEarnings, stats, updateStat, startSession, stopSession, endDay, RATE_PER_MINUTE, arsRate, setArsRate, isBreakActive, breakSeconds, startBreak, stopBreak } = useSession();
+  const { isActive, sessionSeconds, sessionEarnings, stats, updateStat, startSession, stopSession, endDay, RATE_PER_MINUTE, arsRate, setArsRate, isBreakActive, breakSeconds, startBreak, stopBreak, availSeconds } = useSession();
   const { outputDevices, inputDevices, selectedSinkId, selectedMicId, changeSinkId, changeMicId, fetchDevices } = useAudioSettings();
 
   const [isHold, setIsHold] = useState(false);
@@ -36,16 +36,18 @@ export const DashboardHeader = ({ onStartAudio, onStopAudio, sttLanguage, onTogg
   const handleStop = () => {
     stopSession((mins) => {
       playChing('call');
-      setCelebration({ type: 'call', label: `+AR$${Math.round(mins * RATE_PER_MINUTE * arsRate).toLocaleString('es-AR')}`, coins: 8 });
-      setTimeout(() => setCelebration(null), 3500);
+      const dynamicItems = Math.min(80, Math.max(5, Math.floor(mins * 1.5)));
+      setCelebration({ type: 'call', label: `+AR$${Math.round(mins * RATE_PER_MINUTE * arsRate).toLocaleString('es-AR')}`, coins: dynamicItems });
+      setTimeout(() => setCelebration(null), 3500 + Math.min(1500, dynamicItems * 40));
     });
     onStopAudio();
   };
   const handleEndDay = () => {
     endDay((mins) => {
       playChing('day');
-      setCelebration({ type: 'day', label: `Day Banked! +AR$${Math.round(mins * RATE_PER_MINUTE * arsRate).toLocaleString('es-AR')}`, coins: 16 });
-      setTimeout(() => setCelebration(null), 5000);
+      const dynamicItems = Math.min(200, Math.max(20, Math.floor(mins * 0.4)));
+      setCelebration({ type: 'day', label: `Day Banked! +AR$${Math.round(mins * RATE_PER_MINUTE * arsRate).toLocaleString('es-AR')}`, coins: dynamicItems });
+      setTimeout(() => setCelebration(null), 5000 + Math.min(3000, dynamicItems * 25));
     });
   };
 
@@ -55,7 +57,9 @@ export const DashboardHeader = ({ onStartAudio, onStopAudio, sttLanguage, onTogg
   const daysInMonth = new Date(year, month + 1, 0).getDate();
   const remainingDays = daysInMonth - currentDay + 1;
   const remainingMinutes = Math.max(0, stats.goalMinutes - stats.monthlyMinutes);
-  const requiredDailyAverage = remainingDays > 0 ? (remainingMinutes / remainingDays).toFixed(0) : 0;
+  const minutesBeforeToday = Math.max(0, stats.monthlyMinutes - stats.dailyMinutes);
+  const remainingMinutesFromStartOfDay = Math.max(0, stats.goalMinutes - minutesBeforeToday);
+  const requiredDailyAverage = remainingDays > 0 ? (remainingMinutesFromStartOfDay / remainingDays).toFixed(0) : 0;
   const workdayStartHour = 9, workdayEndHour = 23;
   const workdayTotalMs = (workdayEndHour - workdayStartHour) * 3600000;
   let timeElapsedRatio = Math.min(1, Math.max(0, (now.getTime() - new Date(year, month, currentDay, workdayStartHour).getTime()) / workdayTotalMs));
@@ -80,13 +84,16 @@ export const DashboardHeader = ({ onStartAudio, onStopAudio, sttLanguage, onTogg
       {/* Coin rain overlay */}
       {celebration && (
         <div style={{ position: 'absolute', inset: 0, pointerEvents: 'none', zIndex: 50, overflow: 'hidden' }}>
-          {Array.from({ length: celebration.coins }).map((_, i) => (
+          {Array.from({ length: celebration.coins }).map((_, i) => {
+            const emojis = ['🪙', '🪙', '💸', '💵', '💰', '💎'];
+            return (
             <span key={i} style={{
-              position: 'absolute', fontSize: '1.1rem',
-              left: `${5 + Math.random() * 90}%`, top: `${Math.random() * 30}%`,
-              animation: `coinFall ${0.8 + Math.random() * 1.2}s ease-in ${Math.random() * 0.6}s forwards`,
-            }}>🪙</span>
-          ))}
+              position: 'absolute', fontSize: `${0.9 + Math.random() * 1.2}rem`,
+              left: `${2 + Math.random() * 96}%`, top: `${-10 - Math.random() * 20}%`,
+              animation: `coinFall ${0.8 + Math.random() * 1.8}s ease-in ${Math.random() * 1.5}s forwards`,
+              transform: `rotate(${Math.random() * 360}deg)`,
+            }}>{emojis[Math.floor(Math.random() * emojis.length)]}</span>
+          )})}
           <div style={{
             position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%,-50%)',
             fontSize: '1.2rem', fontWeight: 900,
@@ -206,11 +213,20 @@ export const DashboardHeader = ({ onStartAudio, onStopAudio, sttLanguage, onTogg
           <EditableMinutes value={stats.dailyBreakMinutes || 0} updateFn={updateStat} statKey="dailyBreakMinutes" />
         </div>
 
+        {/* Avail Time Scoreboard */}
+        <div className={`income-card income-tier-avail ${!isActive && !isBreakActive ? 'active' : ''}`} style={{ background: !isActive && !isBreakActive ? 'rgba(59,130,246,0.1)' : 'transparent', padding: '0.3rem', borderRadius: '8px', border: !isActive && !isBreakActive ? '1px solid rgba(59,130,246,0.4)' : '1px solid transparent' }}>
+          <span className="income-label">Avail Time {!isActive && !isBreakActive && `(${formatTime(availSeconds)})`}</span>
+          <span className="income-ars" style={{ color: '#93c5fd', fontSize: '0.85rem', fontWeight: 700 }}>
+            {Math.floor((stats.dailyAvailMinutes || 0) / 60)}h {Math.round((stats.dailyAvailMinutes || 0) % 60)}m
+          </span>
+          <EditableMinutes value={stats.dailyAvailMinutes || 0} updateFn={updateStat} statKey="dailyAvailMinutes" />
+        </div>
+
         {/* Goal editor */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem', borderLeft: '1px solid rgba(255,255,255,0.1)', paddingLeft: '0.6rem', justifyContent: 'center' }}>
           <GoalEditor statKey="goalMinutes" valueMinutes={stats.goalMinutes} updateFn={updateStat} ratePerMinute={RATE_PER_MINUTE}
             dailyAverage={requiredDailyAverage} arsRate={arsRate} setArsRate={setArsRate}
-            monthlyMinutes={stats.monthlyMinutes} remainingDays={remainingDays} />
+            monthlyMinutes={stats.monthlyMinutes} dailyMinutes={stats.dailyMinutes} remainingDays={remainingDays} />
         </div>
 
         {/* Collapse toggle — sticks to right edge */}
