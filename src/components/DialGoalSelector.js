@@ -58,12 +58,14 @@ export const DialGoalSelector = ({ ratePerMinute, arsRate, setArsRate, onSave, o
           pointerEvents: 'none', zIndex: 10
         }} />
         
+        <button onClick={(e) => { e.preventDefault(); setActiveIndex(Math.max(0, activeIndex - 1)); scrollRef.current.scrollTop = Math.max(0, activeIndex - 1) * itemHeight; }} style={{ position: 'absolute', top: 0, left: 0, right: 0, height: `${itemHeight}px`, background: 'rgba(0,0,0,0.5)', color: 'var(--text-muted)', border: 'none', cursor: 'pointer', zIndex: 20 }}>▲</button>
+        <button onClick={(e) => { e.preventDefault(); setActiveIndex(Math.min(targets.length - 1, activeIndex + 1)); scrollRef.current.scrollTop = Math.min(targets.length - 1, activeIndex + 1) * itemHeight; }} style={{ position: 'absolute', bottom: 0, left: 0, right: 0, height: `${itemHeight}px`, background: 'rgba(0,0,0,0.5)', color: 'var(--text-muted)', border: 'none', cursor: 'pointer', zIndex: 20 }}>▼</button>
         {/* Scrollable list */}
         <div 
           ref={scrollRef}
           onScroll={handleScroll}
           style={{ 
-            height: '100%', overflowY: 'scroll', scrollSnapType: 'y mandatory', 
+            height: '100%', overflowY: 'scroll', scrollSnapType: 'y mandatory', scrollBehavior: 'smooth',
             paddingTop: `${itemHeight}px`, paddingBottom: `${itemHeight}px`,
             scrollbarWidth: 'none', msOverflowStyle: 'none'
           }}
@@ -74,10 +76,10 @@ export const DialGoalSelector = ({ ratePerMinute, arsRate, setArsRate, onSave, o
             const opacity = distance === 0 ? 1 : distance === 1 ? 0.5 : 0.2;
             
             return (
-              <div key={amt} style={{
+              <div key={amt} onClick={() => { setActiveIndex(idx); scrollRef.current.scrollTop = idx * itemHeight; }} style={{
                 height: `${itemHeight}px`, display: 'flex', alignItems: 'center', justifyContent: 'center',
                 scrollSnapAlign: 'center', fontSize: '1.4rem', fontWeight: distance === 0 ? 800 : 500,
-                color: distance === 0 ? '#a855f7' : 'var(--text-muted)',
+                color: distance === 0 ? '#a855f7' : 'var(--text-muted)', cursor: 'pointer',
                 transform: `scale(${scale})`, opacity, transition: 'all 0.15s ease-out'
               }}>
                 AR${amt.toLocaleString('es-AR')}

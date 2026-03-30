@@ -79,7 +79,7 @@ export const DashboardHeader = ({ onStartAudio, onStopAudio, sttLanguage, onTogg
   const remainingMinsToday = Math.max(0, dailyGoal - stats.dailyMinutes);
 
   return (
-    <header className="dashboard-header glass-panel" style={{ position: 'relative', overflow: 'hidden' }}>
+    <header className="dashboard-header glass-panel" style={{ position: 'relative' }}>
 
       {/* Coin rain overlay */}
       {celebration && (
