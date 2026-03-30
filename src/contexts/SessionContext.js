@@ -5,6 +5,8 @@ const SessionContext = createContext();
 export const SessionProvider = ({ children }) => {
   const [isActive, setIsActive] = useState(false);
   const [sessionSeconds, setSessionSeconds] = useState(0);
+  const [isBreakActive, setIsBreakActive] = useState(false);
+  const [breakSeconds, setBreakSeconds] = useState(0);
 
   // Persistent stats
   const [stats, setStats] = useState(() => {
@@ -12,17 +14,18 @@ export const SessionProvider = ({ children }) => {
     const today = new Date().toDateString();
     let initialStats = {
       dailyMinutes: 0,
+      dailyBreakMinutes: 0,
       weeklyMinutes: 0,
       monthlyMinutes: 0,
       goalMinutes: 5500,
       lastDate: today
     };
     if (saved) {
-    if (saved) {
       try {
         const parsed = JSON.parse(saved);
         if (parsed.lastDate !== today) {
           parsed.dailyMinutes = 0;
+          parsed.dailyBreakMinutes = 0;
           parsed.lastDate = today;
         }
         initialStats = { ...initialStats, ...parsed };
@@ -35,11 +38,11 @@ export const SessionProvider = ({ children }) => {
 
   // ----- CLOUD SYNC LOGIC (ntfy.sh zero-auth) -----
   const lastSyncHashRef = useRef('');
-  const stateRef = useRef({ isActive, sessionSeconds, stats });
+  const stateRef = useRef({ isActive, sessionSeconds, stats, isBreakActive, breakSeconds });
   
   useEffect(() => {
-    stateRef.current = { isActive, sessionSeconds, stats };
-  }, [isActive, sessionSeconds, stats]);
+    stateRef.current = { isActive, sessionSeconds, stats, isBreakActive, breakSeconds };
+  }, [isActive, sessionSeconds, stats, isBreakActive, breakSeconds]);
 
   useEffect(() => {
     const topic = 'catintassist_v1_syncroom';
@@ -58,6 +61,8 @@ export const SessionProvider = ({ children }) => {
              const remoteState = JSON.parse(payload);
              setIsActive(remoteState.isActive);
              setSessionSeconds(remoteState.sessionSeconds);
+             if (remoteState.isBreakActive !== undefined) setIsBreakActive(remoteState.isBreakActive);
+             if (remoteState.breakSeconds !== undefined) setBreakSeconds(remoteState.breakSeconds);
              if (remoteState.stats && remoteState.stats.lastDate) setStats(remoteState.stats);
            }
          }
@@ -75,6 +80,8 @@ export const SessionProvider = ({ children }) => {
           const remoteState = JSON.parse(payload);
           setIsActive(remoteState.isActive);
           setSessionSeconds(remoteState.sessionSeconds);
+          if (remoteState.isBreakActive !== undefined) setIsBreakActive(remoteState.isBreakActive);
+          if (remoteState.breakSeconds !== undefined) setBreakSeconds(remoteState.breakSeconds);
           if (remoteState.stats && remoteState.stats.lastDate) {
             setStats(prev => JSON.stringify(prev) === JSON.stringify(remoteState.stats) ? prev : remoteState.stats);
           }
@@ -91,12 +98,12 @@ export const SessionProvider = ({ children }) => {
       lastSyncHashRef.current = payload;
       fetch(`https://ntfy.sh/catintassist_v1_syncroom`, { method: 'POST', body: payload }).catch(()=>{});
     }
-  }, [isActive, stats]);
+  }, [isActive, stats, isBreakActive]);
 
   useEffect(() => {
     // 4. Background Tick Push for Timer
     const interval = setInterval(() => {
-       if (stateRef.current.isActive) {
+       if (stateRef.current.isActive || stateRef.current.isBreakActive) {
          const payload = JSON.stringify(stateRef.current);
          if (payload !== lastSyncHashRef.current) {
             lastSyncHashRef.current = payload;
@@ -129,9 +136,8 @@ export const SessionProvider = ({ children }) => {
     setIsActive(true);
   };
   
-  const stopSession = () => {
+  const stopSession = (onCallEnded) => {
     setIsActive(false);
-    // On stop, add elapsed time to persistent stats
     const minutesToAdd = sessionSeconds / 60;
     if (minutesToAdd > 0) {
       setStats(prev => {
@@ -144,11 +150,21 @@ export const SessionProvider = ({ children }) => {
           monthlyMinutes: (prev.monthlyMinutes || 0) + minutesToAdd,
           lastDate: today
         };
-        // Explicitly set localStorage to ensure it saves right away
         localStorage.setItem('catintassist_stats', JSON.stringify(newStats));
         return newStats;
       });
+      if (onCallEnded) onCallEnded(minutesToAdd);
     }
+  };
+
+  // End of Day: commit daily total to monthly (called explicitly or auto on new day)
+  const endDay = (onDayEnded) => {
+    setStats(prev => {
+      const newStats = { ...prev, dailyMinutes: 0, dailyBreakMinutes: 0, lastDate: new Date().toDateString() };
+      localStorage.setItem('catintassist_stats', JSON.stringify(newStats));
+      if (onDayEnded) onDayEnded(prev.dailyMinutes);
+      return newStats;
+    });
   };
 
   useEffect(() => {
@@ -168,6 +184,41 @@ export const SessionProvider = ({ children }) => {
     };
   }, [isActive]);
 
+  const breakTimerRef = useRef(null);
+  useEffect(() => {
+    if (isBreakActive) {
+      breakTimerRef.current = setInterval(() => {
+        setBreakSeconds(prev => prev + 1);
+      }, 1000);
+    } else {
+      if (breakTimerRef.current) clearInterval(breakTimerRef.current);
+    }
+    return () => {
+      if (breakTimerRef.current) clearInterval(breakTimerRef.current);
+    };
+  }, [isBreakActive]);
+
+  const startBreak = () => {
+    if (isActive) return;
+    setBreakSeconds(0);
+    setIsBreakActive(true);
+  };
+  
+  const stopBreak = () => {
+    setIsBreakActive(false);
+    const minutesToAdd = breakSeconds / 60;
+    if (minutesToAdd > 0) {
+      setStats(prev => {
+        const newStats = {
+          ...prev,
+          dailyBreakMinutes: (prev.dailyBreakMinutes || 0) + minutesToAdd
+        };
+        localStorage.setItem('catintassist_stats', JSON.stringify(newStats));
+        return newStats;
+      });
+    }
+  };
+
   const updateStat = (key, value) => {
     setStats(prev => ({ ...prev, [key]: Number(value) }));
   };
@@ -182,9 +233,14 @@ export const SessionProvider = ({ children }) => {
     updateStat,
     startSession,
     stopSession,
+    endDay,
     RATE_PER_MINUTE,
     arsRate,
-    setArsRate
+    setArsRate,
+    isBreakActive,
+    breakSeconds,
+    startBreak,
+    stopBreak
   };
 
   return (

@@ -11,7 +11,7 @@ import './index.css';
 
 const Dashboard = () => {
   const { startRecording, stopRecording, captions, clearCaptions, sttLanguage, toggleLanguage, connectionState, connectionMessage } = useDeepgram();
-  const [isToolsOpen, setIsToolsOpen] = useState(false); // Default false, maximizing transcription
+  const [isToolsOpen, setIsToolsOpen] = useState(false);
   
   // Better Hotkeys: 
   // 1. `Alt + Space` or `Escape` will toggle language from anywhere, even when typing
@@ -34,8 +34,8 @@ const Dashboard = () => {
 
   return (
     <div className="app-container">
-      <div id="top-mic-bar-container" style={{ position: 'fixed', top: 0, left: 0, right: 0, height: '3px', zIndex: 9999, pointerEvents: 'none', background: 'transparent' }}>
-        <div id="top-mic-bar" style={{ height: '100%', width: '0%', background: '#10b981', transition: 'width 0.05s ease-out, opacity 0.2s', opacity: 0, boxShadow: '0 0 8px #10b981' }} />
+      <div id="top-mic-bar-container" style={{ position: 'fixed', top: 0, left: 0, right: 0, height: '3px', zIndex: 9999, pointerEvents: 'none' }}>
+        <div id="top-mic-bar" style={{ height: '100%', width: '0%', background: '#10b981', transition: 'width 0.05s ease-out', opacity: 0, boxShadow: '0 0 8px #10b981' }} />
       </div>
       <DashboardHeader 
         onStartAudio={startRecording} 

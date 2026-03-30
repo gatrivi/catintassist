@@ -20,7 +20,7 @@ const getBubbleStyle = (text, isCurrent, lang) => {
   return { borderLeft: `3px solid ${baseBorder}`, backgroundColor: baseBg };
 };
 
-const TranslatedBubble = ({ text, lang, playTTS, stopTTS, playingUrl, prefetchTTS, reverse = false, ttsMode, wordCount, shouldPrefetch }) => {
+const TranslatedBubble = ({ text, lang, playTTS, stopTTS, playingUrl, prefetchTTS, reverse = false, ttsMode, wordCount, shouldPrefetch, emphasisMode }) => {
   const [translation, setTranslation] = useState('');
   const [audioUrl, setAudioUrl] = useState(null);
   const hasAutoPlayedRef = useRef(false);
@@ -65,10 +65,14 @@ const TranslatedBubble = ({ text, lang, playTTS, stopTTS, playingUrl, prefetchTT
 
   const isThisPlaying = playingUrl && audioUrl && playingUrl === audioUrl;
 
+  // Color logic: 'original' = white text / gray translation; 'flipped' = deep blue text / light blue translation
+  const transcriptColor = emphasisMode === 'flipped' ? '#93c5fd' : '#ffffff';
+  const translationColor = emphasisMode === 'flipped' ? '#bfdbfe' : 'rgba(255,255,255,0.4)';
+
   return (
     <div style={{ display: 'flex', gap: '0.25rem', marginTop: '0.1rem', flexDirection: reverse ? 'row-reverse' : 'row', alignItems: 'center' }}>
       <div style={{ flex: 1, textAlign: reverse ? 'right' : 'left' }}>
-        <div style={{ color: '#ffffff', fontWeight: 400, lineHeight: 1.3, fontSize: '0.9rem' }}>{text}</div>
+        <div style={{ color: transcriptColor, fontWeight: emphasisMode === 'flipped' ? 400 : 400, lineHeight: 1.3, fontSize: '0.9rem' }}>{text}</div>
       </div>
 
       <div style={{ 
@@ -105,7 +109,7 @@ const TranslatedBubble = ({ text, lang, playTTS, stopTTS, playingUrl, prefetchTT
 
       <div style={{ 
         flex: 1, 
-        color: 'rgba(255,255,255,0.4)',
+        color: translationColor,
         textAlign: reverse ? 'left' : 'right'
       }}>
         <div style={{ fontWeight: 400, fontStyle: 'italic', lineHeight: 1.3, fontSize: '0.85rem' }}>
@@ -122,6 +126,7 @@ export const TranscriptionBoard = ({ captions, onClear, isToolsOpen, onToggleToo
   const isScrolledUpRef = useRef(false);
   const scrollTimeoutRef = useRef(null);
   const [ttsMode, setTtsMode] = useState('manual');
+  const [emphasisMode, setEmphasisMode] = useState('original'); // 'original' | 'flipped'
   const { playTTS, stopTTS, isPlaying, playingUrl, prefetchTTS } = useTTS();
 
   useEffect(() => {
@@ -175,7 +180,7 @@ export const TranscriptionBoard = ({ captions, onClear, isToolsOpen, onToggleToo
 
   return (
     <div className="glass-panel transcription-area">
-      <div className="notepad-header" style={{ borderBottom: '1px solid var(--panel-border)', paddingBottom: '0.4rem', marginBottom: '0.5rem', display: 'flex', justifyContent: 'space-between', padding: '0.4rem 0.5rem' }}>
+      <div className="notepad-header transcription-toolbar" style={{ borderBottom: '1px solid var(--panel-border)', paddingBottom: '0.4rem', marginBottom: '0.5rem', display: 'flex', justifyContent: 'space-between', padding: '0.4rem 0.5rem' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%' }}>
           <h2 style={{ fontSize: '1rem', color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
             Livestream 
@@ -185,7 +190,21 @@ export const TranscriptionBoard = ({ captions, onClear, isToolsOpen, onToggleToo
           </h2>
           <div style={{ display: 'flex', gap: '0.4rem', alignItems: 'center' }}>
             <button 
-              onClick={() => setTtsMode(m => m === 'manual' ? 'auto' : 'manual')} 
+              onClick={() => setEmphasisMode(m => m === 'original' ? 'flipped' : 'original')}
+              className="btn"
+              style={{
+                background: emphasisMode === 'flipped' ? 'rgba(59, 130, 246, 0.2)' : 'rgba(255,255,255,0.05)',
+                color: emphasisMode === 'flipped' ? '#93c5fd' : 'var(--text-muted)',
+                border: emphasisMode === 'flipped' ? '1px solid rgba(59,130,246,0.4)' : '1px solid var(--panel-border)',
+                padding: '0.2rem 0.5rem',
+                fontSize: '0.7rem'
+              }}
+              title="Toggle text emphasis: original (white) vs translation-first (blue)"
+            >
+              {emphasisMode === 'flipped' ? '🔵 Transl. Focus' : '⚪ Source Focus'}
+            </button>
+            <button
+              onClick={() => setTtsMode(m => m === 'manual' ? 'auto' : 'manual')}
               className="btn" 
               style={{ 
                 background: ttsMode === 'auto' ? 'rgba(16, 185, 129, 0.2)' : 'rgba(255,255,255,0.05)', 
@@ -252,7 +271,7 @@ export const TranscriptionBoard = ({ captions, onClear, isToolsOpen, onToggleToo
                   </span>
                 </div>
               )}
-              <TranslatedBubble text={cap.text} lang={cap.lang} playTTS={playTTS} stopTTS={stopTTS} playingUrl={playingUrl} prefetchTTS={prefetchTTS} reverse={cap.lang === 'es'} ttsMode={ttsMode} wordCount={wordCount} shouldPrefetch={i >= captions.length - 3} />
+              <TranslatedBubble text={cap.text} lang={cap.lang} playTTS={playTTS} stopTTS={stopTTS} playingUrl={playingUrl} prefetchTTS={prefetchTTS} reverse={cap.lang === 'es'} ttsMode={ttsMode} wordCount={wordCount} shouldPrefetch={i >= captions.length - 3} emphasisMode={emphasisMode} />
             </div>
           );
         })}

@@ -10,6 +10,11 @@ export const AudioSettingsProvider = ({ children }) => {
   
   const [localVolume, setLocalVolume] = useState(() => parseFloat(localStorage.getItem('CATINTASSIST_LOCAL_VOL') || '1'));
   const [sinkVolume, setSinkVolume] = useState(() => parseFloat(localStorage.getItem('CATINTASSIST_SINK_VOL') || '1'));
+  const [monitorMic, setMonitorMic] = useState(false);
+  const [monitorVolume, setMonitorVolume] = useState(0.5);
+  const monitorCtxRef = useRef(null);
+  const monitorGainRef = useRef(null);
+  const monitorStreamRef = useRef(null);
 
   const changeLocalVolume = (vol) => { setLocalVolume(vol); localStorage.setItem('CATINTASSIST_LOCAL_VOL', vol); };
   const changeSinkVolume = (vol) => { setSinkVolume(vol); localStorage.setItem('CATINTASSIST_SINK_VOL', vol); };
@@ -144,6 +149,37 @@ export const AudioSettingsProvider = ({ children }) => {
     };
   }, [selectedMicId, selectedSinkId]);
 
+  // Mic Monitor: hear your own voice through local speakers
+  useEffect(() => {
+    if (monitorMic) {
+      const constraints = selectedMicId
+        ? { audio: { deviceId: { exact: selectedMicId }, echoCancellation: false, noiseSuppression: false, autoGainControl: false } }
+        : { audio: { echoCancellation: false, noiseSuppression: false, autoGainControl: false } };
+      navigator.mediaDevices.getUserMedia(constraints).then(stream => {
+        monitorStreamRef.current = stream;
+        const ctx = new (window.AudioContext || window.webkitAudioContext)();
+        monitorCtxRef.current = ctx;
+        const source = ctx.createMediaStreamSource(stream);
+        const gain = ctx.createGain();
+        gain.gain.value = monitorVolume;
+        monitorGainRef.current = gain;
+        source.connect(gain);
+        gain.connect(ctx.destination); // local speakers only
+      }).catch(e => { console.error('Mic monitor failed:', e); setMonitorMic(false); });
+    } else {
+      if (monitorStreamRef.current) { monitorStreamRef.current.getTracks().forEach(t => t.stop()); monitorStreamRef.current = null; }
+      if (monitorCtxRef.current) { monitorCtxRef.current.close().catch(()=>{}); monitorCtxRef.current = null; }
+    }
+    return () => {
+      if (monitorStreamRef.current) { monitorStreamRef.current.getTracks().forEach(t => t.stop()); monitorStreamRef.current = null; }
+      if (monitorCtxRef.current) { monitorCtxRef.current.close().catch(()=>{}); monitorCtxRef.current = null; }
+    };
+  }, [monitorMic, selectedMicId]);
+
+  useEffect(() => {
+    if (monitorGainRef.current) monitorGainRef.current.gain.value = monitorVolume;
+  }, [monitorVolume]);
+
   const changeSinkId = (deviceId) => {
     setSelectedSinkId(deviceId);
     localStorage.setItem('CATINTASSIST_SINK_ID', deviceId);
@@ -155,7 +191,7 @@ export const AudioSettingsProvider = ({ children }) => {
   };
 
   return (
-    <AudioSettingsContext.Provider value={{ outputDevices, inputDevices, selectedSinkId, selectedMicId, changeSinkId, changeMicId, fetchDevices, localVolume, sinkVolume, changeLocalVolume, changeSinkVolume }}>
+    <AudioSettingsContext.Provider value={{ outputDevices, inputDevices, selectedSinkId, selectedMicId, changeSinkId, changeMicId, fetchDevices, localVolume, sinkVolume, changeLocalVolume, changeSinkVolume, monitorMic, setMonitorMic, monitorVolume, setMonitorVolume }}>
       {children}
     </AudioSettingsContext.Provider>
   );

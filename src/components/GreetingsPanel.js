@@ -20,7 +20,7 @@ export const ACTIONS = [
 ];
 
 export const GreetingsPanel = ({ onEditModeChange }) => {
-  const { selectedSinkId, localVolume, sinkVolume, changeLocalVolume, changeSinkVolume } = useAudioSettings();
+  const { selectedSinkId, localVolume, sinkVolume, changeLocalVolume, changeSinkVolume, monitorMic, setMonitorMic, monitorVolume, setMonitorVolume } = useAudioSettings();
   const [mode, setMode] = useState('play'); // 'play' | 'settings'
   const [timeOfDay, setTimeOfDay] = useState('morning');
   const [blobs, setBlobs] = useState({});
@@ -379,6 +379,27 @@ export const GreetingsPanel = ({ onEditModeChange }) => {
                <div style={{ width: (playingKey && blobs[playingKey] && !testMode) ? `${sinkVolume * (40 + Math.random() * 60)}%` : '0%', height: '100%', background: '#10b981', transition: 'width 0.1s' }} />
             </div>
           </div>
+        </div>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '0.75rem' }}>
+          <button
+            onClick={() => setMonitorMic(m => !m)}
+            style={{
+              background: monitorMic ? 'rgba(245, 158, 11, 0.2)' : 'transparent',
+              color: monitorMic ? '#fbbf24' : 'var(--text-muted)',
+              border: monitorMic ? '1px solid rgba(245,158,11,0.4)' : '1px solid transparent',
+              borderRadius: '4px', padding: '0.1rem 0.4rem', cursor: 'pointer', fontSize: '0.7rem',
+              fontWeight: monitorMic ? 700 : 400,
+              animation: monitorMic ? 'pulseGlow 2s infinite' : 'none'
+            }}
+            title="Hear your own mic through your local speakers"
+          >
+            {monitorMic ? '🔴 Mic Monitor ON' : '👂 Mic Monitor'}
+          </button>
+          {monitorMic && (
+            <input type="range" min="0" max="1" step="0.05" value={monitorVolume}
+              onChange={e => setMonitorVolume(parseFloat(e.target.value))}
+              style={{ width: '60px', accentColor: '#f59e0b' }} title="Monitor Volume" />
+          )}
         </div>
       </div>
       
