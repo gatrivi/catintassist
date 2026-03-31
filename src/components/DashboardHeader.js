@@ -3,10 +3,37 @@ import { useSession } from '../contexts/SessionContext';
 import { useAudioSettings } from '../contexts/AudioSettingsContext';
 import { PlayIcon, StopIcon, KeyIcon, formatTime, GoalEditor, EditableMinutes, ConnectionIndicator } from './HeaderWidgets';
 import { DialGoalSelector } from './DialGoalSelector';
+import { useProgressiveAudio } from '../hooks/useProgressiveAudio';
 
-export const DashboardHeader = ({ onStartAudio, onStopAudio, sttLanguage, onToggleLanguage, connectionState, connectionMessage }) => {
+const CelebrationParticles = ({ type, label, coins }) => {
+  const emojis = ['🪙', '🪙', '💸', '💵', '💰', '💎'];
+  // Spread radius: call is smallest, month is massive
+  const spread = type === 'month' ? 800 : (type === 'day' ? 600 : 350);
+  return (
+    <div style={{ position: 'absolute', inset: -50, pointerEvents: 'none', zIndex: 100 }}>
+      {Array.from({ length: coins }).map((_, i) => (
+        <span key={i} style={{
+          position: 'absolute', left: '50%', top: '50%', fontSize: `${0.9 + Math.random() * 0.8}rem`,
+          animation: `coinVacuum 1.6s cubic-bezier(0.25, 0.46, 0.45, 0.94) forwards`,
+          '--start-x': `${(Math.random() - 0.5) * spread}px`, 
+          '--start-y': `${Math.random() * -(spread * 0.8)}px` 
+        }}>{emojis[Math.floor(Math.random() * emojis.length)]}</span>
+      ))}
+      <div style={{
+          position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)',
+          fontSize: '1.2rem', fontWeight: 900,
+          color: type === 'day' || type === 'month' ? '#fcd34d' : '#6ee7b7',
+          textShadow: `0 0 20px ${type === 'day' ? '#f59e0b' : '#10b981'}`,
+          whiteSpace: 'nowrap', animation: `textFloatTarget 2s ease-out forwards`,
+      }}>{label}</div>
+    </div>
+  );
+};
+
+export const DashboardHeader = ({ onStartAudio, onStopAudio, onReconnectStream, sttLanguage, onToggleLanguage, connectionState, connectionMessage }) => {
   const { isActive, sessionSeconds, setSessionSeconds, sessionEarnings, stats, updateStat, startSession, stopSession, endDay, RATE_PER_MINUTE, arsRate, setArsRate, isBreakActive, breakSeconds, startBreak, stopBreak, availSeconds, isEditingScoreboard, setIsEditingScoreboard, visibleCards, toggleCard } = useSession();
   const { outputDevices, inputDevices, selectedSinkId, selectedMicId, changeSinkId, changeMicId, fetchDevices } = useAudioSettings();
+  const audioEngine = useProgressiveAudio();
 
   const [isHold, setIsHold] = useState(false);
   const [holdSeconds, setHoldSeconds] = useState(0);
@@ -21,24 +48,17 @@ export const DashboardHeader = ({ onStartAudio, onStopAudio, sttLanguage, onTogg
   }, [isHold]);
   useEffect(() => { if (!isActive) setIsHold(false); }, [isActive]);
 
-  const playChing = (type) => {
-    try {
-      const ctx = new (window.AudioContext || window.webkitAudioContext)();
-      const t = ctx.currentTime;
-      [[type === 'day' ? 880 : 660, 'triangle', 0, 0.8], [type === 'day' ? 1320 : 1100, 'sine', 0.05, 0.6]].forEach(([freq, wave, delay, dur]) => {
-        const o = ctx.createOscillator(), g = ctx.createGain();
-        o.frequency.value = freq; o.type = wave;
-        g.gain.setValueAtTime(0.5, t + delay); g.gain.exponentialRampToValueAtTime(0.001, t + delay + dur);
-        o.connect(g); g.connect(ctx.destination); o.start(t + delay); o.stop(t + delay + dur);
-      });
-      setTimeout(() => ctx.close().catch(() => {}), 1500);
-    } catch (e) {}
-  };
+  useEffect(() => {
+    // Progressive Audio Tick Engine
+    if (isActive && sessionSeconds > 0 && sessionSeconds % 60 === 0) {
+      audioEngine.playTick();
+    }
+  }, [isActive, sessionSeconds]);
 
-  const handleStart = async () => { const ok = await onStartAudio(); if (ok) startSession(); };
+  const handleStart = async () => { audioEngine.initAudio(); const ok = await onStartAudio(); if (ok) startSession(); };
   const handleStop = () => {
     stopSession((mins) => {
-      playChing('call');
+      audioEngine.playLeatherWallet();
       const dynamicItems = Math.min(80, Math.max(5, Math.floor(mins * 1.5)));
       setCelebration({ type: 'call', label: `+AR$${Math.round(mins * RATE_PER_MINUTE * arsRate).toLocaleString('es-AR')}`, coins: dynamicItems });
       setTimeout(() => setCelebration(null), 3500 + Math.min(1500, dynamicItems * 40));
@@ -47,7 +67,7 @@ export const DashboardHeader = ({ onStartAudio, onStopAudio, sttLanguage, onTogg
   };
   const handleEndDay = () => {
     endDay((mins) => {
-      playChing('day');
+      audioEngine.playMetalChest();
       const dynamicItems = Math.min(200, Math.max(20, Math.floor(mins * 0.4)));
       setCelebration({ type: 'day', label: `Day Banked! +AR$${Math.round(mins * RATE_PER_MINUTE * arsRate).toLocaleString('es-AR')}`, coins: dynamicItems });
       setTimeout(() => setCelebration(null), 5000 + Math.min(3000, dynamicItems * 25));
@@ -85,30 +105,7 @@ export const DashboardHeader = ({ onStartAudio, onStopAudio, sttLanguage, onTogg
   return (
     <header className="dashboard-header glass-panel" style={{ position: 'relative', zIndex: 100 }}>
 
-      {/* Coin rain overlay */}
-      {celebration && (
-        <div style={{ position: 'absolute', inset: 0, pointerEvents: 'none', zIndex: 50, overflow: 'hidden' }}>
-          {Array.from({ length: celebration.coins }).map((_, i) => {
-            const emojis = ['🪙', '🪙', '💸', '💵', '💰', '💎'];
-            return (
-            <span key={i} style={{
-              position: 'absolute', fontSize: `${0.9 + Math.random() * 1.2}rem`,
-              left: `${2 + Math.random() * 96}%`, top: `${-10 - Math.random() * 20}%`,
-              animation: `coinFall ${0.8 + Math.random() * 1.8}s ease-in ${Math.random() * 1.5}s forwards`,
-              transform: `rotate(${Math.random() * 360}deg)`,
-            }}>{emojis[Math.floor(Math.random() * emojis.length)]}</span>
-          )})}
-          <div style={{
-            position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%,-50%)',
-            fontSize: '1.2rem', fontWeight: 900,
-            color: celebration.type === 'day' ? '#fcd34d' : '#6ee7b7',
-            textShadow: `0 0 20px ${celebration.type === 'day' ? '#f59e0b' : '#10b981'}`,
-            whiteSpace: 'nowrap', animation: `celebrationPop ${celebration.type === 'day' ? 5 : 3.5}s ease-out forwards`,
-          }}>{celebration.label}</div>
-        </div>
-      )}
-
-      {/* ── COLLAPSED VIEW ── */}
+      {/* COLLAPSED VIEW */}
       {isCollapsed && (
         <div className="income-card" style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.2rem', padding: '0.2rem 0.4rem', background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(255,255,255,0.05)', overflow: 'hidden' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', flexWrap: 'nowrap', overflowX: 'auto', width: '100%' }}>
@@ -133,9 +130,14 @@ export const DashboardHeader = ({ onStartAudio, onStopAudio, sttLanguage, onTogg
                   )}
                 </>
               ) : (
-                <button className="btn" onClick={() => setIsHold(!isHold)} style={{ fontSize: '0.65rem', padding: '0.2rem 0.5rem', background: isHold ? 'rgba(245,158,11,0.8)' : 'rgba(255,255,255,0.1)', color: isHold ? 'white' : 'var(--text-muted)' }}>
-                  {isHold ? `⏸ ${formatTime(holdSeconds)}` : '⏸ Hold'}
-                </button>
+                <>
+                  <button className="btn" onClick={() => setIsHold(!isHold)} style={{ fontSize: '0.65rem', padding: '0.2rem 0.5rem', background: isHold ? 'rgba(245,158,11,0.8)' : 'rgba(255,255,255,0.1)', color: isHold ? 'white' : 'var(--text-muted)' }}>
+                    {isHold ? `⏸ ${formatTime(holdSeconds)}` : '⏸ Hold'}
+                  </button>
+                  <button className="btn" onClick={onReconnectStream} title="Restart websockets without stopping call timer" style={{ fontSize: '0.65rem', padding: '0.2rem 0.5rem', background: 'rgba(56,189,248,0.1)', color: '#7dd3fc', border: '1px solid rgba(56,189,248,0.3)' }}>
+                    ⚡ Zap
+                  </button>
+                </>
               )}
             </div>
 
@@ -188,6 +190,16 @@ export const DashboardHeader = ({ onStartAudio, onStopAudio, sttLanguage, onTogg
 
         {/* Controls card — sits in place of a scoreboard slot but is permanently visible */}
         <div className="income-card" style={{ gap: '0.4rem', alignItems: 'flex-start', justifyContent: 'center', position: 'relative' }}>
+          
+          {isEditingScoreboard && (
+            <div style={{ position: 'absolute', bottom: -20, left: 0, right: 0, display: 'flex', gap: '0.2rem', justifyContent: 'center', zIndex: 100 }}>
+               <button className="btn" onClick={() => { audioEngine.playLeatherWallet(); setCelebration({ type: 'call', label: '+AR$4,200 (Mock)', coins: 40 }); setTimeout(()=>setCelebration(null), 2500) }} style={{ fontSize: '0.55rem', background: '#333', color: '#fff', padding: '0.1rem 0.3rem' }}>[Demo Call]</button>
+               <button className="btn" onClick={() => { audioEngine.playMetalChest(); setCelebration({ type: 'day', label: 'Day Met (Mock)', coins: 80 }); setTimeout(()=>setCelebration(null), 3500) }} style={{ fontSize: '0.55rem', background: '#333', color: '#fff', padding: '0.1rem 0.3rem' }}>[Demo Day]</button>
+               <button className="btn" onClick={() => { audioEngine.playCarriageVault(); setCelebration({ type: 'month', label: 'M O N T H  M E T !', coins: 160 }); setTimeout(()=>setCelebration(null), 5000) }} style={{ fontSize: '0.55rem', background: '#333', color: '#fff', padding: '0.1rem 0.3rem' }}>[Demo Month]</button>
+            </div>
+          )}
+
+          <div style={{ position: 'absolute', top: 4, right: 4, cursor: 'pointer', opacity: 0.6 }} onClick={() => setIsEditingScoreboard(!isEditingScoreboard)} title="Edit Scoreboards & Test Physics">✏️</div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', flexWrap: 'wrap' }}>
             <ConnectionIndicator state={connectionState} />
             {!isActive ? (
@@ -221,6 +233,9 @@ export const DashboardHeader = ({ onStartAudio, onStopAudio, sttLanguage, onTogg
                   }}
                   onClick={() => setIsHold(!isHold)}>
                   {isHold ? `⏸ ${formatTime(holdSeconds)}` : '⏸ Hold'}
+                </button>
+                <button className="btn" onClick={onReconnectStream} title="Restart websockets without dropping call" style={{ background: 'rgba(56,189,248,0.1)', color: '#7dd3fc', border: '1px solid rgba(56,189,248,0.3)', fontSize: '0.7rem' }}>
+                  ⚡ Zap Stream
                 </button>
                 <button className="btn btn-danger recording" onClick={handleStop} style={{ fontSize: '0.7rem' }}><StopIcon /> Stop</button>
               </>
@@ -261,6 +276,7 @@ export const DashboardHeader = ({ onStartAudio, onStopAudio, sttLanguage, onTogg
         {/* Monthly */}
         {(isEditingScoreboard || visibleCards.month) && (
         <div className="income-card income-tier-1" style={{ opacity: (!visibleCards.month && isEditingScoreboard) ? 0.3 : 1 }}>
+          {(celebration?.type === 'day' || celebration?.type === 'month') && <CelebrationParticles type={celebration.type} label={celebration.label} coins={celebration.coins} />}
           {isEditingScoreboard && <input type="checkbox" checked={visibleCards.month} onChange={() => toggleCard('month')} style={{ position: 'absolute', top: 4, right: 4, transform: 'scale(1.2)', cursor: 'pointer', zIndex: 10 }} />}
           <span className="income-label">This Month</span>
           <span className="income-ars" title={`Hourly Rate: AR$${Math.round(RATE_PER_MINUTE * 60 * arsRate).toLocaleString('es-AR')}`}>AR${Math.round(stats.monthlyMinutes * RATE_PER_MINUTE * arsRate).toLocaleString('es-AR')}</span>
@@ -273,6 +289,7 @@ export const DashboardHeader = ({ onStartAudio, onStopAudio, sttLanguage, onTogg
         {/* Today */}
         {(isEditingScoreboard || visibleCards.today) && (
         <div className="income-card income-tier-2" style={{ cursor: 'pointer', margin: '0 0.2rem', opacity: (!visibleCards.today && isEditingScoreboard) ? 0.3 : 1 }}>
+          {celebration?.type === 'call' && <CelebrationParticles type={celebration.type} label={celebration.label} coins={celebration.coins} />}
           {isEditingScoreboard && <input type="checkbox" checked={visibleCards.today} onChange={() => toggleCard('today')} style={{ position: 'absolute', top: 4, right: 4, transform: 'scale(1.2)', cursor: 'pointer', zIndex: 10 }} />}
           <div onClick={() => !isEditingScoreboard && setIsTodayDialOpen(true)} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }} title="Project this rate">
             <span className="income-label">Today</span>

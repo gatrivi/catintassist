@@ -129,7 +129,7 @@ export const TranscriptionBoard = ({ captions, onClear, isToolsOpen, onToggleToo
   const [ttsMode, setTtsMode] = useState('manual');
   const [emphasisMode, setEmphasisMode] = useState('original'); // 'original' | 'flipped'
   const { playTTS, stopTTS, isPlaying, playingUrl, prefetchTTS } = useTTS();
-  const { isEditingScoreboard, visibleCards, toggleCard } = useSession();
+  const { isEditingScoreboard, visibleCards, toggleCard, isActive, isBreakActive } = useSession();
 
   useEffect(() => {
     if (!isScrolledUpRef.current) {
@@ -260,10 +260,11 @@ export const TranscriptionBoard = ({ captions, onClear, isToolsOpen, onToggleToo
             fontWeight: isActive ? 400 : 700, 
             textAlign: 'center', 
             marginBottom: '20vh',
-            animation: !isActive ? 'pulseWarning 2s infinite' : 'none'
+            animation: (!isActive && !isBreakActive) ? 'pulseWarning 2s infinite' : 'none',
+            opacity: isBreakActive ? 0.8 : 1
           }}>
             {isActive ? 'Livestream audio capture active... waiting for speech.' : 
-             (isBreakActive ? '⏸️ You are currently on Break. Timer is ticking.' : 
+             (isBreakActive ? '⏸️ You are currently on Break. Timer is ticking, get some rest!' : 
              '⚠️ You are OFFLINE. Press Connect above to start capturing audio!')}
           </div>
         )}

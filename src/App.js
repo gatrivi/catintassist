@@ -10,7 +10,7 @@ import { useDeepgram } from './hooks/useDeepgram';
 import './index.css';
 
 const Dashboard = () => {
-  const { startRecording, stopRecording, captions, clearCaptions, sttLanguage, toggleLanguage, connectionState, connectionMessage } = useDeepgram();
+  const { startRecording, stopRecording, reconnectStream, captions, clearCaptions, sttLanguage, toggleLanguage, connectionState, connectionMessage } = useDeepgram();
   const [isToolsOpen, setIsToolsOpen] = useState(false);
   
   // Better Hotkeys: 
@@ -40,6 +40,7 @@ const Dashboard = () => {
       <DashboardHeader 
         onStartAudio={startRecording} 
         onStopAudio={stopRecording} 
+        onReconnectStream={reconnectStream}
         sttLanguage={sttLanguage}
         onToggleLanguage={toggleLanguage}
         connectionState={connectionState}

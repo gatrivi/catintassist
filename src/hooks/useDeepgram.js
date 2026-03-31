@@ -213,6 +213,15 @@ export const useDeepgram = () => {
     // when clicking Connect again. Browser "Stop Sharing" handles actual track stop.
   }, []);
 
+  const reconnectStream = useCallback(() => {
+    closeConnections();
+    if (streamRef.current) {
+      setConnectionState('connecting');
+      setConnectionMessage('Zapping WebSockets...');
+      startDeepgram(streamRef.current);
+    }
+  }, []);
+
   const clearCaptions = () => setCaptions([]);
 
   const toggleLanguage = () => {
@@ -233,5 +242,5 @@ export const useDeepgram = () => {
     });
   };
 
-  return { startRecording, stopRecording, captions, clearCaptions, sttLanguage, toggleLanguage, connectionState, connectionMessage };
+  return { startRecording, stopRecording, reconnectStream, captions, clearCaptions, sttLanguage, toggleLanguage, connectionState, connectionMessage };
 };

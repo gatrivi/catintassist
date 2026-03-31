@@ -54,18 +54,18 @@ body {
   100% { box-shadow: 0 0 0 0 transparent; }
 }
 
-@keyframes coinFall {
-  0%   { transform: translateY(-10px) rotate(0deg); opacity: 1; }
-  80%  { opacity: 1; }
-  100% { transform: translateY(120px) rotate(720deg); opacity: 0; }
+@keyframes coinVacuum {
+  0% { transform: translate(var(--start-x), var(--start-y)) scale(0) rotate(0deg); opacity: 0; filter: drop-shadow(0 0 10px gold); }
+  10% { transform: translate(var(--start-x), var(--start-y)) scale(1.5) rotate(90deg); opacity: 1; filter: drop-shadow(0 0 4px gold); }
+  50% { transform: translate(var(--start-x), var(--start-y)) scale(1) rotate(270deg); opacity: 0.9; filter: drop-shadow(0 0 2px rgba(255,215,0,0.5)); }
+  100% { transform: translate(0, 0) scale(0.2) rotate(720deg); opacity: 0; filter: brightness(2); }
 }
 
-@keyframes celebrationPop {
-  0%   { transform: scale(0.5) translateY(10px); opacity: 0; }
-  30%  { transform: scale(1.15) translateY(-4px); opacity: 1; }
-  60%  { transform: scale(1) translateY(0); }
-  85%  { opacity: 1; }
-  100% { opacity: 0; }
+@keyframes textFloatTarget {
+  0%   { transform: translate(-50%, -50%) scale(0.5); opacity: 0; }
+  20%  { transform: translate(-50%, -60%) scale(1.15); opacity: 1; text-shadow: 0 0 20px rgba(255,255,255, 0.8); }
+  80%  { transform: translate(-50%, -80%) scale(1); opacity: 1; text-shadow: 0 0 5px rgba(255,255,255, 0.4); }
+  100% { transform: translate(-50%, -100%) scale(0.8); opacity: 0; }
 }
 
 @keyframes fadeSlideIn {
