@@ -74,9 +74,14 @@ export const useDeepgram = () => {
           const now = Date.now();
           const timeSinceLast = now - lastTranscriptTimeRef.current;
           lastTranscriptTimeRef.current = now;
-          const isNewTurn = timeSinceLast > 3000;
+          // Break into a new bubble if there's >1.2s of silence (a breath) 
+          // OR if the current bubble is >25 words and we hit a natural Deepgram is_final punctuation break.
+          const isSilentBreak = timeSinceLast > 1200;
 
           setCaptions(prev => {
+            const isPunctuationBreak = prev.length > 0 && prev[prev.length - 1].text?.split(/\s+/).length > 25 && isFinal;
+            const isNewTurn = isSilentBreak || isPunctuationBreak;
+
             let last = prev[prev.length - 1];
             if (!last || isNewTurn) {
               last = { 

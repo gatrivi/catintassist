@@ -3,11 +3,33 @@ import React, { createContext, useContext, useState, useEffect, useRef } from 'r
 const SessionContext = createContext();
 
 export const SessionProvider = ({ children }) => {
-  const [isActive, setIsActive] = useState(false);
-  const [sessionSeconds, setSessionSeconds] = useState(0);
-  const [isBreakActive, setIsBreakActive] = useState(false);
-  const [breakSeconds, setBreakSeconds] = useState(0);
-  const [availSeconds, setAvailSeconds] = useState(0);
+  const [isActive, setIsActive] = useState(() => JSON.parse(localStorage.getItem('catint_active')) || false);
+  const [sessionSeconds, setSessionSeconds] = useState(() => Number(localStorage.getItem('catint_s_sec')) || 0);
+  const [isBreakActive, setIsBreakActive] = useState(() => JSON.parse(localStorage.getItem('catint_break')) || false);
+  const [breakSeconds, setBreakSeconds] = useState(() => Number(localStorage.getItem('catint_b_sec')) || 0);
+  const [availSeconds, setAvailSeconds] = useState(() => Number(localStorage.getItem('catint_a_sec')) || 0);
+
+  useEffect(() => { localStorage.setItem('catint_active', JSON.stringify(isActive)); }, [isActive]);
+  useEffect(() => { localStorage.setItem('catint_s_sec', sessionSeconds); }, [sessionSeconds]);
+  useEffect(() => { localStorage.setItem('catint_break', JSON.stringify(isBreakActive)); }, [isBreakActive]);
+  useEffect(() => { localStorage.setItem('catint_b_sec', breakSeconds); }, [breakSeconds]);
+  useEffect(() => { localStorage.setItem('catint_a_sec', availSeconds); }, [availSeconds]);
+
+  // Scoreboard Customization State
+  const [isEditingScoreboard, setIsEditingScoreboard] = useState(false);
+  const [visibleCards, setVisibleCards] = useState(() => {
+    try {
+      const saved = localStorage.getItem('catintassist_visible_cards');
+      if (saved) return JSON.parse(saved);
+    } catch(e) {}
+    return { controls: true, month: true, today: true, call: true, break: true, avail: true, goal: true, transcription: true };
+  });
+
+  useEffect(() => {
+    localStorage.setItem('catintassist_visible_cards', JSON.stringify(visibleCards));
+  }, [visibleCards]);
+
+  const toggleCard = (key) => setVisibleCards(v => ({ ...v, [key]: !v[key] }));
 
   // Persistent stats
   const [stats, setStats] = useState(() => {
@@ -264,6 +286,7 @@ export const SessionProvider = ({ children }) => {
   const value = {
     isActive,
     sessionSeconds,
+    setSessionSeconds,
     sessionEarnings,
     stats,
     updateStat,
@@ -277,7 +300,11 @@ export const SessionProvider = ({ children }) => {
     breakSeconds,
     startBreak,
     stopBreak,
-    availSeconds
+    availSeconds,
+    isEditingScoreboard,
+    setIsEditingScoreboard,
+    visibleCards,
+    toggleCard
   };
 
   return (

@@ -3,10 +3,12 @@ cats interpreter assistant app
 CORE VALUES
 - keep your messages brief, i can seldom dedicate more htan 10% attention to this.
 - code as if for a toddler, simple, clear, organize, anottated, and in all manners try to economize tokens, it makes no sense to set a data center on fire to change a font on an invisible sub menu.
+- this is a transcription app: 80% of viewport must be occupied by actual transcription and translation
+- the remaining 20% is for keeping track, of this its key that i meet my monthly target, and for that i need to see how much i have to work per day, how much i am working per day, and how much time i have left, 
 
 MO 22
-[] still cant anotate or keep track of breaks, how much ive been working today or a visual representation of my workday. how long ive worked wo breaks. 
-[] still dont have a 15 min timer for holds.
+[x] still cant anotate or keep track of breaks, how much ive been working today or a visual representation of my workday. how long ive worked wo breaks. 
+[x] still dont have a 15 min timer for holds.
 [] daily min average is still barely visible. remember i have to be at 67% at all times since 100% zoom doesnt fit in my monitor.
 
 
@@ -41,7 +43,7 @@ IDEAL
    - many speakers are too loud, others too quiet
    [] app should never allow sounds to deaf me, nor speakjers to be so low i cant hear me. this might be a technical nightmare, but worth exploring
 [] app can interact with the tab that handles my interpreter platform and auto pick up calls
-[] amounts should in ARS, usd less vibile.
+[x] amounts should in ARS, usd less vibile.
 
 DOPNE Ju 19
 [x] prposed translation is offered side by side with original text
