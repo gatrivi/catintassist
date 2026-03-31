@@ -74,13 +74,13 @@ export const useDeepgram = () => {
           const now = Date.now();
           const timeSinceLast = now - lastTranscriptTimeRef.current;
           lastTranscriptTimeRef.current = now;
-          // Break into a new bubble if there's >1.2s of silence (a breath) 
-          // OR if the current bubble is >25 words and we hit a natural Deepgram is_final punctuation break.
-          const isSilentBreak = timeSinceLast > 1200;
+          // Break into a new bubble if there's >1.0s of silence (a breath). 
+          // We removed the forced 25-word chunking because forcing a new bubble while the slower pipeline 
+          // is still emitting interims causes it to dump its residual buffer into the new bubble, creating duplicate sentences!
+          const isSilentBreak = timeSinceLast > 1000;
 
           setCaptions(prev => {
-            const isPunctuationBreak = prev.length > 0 && prev[prev.length - 1].text?.split(/\s+/).length > 25 && isFinal;
-            const isNewTurn = isSilentBreak || isPunctuationBreak;
+            const isNewTurn = isSilentBreak;
 
             let last = prev[prev.length - 1];
             if (!last || isNewTurn) {
