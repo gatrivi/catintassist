@@ -254,8 +254,17 @@ export const TranscriptionBoard = ({ captions, onClear, isToolsOpen, onToggleToo
         <div style={{ flex: '1 1 auto' }} />
         
         {captions.length === 0 && (
-          <div style={{ color: 'var(--text-muted)', fontStyle: 'italic', textAlign: 'center', marginBottom: '20vh' }}>
-            Waiting for audio capture to begin...
+          <div style={{ 
+            color: isActive ? 'var(--text-muted)' : (isBreakActive ? '#fb923c' : '#ef4444'), 
+            fontStyle: 'italic', 
+            fontWeight: isActive ? 400 : 700, 
+            textAlign: 'center', 
+            marginBottom: '20vh',
+            animation: !isActive ? 'pulseWarning 2s infinite' : 'none'
+          }}>
+            {isActive ? 'Livestream audio capture active... waiting for speech.' : 
+             (isBreakActive ? '⏸️ You are currently on Break. Timer is ticking.' : 
+             '⚠️ You are OFFLINE. Press Connect above to start capturing audio!')}
           </div>
         )}
         {captions.map((cap, i) => {

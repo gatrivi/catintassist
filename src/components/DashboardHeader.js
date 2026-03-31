@@ -263,7 +263,7 @@ export const DashboardHeader = ({ onStartAudio, onStopAudio, sttLanguage, onTogg
         <div className="income-card income-tier-1" style={{ opacity: (!visibleCards.month && isEditingScoreboard) ? 0.3 : 1 }}>
           {isEditingScoreboard && <input type="checkbox" checked={visibleCards.month} onChange={() => toggleCard('month')} style={{ position: 'absolute', top: 4, right: 4, transform: 'scale(1.2)', cursor: 'pointer', zIndex: 10 }} />}
           <span className="income-label">This Month</span>
-          <span className="income-ars">AR${Math.round(stats.monthlyMinutes * RATE_PER_MINUTE * arsRate).toLocaleString('es-AR')}</span>
+          <span className="income-ars" title={`Hourly Rate: AR$${Math.round(RATE_PER_MINUTE * 60 * arsRate).toLocaleString('es-AR')}`}>AR${Math.round(stats.monthlyMinutes * RATE_PER_MINUTE * arsRate).toLocaleString('es-AR')}</span>
           <span style={{ fontSize: '0.8rem', color: '#d8b4fe', fontWeight: 600 }}>🚀 Max: AR${monthlyMaxArs}</span>
           <span className="income-usd" style={{ opacity: 0.4, fontSize: '0.6rem' }}>${(stats.monthlyMinutes * RATE_PER_MINUTE).toFixed(2)} USD</span>
           <EditableMinutes value={stats.monthlyMinutes} updateFn={updateStat} statKey="monthlyMinutes" />
@@ -276,7 +276,7 @@ export const DashboardHeader = ({ onStartAudio, onStopAudio, sttLanguage, onTogg
           {isEditingScoreboard && <input type="checkbox" checked={visibleCards.today} onChange={() => toggleCard('today')} style={{ position: 'absolute', top: 4, right: 4, transform: 'scale(1.2)', cursor: 'pointer', zIndex: 10 }} />}
           <div onClick={() => !isEditingScoreboard && setIsTodayDialOpen(true)} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }} title="Project this rate">
             <span className="income-label">Today</span>
-            <span className="income-ars">AR${Math.round(stats.dailyMinutes * RATE_PER_MINUTE * arsRate).toLocaleString('es-AR')}</span>
+            <span className="income-ars" title={`Hourly Rate: AR$${Math.round(RATE_PER_MINUTE * 60 * arsRate).toLocaleString('es-AR')}`}>AR${Math.round(stats.dailyMinutes * RATE_PER_MINUTE * arsRate).toLocaleString('es-AR')}</span>
             <span style={{ fontSize: '0.75rem', color: '#d8b4fe', fontWeight: 600 }}>🚀 Max: AR${dailyMaxArs}</span>
             <span className="income-usd" style={{ opacity: 0.4, fontSize: '0.6rem' }}>${(stats.dailyMinutes * RATE_PER_MINUTE).toFixed(2)} USD</span>
           </div>
@@ -300,7 +300,7 @@ export const DashboardHeader = ({ onStartAudio, onStopAudio, sttLanguage, onTogg
         <div className={`income-card income-tier-3 ${isActive ? 'active' : ''}`} style={{ opacity: (!visibleCards.call && isEditingScoreboard) ? 0.3 : 1 }}>
           {isEditingScoreboard && <input type="checkbox" checked={visibleCards.call} onChange={() => toggleCard('call')} style={{ position: 'absolute', top: 4, right: 4, transform: 'scale(1.2)', cursor: 'pointer', zIndex: 10 }} />}
           <span className="income-label">Current Call ({formatTime(sessionSeconds)})</span>
-          <span className="income-ars">AR${Math.round(sessionEarnings * arsRate).toLocaleString('es-AR')}</span>
+          <span className="income-ars" title={`Hourly Rate: AR$${Math.round(RATE_PER_MINUTE * 60 * arsRate).toLocaleString('es-AR')}`}>AR${Math.round(sessionEarnings * arsRate).toLocaleString('es-AR')}</span>
           <span className="income-usd" style={{ opacity: 0.7 }}>${sessionEarnings.toFixed(2)} USD</span>
           <EditableMinutes value={sessionSeconds / 60} updateFn={(k, v) => setSessionSeconds(Math.max(0, v * 60))} statKey="sessionSeconds" />
         </div>
