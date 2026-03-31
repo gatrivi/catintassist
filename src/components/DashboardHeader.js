@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useSession } from '../contexts/SessionContext';
 import { useAudioSettings } from '../contexts/AudioSettingsContext';
 import { PlayIcon, StopIcon, KeyIcon, formatTime, GoalEditor, EditableMinutes, ConnectionIndicator } from './HeaderWidgets';
+import { DialGoalSelector } from './DialGoalSelector';
 
 export const DashboardHeader = ({ onStartAudio, onStopAudio, sttLanguage, onToggleLanguage, connectionState, connectionMessage }) => {
   const { isActive, sessionSeconds, sessionEarnings, stats, updateStat, startSession, stopSession, endDay, RATE_PER_MINUTE, arsRate, setArsRate, isBreakActive, breakSeconds, startBreak, stopBreak, availSeconds } = useSession();
@@ -11,6 +12,7 @@ export const DashboardHeader = ({ onStartAudio, onStopAudio, sttLanguage, onTogg
   const [holdSeconds, setHoldSeconds] = useState(0);
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [celebration, setCelebration] = useState(null);
+  const [isTodayDialOpen, setIsTodayDialOpen] = useState(false);
 
   useEffect(() => {
     let iv; if (isHold) iv = setInterval(() => setHoldSeconds(s => s + 1), 1000); else setHoldSeconds(0);
@@ -189,12 +191,25 @@ export const DashboardHeader = ({ onStartAudio, onStopAudio, sttLanguage, onTogg
         </div>
 
         {/* Today */}
-        <div className="income-card income-tier-2">
-          <span className="income-label">Today</span>
-          <span className="income-ars">AR${Math.round(stats.dailyMinutes * RATE_PER_MINUTE * arsRate).toLocaleString('es-AR')}</span>
-          <span style={{ fontSize: '0.75rem', color: '#d8b4fe', fontWeight: 600 }}>🚀 Max: AR${dailyMaxArs}</span>
-          <span className="income-usd" style={{ opacity: 0.4, fontSize: '0.6rem' }}>${(stats.dailyMinutes * RATE_PER_MINUTE).toFixed(2)} USD</span>
+        <div className="income-card income-tier-2" style={{ cursor: 'pointer' }}>
+          <div onClick={() => setIsTodayDialOpen(true)} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }} title="Project this rate">
+            <span className="income-label">Today</span>
+            <span className="income-ars">AR${Math.round(stats.dailyMinutes * RATE_PER_MINUTE * arsRate).toLocaleString('es-AR')}</span>
+            <span style={{ fontSize: '0.75rem', color: '#d8b4fe', fontWeight: 600 }}>🚀 Max: AR${dailyMaxArs}</span>
+            <span className="income-usd" style={{ opacity: 0.4, fontSize: '0.6rem' }}>${(stats.dailyMinutes * RATE_PER_MINUTE).toFixed(2)} USD</span>
+          </div>
           <EditableMinutes value={stats.dailyMinutes} updateFn={updateStat} statKey="dailyMinutes" />
+          
+          {isTodayDialOpen && (
+            <DialGoalSelector 
+              ratePerMinute={RATE_PER_MINUTE} 
+              arsRate={arsRate} 
+              setArsRate={setArsRate}
+              initialCash={stats.dailyMinutes * RATE_PER_MINUTE * arsRate}
+              onSave={(m) => { updateStat('goalMinutes', m); setIsTodayDialOpen(false); }} 
+              onCancel={() => setIsTodayDialOpen(false)} 
+            />
+          )}
         </div>
 
         {/* Current Call */}

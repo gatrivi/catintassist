@@ -1,9 +1,21 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useMemo } from 'react';
 
-const targets = Array.from({ length: 37 }, (_, i) => 20000 + (i * 5000)); // 20k to 200k in 5k steps
+export const DialGoalSelector = ({ ratePerMinute, arsRate, setArsRate, initialCash, onSave, onCancel }) => {
+  const targets = useMemo(() => {
+    let arr = Array.from({ length: 37 }, (_, i) => 20000 + (i * 5000));
+    if (initialCash && initialCash > 0) {
+      const val = Math.round(initialCash);
+      if (!arr.includes(val)) arr.push(val);
+    }
+    arr.sort((a, b) => a - b);
+    return arr;
+  }, [initialCash]);
 
-export const DialGoalSelector = ({ ratePerMinute, arsRate, setArsRate, onSave, onCancel }) => {
-  const [activeIndex, setActiveIndex] = useState(6); // Default to 50k
+  const [activeIndex, setActiveIndex] = useState(() => {
+    if (initialCash && initialCash > 0) return targets.indexOf(Math.round(initialCash));
+    return targets.indexOf(50000) !== -1 ? targets.indexOf(50000) : 6;
+  }); // Default to initialCash or 50k
+
   const [workDays, setWorkDays] = useState(22); // 22 = 5d, 26 = 6d, 30 = 7d
   const scrollRef = useRef(null);
   const itemHeight = 44; // px
@@ -13,7 +25,7 @@ export const DialGoalSelector = ({ ratePerMinute, arsRate, setArsRate, onSave, o
     if (scrollRef.current) {
       scrollRef.current.scrollTop = activeIndex * itemHeight;
     }
-  }, []);
+  }, [activeIndex]);
 
   const handleScroll = (e) => {
     const top = e.target.scrollTop;
