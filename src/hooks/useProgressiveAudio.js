@@ -139,5 +139,12 @@ export const useProgressiveAudio = () => {
     });
   }, []);
 
-  return { initAudio, playTick, playLeatherWallet, playMetalChest, playCarriageVault };
+  const stopAll = useCallback(() => {
+    if (audioCtxRef.current) {
+      audioCtxRef.current.close().catch(() => {});
+      audioCtxRef.current = null;
+    }
+  }, []);
+
+  return { initAudio, playTick, playLeatherWallet, playMetalChest, playCarriageVault, stopAll };
 };

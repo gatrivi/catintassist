@@ -5,12 +5,12 @@ import { PlayIcon, StopIcon, KeyIcon, formatTime, GoalEditor, EditableMinutes, C
 import { DialGoalSelector } from './DialGoalSelector';
 import { useProgressiveAudio } from '../hooks/useProgressiveAudio';
 
-const CelebrationParticles = ({ type, label, coins }) => {
+const CelebrationParticles = ({ type, label, coins, onDismiss }) => {
   const emojis = ['🪙', '🪙', '💸', '💵', '💰', '💎'];
   // Spread radius: call is smallest, month is massive
   const spread = type === 'month' ? 800 : (type === 'day' ? 600 : 350);
   return (
-    <div style={{ position: 'absolute', inset: -50, pointerEvents: 'none', zIndex: 100 }}>
+    <div style={{ position: 'absolute', inset: -50, pointerEvents: 'auto', cursor: 'pointer', zIndex: 100 }} onClick={onDismiss} title="Click to skip animation and kill sound">
       {Array.from({ length: coins }).map((_, i) => (
         <span key={i} style={{
           position: 'absolute', left: '50%', top: '50%', fontSize: `${0.9 + Math.random() * 0.8}rem`,
@@ -25,7 +25,10 @@ const CelebrationParticles = ({ type, label, coins }) => {
           color: type === 'day' || type === 'month' ? '#fcd34d' : '#6ee7b7',
           textShadow: `0 0 20px ${type === 'day' ? '#f59e0b' : '#10b981'}`,
           whiteSpace: 'nowrap', animation: `textFloatTarget 2s ease-out forwards`,
-      }}>{label}</div>
+      }}>
+        {label}
+        <div style={{ fontSize: '0.5rem', fontWeight: 400, color: 'rgba(255,255,255,0.7)', textShadow: 'none', marginTop: '0.2rem' }}>[Click to Skip]</div>
+      </div>
     </div>
   );
 };
@@ -276,7 +279,7 @@ export const DashboardHeader = ({ onStartAudio, onStopAudio, onReconnectStream, 
         {/* Monthly */}
         {(isEditingScoreboard || visibleCards.month) && (
         <div className="income-card income-tier-1" style={{ opacity: (!visibleCards.month && isEditingScoreboard) ? 0.3 : 1 }}>
-          {(celebration?.type === 'day' || celebration?.type === 'month') && <CelebrationParticles type={celebration.type} label={celebration.label} coins={celebration.coins} />}
+          {(celebration?.type === 'day' || celebration?.type === 'month') && <CelebrationParticles type={celebration.type} label={celebration.label} coins={celebration.coins} onDismiss={() => { setCelebration(null); audioEngine.stopAll(); }} />}
           {isEditingScoreboard && <input type="checkbox" checked={visibleCards.month} onChange={() => toggleCard('month')} style={{ position: 'absolute', top: 4, right: 4, transform: 'scale(1.2)', cursor: 'pointer', zIndex: 10 }} />}
           <span className="income-label">This Month</span>
           <span className="income-ars" title={`Hourly Rate: AR$${Math.round(RATE_PER_MINUTE * 60 * arsRate).toLocaleString('es-AR')}`}>AR${Math.round(stats.monthlyMinutes * RATE_PER_MINUTE * arsRate).toLocaleString('es-AR')}</span>
@@ -289,7 +292,7 @@ export const DashboardHeader = ({ onStartAudio, onStopAudio, onReconnectStream, 
         {/* Today */}
         {(isEditingScoreboard || visibleCards.today) && (
         <div className="income-card income-tier-2" style={{ cursor: 'pointer', margin: '0 0.2rem', opacity: (!visibleCards.today && isEditingScoreboard) ? 0.3 : 1 }}>
-          {celebration?.type === 'call' && <CelebrationParticles type={celebration.type} label={celebration.label} coins={celebration.coins} />}
+          {celebration?.type === 'call' && <CelebrationParticles type={celebration.type} label={celebration.label} coins={celebration.coins} onDismiss={() => { setCelebration(null); audioEngine.stopAll(); }} />}
           {isEditingScoreboard && <input type="checkbox" checked={visibleCards.today} onChange={() => toggleCard('today')} style={{ position: 'absolute', top: 4, right: 4, transform: 'scale(1.2)', cursor: 'pointer', zIndex: 10 }} />}
           <div onClick={() => !isEditingScoreboard && setIsTodayDialOpen(true)} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }} title="Project this rate">
             <span className="income-label">Today</span>
