@@ -171,7 +171,7 @@ export const DialGoalSelector = ({ ratePerMinute, arsRate, setArsRate, initialCa
             key={opt.val}
             onClick={() => setWorkDays(opt.val)}
             style={{
-              flex: 1, padding: '0.4rem 0', borderRadius: '6px', border: 'none', cursor: 'pointer',
+              flex: 1, padding: '0.4rem 0', borderRadius: '6px', cursor: 'pointer',
               display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.1rem',
               background: workDays === opt.val ? 'rgba(56,189,248,0.2)' : 'rgba(0,0,0,0.3)',
               color: workDays === opt.val ? '#7dd3fc' : 'var(--text-muted)',
