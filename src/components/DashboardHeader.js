@@ -68,7 +68,7 @@ export const DashboardHeader = ({ onStartAudio, onStopAudio, onReconnectStream, 
     if (isActive && sessionSeconds > 0 && sessionSeconds % 60 === 0) {
       audioEngine.playTick();
     }
-  }, [isActive, sessionSeconds]);
+  }, [isActive, sessionSeconds, audioEngine]);
 
   const handleStart = async () => { audioEngine.initAudio(); const ok = await onStartAudio(); if (ok) startSession(); };
   const handleStop = () => {

@@ -1,5 +1,5 @@
-import React, { useEffect, useRef, useState, useLayoutEffect } from 'react';
-import { useAudioSettings } from '../contexts/AudioSettingsContext';
+import React, { useEffect, useRef, useState } from 'react';
+
 import { useTTS } from '../hooks/useTTS';
 import { useSession } from '../contexts/SessionContext';
 
@@ -52,7 +52,7 @@ const TranslatedBubble = ({ text, lang, playTTS, stopTTS, playingUrl, prefetchTT
       }
     }, 600);
     return () => clearTimeout(timer);
-  }, [text, lang, prefetchTTS]);
+  }, [text, lang, prefetchTTS, shouldPrefetch]);
 
   const targetLang = lang === 'en' ? 'es' : 'en';
 

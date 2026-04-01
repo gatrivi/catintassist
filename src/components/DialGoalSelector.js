@@ -19,15 +19,19 @@ export const DialGoalSelector = ({ ratePerMinute, arsRate, setArsRate, initialCa
   const [workDays, setWorkDays] = useState(22); // 22 = 5d, 26 = 6d, 30 = 7d
   const scrollRef = useRef(null);
   const itemHeight = 44; // px
+  const isUserScrolling = useRef(false);
+  const scrollTimeout = useRef(null);
 
   useEffect(() => {
-    // Snap to the default index on mount
-    if (scrollRef.current) {
+    // Snap to the default index on mount or when externally changed
+    if (scrollRef.current && !isUserScrolling.current) {
       scrollRef.current.scrollTop = activeIndex * itemHeight;
     }
-  }, [activeIndex]);
+  }, [activeIndex, itemHeight]);
 
   const handleScroll = (e) => {
+    if (!isUserScrolling.current) return;
+    
     const top = e.target.scrollTop;
     const index = Math.min(targets.length - 1, Math.max(0, Math.round(top / itemHeight)));
     if (index !== activeIndex) {
@@ -86,21 +90,29 @@ export const DialGoalSelector = ({ ratePerMinute, arsRate, setArsRate, initialCa
         <div 
           ref={scrollRef}
           onScroll={handleScroll}
+          onWheel={() => {
+            isUserScrolling.current = true;
+            if (scrollTimeout.current) clearTimeout(scrollTimeout.current);
+            scrollTimeout.current = setTimeout(() => { isUserScrolling.current = false; }, 500);
+          }}
           onMouseDown={(e) => {
+            isUserScrolling.current = true;
             const el = scrollRef.current;
             el.dataset.isDragging = true;
             el.dataset.startY = e.pageY - el.offsetTop;
             el.dataset.scrollTop = el.scrollTop;
-            el.style.scrollBehavior = 'auto'; // allow immediate dragging
+            el.style.scrollBehavior = 'auto'; 
             el.style.scrollSnapType = 'none';
           }}
           onMouseLeave={() => { 
              const el = scrollRef.current; 
              if (el) { el.dataset.isDragging = false; el.style.scrollBehavior = 'smooth'; el.style.scrollSnapType = 'y mandatory'; }
+             setTimeout(() => { if (isUserScrolling.current) isUserScrolling.current = false; }, 500);
           }}
           onMouseUp={() => { 
              const el = scrollRef.current; 
              if (el) { el.dataset.isDragging = false; el.style.scrollBehavior = 'smooth'; el.style.scrollSnapType = 'y mandatory'; }
+             setTimeout(() => { if (isUserScrolling.current) isUserScrolling.current = false; }, 500);
           }}
           onMouseMove={(e) => {
             const el = scrollRef.current;

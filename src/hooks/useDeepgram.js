@@ -1,4 +1,23 @@
-import { useState, useRef, useCallback, useEffect } from 'react';
+import { useState, useRef, useCallback } from 'react';
+
+// Helper to remove overlapping prefix from a new string based on a base string
+// Example: base="Hello world", addition="world how are you" -> returns "how are you"
+const removeOverlap = (base, addition) => {
+  if (!base || !addition) return addition;
+  const baseWords = base.trim().split(/\s+/);
+  const additionWords = addition.trim().split(/\s+/);
+  
+  // Look for the longest suffix of base that matches prefix of addition
+  for (let i = Math.min(baseWords.length, additionWords.length); i > 0; i--) {
+    const baseSuffix = baseWords.slice(-i).join(' ').toLowerCase();
+    const additionPrefix = additionWords.slice(0, i).join(' ').toLowerCase();
+    // Use simple string comparison but normalize. We could also use fuzzy but let's keep it simple as requested.
+    if (baseSuffix === additionPrefix) {
+      return additionWords.slice(i).join(' ');
+    }
+  }
+  return addition;
+};
 
 export const useDeepgram = () => {
   const [captions, setCaptions] = useState([]);
@@ -93,13 +112,32 @@ export const useDeepgram = () => {
             }
 
             const current = { ...last };
+            
+            // Clean the transcript of any overlap with its own finalized text (internal dedupe)
+            // If it's a new turn, we ALSO check against the PREVIOUS bubble's finalized text
+            const prevBubbleText = isNewTurn ? (prev[prev.length - 2]?.text || '') : '';
+            
             if (lang === 'en') {
-              if (isFinal) { current.enFinalized = (current.enFinalized + ' ' + transcript).trim(); current.enInterim = ''; }
-              else { current.enInterim = transcript; }
+              const cleanedTranscript = removeOverlap(current.enFinalized || prevBubbleText, transcript);
+              if (!cleanedTranscript.trim()) return prev; // Avoid empty word bubbles
+
+              if (isFinal) { 
+                current.enFinalized = (current.enFinalized + ' ' + cleanedTranscript).trim(); 
+                current.enInterim = ''; 
+              } else { 
+                current.enInterim = cleanedTranscript; 
+              }
               if (confidence > 0) current.enConf = confidence; 
             } else {
-              if (isFinal) { current.esFinalized = (current.esFinalized + ' ' + transcript).trim(); current.esInterim = ''; }
-              else { current.esInterim = transcript; }
+              const cleanedTranscript = removeOverlap(current.esFinalized || prevBubbleText, transcript);
+              if (!cleanedTranscript.trim()) return prev;
+
+              if (isFinal) { 
+                current.esFinalized = (current.esFinalized + ' ' + cleanedTranscript).trim(); 
+                current.esInterim = ''; 
+              } else { 
+                current.esInterim = cleanedTranscript; 
+              }
               if (confidence > 0) current.esConf = confidence;
             }
 
