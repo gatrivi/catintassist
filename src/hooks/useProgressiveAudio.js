@@ -139,6 +139,30 @@ export const useProgressiveAudio = () => {
     });
   }, []);
 
+  const playCoin = useCallback(() => {
+    if (!audioCtxRef.current) return;
+    const ctx = audioCtxRef.current;
+    const t = ctx.currentTime;
+    
+    // High-pitched "clink" of a single metal coin
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    
+    osc.type = 'sine';
+    osc.frequency.setValueAtTime(2400, t);
+    osc.frequency.exponentialRampToValueAtTime(1200, t + 0.1);
+    
+    gain.gain.setValueAtTime(0, t);
+    gain.gain.linearRampToValueAtTime(0.08, t + 0.01); 
+    gain.gain.exponentialRampToValueAtTime(0.001, t + 0.15);
+    
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+    
+    osc.start(t);
+    osc.stop(t + 0.15);
+  }, []);
+
   const stopAll = useCallback(() => {
     if (audioCtxRef.current) {
       audioCtxRef.current.close().catch(() => {});
@@ -146,5 +170,5 @@ export const useProgressiveAudio = () => {
     }
   }, []);
 
-  return { initAudio, playTick, playLeatherWallet, playMetalChest, playCarriageVault, stopAll };
+  return { initAudio, playTick, playLeatherWallet, playMetalChest, playCarriageVault, playCoin, stopAll };
 };

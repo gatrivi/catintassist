@@ -13,6 +13,16 @@ const CelebrationParticles = ({ type, label, coins, onDismiss }) => {
   
   // Origin coordinate based on previous physics origin (Call -> Today = -180px, Today -> Month = -180px)
   const originX = type === 'month' ? '0px' : '-185px';
+  const audioEngine = useProgressiveAudio();
+
+  useEffect(() => {
+    if (isClosing) return;
+    // Rhythmic coin clinks for the particle explosion
+    const iv = setInterval(() => {
+      audioEngine.playCoin();
+    }, 150);
+    return () => clearInterval(iv);
+  }, [isClosing, audioEngine]);
   
   const handleDismiss = () => {
     setIsClosing(true);
@@ -64,8 +74,9 @@ export const DashboardHeader = ({ onStartAudio, onStopAudio, onReconnectStream, 
   useEffect(() => { if (!isActive) setIsHold(false); }, [isActive]);
 
   useEffect(() => {
-    // Progressive Audio Tick Engine
+    // Progressive Audio Tick Engine (Income Ping)
     if (isActive && sessionSeconds > 0 && sessionSeconds % 60 === 0) {
+      audioEngine.playCoin();
       audioEngine.playTick();
     }
   }, [isActive, sessionSeconds, audioEngine]);
@@ -159,15 +170,15 @@ export const DashboardHeader = ({ onStartAudio, onStopAudio, onReconnectStream, 
             <div style={{ display: 'flex', gap: '0.3rem', marginLeft: 'auto', flexWrap: 'nowrap', alignItems: 'center' }}>
               {isActive && <span style={{ fontSize: '0.7rem', fontWeight: 600, color: '#fb923c', whiteSpace: 'nowrap' }}>📞 ${Math.round(sessionEarnings * arsRate).toLocaleString('es-AR')}</span>}
               
-              <div style={{ display: 'flex', gap: '0.2rem', padding: '0.1rem 0.3rem', background: 'rgba(255,255,255,0.05)', borderRadius: '4px', border: '1px solid rgba(255,255,255,0.1)', whiteSpace: 'nowrap' }}>
-                <span style={{ fontSize: '0.65rem', color: '#e2e8f0' }}>
-                  <span style={{ fontWeight: 600, color: '#fcd34d' }}>☀️ {Math.round(stats.dailyMinutes)}</span>
-                  <span style={{ opacity: 0.5 }}>/{Math.round(requiredDailyAverage)}m</span>
+              <div style={{ display: 'flex', gap: '0.25rem', padding: '0.15rem 0.4rem', background: 'rgba(255,255,255,0.08)', borderRadius: '4px', border: '1px solid rgba(255,255,255,0.15)', whiteSpace: 'nowrap' }}>
+                <span style={{ fontSize: '0.8rem', color: '#e2e8f0' }}>
+                  <span style={{ fontWeight: 800, color: '#fcd34d' }}>☀️ {Math.round(stats.dailyMinutes)}</span>
+                  <span style={{ opacity: 0.8, fontWeight: 600 }}> / {Math.round(requiredDailyAverage)}m</span>
                 </span>
               </div>
               
-              <div style={{ display: 'flex', gap: '0.2rem', padding: '0.1rem 0.3rem', background: 'rgba(255,255,255,0.05)', borderRadius: '4px', border: '1px solid rgba(255,255,255,0.1)', whiteSpace: 'nowrap' }}>
-                <span style={{ fontSize: '0.65rem', color: '#d8b4fe', fontWeight: 600 }}>🗓️ ${Math.round(stats.monthlyMinutes * RATE_PER_MINUTE * arsRate).toLocaleString('es-AR')}</span>
+              <div style={{ display: 'flex', gap: '0.2rem', padding: '0.15rem 0.4rem', background: 'rgba(255,255,255,0.08)', borderRadius: '4px', border: '1px solid rgba(255,255,255,0.15)', whiteSpace: 'nowrap' }}>
+                <span style={{ fontSize: '0.8rem', color: '#d8b4fe', fontWeight: 800 }}>🗓️ AR${Math.round(stats.monthlyMinutes * RATE_PER_MINUTE * arsRate).toLocaleString('es-AR')}</span>
               </div>
 
               {/* RISK INDICATOR */}

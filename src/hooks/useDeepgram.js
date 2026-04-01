@@ -93,10 +93,9 @@ export const useDeepgram = () => {
           const now = Date.now();
           const timeSinceLast = now - lastTranscriptTimeRef.current;
           lastTranscriptTimeRef.current = now;
-          // Break into a new bubble if there's >1.0s of silence (a breath). 
-          // We removed the forced 25-word chunking because forcing a new bubble while the slower pipeline 
-          // is still emitting interims causes it to dump its residual buffer into the new bubble, creating duplicate sentences!
-          const isSilentBreak = timeSinceLast > 1000;
+          // Break into a new bubble only after 2.5s of absolute silence. 
+          // This keeps messages together in larger, more cohesive blocks.
+          const isSilentBreak = timeSinceLast > 2500;
 
           setCaptions(prev => {
             const isNewTurn = isSilentBreak;

@@ -1,6 +1,8 @@
 import React, { useState, useRef, useEffect, useMemo } from 'react';
+import { useProgressiveAudio } from '../hooks/useProgressiveAudio';
 
 export const DialGoalSelector = ({ ratePerMinute, arsRate, setArsRate, initialCash, onSave, onCancel }) => {
+  const audioEngine = useProgressiveAudio();
   const targets = useMemo(() => {
     let arr = Array.from({ length: 30 }, (_, i) => 10000 + (i * 10000));
     if (initialCash && initialCash > 0) {
@@ -55,6 +57,8 @@ export const DialGoalSelector = ({ ratePerMinute, arsRate, setArsRate, initialCa
   const weeklyMinsRemainder = weeklyMinsRaw % 60;
 
   const handleApply = () => {
+    // Play the Carriage Vault sound to signify the goal is BANKED for the month
+    audioEngine.playCarriageVault();
     // We send back the total monthly minutes to save as goalMinutes
     onSave(monthlyMins);
   };
@@ -159,30 +163,68 @@ export const DialGoalSelector = ({ ratePerMinute, arsRate, setArsRate, initialCa
         <style dangerouslySetInnerHTML={{__html: `div::-webkit-scrollbar { display: none; }`}} />
       </div>
 
+      {/* Work Commitment - Weekly Hours Toggle (The "Auto-Spin") */}
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
+        <div style={{ fontSize: '0.6rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '1px', paddingLeft: '0.2rem' }}>commit: weekly hours</div>
+        <div style={{ display: 'flex', gap: '0.2rem', background: 'rgba(0,0,0,0.3)', padding: '0.2rem', borderRadius: '8px' }}>
+          {[40, 50, 60, 75, 100].map(hrs => {
+            const targetCash = (hrs * 60 * ratePerMinute * arsRate) / daysPerWeek;
+            return (
+              <button
+                key={hrs}
+                onClick={() => {
+                  let bestIdx = 0;
+                  let minDiff = Infinity;
+                  targets.forEach((amt, i) => {
+                    if (Math.abs(amt - targetCash) < minDiff) {
+                      minDiff = Math.abs(amt - targetCash);
+                      bestIdx = i;
+                    }
+                  });
+                  setActiveIndex(bestIdx);
+                }}
+                style={{
+                  flex: 1, padding: '0.4rem 0', borderRadius: '6px', border: 'none', cursor: 'pointer',
+                  background: weeklyHours === hrs ? 'rgba(168,85,247,0.2)' : 'rgba(255,255,255,0.05)',
+                  color: weeklyHours === hrs ? '#c084fc' : 'var(--text-muted)',
+                  border: weeklyHours === hrs ? '1px solid rgba(168,85,247,0.4)' : '1px solid transparent',
+                  fontSize: '0.75rem', fontWeight: 700, transition: 'all 0.2s', transform: weeklyHours === hrs ? 'scale(1.05)' : 'scale(1)'
+                }}
+              >
+                {hrs}h
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
       {/* Work Days Toggle */}
-      <div style={{ display: 'flex', gap: '0.2rem' }}>
-        {[
-          { label: '4/Wk', sub: '17d', val: 17 },
-          { label: '5/Wk', sub: '22d', val: 22 },
-          { label: '6/Wk', sub: '26d', val: 26 },
-          { label: 'Grind', sub: '30d', val: 30 }
-        ].map(opt => (
-          <button
-            key={opt.val}
-            onClick={() => setWorkDays(opt.val)}
-            style={{
-              flex: 1, padding: '0.4rem 0', borderRadius: '6px', cursor: 'pointer',
-              display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.1rem',
-              background: workDays === opt.val ? 'rgba(56,189,248,0.2)' : 'rgba(0,0,0,0.3)',
-              color: workDays === opt.val ? '#7dd3fc' : 'var(--text-muted)',
-              border: workDays === opt.val ? '1px solid rgba(56,189,248,0.5)' : '1px solid rgba(255,255,255,0.05)',
-              transition: 'all 0.2s', transform: workDays === opt.val ? 'scale(1.02)' : 'scale(1)'
-            }}
-          >
-            <span style={{ fontSize: '0.7rem', fontWeight: workDays === opt.val ? 800 : 600 }}>{opt.label}</span>
-            <span style={{ fontSize: '0.55rem', opacity: workDays === opt.val ? 0.9 : 0.6 }}>{opt.sub}</span>
-          </button>
-        ))}
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
+        <div style={{ fontSize: '0.6rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '1px', paddingLeft: '0.2rem' }}>frequency: active days</div>
+        <div style={{ display: 'flex', gap: '0.2rem' }}>
+          {[
+            { label: '4/Wk', sub: '17d', val: 17 },
+            { label: '5/Wk', sub: '22d', val: 22 },
+            { label: '6/Wk', sub: '26d', val: 26 },
+            { label: 'Grind', sub: '30d', val: 30 }
+          ].map(opt => (
+            <button
+              key={opt.val}
+              onClick={() => setWorkDays(opt.val)}
+              style={{
+                flex: 1, padding: '0.4rem 0', borderRadius: '6px', cursor: 'pointer',
+                display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.1rem',
+                background: workDays === opt.val ? 'rgba(56,189,248,0.2)' : 'rgba(0,0,0,0.3)',
+                color: workDays === opt.val ? '#7dd3fc' : 'var(--text-muted)',
+                border: workDays === opt.val ? '1px solid rgba(56,189,248,0.5)' : '1px solid rgba(255,255,255,0.05)',
+                transition: 'all 0.2s', transform: workDays === opt.val ? 'scale(1.02)' : 'scale(1)'
+              }}
+            >
+              <span style={{ fontSize: '0.7rem', fontWeight: workDays === opt.val ? 800 : 600 }}>{opt.label}</span>
+              <span style={{ fontSize: '0.55rem', opacity: workDays === opt.val ? 0.9 : 0.6 }}>{opt.sub}</span>
+            </button>
+          ))}
+        </div>
       </div>
 
       {/* Burnout/Health Projector */}

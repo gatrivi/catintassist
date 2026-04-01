@@ -56,7 +56,6 @@ export const useTTS = () => {
       const blob = new Blob([byteArray], { type: 'audio/mp3' });
       return URL.createObjectURL(blob);
     } catch (err) {
-      console.error("Prefetch TTS Error:", err);
       return null;
     }
   };
@@ -127,7 +126,6 @@ export const useTTS = () => {
       }
     } catch (err) {
       window.__CAT_AUDIO_VOL = 0;
-      console.error("TTS Error:", err);
       setIsPlaying(false);
       setPlayingUrl(null);
     }
