@@ -6,16 +6,28 @@ import { DialGoalSelector } from './DialGoalSelector';
 import { useProgressiveAudio } from '../hooks/useProgressiveAudio';
 
 const CelebrationParticles = ({ type, label, coins, onDismiss }) => {
+  const [isClosing, setIsClosing] = useState(false);
   const emojis = ['🪙', '🪙', '💸', '💵', '💰', '💎'];
   // Spread radius: call is smallest, month is massive
   const spread = type === 'month' ? 800 : (type === 'day' ? 600 : 350);
+  
+  // Origin coordinate based on previous physics origin (Call -> Today = -180px, Today -> Month = -180px)
+  const originX = type === 'month' ? '0px' : '-185px';
+  
+  const handleDismiss = () => {
+    setIsClosing(true);
+    setTimeout(() => onDismiss(), 250);
+  };
+
   return (
-    <div style={{ position: 'absolute', inset: -50, pointerEvents: 'auto', cursor: 'pointer', zIndex: 100 }} onClick={onDismiss} title="Click to skip animation and kill sound">
+    <div style={{ position: 'absolute', inset: -50, pointerEvents: 'auto', cursor: 'pointer', zIndex: 100, animation: isClosing ? 'fadeOutFast 0.25s forwards' : 'none' }} onClick={handleDismiss} title="Click to skip animation and kill sound">
       {Array.from({ length: coins }).map((_, i) => (
         <span key={i} style={{
           position: 'absolute', left: '50%', top: '50%', fontSize: `${0.9 + Math.random() * 0.8}rem`,
           animation: `coinVacuum 1.6s cubic-bezier(0.25, 0.46, 0.45, 0.94) forwards`,
-          '--start-x': `${(Math.random() - 0.5) * spread}px`, 
+          '--origin-x': originX,
+          '--origin-y': '0px',
+          '--start-x': `calc(${originX} + ${(Math.random() - 0.5) * spread}px)`, 
           '--start-y': `${Math.random() * -(spread * 0.8)}px` 
         }}>{emojis[Math.floor(Math.random() * emojis.length)]}</span>
       ))}

@@ -2,7 +2,7 @@ import React, { useState, useRef, useEffect, useMemo } from 'react';
 
 export const DialGoalSelector = ({ ratePerMinute, arsRate, setArsRate, initialCash, onSave, onCancel }) => {
   const targets = useMemo(() => {
-    let arr = Array.from({ length: 37 }, (_, i) => 20000 + (i * 5000));
+    let arr = Array.from({ length: 30 }, (_, i) => 10000 + (i * 10000));
     if (initialCash && initialCash > 0) {
       const val = Math.round(initialCash);
       if (!arr.includes(val)) arr.push(val);
@@ -44,7 +44,11 @@ export const DialGoalSelector = ({ ratePerMinute, arsRate, setArsRate, initialCa
 
   const monthlyCash = selectedCash * workDays;
   const monthlyMins = dailyMins * workDays;
-  const monthlyHours = Math.floor(monthlyMins / 60);
+  
+  const daysPerWeek = workDays === 30 ? 7 : workDays === 26 ? 6 : workDays === 22 ? 5 : 4;
+  const weeklyMinsRaw = dailyMins * daysPerWeek;
+  const weeklyHours = Math.floor(weeklyMinsRaw / 60);
+  const weeklyMinsRemainder = weeklyMinsRaw % 60;
 
   const handleApply = () => {
     // We send back the total monthly minutes to save as goalMinutes
@@ -143,34 +147,44 @@ export const DialGoalSelector = ({ ratePerMinute, arsRate, setArsRate, initialCa
         <style dangerouslySetInnerHTML={{__html: `div::-webkit-scrollbar { display: none; }`}} />
       </div>
 
-      {/* Dynamic Summary */}
-      <div style={{ background: 'rgba(255,255,255,0.05)', borderRadius: '8px', padding: '0.8rem', display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-        <p style={{ margin: 0, fontSize: '0.8rem', lineHeight: 1.5, color: '#e2e8f0', textAlign: 'center' }}>
-          Consistently working <strong style={{ color: '#6ee7b7' }}>{dailyHours > 0 ? `${dailyHours}h ` : ''}{dailyMinsRemainder}m/day</strong> will hit <strong style={{ color: '#a855f7' }}>AR${selectedCash.toLocaleString('es-AR')}/day</strong>.<br/>
-          Over <strong>{workDays} days</strong>, this totals <strong style={{ color: '#34d399', fontSize: '1rem' }}>AR${monthlyCash.toLocaleString('es-AR')}</strong>!
-        </p>
-      </div>
-
       {/* Work Days Toggle */}
-      <div style={{ display: 'flex', background: 'rgba(0,0,0,0.5)', borderRadius: '6px', overflow: 'hidden', border: '1px solid rgba(255,255,255,0.1)' }}>
+      <div style={{ display: 'flex', gap: '0.2rem' }}>
         {[
-          { label: '5 Days/Wk (22/mo)', val: 22 },
-          { label: '6 Days/Wk (26/mo)', val: 26 },
-          { label: 'Every Day (30/mo)', val: 30 }
+          { label: '4/Wk', sub: '17d', val: 17 },
+          { label: '5/Wk', sub: '22d', val: 22 },
+          { label: '6/Wk', sub: '26d', val: 26 },
+          { label: 'Grind', sub: '30d', val: 30 }
         ].map(opt => (
           <button
             key={opt.val}
             onClick={() => setWorkDays(opt.val)}
             style={{
-              flex: 1, padding: '0.5rem 0', fontSize: '0.75rem', border: 'none', cursor: 'pointer',
-              background: workDays === opt.val ? '#3b82f6' : 'transparent',
-              color: workDays === opt.val ? '#fff' : 'var(--text-muted)',
-              fontWeight: workDays === opt.val ? 700 : 500, transition: 'all 0.2s'
+              flex: 1, padding: '0.4rem 0', borderRadius: '6px', border: 'none', cursor: 'pointer',
+              display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.1rem',
+              background: workDays === opt.val ? 'rgba(56,189,248,0.2)' : 'rgba(0,0,0,0.3)',
+              color: workDays === opt.val ? '#7dd3fc' : 'var(--text-muted)',
+              border: workDays === opt.val ? '1px solid rgba(56,189,248,0.5)' : '1px solid rgba(255,255,255,0.05)',
+              transition: 'all 0.2s', transform: workDays === opt.val ? 'scale(1.02)' : 'scale(1)'
             }}
           >
-            {opt.label}
+            <span style={{ fontSize: '0.7rem', fontWeight: workDays === opt.val ? 800 : 600 }}>{opt.label}</span>
+            <span style={{ fontSize: '0.55rem', opacity: workDays === opt.val ? 0.9 : 0.6 }}>{opt.sub}</span>
           </button>
         ))}
+      </div>
+
+      {/* Burnout/Health Projector */}
+      <div style={{ 
+        padding: '0.6rem', borderRadius: '8px', textAlign: 'center', fontSize: '0.75rem',
+        background: weeklyHours <= 45 ? 'rgba(52,211,153,0.1)' : weeklyHours <= 70 ? 'rgba(251,191,36,0.1)' : 'rgba(239,68,68,0.1)',
+        border: weeklyHours <= 45 ? '1px solid rgba(52,211,153,0.3)' : weeklyHours <= 70 ? '1px solid rgba(251,191,36,0.3)' : '1px solid rgba(239,68,68,0.3)'
+      }}>
+        <div style={{ fontSize: '0.8rem', fontWeight: 800, marginBottom: '0.2rem', color: weeklyHours <= 45 ? '#6ee7b7' : weeklyHours <= 70 ? '#fde047' : '#fca5a5' }}>
+          {weeklyHours <= 45 ? '🟢 Healthy Workweek' : weeklyHours <= 70 ? '🟡 Overtime Hustle' : '🔴 Extreme Burnout Warning'}
+        </div>
+        <div style={{ fontSize: '0.65rem', color: 'rgba(255,255,255,0.8)' }}>
+          To hit <strong style={{color: '#a855f7'}}>AR${monthlyCash.toLocaleString('es-AR')}</strong>, you must grind for <strong style={{color: weeklyHours > 70 ? '#fca5a5' : '#fff'}}>{weeklyHours}h {weeklyMinsRemainder}m</strong> per week ({dailyHours}h {dailyMinsRemainder}m/day).
+        </div>
       </div>
 
       {/* Actions */}

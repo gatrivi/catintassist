@@ -55,10 +55,16 @@ body {
 }
 
 @keyframes coinVacuum {
-  0% { transform: translate(var(--start-x), var(--start-y)) scale(0) rotate(0deg); opacity: 0; filter: drop-shadow(0 0 10px gold); }
-  10% { transform: translate(var(--start-x), var(--start-y)) scale(1.5) rotate(90deg); opacity: 1; filter: drop-shadow(0 0 4px gold); }
-  50% { transform: translate(var(--start-x), var(--start-y)) scale(1) rotate(270deg); opacity: 0.9; filter: drop-shadow(0 0 2px rgba(255,215,0,0.5)); }
+  0% { transform: translate(var(--origin-x), var(--origin-y)) scale(0) rotate(0deg); opacity: 0; filter: drop-shadow(0 0 10px gold); }
+  5% { transform: translate(var(--origin-x), var(--origin-y)) scale(1.5) rotate(90deg); opacity: 1; filter: drop-shadow(0 0 4px gold); }
+  35% { transform: translate(var(--start-x), var(--start-y)) scale(1.2) rotate(180deg); opacity: 0.9; }
+  75% { transform: translate(var(--start-x), var(--start-y)) scale(1) rotate(270deg); opacity: 0.8; filter: drop-shadow(0 0 2px rgba(255,215,0,0.5)); }
   100% { transform: translate(0, 0) scale(0.2) rotate(720deg); opacity: 0; filter: brightness(2); }
+}
+
+@keyframes fadeOutFast {
+  0% { opacity: 1; }
+  100% { opacity: 0; pointer-events: none; }
 }
 
 @keyframes textFloatTarget {
