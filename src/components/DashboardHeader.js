@@ -8,21 +8,19 @@ import { useProgressiveAudio } from '../hooks/useProgressiveAudio';
 const CelebrationParticles = ({ type, label, coins, onDismiss }) => {
   const [isClosing, setIsClosing] = useState(false);
   const emojis = ['🪙', '🪙', '💸', '💵', '💰', '💎'];
-  // Spread radius: call is smallest, month is massive
   const spread = type === 'month' ? 800 : (type === 'day' ? 600 : 350);
-  
-  // Origin coordinate based on previous physics origin (Call -> Today = -180px, Today -> Month = -180px)
   const originX = type === 'month' ? '0px' : '-185px';
   const audioEngine = useProgressiveAudio();
 
+  // Cap the particles to avoid crashing browser (max 60 even if it's a huge month)
+  const safeCoinCount = Math.min(60, coins);
+
   useEffect(() => {
     if (isClosing) return;
-    audioEngine.initAudio(); // Ensure engine is awake
-    const iv = setInterval(() => {
-      audioEngine.playCoin();
-    }, 150);
+    audioEngine.initAudio();
+    const iv = setInterval(() => { audioEngine.playCoin(); }, 150);
     return () => clearInterval(iv);
-  }, [isClosing, audioEngine]);
+  }, [isClosing, audioEngine.playCoin]);
   
   const handleDismiss = () => {
     setIsClosing(true);
@@ -30,13 +28,12 @@ const CelebrationParticles = ({ type, label, coins, onDismiss }) => {
   };
 
   return (
-    <div style={{ position: 'absolute', inset: -50, pointerEvents: 'auto', cursor: 'pointer', zIndex: 100, animation: isClosing ? 'fadeOutFast 0.25s forwards' : 'none' }} onClick={handleDismiss} title="Click to skip animation and kill sound">
-      {Array.from({ length: coins }).map((_, i) => (
+    <div style={{ position: 'absolute', inset: -50, pointerEvents: 'auto', cursor: 'pointer', zIndex: 100, animation: isClosing ? 'fadeOutFast 0.25s forwards' : 'none' }} onClick={handleDismiss}>
+      {Array.from({ length: safeCoinCount }).map((_, i) => (
         <span key={i} style={{
           position: 'absolute', left: '50%', top: '50%', fontSize: `${0.9 + Math.random() * 0.8}rem`,
           animation: `coinVacuum 1.6s cubic-bezier(0.25, 0.46, 0.45, 0.94) forwards`,
-          '--origin-x': originX,
-          '--origin-y': '0px',
+          '--origin-x': originX, '--origin-y': '0px',
           '--start-x': `calc(${originX} + ${(Math.random() - 0.5) * spread}px)`, 
           '--start-y': `${Math.random() * -(spread * 0.8)}px` 
         }}>{emojis[Math.floor(Math.random() * emojis.length)]}</span>
@@ -66,28 +63,40 @@ export const DashboardHeader = ({ onStartAudio, onStopAudio, onReconnectStream, 
   const [celebration, setCelebration] = useState(null);
   const [isTodayDialOpen, setIsTodayDialOpen] = useState(false);
 
-
   useEffect(() => {
     let iv; if (isHold) iv = setInterval(() => setHoldSeconds(s => s + 1), 1000); else setHoldSeconds(0);
     return () => clearInterval(iv);
   }, [isHold]);
-  useEffect(() => { if (!isActive) setIsHold(false); }, [isActive]);
 
   useEffect(() => {
-    // Progressive Audio Tick Engine (Income Ping)
     if (isActive && sessionSeconds > 0 && sessionSeconds % 60 === 0) {
-      audioEngine.playCoin();
-      audioEngine.playTick();
+      // Dynamic tick: minute 1 is quiet, minute 10+ is ringing
+      audioEngine.playTick(Math.floor(sessionSeconds / 60));
     }
-  }, [isActive, sessionSeconds, audioEngine]);
+  }, [isActive, sessionSeconds, audioEngine.playTick]);
 
-  const handleStart = async () => { audioEngine.initAudio(); const ok = await onStartAudio(); if (ok) startSession(); };
+  const handleStart = async () => { 
+    audioEngine.playBagOpen(); 
+    const ok = await onStartAudio(); 
+    if (ok) startSession(); 
+  };
+
   const handleStop = () => {
     stopSession((mins) => {
-      audioEngine.playLeatherWallet();
-      const dynamicItems = Math.min(80, Math.max(5, Math.floor(mins * 1.5)));
-      setCelebration({ type: 'call', label: `+AR$${Math.round(mins * RATE_PER_MINUTE * arsRate).toLocaleString('es-AR')}`, coins: dynamicItems });
-      setTimeout(() => setCelebration(null), 3500 + Math.min(1500, dynamicItems * 40));
+      // DENOMINATION PAYOUT LOGIC
+      // Diamonds = 20m, Bills = 5m, Coins = 1m
+      let rem = Math.round(mins);
+      const diamonds = Math.floor(rem / 20); rem %= 20;
+      const bills = Math.floor(rem / 5); rem %= 5;
+      const coins = rem;
+
+      // Play summary sounds sequentially
+      for(let i=0; i < diamonds; i++) setTimeout(() => audioEngine.playDiamond(), i * 400);
+      for(let i=0; i < bills; i++) setTimeout(() => audioEngine.playBill(), (diamonds * 400) + (i * 300));
+      for(let i=0; i < coins; i++) setTimeout(() => audioEngine.playCoin(), (diamonds * 400) + (bills * 300) + (i * 200));
+
+      setCelebration({ type: 'call', label: `+AR$${Math.round(mins * RATE_PER_MINUTE * arsRate).toLocaleString('es-AR')}`, coins: Math.min(60, Math.floor(mins * 1.5)) });
+      setTimeout(() => setCelebration(null), 4000);
     });
     onStopAudio();
   };

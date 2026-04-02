@@ -1,10 +1,14 @@
 // Persistent Cache to save quota for repetitive phrases
-const TRANS_CACHE = {}; 
+let TRANS_CACHE = {}; 
+const MAX_CACHE_SIZE = 500;
+
 const getCached = (text, langPair) => {
   if (TRANS_CACHE[`${langPair}:${text}`]) return TRANS_CACHE[`${langPair}:${text}`];
   return localStorage.getItem(`trans_cache:${langPair}:${text}`);
 };
 const setCached = (text, langPair, result) => {
+  // Simple check to prevent memory leak
+  if (Object.keys(TRANS_CACHE).length > MAX_CACHE_SIZE) TRANS_CACHE = {}; 
   TRANS_CACHE[`${langPair}:${text}`] = result;
   try { localStorage.setItem(`trans_cache:${langPair}:${text}`, result); } catch(e) {}
 };
