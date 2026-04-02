@@ -170,13 +170,17 @@ export const SessionProvider = ({ children }) => {
 
   const availTimerRef = useRef(null);
   useEffect(() => {
-    if (!isActive && !isBreakActive) {
-      availTimerRef.current = setInterval(() => {
+    const checkAndAdvance = () => {
+      const h = new Date().getHours();
+      // Avail only runs between 9:00 AM and 11:59 PM (00hs stop)
+      const isWorkHours = h >= 9; 
+
+      if (!isActive && !isBreakActive && isWorkHours) {
         setAvailSeconds(prev => prev + 1);
-      }, 1000);
-    } else {
-      if (availTimerRef.current) clearInterval(availTimerRef.current);
-    }
+      }
+    };
+
+    availTimerRef.current = setInterval(checkAndAdvance, 1000);
     return () => {
       if (availTimerRef.current) clearInterval(availTimerRef.current);
     };

@@ -87,22 +87,20 @@ export const useTranslate = (text, lang, prefetchTTS, shouldPrefetch) => {
           if (Array.isArray(d)) return typeof d[0] === 'string' ? d[0] : (Array.isArray(d[0]) ? d[0][0] : JSON.stringify(d[0]));
           return d;
         },
-        lingva: async (c) => {
-          const r = await fetch(`https://lingva.ml/api/v1/${lang}/${targetLang}/${encodeURIComponent(c)}`);
-          if (!r.ok) throw `status ${r.status}`;
-          const d = await r.json(); return d.translation;
+        google_gtx: async (c) => {
+          const r = await fetch(`https://translate.googleapis.com/translate_a/single?client=gtx&sl=${lang}&tl=${targetLang}&dt=t&q=${encodeURIComponent(c)}`);
+          if (!r.ok) throw `gtx ${r.status}`;
+          const d = await r.json(); return d?.[0]?.[0]?.[0];
         }
       };
 
         const raceChunk = async (chunk) => {
-          // CARRERA DE TRADUCCIÓN: Le pedimos a Google, OpenAI y otros que traduzcan.
-          // El que responda más rápido, ¡gana!
           const pool = [];
           if (keys.DEEPL) pool.push({ id: 'deepl', fn: fetchers.deepl });
           if (keys.MS) pool.push({ id: 'ms', fn: fetchers.ms });
           if (keys.OPENAI) pool.push({ id: 'openai', fn: fetchers.openai });
-          // También intentamos con los que son gratis
-          pool.push({ id: 'lingva', fn: fetchers.lingva }, { id: 'google', fn: fetchers.google });
+          // Also try free services with redundancy
+          pool.push({ id: 'google_gtx', fn: fetchers.google_gtx }, { id: 'google', fn: fetchers.google });
 
         let resolved = false;
         return new Promise((resolve) => {
@@ -110,8 +108,8 @@ export const useTranslate = (text, lang, prefetchTTS, shouldPrefetch) => {
           const tryNext = async (idx) => {
             if (resolved || idx >= pool.length) return;
             
-            // Optimistic race timer
-            const nextTimeout = setTimeout(() => tryNext(idx + 1), 500);
+            // Sequential start with a head start for prioritized services
+            const nextTimeout = setTimeout(() => tryNext(idx + 1), 600);
             timeouts.push(nextTimeout);
 
             try {
@@ -124,11 +122,14 @@ export const useTranslate = (text, lang, prefetchTTS, shouldPrefetch) => {
                 resolve(clean);
               }
             } catch (e) {
-              if (!resolved && idx === pool.length - 1) resolve('...');
+              // If we reached the end of the line and nothing worked, use ORIGINAL TEXT
+              // as requested: "far better to have a poor translation [original] than 3 dots"
+              if (!resolved && idx === pool.length - 1) resolve(chunk);
             }
           };
           tryNext(0);
-          setTimeout(() => { if(!resolved) resolve('...'); }, 6000); 
+          // Absolute safety timeout: return original text
+          setTimeout(() => { if(!resolved) resolve(chunk); }, 7500); 
         });
       };
 

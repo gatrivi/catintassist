@@ -144,84 +144,96 @@ export const DashboardHeader = ({ onStartAudio, onStopAudio, onReconnectStream, 
   const monthlyPendingRatio = stats.goalMinutes > 0 ? Math.min(1, (stats.monthlyMinutes + unbankedMins) / stats.goalMinutes) : 0;
   const remainingMinsToday = Math.max(0, dailyGoal - stats.dailyMinutes);
 
+  // Condensed View metrics (Calculated for AGENTS.md checklist)
+  const dailyArs = Math.round(stats.dailyMinutes * RATE_PER_MINUTE * arsRate);
+  const dailyTargetArs = Math.round(dailyGoal * RATE_PER_MINUTE * arsRate);
+  const monthlyArs = Math.round(stats.monthlyMinutes * RATE_PER_MINUTE * arsRate);
+  const monthlyTargetArs = Math.round(stats.goalMinutes * RATE_PER_MINUTE * arsRate);
+  const copyValue = (v) => navigator.clipboard.writeText(String(v).replace(/[^\d]/g, ''));
+
   return (
     <header className="dashboard-header glass-panel" style={{ position: 'relative', zIndex: 100 }}>
       <div style={{ position: 'absolute', top: '0.1rem', right: '0.4rem', fontSize: '0.6rem', opacity: 0.4, pointerEvents: 'none' }}>v3.2.7 (Safety Final)</div>
 
       {/* COLLAPSED VIEW */}
       {isCollapsed && (
-        <div className="income-card" style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.2rem', padding: '0.2rem 0.4rem', background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(255,255,255,0.05)', overflow: 'hidden' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', flexWrap: 'nowrap', overflowX: 'auto', width: '100%' }}>
+        <div className="condensed-header-card">
+          <div className="condensed-items-row">
             <ConnectionIndicator state={connectionState} />
             {!isActive ? (
-              <button className="btn btn-primary" onClick={handleStart} style={{ fontSize: '0.75rem', padding: '0.25rem 0.6rem' }}><PlayIcon /> Connect</button>
+              <button className="btn btn-primary btn-condensed" onClick={handleStart}><PlayIcon /> Connect</button>
             ) : (
-              <button className="btn btn-danger recording" onClick={handleStop} style={{ fontSize: '0.75rem', padding: '0.25rem 0.6rem' }}><StopIcon /> Stop</button>
+              <button className="btn btn-danger recording btn-condensed" onClick={handleStop}><StopIcon /> Stop</button>
             )}
             
-            {/* Quick Actions (Break/Hold/End Day) */}
-            <div style={{ display: 'flex', gap: '0.4rem' }}>
+            <div style={{ display: 'flex', gap: '0.3rem' }}>
               {!isActive ? (
                 <>
                   {isBreakActive ? (
-                    <button className="btn" onClick={stopBreak} style={{ fontSize: '0.65rem', padding: '0.2rem 0.5rem', background: '#fb923c', color: 'white' }}>Stop Break</button>
+                    <button className="btn btn-condensed" onClick={stopBreak} style={{ background: '#fb923c', color: 'white' }}>Stop Break</button>
                   ) : (
-                    <button className="btn" onClick={startBreak} style={{ fontSize: '0.65rem', padding: '0.2rem 0.5rem', background: 'rgba(251,146,60,0.1)', color: '#fdba74', border: '1px solid rgba(251,146,60,0.3)' }}>Break</button>
+                    <button className="btn btn-condensed" onClick={startBreak} style={{ background: 'rgba(251,146,60,0.1)', color: '#fdba74', border: '1px solid rgba(251,146,60,0.3)' }}>Break</button>
                   )}
                   {stats.dailyMinutes > 0 && !isBreakActive && (
-                    <button className="btn" onClick={handleEndDay} style={{ fontSize: '0.65rem', padding: '0.2rem 0.5rem', background: 'rgba(139,92,246,0.1)', color: '#c4b5fd', border: '1px solid rgba(139,92,246,0.3)' }}>🌙 End</button>
+                    <button className="btn btn-condensed" onClick={handleEndDay} style={{ background: 'rgba(139,92,246,0.1)', color: '#c4b5fd', border: '1px solid rgba(139,92,246,0.3)' }}>🌙 End</button>
                   )}
                 </>
               ) : (
                 <>
-                  <button className="btn" onClick={() => setIsHold(!isHold)} style={{ fontSize: '0.65rem', padding: '0.2rem 0.5rem', background: isHold ? 'rgba(245,158,11,0.8)' : 'rgba(255,255,255,0.1)', color: isHold ? 'white' : 'var(--text-muted)' }}>
+                  <button className="btn btn-condensed" onClick={() => setIsHold(!isHold)} style={{ background: isHold ? 'rgba(245,158,11,0.8)' : 'rgba(255,255,255,0.1)', color: isHold ? 'white' : 'var(--text-muted)' }}>
                     {isHold ? `⏸ ${formatTime(holdSeconds)}` : '⏸ Hold'}
                   </button>
-                  <button className="btn" onClick={onReconnectStream} title="Restart websockets without stopping call timer" style={{ fontSize: '0.65rem', padding: '0.2rem 0.5rem', background: 'rgba(56,189,248,0.1)', color: '#7dd3fc', border: '1px solid rgba(56,189,248,0.3)' }}>
+                  <button className="btn btn-condensed" onClick={onReconnectStream} title="Restart websockets" style={{ background: 'rgba(56,189,248,0.1)', color: '#7dd3fc', border: '1px solid rgba(56,189,248,0.3)' }}>
                     ⚡ Zap
                   </button>
                 </>
               )}
             </div>
 
-            <div style={{ display: 'flex', gap: '0.3rem', marginLeft: 'auto', flexWrap: 'nowrap', alignItems: 'center' }}>
-              {isActive && <span style={{ fontSize: '0.7rem', fontWeight: 600, color: '#fb923c', whiteSpace: 'nowrap' }}>📞 ${Math.round(sessionEarnings * arsRate).toLocaleString('es-AR')}</span>}
-              
-              <div style={{ display: 'flex', gap: '0.25rem', padding: '0.15rem 0.4rem', background: 'rgba(255,255,255,0.08)', borderRadius: '4px', border: '1px solid rgba(255,255,255,0.15)', whiteSpace: 'nowrap' }}>
-                <span style={{ fontSize: '0.8rem', color: '#e2e8f0' }}>
-                  <span style={{ fontWeight: 800, color: '#fcd34d' }}>☀️ {Math.round(stats.dailyMinutes)}</span>
-                  <span style={{ opacity: 0.8, fontWeight: 600 }}> / {Math.round(requiredDailyAverage)}m</span>
+            {isActive && (
+              <div className="metric-pill" style={{ color: '#fb923c', background: 'rgba(251,146,60,0.1)' }} onClick={() => copyValue(sessionEarnings * arsRate)} title="Current Call Earnings">
+                <span style={{ fontWeight: 800 }}>📞 AR${Math.round(sessionEarnings * arsRate).toLocaleString('es-AR')}</span>
+              </div>
+            )}
+
+            <div className="metric-pill" onClick={() => { copyValue(stats.dailyMinutes); setIsTodayDialOpen(true); }} title="Today Minutes (Click to edit/copy)">
+              <span style={{ color: '#fcd34d', fontWeight: 800 }}>☀️ {Math.round(stats.dailyMinutes)}m</span>
+              <span style={{ opacity: 0.6, fontWeight: 600 }}> / {Math.round(requiredDailyAverage)}m</span>
+            </div>
+
+            <div className="metric-pill" onClick={() => { copyValue(dailyArs); setIsTodayDialOpen(true); }} title="Today AR$ (Click to edit/copy)">
+              <span style={{ color: '#6ee7b7', fontWeight: 800 }}>☀️ AR${dailyArs.toLocaleString('es-AR')}</span>
+              <span style={{ opacity: 0.6, fontWeight: 600 }}> / ${dailyTargetArs.toLocaleString('es-AR')}</span>
+            </div>
+            
+            <div className="metric-pill" onClick={() => { copyValue(stats.monthlyMinutes); setIsTodayDialOpen(true); }} title="Monthly Minutes (Click to edit/copy)">
+              <span style={{ color: '#c084fc', fontWeight: 800 }}>🗓️ {Math.round(stats.monthlyMinutes)}m</span>
+              <span style={{ opacity: 0.6, fontWeight: 600 }}> / {stats.goalMinutes}m</span>
+            </div>
+
+            <div className="metric-pill" onClick={() => { copyValue(monthlyArs); setIsTodayDialOpen(true); }} title="Monthly AR$ (Click to edit/copy)">
+              <span style={{ color: '#d8b4fe', fontWeight: 800 }}>🗓️ AR${monthlyArs.toLocaleString('es-AR')}</span>
+              <span style={{ opacity: 0.6, fontWeight: 600 }}> / ${monthlyTargetArs.toLocaleString('es-AR')}</span>
+            </div>
+
+            {remainingMinutes > 0 ? (
+              <div className="metric-pill" style={{ 
+                background: (remainingDays === 1 && remainingMinutes > (hoursLeft * 55)) ? 'rgba(220,38,38,0.3)' : (remainingDays === 1 && remainingMinutes > realisticRemainingMins) ? 'rgba(245,158,11,0.2)' : 'rgba(52,211,153,0.1)', 
+                border: (remainingDays === 1 && remainingMinutes > (hoursLeft * 55)) ? '1px solid rgba(239,68,68,0.8)' : (remainingDays === 1 && remainingMinutes > realisticRemainingMins) ? '1px solid rgba(251,191,36,0.5)' : '1px solid rgba(52,211,153,0.3)' 
+              }}>
+                <span style={{ fontSize: '0.65rem', fontWeight: 700, color: (remainingDays === 1 && remainingMinutes > (hoursLeft * 55)) ? '#fca5a5' : (remainingDays === 1 && remainingMinutes > realisticRemainingMins) ? '#fde047' : '#a7f3d0' }}>
+                  {remainingDays === 1 && remainingMinutes > (hoursLeft * 55) ? '🔴 CRIT: ' : remainingDays === 1 && remainingMinutes > realisticRemainingMins ? '🟠 RISK: ' : '🟢 '}
+                  {hoursLeft.toFixed(1)}h ({Math.round(realisticRemainingMins)}m vs {Math.round(remainingMinutes)}m)
                 </span>
               </div>
-              
-              <div style={{ display: 'flex', gap: '0.2rem', padding: '0.15rem 0.4rem', background: 'rgba(255,255,255,0.08)', borderRadius: '4px', border: '1px solid rgba(255,255,255,0.15)', whiteSpace: 'nowrap' }}>
-                <span style={{ fontSize: '0.8rem', color: '#d8b4fe', fontWeight: 800 }}>🗓️ AR${Math.round(stats.monthlyMinutes * RATE_PER_MINUTE * arsRate).toLocaleString('es-AR')}</span>
+            ) : (
+              <div className="metric-pill" style={{ background: 'rgba(52,211,153,0.1)', border: '1px solid rgba(52,211,153,0.3)' }}>
+                <span style={{ fontSize: '0.65rem', fontWeight: 700, color: '#6ee7b7' }}>🎉 GOAL MET</span>
               </div>
-
-              {/* RISK INDICATOR */}
-              {remainingMinutes > 0 ? (
-                <div style={{ 
-                  display: 'flex', alignItems: 'center', gap: '0.2rem', padding: '0.1rem 0.3rem', borderRadius: '4px', whiteSpace: 'nowrap',
-                  background: (remainingDays === 1 && remainingMinutes > (hoursLeft * 55)) ? 'rgba(220,38,38,0.3)' : (remainingDays === 1 && remainingMinutes > realisticRemainingMins) ? 'rgba(245,158,11,0.2)' : 'rgba(52,211,153,0.1)', 
-                  border: (remainingDays === 1 && remainingMinutes > (hoursLeft * 55)) ? '1px solid rgba(239,68,68,0.8)' : (remainingDays === 1 && remainingMinutes > realisticRemainingMins) ? '1px solid rgba(251,191,36,0.5)' : '1px solid rgba(52,211,153,0.3)' 
-                }}>
-                  <span style={{ 
-                    fontSize: '0.6rem', fontWeight: 600,
-                    color: (remainingDays === 1 && remainingMinutes > (hoursLeft * 55)) ? '#fca5a5' : (remainingDays === 1 && remainingMinutes > realisticRemainingMins) ? '#fde047' : '#a7f3d0'
-                  }}>
-                    {remainingDays === 1 && remainingMinutes > (hoursLeft * 55) ? '🔴 CRIT: ' : remainingDays === 1 && remainingMinutes > realisticRemainingMins ? '🟠 RISK: ' : '🟢 '}
-                    {hoursLeft.toFixed(1)}h (Paced {Math.round(realisticRemainingMins)}m / Need {Math.round(remainingMinutes)}m)
-                  </span>
-                </div>
-              ) : (
-                <div style={{ display: 'flex', alignItems: 'center', gap: '0.2rem', padding: '0.1rem 0.3rem', borderRadius: '4px', background: 'rgba(52,211,153,0.1)', border: '1px solid rgba(52,211,153,0.3)', whiteSpace: 'nowrap' }}>
-                  <span style={{ fontSize: '0.6rem', fontWeight: 600, color: '#6ee7b7' }}>🎉 Goal Met!</span>
-                </div>
-              )}
-            </div>
+            )}
           </div>
           <button onClick={() => setIsCollapsed(false)}
-            style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', fontSize: '0.9rem', padding: '0.2rem' }}
+            style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', fontSize: '0.9rem', padding: '0.2rem', marginLeft: 'auto' }}
             title="Expand dashboard">
             ▼
           </button>
@@ -374,17 +386,6 @@ export const DashboardHeader = ({ onStartAudio, onStopAudio, onReconnectStream, 
             <span className="income-usd" style={{ opacity: 0.4, fontSize: '0.6rem' }}>${(stats.dailyMinutes * RATE_PER_MINUTE).toFixed(2)} USD</span>
           </div>
           <EditableMinutes value={stats.dailyMinutes} updateFn={updateStat} statKey="dailyMinutes" />
-          
-          {isTodayDialOpen && (
-            <DialGoalSelector 
-              ratePerMinute={RATE_PER_MINUTE} 
-              arsRate={arsRate} 
-              setArsRate={setArsRate}
-              initialCash={stats.dailyMinutes * RATE_PER_MINUTE * arsRate}
-              onSave={(m) => { updateStat('goalMinutes', m); setIsTodayDialOpen(false); }} 
-              onCancel={() => setIsTodayDialOpen(false)} 
-            />
-          )}
         </div>
         )}
 
@@ -533,6 +534,18 @@ export const DashboardHeader = ({ onStartAudio, onStopAudio, onReconnectStream, 
             </div>
           </div>
         </div>
+      )}
+
+      {/* GLOBAL DIAL SELECTOR TRIGGER */}
+      {isTodayDialOpen && (
+        <DialGoalSelector 
+          ratePerMinute={RATE_PER_MINUTE} 
+          arsRate={arsRate} 
+          setArsRate={setArsRate}
+          initialGoalMinutes={stats.goalMinutes}
+          onSave={(m) => { updateStat('goalMinutes', m); setIsTodayDialOpen(false); }} 
+          onCancel={() => setIsTodayDialOpen(false)} 
+        />
       )}
     </header>
   );
