@@ -73,19 +73,41 @@ export const useTranslate = (text, lang, prefetchTTS, shouldPrefetch) => {
           } catch (e) {}
         }
 
-        // Layer 3: Google (At-Client)
+        // Layer 3: Google (Te-Client - More stable)
         try {
-          const url = `https://translate.googleapis.com/translate_a/single?client=at&sl=${lang}&tl=${targetLang}&dt=t&q=${encodeURIComponent(chunk)}`;
+          const url = `https://translate.googleapis.com/translate_a/t?client=te&v=1.0&sl=${lang}&tl=${targetLang}&q=${encodeURIComponent(chunk)}`;
           const res = await fetch(url);
           if (res.ok) {
             const json = await res.json();
-            const result = json[0].map(x => x[0]).join('');
+            const result = typeof json === 'string' ? json : json[0];
             const sanitized = sanitizeTranslation(result);
             if (sanitized) return sanitized;
           }
         } catch (err) {}
 
-        // Layer 4: SimplyTranslate
+        // Layer 4: Lingva (Reliable Proxy)
+        try {
+          const res = await fetch(`https://lingva.ml/api/v1/${lang}/${targetLang}/${encodeURIComponent(chunk)}`);
+          if (res.ok) {
+            const json = await res.json();
+            if (json.translation) return json.translation;
+          }
+        } catch (err) {}
+
+        // Layer 5: Argos OpenTech (LibreTranslate)
+        try {
+          const res = await fetch(`https://translate.argosopentech.com/translate`, {
+            method: 'POST',
+            body: JSON.stringify({ q: chunk, source: lang, target: targetLang, format: "text" }),
+            headers: { "Content-Type": "application/json" }
+          });
+          if (res.ok) {
+            const json = await res.json();
+            if (json.translatedText) return json.translatedText;
+          }
+        } catch (err) {}
+
+        // Layer 6: SimplyTranslate
         try {
           const res = await fetch(`https://simplytranslate.org/api/translate?engine=google&from=${lang}&to=${targetLang}&text=${encodeURIComponent(chunk)}`);
           if (res.ok) {
@@ -94,7 +116,7 @@ export const useTranslate = (text, lang, prefetchTTS, shouldPrefetch) => {
           }
         } catch (err) {}
 
-        // Layer 5: MyMemory
+        // Layer 7: MyMemory
         try {
           const myMemoryUrl = `https://api.mymemory.translated.net/get?q=${encodeURIComponent(chunk)}&langpair=${lang}|${targetLang}`;
           const res = await fetch(myMemoryUrl);
