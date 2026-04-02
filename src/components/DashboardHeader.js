@@ -143,7 +143,7 @@ export const DashboardHeader = ({ onStartAudio, onStopAudio, onReconnectStream, 
 
   return (
     <header className="dashboard-header glass-panel" style={{ position: 'relative', zIndex: 100 }}>
-      <div style={{ position: 'absolute', top: '0.1rem', right: '0.4rem', fontSize: '0.5rem', opacity: 0.3, pointerEvents: 'none' }}>v3.2.3 (Resonant Metal)</div>
+      <div style={{ position: 'absolute', top: '0.1rem', right: '0.4rem', fontSize: '0.5rem', opacity: 0.3, pointerEvents: 'none' }}>v3.2.4 (Warm Bronze)</div>
 
       {/* COLLAPSED VIEW */}
       {isCollapsed && (
@@ -301,6 +301,11 @@ export const DashboardHeader = ({ onStartAudio, onStopAudio, onReconnectStream, 
             )}
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.3rem', flexWrap: 'wrap' }}>
+            <button className="btn" 
+              style={{ padding: '0.25rem', background: audioEngine.isMuted ? 'rgba(239,68,68,0.2)' : 'var(--panel-bg)', color: audioEngine.isMuted ? '#fca5a5' : 'var(--text-muted)', border: '1px solid var(--panel-border)' }}
+              onClick={audioEngine.toggleMute} title={audioEngine.isMuted ? "Unmute" : "Silence"}>
+              {audioEngine.isMuted ? '🔇' : '🔊'}
+            </button>
             <button className="btn" style={{ padding: '0.25rem', background: 'var(--panel-bg)', color: 'var(--text-muted)', border: '1px solid var(--panel-border)' }}
               onClick={() => {
                 const keys = [
@@ -315,10 +320,10 @@ export const DashboardHeader = ({ onStartAudio, onStopAudio, onReconnectStream, 
                   const nk = window.prompt(`Enter ${k.name}:`, cur);
                   if (nk !== null) { if (!nk.trim()) localStorage.removeItem(k.key); else localStorage.setItem(k.key, nk.trim()); }
                 });
-              }} title="Set API Keys (Deepgram, DeepL, Microsoft)"><KeyIcon /></button>
+              }} title="Set API Keys (Deepgram, DeepL, Microsoft, OpenAI)"><KeyIcon /></button>
             <button className="btn"
               style={{
-                backgroundColor: sttLanguage === 'auto' ? 'rgba(255,255,255,0.1)' : sttLanguage === 'en' ? 'rgba(59,130,246,0.8)' : 'rgba(16,185,129,0.8)',
+                backgroundColor: sttLanguage === 'auto' ? 'rgba(110,231,183,0.1)' : sttLanguage === 'en' ? 'rgba(59,130,246,0.8)' : 'rgba(16,185,129,0.8)',
                 color: sttLanguage === 'auto' ? 'var(--text-muted)' : 'white',
                 padding: '0.25rem 0.4rem', fontWeight: 600, fontSize: '0.65rem',
                 border: sttLanguage === 'auto' ? '1px solid var(--panel-border)' : '1px solid transparent',

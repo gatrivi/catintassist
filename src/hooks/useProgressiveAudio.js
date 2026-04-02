@@ -1,7 +1,16 @@
-import { useCallback, useRef, useMemo } from 'react';
+import { useCallback, useRef, useMemo, useState } from 'react';
 
 export const useProgressiveAudio = () => {
   const audioCtxRef = useRef(null);
+  const [isMuted, setIsMuted] = useState(localStorage.getItem('AUDIO_MUTED') === 'true');
+
+  const toggleMute = useCallback(() => {
+    setIsMuted(prev => {
+      const next = !prev;
+      localStorage.setItem('AUDIO_MUTED', next);
+      return next;
+    });
+  }, []);
 
   const initAudio = useCallback(() => {
     if (typeof window === 'undefined') return;
@@ -16,112 +25,105 @@ export const useProgressiveAudio = () => {
   const createGain = (ctx, startVol, duration, t) => {
     const g = ctx.createGain();
     g.gain.setValueAtTime(0, t);
-    g.gain.linearRampToValueAtTime(startVol, t + 0.01);
-    g.gain.exponentialRampToValueAtTime(0.001, t + duration);
+    g.gain.linearRampToValueAtTime(startVol, t + 0.005);
+    g.gain.exponentialRampToValueAtTime(0.0001, t + duration);
     return g;
   };
 
   const playBagOpen = useCallback(() => {
+    if (isMuted) return;
     initAudio();
     if (!audioCtxRef.current) return;
     const ctx = audioCtxRef.current;
     const t = ctx.currentTime;
+    const gain = createGain(ctx, 0.3, 0.5, t);
+    gain.connect(ctx.destination);
     
-    // Leather rustle (Brown noise)
-    const bufferSize = ctx.sampleRate * 0.5;
-    const buffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
-    const data = buffer.getChannelData(0);
-    for (let i = 0; i < bufferSize; i++) data[i] = Math.random() * 2 - 1;
-    const noise = ctx.createBufferSource(); noise.buffer = buffer;
-    
-    const filter = ctx.createBiquadFilter();
-    filter.type = 'lowpass'; filter.frequency.value = 400;
-    
-    const gain = createGain(ctx, 0.4, 0.5, t);
-    noise.connect(filter); filter.connect(gain); gain.connect(ctx.destination);
-    noise.start(t); noise.stop(t + 0.5);
-
-    // Initial Jangle
-    for(let i=0; i<5; i++) {
-      const osc = ctx.createOscillator();
-      const g = createGain(ctx, 0.1, 0.2, t + (i * 0.05));
-      osc.frequency.setValueAtTime(2000 + (i * 500), t);
-      osc.connect(g); g.connect(ctx.destination);
-      osc.start(t + (i * 0.05)); osc.stop(t + 0.3);
-    }
-  }, [initAudio]);
+    // Soft noise rustle
+    const buf = ctx.createBuffer(1, ctx.sampleRate * 0.4, ctx.sampleRate);
+    const d = buf.getChannelData(0);
+    for(let i=0; i<d.length; i++) d[i] = Math.random() * 2 - 1;
+    const noise = ctx.createBufferSource(); noise.buffer = buf;
+    const filter = ctx.createBiquadFilter(); filter.type = 'lowpass'; filter.frequency.value = 600;
+    noise.connect(filter); filter.connect(gain);
+    noise.start(t); noise.stop(t + 0.4);
+  }, [initAudio, isMuted]);
 
   const playCoin = useCallback((minuteCount = 1) => {
+    if (isMuted) return;
     initAudio();
     if (!audioCtxRef.current) return;
     const ctx = audioCtxRef.current;
     const t = ctx.currentTime;
 
-    // Metallic Inharmonicity (Coins ring at multiple peaks)
-    const frequencies = [2400, 3100, 3900];
+    // Warm Bronze Synthesis (Lower frequencies, Triangle waves for harmonics)
+    // 800Hz - 1100Hz range is "heavy", 2000Hz+ is "beepy"
+    const frequencies = [820, 1150, 1420]; 
     const fullness = Math.min(1, minuteCount / 60);
 
-    // Filter shifts from low-muffled (cloth) to high-ringing (metal-on-metal)
     const filter = ctx.createBiquadFilter();
-    filter.type = 'bandpass';
-    filter.frequency.setValueAtTime(600 + (fullness * 2000), t);
-    filter.Q.setValueAtTime(0.5 + (fullness * 6), t);
+    filter.type = 'lowpass';
+    filter.frequency.setValueAtTime(1200 + (fullness * 2000), t); // Muffled for Cloth, opens for Pile
+    filter.Q.setValueAtTime(0.3, t);
 
     frequencies.forEach((f, idx) => {
       const osc = ctx.createOscillator();
-      osc.type = 'sine';
+      osc.type = 'triangle'; // Warm harmonics
       osc.frequency.setValueAtTime(f, t);
-      const decay = (minuteCount === 1 ? 0.08 : 0.2 + (fullness * 0.4)) / (idx + 1);
-      const gain = createGain(ctx, 0.1, decay, t);
-      osc.connect(filter);
-      osc.start(t); osc.stop(t + decay + 0.1);
+      osc.frequency.exponentialRampToValueAtTime(f * 0.98, t + 0.1); // Subtle mechanical de-tuning
+      
+      const decay = (minuteCount === 1 ? 0.08 : 0.12 + (fullness * 0.3));
+      const gain = createGain(ctx, 0.08, decay, t);
+      osc.connect(filter); filter.connect(gain); gain.connect(ctx.destination);
+      osc.start(t); osc.stop(t + decay + 0.05);
     });
 
-    filter.connect(ctx.destination);
-  }, [initAudio]);
+    // Soft "thud" attack (Low-passed noise)
+    const attackBuf = ctx.createBuffer(1, ctx.sampleRate * 0.015, ctx.sampleRate);
+    const attackD = attackBuf.getChannelData(0);
+    for(let i=0; i<attackD.length; i++) attackD[i] = Math.random() * 2 - 1;
+    const attack = ctx.createBufferSource(); attack.buffer = attackBuf;
+    const attackGain = createGain(ctx, 0.1, 0.015, t);
+    const attackFilter = ctx.createBiquadFilter(); attackFilter.type = 'lowpass'; attackFilter.frequency.value = 400;
+    attack.connect(attackFilter); attackFilter.connect(attackGain); attackGain.connect(ctx.destination);
+    attack.start(t);
+  }, [initAudio, isMuted]);
 
-  const playTick = useCallback((minuteCount = 1) => {
-    playCoin(minuteCount);
-  }, [playCoin]);
+  const playTick = useCallback((minuteCount = 1) => { playCoin(minuteCount); }, [playCoin]);
 
   const playBill = useCallback(() => {
+    if (isMuted) return;
     initAudio();
     if (!audioCtxRef.current) return;
     const ctx = audioCtxRef.current;
     const t = ctx.currentTime;
-    const bufferSize = ctx.sampleRate * 0.15;
-    const buffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
-    const data = buffer.getChannelData(0);
-    for (let i = 0; i < bufferSize; i++) data[i] = Math.random() * 2 - 1;
-    const noise = ctx.createBufferSource(); noise.buffer = buffer;
-    const filter = ctx.createBiquadFilter();
-    filter.type = 'highpass'; filter.frequency.value = 2000;
-    const gain = createGain(ctx, 0.4, 0.15, t);
-    noise.connect(filter); filter.connect(gain); gain.connect(ctx.destination);
+    const gain = createGain(ctx, 0.2, 0.15, t);
+    gain.connect(ctx.destination);
+    const buf = ctx.createBuffer(1, ctx.sampleRate * 0.15, ctx.sampleRate);
+    const d = buf.getChannelData(0);
+    for(let i=0; i<d.length; i++) d[i] = Math.random() * 2 - 1;
+    const noise = ctx.createBufferSource(); noise.buffer = buf;
+    const filter = ctx.createBiquadFilter(); filter.type = 'highpass'; filter.frequency.value = 3000;
+    noise.connect(filter); filter.connect(gain);
     noise.start(t); noise.stop(t + 0.15);
-  }, [initAudio]);
+  }, [initAudio, isMuted]);
 
   const playDiamond = useCallback(() => {
+    if (isMuted) return;
     initAudio();
     if (!audioCtxRef.current) return;
     const ctx = audioCtxRef.current;
     const t = ctx.currentTime;
-    const oscClick = ctx.createOscillator();
-    oscClick.type = 'square'; oscClick.frequency.setValueAtTime(6000, t);
-    const gainClick = createGain(ctx, 0.1, 0.02, t);
-    oscClick.connect(gainClick); gainClick.connect(ctx.destination);
-    oscClick.start(t); oscClick.stop(t + 0.02);
-    [3200, 3800].forEach(f => {
-      const osc = ctx.createOscillator();
-      osc.type = 'sine'; osc.frequency.setValueAtTime(f, t);
-      const gain = createGain(ctx, 0.05, 1.2, t);
+    [2200, 2600].forEach(f => {
+      const osc = ctx.createOscillator(); osc.type = 'sine'; osc.frequency.setValueAtTime(f, t);
+      const gain = createGain(ctx, 0.04, 0.8, t);
       osc.connect(gain); gain.connect(ctx.destination);
-      osc.start(t); osc.stop(t + 1.2);
+      osc.start(t); osc.stop(t + 0.8);
     });
-  }, [initAudio]);
+  }, [initAudio, isMuted]);
 
-  const playMetalChest = useCallback(() => { /* Solid resonance */ }, [initAudio]);
-  const playCarriageVault = useCallback(() => { /* Massive resonance */ }, [initAudio]);
+  const playMetalChest = useCallback(() => { /* Legacy */ }, []);
+  const playCarriageVault = useCallback(() => { /* Legacy */ }, []);
 
   const stopAll = useCallback(() => {
     if (audioCtxRef.current && audioCtxRef.current.state !== 'closed') {
@@ -130,6 +132,6 @@ export const useProgressiveAudio = () => {
   }, []);
 
   return useMemo(() => ({ 
-    initAudio, playBagOpen, playTick, playBill, playDiamond, playCoin, playMetalChest, playCarriageVault, stopAll 
-  }), [initAudio, playBagOpen, playTick, playBill, playDiamond, playCoin, playMetalChest, playCarriageVault, stopAll]);
+    isMuted, toggleMute, initAudio, playBagOpen, playTick, playBill, playDiamond, playCoin, playMetalChest, playCarriageVault, stopAll 
+  }), [isMuted, toggleMute, initAudio, playBagOpen, playTick, playBill, playDiamond, playCoin, stopAll]);
 };
