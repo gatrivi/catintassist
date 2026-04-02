@@ -274,7 +274,8 @@ export const DashboardHeader = ({ onStartAudio, onStopAudio, onReconnectStream, 
                   { name: 'Deepgram API Key', key: 'DEEPGRAM_API_KEY' },
                   { name: 'DeepL API Key (Optional)', key: 'DEEPL_API_KEY' },
                   { name: 'Microsoft Translator Key (Optional)', key: 'MICROSOFT_TRANSLATOR_KEY' },
-                  { name: 'Microsoft Region (e.g. eastus)', key: 'MICROSOFT_TRANSLATOR_REGION' }
+                  { name: 'Microsoft Region (e.g. eastus)', key: 'MICROSOFT_TRANSLATOR_REGION' },
+                  { name: 'OpenAI API Key (Optional for GPT-4o)', key: 'OPENAI_API_KEY' }
                 ];
                 keys.forEach(k => {
                   const cur = localStorage.getItem(k.key) || '';

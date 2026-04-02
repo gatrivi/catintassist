@@ -7,6 +7,12 @@ CORE VALUES
 - the remaining 20% is for keeping track, of this its key that i meet my monthly target, and for that i need to see how much i have to work per day, how much i am working per day, and how much time i have left,
 -after implementing a feature, if satisfied, refactor, cleanup, run tests, and if confident, push to repo. do other things that you consider appropriate.
 
+
+Tu 31
+- Upgrade pick wheel. still needs work
+- improved money rain
+
+
 MO 22
 [x] still cant anotate or keep track of breaks, how much ive been working today or a visual representation of my workday. how long ive worked wo breaks. 
 [x] still dont have a 15 min timer for holds.
