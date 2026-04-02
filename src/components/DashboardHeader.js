@@ -232,10 +232,29 @@ export const DashboardHeader = ({ onStartAudio, onStopAudio, onReconnectStream, 
         <div className="income-card" style={{ gap: '0.4rem', alignItems: 'flex-start', justifyContent: 'center', position: 'relative' }}>
           
           {isEditingScoreboard && (
-            <div style={{ position: 'absolute', bottom: -20, left: 0, right: 0, display: 'flex', gap: '0.2rem', justifyContent: 'center', zIndex: 100 }}>
-               <button className="btn" onClick={() => { audioEngine.playLeatherWallet(); setCelebration({ type: 'call', label: '+AR$4,200 (Mock)', coins: 40 }); setTimeout(()=>setCelebration(null), 2500) }} style={{ fontSize: '0.55rem', background: '#333', color: '#fff', padding: '0.1rem 0.3rem' }}>[Demo Call]</button>
-               <button className="btn" onClick={() => { audioEngine.playMetalChest(); setCelebration({ type: 'day', label: 'Day Met (Mock)', coins: 80 }); setTimeout(()=>setCelebration(null), 3500) }} style={{ fontSize: '0.55rem', background: '#333', color: '#fff', padding: '0.1rem 0.3rem' }}>[Demo Day]</button>
-               <button className="btn" onClick={() => { audioEngine.playCarriageVault(); setCelebration({ type: 'month', label: 'M O N T H  M E T !', coins: 160 }); setTimeout(()=>setCelebration(null), 5000) }} style={{ fontSize: '0.55rem', background: '#333', color: '#fff', padding: '0.1rem 0.3rem' }}>[Demo Month]</button>
+            <div style={{ position: 'absolute', bottom: -28, left: 0, right: 0, display: 'flex', gap: '0.15rem', justifyContent: 'center', zIndex: 100, flexWrap: 'wrap' }}>
+               {/* Sound Diagnostic Lab */}
+               <button className="btn" onClick={() => audioEngine.playBagOpen()} style={{ fontSize: '0.55rem', background: '#333', color: '#10b981', padding: '0.1rem 0.2rem' }}>[Bag]</button>
+               <button className="btn" onClick={() => audioEngine.playTick(1)} style={{ fontSize: '0.55rem', background: '#333', color: '#6ee7b7', padding: '0.1rem 0.2rem' }}>[Min1]</button>
+               <button className="btn" onClick={() => audioEngine.playTick(20)} style={{ fontSize: '0.55rem', background: '#333', color: '#fcd34d', padding: '0.1rem 0.2rem' }}>[Min20]</button>
+               <button className="btn" onClick={() => audioEngine.playBill()} style={{ fontSize: '0.55rem', background: '#333', color: '#fb923c', padding: '0.1rem 0.2rem' }}>[Bill]</button>
+               <button className="btn" onClick={() => audioEngine.playDiamond()} style={{ fontSize: '0.55rem', background: '#333', color: '#38bdf8', padding: '0.1rem 0.2rem' }}>[Gem]</button>
+               <button className="btn" onClick={() => audioEngine.playCoin()} style={{ fontSize: '0.55rem', background: '#333', color: '#ddd', padding: '0.1rem 0.2rem' }}>[Coin]</button>
+               
+               <div style={{ width: '4px', height: '10px', background: 'rgba(255,255,255,0.1)', margin: '0 0.1rem' }} />
+
+               <button className="btn" onClick={() => { 
+                 // Mock 45 min payout
+                 const mins = 45; let rem = mins;
+                 const diamonds = Math.floor(rem / 20); rem %= 20;
+                 const bills = Math.floor(rem / 5); rem %= 5;
+                 const coins = rem;
+                 for(let i=0; i<diamonds; i++) setTimeout(()=>audioEngine.playDiamond(), i*400);
+                 for(let i=0; i<bills; i++) setTimeout(()=>audioEngine.playBill(), (diamonds*400)+(i*300));
+                 for(let i=0; i<coins; i++) setTimeout(()=>audioEngine.playCoin(), (diamonds*400)+(bills*300)+(i*200));
+                 setCelebration({ type: 'call', label: '+45min Mock', coins: 40 }); 
+                 setTimeout(()=>setCelebration(null), 4000);
+               }} style={{ fontSize: '0.55rem', background: '#444', color: '#fff', padding: '0.1rem 0.3rem' }}>[Mock 45m]</button>
             </div>
           )}
 
