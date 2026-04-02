@@ -143,7 +143,7 @@ export const DashboardHeader = ({ onStartAudio, onStopAudio, onReconnectStream, 
 
   return (
     <header className="dashboard-header glass-panel" style={{ position: 'relative', zIndex: 100 }}>
-      <div style={{ position: 'absolute', top: '0.1rem', right: '0.4rem', fontSize: '0.5rem', opacity: 0.3, pointerEvents: 'none' }}>v3.2.1 (Denominations)</div>
+      <div style={{ position: 'absolute', top: '0.1rem', right: '0.4rem', fontSize: '0.5rem', opacity: 0.3, pointerEvents: 'none' }}>v3.2.3 (Resonant Metal)</div>
 
       {/* COLLAPSED VIEW */}
       {isCollapsed && (

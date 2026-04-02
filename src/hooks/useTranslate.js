@@ -1,3 +1,5 @@
+import { useState, useCallback, useRef, useEffect } from 'react';
+
 // Persistent Cache to save quota for repetitive phrases
 let TRANS_CACHE = {}; 
 const MAX_CACHE_SIZE = 500;
