@@ -37,70 +37,115 @@ export const useTranslate = (text, lang, prefetchTTS, shouldPrefetch) => {
     const timer = setTimeout(async () => {
       setIsTranslating(true);
       
-      // Layer 1: Google Translate (at client)
-      try {
-        const url = `https://translate.googleapis.com/translate_a/single?client=at&sl=${lang}&tl=${targetLang}&dt=t&q=${encodeURIComponent(text)}`;
-        const res = await fetch(url);
-        if (!res.ok) throw new Error('Primary failed');
-        const json = await res.json();
-        const result = json[0].map(x => x[0]).join('');
-        const sanitized = sanitizeTranslation(result);
-        
-        if (sanitized) {
-          setTranslation(sanitized);
-          setIsTranslating(false);
-          if (shouldPrefetch && sanitized !== lastPrefetchedTextRef.current) {
-            const urlObj = await prefetchTTS(sanitized, targetLang);
-            setAudioUrl(urlObj);
-            lastPrefetchedTextRef.current = sanitized;
-          }
-          return;
-        }
-        throw new Error('Sanitized out');
-      } catch (err) {
-        // Layer 2: Lingva Translate (Stable Proxy)
-        try {
-          const lingvaUrl = `https://lingva.ml/api/v1/${lang}/${targetLang}/${encodeURIComponent(text)}`;
-          const res = await fetch(lingvaUrl);
-          const json = await res.json();
-          const sanitized = sanitizeTranslation(json.translation);
-          
-          if (sanitized) {
-            setTranslation(sanitized);
-            setIsTranslating(false);
-            if (shouldPrefetch && sanitized !== lastPrefetchedTextRef.current) {
-              const urlObj = await prefetchTTS(sanitized, targetLang);
-              setAudioUrl(urlObj);
-              lastPrefetchedTextRef.current = sanitized;
-            }
-            return;
-          }
-        } catch (err2) {
-          // Layer 3: MyMemory (Last Resort)
+      const DEEPL_KEY = localStorage.getItem('DEEPL_API_KEY');
+      const MS_KEY = localStorage.getItem('MICROSOFT_TRANSLATOR_KEY');
+      const MS_REGION = localStorage.getItem('MICROSOFT_TRANSLATOR_REGION') || 'eastus';
+
+      // Internal function to translate a single chunk (max 500 chars usually)
+      const translateChunk = async (chunk) => {
+        // Layer 1: DeepL
+        if (DEEPL_KEY) {
           try {
-            const myMemoryUrl = `https://api.mymemory.translated.net/get?q=${encodeURIComponent(text)}&langpair=${lang}|${targetLang}`;
-            const res = await fetch(myMemoryUrl);
-            const json = await res.json();
-            const sanitized = sanitizeTranslation(json.responseData?.translatedText);
-            
-            if (sanitized) {
-              setTranslation(sanitized);
-              setIsTranslating(false);
-              if (shouldPrefetch && sanitized !== lastPrefetchedTextRef.current) {
-                const urlObj = await prefetchTTS(sanitized, targetLang);
-                setAudioUrl(urlObj);
-                lastPrefetchedTextRef.current = sanitized;
-              }
-              return;
+            const res = await fetch(`https://api-free.deepl.com/v2/translate`, {
+              method: 'POST',
+              headers: { 'Authorization': `DeepL-Auth-Key ${DEEPL_KEY}`, 'Content-Type': 'application/x-www-form-urlencoded' },
+              body: new URLSearchParams({ text: chunk, target_lang: targetLang.toUpperCase(), source_lang: lang.toUpperCase() })
+            });
+            if (res.ok) {
+              const data = await res.json();
+              if (data.translations?.[0]?.text) return data.translations[0].text;
             }
-          } catch (err3) {
-            console.error("All translation layers failed.");
-          }
+          } catch (e) {}
         }
+
+        // Layer 2: Microsoft
+        if (MS_KEY) {
+          try {
+            const res = await fetch(`https://api.cognitive.microsofttranslator.com/translate?api-version=3.0&from=${lang}&to=${targetLang}`, {
+              method: 'POST',
+              headers: { 'Ocp-Apim-Subscription-Key': MS_KEY, 'Ocp-Apim-Subscription-Region': MS_REGION, 'Content-Type': 'application/json' },
+              body: JSON.stringify([{ Text: chunk }])
+            });
+            if (res.ok) {
+              const data = await res.json();
+              if (data[0]?.translations?.[0]?.text) return data[0].translations[0].text;
+            }
+          } catch (e) {}
+        }
+
+        // Layer 3: Google (At-Client)
+        try {
+          const url = `https://translate.googleapis.com/translate_a/single?client=at&sl=${lang}&tl=${targetLang}&dt=t&q=${encodeURIComponent(chunk)}`;
+          const res = await fetch(url);
+          if (res.ok) {
+            const json = await res.json();
+            const result = json[0].map(x => x[0]).join('');
+            const sanitized = sanitizeTranslation(result);
+            if (sanitized) return sanitized;
+          }
+        } catch (err) {}
+
+        // Layer 4: SimplyTranslate
+        try {
+          const res = await fetch(`https://simplytranslate.org/api/translate?engine=google&from=${lang}&to=${targetLang}&text=${encodeURIComponent(chunk)}`);
+          if (res.ok) {
+            const json = await res.json();
+            if (json.translated_text) return json.translated_text;
+          }
+        } catch (err) {}
+
+        // Layer 5: MyMemory
+        try {
+          const myMemoryUrl = `https://api.mymemory.translated.net/get?q=${encodeURIComponent(chunk)}&langpair=${lang}|${targetLang}`;
+          const res = await fetch(myMemoryUrl);
+          const json = await res.json();
+          const sanitized = sanitizeTranslation(json.responseData?.translatedText);
+          if (sanitized) return sanitized;
+        } catch (err) {}
+
+        return null;
+      };
+
+      // Chunking logic: Split by sentences or roughly 500 chars
+      const chunks = [];
+      let remaining = text;
+      while (remaining.length > 0) {
+        if (remaining.length <= 500) {
+          chunks.push(remaining);
+          break;
+        }
+        // Try to find a good split point (period, comma, or space)
+        let splitIdx = remaining.lastIndexOf('. ', 500);
+        if (splitIdx === -1) splitIdx = remaining.lastIndexOf(', ', 500);
+        if (splitIdx === -1) splitIdx = remaining.lastIndexOf(' ', 500);
+        if (splitIdx === -1) splitIdx = 500;
+        
+        chunks.push(remaining.substring(0, splitIdx + 1).trim());
+        remaining = remaining.substring(splitIdx + 1).trim();
       }
-      
-      setTranslation(''); // Clear if all failed
-      setIsTranslating(false);
+
+      try {
+        const translatedParts = [];
+        for (const chunk of chunks) {
+           const translated = await translateChunk(chunk);
+           if (translated) translatedParts.push(translated);
+           else translatedParts.push("..."); // Placeholder for failed chunk
+        }
+        
+        const finalResult = translatedParts.join(' ');
+        setTranslation(finalResult);
+        setIsTranslating(false);
+
+        if (shouldPrefetch && finalResult && finalResult !== lastPrefetchedTextRef.current) {
+          const urlObj = await prefetchTTS(finalResult, targetLang);
+          setAudioUrl(urlObj);
+          lastPrefetchedTextRef.current = finalResult;
+        }
+      } catch (err) {
+        console.error("Chunked translation failed:", err);
+        setTranslation('');
+        setIsTranslating(false);
+      }
     }, 600);
 
     return () => clearTimeout(timer);

@@ -3,6 +3,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import { useTTS } from '../hooks/useTTS';
 import { useTranslate } from '../hooks/useTranslate';
 import { useSession } from '../contexts/SessionContext';
+import { useProgressiveAudio } from '../hooks/useProgressiveAudio';
 
 const getBubbleStyle = (text, isCurrent, lang) => {
   if (!text) return {};
@@ -20,6 +21,39 @@ const getBubbleStyle = (text, isCurrent, lang) => {
   }
 
   return { borderLeft: `3px solid ${baseBorder}`, backgroundColor: baseBg };
+};
+
+const InteractiveText = ({ text }) => {
+  if (!text) return null;
+  // Matches (123) 456-7890, 123-456-7890, 123.456.7890, 1234567890, +1 555 555 5555, +15555555555
+  // Also 7 digits like 555-4444 or 555 4444
+  const phoneRegex = /(\+?\(?\d{1,4}?\)?[\s.\-]?\(?\d{2,4}?\)?[\s.\-]?\d{3,4}[\s.\-]?\d{3,4})/g;
+
+  const parts = text.split(phoneRegex);
+
+  const handleCopy = (num) => {
+    navigator.clipboard.writeText(num.trim());
+  };
+
+  return (
+    <>
+      {parts.map((p, i) => {
+        if (p.match(phoneRegex)) {
+          return (
+            <span 
+              key={i} 
+              className="phone-number" 
+              onClick={(e) => { e.stopPropagation(); handleCopy(p); }} 
+              title="Click to copy phone number"
+            >
+              {p}
+            </span>
+          );
+        }
+        return <span key={i}>{p}</span>;
+      })}
+    </>
+  );
 };
 
 const TranslatedBubble = ({ text, lang, playTTS, stopTTS, playingUrl, prefetchTTS, reverse = false, ttsMode, wordCount, shouldPrefetch, emphasisMode }) => {
@@ -46,7 +80,9 @@ const TranslatedBubble = ({ text, lang, playTTS, stopTTS, playingUrl, prefetchTT
   return (
     <div style={{ display: 'flex', gap: '0.25rem', marginTop: '0.1rem', flexDirection: reverse ? 'row-reverse' : 'row', alignItems: 'center' }}>
       <div style={{ flex: 1, textAlign: reverse ? 'right' : 'left' }}>
-        <div style={{ color: transcriptColor, fontWeight: emphasisMode === 'flipped' ? 400 : 400, lineHeight: 1.3, fontSize: '0.9rem' }}>{text}</div>
+        <div style={{ color: transcriptColor, fontWeight: emphasisMode === 'flipped' ? 400 : 400, lineHeight: 1.3, fontSize: '0.9rem' }}>
+          <InteractiveText text={text} />
+        </div>
       </div>
 
       <div style={{ 
@@ -87,7 +123,7 @@ const TranslatedBubble = ({ text, lang, playTTS, stopTTS, playingUrl, prefetchTT
         textAlign: reverse ? 'left' : 'right'
       }}>
         <div style={{ fontWeight: 400, fontStyle: 'italic', lineHeight: 1.3, fontSize: '0.85rem' }}>
-          {translation || <span style={{ opacity: 0.2 }}>...</span>}
+          {translation ? <InteractiveText text={translation} /> : <span style={{ opacity: 0.2 }}>...</span>}
         </div>
       </div>
     </div>
@@ -102,13 +138,24 @@ export const TranscriptionBoard = ({ captions, onClear, isToolsOpen, onToggleToo
   const [ttsMode, setTtsMode] = useState('manual');
   const [emphasisMode, setEmphasisMode] = useState('original'); // 'original' | 'flipped'
   const { playTTS, stopTTS, isPlaying, playingUrl, prefetchTTS } = useTTS();
+  const { playWarningPing } = useProgressiveAudio();
   const { isEditingScoreboard, visibleCards, toggleCard, isActive, isBreakActive } = useSession();
+  const warnedBubblesRef = useRef(new Set());
 
   useEffect(() => {
     if (!isScrolledUpRef.current) {
       bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
     }
-  }, [captions]);
+
+    const lastCap = captions[captions.length - 1];
+    if (lastCap && lastCap.text) {
+      const words = lastCap.text.trim().split(/\s+/).length;
+      if (words >= 40 && !warnedBubblesRef.current.has(lastCap.id)) {
+        playWarningPing();
+        warnedBubblesRef.current.add(lastCap.id);
+      }
+    }
+  }, [captions, playWarningPing]);
 
   const resetScrollTimer = () => {
     if (scrollTimeoutRef.current) clearTimeout(scrollTimeoutRef.current);
@@ -241,26 +288,38 @@ export const TranscriptionBoard = ({ captions, onClear, isToolsOpen, onToggleToo
              '⚠️ You are OFFLINE. Press Connect above to start capturing audio!')}
           </div>
         )}
-        {captions.map((cap, i) => {
+        {captions.reduce((acc, cap, i) => {
+          if (!cap.text || !cap.text.trim()) return acc;
+          const words = cap.text.trim().split(/\s+/);
+          // 55 words is around 5 visual lines on a desktop transcription area
+          if (words.length > 55) {
+             const mid = Math.ceil(words.length / 2);
+             acc.push({ ...cap, text: words.slice(0, mid).join(' '), id: `${cap.id || i}-a`, isSplit: true });
+             acc.push({ ...cap, text: words.slice(mid).join(' '), id: `${cap.id || i}-b`, isSplit: true });
+          } else {
+             acc.push(cap);
+          }
+          return acc;
+        }, []).map((cap, i, flattened) => {
           if (!cap.text || !cap.text.trim()) return null;
-          const isSameAsPrevious = i > 0 && captions[i-1].lang === cap.lang;
+          const isSameAsPrevious = i > 0 && flattened[i-1].lang === cap.lang;
           const wordCount = cap.text.trim().split(/\s+/).length;
           
           return (
             <div key={cap.id || i} className="transcript-bubble" style={{ 
               opacity: cap.isFinal === false ? 0.8 : 1,
-              marginTop: isSameAsPrevious ? '0rem' : '0.4rem',
+              marginTop: (isSameAsPrevious || cap.isSplit) ? '0rem' : '0.4rem',
               padding: '0.1rem 0',
               ...getBubbleStyle(cap.text, cap.isFinal === false, cap.lang)
             }}>
-              {(!isSameAsPrevious) && (
+              {(!isSameAsPrevious && !cap.isSplit) && (
                 <div style={{ display: 'flex', marginBottom: '0.1rem' }}>
                   <span style={{ fontSize: '0.65rem', color: 'rgba(255,255,255,0.3)', textTransform: 'uppercase', letterSpacing: '0.05em', lineHeight: 1 }}>
                     {cap.lang === 'es' ? 'Spanish' : 'English'}
                   </span>
                 </div>
               )}
-              <TranslatedBubble text={cap.text} lang={cap.lang} playTTS={playTTS} stopTTS={stopTTS} playingUrl={playingUrl} prefetchTTS={prefetchTTS} reverse={cap.lang === 'es'} ttsMode={ttsMode} wordCount={wordCount} shouldPrefetch={i >= captions.length - 3} emphasisMode={emphasisMode} />
+              <TranslatedBubble text={cap.text} lang={cap.lang} playTTS={playTTS} stopTTS={stopTTS} playingUrl={playingUrl} prefetchTTS={prefetchTTS} reverse={cap.lang === 'es'} ttsMode={ttsMode} wordCount={wordCount} shouldPrefetch={i >= flattened.length - 3} emphasisMode={emphasisMode} />
             </div>
           );
         })}

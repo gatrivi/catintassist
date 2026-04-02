@@ -275,6 +275,31 @@ body {
   color: #fff;
 }
 
+.phone-number {
+  background: rgba(254, 240, 138, 0.15);
+  color: #fde047;
+  padding: 0 4px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-weight: 700;
+  transition: all 0.2s;
+  border-bottom: 2px solid rgba(254, 240, 138, 0.4);
+  display: inline-block;
+  margin: 0 1px;
+}
+
+.phone-number:hover {
+  background: rgba(254, 240, 138, 0.3);
+  transform: scale(1.05);
+  border-bottom-color: #fde047;
+}
+
+.phone-number:active {
+  transform: scale(0.95);
+  background: var(--success);
+  color: white;
+}
+
 /* Note Pad */
 .notepad-container {
   display: flex;

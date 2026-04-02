@@ -270,10 +270,18 @@ export const DashboardHeader = ({ onStartAudio, onStopAudio, onReconnectStream, 
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.3rem', flexWrap: 'wrap' }}>
             <button className="btn" style={{ padding: '0.25rem', background: 'var(--panel-bg)', color: 'var(--text-muted)', border: '1px solid var(--panel-border)' }}
               onClick={() => {
-                const cur = localStorage.getItem('DEEPGRAM_API_KEY') || '';
-                const nk = window.prompt('Enter your Deepgram API Key:', cur);
-                if (nk !== null) { if (!nk.trim()) localStorage.removeItem('DEEPGRAM_API_KEY'); else localStorage.setItem('DEEPGRAM_API_KEY', nk.trim()); }
-              }} title="Set API Key"><KeyIcon /></button>
+                const keys = [
+                  { name: 'Deepgram API Key', key: 'DEEPGRAM_API_KEY' },
+                  { name: 'DeepL API Key (Optional)', key: 'DEEPL_API_KEY' },
+                  { name: 'Microsoft Translator Key (Optional)', key: 'MICROSOFT_TRANSLATOR_KEY' },
+                  { name: 'Microsoft Region (e.g. eastus)', key: 'MICROSOFT_TRANSLATOR_REGION' }
+                ];
+                keys.forEach(k => {
+                  const cur = localStorage.getItem(k.key) || '';
+                  const nk = window.prompt(`Enter ${k.name}:`, cur);
+                  if (nk !== null) { if (!nk.trim()) localStorage.removeItem(k.key); else localStorage.setItem(k.key, nk.trim()); }
+                });
+              }} title="Set API Keys (Deepgram, DeepL, Microsoft)"><KeyIcon /></button>
             <button className="btn"
               style={{
                 backgroundColor: sttLanguage === 'auto' ? 'rgba(255,255,255,0.1)' : sttLanguage === 'en' ? 'rgba(59,130,246,0.8)' : 'rgba(16,185,129,0.8)',
