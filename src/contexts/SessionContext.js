@@ -31,7 +31,8 @@ export const SessionProvider = ({ children }) => {
 
   const toggleCard = (key) => setVisibleCards(v => ({ ...v, [key]: !v[key] }));
 
-  // Persistent stats
+  // GUARDAMOS TODO: Aquí anotamos cuánto trabajamos hoy, en la semana y en el mes.
+  // Revisamos si es un nuevo día para poner el contador de hoy en cero (0).
   const [stats, setStats] = useState(() => {
     const saved = localStorage.getItem('catintassist_stats');
     const today = new Date().toDateString();
@@ -41,7 +42,7 @@ export const SessionProvider = ({ children }) => {
       dailyAvailMinutes: 0,
       weeklyMinutes: 0,
       monthlyMinutes: 0,
-      goalMinutes: 5500,
+      goalMinutes: 5500, // Meta del mes (¡A ganar plata!)
       lastDate: today
     };
     if (saved) {
@@ -95,6 +96,7 @@ export const SessionProvider = ({ children }) => {
     });
   };
 
+  // EMPEZAR LLAMADA: Dejamos de descansar y empezamos a contar los minutos de la llamada.
   const startSession = () => {
     commitAvailTime();
     setSessionSeconds(0);
@@ -102,6 +104,7 @@ export const SessionProvider = ({ children }) => {
     setIsActive(true);
   };
   
+  // TERMINAR LLAMADA: Guardamos los minutos que trabajamos para no perderlos.
   const stopSession = (onCallEnded) => {
     setIsActive(false);
     const minutesToAdd = sessionSeconds / 60;

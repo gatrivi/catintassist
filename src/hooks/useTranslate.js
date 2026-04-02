@@ -55,6 +55,7 @@ export const useTranslate = (text, lang, prefetchTTS, shouldPrefetch) => {
             method: 'POST', headers: { 'Authorization': `DeepL-Auth-Key ${keys.DEEPL}`, 'Content-Type': 'application/x-www-form-urlencoded' },
             body: new URLSearchParams({ text: c, target_lang: targetLang.toUpperCase(), source_lang: lang.toUpperCase() })
           });
+          if (!r.ok) throw `status ${r.status}`;
           const d = await r.json(); return d.translations?.[0]?.text;
         },
         ms: async (c) => {
@@ -63,6 +64,7 @@ export const useTranslate = (text, lang, prefetchTTS, shouldPrefetch) => {
             method: 'POST', headers: { 'Ocp-Apim-Subscription-Key': keys.MS, 'Ocp-Apim-Subscription-Region': keys.MS_REG, 'Content-Type': 'application/json' },
             body: JSON.stringify([{ Text: c }])
           });
+          if (!r.ok) throw `status ${r.status}`;
           const d = await r.json(); return d[0]?.translations?.[0]?.text;
         },
         openai: async (c) => {
@@ -75,26 +77,32 @@ export const useTranslate = (text, lang, prefetchTTS, shouldPrefetch) => {
               temperature: 0
             })
           });
+          if (!r.ok) throw `status ${r.status}`;
           const d = await r.json(); return d.choices?.[0]?.message?.content;
         },
         google: async (c) => {
           const r = await fetch(`https://translate.googleapis.com/translate_a/t?client=te&v=1.0&sl=${lang}&tl=${targetLang}&q=${encodeURIComponent(c)}`);
+          if (!r.ok) throw `status ${r.status}`;
           const d = await r.json(); 
           if (Array.isArray(d)) return typeof d[0] === 'string' ? d[0] : (Array.isArray(d[0]) ? d[0][0] : JSON.stringify(d[0]));
           return d;
         },
         lingva: async (c) => {
           const r = await fetch(`https://lingva.ml/api/v1/${lang}/${targetLang}/${encodeURIComponent(c)}`);
+          if (!r.ok) throw `status ${r.status}`;
           const d = await r.json(); return d.translation;
         }
       };
 
-      const raceChunk = async (chunk) => {
-        const pool = [];
-        if (keys.DEEPL) pool.push({ id: 'deepl', fn: fetchers.deepl });
-        if (keys.MS) pool.push({ id: 'ms', fn: fetchers.ms });
-        if (keys.OPENAI) pool.push({ id: 'openai', fn: fetchers.openai });
-        pool.push({ id: 'google', fn: fetchers.google }, { id: 'lingva', fn: fetchers.lingva });
+        const raceChunk = async (chunk) => {
+          // CARRERA DE TRADUCCIÓN: Le pedimos a Google, OpenAI y otros que traduzcan.
+          // El que responda más rápido, ¡gana!
+          const pool = [];
+          if (keys.DEEPL) pool.push({ id: 'deepl', fn: fetchers.deepl });
+          if (keys.MS) pool.push({ id: 'ms', fn: fetchers.ms });
+          if (keys.OPENAI) pool.push({ id: 'openai', fn: fetchers.openai });
+          // También intentamos con los que son gratis
+          pool.push({ id: 'lingva', fn: fetchers.lingva }, { id: 'google', fn: fetchers.google });
 
         let resolved = false;
         return new Promise((resolve) => {
@@ -141,7 +149,7 @@ export const useTranslate = (text, lang, prefetchTTS, shouldPrefetch) => {
       setCached(text, langPair, final);
       setIsTranslating(false);
 
-      if (shouldPrefetch && final && final !== lastPrefetchedTextRef.current) {
+      if (shouldPrefetch && final && final !== lastPrefetchedTextRef.current && typeof prefetchTTS === 'function') {
         const url = await prefetchTTS(final, targetLang);
         setAudioUrl(url);
         lastPrefetchedTextRef.current = final;

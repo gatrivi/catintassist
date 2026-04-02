@@ -44,7 +44,10 @@ export const useTTS = () => {
       };
       
       const res = await fetch(url, options);
-      if (!res.ok) throw new Error(`HTTP error ${res.status}`);
+      if (!res.ok) {
+        console.warn(`Inworld TTS failed (${res.status}). Falling back to browser TTS.`);
+        return null; 
+      }
       const result = await res.json();
       
       const byteCharacters = atob(result.audioContent);
@@ -73,13 +76,21 @@ export const useTTS = () => {
         audioUrl = await prefetchTTS(text, lang);
       }
       if (!audioUrl) {
-        setIsPlaying(false);
-        setPlayingUrl(null);
+        // FALLBACK: Browser Speech Synthesis
+        console.log("Using browser synthesis fallback...");
+        const utterance = new SpeechSynthesisUtterance(text);
+        utterance.lang = lang === 'es' ? 'es-ES' : 'en-US';
+        utterance.rate = 1.1;
+        utterance.onend = () => setIsPlaying(false);
+        utterance.onerror = () => setIsPlaying(false);
+        window.speechSynthesis.speak(utterance);
         return;
       }
       
       setPlayingUrl(audioUrl);
       
+      // AUDIO DOBLE: Hacemos que el sonido suene en dos lados.
+      // Uno para tus OÍDOS (auriculares) y otro para el CABLE VIRTUAL (la llamada).
       const audioLocal = new Audio(audioUrl);
       const audioSink = new Audio(audioUrl);
       

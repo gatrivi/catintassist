@@ -127,7 +127,10 @@ export const DashboardHeader = ({ onStartAudio, onStopAudio, onReconnectStream, 
   let timeElapsedRatio = Math.min(1, Math.max(0, (now.getTime() - new Date(year, month, currentDay, workdayStartHour).getTime()) / workdayTotalMs));
   const dailyGoal = parseFloat(requiredDailyAverage) || 0;
   let hoursLeft = Math.max(0.1, workdayEndHour - (now.getHours() + now.getMinutes() / 60));
+  // LAS HORAS REALES: De las horas que faltan, calculamos cuántas podemos trabajar de verdad (35 min por hora).
   const realisticRemainingMins = hoursLeft * 35;
+  const workableHours = realisticRemainingMins / 60;
+  
   const maxCashToClaim = Math.round(realisticRemainingMins * RATE_PER_MINUTE * arsRate).toLocaleString('es-AR');
   const realisticMaxToday = stats.dailyMinutes + realisticRemainingMins;
   const remainingWorkdaysThisMonth = Math.max(0, remainingDays - 1);
@@ -506,7 +509,7 @@ export const DashboardHeader = ({ onStartAudio, onStopAudio, onReconnectStream, 
                   </span>
                 ) : (
                   <>
-                    <span>⏳ {hoursLeft.toFixed(1)}h left</span>
+                    <span>⏳ {hoursLeft.toFixed(1)}h left ({workableHours.toFixed(1)}h workable)</span>
                     <span style={{ opacity: 0.4 }}>|</span>
                     <span>Cap: <strong style={{ color: '#6ee7b7' }}>AR${maxCashToClaim}</strong></span>
                   </>

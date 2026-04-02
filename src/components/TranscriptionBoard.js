@@ -5,6 +5,8 @@ import { useTranslate } from '../hooks/useTranslate';
 import { useSession } from '../contexts/SessionContext';
 import { useProgressiveAudio } from '../hooks/useProgressiveAudio';
 
+// EL TABLERO DE TEXTO: Aquí es donde aparece todo lo que dicen en la llamada.
+// Muestra quién habla, lo traduce y te deja copiar los números con un clic.
 const getBubbleStyle = (text, isCurrent, lang) => {
   if (!text) return {};
   const wordCount = text.trim().split(/\s+/).length;
@@ -23,28 +25,40 @@ const getBubbleStyle = (text, isCurrent, lang) => {
   return { borderLeft: `3px solid ${baseBorder}`, backgroundColor: baseBg };
 };
 
+const convertNumberWords = (text) => {
+  const map = {
+    'one': '1', 'two': '2', 'three': '3', 'four': '4', 'five': '5',
+    'six': '6', 'seven': '7', 'eight': '8', 'nine': '9', 'ten': '10'
+  };
+  return text.replace(/\b(one|two|three|four|five|six|seven|eight|nine|ten)\b/gi, (matched) => map[matched.toLowerCase()] || matched);
+};
+
 const InteractiveText = ({ text }) => {
   if (!text) return null;
-  // Matches (123) 456-7890, 123-456-7890, 123.456.7890, 1234567890, +1 555 555 5555, +15555555555
-  // Also 7 digits like 555-4444 or 555 4444
-  const phoneRegex = /(\+?\(?\d{1,4}?\)?[\s.\-]?\(?\d{2,4}?\)?[\s.\-]?\d{3,4}[\s.\-]?\d{3,4})/g;
+  const processedText = convertNumberWords(text);
+  // NÚMEROS MÁGICOS: Detectamos números de teléfono, años y códigos.
+  // Los resaltamos para que puedas copiarlos rápido si haces clic.
+  const numRegex = /(\+?\(?\d{1,4}?\)?[\s.\-]?\(?\d{2,4}?\)?[\s.\-]?\d{3,4}[\s.\-]?\d{3,4}|\b\d+[\d.,/\\\-]*\b)/g;
 
-  const parts = text.split(phoneRegex);
+  const parts = processedText.split(numRegex);
 
   const handleCopy = (num) => {
-    navigator.clipboard.writeText(num.trim());
+    const clean = num.trim();
+    if (!clean) return;
+    navigator.clipboard.writeText(clean);
   };
 
   return (
     <>
       {parts.map((p, i) => {
-        if (p.match(phoneRegex)) {
+        if (p && p.match(numRegex)) {
           return (
             <span 
               key={i} 
-              className="phone-number" 
+              className="phone-number highlight-number" 
               onClick={(e) => { e.stopPropagation(); handleCopy(p); }} 
-              title="Click to copy phone number"
+              title={`Click to copy number: ${p}`}
+              style={{ cursor: 'copy', backgroundColor: 'rgba(252, 211, 77, 0.1)', color: '#fcd34d', padding: '0 2px', borderRadius: '2px', fontWeight: 600 }}
             >
               {p}
             </span>
@@ -56,72 +70,51 @@ const InteractiveText = ({ text }) => {
   );
 };
 
-const TranslatedBubble = ({ text, lang, playTTS, stopTTS, playingUrl, prefetchTTS, reverse = false, ttsMode, wordCount, shouldPrefetch, emphasisMode }) => {
+const TranslatedBubble = ({ id, text, lang, playTTS, stopTTS, playingUrl, prefetchTTS, reverse = false, ttsMode, wordCount, shouldPrefetch, emphasisMode, isPinned, onTogglePin }) => {
   const { translation, audioUrl, isTranslating, targetLang } = useTranslate(text, lang, prefetchTTS, shouldPrefetch);
   const hasAutoPlayedRef = useRef(false);
 
   useEffect(() => {
-    // Only autoplay if it hasn't played this exact string yet, it's not empty, and mode is auto
     if (ttsMode === 'auto' && translation && audioUrl && !hasAutoPlayedRef.current) {
       hasAutoPlayedRef.current = true;
       playTTS(translation, targetLang, audioUrl);
     }
-    if (!translation) {
-      hasAutoPlayedRef.current = false; // Reset if text was cleared
-    }
+    if (!translation) hasAutoPlayedRef.current = false;
   }, [translation, ttsMode, playTTS, targetLang, audioUrl]);
 
   const isThisPlaying = playingUrl && audioUrl && playingUrl === audioUrl;
-
-  // Color logic: 'original' = white text / gray translation; 'flipped' = deep blue text / light blue translation
   const transcriptColor = emphasisMode === 'flipped' ? '#93c5fd' : '#ffffff';
   const translationColor = emphasisMode === 'flipped' ? '#bfdbfe' : 'rgba(255,255,255,0.4)';
 
   return (
     <div style={{ display: 'flex', gap: '0.25rem', marginTop: '0.1rem', flexDirection: reverse ? 'row-reverse' : 'row', alignItems: 'center' }}>
+      <button 
+        onClick={() => onTogglePin(id)} 
+        style={{ background: 'transparent', border: 'none', cursor: 'pointer', fontSize: '0.8rem', padding: '0 4px', opacity: isPinned ? 1 : 0.2, filter: isPinned ? 'drop-shadow(0 0 2px #3b82f6)' : 'none' }}
+        title={isPinned ? "Unpin message" : "Pin message"}
+      >
+        📌
+      </button>
+
       <div style={{ flex: 1, textAlign: reverse ? 'right' : 'left' }}>
-        <div style={{ color: transcriptColor, fontWeight: emphasisMode === 'flipped' ? 400 : 400, lineHeight: 1.3, fontSize: '0.9rem' }}>
+        <div style={{ color: transcriptColor, fontWeight: 400, lineHeight: 1.3, fontSize: '0.9rem' }}>
           <InteractiveText text={text} />
         </div>
       </div>
 
-      <div style={{ 
-        display: 'flex', 
-        flexDirection: 'column', 
-        alignItems: 'center', 
-        justifyContent: 'center',
-        padding: '0 0.5rem',
-        opacity: 0.6
-      }}>
-        <span style={{ 
-          fontSize: '0.65rem', 
-          fontWeight: 700, 
-          color: wordCount >= 40 ? 'var(--danger)' : wordCount >= 34 ? '#f59e0b' : 'var(--text-muted)'
-        }}>
-          {wordCount}
-        </span>
+      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '0 0.5rem', opacity: 0.6 }}>
+        <span style={{ fontSize: '0.65rem', fontWeight: 700, color: wordCount >= 40 ? 'var(--danger)' : wordCount >= 34 ? '#f59e0b' : 'var(--text-muted)' }}>{wordCount}</span>
         <button 
           onClick={() => isThisPlaying ? stopTTS() : playTTS(translation, targetLang, audioUrl)} 
           disabled={!isThisPlaying && (!translation || !audioUrl)}
-          style={{
-            background: 'transparent',
-            border: 'none',
-            cursor: (!isThisPlaying && (!translation || !audioUrl)) ? 'not-allowed' : 'pointer',
-            fontSize: '1.2rem',
-            padding: 0,
-            opacity: (!isThisPlaying && (!translation || !audioUrl)) ? 0.3 : 1
-          }}
+          style={{ background: 'transparent', border: 'none', cursor: (!isThisPlaying && (!translation || !audioUrl)) ? 'not-allowed' : 'pointer', fontSize: '1.2rem', padding: 0, opacity: (!isThisPlaying && (!translation || !audioUrl)) ? 0.3 : 1 }}
           title={isThisPlaying ? "Stop TTS" : (!audioUrl ? "Buffering audio..." : "Play Translation (TTS)")}
         >
           {isThisPlaying ? '⏹️' : '🔊'}
         </button>
       </div>
 
-      <div style={{ 
-        flex: 1, 
-        color: translationColor,
-        textAlign: reverse ? 'left' : 'right'
-      }}>
+      <div style={{ flex: 1, color: translationColor, textAlign: reverse ? 'left' : 'right' }}>
         <div style={{ fontWeight: 400, fontStyle: 'italic', lineHeight: 1.3, fontSize: '0.85rem' }}>
           {translation ? <InteractiveText text={translation} /> : <span style={{ opacity: 0.2 }}>...</span>}
         </div>
@@ -136,11 +129,23 @@ export const TranscriptionBoard = ({ captions, onClear, isToolsOpen, onToggleToo
   const isScrolledUpRef = useRef(false);
   const scrollTimeoutRef = useRef(null);
   const [ttsMode, setTtsMode] = useState('manual');
-  const [emphasisMode, setEmphasisMode] = useState('original'); // 'original' | 'flipped'
+  const [emphasisMode, setEmphasisMode] = useState('original'); 
+  const [pinnedIds, setPinnedIds] = useState(() => JSON.parse(localStorage.getItem('catint_pinned')) || []);
   const { playTTS, stopTTS, isPlaying, playingUrl, prefetchTTS } = useTTS();
   const { playWarningPing } = useProgressiveAudio();
   const { isEditingScoreboard, visibleCards, toggleCard, isActive, isBreakActive } = useSession();
   const warnedBubblesRef = useRef(new Set());
+  
+  const [popover, setPopover] = useState({ show: false, x: 0, y: 0, text: '' });
+  const popoverTimerRef = useRef(null);
+
+  useEffect(() => {
+    localStorage.setItem('catint_pinned', JSON.stringify(pinnedIds));
+  }, [pinnedIds]);
+
+  const togglePin = (id) => {
+    setPinnedIds(prev => prev.includes(id) ? prev.filter(p => p !== id) : [...prev, id]);
+  };
 
   useEffect(() => {
     if (!isScrolledUpRef.current) {
@@ -162,7 +167,7 @@ export const TranscriptionBoard = ({ captions, onClear, isToolsOpen, onToggleToo
     scrollTimeoutRef.current = setTimeout(() => {
       isScrolledUpRef.current = false;
       bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
-    }, 15000); // Resume auto-scroll after 15 seconds of inactivity to allow thorough reading
+    }, 15000); 
   };
 
   const handleScroll = () => {
@@ -180,28 +185,67 @@ export const TranscriptionBoard = ({ captions, onClear, isToolsOpen, onToggleToo
   };
 
   const handleWheel = (e) => {
-    // If they scroll, INSTANTLY consider it scrolled up / reset timer
     isScrolledUpRef.current = true;
     resetScrollTimer();
   };
 
-  // Cleanup timeout on unmount
   useEffect(() => {
-    return () => {
-      if (scrollTimeoutRef.current) clearTimeout(scrollTimeoutRef.current);
+    const handleSelectionChange = () => {
+      if (popoverTimerRef.current) clearTimeout(popoverTimerRef.current);
+      
+      const selection = window.getSelection();
+      const text = selection.toString().trim();
+      
+      if (text && text.length < 50) { // Limit to words/short phrases
+        popoverTimerRef.current = setTimeout(() => {
+          const range = selection.getRangeAt(0);
+          const rect = range.getBoundingClientRect();
+          setPopover({
+            show: true,
+            x: rect.left + window.scrollX,
+            y: rect.top + window.scrollY - 40,
+            text
+          });
+        }, 800); // Wait 800ms
+      } else {
+        if (popover.show) setPopover(p => ({ ...p, show: false }));
+      }
     };
-  }, []);
 
-  const handleDoubleClick = () => {
-    const selection = window.getSelection().toString().trim();
-    if (selection) {
-      const url = `https://www.linguee.com/english-spanish/search?source=auto&query=${encodeURIComponent(selection)}`;
-      window.open(url, 'LingueeLookup', 'width=800,height=600,scrollbars=yes');
-    }
+    document.addEventListener('selectionchange', handleSelectionChange);
+    return () => {
+      document.removeEventListener('selectionchange', handleSelectionChange);
+      if (popoverTimerRef.current) clearTimeout(popoverTimerRef.current);
+    };
+  }, [popover.show]);
+
+  const handleLookup = (text) => {
+    const url = `https://www.linguee.com/english-spanish/search?source=auto&query=${encodeURIComponent(text)}`;
+    window.open(url, 'LingueeLookup', 'width=800,height=600,scrollbars=yes');
+    setPopover(p => ({ ...p, show: false }));
   };
 
   return (
-    <div className="glass-panel transcription-area">
+    <div className="glass-panel transcription-area" style={{ position: 'relative' }}>
+      {popover.show && (
+        <div style={{
+          position: 'fixed',
+          top: popover.y,
+          left: popover.x,
+          zIndex: 10000,
+          background: '#3b82f6',
+          color: 'white',
+          padding: '4px 10px',
+          borderRadius: '4px',
+          fontSize: '0.8rem',
+          boxShadow: '0 4px 12px rgba(0,0,0,0.5)',
+          cursor: 'pointer',
+          animation: 'fadeSlideIn 0.2s ease-out'
+        }} onClick={() => handleLookup(popover.text)}>
+          🔍 Look up "{popover.text}"
+        </div>
+      )}
+
       {(isEditingScoreboard || visibleCards.transcription) && (
       <div className="notepad-header transcription-toolbar" style={{ borderBottom: '1px solid var(--panel-border)', paddingBottom: '0.4rem', marginBottom: '0.5rem', display: 'flex', justifyContent: 'space-between', padding: '0.4rem 0.5rem', opacity: (!visibleCards.transcription && isEditingScoreboard) ? 0.3 : 1, position: 'relative' }}>
         {isEditingScoreboard && <input type="checkbox" checked={visibleCards.transcription} onChange={() => toggleCard('transcription')} style={{ position: 'absolute', top: 4, right: 4, transform: 'scale(1.2)', cursor: 'pointer', zIndex: 10 }} />}
@@ -268,11 +312,26 @@ export const TranscriptionBoard = ({ captions, onClear, isToolsOpen, onToggleToo
         onScroll={handleScroll}
         onWheel={handleWheel}
         ref={scrollAreaRef}
-        onDoubleClick={handleDoubleClick} 
-        title="Double-click any word to instantly translate it via Linguee"
+        title="Selecting any word will show a dictionary popover after a brief moment"
       >
         <div style={{ flex: '1 1 auto' }} />
         
+        {/* PINNED MESSAGES SECTION */}
+        {pinnedIds.length > 0 && (
+          <div className="pinned-section" style={{ borderBottom: '2px solid rgba(59, 130, 246, 0.3)', padding: '0.4rem', background: 'rgba(59, 130, 246, 0.05)', position: 'sticky', top: 0, zIndex: 50, backdropFilter: 'blur(10px)' }}>
+            <div style={{ fontSize: '0.6rem', color: '#60a5fa', textTransform: 'uppercase', marginBottom: '0.2rem', fontWeight: 800 }}>📌 Pinned Reference</div>
+            {captions.filter(c => pinnedIds.includes(c.id)).map(cap => (
+              <div key={`pinned-${cap.id}`} className="transcript-bubble" style={{ borderLeft: '2px solid #3b82f6', marginBottom: '0.2rem', padding: '0.2rem' }}>
+                <TranslatedBubble 
+                  id={cap.id} text={cap.text} lang={cap.lang} playTTS={playTTS} stopTTS={stopTTS} playingUrl={playingUrl} prefetchTTS={prefetchTTS} 
+                  reverse={cap.lang === 'es'} ttsMode="manual" wordCount={cap.text.split(/\s+/).length} shouldPrefetch={false} 
+                  emphasisMode={emphasisMode} isPinned={true} onTogglePin={togglePin} 
+                />
+              </div>
+            ))}
+          </div>
+        )}
+
         {captions.length === 0 && (
           <div style={{ 
             color: isActive ? 'var(--text-muted)' : (isBreakActive ? '#fb923c' : '#ef4444'), 
@@ -291,7 +350,6 @@ export const TranscriptionBoard = ({ captions, onClear, isToolsOpen, onToggleToo
         {captions.reduce((acc, cap, i) => {
           if (!cap.text || !cap.text.trim()) return acc;
           const words = cap.text.trim().split(/\s+/);
-          // 55 words is around 5 visual lines on a desktop transcription area
           if (words.length > 55) {
              const mid = Math.ceil(words.length / 2);
              acc.push({ ...cap, text: words.slice(0, mid).join(' '), id: `${cap.id || i}-a`, isSplit: true });
@@ -304,6 +362,7 @@ export const TranscriptionBoard = ({ captions, onClear, isToolsOpen, onToggleToo
           if (!cap.text || !cap.text.trim()) return null;
           const isSameAsPrevious = i > 0 && flattened[i-1].lang === cap.lang;
           const wordCount = cap.text.trim().split(/\s+/).length;
+          const isPinned = pinnedIds.includes(cap.id);
           
           return (
             <div key={cap.id || i} className="transcript-bubble" style={{ 
@@ -319,7 +378,11 @@ export const TranscriptionBoard = ({ captions, onClear, isToolsOpen, onToggleToo
                   </span>
                 </div>
               )}
-              <TranslatedBubble text={cap.text} lang={cap.lang} playTTS={playTTS} stopTTS={stopTTS} playingUrl={playingUrl} prefetchTTS={prefetchTTS} reverse={cap.lang === 'es'} ttsMode={ttsMode} wordCount={wordCount} shouldPrefetch={i >= flattened.length - 3} emphasisMode={emphasisMode} />
+              <TranslatedBubble 
+                id={cap.id} text={cap.text} lang={cap.lang} playTTS={playTTS} stopTTS={stopTTS} playingUrl={playingUrl} prefetchTTS={prefetchTTS} 
+                reverse={cap.lang === 'es'} ttsMode={ttsMode} wordCount={wordCount} shouldPrefetch={i >= flattened.length - 3} 
+                emphasisMode={emphasisMode} isPinned={isPinned} onTogglePin={togglePin} 
+              />
             </div>
           );
         })}
