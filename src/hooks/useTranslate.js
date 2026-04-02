@@ -79,7 +79,9 @@ export const useTranslate = (text, lang, prefetchTTS, shouldPrefetch) => {
         },
         google: async (c) => {
           const r = await fetch(`https://translate.googleapis.com/translate_a/t?client=te&v=1.0&sl=${lang}&tl=${targetLang}&q=${encodeURIComponent(c)}`);
-          const d = await r.json(); return typeof d === 'string' ? d : d[0];
+          const d = await r.json(); 
+          if (Array.isArray(d)) return typeof d[0] === 'string' ? d[0] : (Array.isArray(d[0]) ? d[0][0] : JSON.stringify(d[0]));
+          return d;
         },
         lingva: async (c) => {
           const r = await fetch(`https://lingva.ml/api/v1/${lang}/${targetLang}/${encodeURIComponent(c)}`);
@@ -88,32 +90,37 @@ export const useTranslate = (text, lang, prefetchTTS, shouldPrefetch) => {
       };
 
       const raceChunk = async (chunk) => {
-        // We use an optimistic race: Start Primary. If no reply in 400ms, start Secondary.
         const pool = [];
-        if (keys.DEEPL) pool.push(fetchers.deepl);
-        if (keys.MS) pool.push(fetchers.ms);
-        if (keys.OPENAI) pool.push(fetchers.openai);
-        pool.push(fetchers.google, fetchers.lingva);
+        if (keys.DEEPL) pool.push({ id: 'deepl', fn: fetchers.deepl });
+        if (keys.MS) pool.push({ id: 'ms', fn: fetchers.ms });
+        if (keys.OPENAI) pool.push({ id: 'openai', fn: fetchers.openai });
+        pool.push({ id: 'google', fn: fetchers.google }, { id: 'lingva', fn: fetchers.lingva });
 
         let resolved = false;
         return new Promise((resolve) => {
-          let attempts = 0;
+          const timeouts = [];
           const tryNext = async (idx) => {
             if (resolved || idx >= pool.length) return;
-            attempts++;
-            const timeout = setTimeout(() => tryNext(idx + 1), 400); // Start next if this one drags
+            
+            // Optimistic race timer
+            const nextTimeout = setTimeout(() => tryNext(idx + 1), 500);
+            timeouts.push(nextTimeout);
+
             try {
-              const res = await pool[idx](chunk);
-              const clean = sanitizeTranslation(res);
+              const res = await pool[idx].fn(chunk);
+              const clean = sanitizeTranslation(String(res)); 
               if (clean && !resolved) {
                 resolved = true;
-                clearTimeout(timeout);
+                timeouts.forEach(clearTimeout);
+                console.log(`[Trans] Winner: ${pool[idx].id}`);
                 resolve(clean);
-              } else if (!resolved) tryNext(idx + 1);
-            } catch (e) { if (!resolved) tryNext(idx + 1); }
+              }
+            } catch (e) {
+              if (!resolved && idx === pool.length - 1) resolve('...');
+            }
           };
           tryNext(0);
-          setTimeout(() => { if(!resolved) resolve('...'); }, 5000); // Absolute safety timeout
+          setTimeout(() => { if(!resolved) resolve('...'); }, 6000); 
         });
       };
 
