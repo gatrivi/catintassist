@@ -122,6 +122,22 @@ export const useProgressiveAudio = () => {
     });
   }, [initAudio, isMuted]);
 
+  const playWarningPing = useCallback(() => {
+    if (isMuted) return;
+    initAudio();
+    if (!audioCtxRef.current) return;
+    const ctx = audioCtxRef.current;
+    const t = ctx.currentTime;
+    
+    // Warm double-clink alert (not a beep!)
+    [0.1, 0.25].forEach(delay => {
+      const osc = ctx.createOscillator(); osc.type = 'triangle'; osc.frequency.setValueAtTime(1200, t + delay);
+      const g = createGain(ctx, 0.05, 0.1, t + delay);
+      osc.connect(g); g.connect(ctx.destination);
+      osc.start(t + delay); osc.stop(t + delay + 0.1);
+    });
+  }, [initAudio, isMuted]);
+
   const playMetalChest = useCallback(() => { /* Legacy */ }, []);
   const playCarriageVault = useCallback(() => { /* Legacy */ }, []);
 
@@ -132,6 +148,6 @@ export const useProgressiveAudio = () => {
   }, []);
 
   return useMemo(() => ({ 
-    isMuted, toggleMute, initAudio, playBagOpen, playTick, playBill, playDiamond, playCoin, playMetalChest, playCarriageVault, stopAll 
-  }), [isMuted, toggleMute, initAudio, playBagOpen, playTick, playBill, playDiamond, playCoin, stopAll]);
+    isMuted, toggleMute, initAudio, playBagOpen, playTick, playBill, playDiamond, playCoin, playWarningPing, playMetalChest, playCarriageVault, stopAll 
+  }), [isMuted, toggleMute, initAudio, playBagOpen, playTick, playBill, playDiamond, playCoin, playWarningPing, stopAll]);
 };
