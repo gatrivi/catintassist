@@ -17,7 +17,7 @@ const CelebrationParticles = ({ type, label, coins, onDismiss }) => {
 
   useEffect(() => {
     if (isClosing) return;
-    // Rhythmic coin clinks for the particle explosion
+    audioEngine.initAudio(); // Ensure engine is awake
     const iv = setInterval(() => {
       audioEngine.playCoin();
     }, 150);

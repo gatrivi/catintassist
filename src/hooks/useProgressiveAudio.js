@@ -157,8 +157,8 @@ export const useProgressiveAudio = () => {
 
   const stopAll = useCallback(() => {
     if (audioCtxRef.current) {
-      audioCtxRef.current.close().catch(() => {});
-      audioCtxRef.current = null;
+      // Just suspend instead of close, so it can be resumed easily
+      audioCtxRef.current.suspend().catch(() => {});
     }
   }, []);
 
