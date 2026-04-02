@@ -77,19 +77,19 @@ export const useProgressiveAudio = () => {
     const ctx = audioCtxRef.current;
     const t = ctx.currentTime;
     
-    // Paper flutter (bandpass noise)
-    const bufferSize = ctx.sampleRate * 0.25;
+    // Paper flick (Hi-pass noise with rapid amplitude flutter)
+    const bufferSize = ctx.sampleRate * 0.15;
     const buffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
     const data = buffer.getChannelData(0);
     for (let i = 0; i < bufferSize; i++) data[i] = Math.random() * 2 - 1;
     const noise = ctx.createBufferSource(); noise.buffer = buffer;
     
     const filter = ctx.createBiquadFilter();
-    filter.type = 'bandpass'; filter.frequency.value = 1200;
+    filter.type = 'highpass'; filter.frequency.value = 2000;
     
-    const gain = createGain(ctx, 0.5, 0.25, t);
+    const gain = createGain(ctx, 0.4, 0.15, t);
     noise.connect(filter); filter.connect(gain); gain.connect(ctx.destination);
-    noise.start(t); noise.stop(t + 0.25);
+    noise.start(t); noise.stop(t + 0.15);
   }, [initAudio]);
 
   const playDiamond = useCallback(() => {
@@ -98,14 +98,22 @@ export const useProgressiveAudio = () => {
     const ctx = audioCtxRef.current;
     const t = ctx.currentTime;
     
-    // High shimmer
-    [4400, 5200, 6000].forEach(f => {
+    // Crystalline shimmer / gemstone clink
+    // High click attack
+    const oscClick = ctx.createOscillator();
+    oscClick.type = 'square'; oscClick.frequency.setValueAtTime(6000, t);
+    const gainClick = createGain(ctx, 0.1, 0.02, t);
+    oscClick.connect(gainClick); gainClick.connect(ctx.destination);
+    oscClick.start(t); oscClick.stop(t + 0.02);
+
+    // Deep crystal resonance
+    [3200, 3800].forEach(f => {
       const osc = ctx.createOscillator();
       osc.type = 'sine';
       osc.frequency.setValueAtTime(f, t);
-      const gain = createGain(ctx, 0.08, 0.6, t);
+      const gain = createGain(ctx, 0.05, 1.2, t);
       osc.connect(gain); gain.connect(ctx.destination);
-      osc.start(t); osc.stop(t + 0.6);
+      osc.start(t); osc.stop(t + 1.2);
     });
   }, [initAudio]);
 

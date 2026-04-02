@@ -12,15 +12,19 @@ const CelebrationParticles = ({ type, label, coins, onDismiss }) => {
   const originX = type === 'month' ? '0px' : '-185px';
   const audioEngine = useProgressiveAudio();
 
-  // Cap the particles to avoid crashing browser (max 60 even if it's a huge month)
+  // Cap particles
   const safeCoinCount = Math.min(60, coins);
 
   useEffect(() => {
     if (isClosing) return;
+    // ONLY play the rapid coin loop for Day/Month jackpots. 
+    // Standard calls now use the clean Denomination Summary sounds.
+    if (type === 'call') return; 
+
     audioEngine.initAudio();
     const iv = setInterval(() => { audioEngine.playCoin(); }, 150);
     return () => clearInterval(iv);
-  }, [isClosing, audioEngine.playCoin]);
+  }, [isClosing, audioEngine.playCoin, type]);
   
   const handleDismiss = () => {
     setIsClosing(true);
@@ -139,6 +143,7 @@ export const DashboardHeader = ({ onStartAudio, onStopAudio, onReconnectStream, 
 
   return (
     <header className="dashboard-header glass-panel" style={{ position: 'relative', zIndex: 100 }}>
+      <div style={{ position: 'absolute', top: '0.1rem', right: '0.4rem', fontSize: '0.5rem', opacity: 0.3, pointerEvents: 'none' }}>v3.2.1 (Denominations)</div>
 
       {/* COLLAPSED VIEW */}
       {isCollapsed && (
