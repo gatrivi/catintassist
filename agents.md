@@ -7,12 +7,13 @@ CORE VALUES
 - the remaining 20% is for keeping track, of this its key that i meet my monthly target, and for that i need to see how much i have to work per day, how much i am working per day, and how much time i have left,
 -after implementing a feature, if satisfied, refactor, cleanup, run tests, and if confident, push to repo. do other things that you consider appropriate. do not push an app that crashes? didnt think i had to write that one out.
 - app should look great in 900 by 600 pixels, and scale up from there.
+- all version must have a version number clearly visible in the upper right corner to be sure im looking for new features in the version that actually has them xd.
 
 MAINVIEW (where transcription and translation happens)
 [] space should be used as effectively as possible
   [] do not waste v space w things like spa and eng. use color coding to do that.
 
-  
+
 
 TRANSLATION GUIDELINES
 [] a poor translation is better than no translation
