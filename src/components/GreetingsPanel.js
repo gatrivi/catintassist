@@ -24,6 +24,8 @@ export const GreetingsPanel = ({ onEditModeChange }) => {
   const [mode, setMode] = useState('play'); // 'play' | 'settings'
   const [timeOfDay, setTimeOfDay] = useState('morning');
   const [blobs, setBlobs] = useState({});
+  const [healthScores, setHealthScores] = useState(() => JSON.parse(localStorage.getItem('catint_audio_health')) || {});
+  const [isAnalyzing, setIsAnalyzing] = useState(null); // key of item being analyzed
   const [playingKey, setPlayingKey] = useState(null);
   const [playbackProgress, setPlaybackProgress] = useState(0);
   const [recordingKey, setRecordingKey] = useState(null);
@@ -112,6 +114,56 @@ export const GreetingsPanel = ({ onEditModeChange }) => {
        window.dispatchEvent(new CustomEvent('cat_bg_changed'));
     }
     reloadData();
+    // Auto-analyze newly recorded/uploaded greetings
+    if (key !== 'bg_app' && !key.startsWith('thumb_')) {
+      analyzeHealth(key);
+    }
+  };
+
+  const analyzeHealth = async (key) => {
+    const blob = await loadFile(key);
+    if (!blob) return;
+    
+    const API_KEY = localStorage.getItem('DEEPGRAM_API_KEY');
+    if (!API_KEY) return;
+
+    setIsAnalyzing(key);
+    try {
+      const res = await fetch('https://api.deepgram.com/v1/listen?model=nova-2&smart_format=true', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Token ${API_KEY}`,
+          'Content-Type': blob.type || 'audio/webm'
+        },
+        body: blob
+      });
+      
+      if (!res.ok) throw new Error('Deepgram error');
+      const data = await res.json();
+      const conf = data.results?.channels?.[0]?.alternatives?.[0]?.confidence || 0;
+      const transcript = data.results?.channels?.[0]?.alternatives?.[0]?.transcript || '';
+      
+      // Heuristic: If it failed to transcribe anything but has confidence 0, it sucks
+      const finalScore = transcript.length < 3 ? 0.1 : conf;
+      
+      setHealthScores(prev => {
+        const next = { ...prev, [key]: finalScore };
+        localStorage.setItem('catint_audio_health', JSON.stringify(next));
+        return next;
+      });
+    } catch (e) {
+      console.warn("Health check failed:", e);
+    } finally {
+      setIsAnalyzing(null);
+    }
+  };
+
+  const getHealthMeta = (score) => {
+    if (score === undefined) return null;
+    if (score >= 0.9) return { label: 'PEACHES 🍑', color: '#10b981', width: '100%' };
+    if (score >= 0.75) return { label: 'GOOD ✅', color: '#34d399', width: '75%' };
+    if (score >= 0.5) return { label: 'PASSING ⚠️', color: '#fbbf24', width: '50%' };
+    return { label: 'UNACCEPTABLE ⛔', color: '#ef4444', width: '25%' };
   };
 
   const handleClear = async (key) => {
@@ -283,7 +335,27 @@ export const GreetingsPanel = ({ onEditModeChange }) => {
     <div key={key} id={`settings-row-${key}`} style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem', marginTop: '0.5rem', padding: '0.75rem', background: 'rgba(0,0,0,0.3)', borderRadius: '6px', border: '1px solid rgba(255,255,255,0.05)' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <span style={{ textTransform: 'capitalize', fontWeight: 600, fontSize: '0.85rem' }}>🔈 {label}</span>
-        <span style={{ color: blobs[key] ? '#10b981' : '#ef4444', fontSize: '0.75rem', fontWeight: 600 }}>{blobs[key] ? '✅ SAVED' : '❌ MISSING'}</span>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+          {isAnalyzing === key ? (
+            <span style={{ fontSize: '0.7rem', color: '#3b82f6', animation: 'pulseGlow 2s infinite' }}>Analyzing...</span>
+          ) : (
+            blobs[key] && (
+              <div 
+                onClick={() => analyzeHealth(key)}
+                style={{ cursor: 'pointer', display: 'flex', flexDirection: 'column', alignItems: 'flex-end' }} 
+                title="Audio Health: Click to re-analyze"
+              >
+                <span style={{ fontSize: '0.65rem', fontWeight: 800, color: getHealthMeta(healthScores[key])?.color || '#94a3b8' }}>
+                  {getHealthMeta(healthScores[key])?.label || 'UNTESTED'}
+                </span>
+                <div style={{ width: '40px', height: '3px', background: 'rgba(255,255,255,0.1)', borderRadius: '2px', overflow: 'hidden', marginTop: '1px' }}>
+                   <div style={{ height: '100%', width: getHealthMeta(healthScores[key])?.width || '0%', backgroundColor: getHealthMeta(healthScores[key])?.color || '#94a3b8' }} />
+                </div>
+              </div>
+            )
+          )}
+          <span style={{ color: blobs[key] ? '#10b981' : '#ef4444', fontSize: '0.75rem', fontWeight: 600 }}>{blobs[key] ? '✅ SAVED' : '❌ MISSING'}</span>
+        </div>
       </div>
       
       <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>

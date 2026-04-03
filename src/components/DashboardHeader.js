@@ -179,7 +179,7 @@ export const DashboardHeader = ({ onStartAudio, onStopAudio, onReconnectStream, 
       {isCollapsed && (
         <div className="condensed-header-card">
           <div className="condensed-items-row">
-            <ConnectionIndicator state={connectionState} />
+            <ConnectionIndicator state={connectionState} message={connectionMessage} />
             {!isActive ? (
               <button 
                 className="btn btn-primary btn-condensed" 
@@ -235,13 +235,17 @@ export const DashboardHeader = ({ onStartAudio, onStopAudio, onReconnectStream, 
                     title="⏸ HOLD: Pauses the call counter. Use this for holding times during calls.">
                     {isHold ? `⏸ ${formatTime(holdSeconds)}` : '⏸ Hold'}
                   </button>
-                  <button 
-                    className="btn btn-condensed" 
-                    onClick={onReconnectStream} 
-                    style={{ background: 'rgba(56,189,248,0.1)', color: '#7dd3fc', border: '1px solid rgba(56,189,248,0.3)' }} 
-                    title="⚡ ZAP STREAM: Force-restart the transcription websockets if the connection feels laggy.">
-                    ⚡ Zap
-                  </button>
+                    <button 
+                      className="btn btn-condensed" 
+                      onClick={onReconnectStream} 
+                      style={{ 
+                        background: connectionState === 'connecting' ? 'rgba(245,158,11,0.2)' : 'rgba(56,189,248,0.1)', 
+                        color: connectionState === 'connecting' ? '#f59e0b' : '#7dd3fc', 
+                        border: connectionState === 'connecting' ? '1px solid rgba(245,158,11,0.4)' : '1px solid rgba(56,189,248,0.3)' 
+                      }} 
+                      title="⚡ ZAP STREAM: Force-restart the transcription websockets if the connection feels laggy.">
+                      {connectionState === 'connecting' ? '⚡ Zapping...' : '⚡ Zap'}
+                    </button>
                 </>
               )}
             </div>
@@ -322,7 +326,7 @@ export const DashboardHeader = ({ onStartAudio, onStopAudio, onReconnectStream, 
         <div className="income-card" style={{ gap: '0.4rem', alignItems: 'flex-start', justifyContent: 'center', position: 'relative' }}>
           
           {isEditingScoreboard && (
-            <div className="glass-panel" style={{ position: 'absolute', top: '100%', left: 0, right: 0, display: 'flex', gap: '0.15rem', justifyContent: 'center', zIndex: 100, flexWrap: 'wrap', padding: '0.2rem', background: 'rgba(0,0,0,0.8)', marginTop: '0.4rem', borderRadius: '4px', border: '1px solid rgba(255,255,255,0.1)' }}>
+            <div className="glass-panel" style={{ display: 'flex', gap: '0.15rem', justifyContent: 'center', zIndex: 100, flexWrap: 'wrap', padding: '0.2rem', background: 'rgba(0,0,0,0.4)', borderRadius: '4px', border: '1px solid rgba(255,255,255,0.05)', marginBottom: '0.2rem', width: '100%' }}>
                <button className="btn" onClick={() => audioEngine.playBagOpen()} style={{ fontSize: '0.55rem', background: '#333', color: '#10b981', padding: '0.1rem 0.2rem' }}>[Bag]</button>
                <button className="btn" onClick={() => audioEngine.playTick(1)} style={{ fontSize: '0.55rem', background: '#333', color: '#6ee7b7', padding: '0.1rem 0.2rem' }}>[Min1]</button>
                <button className="btn" onClick={() => audioEngine.playTick(20)} style={{ fontSize: '0.55rem', background: '#333', color: '#fcd34d', padding: '0.1rem 0.2rem' }}>[Min20]</button>
@@ -363,7 +367,7 @@ export const DashboardHeader = ({ onStartAudio, onStopAudio, onReconnectStream, 
           )}
 
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', flexWrap: 'wrap', minHeight: '36px' }}>
-            <ConnectionIndicator state={connectionState} />
+            <ConnectionIndicator state={connectionState} message={connectionMessage} />
             {!isActive ? (
               <>
                 <button className="btn btn-primary" onClick={handleStart} style={{ fontSize: '0.7rem' }}><PlayIcon /> Connect</button>

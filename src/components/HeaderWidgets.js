@@ -105,20 +105,18 @@ export const EditableMinutes = ({ value, updateFn, statKey }) => {
   );
 };
 
-export const ConnectionIndicator = ({ state }) => {
+export const ConnectionIndicator = ({ state, message }) => {
   let color = 'gray';
-  let title = 'Interpreting Service: Disconnected (Press Connect to start)';
+  let title = message || 'Interpreting Service: Disconnected (Press Connect to start)';
+  
   if (state === 'connected') { 
     color = '#10b981'; 
-    title = 'Interpreting Service: Online & Listening (WebSockets Active)'; 
   }
   else if (state === 'connecting') { 
     color = '#f59e0b'; 
-    title = 'Interpreting Service: Establishing Connection...'; 
   }
   else if (state === 'error') { 
     color = '#ef4444'; 
-    title = 'Interpreting Service: Connection Failed (Check API Keys or Internet)'; 
   }
 
   return (
@@ -128,9 +126,10 @@ export const ConnectionIndicator = ({ state }) => {
         height: '12px',
         borderRadius: '50%',
         backgroundColor: color,
-        boxShadow: state === 'connected' ? '0 0 8px #10b981' : state === 'connecting' ? '0 0 8px #f59e0b' : 'none',
+        boxShadow: state === 'connected' ? '0 0 8px #10b981' : (state === 'connecting' ? '0 0 8px #f59e0b' : 'none'),
         transition: 'all 0.3s ease',
-        cursor: 'help'
+        cursor: 'help',
+        flexShrink: 0
       }}
       title={title}
     />

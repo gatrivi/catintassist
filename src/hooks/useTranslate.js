@@ -107,13 +107,15 @@ export const useTranslate = (text, lang, prefetchTTS, shouldPrefetch) => {
           const r = await fetch(`https://translate.googleapis.com/translate_a/t?client=te&v=1.0&sl=${lang}&tl=${targetLang}&q=${encodeURIComponent(c)}`);
           if (!r.ok) throw `status ${r.status}`;
           const d = await r.json(); 
-          if (Array.isArray(d)) return typeof d[0] === 'string' ? d[0] : (Array.isArray(d[0]) ? d[0][0] : JSON.stringify(d[0]));
-          return d;
+          if (Array.isArray(d)) return d.map(p => typeof p === 'string' ? p : (p[0] || '')).join(' ');
+          return String(d);
         },
         google_gtx: async (c) => {
           const r = await fetch(`https://translate.googleapis.com/translate_a/single?client=gtx&sl=${lang}&tl=${targetLang}&dt=t&q=${encodeURIComponent(c)}`);
           if (!r.ok) throw `gtx ${r.status}`;
-          const d = await r.json(); return d?.[0]?.[0]?.[0];
+          const d = await r.json(); 
+          if (!d?.[0]) return '';
+          return d[0].map(s => s[0]).filter(Boolean).join('');
         },
         lingva: async (c) => {
           const r = await fetch(`https://lingva.ml/api/v1/${lang}/${targetLang}/${encodeURIComponent(c)}`);

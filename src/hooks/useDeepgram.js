@@ -103,9 +103,8 @@ export const useDeepgram = () => {
           const now = Date.now();
           const timeSinceLast = now - lastTranscriptTimeRef.current;
           lastTranscriptTimeRef.current = now;
-          // Break into a new bubble only after 2.5s of absolute silence. 
-          // This keeps messages together in larger, more cohesive blocks.
-          const isSilentBreak = timeSinceLast > 2500;
+          // Break into a new bubble after 1.8s of absolute silence. 
+          const isSilentBreak = timeSinceLast > 1800;
 
           setCaptions(prev => {
             const isNewTurn = isSilentBreak;
@@ -261,15 +260,18 @@ export const useDeepgram = () => {
   }, [closeConnections]);
 
   const reconnectStream = useCallback(() => {
+    setConnectionState('connecting');
+    setConnectionMessage('Zapping WebSockets...');
     closeConnections();
     // Safety delay to allow sockets/recorder to fully clear
     setTimeout(() => {
       if (streamRef.current && isActiveRef.current) {
-        setConnectionState('connecting');
-        setConnectionMessage('Zapping WebSockets...');
         startDeepgram(streamRef.current);
+      } else {
+        setConnectionState('disconnected');
+        setConnectionMessage('Zap failed: No active stream');
       }
-    }, 150);
+    }, 300);
   }, [closeConnections]);
 
   const clearCaptions = () => setCaptions([]);
