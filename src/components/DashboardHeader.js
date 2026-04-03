@@ -150,28 +150,24 @@ export const DashboardHeader = ({ onStartAudio, onStopAudio, onReconnectStream, 
   const monthlyArs = Math.round(stats.monthlyMinutes * RATE_PER_MINUTE * arsRate);
   const monthlyTargetArs = Math.round(stats.goalMinutes * RATE_PER_MINUTE * arsRate);
 
-  // MILESTONE ENGINE (12 Steps avoid discouragement)
-  const targetL1 = 5500; // Floor
-  const targetL2 = 10500; // 350 min/day avg
-  const targetL3 = Math.round(3000000 / (RATE_PER_MINUTE * arsRate)); // 3M ARS Goal
-
+  // SIMPLIFIED 12-STEP ENGINE (5500m floor based)
+  const FLOOR = 5500;
+  const WEEK_STEP = 1375; // 5500 / 4
+  
   const milestones = React.useMemo(() => {
-    const l1 = [targetL1 * 0.25, targetL1 * 0.5, targetL1 * 0.75, targetL1];
-    const l2 = [targetL1 + 1250, targetL1 + 2500, targetL1 + 3750, targetL2];
-    const l3 = [
-      targetL2 + (targetL3 - targetL2) * 0.25,
-      targetL2 + (targetL3 - targetL2) * 0.5,
-      targetL2 + (targetL3 - targetL2) * 0.75,
-      targetL3
-    ];
-    return [...l1, ...l2, ...l3].map(Math.round);
-  }, [targetL3]);
+    return Array.from({ length: 12 }, (_, i) => (i + 1) * WEEK_STEP);
+  }, []);
+
+  const milestoneLabels = [
+    "Week 1 Floor", "Week 2 Floor", "Week 3 Floor", "🏁 GOAL: FLOOR (5500m)",
+    "Week 1 Growth", "Week 2 Growth", "Week 3 Growth", "🚀 GOAL: GROWTH (11k)",
+    "Week 1 Legend", "Week 2 Legend", "Week 3 Legend", "👑 GOAL: LEGEND (16.5k)"
+  ];
 
   const nextMilestone = milestones.find(m => m > stats.monthlyMinutes) || milestones[milestones.length - 1];
-  const currentLevelIndex = milestones.indexOf(nextMilestone);
-  const currentStep = (currentLevelIndex % 4) + 1;
-  const currentLevel = Math.floor(currentLevelIndex / 4) + 1;
-  const isAllGoalsMet = stats.monthlyMinutes >= targetL3;
+  const currentIdx = milestones.indexOf(nextMilestone);
+  const nextGoalLabel = milestoneLabels[currentIdx];
+  const isAllGoalsMet = stats.monthlyMinutes >= milestones[11];
 
   const copyValue = (v) => navigator.clipboard.writeText(String(v).replace(/[^\d]/g, ''));
 
@@ -185,29 +181,65 @@ export const DashboardHeader = ({ onStartAudio, onStopAudio, onReconnectStream, 
           <div className="condensed-items-row">
             <ConnectionIndicator state={connectionState} />
             {!isActive ? (
-              <button className="btn btn-primary btn-condensed" onClick={handleStart}><PlayIcon /> Connect</button>
+              <button 
+                className="btn btn-primary btn-condensed" 
+                onClick={handleStart} 
+                title="START SESSION: Begins real-time transcription and translation using Deepgram/Google cloud services.">
+                <PlayIcon /> Connect
+              </button>
             ) : (
-              <button className="btn btn-danger recording btn-condensed" onClick={handleStop}><StopIcon /> Stop</button>
+              <button 
+                className="btn btn-danger recording btn-condensed" 
+                onClick={handleStop} 
+                title="STOP SESSION: Ends current call, saves minutes to your daily/monthly total, and calculates your earnings.">
+                <StopIcon /> Stop
+              </button>
             )}
             
             <div style={{ display: 'flex', gap: '0.3rem' }}>
               {!isActive ? (
                 <>
                   {isBreakActive ? (
-                    <button className="btn btn-condensed" onClick={stopBreak} style={{ background: '#fb923c', color: 'white' }}>Stop Break</button>
+                    <button 
+                      className="btn btn-condensed" 
+                      onClick={stopBreak} 
+                      style={{ background: '#fb923c', color: 'white' }} 
+                      title="STOP BREAK: Resume 'Available' status and stop the break timer.">
+                      Stop Break
+                    </button>
                   ) : (
-                    <button className="btn btn-condensed" onClick={startBreak} style={{ background: 'rgba(251,146,60,0.1)', color: '#fdba74', border: '1px solid rgba(251,146,60,0.3)' }}>Break</button>
+                    <button 
+                      className="btn btn-condensed" 
+                      onClick={startBreak} 
+                      style={{ background: 'rgba(251,146,60,0.1)', color: '#fdba74', border: '1px solid rgba(251,146,60,0.3)' }} 
+                      title="START BREAK: Use for lunch or short rests. This time is excluded from your 'Available' metrics.">
+                      Break
+                    </button>
                   )}
                   {stats.dailyMinutes > 0 && !isBreakActive && (
-                    <button className="btn btn-condensed" onClick={handleEndDay} style={{ background: 'rgba(139,92,246,0.1)', color: '#c4b5fd', border: '1px solid rgba(139,92,246,0.3)' }}>🌙 End</button>
+                    <button 
+                      className="btn btn-condensed" 
+                      onClick={handleEndDay} 
+                      style={{ background: 'rgba(139,92,246,0.1)', color: '#c4b5fd', border: '1px solid rgba(139,92,246,0.3)' }} 
+                      title="🌙 END DAY: Bank all minutes and earnings for today. Resets daily counters for tomorrow.">
+                      🌙 End
+                    </button>
                   )}
                 </>
               ) : (
                 <>
-                  <button className="btn btn-condensed" onClick={() => setIsHold(!isHold)} style={{ background: isHold ? 'rgba(245,158,11,0.8)' : 'rgba(255,255,255,0.1)', color: isHold ? 'white' : 'var(--text-muted)' }}>
+                  <button 
+                    className="btn btn-condensed" 
+                    onClick={() => setIsHold(!isHold)} 
+                    style={{ background: isHold ? 'rgba(245,158,11,0.8)' : 'rgba(255,255,255,0.1)', color: isHold ? 'white' : 'var(--text-muted)' }} 
+                    title="⏸ HOLD: Pauses the call counter. Use this for holding times during calls.">
                     {isHold ? `⏸ ${formatTime(holdSeconds)}` : '⏸ Hold'}
                   </button>
-                  <button className="btn btn-condensed" onClick={onReconnectStream} title="Restart websockets" style={{ background: 'rgba(56,189,248,0.1)', color: '#7dd3fc', border: '1px solid rgba(56,189,248,0.3)' }}>
+                  <button 
+                    className="btn btn-condensed" 
+                    onClick={onReconnectStream} 
+                    style={{ background: 'rgba(56,189,248,0.1)', color: '#7dd3fc', border: '1px solid rgba(56,189,248,0.3)' }} 
+                    title="⚡ ZAP STREAM: Force-restart the transcription websockets if the connection feels laggy.">
                     ⚡ Zap
                   </button>
                 </>
@@ -215,43 +247,62 @@ export const DashboardHeader = ({ onStartAudio, onStopAudio, onReconnectStream, 
             </div>
 
             {isActive && (
-              <div className="metric-pill" style={{ color: '#fb923c', background: 'rgba(251,146,60,0.1)' }} onClick={() => copyValue(sessionEarnings * arsRate)} title="Current Call Earnings">
+              <div 
+                className="metric-pill" 
+                style={{ color: '#fb923c', background: 'rgba(251,146,60,0.1)', cursor: 'copy' }} 
+                onClick={() => copyValue(sessionEarnings * arsRate)} 
+                title="CURRENT CALL EARNINGS: Real-time calculation of your profit for this specific call in ARS. Click to copy numeric value.">
                 <span style={{ fontWeight: 800 }}>📞 AR${Math.round(sessionEarnings * arsRate).toLocaleString('es-AR')}</span>
               </div>
             )}
 
-            <div className="metric-pill" onClick={() => { copyValue(stats.dailyMinutes); setIsTodayDialOpen(true); }} title="Today Minutes (Click to edit/copy)">
+            <div 
+              className="metric-pill" 
+              onClick={() => { copyValue(stats.dailyMinutes); setIsTodayDialOpen(true); }} 
+              title="TODAY'S MINUTES: (Banked Minutes today) / (Average Daily Goal needed to stay on pace). Click to edit/copy.">
               <span style={{ color: '#fcd34d', fontWeight: 800 }}>☀️ {Math.round(stats.dailyMinutes)}m</span>
               <span style={{ opacity: 0.6, fontWeight: 600 }}> / {Math.round(requiredDailyAverage)}m</span>
             </div>
 
-            <div className="metric-pill" onClick={() => { copyValue(dailyArs); setIsTodayDialOpen(true); }} title="Today AR$ (Click to edit/copy)">
+            <div 
+              className="metric-pill" 
+              onClick={() => { copyValue(dailyArs); setIsTodayDialOpen(true); }} 
+              title="TODAY'S ARS: Estimated earnings for today. (Banked ARS) / (Target ARS for today's quota). Click to edit/copy.">
               <span style={{ color: '#6ee7b7', fontWeight: 800 }}>☀️ AR${dailyArs.toLocaleString('es-AR')}</span>
               <span style={{ opacity: 0.6, fontWeight: 600 }}> / ${dailyTargetArs.toLocaleString('es-AR')}</span>
             </div>
             
-            <div className="metric-pill" onClick={() => { copyValue(stats.monthlyMinutes); setIsTodayDialOpen(true); }} title="Monthly Minutes (Click to edit/copy)">
+            <div 
+              className="metric-pill" 
+              onClick={() => { copyValue(stats.monthlyMinutes); setIsTodayDialOpen(true); }} 
+              title="MONTHLY MINUTES: Your total interpreted time so far this month vs your set monthly goal. Click to edit/copy.">
               <span style={{ color: '#c084fc', fontWeight: 800 }}>🗓️ {Math.round(stats.monthlyMinutes)}m</span>
               <span style={{ opacity: 0.6, fontWeight: 600 }}> / {stats.goalMinutes}m</span>
             </div>
 
-            <div className="metric-pill" onClick={() => { copyValue(monthlyArs); setIsTodayDialOpen(true); }} title="Monthly AR$ (Click to edit/copy)">
+            <div 
+              className="metric-pill" 
+              onClick={() => { copyValue(monthlyArs); setIsTodayDialOpen(true); }} 
+              title="MONTHLY ARS: Your total estimated earnings this month based on the current exchange rate. Click to edit/copy.">
               <span style={{ color: '#d8b4fe', fontWeight: 800 }}>🗓️ AR${monthlyArs.toLocaleString('es-AR')}</span>
               <span style={{ opacity: 0.6, fontWeight: 600 }}> / ${monthlyTargetArs.toLocaleString('es-AR')}</span>
             </div>
 
             {remainingMinutes > 0 ? (
-              <div className="metric-pill" style={{ 
-                background: (remainingDays === 1 && remainingMinutes > (hoursLeft * 55)) ? 'rgba(220,38,38,0.3)' : (remainingDays === 1 && remainingMinutes > realisticRemainingMins) ? 'rgba(245,158,11,0.2)' : 'rgba(52,211,153,0.1)', 
-                border: (remainingDays === 1 && remainingMinutes > (hoursLeft * 55)) ? '1px solid rgba(239,68,68,0.8)' : (remainingDays === 1 && remainingMinutes > realisticRemainingMins) ? '1px solid rgba(251,191,36,0.5)' : '1px solid rgba(52,211,153,0.3)' 
-              }}>
+              <div 
+                className="metric-pill" 
+                title={`MONTHLY STATUS: ${remainingDays === 1 ? 'Last day of the month!' : `${remainingDays} days remaining.`} You still need ${Math.round(remainingMinutes)} minutes.`}
+                style={{ 
+                  background: (remainingDays === 1 && remainingMinutes > (hoursLeft * 55)) ? 'rgba(220,38,38,0.3)' : (remainingDays === 1 && remainingMinutes > realisticRemainingMins) ? 'rgba(245,158,11,0.2)' : 'rgba(52,211,153,0.1)', 
+                  border: (remainingDays === 1 && remainingMinutes > (hoursLeft * 55)) ? '1px solid rgba(239,68,68,0.8)' : (remainingDays === 1 && remainingMinutes > realisticRemainingMins) ? '1px solid rgba(251,191,36,0.5)' : '1px solid rgba(52,211,153,0.3)' 
+                }}>
                 <span style={{ fontSize: '0.65rem', fontWeight: 700, color: (remainingDays === 1 && remainingMinutes > (hoursLeft * 55)) ? '#fca5a5' : (remainingDays === 1 && remainingMinutes > realisticRemainingMins) ? '#fde047' : '#a7f3d0' }}>
                   {remainingDays === 1 && remainingMinutes > (hoursLeft * 55) ? '🔴 CRIT: ' : remainingDays === 1 && remainingMinutes > realisticRemainingMins ? '🟠 RISK: ' : '🟢 '}
                   {hoursLeft.toFixed(1)}h ({Math.round(realisticRemainingMins)}m vs {Math.round(remainingMinutes)}m)
                 </span>
               </div>
             ) : (
-              <div className="metric-pill" style={{ background: 'rgba(52,211,153,0.1)', border: '1px solid rgba(52,211,153,0.3)' }}>
+              <div className="metric-pill" title="GOAL ACHIEVED: Congratulations! You've reached or exceeded your target for this month." style={{ background: 'rgba(52,211,153,0.1)', border: '1px solid rgba(52,211,153,0.3)' }}>
                 <span style={{ fontSize: '0.65rem', fontWeight: 700, color: '#6ee7b7' }}>🎉 GOAL MET</span>
               </div>
             )}
@@ -494,17 +545,21 @@ export const DashboardHeader = ({ onStartAudio, onStopAudio, onReconnectStream, 
               <div style={{ display: 'flex', alignItems: 'center', gap: '0.3rem' }}>
                 {!isMonthlyGoalMet ? (
                   <>
-                    <span style={{ color: '#fff', background: 'rgba(59,130,246,0.3)', padding: '0.1rem 0.4rem', borderRadius: '4px', border: '1px solid rgba(59,130,246,0.4)', fontWeight: 800 }}>
-                       🎯 NEXT: {nextMilestone}m (L{currentLevel} Step {currentStep})
+                    <span 
+                      title="This is your next immediate target. Reach this to stay on track for your weekly quota!"
+                      style={{ color: '#fff', background: 'rgba(59,130,246,0.3)', padding: '0.1rem 0.4rem', borderRadius: '4px', border: '1px solid rgba(59,130,246,0.4)', fontWeight: 800, cursor: 'help' }}>
+                       🎯 {nextGoalLabel} ({nextMilestone}m)
                     </span>
                     <span style={{ opacity: 0.4 }}>|</span>
-                    <span style={{ background: 'rgba(139,92,246,0.15)', padding: '0.1rem 0.4rem', borderRadius: '4px', border: '1px solid rgba(139,92,246,0.3)' }}>
+                    <span 
+                      title="Maximum potential ARS you can earn this month if you maintain your current daily pace."
+                      style={{ background: 'rgba(139,92,246,0.15)', padding: '0.1rem 0.4rem', borderRadius: '4px', border: '1px solid rgba(139,92,246,0.3)', cursor: 'help' }}>
                       Paced Max: <strong style={{ color: '#d8b4fe', textShadow: '0 0 8px rgba(139,92,246,0.5)' }}>AR${monthlyRemainingCash}</strong>
                     </span>
                   </>
                 ) : (
                   <span style={{ color: stats.monthlyMinutes > stats.goalMinutes * 1.2 ? '#fcd34d' : '#34d399', fontWeight: 800 }}>
-                    {stats.monthlyMinutes > targetL3 ? '👑 LEGENDARY STATUS REACHED!' : stats.monthlyMinutes > stats.goalMinutes * 1.2 ? '🔥 UNSTOPPABLE!' : stats.monthlyMinutes > stats.goalMinutes * 1.1 ? '🚀 ORBIT (110%!)' : '🎉 Goal Met!'}
+                    {stats.monthlyMinutes > milestones[11] ? '👑 LEGENDARY STATUS REACHED!' : stats.monthlyMinutes > stats.goalMinutes * 1.2 ? '🔥 UNSTOPPABLE!' : stats.monthlyMinutes > stats.goalMinutes * 1.1 ? '🚀 ORBIT (110%!)' : '🎉 Goal Met!'}
                   </span>
                 )}
               </div>
@@ -520,12 +575,17 @@ export const DashboardHeader = ({ onStartAudio, onStopAudio, onReconnectStream, 
                 {milestones.map((m, i) => {
                   if (m > stats.goalMinutes) return null;
                   const ratio = m / stats.goalMinutes;
+                  const isMainGoal = i % 4 === 3;
                   return (
-                    <div key={i} style={{ 
-                      position: 'absolute', left: `${ratio * 100}%`, top: 0, bottom: 0, width: '1px', 
-                      background: i % 4 === 3 ? 'rgba(255,255,255,0.6)' : 'rgba(255,255,255,0.2)',
-                      boxShadow: i % 4 === 3 ? '0 0 4px white' : 'none'
-                    }}>
+                    <div 
+                      key={i} 
+                      title={`${milestoneLabels[i]}: ${m} minutes`}
+                      style={{ 
+                        position: 'absolute', left: `${ratio * 100}%`, top: 0, bottom: 0, width: '1px', 
+                        background: isMainGoal ? 'rgba(255,255,255,0.6)' : 'rgba(255,255,255,0.2)',
+                        boxShadow: isMainGoal ? '0 0 4px white' : 'none',
+                        pointerEvents: 'auto', cursor: 'help'
+                      }}>
                       <div style={{ 
                         position: 'absolute', bottom: -1, left: -2, width: 5, height: 5, borderRadius: '50%',
                         background: stats.monthlyMinutes >= m ? '#10b981' : 'rgba(255,255,255,0.3)',
@@ -537,19 +597,23 @@ export const DashboardHeader = ({ onStartAudio, onStopAudio, onReconnectStream, 
               </div>
 
               {/* Day Notches overlay */}
-              <div style={{ position: 'absolute', inset: 0, display: 'flex', pointerEvents: 'none', zIndex: 5 }}>
+              <div 
+                title="Each vertical notch represents one day of the month. The thick white line is TODAY."
+                style={{ position: 'absolute', inset: 0, display: 'flex', pointerEvents: 'auto', zIndex: 5, cursor: 'help' }}>
                 {Array.from({ length: daysInMonth }).map((_, i) => (
                   <div key={i} style={{ flex: 1, borderRight: i < daysInMonth - 1 ? '1px solid rgba(255,255,255,0.1)' : 'none' }} />
                 ))}
               </div>
 
-              <div style={{ position: 'absolute', top: 0, bottom: 0, left: `${monthElapsedRatio * 100}%`, width: '2px', backgroundColor: 'rgba(255,255,255,0.7)', zIndex: 10 }} />
+              <div 
+                title={`Today is Day ${currentDay}. Stay ahead of this line to keep your pace!`}
+                style={{ position: 'absolute', top: 0, bottom: 0, left: `${monthElapsedRatio * 100}%`, width: '2px', backgroundColor: 'rgba(255,255,255,0.7)', zIndex: 10, cursor: 'help', pointerEvents: 'auto' }} />
             </div>
           </div>
           {/* Daily bar */}
           <div style={{ display: 'flex', flexDirection: 'column', gap: '0.15rem' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.6rem', color: 'var(--text-muted)', alignItems: 'center' }}>
-              <span style={{ fontWeight: 600 }}>☀️ 09:00</span>
+              <span title="Workday starts at 9:00 AM">☀️ 09:00</span>
               <div style={{ display: 'flex', alignItems: 'center', gap: '0.3rem' }}>
                 {remainingMinsToday <= 0 ? (
                   <span style={{ color: stats.dailyMinutes > dailyGoal + 120 ? '#fb923c' : stats.dailyMinutes > dailyGoal + 60 ? '#fde047' : '#34d399', fontWeight: 800 }}>
@@ -557,27 +621,38 @@ export const DashboardHeader = ({ onStartAudio, onStopAudio, onReconnectStream, 
                   </span>
                 ) : (
                   <>
-                    <span>⏳ {hoursLeft.toFixed(1)}h left ({workableHours.toFixed(1)}h workable)</span>
+                    <span title="Literally how many hours are left until 11:00 PM.">⏳ {hoursLeft.toFixed(1)}h left</span>
+                    <span title="Assuming you work 35 mins per hour (allowing for breaks/avail), this is how many minutes you can realistically bank today.">({workableHours.toFixed(1)}h workable)</span>
                     <span style={{ opacity: 0.4 }}>|</span>
-                    <span>Cap: <strong style={{ color: '#6ee7b7' }}>AR${maxCashToClaim}</strong></span>
+                    <span title="The maximum amount of ARS you can realistically add to your bank today if you work until 11:00 PM.">Cap: <strong style={{ color: '#6ee7b7' }}>AR${maxCashToClaim}</strong></span>
                   </>
                 )}
               </div>
-              <span style={{ opacity: 0.5 }}>23:00</span>
+              <span title="Workday ends at 11:00 PM">23:00</span>
             </div>
-            <div style={{ height: '5px', background: 'rgba(0,0,0,0.5)', borderRadius: '3px', position: 'relative', overflow: 'hidden' }}>
-              <div style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: `${Math.min(1, (stats.dailyMinutes + unbankedMins) / Math.max(1, dailyGoal)) * 100}%`, backgroundColor: '#f97316', opacity: 0.9, transition: 'width 1s linear', zIndex: 1, boxShadow: unbankedMins > 0 ? '0 0 10px #f97316' : 'none' }} />
-              <div style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: `${Math.min(1, stats.dailyMinutes / Math.max(1, dailyGoal)) * 100}%`, backgroundColor: '#3b82f6', transition: 'width 1s cubic-bezier(0.34, 1.56, 0.64, 1)', zIndex: 2 }} />
+            <div 
+              title="Daily Progress Bar: Shows how much of your daily average goal you've completed today."
+              style={{ height: '5px', background: 'rgba(0,0,0,0.5)', borderRadius: '3px', position: 'relative', overflow: 'hidden', cursor: 'help' }}>
+              <div 
+                title={`Unbanked Progress: You have ${formatTime(sessionSeconds)} in the current call.`}
+                style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: `${Math.min(1, (stats.dailyMinutes + unbankedMins) / Math.max(1, dailyGoal)) * 100}%`, backgroundColor: '#f97316', opacity: 0.9, transition: 'width 1s linear', zIndex: 1, boxShadow: unbankedMins > 0 ? '0 0 10px #f97316' : 'none', pointerEvents: 'auto' }} />
+              <div 
+                title={`Banked Today: ${Math.round(stats.dailyMinutes)}m`}
+                style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: `${Math.min(1, stats.dailyMinutes / Math.max(1, dailyGoal)) * 100}%`, backgroundColor: '#3b82f6', transition: 'width 1s cubic-bezier(0.34, 1.56, 0.64, 1)', zIndex: 2, pointerEvents: 'auto' }} />
               {stats.dailyMinutes > dailyGoal && <div style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: `${Math.min(1, (stats.dailyMinutes - dailyGoal) / 120) * 100}%`, backgroundColor: 'rgba(253,224,71,0.8)', zIndex: 3 }} />}
               
               {/* Notches overlay */}
-              <div style={{ position: 'absolute', inset: 0, display: 'flex', pointerEvents: 'none', zIndex: 5 }}>
+              <div 
+                title="Each notch represents 1 hour of the 14-hour workday (9am-11pm)."
+                style={{ position: 'absolute', inset: 0, display: 'flex', pointerEvents: 'auto', zIndex: 5, cursor: 'help' }}>
                 {Array.from({ length: 14 }).map((_, i) => (
                   <div key={i} style={{ flex: 1, borderRight: i < 13 ? '1px solid rgba(255,255,255,0.15)' : 'none' }} />
                 ))}
               </div>
 
-              <div style={{ position: 'absolute', top: 0, bottom: 0, left: `${timeElapsedRatio * 100}%`, width: '2px', backgroundColor: 'rgba(255,255,255,0.7)', zIndex: 10 }} />
+              <div 
+                title="Current Time indicator. Keep the blue bar touching or ahead of this line."
+                style={{ position: 'absolute', top: 0, bottom: 0, left: `${timeElapsedRatio * 100}%`, width: '2px', backgroundColor: 'rgba(255,255,255,0.7)', zIndex: 10, cursor: 'help', pointerEvents: 'auto' }} />
             </div>
           </div>
         </div>
