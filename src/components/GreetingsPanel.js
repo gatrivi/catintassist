@@ -83,13 +83,6 @@ export const GreetingsPanel = ({ onEditModeChange }) => {
     const bgApp = await loadFile('bg_app');
     if (bgApp) {
         state.bg_app = bgApp;
-        const bgUrl = generateObjectUrl(bgApp);
-        document.body.style.backgroundImage = `url(${bgUrl})`;
-        document.body.style.backgroundSize = 'cover';
-        document.body.style.backgroundPosition = 'center';
-        document.body.style.backgroundAttachment = 'fixed';
-    } else {
-        document.body.style.backgroundImage = '';
     }
     setBlobs(state);
   };

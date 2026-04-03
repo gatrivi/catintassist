@@ -12,7 +12,8 @@ import './index.css';
 
 const Dashboard = () => {
   const { startRecording, stopRecording, reconnectStream, captions, clearCaptions, sttLanguage, toggleLanguage, connectionState, connectionMessage } = useDeepgram();
-  const { isNotesOpen, setIsNotesOpen } = useSession();
+  const { isNotesOpen, isToolbarVisible } = useSession();
+  const [isEditingBg, setIsEditingBg] = useState(false);
   
   useEffect(() => {
     const applyBg = async () => {
@@ -31,9 +32,8 @@ const Dashboard = () => {
     window.addEventListener('cat_bg_changed', applyBg);
     return () => window.removeEventListener('cat_bg_changed', applyBg);
   }, []);
-  // Better Hotkeys: 
-  // 1. `Alt + Space` or `Escape` will toggle language from anywhere, even when typing
-  // 2. Spacebar works if not typing
+
+  // Hotkeys for language switching
   useEffect(() => {
     const handleKeyDown = (e) => {
       const isTyping = e.target.tagName === 'TEXTAREA' || e.target.tagName === 'INPUT';
@@ -55,6 +55,7 @@ const Dashboard = () => {
       <div id="top-mic-bar-container" style={{ position: 'fixed', top: 0, left: 0, right: 0, height: '3px', zIndex: 9999, pointerEvents: 'none' }}>
         <div id="top-mic-bar" style={{ height: '100%', width: '0%', background: '#10b981', transition: 'width 0.05s ease-out', opacity: 0, boxShadow: '0 0 8px #10b981' }} />
       </div>
+
       <DashboardHeader 
         onStartAudio={startRecording} 
         onStopAudio={stopRecording} 
@@ -64,43 +65,29 @@ const Dashboard = () => {
         connectionState={connectionState}
         connectionMessage={connectionMessage}
       />
-      <main className={`main-content ${isNotesOpen ? 'notes-open' : ''}`}>
+
+      <main className={`main-content ${(isNotesOpen || isToolbarVisible) ? 'notes-open' : ''}`}>
         <TranscriptionBoard 
           captions={captions} 
           onClear={clearCaptions} 
         />
-        {isNotesOpen && (
-          <SoundboardAndNotesWrapper />
+        {(isNotesOpen || isToolbarVisible) && (
+          <div className="tools-column">
+             {isToolbarVisible && (
+               <div className="glass-panel tools-soundboard" style={{ overflow: 'hidden', display: 'flex', flexDirection: 'column', flex: isEditingBg ? '1' : '1.5' }}>
+                 <GreetingsPanel onEditModeChange={setIsEditingBg} />
+               </div>
+             )}
+             {(isNotesOpen && !isEditingBg) && (
+               <div className="glass-panel tools-notes" style={{ overflow: 'hidden', display: 'flex', flexDirection: 'column', flex: 1 }}>
+                 <DictionaryTool />
+                 <NotePad />
+               </div>
+             )}
+          </div>
         )}
       </main>
     </div>
-  );
-};
-
-// Extracted wrapper to manage expanded state
-const SoundboardAndNotesWrapper = () => {
-  const [isEditingBg, setIsEditingBg] = useState(false);
-  
-  return (
-    <>
-      <div 
-        className="glass-panel tools-soundboard" 
-        style={{ 
-          overflow: 'hidden', 
-          display: 'flex', 
-          flexDirection: 'column',
-          gridRow: isEditingBg ? '1 / span 2' : '1'
-        }}
-      >
-        <GreetingsPanel onEditModeChange={setIsEditingBg} />
-      </div>
-      {!isEditingBg && (
-        <div className="glass-panel tools-notes" style={{ overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
-          <DictionaryTool />
-          <NotePad />
-        </div>
-      )}
-    </>
   );
 };
 

@@ -101,8 +101,16 @@ body {
 .main-content.tools-open,
 .main-content.notes-open {
   display: grid;
-  grid-template-columns: 4fr 1.2fr;
-  grid-template-rows: 2fr 1fr;
+  grid-template-columns: 1fr 300px; /* Fixed width for tools side, responsive transcript */
+  grid-template-rows: 1fr;
+}
+
+/* On ultra-wide screens, let the transcript breathe but keep tools manageable */
+@media (min-width: 1200px) {
+  .main-content.tools-open,
+  .main-content.notes-open {
+    grid-template-columns: 1fr 340px;
+  }
 }
 
 .transcription-area {
@@ -117,26 +125,28 @@ body {
 .main-content.tools-open > .transcription-area,
 .main-content.notes-open > .transcription-area {
   grid-column: 1;
-  grid-row: 1 / span 2;
-  min-height: 0;
-}
-
-.main-content.tools-open > .tools-soundboard,
-.main-content.notes-open > .tools-soundboard {
-  grid-column: 2;
   grid-row: 1;
   min-height: 0;
-  display: flex;
-  flex-direction: column;
 }
 
-.main-content.tools-open > .tools-notes,
-.main-content.notes-open > .tools-notes {
+.tools-column {
   grid-column: 2;
-  grid-row: 2;
-  min-height: 0;
+  grid-row: 1;
   display: flex;
   flex-direction: column;
+  gap: 0.5rem;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.tools-column > .tools-soundboard {
+  flex: 1.5; /* Soundboard is larger */
+  min-height: 0;
+}
+
+.tools-column > .tools-notes {
+  flex: 1; /* Notes is smaller */
+  min-height: 0;
 }
 
 /* Header/Dashboard */
