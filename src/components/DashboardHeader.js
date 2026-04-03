@@ -57,7 +57,7 @@ const CelebrationParticles = ({ type, label, coins, onDismiss }) => {
 };
 
 export const DashboardHeader = ({ onStartAudio, onStopAudio, onReconnectStream, sttLanguage, onToggleLanguage, connectionState, connectionMessage }) => {
-  const { isActive, sessionSeconds, setSessionSeconds, sessionEarnings, stats, updateStat, startSession, stopSession, endDay, RATE_PER_MINUTE, arsRate, setArsRate, isBreakActive, breakSeconds, startBreak, stopBreak, availSeconds, isEditingScoreboard, setIsEditingScoreboard, visibleCards, toggleCard } = useSession();
+  const { isActive, sessionSeconds, setSessionSeconds, sessionEarnings, stats, updateStat, startSession, stopSession, endDay, RATE_PER_MINUTE, arsRate, setArsRate, isBreakActive, breakSeconds, startBreak, stopBreak, availSeconds, isEditingScoreboard, setIsEditingScoreboard, visibleCards, toggleCard, isNotesOpen, setIsNotesOpen, isToolbarVisible, setIsToolbarVisible } = useSession();
   const { outputDevices, inputDevices, selectedSinkId, selectedMicId, changeSinkId, changeMicId, fetchDevices } = useAudioSettings();
   const audioEngine = useProgressiveAudio();
 
@@ -311,11 +311,17 @@ export const DashboardHeader = ({ onStartAudio, onStopAudio, onReconnectStream, 
               </div>
             )}
           </div>
-          <button onClick={() => setIsCollapsed(false)}
-            style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', fontSize: '0.9rem', padding: '0.2rem', marginLeft: 'auto' }}
-            title="Expand dashboard">
-            ▼
-          </button>
+          <div style={{ display: 'flex', gap: '0.2rem', marginLeft: 'auto' }}>
+            <button onClick={() => setIsNotesOpen(!isNotesOpen)}
+              style={{ background: isNotesOpen ? 'rgba(59,130,246,0.2)' : 'none', border: 'none', color: isNotesOpen ? '#60a5fa' : 'var(--text-muted)', cursor: 'pointer', fontSize: '0.9rem', padding: '0.2rem' }}
+              title={isNotesOpen ? "Hide Notes" : "Show Notes"}>📝</button>
+            <button onClick={() => setIsToolbarVisible(!isToolbarVisible)}
+              style={{ background: isToolbarVisible ? 'rgba(16,185,129,0.2)' : 'none', border: 'none', color: isToolbarVisible ? '#34d399' : 'var(--text-muted)', cursor: 'pointer', fontSize: '0.9rem', padding: '0.2rem' }}
+              title={isToolbarVisible ? "Hide Toolbar" : "Show Toolbar"}>🛠️</button>
+            <button onClick={() => setIsCollapsed(false)}
+              style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', fontSize: '0.9rem', padding: '0.2rem' }}
+              title="Expand dashboard">▼</button>
+          </div>
         </div>
       )}
 
@@ -531,6 +537,16 @@ export const DashboardHeader = ({ onStartAudio, onStopAudio, onReconnectStream, 
             title={isCollapsed ? "Expand dashboard" : "Collapse dashboard"}>
             {isCollapsed ? '▼' : '▲'}
           </button>
+          <button onClick={() => setIsNotesOpen(!isNotesOpen)}
+            style={{ background: isNotesOpen ? 'rgba(59,130,246,0.2)' : 'none', border: 'none', color: isNotesOpen ? '#60a5fa' : 'var(--text-muted)', cursor: 'pointer', fontSize: '1rem', padding: '0.4rem', borderRadius: '4px', border: isNotesOpen ? '1px solid rgba(59,130,246,0.3)' : 'none' }}
+            title={isNotesOpen ? "Hide Notes" : "Show Notes"}>
+            📝
+          </button>
+          <button onClick={() => setIsToolbarVisible(!isToolbarVisible)}
+            style={{ background: isToolbarVisible ? 'rgba(16,185,129,0.2)' : 'none', border: 'none', color: isToolbarVisible ? '#34d399' : 'var(--text-muted)', cursor: 'pointer', fontSize: '1rem', padding: '0.4rem', borderRadius: '4px', border: isToolbarVisible ? '1px solid rgba(16,185,129,0.3)' : 'none' }}
+            title={isToolbarVisible ? "Hide Toolbar" : "Show Toolbar"}>
+            🛠️
+          </button>
           <button onClick={() => setIsEditingScoreboard(e => !e)}
             style={{ background: isEditingScoreboard ? 'rgba(16,185,129,0.2)' : 'none', border: 'none', cursor: 'pointer', fontSize: '1rem', padding: '0.4rem', borderRadius: '4px', filter: isEditingScoreboard ? 'drop-shadow(0 0 4px #10b981)' : 'none', border: isEditingScoreboard ? '1px solid rgba(16,185,129,0.3)' : 'none' }}
             title="Edit scoreboard items">
@@ -614,6 +630,47 @@ export const DashboardHeader = ({ onStartAudio, onStopAudio, onReconnectStream, 
                 style={{ position: 'absolute', top: 0, bottom: 0, left: `${monthElapsedRatio * 100}%`, width: '2px', backgroundColor: 'rgba(255,255,255,0.7)', zIndex: 10, cursor: 'help', pointerEvents: 'auto' }} />
             </div>
           </div>
+
+          {/* Step Goals (Cellular Bar) */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.15rem' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.6rem', color: 'var(--text-muted)', alignItems: 'center' }}>
+              <span style={{ fontWeight: 600 }}>🪜 STEP PROGRESS (12 Stages)</span>
+              <span title="Each segment represents 1,375 min of interpreting (one floor week).">
+                <strong style={{ color: '#FCD34D' }}>{currentIdx + 1}/12</strong>: {milestoneLabels[currentIdx]}
+              </span>
+            </div>
+            <div 
+              title="Step Achievements: Each block represents one week of work baseline (1375m). Fill all 12 to become a Legend."
+              style={{ height: '10px', display: 'flex', gap: '4px', cursor: 'help' }}>
+              {milestones.map((m, i) => {
+                const isCompleted = stats.monthlyMinutes >= m;
+                const isCurrent = i === currentIdx;
+                const prevM = i > 0 ? milestones[i-1] : 0;
+                const cellRatio = isCompleted ? 1 : (isCurrent ? (stats.monthlyMinutes - prevM) / (m - prevM) : 0);
+                
+                return (
+                  <div key={i} title={`${milestoneLabels[i]}: ${m}m`} style={{ 
+                    flex: 1, background: 'rgba(0,0,0,0.5)', borderRadius: '2px', overflow: 'hidden', position: 'relative',
+                    border: isCurrent ? '1px solid rgba(251, 146, 60, 0.4)' : '1px solid rgba(255,255,255,0.05)'
+                  }}>
+                    <div style={{ 
+                      position: 'absolute', left: 0, top: 0, bottom: 0, 
+                      width: `${cellRatio * 100}%`, 
+                      background: isCompleted ? '#22c55e' : (isCurrent ? '#f97316' : 'transparent'),
+                      boxShadow: isCurrent ? '0 0 10px rgba(249, 115, 22, 0.5)' : 'none',
+                      transition: 'width 0.5s ease-out'
+                    }} />
+                    {i % 4 === 3 && (
+                      <div style={{ position: 'absolute', right: 2, top: 1, fontSize: '0.45rem', opacity: 0.5, color: '#fff', fontWeight: 900 }}>
+                        L{Math.floor(i/4)+1}
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+
           {/* Daily bar */}
           <div style={{ display: 'flex', flexDirection: 'column', gap: '0.15rem' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.6rem', color: 'var(--text-muted)', alignItems: 'center' }}>

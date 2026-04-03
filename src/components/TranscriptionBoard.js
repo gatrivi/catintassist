@@ -148,7 +148,7 @@ const TranslatedBubble = ({ id, text, lang, playTTS, stopTTS, playingUrl, prefet
 };
 
 
-export const TranscriptionBoard = ({ captions, onClear, isToolsOpen, onToggleTools }) => {
+export const TranscriptionBoard = ({ captions, onClear }) => {
   const bottomRef = useRef(null);
   const scrollAreaRef = useRef(null);
   const isScrolledUpRef = useRef(false);
@@ -158,7 +158,7 @@ export const TranscriptionBoard = ({ captions, onClear, isToolsOpen, onToggleToo
   const [pinnedIds, setPinnedIds] = useState(() => JSON.parse(localStorage.getItem('catint_pinned')) || []);
   const { playTTS, stopTTS, isPlaying, playingUrl, prefetchTTS } = useTTS();
   const { playWarningPing } = useProgressiveAudio();
-  const { isEditingScoreboard, visibleCards, toggleCard, isActive, isBreakActive } = useSession();
+  const { isEditingScoreboard, visibleCards, toggleCard, isActive, isBreakActive, isToolbarVisible } = useSession();
   const warnedBubblesRef = useRef(new Set());
   
   const [popover, setPopover] = useState({ show: false, x: 0, y: 0, text: '' });
@@ -271,15 +271,12 @@ export const TranscriptionBoard = ({ captions, onClear, isToolsOpen, onToggleToo
         </div>
       )}
 
-      {(isEditingScoreboard || visibleCards.transcription) && (
+      {isToolbarVisible && (isEditingScoreboard || visibleCards.transcription) && (
       <div className="notepad-header transcription-toolbar" style={{ borderBottom: '1px solid var(--panel-border)', paddingBottom: '0.4rem', marginBottom: '0.5rem', display: 'flex', justifyContent: 'space-between', padding: '0.4rem 0.5rem', opacity: (!visibleCards.transcription && isEditingScoreboard) ? 0.3 : 1, position: 'relative' }}>
         {isEditingScoreboard && <input type="checkbox" checked={visibleCards.transcription} onChange={() => toggleCard('transcription')} style={{ position: 'absolute', top: 4, right: 4, transform: 'scale(1.2)', cursor: 'pointer', zIndex: 10 }} />}
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%', paddingRight: isEditingScoreboard ? '1.5rem' : '0' }}>
           <h2 style={{ fontSize: '1rem', color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
             Livestream 
-            <button onClick={onToggleTools} className="btn" style={{ padding: '0.1rem 0.5rem', fontSize: '0.7rem', background: 'rgba(59, 130, 246, 0.1)', color: '#60a5fa', border: '1px solid rgba(59,130,246,0.3)' }} title="Toggle Soundboard and Notes">
-              {isToolsOpen ? '▶ Hide Tools' : '◀ Show Tools'}
-            </button>
           </h2>
           <div style={{ display: 'flex', gap: '0.4rem', alignItems: 'center' }}>
             <button 

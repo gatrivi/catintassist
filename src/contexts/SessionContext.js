@@ -15,8 +15,16 @@ export const SessionProvider = ({ children }) => {
   useEffect(() => { localStorage.setItem('catint_b_sec', breakSeconds); }, [breakSeconds]);
   useEffect(() => { localStorage.setItem('catint_a_sec', availSeconds); }, [availSeconds]);
 
-  // Scoreboard Customization State
   const [isEditingScoreboard, setIsEditingScoreboard] = useState(false);
+  const [isNotesOpen, setIsNotesOpen] = useState(() => JSON.parse(localStorage.getItem('catint_notes_open')) || false);
+  const [isToolbarVisible, setIsToolbarVisible] = useState(() => {
+    const saved = localStorage.getItem('catint_toolbar_visible');
+    return saved !== null ? JSON.parse(saved) : true;
+  });
+
+  useEffect(() => { localStorage.setItem('catint_notes_open', JSON.stringify(isNotesOpen)); }, [isNotesOpen]);
+  useEffect(() => { localStorage.setItem('catint_toolbar_visible', JSON.stringify(isToolbarVisible)); }, [isToolbarVisible]);
+
   const [visibleCards, setVisibleCards] = useState(() => {
     try {
       const saved = localStorage.getItem('catintassist_visible_cards');
@@ -235,7 +243,11 @@ export const SessionProvider = ({ children }) => {
     isEditingScoreboard,
     setIsEditingScoreboard,
     visibleCards,
-    toggleCard
+    toggleCard,
+    isNotesOpen,
+    setIsNotesOpen,
+    isToolbarVisible,
+    setIsToolbarVisible
   };
 
   return (

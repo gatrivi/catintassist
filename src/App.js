@@ -12,7 +12,7 @@ import './index.css';
 
 const Dashboard = () => {
   const { startRecording, stopRecording, reconnectStream, captions, clearCaptions, sttLanguage, toggleLanguage, connectionState, connectionMessage } = useDeepgram();
-  const [isToolsOpen, setIsToolsOpen] = useState(false);
+  const { isNotesOpen, setIsNotesOpen } = useSession();
   
   useEffect(() => {
     const applyBg = async () => {
@@ -64,14 +64,12 @@ const Dashboard = () => {
         connectionState={connectionState}
         connectionMessage={connectionMessage}
       />
-      <main className={`main-content ${isToolsOpen ? 'tools-open' : ''}`}>
+      <main className={`main-content ${isNotesOpen ? 'notes-open' : ''}`}>
         <TranscriptionBoard 
           captions={captions} 
           onClear={clearCaptions} 
-          isToolsOpen={isToolsOpen}
-          onToggleTools={() => setIsToolsOpen(!isToolsOpen)}
         />
-        {isToolsOpen && (
+        {isNotesOpen && (
           <SoundboardAndNotesWrapper />
         )}
       </main>
