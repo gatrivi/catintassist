@@ -122,27 +122,56 @@ export const DashboardHeader = ({ onStartAudio, onStopAudio, onReconnectStream, 
   const minutesBeforeToday = Math.max(0, stats.monthlyMinutes - stats.dailyMinutes);
   const remainingMinutesFromStartOfDay = Math.max(0, stats.goalMinutes - minutesBeforeToday);
   const requiredDailyAverage = remainingDays > 0 ? (remainingMinutesFromStartOfDay / remainingDays).toFixed(0) : 0;
-  const workdayStartHour = 9, workdayEndHour = 23;
-  const workdayTotalMs = (workdayEndHour - workdayStartHour) * 3600000;
-  let timeElapsedRatio = Math.min(1, Math.max(0, (now.getTime() - new Date(year, month, currentDay, workdayStartHour).getTime()) / workdayTotalMs));
-  const dailyGoal = parseFloat(requiredDailyAverage) || 0;
-  let hoursLeft = Math.max(0.1, workdayEndHour - (now.getHours() + now.getMinutes() / 60));
-  // LAS HORAS REALES: De las horas que faltan, calculamos cuántas podemos trabajar de verdad (35 min por hora).
-  const realisticRemainingMins = hoursLeft * 35;
-  const workableHours = realisticRemainingMins / 60;
   
-  const maxCashToClaim = Math.round(realisticRemainingMins * RATE_PER_MINUTE * arsRate).toLocaleString('es-AR');
-  const realisticMaxToday = stats.dailyMinutes + realisticRemainingMins;
+  const dailyGoal = parseFloat(requiredDailyAverage) || 0;
+  const unbankedMins = isActive ? (sessionSeconds / 60) : 0;
+  const totalDailyMins = stats.dailyMinutes + unbankedMins;
+
+  // CATCH-UP LOGIC: Dynamic shifts and SUCCESS ZONES
+  const WORKDAY_START = 9, CORE_END = 18, ABSOLUTE_END = 23;
+  const currentTime = now.getHours() + (now.getMinutes() / 60);
+  const totalWorkdayHours = ABSOLUTE_END - WORKDAY_START; // 14h total
+  const timeElapsedRatio = Math.min(1, Math.max(0, (currentTime - WORKDAY_START) / totalWorkdayHours));
+
+  // Determine when work actually started today
+  const actualStartTime = stats.dayStartTime ? new Date(stats.dayStartTime) : new Date(year, month, currentDay, WORKDAY_START);
+  const startHourFloat = actualStartTime.getHours() + (actualStartTime.getMinutes() / 60);
+
+  // Success Zone: What % of today's goal SHOULD be done by now?
+  // Level 1 (High/Ideal): Finish by 18:00
+  // Level 2 (Low/Minimum): Finish by 23:00
+  const timeFromStart = Math.max(0, currentTime - startHourFloat);
+  const windowToCore = Math.max(0.1, CORE_END - startHourFloat);
+  const windowToAbsolute = Math.max(0.1, ABSOLUTE_END - startHourFloat);
+  
+  const targetRatioCore = Math.min(1, timeFromStart / windowToCore);
+  const targetRatioAbsolute = Math.min(1, timeFromStart / windowToAbsolute);
+
+  const minsRemainingToday = Math.max(0, dailyGoal - stats.dailyMinutes);
+  const hoursLeftToCore = Math.max(0, CORE_END - currentTime);
+  const hoursLeftToAbsolute = Math.max(0, ABSOLUTE_END - currentTime);
+  
+  const paceToCore = hoursLeftToCore > 0 ? (minsRemainingToday / hoursLeftToCore) : 999;
+  const paceToAbsolute = hoursLeftToAbsolute > 0 ? (minsRemainingToday / hoursLeftToAbsolute) : 999;
+
+  // Estimated workable mins from now
+  const workableMinsRemaining = hoursLeftToAbsolute * 35;
+  const workableHoursRemaining = workableMinsRemaining / 60;
+  
+  const realisticMaxToday = stats.dailyMinutes + workableMinsRemaining;
+  const maxCashToClaim = Math.round(workableMinsRemaining * RATE_PER_MINUTE * arsRate).toLocaleString('es-AR');
+  
   const remainingWorkdaysThisMonth = Math.max(0, remainingDays - 1);
-  const monthlyMaxMins = stats.monthlyMinutes + realisticRemainingMins + (remainingWorkdaysThisMonth * 14 * 35);
-  const monthlyRemainingCash = Math.round((realisticRemainingMins + remainingWorkdaysThisMonth * 14 * 35) * RATE_PER_MINUTE * arsRate).toLocaleString('es-AR');
+  const monthlyMaxMins = stats.monthlyMinutes + workableMinsRemaining + (remainingWorkdaysThisMonth * 14 * 35);
+  const monthlyRemainingCash = Math.round((workableMinsRemaining + remainingWorkdaysThisMonth * 14 * 35) * RATE_PER_MINUTE * arsRate).toLocaleString('es-AR');
   const dailyMaxArs = Math.round(realisticMaxToday * RATE_PER_MINUTE * arsRate).toLocaleString('es-AR');
   const monthlyMaxArs = Math.round(monthlyMaxMins * RATE_PER_MINUTE * arsRate).toLocaleString('es-AR');
+  
   const monthElapsedRatio = currentDay / daysInMonth;
-  const isMonthlyGoalMet = stats.monthlyMinutes >= stats.goalMinutes;  const monthlyProgressRatio = stats.goalMinutes > 0 ? Math.min(1, stats.monthlyMinutes / stats.goalMinutes) : 0;
-  const unbankedMins = isActive ? (sessionSeconds / 60) : 0;
+  const isMonthlyGoalMet = stats.monthlyMinutes >= stats.goalMinutes;
+  const monthlyProgressRatio = stats.goalMinutes > 0 ? Math.min(1, stats.monthlyMinutes / stats.goalMinutes) : 0;
   const monthlyPendingRatio = stats.goalMinutes > 0 ? Math.min(1, (stats.monthlyMinutes + unbankedMins) / stats.goalMinutes) : 0;
-  const remainingMinsToday = Math.max(0, dailyGoal - stats.dailyMinutes);
+  const isDailyGoalMet = stats.dailyMinutes >= dailyGoal;
 
   // Condensed View metrics (Calculated for AGENTS.md checklist)
   const dailyArs = Math.round(stats.dailyMinutes * RATE_PER_MINUTE * arsRate);
@@ -297,12 +326,12 @@ export const DashboardHeader = ({ onStartAudio, onStopAudio, onReconnectStream, 
                 className="metric-pill" 
                 title={`MONTHLY STATUS: ${remainingDays === 1 ? 'Last day of the month!' : `${remainingDays} days remaining.`} You still need ${Math.round(remainingMinutes)} minutes.`}
                 style={{ 
-                  background: (remainingDays === 1 && remainingMinutes > (hoursLeft * 55)) ? 'rgba(220,38,38,0.3)' : (remainingDays === 1 && remainingMinutes > realisticRemainingMins) ? 'rgba(245,158,11,0.2)' : 'rgba(52,211,153,0.1)', 
-                  border: (remainingDays === 1 && remainingMinutes > (hoursLeft * 55)) ? '1px solid rgba(239,68,68,0.8)' : (remainingDays === 1 && remainingMinutes > realisticRemainingMins) ? '1px solid rgba(251,191,36,0.5)' : '1px solid rgba(52,211,153,0.3)' 
+                  background: (remainingDays === 1 && remainingMinutes > (hoursLeftToAbsolute * 55)) ? 'rgba(220,38,38,0.3)' : (remainingDays === 1 && remainingMinutes > workableMinsRemaining) ? 'rgba(245,158,11,0.2)' : 'rgba(52,211,153,0.1)', 
+                  border: (remainingDays === 1 && remainingMinutes > (hoursLeftToAbsolute * 55)) ? '1px solid rgba(239,68,68,0.8)' : (remainingDays === 1 && remainingMinutes > workableMinsRemaining) ? '1px solid rgba(251,191,36,0.5)' : '1px solid rgba(52,211,153,0.3)' 
                 }}>
-                <span style={{ fontSize: '0.65rem', fontWeight: 700, color: (remainingDays === 1 && remainingMinutes > (hoursLeft * 55)) ? '#fca5a5' : (remainingDays === 1 && remainingMinutes > realisticRemainingMins) ? '#fde047' : '#a7f3d0' }}>
-                  {remainingDays === 1 && remainingMinutes > (hoursLeft * 55) ? '🔴 CRIT: ' : remainingDays === 1 && remainingMinutes > realisticRemainingMins ? '🟠 RISK: ' : '🟢 '}
-                  {hoursLeft.toFixed(1)}h ({Math.round(realisticRemainingMins)}m vs {Math.round(remainingMinutes)}m)
+                <span style={{ fontSize: '0.65rem', fontWeight: 700, color: (remainingDays === 1 && remainingMinutes > (hoursLeftToAbsolute * 55)) ? '#fca5a5' : (remainingDays === 1 && remainingMinutes > workableMinsRemaining) ? '#fde047' : '#a7f3d0' }}>
+                  {remainingDays === 1 && remainingMinutes > (hoursLeftToAbsolute * 55) ? '🔴 CRIT: ' : remainingDays === 1 && remainingMinutes > workableMinsRemaining ? '🟠 RISK: ' : '🟢 '}
+                  {hoursLeftToAbsolute.toFixed(1)}h ({Math.round(workableMinsRemaining)}m vs {Math.round(remainingMinutes)}m)
                 </span>
               </div>
             ) : (
@@ -673,46 +702,74 @@ export const DashboardHeader = ({ onStartAudio, onStopAudio, onReconnectStream, 
 
           {/* Daily bar */}
           <div style={{ display: 'flex', flexDirection: 'column', gap: '0.15rem' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.6rem', color: 'var(--text-muted)', alignItems: 'center' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.60rem', color: 'var(--text-muted)', alignItems: 'center' }}>
               <span title="Workday starts at 9:00 AM">☀️ 09:00</span>
               <div style={{ display: 'flex', alignItems: 'center', gap: '0.3rem' }}>
-                {remainingMinsToday <= 0 ? (
+                {isDailyGoalMet ? (
                   <span style={{ color: stats.dailyMinutes > dailyGoal + 120 ? '#fb923c' : stats.dailyMinutes > dailyGoal + 60 ? '#fde047' : '#34d399', fontWeight: 800 }}>
-                    {stats.dailyMinutes > dailyGoal + 120 ? '👑 KING (+2h!)' : stats.dailyMinutes > dailyGoal + 60 ? '⚡ OVERDRIVE (+1h!)' : '🎉 Shift Met!'}
+                    {stats.dailyMinutes > dailyGoal + 120 ? '👑 KING (+2h!)' : stats.dailyMinutes > dailyGoal + 60 ? '⚡ OVERDRIVE (+1h!)' : '🎉 Quota Met!'}
                   </span>
                 ) : (
                   <>
-                    <span title="Literally how many hours are left until 11:00 PM.">⏳ {hoursLeft.toFixed(1)}h left</span>
-                    <span title="Assuming you work 35 mins per hour (allowing for breaks/avail), this is how many minutes you can realistically bank today.">({workableHours.toFixed(1)}h workable)</span>
+                    <span 
+                       title={`Your current pace is ${Math.round(stats.dailyMinutes / timeFromStart)}m/hr. To hit goal by 6PM, you need ${paceToCore > 60 ? 'IMPOSSIBLE' : Math.round(paceToCore) + 'm/hr'}.`}
+                       style={{ color: paceToCore > 50 ? '#fca5a5' : paceToCore > 40 ? '#fde047' : '#6ee7b7', fontWeight: 700 }}>
+                       {paceToCore > 60 ? '⏳ Catch-up Mode' : `🔋 ${Math.round(paceToCore)}m/hr`}
+                    </span>
+                    <span style={{ opacity: 0.4 }}>|</span>
+                    <span title="Assuming you work 35 mins per hour (allowing for breaks/avail), this is how many hours you can realistically bank today.">({workableHoursRemaining.toFixed(1)}h left)</span>
                     <span style={{ opacity: 0.4 }}>|</span>
                     <span title="The maximum amount of ARS you can realistically add to your bank today if you work until 11:00 PM.">Cap: <strong style={{ color: '#6ee7b7' }}>AR${maxCashToClaim}</strong></span>
                   </>
                 )}
               </div>
-              <span title="Workday ends at 11:00 PM">23:00</span>
+              <span title="Workday ends at 11:00 PM">🌙 23:00</span>
             </div>
             <div 
-              title="Daily Progress Bar: Shows how much of your daily average goal you've completed today."
-              style={{ height: '5px', background: 'rgba(0,0,0,0.5)', borderRadius: '3px', position: 'relative', overflow: 'hidden', cursor: 'help' }}>
+              title="Daily Progress Bar: Shows your progress vs success zones. GREEN is ahead of 18:00 pace. YELLOW is 23:00 pace. RED is behind."
+              style={{ height: '7px', background: 'rgba(0,0,0,0.5)', borderRadius: '3px', position: 'relative', overflow: 'hidden', cursor: 'help' }}>
+              
+              {/* SUCCESS ZONES (Target Shadow) */}
+              {!isDailyGoalMet && (
+                <>
+                   {/* Level 2: Low Pace (to 23:00) */}
+                   <div style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: `${targetRatioAbsolute * 100}%`, background: 'rgba(251, 146, 60, 0.1)', transition: 'width 1s ease-out' }} />
+                   {/* Level 1: High Pace (to 18:00) */}
+                   <div style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: `${targetRatioCore * 100}%`, background: 'rgba(52, 211, 153, 0.08)', transition: 'width 1s ease-out' }} />
+                </>
+              )}
+
               <div 
                 title={`Unbanked Progress: You have ${formatTime(sessionSeconds)} in the current call.`}
-                style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: `${Math.min(1, (stats.dailyMinutes + unbankedMins) / Math.max(1, dailyGoal)) * 100}%`, backgroundColor: '#f97316', opacity: 0.9, transition: 'width 1s linear', zIndex: 1, boxShadow: unbankedMins > 0 ? '0 0 10px #f97316' : 'none', pointerEvents: 'auto' }} />
+                style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: `${Math.min(1, totalDailyMins / Math.max(1, dailyGoal)) * 100}%`, backgroundColor: '#f97316', opacity: 0.9, transition: 'width 1s linear', zIndex: 1, boxShadow: unbankedMins > 0 ? '0 0 10px #f97316' : 'none', pointerEvents: 'auto' }} />
               <div 
                 title={`Banked Today: ${Math.round(stats.dailyMinutes)}m`}
-                style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: `${Math.min(1, stats.dailyMinutes / Math.max(1, dailyGoal)) * 100}%`, backgroundColor: '#3b82f6', transition: 'width 1s cubic-bezier(0.34, 1.56, 0.64, 1)', zIndex: 2, pointerEvents: 'auto' }} />
-              {stats.dailyMinutes > dailyGoal && <div style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: `${Math.min(1, (stats.dailyMinutes - dailyGoal) / 120) * 100}%`, backgroundColor: 'rgba(253,224,71,0.8)', zIndex: 3 }} />}
+                style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: `${Math.min(1, stats.dailyMinutes / Math.max(1, dailyGoal)) * 100}%`, backgroundColor: (stats.dailyMinutes / dailyGoal >= targetRatioCore) ? '#10b981' : (stats.dailyMinutes / dailyGoal >= targetRatioAbsolute) ? '#fb923c' : '#3b82f6', transition: 'all 1s cubic-bezier(0.34, 1.56, 0.64, 1)', zIndex: 2, pointerEvents: 'auto' }} />
+              
+              {isDailyGoalMet && <div style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: `${Math.min(1, (stats.dailyMinutes - dailyGoal) / 120) * 100}%`, backgroundColor: 'rgba(253,224,71,0.8)', zIndex: 3 }} />}
               
               {/* Notches overlay */}
               <div 
                 title="Each notch represents 1 hour of the 14-hour workday (9am-11pm)."
                 style={{ position: 'absolute', inset: 0, display: 'flex', pointerEvents: 'auto', zIndex: 5, cursor: 'help' }}>
                 {Array.from({ length: 14 }).map((_, i) => (
-                  <div key={i} style={{ flex: 1, borderRight: i < 13 ? '1px solid rgba(255,255,255,0.15)' : 'none' }} />
+                  <div key={i} style={{ flex: 1, borderRight: i < 13 ? '1px solid rgba(255,255,255,0.15)' : 'none' }}>
+                    {i === 4 && <div style={{ position: 'absolute', top: 0, bottom: 0, width: '1px', background: 'rgba(239, 68, 68, 0.3)' }} title="Lunch Break (13:00)" />}
+                    {i === 9 && <div style={{ position: 'absolute', top: 0, bottom: 0, width: '1px', background: 'rgba(59, 130, 246, 0.4)' }} title="Shift End (18:00)" />}
+                  </div>
                 ))}
               </div>
 
+              {/* Success Markers (Target Lines) */}
+              {!isDailyGoalMet && (
+                <>
+                  <div style={{ position: 'absolute', top: 0, bottom: 0, left: `${targetRatioAbsolute * 100}%`, width: '1px', background: '#fb923c', opacity: 0.5, zIndex: 4 }} title="Min Pace Line" />
+                  <div style={{ position: 'absolute', top: 0, bottom: 0, left: `${targetRatioCore * 100}%`, width: '1px', background: '#10b981', opacity: 0.5, zIndex: 4 }} title="Ideal Pace Line" />
+                </>
+              )}
+
               <div 
-                title="Current Time indicator. Keep the blue bar touching or ahead of this line."
+                title="Current Time indicator. The shadow zones shift based on your login time."
                 style={{ position: 'absolute', top: 0, bottom: 0, left: `${timeElapsedRatio * 100}%`, width: '2px', backgroundColor: 'rgba(255,255,255,0.7)', zIndex: 10, cursor: 'help', pointerEvents: 'auto' }} />
             </div>
           </div>

@@ -51,7 +51,8 @@ export const SessionProvider = ({ children }) => {
       weeklyMinutes: 0,
       monthlyMinutes: 0,
       goalMinutes: 5500, // Meta del mes (¡A ganar plata!)
-      lastDate: today
+      lastDate: today,
+      dayStartTime: null
     };
     if (saved) {
       try {
@@ -60,6 +61,7 @@ export const SessionProvider = ({ children }) => {
           parsed.dailyMinutes = 0;
           parsed.dailyBreakMinutes = 0;
           parsed.dailyAvailMinutes = 0;
+          parsed.dayStartTime = null;
           parsed.lastDate = today;
         }
         initialStats = { ...initialStats, ...parsed };
@@ -110,6 +112,14 @@ export const SessionProvider = ({ children }) => {
     setSessionSeconds(0);
     accumulatorRef.current = 0;
     setIsActive(true);
+    
+    // Catch-up logic: record the very first time we start working today
+    setStats(prev => {
+      if (!prev.dayStartTime) {
+        return { ...prev, dayStartTime: new Date().getTime() };
+      }
+      return prev;
+    });
   };
   
   // TERMINAR LLAMADA: Guardamos los minutos que trabajamos para no perderlos.
@@ -138,7 +148,7 @@ export const SessionProvider = ({ children }) => {
   const endDay = (onDayEnded) => {
     commitAvailTime();
     setStats(prev => {
-      const newStats = { ...prev, dailyMinutes: 0, dailyBreakMinutes: 0, dailyAvailMinutes: 0, lastDate: new Date().toDateString() };
+      const newStats = { ...prev, dailyMinutes: 0, dailyBreakMinutes: 0, dailyAvailMinutes: 0, dayStartTime: null, lastDate: new Date().toDateString() };
       localStorage.setItem('catintassist_stats', JSON.stringify(newStats));
       if (onDayEnded) onDayEnded(prev.dailyMinutes);
       return newStats;
