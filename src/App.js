@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { SessionProvider } from './contexts/SessionContext';
+import { SessionProvider, useSession } from './contexts/SessionContext';
 import { AudioSettingsProvider } from './contexts/AudioSettingsContext';
 import { DashboardHeader } from './components/DashboardHeader';
 import { TranscriptionBoard } from './components/TranscriptionBoard';

@@ -8,6 +8,10 @@ CORE VALUES
 -after implementing a feature, if satisfied, refactor, cleanup, run tests, and if confident, push to repo. do other things that you consider appropriate. do not push an app that crashes? didnt think i had to write that one out.
 - app should look great in 900 by 600 pixels, and scale up from there.
 - all version must have a version number clearly visible in the upper right corner to be sure im looking for new features in the version that actually has them xd.
+- set and run tests after implementing features
+- cleanup, refactor, document, commment
+- dont push version that explode. hahaha.
+- if features and ap works, then commit push.
 
 MAINVIEW (where transcription and translation happens)
 [] space should be used as effectively as possible
