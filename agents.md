@@ -8,6 +8,18 @@ CORE VALUES
 -after implementing a feature, if satisfied, refactor, cleanup, run tests, and if confident, push to repo. do other things that you consider appropriate. do not push an app that crashes? didnt think i had to write that one out.
 - app should look great in 900 by 600 pixels, and scale up from there.
 
+MAINVIEW (where transcription and translation happens)
+[] space should be used as effectively as possible
+  [] do not waste v space w things like spa and eng. use color coding to do that.
+
+  
+
+TRANSLATION GUIDELINES
+[] a poor translation is better than no translation
+[] dont burn through free tiers. you say you run 54 translation engines at the same time but all i see is "bueno" and that, 54 seconds too late.
+[] if the user speaks a lot, break up message and transalte by parts. i just had a 60 word message, the transcription was split in two and when that happened the transpation for the second part came through but the first part had "bueno". that didnt work.
+
+
 SOUNDSCAPE INTERPRETER
 [] when we press connect and call starts a sound like a purse opening is played. 
 [] every minute the sound of earning one coin is played
@@ -52,6 +64,6 @@ CURRENT INBOX
 [x] all numbers should be written in numbers, not string (1-90, tens, teens).
 
 [x] intermediary goals (12 step goals):
-  [x] Level 1 (Floor): 1375m, 2750m, 4125m, 5500m
-  [x] Level 2 (350m/day): 6750m, 8000m, 9250m, 10500m
-  [x] Level 3 (3M ARS): ~14k-22k (Dynamic Steps based on exchange)
+  [X] Level 1 (Floor - 5500m): 1375m, 2750m, 4125m, 5500m
+  [X] Level 2 (Growth - 11000m): 6875m, 8250m, 9625m, 11000m
+  [X] Level 3 (Legend - 16500m): 12375m, 13750m, 15125m, 16500m
