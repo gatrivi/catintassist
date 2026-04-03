@@ -81,7 +81,8 @@ export const GreetingsPanel = ({ onEditModeChange }) => {
     const bgApp = await loadFile('bg_app');
     if (bgApp) {
         state.bg_app = bgApp;
-        document.body.style.backgroundImage = `url(${generateObjectUrl(bgApp)})`;
+        const bgUrl = generateObjectUrl(bgApp);
+        document.body.style.backgroundImage = `url(${bgUrl})`;
         document.body.style.backgroundSize = 'cover';
         document.body.style.backgroundPosition = 'center';
         document.body.style.backgroundAttachment = 'fixed';
@@ -97,13 +98,19 @@ export const GreetingsPanel = ({ onEditModeChange }) => {
 
   // Sync volumes when sliders change
   useEffect(() => {
-    audioRefLocal.current.volume = localVolume;
-    audioRefSink.current.volume = sinkVolume;
+    // Sane limits to prevent 'screaming' audio: clip to 1.0 but ensure gain isn't excessive
+    const safeLocal = Math.min(1, localVolume);
+    const safeSink = Math.min(1, sinkVolume);
+    audioRefLocal.current.volume = safeLocal;
+    audioRefSink.current.volume = safeSink;
   }, [localVolume, sinkVolume]);
 
   const handleFileUpload = async (key, file) => {
     if (!file) return;
     await saveFile(key, file);
+    if (key === 'bg_app') {
+       window.dispatchEvent(new CustomEvent('cat_bg_changed'));
+    }
     reloadData();
   };
 
@@ -212,7 +219,6 @@ export const GreetingsPanel = ({ onEditModeChange }) => {
     
     const blob = blobs[key];
     if (!blob) {
-      // Empty button shortcut
       setMode('settings');
       setTimeout(() => {
         const el = document.getElementById(`settings-row-${key}`);
@@ -225,42 +231,51 @@ export const GreetingsPanel = ({ onEditModeChange }) => {
     audioRefSink.current.src = url;
     audioRefLocal.current.src = url;
     
-    // Sync the visual 'stop' state to the local audio element finishing
+    // Anti-Scream: Fade-in slightly using HTML5 volume if WebAudio is too complex for this direct routing,
+    // or just set a safe initial volume and ramp it.
+    audioRefLocal.current.volume = 0;
+    audioRefSink.current.volume = 0;
+    
     audioRefLocal.current.onended = clearPlaybackState;
     audioRefLocal.current.onpause = clearPlaybackState;
 
-    // Start progress loop
     if (animationRef.current) cancelAnimationFrame(animationRef.current);
     animationRef.current = requestAnimationFrame(trackProgress);
 
+    const startPlayback = async () => {
+      setPlayingKey(key);
+      try {
+        await Promise.all([audioRefSink.current.play(), audioRefLocal.current.play()]);
+        
+        // Rapid ramp up to safe volume (50ms) to avoid pops/screams
+        let vol = 0;
+        const rampIntv = setInterval(() => {
+           vol += 0.1;
+           if (vol >= 1) {
+             audioRefLocal.current.volume = localVolume;
+             audioRefSink.current.volume = sinkVolume;
+             clearInterval(rampIntv);
+           } else {
+             audioRefLocal.current.volume = vol * localVolume;
+             audioRefSink.current.volume = vol * sinkVolume;
+           }
+        }, 10);
+      } catch (e) {
+        console.error("Playback error:", e);
+        clearPlaybackState();
+      }
+    };
+
     if (routeToVirtualMic && selectedSinkId && audioRefSink.current.setSinkId) {
-      let routed = false;
       try { 
         await audioRefSink.current.setSinkId(selectedSinkId); 
-        routed = true;
+        await startPlayback();
       } catch (e) { 
-        console.error("setSinkId failed", e); 
+        console.error("setSinkId failed, falling back to local only", e); 
+        await startPlayback();
       }
-      
-      if (routed) {
-         try {
-           setPlayingKey(key);
-           await Promise.all([audioRefSink.current.play(), audioRefLocal.current.play()]);
-         } catch(e) {
-           console.error("Playback error: ", e);
-           clearPlaybackState();
-         }
-         return;
-      }
-    }
-    
-    // Fallback: Just play local
-    try {
-      setPlayingKey(key);
-      await audioRefLocal.current.play();
-    } catch (err) {
-      console.error("Playback error:", err);
-      clearPlaybackState();
+    } else {
+      await startPlayback();
     }
   };
 

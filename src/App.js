@@ -7,12 +7,30 @@ import { GreetingsPanel } from './components/GreetingsPanel';
 import { NotePad } from './components/NotePad';
 import { DictionaryTool } from './components/DictionaryTool';
 import { useDeepgram } from './hooks/useDeepgram';
+import { loadFile, generateObjectUrl } from './utils/storage';
 import './index.css';
 
 const Dashboard = () => {
   const { startRecording, stopRecording, reconnectStream, captions, clearCaptions, sttLanguage, toggleLanguage, connectionState, connectionMessage } = useDeepgram();
   const [isToolsOpen, setIsToolsOpen] = useState(false);
   
+  useEffect(() => {
+    const applyBg = async () => {
+      const bgApp = await loadFile('bg_app');
+      if (bgApp) {
+        const url = generateObjectUrl(bgApp);
+        document.body.style.backgroundImage = `url(${url})`;
+        document.body.style.backgroundSize = 'cover';
+        document.body.style.backgroundPosition = 'center';
+        document.body.style.backgroundAttachment = 'fixed';
+      }
+    };
+    applyBg();
+    
+    // Listen for custom event when background changes in settings
+    window.addEventListener('cat_bg_changed', applyBg);
+    return () => window.removeEventListener('cat_bg_changed', applyBg);
+  }, []);
   // Better Hotkeys: 
   // 1. `Alt + Space` or `Escape` will toggle language from anywhere, even when typing
   // 2. Spacebar works if not typing

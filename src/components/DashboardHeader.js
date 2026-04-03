@@ -149,6 +149,30 @@ export const DashboardHeader = ({ onStartAudio, onStopAudio, onReconnectStream, 
   const dailyTargetArs = Math.round(dailyGoal * RATE_PER_MINUTE * arsRate);
   const monthlyArs = Math.round(stats.monthlyMinutes * RATE_PER_MINUTE * arsRate);
   const monthlyTargetArs = Math.round(stats.goalMinutes * RATE_PER_MINUTE * arsRate);
+
+  // MILESTONE ENGINE (12 Steps avoid discouragement)
+  const targetL1 = 5500; // Floor
+  const targetL2 = 10500; // 350 min/day avg
+  const targetL3 = Math.round(3000000 / (RATE_PER_MINUTE * arsRate)); // 3M ARS Goal
+
+  const milestones = React.useMemo(() => {
+    const l1 = [targetL1 * 0.25, targetL1 * 0.5, targetL1 * 0.75, targetL1];
+    const l2 = [targetL1 + 1250, targetL1 + 2500, targetL1 + 3750, targetL2];
+    const l3 = [
+      targetL2 + (targetL3 - targetL2) * 0.25,
+      targetL2 + (targetL3 - targetL2) * 0.5,
+      targetL2 + (targetL3 - targetL2) * 0.75,
+      targetL3
+    ];
+    return [...l1, ...l2, ...l3].map(Math.round);
+  }, [targetL3]);
+
+  const nextMilestone = milestones.find(m => m > stats.monthlyMinutes) || milestones[milestones.length - 1];
+  const currentLevelIndex = milestones.indexOf(nextMilestone);
+  const currentStep = (currentLevelIndex % 4) + 1;
+  const currentLevel = Math.floor(currentLevelIndex / 4) + 1;
+  const isAllGoalsMet = stats.monthlyMinutes >= targetL3;
+
   const copyValue = (v) => navigator.clipboard.writeText(String(v).replace(/[^\d]/g, ''));
 
   return (
@@ -247,8 +271,7 @@ export const DashboardHeader = ({ onStartAudio, onStopAudio, onReconnectStream, 
         <div className="income-card" style={{ gap: '0.4rem', alignItems: 'flex-start', justifyContent: 'center', position: 'relative' }}>
           
           {isEditingScoreboard && (
-            <div style={{ position: 'absolute', bottom: -28, left: 0, right: 0, display: 'flex', gap: '0.15rem', justifyContent: 'center', zIndex: 100, flexWrap: 'wrap' }}>
-               {/* Sound Diagnostic Lab */}
+            <div className="glass-panel" style={{ position: 'absolute', top: '100%', left: 0, right: 0, display: 'flex', gap: '0.15rem', justifyContent: 'center', zIndex: 100, flexWrap: 'wrap', padding: '0.2rem', background: 'rgba(0,0,0,0.8)', marginTop: '0.4rem', borderRadius: '4px', border: '1px solid rgba(255,255,255,0.1)' }}>
                <button className="btn" onClick={() => audioEngine.playBagOpen()} style={{ fontSize: '0.55rem', background: '#333', color: '#10b981', padding: '0.1rem 0.2rem' }}>[Bag]</button>
                <button className="btn" onClick={() => audioEngine.playTick(1)} style={{ fontSize: '0.55rem', background: '#333', color: '#6ee7b7', padding: '0.1rem 0.2rem' }}>[Min1]</button>
                <button className="btn" onClick={() => audioEngine.playTick(20)} style={{ fontSize: '0.55rem', background: '#333', color: '#fcd34d', padding: '0.1rem 0.2rem' }}>[Min20]</button>
@@ -257,6 +280,21 @@ export const DashboardHeader = ({ onStartAudio, onStopAudio, onReconnectStream, 
                <button className="btn" onClick={() => audioEngine.playCoin()} style={{ fontSize: '0.55rem', background: '#333', color: '#ddd', padding: '0.1rem 0.2rem' }}>[Coin]</button>
                
                <div style={{ width: '4px', height: '10px', background: 'rgba(255,255,255,0.1)', margin: '0 0.1rem' }} />
+
+               <button className="btn" onClick={() => { 
+                 const keys = [
+                   { name: 'Deepgram API Key', key: 'DEEPGRAM_API_KEY' },
+                   { name: 'DeepL API Key (Optional)', key: 'DEEPL_API_KEY' },
+                   { name: 'Microsoft Translator Key (Optional)', key: 'MICROSOFT_TRANSLATOR_KEY' },
+                   { name: 'Microsoft Region (e.g. eastus)', key: 'MICROSOFT_TRANSLATOR_REGION' },
+                   { name: 'OpenAI API Key (Optional for GPT-4o)', key: 'OPENAI_API_KEY' }
+                 ];
+                 keys.forEach(k => {
+                   const cur = localStorage.getItem(k.key) || '';
+                   const nk = window.prompt(`Enter ${k.name}:`, cur);
+                   if (nk !== null) { if (!nk.trim()) localStorage.removeItem(k.key); else localStorage.setItem(k.key, nk.trim()); }
+                 });
+               }} title="Set API Keys">🔑 Keys</button>
 
                <button className="btn" onClick={() => { 
                  // Mock 45 min payout
@@ -273,8 +311,7 @@ export const DashboardHeader = ({ onStartAudio, onStopAudio, onReconnectStream, 
             </div>
           )}
 
-          <div style={{ position: 'absolute', top: 4, right: 4, cursor: 'pointer', opacity: 0.6 }} onClick={() => setIsEditingScoreboard(!isEditingScoreboard)} title="Edit Scoreboards & Test Physics">✏️</div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', flexWrap: 'wrap' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', flexWrap: 'wrap', minHeight: '36px' }}>
             <ConnectionIndicator state={connectionState} />
             {!isActive ? (
               <>
@@ -321,31 +358,18 @@ export const DashboardHeader = ({ onStartAudio, onStopAudio, onReconnectStream, 
               onClick={audioEngine.toggleMute} title={audioEngine.isMuted ? "Unmute" : "Silence"}>
               {audioEngine.isMuted ? '🔇' : '🔊'}
             </button>
-            <button className="btn" style={{ padding: '0.25rem', background: 'var(--panel-bg)', color: 'var(--text-muted)', border: '1px solid var(--panel-border)' }}
-              onClick={() => {
-                const keys = [
-                  { name: 'Deepgram API Key', key: 'DEEPGRAM_API_KEY' },
-                  { name: 'DeepL API Key (Optional)', key: 'DEEPL_API_KEY' },
-                  { name: 'Microsoft Translator Key (Optional)', key: 'MICROSOFT_TRANSLATOR_KEY' },
-                  { name: 'Microsoft Region (e.g. eastus)', key: 'MICROSOFT_TRANSLATOR_REGION' },
-                  { name: 'OpenAI API Key (Optional for GPT-4o)', key: 'OPENAI_API_KEY' }
-                ];
-                keys.forEach(k => {
-                  const cur = localStorage.getItem(k.key) || '';
-                  const nk = window.prompt(`Enter ${k.name}:`, cur);
-                  if (nk !== null) { if (!nk.trim()) localStorage.removeItem(k.key); else localStorage.setItem(k.key, nk.trim()); }
-                });
-              }} title="Set API Keys (Deepgram, DeepL, Microsoft, OpenAI)"><KeyIcon /></button>
-            <button className="btn"
-              style={{
-                backgroundColor: sttLanguage === 'auto' ? 'rgba(110,231,183,0.1)' : sttLanguage === 'en' ? 'rgba(59,130,246,0.8)' : 'rgba(16,185,129,0.8)',
-                color: sttLanguage === 'auto' ? 'var(--text-muted)' : 'white',
-                padding: '0.25rem 0.4rem', fontWeight: 600, fontSize: '0.65rem',
-                border: sttLanguage === 'auto' ? '1px solid var(--panel-border)' : '1px solid transparent',
-              }}
-              onClick={onToggleLanguage} title="Auto → EN → ES">
-              {sttLanguage === 'auto' ? 'Auto Mux (EN/ES)' : sttLanguage === 'en' ? '🔒 ENG' : '🔒 SPA'}
-            </button>
+            {isEditingScoreboard && (
+              <button className="btn"
+                style={{
+                  backgroundColor: sttLanguage === 'auto' ? 'rgba(110,231,183,0.1)' : sttLanguage === 'en' ? 'rgba(59,130,246,0.8)' : 'rgba(16,185,129,0.8)',
+                  color: sttLanguage === 'auto' ? 'var(--text-muted)' : 'white',
+                  padding: '0.25rem 0.4rem', fontWeight: 600, fontSize: '0.65rem',
+                  border: sttLanguage === 'auto' ? '1px solid var(--panel-border)' : '1px solid transparent',
+                }}
+                onClick={onToggleLanguage} title="Auto → EN → ES">
+                {sttLanguage === 'auto' ? 'Auto Mux (EN/ES)' : sttLanguage === 'en' ? '🔒 ENG' : '🔒 SPA'}
+              </button>
+            )}
           </div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '0.15rem' }}>
             <select className="btn" style={{ background: 'var(--panel-bg)', color: '#3b82f6', border: '1px solid rgba(59,130,246,0.4)', padding: '0.1rem 0.25rem', maxWidth: '120px', fontSize: '0.6rem' }}
@@ -446,14 +470,14 @@ export const DashboardHeader = ({ onStartAudio, onStopAudio, onReconnectStream, 
         )}
 
         {/* Actions toggle container */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', alignSelf: 'flex-start', alignItems: 'center', paddingLeft: '0.5rem' }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.3rem', alignSelf: 'center', alignItems: 'center', paddingLeft: '0.5rem' }}>
           <button onClick={() => setIsCollapsed(c => !c)}
-            style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', fontSize: '1rem', padding: '0.1rem' }}
-            title="Collapse dashboard">
-            ▲
+            style={{ background: isCollapsed ? 'rgba(59,130,246,0.2)' : 'none', border: 'none', color: isCollapsed ? '#60a5fa' : 'var(--text-muted)', cursor: 'pointer', fontSize: '0.8rem', padding: '0.4rem', borderRadius: '4px', border: isCollapsed ? '1px solid rgba(59,130,246,0.3)' : 'none' }}
+            title={isCollapsed ? "Expand dashboard" : "Collapse dashboard"}>
+            {isCollapsed ? '▼' : '▲'}
           </button>
           <button onClick={() => setIsEditingScoreboard(e => !e)}
-            style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '1.1rem', padding: '0.1rem', filter: isEditingScoreboard ? 'drop-shadow(0 0 4px #3b82f6)' : 'none' }}
+            style={{ background: isEditingScoreboard ? 'rgba(16,185,129,0.2)' : 'none', border: 'none', cursor: 'pointer', fontSize: '1rem', padding: '0.4rem', borderRadius: '4px', filter: isEditingScoreboard ? 'drop-shadow(0 0 4px #10b981)' : 'none', border: isEditingScoreboard ? '1px solid rgba(16,185,129,0.3)' : 'none' }}
             title="Edit scoreboard items">
             {isEditingScoreboard ? '💾' : '✏️'}
           </button>
@@ -470,7 +494,9 @@ export const DashboardHeader = ({ onStartAudio, onStopAudio, onReconnectStream, 
               <div style={{ display: 'flex', alignItems: 'center', gap: '0.3rem' }}>
                 {!isMonthlyGoalMet ? (
                   <>
-                    <span>Need: {Math.round(remainingMinutes)}m</span>
+                    <span style={{ color: '#fff', background: 'rgba(59,130,246,0.3)', padding: '0.1rem 0.4rem', borderRadius: '4px', border: '1px solid rgba(59,130,246,0.4)', fontWeight: 800 }}>
+                       🎯 NEXT: {nextMilestone}m (L{currentLevel} Step {currentStep})
+                    </span>
                     <span style={{ opacity: 0.4 }}>|</span>
                     <span style={{ background: 'rgba(139,92,246,0.15)', padding: '0.1rem 0.4rem', borderRadius: '4px', border: '1px solid rgba(139,92,246,0.3)' }}>
                       Paced Max: <strong style={{ color: '#d8b4fe', textShadow: '0 0 8px rgba(139,92,246,0.5)' }}>AR${monthlyRemainingCash}</strong>
@@ -478,7 +504,7 @@ export const DashboardHeader = ({ onStartAudio, onStopAudio, onReconnectStream, 
                   </>
                 ) : (
                   <span style={{ color: stats.monthlyMinutes > stats.goalMinutes * 1.2 ? '#fcd34d' : '#34d399', fontWeight: 800 }}>
-                    {stats.monthlyMinutes > stats.goalMinutes * 1.2 ? '🔥 UNSTOPPABLE!' : stats.monthlyMinutes > stats.goalMinutes * 1.1 ? '🚀 ORBIT (110%!)' : '🎉 Goal Met!'}
+                    {stats.monthlyMinutes > targetL3 ? '👑 LEGENDARY STATUS REACHED!' : stats.monthlyMinutes > stats.goalMinutes * 1.2 ? '🔥 UNSTOPPABLE!' : stats.monthlyMinutes > stats.goalMinutes * 1.1 ? '🚀 ORBIT (110%!)' : '🎉 Goal Met!'}
                   </span>
                 )}
               </div>
@@ -489,7 +515,28 @@ export const DashboardHeader = ({ onStartAudio, onStopAudio, onReconnectStream, 
               <div style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: `${monthlyProgressRatio * 100}%`, backgroundColor: isMonthlyGoalMet ? '#10b981' : '#a855f7', transition: 'width 1s cubic-bezier(0.34, 1.56, 0.64, 1)', zIndex: 2 }} />
               {stats.monthlyMinutes > stats.goalMinutes && <div style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: `${Math.min(1, (stats.monthlyMinutes - stats.goalMinutes) / (stats.goalMinutes * 0.2)) * 100}%`, backgroundColor: 'rgba(245,158,11,0.8)', zIndex: 3 }} />}
               
-              {/* Notches overlay */}
+              {/* Milestone Indicators */}
+              <div style={{ position: 'absolute', inset: 0, display: 'flex', pointerEvents: 'none', zIndex: 4 }}>
+                {milestones.map((m, i) => {
+                  if (m > stats.goalMinutes) return null;
+                  const ratio = m / stats.goalMinutes;
+                  return (
+                    <div key={i} style={{ 
+                      position: 'absolute', left: `${ratio * 100}%`, top: 0, bottom: 0, width: '1px', 
+                      background: i % 4 === 3 ? 'rgba(255,255,255,0.6)' : 'rgba(255,255,255,0.2)',
+                      boxShadow: i % 4 === 3 ? '0 0 4px white' : 'none'
+                    }}>
+                      <div style={{ 
+                        position: 'absolute', bottom: -1, left: -2, width: 5, height: 5, borderRadius: '50%',
+                        background: stats.monthlyMinutes >= m ? '#10b981' : 'rgba(255,255,255,0.3)',
+                        border: '1px solid rgba(0,0,0,0.5)'
+                      }} />
+                    </div>
+                  );
+                })}
+              </div>
+
+              {/* Day Notches overlay */}
               <div style={{ position: 'absolute', inset: 0, display: 'flex', pointerEvents: 'none', zIndex: 5 }}>
                 {Array.from({ length: daysInMonth }).map((_, i) => (
                   <div key={i} style={{ flex: 1, borderRight: i < daysInMonth - 1 ? '1px solid rgba(255,255,255,0.1)' : 'none' }} />

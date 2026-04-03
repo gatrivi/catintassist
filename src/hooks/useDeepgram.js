@@ -33,15 +33,19 @@ export const useDeepgram = () => {
   const lastTranscriptTimeRef = useRef(Date.now());
   const overrideTimeoutRef = useRef(null);
 
-  const closeConnections = () => {
-    if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
-      mediaRecorderRef.current.stop();
-    }
+  const closeConnections = useCallback(() => {
+    try {
+      if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
+        mediaRecorderRef.current.stop();
+      }
+    } catch(e) { console.warn("Failed to stop recorder:", e); }
+    mediaRecorderRef.current = null;
+
     if (socketRefEn.current) { socketRefEn.current.close(); socketRefEn.current = null; }
     if (socketRefEs.current) { socketRefEs.current.close(); socketRefEs.current = null; }
     setConnectionState('disconnected');
     setConnectionMessage('Disconnected');
-  };
+  }, []);
 
   const startDeepgram = (stream) => {
     const API_KEY = localStorage.getItem('DEEPGRAM_API_KEY') || process.env.REACT_APP_DEEPGRAM_API_KEY;
@@ -66,14 +70,20 @@ export const useDeepgram = () => {
           // Initialize recorder strictly when BOTH sockets are ready!
           setConnectionState('connected');
           setConnectionMessage('Dual Stream Ready');
-          mediaRecorderRef.current = new MediaRecorder(stream);
-          mediaRecorderRef.current.addEventListener('dataavailable', (event) => {
-            if (event.data.size > 0) {
-              if (socketRefEn.current?.readyState === 1) socketRefEn.current.send(event.data);
-              if (socketRefEs.current?.readyState === 1) socketRefEs.current.send(event.data);
-            }
-          });
-          mediaRecorderRef.current.start(250);
+          try {
+            mediaRecorderRef.current = new MediaRecorder(stream);
+            mediaRecorderRef.current.addEventListener('dataavailable', (event) => {
+              if (event.data.size > 0) {
+                if (socketRefEn.current?.readyState === 1) socketRefEn.current.send(event.data);
+                if (socketRefEs.current?.readyState === 1) socketRefEs.current.send(event.data);
+              }
+            });
+            mediaRecorderRef.current.start(250);
+          } catch(e) {
+            console.error("Failed to start MediaRecorder:", e);
+            setConnectionState('error');
+            setConnectionMessage('Recorder Error');
+          }
         }
       };
 
@@ -248,16 +258,19 @@ export const useDeepgram = () => {
     setCaptions([]); // Clear transcript history after Call Ends
     // Intentionally NOT stopping tracks here so stream can be reused 
     // when clicking Connect again. Browser "Stop Sharing" handles actual track stop.
-  }, []);
+  }, [closeConnections]);
 
   const reconnectStream = useCallback(() => {
     closeConnections();
-    if (streamRef.current) {
-      setConnectionState('connecting');
-      setConnectionMessage('Zapping WebSockets...');
-      startDeepgram(streamRef.current);
-    }
-  }, []);
+    // Safety delay to allow sockets/recorder to fully clear
+    setTimeout(() => {
+      if (streamRef.current && isActiveRef.current) {
+        setConnectionState('connecting');
+        setConnectionMessage('Zapping WebSockets...');
+        startDeepgram(streamRef.current);
+      }
+    }, 150);
+  }, [closeConnections]);
 
   const clearCaptions = () => setCaptions([]);
 
