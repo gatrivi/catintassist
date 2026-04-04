@@ -64,6 +64,10 @@ export const DialGoalSelector = ({ ratePerMinute, arsRate, setArsRate, initialGo
   const dailyCash = dailyMins * ratePerMinute * arsRate;
   const monthlyCash = monthlyMins * ratePerMinute * arsRate;
 
+  const ladderStep = Math.min(12, Math.max(1, Math.floor(monthlyMins / 1375) + (monthlyMins % 1375 > 1300 ? 1 : 0) || 1));
+  const ladderTier = monthlyMins >= 16500 ? 'LEGEND' : monthlyMins >= 11000 ? 'GROWTH' : monthlyMins >= 5500 ? 'FLOOR' : 'TRAINING';
+  const ladderColor = ladderTier === 'LEGEND' ? '#FCD34D' : ladderTier === 'GROWTH' ? '#A855F7' : ladderTier === 'FLOOR' ? '#3B82F6' : '#94A3B8';
+
   const handleApply = () => {
     audioEngine.playCarriageVault();
     onSave(monthlyMins);
@@ -145,17 +149,38 @@ export const DialGoalSelector = ({ ratePerMinute, arsRate, setArsRate, initialGo
             const rDailyCash = rDailyMins * ratePerMinute * arsRate;
             const rMonthCash = rMonthMins * ratePerMinute * arsRate;
             
+            const rStep = Math.min(12, Math.floor(rMonthMins / 1375) + (rMonthMins % 1375 > 1300 ? 1 : 0) || 1);
+            const isFloor = rMonthMins >= 5500 && rMonthMins < 5600; // Close enough to 5500
+            const isGrowth = rMonthMins >= 11000 && rMonthMins < 11100;
+            const isLegend = rMonthMins >= 16500 && rMonthMins < 16600;
+
             return (
               <div key={hrs} onClick={() => { setActiveIndex(idx); scrollRef.current.scrollTop = idx * itemHeight; }} style={{
                 height: `${itemHeight}px`, display: 'flex', alignItems: 'center', justifyContent: 'space-between',
                 scrollSnapAlign: 'center', fontSize: '0.8rem', fontWeight: distance === 0 ? 800 : 500,
                 color: distance === 0 ? '#a855f7' : 'var(--text-muted)', cursor: 'pointer',
-                transform: `scale(${scale})`, opacity, transition: 'all 0.15s ease-out', width: '100%', padding: '0 0.2rem', boxSizing: 'border-box'
+                transform: `scale(${scale})`, opacity, transition: 'all 0.15s ease-out', width: '100%', padding: '0 0.2rem', boxSizing: 'border-box',
+                position: 'relative'
               }}>
-                <span style={{flex:1, textAlign:'center', fontSize: distance === 0 ? '1rem' : '0.8rem'}}>{hrs}h/Wk</span>
+                <div style={{ flex: 1, textAlign: 'center', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+                   <span style={{ fontSize: distance === 0 ? '1rem' : '0.8rem' }}>{hrs}h/Wk</span>
+                   {distance === 0 && <span style={{ fontSize: '0.5rem', opacity: 0.8, color: ladderColor }}>{ladderTier}</span>}
+                </div>
                 <span style={{flex:1, textAlign:'center'}}>{Math.floor(rDailyMins/60)}h {rDailyMins%60}m</span>
                 <span style={{flex:1, textAlign:'center'}}>${Math.round(rDailyCash).toLocaleString('es-AR')}</span>
-                <span style={{flex:1, textAlign:'center', color: distance === 0 ? '#34d399' : ''}}>${Math.round(rMonthCash).toLocaleString('es-AR')}</span>
+                <div style={{ flex: 1, textAlign: 'center', position: 'relative' }}>
+                   <span style={{ color: distance === 0 ? '#34d399' : '' }}>${Math.round(rMonthCash).toLocaleString('es-AR')}</span>
+                   {(isFloor || isGrowth || isLegend) && (
+                     <div style={{ 
+                       position: 'absolute', right: '0', top: '50%', transform: 'translateY(-50%)',
+                       fontSize: '0.5rem', padding: '1px 3px', borderRadius: '3px',
+                       background: isLegend ? '#FCD34D' : (isGrowth ? '#A855F7' : '#3B82F6'),
+                       color: '#000', fontWeight: 900, boxShadow: '0 0 5px rgba(255,255,255,0.2)'
+                     }}>
+                       {isLegend ? 'LEGEND' : (isGrowth ? 'GROWTH' : 'FLOOR')}
+                     </div>
+                   )}
+                </div>
               </div>
             );
           })}
@@ -193,14 +218,15 @@ export const DialGoalSelector = ({ ratePerMinute, arsRate, setArsRate, initialGo
 
       <div style={{ 
         padding: '0.6rem', borderRadius: '8px', textAlign: 'center', fontSize: '0.75rem',
-        background: selectedWeeklyHours <= 45 ? 'rgba(52,211,153,0.1)' : selectedWeeklyHours <= 70 ? 'rgba(251,191,36,0.1)' : 'rgba(239,68,68,0.1)',
-        border: selectedWeeklyHours <= 45 ? '1px solid rgba(52,211,153,0.3)' : selectedWeeklyHours <= 70 ? '1px solid rgba(251,191,36,0.3)' : '1px solid rgba(239,68,68,0.3)'
+        background: ladderTier === 'TRAINING' ? 'rgba(148,163,184,0.1)' : ladderTier === 'FLOOR' ? 'rgba(56,189,248,0.1)' : ladderTier === 'GROWTH' ? 'rgba(168,85,247,0.1)' : 'rgba(252,211,77,0.1)',
+        border: `1px solid ${ladderColor}44`
       }}>
-        <div style={{ fontSize: '0.8rem', fontWeight: 800, marginBottom: '0.2rem', color: selectedWeeklyHours <= 45 ? '#6ee7b7' : selectedWeeklyHours <= 70 ? '#fde047' : '#fca5a5' }}>
-          {selectedWeeklyHours <= 45 ? '🟢 Healthy Workweek' : selectedWeeklyHours <= 70 ? '🟡 Overtime Hustle' : '🔴 Extreme Burnout Warning'}
+        <div style={{ fontSize: '0.8rem', fontWeight: 800, marginBottom: '0.2rem', color: ladderColor }}>
+          {ladderTier === 'TRAINING' ? '🐾 Training Mode' : ladderTier === 'FLOOR' ? '🪜 Step Achiever (Floor)' : ladderTier === 'GROWTH' ? '🚀 Pacing Growth' : '👑 Legendary Hustle'}
+          <span style={{ marginLeft: '0.5rem', fontSize: '0.7rem', opacity: 0.8, color: '#fff' }}>[The Pro Ladder: Step {ladderStep}/12]</span>
         </div>
         <div style={{ fontSize: '0.65rem', color: 'rgba(255,255,255,0.8)' }}>
-          At {selectedWeeklyHours}h/Wk commitment, you'll reach <strong style={{color: '#a855f7'}}>AR${Math.round(monthlyCash).toLocaleString('es-AR')}</strong> per month.
+          At {selectedWeeklyHours}h/Wk commitment, you'll reach <strong style={{color: ladderColor}}>AR${Math.round(monthlyCash).toLocaleString('es-AR')}</strong> per month.
           <br/>Expect to grind <strong style={{color: '#fff'}}>{dailyHours}h {dailyMinsRem}m</strong> per active day.
         </div>
       </div>

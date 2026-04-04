@@ -133,33 +133,13 @@ export const DashboardHeader = ({ onStartAudio, onStopAudio, onReconnectStream, 
   const totalWorkdayHours = ABSOLUTE_END - WORKDAY_START; // 14h total
   const timeElapsedRatio = Math.min(1, Math.max(0, (currentTime - WORKDAY_START) / totalWorkdayHours));
 
-  // Determine when work actually started today
-  const actualStartTime = stats.dayStartTime ? new Date(stats.dayStartTime) : new Date(year, month, currentDay, WORKDAY_START);
-  const startHourFloat = actualStartTime.getHours() + (actualStartTime.getMinutes() / 60);
-
-  // Success Zone: What % of today's goal SHOULD be done by now?
-  // Level 1 (High/Ideal): Finish by 18:00
-  // Level 2 (Low/Minimum): Finish by 23:00
-  const timeFromStart = Math.max(0, currentTime - startHourFloat);
-  const windowToCore = Math.max(0.1, CORE_END - startHourFloat);
-  const windowToAbsolute = Math.max(0.1, ABSOLUTE_END - startHourFloat);
+  let hoursLeftToAbsolute = Math.max(0, ABSOLUTE_END - currentTime);
   
-  const targetRatioCore = Math.min(1, timeFromStart / windowToCore);
-  const targetRatioAbsolute = Math.min(1, timeFromStart / windowToAbsolute);
-
-  const minsRemainingToday = Math.max(0, dailyGoal - stats.dailyMinutes);
-  const hoursLeftToCore = Math.max(0, CORE_END - currentTime);
-  const hoursLeftToAbsolute = Math.max(0, ABSOLUTE_END - currentTime);
-  
-  const paceToCore = hoursLeftToCore > 0 ? (minsRemainingToday / hoursLeftToCore) : 999;
-  const paceToAbsolute = hoursLeftToAbsolute > 0 ? (minsRemainingToday / hoursLeftToAbsolute) : 999;
-
   // Estimated workable mins from now
   const workableMinsRemaining = hoursLeftToAbsolute * 35;
   const workableHoursRemaining = workableMinsRemaining / 60;
   
   const realisticMaxToday = stats.dailyMinutes + workableMinsRemaining;
-  const maxCashToClaim = Math.round(workableMinsRemaining * RATE_PER_MINUTE * arsRate).toLocaleString('es-AR');
   
   const remainingWorkdaysThisMonth = Math.max(0, remainingDays - 1);
   const monthlyMaxMins = stats.monthlyMinutes + workableMinsRemaining + (remainingWorkdaysThisMonth * 14 * 35);
@@ -188,9 +168,9 @@ export const DashboardHeader = ({ onStartAudio, onStopAudio, onReconnectStream, 
   }, []);
 
   const milestoneLabels = [
-    "Week 1 Floor", "Week 2 Floor", "Week 3 Floor", "🏁 GOAL: FLOOR (5500m)",
-    "Week 1 Growth", "Week 2 Growth", "Week 3 Growth", "🚀 GOAL: GROWTH (11k)",
-    "Week 1 Legend", "Week 2 Legend", "Week 3 Legend", "👑 GOAL: LEGEND (16.5k)"
+    "Step 1: Floor Prep", "Step 2: Floor Rise", "Step 3: Floor Push", "🪜 LADDER: FLOOR (5500m)",
+    "Step 5: Growth Prep", "Step 6: Growth Rise", "Step 7: Growth Push", "🚀 LADDER: GROWTH (11k)",
+    "Step 9: Legend Prep", "Step 10: Legend Rise", "Step 11: Legend Push", "👑 LADDER: LEGEND (16.5k)"
   ];
 
   const nextMilestone = milestones.find(m => m > stats.monthlyMinutes) || milestones[milestones.length - 1];
@@ -202,7 +182,7 @@ export const DashboardHeader = ({ onStartAudio, onStopAudio, onReconnectStream, 
 
   return (
     <header className="dashboard-header glass-panel" style={{ position: 'relative', zIndex: 100 }}>
-      <div style={{ position: 'absolute', top: '0.1rem', right: '0.4rem', fontSize: '0.6rem', opacity: 0.4, pointerEvents: 'none' }}>v3.3.1 (Stable Glass)</div>
+      <div style={{ position: 'absolute', top: '0.1rem', right: '0.4rem', fontSize: '0.6rem', opacity: 0.4, pointerEvents: 'none' }}>v3.4.0 (The Precision Update)</div>
 
       {/* COLLAPSED VIEW */}
       {isCollapsed && (
@@ -310,7 +290,9 @@ export const DashboardHeader = ({ onStartAudio, onStopAudio, onReconnectStream, 
               onClick={() => { copyValue(stats.monthlyMinutes); setIsTodayDialOpen(true); }} 
               title="MONTHLY MINUTES: Your total interpreted time so far this month vs your set monthly goal. Click to edit/copy.">
               <span style={{ color: '#c084fc', fontWeight: 800 }}>🗓️ {Math.round(stats.monthlyMinutes)}m</span>
+              <span style={{ opacity: 0.4, margin: '0 0.15rem', fontSize: '0.65rem' }}>{((stats.monthlyMinutes / (stats.goalMinutes || 1)) * 100).toFixed(1)}%</span>
               <span style={{ opacity: 0.6, fontWeight: 600 }}> / {stats.goalMinutes}m</span>
+              <span style={{ marginLeft: '0.3rem', padding: '1px 4px', background: 'rgba(168,85,247,0.2)', borderRadius: '4px', fontSize: '0.6rem', color: '#d8b4fe', border: '1px solid rgba(168,85,247,0.3)' }}>Lvl {currentIdx + 1}</span>
             </div>
 
             <div 
@@ -595,9 +577,14 @@ export const DashboardHeader = ({ onStartAudio, onStopAudio, onReconnectStream, 
                 {!isMonthlyGoalMet ? (
                   <>
                     <span 
-                      title="This is your next immediate target. Reach this to stay on track for your weekly quota!"
+                      title={`This is your next immediate target on The Pro Ladder. Reach this to level up! (1% = ${Math.floor(stats.goalMinutes / 100)}m)`}
                       style={{ color: '#fff', background: 'rgba(59,130,246,0.3)', padding: '0.1rem 0.4rem', borderRadius: '4px', border: '1px solid rgba(59,130,246,0.4)', fontWeight: 800, cursor: 'help' }}>
-                       🎯 {nextGoalLabel} ({nextMilestone}m)
+                       🪜 {nextGoalLabel} ({nextMilestone}m)
+                    </span>
+                    <span 
+                      title={`Current Progress towards your Monthly Goal. (1% = ${Math.floor(stats.goalMinutes / 100)}m)`}
+                      style={{ margin: '0 0.4rem', fontSize: '0.75rem', color: isMonthlyGoalMet ? '#10b981' : '#a855f7', fontWeight: 800, cursor: 'help' }}>
+                      {((stats.monthlyMinutes / (stats.goalMinutes || 1)) * 100).toFixed(1)}%
                     </span>
                     <span style={{ opacity: 0.4 }}>|</span>
                     <span 
@@ -656,8 +643,8 @@ export const DashboardHeader = ({ onStartAudio, onStopAudio, onReconnectStream, 
           {/* Step Goal (Weekly Replenishing Bar) */}
           <div style={{ display: 'flex', flexDirection: 'column', gap: '0.15rem' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.6rem', color: 'var(--text-muted)', alignItems: 'center' }}>
-              <span style={{ fontWeight: 600 }}>🪜 STEP ACHIEVER ({currentIdx + 1}/12)</span>
-              <span title="Each bar represents 1,375 min. Complete it to level up your monthly rank.">
+              <span style={{ fontWeight: 600 }}>🪜 PRO LADDER PROGRESS ({currentIdx + 1}/12)</span>
+              <span title={`Each step on the Ladder represents 1,375 min. (1% of Total Goal = ${Math.floor(stats.goalMinutes / 100)}m)`}>
                 <strong style={{ color: stats.monthlyMinutes >= 11000 ? '#FCD34D' : (stats.monthlyMinutes >= 5500 ? '#C084FC' : '#60A5FA') }}>
                   {milestoneLabels[currentIdx]}
                 </strong> ({Math.round(stats.monthlyMinutes % 1375)}m / 1375m)
@@ -671,8 +658,17 @@ export const DashboardHeader = ({ onStartAudio, onStopAudio, onReconnectStream, 
                 width: `${((stats.monthlyMinutes % 1375) / 1375) * 100}%`, 
                 background: stats.monthlyMinutes >= 11000 ? '#fcd34d' : (stats.monthlyMinutes >= 5500 ? '#a855f7' : '#3b82f6'),
                 boxShadow: `0 0 10px ${stats.monthlyMinutes >= 11000 ? 'rgba(251,191,36,0.4)' : (stats.monthlyMinutes >= 5500 ? 'rgba(139,92,246,0.4)' : 'rgba(59,130,246,0.4)')}`,
-                transition: 'width 0.5s ease-out'
+                transition: 'width 0.5s ease-out',
+                zIndex: 2
               }} />
+              {/* Day Notches (1375 / 5 = 275m intervals) */}
+              <div 
+                title="Each section represents roughly one full day of interpretive work (~275m)."
+                style={{ position: 'absolute', inset: 0, display: 'flex', pointerEvents: 'auto', zIndex: 5, cursor: 'help' }}>
+                {Array.from({ length: 5 }).map((_, i) => (
+                  <div key={i} style={{ flex: 1, borderRight: i < 4 ? '1px solid rgba(255,255,255,0.15)' : 'none' }} />
+                ))}
+              </div>
             </div>
           </div>
 
@@ -689,8 +685,8 @@ export const DashboardHeader = ({ onStartAudio, onStopAudio, onReconnectStream, 
                   <span style={{ color: '#34d399', fontWeight: 800 }}>🎉 SHIFT MET ({dailyGoal}m)</span>
                 ) : (
                   <>
-                    <span title="Literally how many hours are left until 11:00 PM.">⏳ {hoursLeft.toFixed(1)}h left</span>
-                    <span title="Assuming you work 35 mins per hour (allowing for breaks/avail), this is how many minutes you can realistically bank today.">({workableHours.toFixed(1)}h workable)</span>
+                    <span title="Literally how many hours are left until 11:00 PM.">⏳ {hoursLeftToAbsolute.toFixed(1)}h left</span>
+                    <span title="Assuming you work 35 mins per hour (allowing for breaks/avail), this is how many minutes you can realistically bank today.">({workableHoursRemaining.toFixed(1)}h workable)</span>
                   </>
                 )}
               </div>
@@ -728,6 +724,15 @@ export const DashboardHeader = ({ onStartAudio, onStopAudio, onReconnectStream, 
                   transition: 'width 1s cubic-bezier(0.34, 1.56, 0.64, 1)', zIndex: 2, pointerEvents: 'auto' 
                 }} />
               
+              {/* Hour Notches overlay */}
+              <div 
+                title="Each notch represents 1 hour of the workday (9 AM - 11 PM)."
+                style={{ position: 'absolute', inset: 0, display: 'flex', pointerEvents: 'auto', zIndex: 5, cursor: 'help' }}>
+                {Array.from({ length: 14 }).map((_, i) => (
+                  <div key={i} style={{ flex: 1, borderRight: i < 13 ? '1px solid rgba(255,255,255,0.15)' : 'none' }} />
+                ))}
+              </div>
+
               <div 
                 title="Current Time indicator. Keep the daily bar touching or ahead of this line."
                 style={{ position: 'absolute', top: 0, bottom: 0, left: `${timeElapsedRatio * 100}%`, width: '2px', backgroundColor: 'rgba(255,255,255,0.7)', zIndex: 10, cursor: 'help', pointerEvents: 'auto' }} />
