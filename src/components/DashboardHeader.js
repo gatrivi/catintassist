@@ -272,34 +272,38 @@ export const DashboardHeader = ({ onStartAudio, onStopAudio, onReconnectStream, 
             <div 
               className="metric-pill" 
               onClick={() => { copyValue(stats.dailyMinutes); setIsTodayDialOpen(true); }} 
-              title="TODAY'S MINUTES: (Banked Minutes today) / (Average Daily Goal needed to stay on pace). Click to edit/copy.">
+              title={`TODAY'S MINUTES: (Banked Today) / (Average Daily Goal needed to stay on pace). Based on remaining time (${hoursLeftToAbsolute.toFixed(1)}h), you can realistically hit ${Math.round(realisticMaxToday)}m today if you push hard. (1% = ${Math.floor((requiredDailyAverage || 1) / 100)}m)`}>
               <span style={{ color: '#fcd34d', fontWeight: 800 }}>☀️ {Math.round(stats.dailyMinutes)}m</span>
+              <span style={{ opacity: 0.4, margin: '0 0.15rem', fontSize: '0.65rem' }}>{((stats.dailyMinutes / (requiredDailyAverage || 1)) * 100).toFixed(1)}%</span>
               <span style={{ opacity: 0.6, fontWeight: 600 }}> / {Math.round(requiredDailyAverage)}m</span>
+              <span style={{ marginLeft: '0.3rem', fontSize: '0.6rem', color: '#fcd34d', opacity: 0.8 }}>(Max: {Math.round(realisticMaxToday)}m)</span>
             </div>
 
             <div 
               className="metric-pill" 
               onClick={() => { copyValue(dailyArs); setIsTodayDialOpen(true); }} 
-              title="TODAY'S ARS: Estimated earnings for today. (Banked ARS) / (Target ARS for today's quota). Click to edit/copy.">
+              title={`TODAY'S ARS: Estimated earnings for today. (Banked) / (Target Quota). (1% = AR$${Math.floor((dailyTargetArs || 1) / 100).toLocaleString('es-AR')})`}>
               <span style={{ color: '#6ee7b7', fontWeight: 800 }}>☀️ AR${dailyArs.toLocaleString('es-AR')}</span>
+              <span style={{ opacity: 0.4, margin: '0 0.15rem', fontSize: '0.65rem' }}>{((dailyArs / (dailyTargetArs || 1)) * 100).toFixed(1)}%</span>
               <span style={{ opacity: 0.6, fontWeight: 600 }}> / ${dailyTargetArs.toLocaleString('es-AR')}</span>
             </div>
             
             <div 
               className="metric-pill" 
               onClick={() => { copyValue(stats.monthlyMinutes); setIsTodayDialOpen(true); }} 
-              title="MONTHLY MINUTES: Your total interpreted time so far this month vs your set monthly goal. Click to edit/copy.">
+              title={`MONTHLY MINUTES: Your total interpreted time so far this month vs your set monthly goal. (1% = ${Math.floor((stats.goalMinutes || 1) / 100)}m)`}>
               <span style={{ color: '#c084fc', fontWeight: 800 }}>🗓️ {Math.round(stats.monthlyMinutes)}m</span>
               <span style={{ opacity: 0.4, margin: '0 0.15rem', fontSize: '0.65rem' }}>{((stats.monthlyMinutes / (stats.goalMinutes || 1)) * 100).toFixed(1)}%</span>
               <span style={{ opacity: 0.6, fontWeight: 600 }}> / {stats.goalMinutes}m</span>
-              <span style={{ marginLeft: '0.3rem', padding: '1px 4px', background: 'rgba(168,85,247,0.2)', borderRadius: '4px', fontSize: '0.6rem', color: '#d8b4fe', border: '1px solid rgba(168,85,247,0.3)' }}>Lvl {currentIdx + 1}</span>
+              <span style={{ marginLeft: '0.3rem', padding: '1px 4px', background: 'rgba(168,85,247,0.2)', borderRadius: '4px', fontSize: '0.6rem', color: '#d8b4fe', border: '1px solid rgba(168,85,247,0.3)' }}>Step {currentIdx + 1}/12</span>
             </div>
 
             <div 
               className="metric-pill" 
               onClick={() => { copyValue(monthlyArs); setIsTodayDialOpen(true); }} 
-              title="MONTHLY ARS: Your total estimated earnings this month based on the current exchange rate. Click to edit/copy.">
+              title={`MONTHLY ARS: Your total estimated earnings this month. (1% = AR$${Math.floor((monthlyTargetArs || 1) / 100).toLocaleString('es-AR')})`}>
               <span style={{ color: '#d8b4fe', fontWeight: 800 }}>🗓️ AR${monthlyArs.toLocaleString('es-AR')}</span>
+              <span style={{ opacity: 0.4, margin: '0 0.15rem', fontSize: '0.65rem' }}>{((monthlyArs / (monthlyTargetArs || 1)) * 100).toFixed(1)}%</span>
               <span style={{ opacity: 0.6, fontWeight: 600 }}> / ${monthlyTargetArs.toLocaleString('es-AR')}</span>
             </div>
 
