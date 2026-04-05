@@ -364,8 +364,9 @@ export const TranscriptionBoard = ({ captions, onClear }) => {
           return (
             <div key={cap.id || i} className="transcript-bubble" style={{ 
               opacity: cap.isFinal === false ? 0.8 : 1,
-              marginTop: isSplitContinuation ? '0rem' : '0.4rem',
-              padding: '0.1rem 0',
+              marginTop: isSplitContinuation ? '0rem' : '0.1rem',
+              padding: '0rem',
+              position: 'relative',
               border: isPinned ? '2px solid #3b82f6' : 'none',
               borderRadius: isPinned ? '8px' : '6px',
               backgroundColor: isPinned ? 'rgba(59, 130, 246, 0.08)' : (getBubbleStyle(cap.text, cap.isFinal === false, cap.lang).backgroundColor),
@@ -373,9 +374,9 @@ export const TranscriptionBoard = ({ captions, onClear }) => {
               ...getBubbleStyle(cap.text, cap.isFinal === false, cap.lang)
             }}>
               {(!isSameAsPrevious && !cap.isSplit) && (
-                <div style={{ display: 'flex', marginBottom: '0.1rem', paddingLeft: '22px' }}>
-                  <span style={{ fontSize: '0.6rem', color: 'rgba(255,255,255,0.4)', textTransform: 'uppercase', letterSpacing: '0.05em', lineHeight: 1, fontWeight: 800 }}>
-                    {cap.lang === 'es' ? '🇪🇸 SPA' : '🇺🇸 ENG'}
+                <div style={{ position: 'absolute', top: '2px', left: '4px', zIndex: 5, pointerEvents: 'none' }}>
+                  <span style={{ fontSize: '0.45rem', color: 'rgba(255,255,255,0.25)', textTransform: 'uppercase', letterSpacing: '0.05em', fontWeight: 900 }}>
+                    {cap.lang === 'es' ? 'SPA' : 'ENG'}
                   </span>
                 </div>
               )}
@@ -387,7 +388,7 @@ export const TranscriptionBoard = ({ captions, onClear }) => {
             </div>
           );
         })}
-        <div ref={bottomRef} style={{ height: '60px', flexShrink: 0 }} />
+        <div ref={bottomRef} style={{ height: '4px', flexShrink: 0 }} />
       </div>
     </div>
   );

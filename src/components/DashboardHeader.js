@@ -178,11 +178,22 @@ export const DashboardHeader = ({ onStartAudio, onStopAudio, onReconnectStream, 
     const nineAM = new Date(stats.dayStartTime);
     nineAM.setHours(9, 0, 0, 0);
     const lateStartMs = Math.max(0, start.getTime() - nineAM.getTime());
-    const breakOverMs = Math.max(0, ((stats.dailyBreakMinutes || 0) - 90) * 60000);
-    const logOff = new Date(stats.dayStartTime);
-    logOff.setHours(18, 0, 0, 0);
-    const finalLogOff = new Date(logOff.getTime() + lateStartMs + breakOverMs);
-    return finalLogOff.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false });
+    const totalBreakMs = (stats.dailyBreakMinutes || 0) * 60000;
+    const end = new Date(stats.lastDate + ' 18:00:00');
+    return new Date(end.getTime() + lateStartMs + totalBreakMs).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false });
+  };
+
+  const shiftStartStr = stats.dayStartTime ? new Date(stats.dayStartTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false }) : '--:--';
+  const shiftElapsedMins = stats.dayStartTime ? Math.max(0, (Date.now() - stats.dayStartTime) / 60000) : 0;
+  const breakLimit = 90;
+  const breakUsed = stats.dailyBreakMinutes || 0;
+  const breakLeft = Math.max(0, breakLimit - breakUsed);
+  const cashToTodayGoal = Math.max(0, dailyTargetArs - dailyArs);
+
+  const formatHoursMins = (totalMins) => {
+    const h = Math.floor(totalMins / 60);
+    const m = Math.floor(totalMins % 60);
+    return `${h}h${m > 0 ? `${m}m` : ''}`;
   };
 
   // SIMPLIFIED 12-STEP ENGINE (5500m floor based)
@@ -211,149 +222,94 @@ export const DashboardHeader = ({ onStartAudio, onStopAudio, onReconnectStream, 
 
       {/* COLLAPSED VIEW */}
       {isCollapsed && (
-        <div className="condensed-header-card">
-          <div className="condensed-items-row">
+        <div className="condensed-header-card" style={{ flexDirection: 'column', alignItems: 'stretch', gap: '0.1rem' }}>
+          {/* ROW 1: Controls & Session State */}
+          <div className="condensed-items-row" style={{ display: 'flex', alignItems: 'center', gap: '0.15rem' }}>
             <ConnectionIndicator state={connectionState} message={connectionMessage} />
             {!isActive ? (
-              <button 
-                className="btn btn-primary btn-condensed" 
-                onClick={handleStart} 
-                title="START SESSION: Begins real-time transcription and translation using Deepgram/Google cloud services.">
-                <PlayIcon /> Connect
-              </button>
+              <button className="btn btn-primary btn-condensed" onClick={handleStart} title="CONNECT SERVICE"><PlayIcon /> Connect</button>
             ) : (
-              <button 
-                className="btn btn-danger recording btn-condensed" 
-                onClick={handleStop} 
-                title="STOP SESSION: Ends current call, saves minutes to your daily/monthly total, and calculates your earnings.">
-                <StopIcon /> Stop
-              </button>
+              <button className="btn btn-danger recording btn-condensed" onClick={handleStop} title="STOP CALL"><StopIcon /> Stop</button>
             )}
             
-            <div style={{ display: 'flex', gap: '0.3rem' }}>
+            <div style={{ display: 'flex', gap: '0.2rem' }}>
               {!isActive ? (
                 <>
-                  {isBreakActive ? (
-                    <button 
-                      className="btn btn-condensed" 
-                      onClick={stopBreak} 
-                      style={{ background: '#fb923c', color: 'white' }} 
-                      title="STOP BREAK: Resume 'Available' status and stop the break timer.">
-                      Stop Break
-                    </button>
-                  ) : (
-                    <button 
-                      className="btn btn-condensed" 
-                      onClick={startBreak} 
-                      style={{ background: 'rgba(251,146,60,0.1)', color: '#fdba74', border: '1px solid rgba(251,146,60,0.3)' }} 
-                      title="START BREAK: Use for lunch or short rests. This time is excluded from your 'Available' metrics.">
-                      Break
-                    </button>
-                  )}
+                  <button className="btn btn-condensed" onClick={isBreakActive ? stopBreak : startBreak} style={{ background: isBreakActive ? '#fb923c' : 'rgba(251,146,60,0.1)', color: isBreakActive ? 'white' : '#fdba74' }}>
+                    {isBreakActive ? 'Stop Break' : 'Break'}
+                  </button>
                   {stats.dailyMinutes > 0 && !isBreakActive && (
-                    <button 
-                      className="btn btn-condensed" 
-                      onClick={handleEndDay} 
-                      style={{ background: 'rgba(139,92,246,0.1)', color: '#c4b5fd', border: '1px solid rgba(139,92,246,0.3)' }} 
-                      title="🌙 END DAY: Bank all minutes and earnings for today. Resets daily counters for tomorrow.">
-                      🌙 End
-                    </button>
+                    <button className="btn btn-condensed" onClick={handleEndDay} style={{ background: 'rgba(139,92,246,0.1)', color: '#c4b5fd' }}>🌙 End</button>
                   )}
                 </>
               ) : (
                 <>
-                  <button 
-                    className="btn btn-condensed" 
-                    onClick={() => setIsHold(!isHold)} 
-                    style={{ background: isHold ? 'rgba(245,158,11,0.8)' : 'rgba(255,255,255,0.1)', color: isHold ? 'white' : 'var(--text-muted)' }} 
-                    title="⏸ HOLD: Pauses the call counter. Use this for holding times during calls.">
-                    {isHold ? `⏸ ${formatTime(holdSeconds)}` : '⏸ Hold'}
-                  </button>
-                    <button 
-                      className="btn btn-condensed" 
-                      onClick={onReconnectStream} 
-                      style={{ 
-                        background: connectionState === 'connecting' ? 'rgba(245,158,11,0.2)' : 'rgba(56,189,248,0.1)', 
-                        color: connectionState === 'connecting' ? '#f59e0b' : '#7dd3fc', 
-                        border: connectionState === 'connecting' ? '1px solid rgba(245,158,11,0.4)' : '1px solid rgba(56,189,248,0.3)' 
-                      }} 
-                      title="⚡ ZAP STREAM: Force-restart the transcription websockets if the connection feels laggy.">
-                      {connectionState === 'connecting' ? '⚡ Zapping...' : '⚡ Zap'}
-                    </button>
+                  <button className="btn btn-condensed" onClick={() => setIsHold(!isHold)} style={{ background: isHold ? '#f59e0b' : 'rgba(255,255,255,0.1)' }}>{isHold ? `⏸ ${formatTime(holdSeconds)}` : '⏸ Hold'}</button>
+                  <button className="btn btn-condensed" onClick={onReconnectStream} style={{ background: 'rgba(56,189,248,0.1)', color: '#7dd3fc' }}>⚡ Zap</button>
                 </>
               )}
             </div>
 
             {isActive && (
-              <div 
-                className="metric-pill" 
-                style={{ color: '#fb923c', background: 'rgba(251,146,60,0.1)', cursor: 'copy' }} 
-                onClick={() => copyValue(sessionEarnings * arsRate)} 
-                title="CURRENT CALL EARNINGS: Real-time calculation of your profit for this specific call in ARS. Click to copy numeric value.">
+              <div className="metric-pill" style={{ color: '#fb923c', background: 'rgba(251,146,60,0.1)' }} title="CURRENT CALL">
                 <span style={{ fontWeight: 800 }}>📞 AR${Math.round(sessionEarnings * arsRate).toLocaleString('es-AR')}</span>
               </div>
             )}
 
-            <div style={{ display: 'flex', gap: '0.2rem', alignItems: 'center', background: 'rgba(255,255,255,0.05)', padding: '0.2rem 0.4rem', borderRadius: '4px', border: '1px solid rgba(255,255,255,0.1)' }} 
-              title={`Shift Segments: ${morningLeft.toFixed(1)}h Morning left, ${afternoonLeft.toFixed(1)}h Afternoon left, ${eveningLeft.toFixed(1)}h Evening left.`}>
-              <span style={{ opacity: morningLeft > 0 ? 1 : 0.2, fontSize: '0.8rem' }}>🌅{Math.ceil(morningLeft)}</span>
-              <span style={{ opacity: afternoonLeft > 0 ? 1 : 0.2, fontSize: '0.8rem' }}>☀️{Math.ceil(afternoonLeft)}</span>
-              <span style={{ opacity: eveningLeft > 0 ? 1 : 0.2, fontSize: '0.8rem' }}>🌙{Math.ceil(eveningLeft)}</span>
+            <div className="metric-pill" title={`SHIFT PROGRESS: Started at ${shiftStartStr}. Elapsed: ${formatHoursMins(shiftElapsedMins)}.`}>
+              <span style={{ fontWeight: 700, fontSize: '0.7rem' }}>🏃 {formatHoursMins(shiftElapsedMins)}</span>
             </div>
 
-            <div className="metric-pill" onClick={() => { copyValue(stats.dailyMinutes); setIsTodayDialOpen(true); }} 
-              title={`TODAY'S MINUTES: Banked vs Goal. (1% = ${Math.floor((requiredDailyAverage || 1) / 100)}m). til 23hs: ~${Math.round(workableMinsRemaining)}m (+AR$${workableArsRemaining.toLocaleString('es-AR')}) potential left.`}>
-              <span style={{ fontWeight: 800 }}>{activeDayEmoji}🕒 🌊{Math.round(stats.dailyMinutes)} / 🎯{Math.round(requiredDailyAverage)}m</span>
-              <span style={{ opacity: 0.5, marginLeft: '0.2rem', fontSize: '0.65rem' }}>({((stats.dailyMinutes / (requiredDailyAverage || 1)) * 100).toFixed(0)}%)</span>
+            <div className="metric-pill" title={`BREAK: ${breakUsed.toFixed(0)}m used. ${breakLeft.toFixed(0)}m left of 90m.`} style={{ background: breakLeft < 15 ? 'rgba(239,68,68,0.2)' : 'rgba(255,255,255,0.05)' }}>
+              <span style={{ fontWeight: 700, fontSize: '0.7rem' }}>☕ {breakLeft.toFixed(0)}m</span>
             </div>
 
-            <div className="metric-pill" onClick={() => { copyValue(dailyArs); setIsTodayDialOpen(true); }} 
-              title={`TODAY'S ARS: Estimated earnings vs Quota. (1% = AR$${Math.floor((dailyTargetArs || 1) / 100).toLocaleString('es-AR')}).`}>
-              <span style={{ fontWeight: 800 }}>{activeDayEmoji}💰 🌊${dailyArs.toLocaleString('es-AR')} / 🎯${dailyTargetArs.toLocaleString('es-AR')}</span>
-              <span style={{ opacity: 0.5, marginLeft: '0.2rem', fontSize: '0.65rem' }}>({((dailyArs / (dailyTargetArs || 1)) * 100).toFixed(0)}%)</span>
-            </div>
-            
-            <div className="metric-pill" onClick={() => { copyValue(stats.monthlyMinutes); setIsTodayDialOpen(true); }} 
-              title={`MONTHLY MINUTES: Total progress vs Goal. Avg so far: ${Math.round(actualDailyAverage)}m/day. Next Step: ${nextGoalLabel} (${nextMilestone}m).`}>
-              <span style={{ fontWeight: 800 }}>🗓️🕒 🌊{Math.round(stats.monthlyMinutes)} / 🎯{stats.goalMinutes}m</span>
-              <span style={{ opacity: 0.5, marginLeft: '0.2rem', fontSize: '0.65rem' }}>({((stats.monthlyMinutes / (stats.goalMinutes || 1)) * 100).toFixed(0)}%)</span>
+            <div className="metric-pill" title={`SPRINT: Time since last break.`}>
+              <span style={{ fontWeight: 700, fontSize: '0.7rem' }}>🔋 {Math.floor(workSessionMinutes)}m</span>
             </div>
 
-            <div className="metric-pill" onClick={() => { copyValue(monthlyArs); setIsTodayDialOpen(true); }} 
-              title={`MONTHLY ARS: Total profit vs Goal. Current Pace: ${monthlyMaxArs} (Max Potential).`}>
-              <span style={{ fontWeight: 800 }}>🗓️💰 🌊${monthlyArs.toLocaleString('es-AR')} / 🎯${monthlyTargetArs.toLocaleString('es-AR')}</span>
-              <span style={{ opacity: 0.5, marginLeft: '0.2rem', fontSize: '0.65rem' }}>({((monthlyArs / (monthlyTargetArs || 1)) * 100).toFixed(0)}%)</span>
+            <div style={{ marginLeft: 'auto', display: 'flex', gap: '0.2rem' }}>
+              <button className="btn-icon" onClick={() => setIsNotesOpen(!isNotesOpen)} style={{ opacity: isNotesOpen ? 1 : 0.4 }} title="Notes">📝</button>
+              <button className="btn-icon" onClick={() => setIsToolbarVisible(!isToolbarVisible)} style={{ opacity: isToolbarVisible ? 1 : 0.4 }} title="Toolbar">🛠️</button>
+              <button className="btn-icon" onClick={() => setIsCollapsed(false)} title="Expand">🔼</button>
             </div>
-
-            {remainingMinutes > 0 ? (
-              <div 
-                className="metric-pill" 
-                title={`MONTHLY STATUS: ${remainingDays === 1 ? 'Last day of the month!' : `${remainingDays} days remaining.`} You still need ${Math.round(remainingMinutes)} minutes.`}
-                style={{ 
-                  background: (remainingDays === 1 && remainingMinutes > (hoursLeftToAbsolute * 55)) ? 'rgba(220,38,38,0.3)' : (remainingDays === 1 && remainingMinutes > workableMinsRemaining) ? 'rgba(245,158,11,0.2)' : 'rgba(52,211,153,0.1)', 
-                  border: (remainingDays === 1 && remainingMinutes > (hoursLeftToAbsolute * 55)) ? '1px solid rgba(239,68,68,0.8)' : (remainingDays === 1 && remainingMinutes > workableMinsRemaining) ? '1px solid rgba(251,191,36,0.5)' : '1px solid rgba(52,211,153,0.3)' 
-                }}>
-                <span style={{ fontSize: '0.65rem', fontWeight: 700, color: (remainingDays === 1 && remainingMinutes > (hoursLeftToAbsolute * 55)) ? '#fca5a5' : (remainingDays === 1 && remainingMinutes > workableMinsRemaining) ? '#fde047' : '#a7f3d0' }}>
-                  {remainingDays === 1 && remainingMinutes > (hoursLeftToAbsolute * 55) ? '🔴 CRIT: ' : remainingDays === 1 && remainingMinutes > workableMinsRemaining ? '🟠 RISK: ' : '🟢 '}
-                  {hoursLeftToAbsolute.toFixed(1)}h ({Math.round(workableMinsRemaining)}m vs {Math.round(remainingMinutes)}m)
-                </span>
-              </div>
-            ) : (
-              <div className="metric-pill" title="GOAL ACHIEVED: Congratulations! You've reached or exceeded your target for this month." style={{ background: 'rgba(52,211,153,0.1)', border: '1px solid rgba(52,211,153,0.3)' }}>
-                <span style={{ fontSize: '0.65rem', fontWeight: 700, color: '#6ee7b7' }}>🎉 GOAL MET</span>
-              </div>
-            )}
           </div>
-          <div style={{ display: 'flex', gap: '0.2rem', marginLeft: 'auto' }}>
-            <button onClick={() => setIsNotesOpen(!isNotesOpen)}
-              style={{ background: isNotesOpen ? 'rgba(59,130,246,0.2)' : 'none', border: 'none', color: isNotesOpen ? '#60a5fa' : 'var(--text-muted)', cursor: 'pointer', fontSize: '0.9rem', padding: '0.2rem' }}
-              title={isNotesOpen ? "Hide Notes" : "Show Notes"}>📝</button>
-            <button onClick={() => setIsToolbarVisible(!isToolbarVisible)}
-              style={{ background: isToolbarVisible ? 'rgba(16,185,129,0.2)' : 'none', border: 'none', color: isToolbarVisible ? '#34d399' : 'var(--text-muted)', cursor: 'pointer', fontSize: '0.9rem', padding: '0.2rem' }}
-              title={isToolbarVisible ? "Hide Toolbar" : "Show Toolbar"}>🛠️</button>
-            <button onClick={() => setIsCollapsed(false)}
-              style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', fontSize: '0.9rem', padding: '0.2rem' }}
-              title="Expand dashboard">▼</button>
+
+          {/* ROW 2: Money & Time Goals */}
+          <div className="condensed-items-row" style={{ display: 'flex', alignItems: 'center', gap: '0.15rem' }}>
+            <div style={{ display: 'flex', gap: '0.15rem' }} title={`SEGMENTS: M:${morningLeft.toFixed(1)}h | A:${afternoonLeft.toFixed(1)}h | E:${eveningLeft.toFixed(1)}h`}>
+              <span style={{ opacity: morningLeft > 0 ? 1 : 0.2 }}>🌅{Math.ceil(morningLeft)}</span>
+              <span style={{ opacity: afternoonLeft > 0 ? 1 : 0.2 }}>☀️{Math.ceil(afternoonLeft)}</span>
+              <span style={{ opacity: eveningLeft > 0 ? 1 : 0.2 }}>🌙{Math.ceil(eveningLeft)}</span>
+            </div>
+
+            <div className="metric-pill" title="DAILY MINS" onClick={() => setIsTodayDialOpen(true)}>
+              <span style={{ fontWeight: 800 }}>☀️🕒 🌊{Math.round(stats.dailyMinutes)}/🎯{Math.round(requiredDailyAverage)}</span>
+            </div>
+
+            <div className="metric-pill" title="DAILY CASH">
+              <span style={{ fontWeight: 800 }}>☀️💰 🌊${dailyArs.toLocaleString('es-AR')}/🎯${dailyTargetArs.toLocaleString('es-AR')}</span>
+            </div>
+
+            <div className="metric-pill" title={`CASH TO GOAL: AR$${cashToTodayGoal.toLocaleString('es-AR')} remaining for today.`} style={{ background: 'rgba(52,211,153,0.2)', border: '1px solid rgba(52,211,153,0.4)' }}>
+              <span style={{ fontWeight: 800, color: '#6ee7b7' }}>🏁 ${cashToTodayGoal.toLocaleString('es-AR')}</span>
+            </div>
+
+            <div className="metric-pill" title={`MONTHLY MINS (Avg: ${Math.round(actualDailyAverage)}m/day)`}>
+              <span style={{ fontWeight: 800 }}>🗓️🕒 🌊{Math.round(stats.monthlyMinutes)}/🎯{stats.goalMinutes}</span>
+            </div>
+
+            <div className="metric-pill" title="MONTHLY CASH">
+              <span style={{ fontWeight: 800 }}>🗓️💰 🌊${monthlyArs.toLocaleString('es-AR')}/🎯${monthlyTargetArs.toLocaleString('es-AR')}</span>
+            </div>
+
+            <div className="metric-pill" title="LOG OFF TIME" style={{ background: 'rgba(245,158,11,0.2)', border: '1px solid rgba(245,158,11,0.4)' }}>
+              <span style={{ fontWeight: 800, color: '#fcd34d' }}>🚪 {getCompensatedLogOff()}</span>
+            </div>
+
+            <div className="metric-pill" title="CUTOFF (23:00)">
+              <span style={{ fontWeight: 800, opacity: 0.8 }}>🛑 {Math.floor(hoursLeftToAbsolute)}h</span>
+            </div>
           </div>
         </div>
       )}

@@ -5,14 +5,14 @@
 2.[] current/goal daily cash
 3.[] current/goal monthly mins
 4.[] current/goal monthly cash
-5.[]
-6.[]
-7.[]
-8.[]
-9.[] current sprint wo breaks
-10.[] current time since starting to work today
-11.[] time left to work today
-12.[] cash left to earn today
+5.[] how long since todays shift started
+6.[] how long since i started working 
+7.[] used/remaining break time
+8.[] current sprint wo breaks
+9.[] ow long till shift ends
+10.[] how long till calls cutoff
+[] cash left to earn today
+[]  avg worked mins this mo
 
 
 [] remember app has to be perfectly visible in 900 by 600 pixels
