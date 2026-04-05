@@ -536,13 +536,16 @@ body {
 /* Metric Grid & Emoji Backgrounds */
 .metric-grid {
   display: grid;
-  grid-template-columns: repeat(3, minmax(65px, 1fr)); /* Even more flexible */
+  grid-template-columns: repeat(3, minmax(65px, 1fr)); 
   grid-template-rows: repeat(2, 1fr);
-  gap: 0.05rem; 
+  gap: 0.15rem; /* Slightly more gap for breathing room */
   flex-grow: 1;
   max-width: 500px;
-  margin: 0 auto; /* Center it precisely */
+  margin: 0 auto; 
 }
+/* Sub-grid tinting for easy recognition */
+.metric-grid > div:nth-child(-n+3) { background: rgba(52, 211, 153, 0.05); } /* Cash Row */
+.metric-grid > div:nth-child(n+4) { background: rgba(59, 130, 246, 0.05); } /* Mins Row */
 
 .metric-cell {
   position: relative;
@@ -562,10 +565,10 @@ body {
   position: relative;
   z-index: 5;
   font-weight: 800;
-  font-size: 0.68rem; /* Sharper small font */
-  letter-spacing: -0.03em;
+  font-size: 0.68rem;
+  letter-spacing: -0.01em; /* Less tight for legibility */
   white-space: nowrap;
-  color: rgba(255, 255, 255, 0.9);
+  color: rgba(255, 255, 255, 0.75); /* Dimmed white for better balance */
 }
 
 .metric-watermark {
@@ -576,12 +579,11 @@ body {
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 1.2rem; 
-  font-size: 1.25rem; /* Slightly smaller watermarks */
-  opacity: 0.1;
+  gap: 1rem; 
+  font-size: 1.2rem; 
+  opacity: 0.35; /* MUCH more visible emojis */
   z-index: 1;
   pointer-events: none;
-  filter: grayscale(0.2);
 }
 
 .btn-emoji {

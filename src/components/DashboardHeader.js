@@ -268,30 +268,30 @@ export const DashboardHeader = ({ onStartAudio, onStopAudio, onReconnectStream, 
           {/* THE 2x3 METRIC GRID */}
           <div className="metric-grid">
             {/* ROW 1: CASH (Row Context: 💰) */}
-            <div className="metric-cell" title={`CURRENT CALL CASH: Tracking active session.`}>
-              <div className="metric-watermark"><span>📞</span><span>💰</span><span>🌊</span><span>🎯</span></div>
+            <div className="metric-cell" title={`CURRENT CALL CASH`}>
+              <div className="metric-watermark"><span>📞💰</span></div>
               <div className="metric-cell-val">${Math.round(sessionEarnings * arsRate)} / ${Math.round(45 * RATE_PER_MINUTE * arsRate)}</div>
             </div>
-            <div className="metric-cell" title={`DAILY CASH: Quota $${dailyTargetArs.toLocaleString('es-AR')}`}>
-              <div className="metric-watermark"><span>☀️</span><span>💰</span><span>🌊</span><span>🎯</span></div>
+            <div className="metric-cell" title={`DAILY CASH`}>
+              <div className="metric-watermark"><span>☀️💰</span></div>
               <div className="metric-cell-val">${dailyArs.toLocaleString('es-AR')} / ${dailyTargetArs.toLocaleString('es-AR')}</div>
             </div>
-            <div className="metric-cell" title={`MONTHLY CASH: Target $${monthlyTargetArs.toLocaleString('es-AR')}`}>
-               <div className="metric-watermark"><span>🗓️</span><span>💰</span><span>🌊</span><span>🎯</span></div>
+            <div className="metric-cell" title={`MONTHLY CASH`}>
+               <div className="metric-watermark"><span>🗓️💰</span></div>
                <div className="metric-cell-val">${monthlyArs.toLocaleString('es-AR')} / ${monthlyTargetArs.toLocaleString('es-AR')}</div>
             </div>
 
             {/* ROW 2: MINS (Row Context: 🕒) */}
-            <div className="metric-cell" title={`CURRENT CALL MINS: 45m Ideal target.`}>
-               <div className="metric-watermark"><span>📞</span><span>🕒</span><span>🌊</span><span>🎯</span></div>
+            <div className="metric-cell" title={`CURRENT CALL MINS`}>
+               <div className="metric-watermark"><span>📞🕒</span></div>
                <div className="metric-cell-val">{(sessionSeconds / 60).toFixed(1)} / 45.0</div>
             </div>
-            <div className="metric-cell" title={`DAILY MINS: Goal ${Math.round(requiredDailyAverage)}m`}>
-               <div className="metric-watermark"><span>☀️</span><span>🕒</span><span>🌊</span><span>🎯</span></div>
+            <div className="metric-cell" title={`DAILY MINS`}>
+               <div className="metric-watermark"><span>☀️🕒</span></div>
                <div className="metric-cell-val">{Math.round(stats.dailyMinutes)} / {Math.round(requiredDailyAverage)}</div>
             </div>
-            <div className="metric-cell" title={`MONTHLY MINS: Goal ${stats.goalMinutes}m`}>
-               <div className="metric-watermark"><span>🗓️</span><span>🕒</span><span>🌊</span><span>🎯</span></div>
+            <div className="metric-cell" title={`MONTHLY MINS`}>
+               <div className="metric-watermark"><span>🗓️🕒</span></div>
                <div className="metric-cell-val">{Math.round(stats.monthlyMinutes)} / {stats.goalMinutes}</div>
             </div>
           </div>

@@ -1,34 +1,41 @@
-01_SCOREBOARD.MD
+# 📊 Scoreboard Implementation Status
+Updated: 2026-04-05 (v3.6.2)
 
-KNOWN ISSUES
-[] cash amounts are visible nowhere.
+### THE SIX CORE GRID METRICS (The "Engine")
+The central 2x3 grid consists of two distinct horizontal modules. Recognition is based on **Target Tinting** (Background Color) rather than text.
 
- SCOREboard should show
- 
-1.[] current/goal call  mins
-2.[] current/goal call cash
-3.[] current/goal daily mins
-4.[] current/goal daily cash
-5.[] current/goal monthly mins
-6.[] current/goal monthly cash
-7.[] how long since todays shift started
-8.[] how long since i started working 
-9.[] used/remaining break time
-10.[] current sprint wo breaks
-9.[] ow long till shift ends
-10.[] how long till calls cutoff
-[] cash left to earn today
-[]  avg worked mins this mo
+#### 💵 THE CASH MODULE (Top Row - Emerald Tint)
+1. **CALL CASH**: Current live session earnings. (📞💰)
+2. **DAY CASH**: Banked ARS vs today's target quota. (☀️💰)
+3. **MONTH CASH**: Total monthly income vs the ladder goal. (🗓️💰)
 
+#### 🕒 THE MINUTES MODULE (Bottom Row - Blue Tint)
+4. **CALL MINS**: Elapsed minutes in active session. (📞🕒)
+5. **DAY MINS**: Today's talk-time vs required daily pacing. (☀️🕒)
+6. **MONTH MINS**: Progress on the 16,500m "Legend" ladder. (🗓️🕒)
 
-[] remember app has to be perfectly visible in 900 by 600 pixels
+### DESIGN HIERARCHY
+- **Context Over Numbers**: Emojis are boosted to 35% opacity to serve as "Row/Column Signposts."
+- **Dimmed Values**: Numerical data is set to 75% white to reduce visual "vibrancy" and allow the context icons to shine through.
 
-  [] shift starts at 9, ends at 18, unless daylight savings
-  [] i work in ars time but client is us time, keep track of morning aft eve
-  [] find out what scoreboard has now and document it so you dont accidentlaly destroy what we already have by misinterpreting this text
-  
-  [] if i log after 9, keep track on how late and tell me how much after 18 i have to stay to make up
+#### [x] MINI-STATS (Left Sidebar)
+- [x] **Shift Started**: (🏃) Calculated from first `Connect` or `Break` end.
+- [x] **Sprint Duration**: (🔋) Time active without breaks. [Pill]
+- [x] **Compensated Log-Off**: (🚪) Shifts 18:00 cutoff based on late start and total breaks taken. [Pill]
+- [x] **Connection Controls**: (🟢/🛑/☕/🌙/⚡) One-touch toggles for Connect, Stop, Break, End Day, and Stream Zap.
 
-  [] estimating around 35 to 55 workable mins per hour, how many workable hours, mins and cash i have until calls cut off at around 23hs.
+#### [x] CATCH-UP & PACING (Right Sidebar)
+- [x] **Cash to Goal**: (🏁) Literal ARS remaining to hit today's daily quota.
+- [x] **Shift Segments**: (🌅/☀️/🌙) Estimated workable hours remaining in Morning, Afternoon, and Evening (until 23h).
+- [x] **Daily Avg**: Monthly minutes divided by elapsed days.
 
-  [] keep track of the daily average ive had so far this month
+### WORKDAY LOGIC
+- [x] **Shift Hours**: Standard 9:00 - 18:00 core, with an Absolute 23:00 cutoff.
+- [x] **Dynamic Log-Off**: Automatically adjusts `Logout` time if login was after 9 AM.
+- [x] **Workable Minutes**: Calculations assume **35-55 mins** of actual talk-time per hour (headroom for Avail/Breaks).
+
+### AESTHETICS & INTERACTION
+- [x] **Zero-Waste**: Metrics reach the absolute edges.
+- [x] **High Density**: Uses watermark emojis to save horizontal space.
+- [x] **Copy-on-Click**: Clicking metrics in expanded view copies currency numbers (sanitized for pasting).
+- [x] **Silence Guardian**: (v3.6.2) Detects and alerts on silence > 10m to prevent runaway metrics.

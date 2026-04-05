@@ -535,8 +535,13 @@ export const GreetingsPanel = ({ onEditModeChange }) => {
                   }} />
                 )}
                 
-                <span style={{ position: 'relative', zIndex: 1, textAlign: 'center', padding: '0.2rem' }}>
+                <span style={{ position: 'relative', zIndex: 1, textAlign: 'center', padding: '0.2rem', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
                   {!hasAudio ? `➕ Add ${action.label}` : (isItPlaying ? '⏹ STOP' : action.label)}
+                  {hasAudio && healthScores[activeKey] !== undefined && (
+                    <div style={{ width: '40px', height: '3px', background: 'rgba(255,255,255,0.2)', borderRadius: '2px', overflow: 'hidden', marginTop: '4px' }}>
+                       <div style={{ height: '100%', width: getHealthMeta(healthScores[activeKey])?.width || '0%', backgroundColor: getHealthMeta(healthScores[activeKey])?.color || '#94a3b8' }} />
+                    </div>
+                  )}
                 </span>
              </button>
            )

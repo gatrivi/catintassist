@@ -1,15 +1,16 @@
-03_SOUNDBOARD.MD
+# 🔈 Soundboard: Pre-recorded Greetings
+Updated: 2026-04-05 (v3.6.2)
 
-rn the soundboard is nill
+### AUDIO HEALTH (AI AUDIT)
+The app uses Deepgram to automatically analyze the "legibility" of your recorded greetings.
+- [x] **Health Indicators**: Each button now shows a micro-health bar (RED ⛔ to GREEN 🍑).
+- [x] **AI Audit**: On upload/record, the audio is sent to Deepgram. If the AI confidently transcribes it, the status is **PEACHES**. If it fails, it's flagged as **UNACCEPTABLE**.
+- [x] **Audit Visibility**: Health bars are visible in both **Settings** and **Play Mode** for quick status checks.
 
-[] users report broken painfully unendurable crackles and cutoffs
+### PLAYBACK & SAFETY
+- [x] **Anti-Scream Ramp**: The audio engine now ramps up volume over 50ms rather than hitting the channel at 100% instantly, preventing pops and "patient screams."
+- [x] **Test Mode**: Activating 🧪 prevents playback to the Virtual Mic (Caller), allowing you to hear/verify locally.
+- [x] **Mic Monitor**: Enable **Hear Myself** (👂) to verify your physical recording path before committing to a long greeting.
 
-[] there is no way in app to verify if the recorded greetings are played with any degree of relationship to the quality of the recording
-[] user cant hear the greetings as they are bien gplayed. if app app output has to be hooked up, its uncelar how or where that info is. 
-
-[] deepgram could be used to evaluate the quality of the recorded greetings.
-[] deepggram used to transcribed greetings
-[] in that way greetings can be rerecorded with ease, by reading the transcritpion
-[] a serires of metrics evaluate that the greeting is recorded AND PLAYED with adecuate quality
-
-[] idk if its a problem with the app or the cable in tool, but googla ai keeps telling me soundboard is peaches but the screams of pain of clients seem to indicate otherwise. 
+### KNOWN ISSUES
+- [ ] Users still report "crackles." This might be related to browser buffer overhead during high STT load.
