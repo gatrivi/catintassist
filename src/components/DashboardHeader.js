@@ -228,7 +228,7 @@ export const DashboardHeader = ({ onStartAudio, onStopAudio, onReconnectStream, 
         <div className="condensed-header-card" style={{ gap: '0.15rem' }}>
           
           {/* Controls & Mini-Stats Column */}
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.15rem', flexShrink: 0 }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.05rem', flexShrink: 0, minWidth: '130px' }}>
             <div style={{ display: 'flex', gap: '0.15rem', alignItems: 'center' }}>
               <ConnectionIndicator state={connectionState} message={connectionMessage} />
               {!isActive ? (
@@ -297,7 +297,7 @@ export const DashboardHeader = ({ onStartAudio, onStopAudio, onReconnectStream, 
           </div>
 
           {/* Right Section: Time Left, Segments, Tool Buttons */}
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.15rem', marginLeft: 'auto', alignItems: 'flex-end' }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.05rem', alignItems: 'flex-end', minWidth: '135px' }}>
              <div style={{ display: 'flex', gap: '0.15rem', alignItems: 'center' }}>
                 <div className="metric-pill" title="CASH TO GOAL" style={{ background: 'rgba(52,211,153,0.15)', border: '1px solid rgba(52,211,153,0.4)', height: '22px' }}>
                   <span style={{ color: '#6ee7b7', fontWeight: 800, fontSize: '0.65rem' }}>🏁${cashToTodayGoal.toLocaleString('es-AR')}</span>
