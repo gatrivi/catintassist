@@ -12,6 +12,7 @@ CORE VALUES
 - cleanup, refactor, document, commment
 - dont push version that explode. hahaha.
 - if features and ap works, then commit push.
+- proposed changes should show precisely what changes, from what to whay. for example, a moment ago i requested adding percentages on the scoreboard, cited one metric as an example, and only the cited metric had a porcentage added, when it was clear it was all of them. so if i request a change i have to see what is actually going to be done before having to stop production to test something that should never have got so far.
 
 MAINVIEW (where transcription and translation happens)
 [] space should be used as effectively as possible
