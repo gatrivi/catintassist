@@ -13,17 +13,38 @@ CORE VALUES
 - dont push version that explode. hahaha.
 - if features and ap works, then commit push.
 - proposed changes should show precisely what changes, from what to whay. for example, a moment ago i requested adding percentages on the scoreboard, cited one metric as an example, and only the cited metric had a porcentage added, when it was clear it was all of them. so if i request a change i have to see what is actually going to be done before having to stop production to test something that should never have got so far.
+[] maximising workspace and minimizing things that eat workspace is the rule. that is, translation and transcription should take 80% of screen, scoreboard 20%, 
+
+CURRENT ISSUES
+1. any time 9 or 10 digits are said back to back, group them. phone numbers are read out as separate numbers, 3 3 2 3 2 3 8 2 76 is clearly a phone number 
+that should be solved by a simple one liner
+
+2. keep trackof how long ive been working wo breaks. 
+
+3. collapse view, show tools, show toolbar and edit scoreboard items show up with their one rows in expanded view. thris throws away 30# of the total screen space. big nono. all 4 buttons should be in the same row, if they even have a row at all
+
+4. pinned reference doesnt need a spaced announced banner wasting screentime at all time. simply color code a pinned message when there is one pinned, and thats it, in fact, move the pin emoji to the middle so it doesnt mesage space
+
 
 MAINVIEW (where transcription and translation happens)
 [] space should be used as effectively as possible
   [] do not waste v space w things like spa and eng. use color coding to do that.
+1. any time 9 or 10 digits are said back to back, group them. phone numbers are read out as separate numbers, 3 3 2 3 2 3 8 2 76 is clearly a phone number 
+that should be solved by a simple one liner
 
-
+SCOREBOARD GUIDELINES
+2. keep trackof how long ive been working wo breaks. 
+[] Subsctract break time from total of 90 per day.
+[] keep track of how late i logged in compared to log in time of 9am
+[] tell me how late i should stay after my shift end of 18hs to compensate. that is, at what time i should log off.
+[] Add little outlines and toggleable labels to every element in the scoreboard, so its easy to understand how they are organized and can be moved into a better manner. if you think a grid with a toggle to rearrange elements can be done, im ggame. specially see if such configurations can be saved in a way that you can read them so we can make them the default in the future.
 
 TRANSLATION GUIDELINES
 [] a poor translation is better than no translation
 [] dont burn through free tiers. you say you run 54 translation engines at the same time but all i see is "bueno" and that, 54 seconds too late.
 [] if the user speaks a lot, break up message and transalte by parts. i just had a 60 word message, the transcription was split in two and when that happened the transpation for the second part came through but the first part had "bueno". that didnt work.
+
+
 
 
 SOUNDSCAPE INTERPRETER

@@ -57,7 +57,7 @@ const CelebrationParticles = ({ type, label, coins, onDismiss }) => {
 };
 
 export const DashboardHeader = ({ onStartAudio, onStopAudio, onReconnectStream, sttLanguage, onToggleLanguage, connectionState, connectionMessage }) => {
-  const { isActive, sessionSeconds, setSessionSeconds, sessionEarnings, stats, updateStat, startSession, stopSession, endDay, RATE_PER_MINUTE, arsRate, setArsRate, isBreakActive, breakSeconds, startBreak, stopBreak, availSeconds, isEditingScoreboard, setIsEditingScoreboard, visibleCards, toggleCard, isNotesOpen, setIsNotesOpen, isToolbarVisible, setIsToolbarVisible } = useSession();
+  const { isActive, sessionSeconds, setSessionSeconds, sessionEarnings, stats, updateStat, startSession, stopSession, endDay, RATE_PER_MINUTE, arsRate, setArsRate, isBreakActive, breakSeconds, startBreak, stopBreak, availSeconds, isEditingScoreboard, setIsEditingScoreboard, visibleCards, toggleCard, isNotesOpen, setIsNotesOpen, isToolbarVisible, setIsToolbarVisible, workSessionMinutes } = useSession();
   const { outputDevices, inputDevices, selectedSinkId, selectedMicId, changeSinkId, changeMicId, fetchDevices } = useAudioSettings();
   const audioEngine = useProgressiveAudio();
 
@@ -159,6 +159,19 @@ export const DashboardHeader = ({ onStartAudio, onStopAudio, onReconnectStream, 
   const monthlyArs = Math.round(stats.monthlyMinutes * RATE_PER_MINUTE * arsRate);
   const monthlyTargetArs = Math.round(stats.goalMinutes * RATE_PER_MINUTE * arsRate);
 
+  const getCompensatedLogOff = () => {
+    if (!stats.dayStartTime) return '18:00';
+    const start = new Date(stats.dayStartTime);
+    const nineAM = new Date(stats.dayStartTime);
+    nineAM.setHours(9, 0, 0, 0);
+    const lateStartMs = Math.max(0, start.getTime() - nineAM.getTime());
+    const breakOverMs = Math.max(0, ((stats.dailyBreakMinutes || 0) - 90) * 60000);
+    const logOff = new Date(stats.dayStartTime);
+    logOff.setHours(18, 0, 0, 0);
+    const finalLogOff = new Date(logOff.getTime() + lateStartMs + breakOverMs);
+    return finalLogOff.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false });
+  };
+
   // SIMPLIFIED 12-STEP ENGINE (5500m floor based)
   const FLOOR = 5500;
   const WEEK_STEP = 1375; // 5500 / 4
@@ -182,7 +195,6 @@ export const DashboardHeader = ({ onStartAudio, onStopAudio, onReconnectStream, 
 
   return (
     <header className="dashboard-header glass-panel" style={{ position: 'relative', zIndex: 100 }}>
-      <div style={{ position: 'absolute', top: '0.1rem', right: '0.4rem', fontSize: '0.6rem', opacity: 0.4, pointerEvents: 'none' }}>v3.4.0 (The Precision Update)</div>
 
       {/* COLLAPSED VIEW */}
       {isCollapsed && (
@@ -545,28 +557,29 @@ export const DashboardHeader = ({ onStartAudio, onStopAudio, onReconnectStream, 
         </div>
         )}
 
-        {/* Actions toggle container */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.3rem', alignSelf: 'center', alignItems: 'center', paddingLeft: '0.5rem' }}>
-          <button onClick={() => setIsCollapsed(c => !c)}
-            style={{ background: isCollapsed ? 'rgba(59,130,246,0.2)' : 'none', border: 'none', color: isCollapsed ? '#60a5fa' : 'var(--text-muted)', cursor: 'pointer', fontSize: '0.8rem', padding: '0.4rem', borderRadius: '4px', border: isCollapsed ? '1px solid rgba(59,130,246,0.3)' : 'none' }}
-            title={isCollapsed ? "Expand dashboard" : "Collapse dashboard"}>
-            {isCollapsed ? '▼' : '▲'}
-          </button>
+        {/* Shift / Work Session Info */}
+        <div className="income-card" style={{ borderLeft: '1px solid rgba(255,255,255,0.1)', paddingLeft: '0.6rem' }}>
+          <span className="income-label">Work Session</span>
+          <span className="income-ars" style={{ color: workSessionMinutes > 120 ? '#ef4444' : '#60a5fa', fontSize: '0.85rem' }}>{Math.floor(workSessionMinutes)}m</span>
+          <div style={{ fontSize: '0.6rem', color: 'var(--text-muted)', marginTop: '0.2rem' }}>
+            Logout: <strong style={{ color: '#fff' }}>{getCompensatedLogOff()}</strong>
+          </div>
+        </div>
+
+        {/* Actions toggle container - CONSOLIDATED INTO ONE ROW */}
+        <div style={{ display: 'flex', flexDirection: 'row', gap: '0.25rem', alignSelf: 'center', alignItems: 'center', paddingLeft: '0.8rem', borderLeft: '1px solid rgba(255,255,255,0.1)' }}>
           <button onClick={() => setIsNotesOpen(!isNotesOpen)}
-            style={{ background: isNotesOpen ? 'rgba(59,130,246,0.2)' : 'none', border: 'none', color: isNotesOpen ? '#60a5fa' : 'var(--text-muted)', cursor: 'pointer', fontSize: '1rem', padding: '0.4rem', borderRadius: '4px', border: isNotesOpen ? '1px solid rgba(59,130,246,0.3)' : 'none' }}
-            title={isNotesOpen ? "Hide Notes" : "Show Notes"}>
-            📝
-          </button>
+            style={{ background: isNotesOpen ? 'rgba(59,130,246,0.2)' : 'none', border: 'none', color: isNotesOpen ? '#60a5fa' : 'var(--text-muted)', cursor: 'pointer', fontSize: '1rem', padding: '0.3rem', borderRadius: '4px' }}
+            title={isNotesOpen ? "Hide Notes" : "Show Notes"}>📝</button>
           <button onClick={() => setIsToolbarVisible(!isToolbarVisible)}
-            style={{ background: isToolbarVisible ? 'rgba(16,185,129,0.2)' : 'none', border: 'none', color: isToolbarVisible ? '#34d399' : 'var(--text-muted)', cursor: 'pointer', fontSize: '1rem', padding: '0.4rem', borderRadius: '4px', border: isToolbarVisible ? '1px solid rgba(16,185,129,0.3)' : 'none' }}
-            title={isToolbarVisible ? "Hide Toolbar" : "Show Toolbar"}>
-            🛠️
-          </button>
+            style={{ background: isToolbarVisible ? 'rgba(16,185,129,0.2)' : 'none', border: 'none', color: isToolbarVisible ? '#34d399' : 'var(--text-muted)', cursor: 'pointer', fontSize: '1rem', padding: '0.3rem', borderRadius: '4px' }}
+            title={isToolbarVisible ? "Hide Toolbar" : "Show Toolbar"}>🛠️</button>
           <button onClick={() => setIsEditingScoreboard(e => !e)}
-            style={{ background: isEditingScoreboard ? 'rgba(16,185,129,0.2)' : 'none', border: 'none', cursor: 'pointer', fontSize: '1rem', padding: '0.4rem', borderRadius: '4px', filter: isEditingScoreboard ? 'drop-shadow(0 0 4px #10b981)' : 'none', border: isEditingScoreboard ? '1px solid rgba(16,185,129,0.3)' : 'none' }}
-            title="Edit scoreboard items">
-            {isEditingScoreboard ? '💾' : '✏️'}
-          </button>
+            style={{ background: isEditingScoreboard ? 'rgba(16,185,129,0.2)' : 'none', border: 'none', cursor: 'pointer', fontSize: '1rem', padding: '0.3rem', borderRadius: '4px' }}
+            title="Edit scoreboard items">{isEditingScoreboard ? '💾' : '✏️'}</button>
+          <button onClick={() => setIsCollapsed(c => !c)}
+            style={{ background: isCollapsed ? 'rgba(59,130,246,0.2)' : 'none', border: 'none', color: isCollapsed ? '#60a5fa' : 'var(--text-muted)', cursor: 'pointer', fontSize: '0.8rem', padding: '0.3rem', borderRadius: '4px' }}
+            title={isCollapsed ? "Expand dashboard" : "Collapse dashboard"}>{isCollapsed ? '▼' : '▲'}</button>
         </div>
       </div>
 

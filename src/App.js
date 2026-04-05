@@ -52,6 +52,17 @@ const Dashboard = () => {
 
   return (
     <div className="app-container">
+      {/* Version Tag - Always visible in the upper right */}
+      <div style={{ 
+        position: 'fixed', top: '4px', right: '8px', zIndex: 10000, 
+        fontSize: '0.75rem', fontWeight: 800, color: 'rgba(255,255,255,0.8)', 
+        background: 'rgba(0,0,0,0.5)', padding: '2px 8px', borderRadius: '4px',
+        border: '1px solid rgba(255,255,255,0.2)', pointerEvents: 'none',
+        backdropFilter: 'blur(4px)', textShadow: '0 1px 2px rgba(0,0,0,0.5)'
+      }}>
+        v3.5.0 (Precision & Progress)
+      </div>
+
       <div id="top-mic-bar-container" style={{ position: 'fixed', top: 0, left: 0, right: 0, height: '3px', zIndex: 9999, pointerEvents: 'none' }}>
         <div id="top-mic-bar" style={{ height: '100%', width: '0%', background: '#10b981', transition: 'width 0.05s ease-out', opacity: 0, boxShadow: '0 0 8px #10b981' }} />
       </div>

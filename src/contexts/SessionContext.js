@@ -62,6 +62,7 @@ export const SessionProvider = ({ children }) => {
           parsed.dailyBreakMinutes = 0;
           parsed.dailyAvailMinutes = 0;
           parsed.dayStartTime = null;
+          parsed.lastBreakEndTime = null;
           parsed.lastDate = today;
         }
         initialStats = { ...initialStats, ...parsed };
@@ -69,6 +70,18 @@ export const SessionProvider = ({ children }) => {
     }
     return initialStats;
   });
+
+  const [workSessionStartTime, setWorkSessionStartTime] = useState(() => stats.lastBreakEndTime || stats.dayStartTime || Date.now());
+  const [workSessionMinutes, setWorkSessionMinutes] = useState(0);
+
+  useEffect(() => {
+    const iv = setInterval(() => {
+      const now = Date.now();
+      const diff = Math.max(0, (now - workSessionStartTime) / 60000);
+      setWorkSessionMinutes(diff);
+    }, 10000);
+    return () => clearInterval(iv);
+  }, [workSessionStartTime]);
 
   const [arsRate, setArsRate] = useState(1050);
 
@@ -115,8 +128,10 @@ export const SessionProvider = ({ children }) => {
     
     // Catch-up logic: record the very first time we start working today
     setStats(prev => {
+      const now = Date.now();
       if (!prev.dayStartTime) {
-        return { ...prev, dayStartTime: new Date().getTime() };
+        setWorkSessionStartTime(now);
+        return { ...prev, dayStartTime: now };
       }
       return prev;
     });
@@ -214,11 +229,14 @@ export const SessionProvider = ({ children }) => {
   const stopBreak = () => {
     setIsBreakActive(false);
     const minutesToAdd = breakSeconds / 60;
+    const now = Date.now();
+    setWorkSessionStartTime(now);
     if (minutesToAdd > 0) {
       setStats(prev => {
         const newStats = {
           ...prev,
-          dailyBreakMinutes: (prev.dailyBreakMinutes || 0) + minutesToAdd
+          dailyBreakMinutes: (prev.dailyBreakMinutes || 0) + minutesToAdd,
+          lastBreakEndTime: now
         };
         localStorage.setItem('catintassist_stats', JSON.stringify(newStats));
         return newStats;
@@ -257,7 +275,9 @@ export const SessionProvider = ({ children }) => {
     isNotesOpen,
     setIsNotesOpen,
     isToolbarVisible,
-    setIsToolbarVisible
+    setIsToolbarVisible,
+    workSessionMinutes,
+    setWorkSessionStartTime
   };
 
   return (

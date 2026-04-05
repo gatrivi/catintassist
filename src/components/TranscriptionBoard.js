@@ -111,14 +111,6 @@ const TranslatedBubble = ({ id, text, lang, playTTS, stopTTS, playingUrl, prefet
 
   return (
     <div style={{ display: 'flex', gap: '0.4rem', marginTop: '0.1rem', flexDirection: reverse ? 'row-reverse' : 'row', alignItems: 'flex-start' }}>
-      <button 
-        onClick={() => onTogglePin(id)} 
-        style={{ background: 'transparent', border: 'none', cursor: 'pointer', fontSize: '0.8rem', padding: '0', opacity: isPinned ? 1 : 0.2, marginTop: '2px' }}
-        title={isPinned ? "Unpin" : "Pin"}
-      >
-        📌
-      </button>
-
       <div style={{ flex: 1, textAlign: reverse ? 'right' : 'left', minWidth: 0 }}>
         <div style={{ color: transcriptColor, fontWeight: 400, lineHeight: 1.25, fontSize: '0.9rem', wordBreak: 'break-word' }}>
           <InteractiveText text={text} />
@@ -126,15 +118,22 @@ const TranslatedBubble = ({ id, text, lang, playTTS, stopTTS, playingUrl, prefet
       </div>
 
       <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', width: '32px', flexShrink: 0, marginTop: '2px' }}>
+        <button 
+          onClick={() => onTogglePin(id)} 
+          style={{ background: 'transparent', border: 'none', cursor: 'pointer', fontSize: '0.75rem', padding: '0', opacity: isPinned ? 1 : 0.15, marginBottom: '2px' }}
+          title={isPinned ? "Unpin" : "Pin"}
+        >
+          📌
+        </button>
         <StatusProgress status={engineStatus} />
-        <span style={{ fontSize: '0.6rem', fontWeight: 700, color: wordCount >= 40 ? 'var(--danger)' : wordCount >= 34 ? '#f59e0b' : 'var(--text-muted)', marginBottom: '2px' }}>{wordCount}</span>
+        <span style={{ fontSize: '0.55rem', fontWeight: 700, color: wordCount >= 40 ? 'var(--danger)' : wordCount >= 34 ? '#f59e0b' : 'var(--text-muted)', marginBottom: '1px' }}>{wordCount}</span>
         <button 
           onClick={() => isThisPlaying ? stopTTS() : playTTS(translation, targetLang, audioUrl)} 
           disabled={!isThisPlaying && (!translation || !audioUrl)}
           style={{ background: 'transparent', border: 'none', cursor: (!isThisPlaying && (!translation || !audioUrl)) ? 'not-allowed' : 'pointer', fontSize: '1.1rem', padding: 0, opacity: (!isThisPlaying && (!translation || !audioUrl)) ? 0.3 : 1 }}
           title={isThisPlaying ? "Stop" : (!audioUrl ? "Engine working..." : "Play")}
         >
-          {isThisPlaying ? '⏹️' : '🔊'}
+          {isThisPlaying ? '🔊' : '🔊'}
         </button>
       </div>
 
@@ -338,21 +337,7 @@ export const TranscriptionBoard = ({ captions, onClear }) => {
       >
         <div style={{ flex: '1 1 auto' }} />
         
-        {/* PINNED MESSAGES SECTION */}
-        {pinnedIds.length > 0 && (
-          <div className="pinned-section" style={{ borderBottom: '2px solid rgba(59, 130, 246, 0.3)', padding: '0.4rem', background: 'rgba(59, 130, 246, 0.05)', position: 'sticky', top: 0, zIndex: 50, backdropFilter: 'blur(10px)' }}>
-            <div style={{ fontSize: '0.6rem', color: '#60a5fa', textTransform: 'uppercase', marginBottom: '0.2rem', fontWeight: 800 }}>📌 Pinned Reference</div>
-            {captions.filter(c => pinnedIds.includes(c.id)).map(cap => (
-              <div key={`pinned-${cap.id}`} className="transcript-bubble" style={{ borderLeft: '2px solid #3b82f6', marginBottom: '0.2rem', padding: '0.2rem' }}>
-                <TranslatedBubble 
-                  id={cap.id} text={cap.text} lang={cap.lang} playTTS={playTTS} stopTTS={stopTTS} playingUrl={playingUrl} prefetchTTS={prefetchTTS} 
-                  reverse={cap.lang === 'es'} ttsMode="manual" wordCount={cap.text.split(/\s+/).length} shouldPrefetch={false} 
-                  emphasisMode={emphasisMode} isPinned={true} onTogglePin={togglePin} 
-                />
-              </div>
-            ))}
-          </div>
-        )}
+        {/* Pinned Reference Section REMOVED - Pins now highlight in-place */}
 
         {captions.length === 0 && (
           <div style={{ 
@@ -391,6 +376,10 @@ export const TranscriptionBoard = ({ captions, onClear }) => {
               opacity: cap.isFinal === false ? 0.8 : 1,
               marginTop: (isSameAsPrevious || cap.isSplit) ? '0rem' : '0.4rem',
               padding: '0.1rem 0',
+              border: isPinned ? '2px solid #3b82f6' : 'none',
+              borderRadius: isPinned ? '8px' : '6px',
+              backgroundColor: isPinned ? 'rgba(59, 130, 246, 0.08)' : (getBubbleStyle(cap.text, cap.isFinal === false, cap.lang).backgroundColor),
+              boxShadow: isPinned ? '0 0 15px rgba(59, 130, 246, 0.2)' : 'none',
               ...getBubbleStyle(cap.text, cap.isFinal === false, cap.lang)
             }}>
               {(!isSameAsPrevious && !cap.isSplit) && (
