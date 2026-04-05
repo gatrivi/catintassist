@@ -157,6 +157,8 @@ export const DashboardHeader = ({ onStartAudio, onStopAudio, onReconnectStream, 
   const monthlyRemainingCash = Math.round((workableMinsRemaining + remainingWorkdaysThisMonth * 14 * 35) * RATE_PER_MINUTE * arsRate).toLocaleString('es-AR');
   const dailyMaxArs = Math.round(realisticMaxToday * RATE_PER_MINUTE * arsRate).toLocaleString('es-AR');
   const monthlyMaxArs = Math.round(monthlyMaxMins * RATE_PER_MINUTE * arsRate).toLocaleString('es-AR');
+  const actualDailyAverage = currentDay > 0 ? (stats.monthlyMinutes / currentDay) : 0;
+  const workableArsRemaining = Math.round(workableMinsRemaining * RATE_PER_MINUTE * arsRate);
   
   const monthElapsedRatio = currentDay / daysInMonth;
   const isMonthlyGoalMet = stats.monthlyMinutes >= stats.goalMinutes;
@@ -300,7 +302,7 @@ export const DashboardHeader = ({ onStartAudio, onStopAudio, onReconnectStream, 
             </div>
 
             <div className="metric-pill" onClick={() => { copyValue(stats.dailyMinutes); setIsTodayDialOpen(true); }} 
-              title={`TODAY'S MINUTES: Banked vs Goal. (1% = ${Math.floor((requiredDailyAverage || 1) / 100)}m). Max Realistic: ${Math.round(realisticMaxToday)}m.`}>
+              title={`TODAY'S MINUTES: Banked vs Goal. (1% = ${Math.floor((requiredDailyAverage || 1) / 100)}m). til 23hs: ~${Math.round(workableMinsRemaining)}m (+AR$${workableArsRemaining.toLocaleString('es-AR')}) potential left.`}>
               <span style={{ fontWeight: 800 }}>{activeDayEmoji}🕒 🌊{Math.round(stats.dailyMinutes)} / 🎯{Math.round(requiredDailyAverage)}m</span>
               <span style={{ opacity: 0.5, marginLeft: '0.2rem', fontSize: '0.65rem' }}>({((stats.dailyMinutes / (requiredDailyAverage || 1)) * 100).toFixed(0)}%)</span>
             </div>
@@ -312,7 +314,7 @@ export const DashboardHeader = ({ onStartAudio, onStopAudio, onReconnectStream, 
             </div>
             
             <div className="metric-pill" onClick={() => { copyValue(stats.monthlyMinutes); setIsTodayDialOpen(true); }} 
-              title={`MONTHLY MINUTES: Total progress vs Goal. Next Ladder Step: ${nextGoalLabel} (${nextMilestone}m).`}>
+              title={`MONTHLY MINUTES: Total progress vs Goal. Avg so far: ${Math.round(actualDailyAverage)}m/day. Next Step: ${nextGoalLabel} (${nextMilestone}m).`}>
               <span style={{ fontWeight: 800 }}>🗓️🕒 🌊{Math.round(stats.monthlyMinutes)} / 🎯{stats.goalMinutes}m</span>
               <span style={{ opacity: 0.5, marginLeft: '0.2rem', fontSize: '0.65rem' }}>({((stats.monthlyMinutes / (stats.goalMinutes || 1)) * 100).toFixed(0)}%)</span>
             </div>
