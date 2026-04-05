@@ -530,14 +530,70 @@ body {
 }
 .metric-pill:hover { background: rgba(255,255,255,0.1); }
 
-/* Remove emojis from segment clocks in extreme density */
+/* Metric Grid & Emoji Backgrounds */
+.metric-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  grid-template-rows: repeat(2, 1fr);
+  gap: 0.15rem;
+  flex-shrink: 0;
+}
+
+.metric-cell {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.1rem 0.3rem;
+  background: rgba(255,255,255,0.06);
+  border-radius: 3px;
+  border: 1px solid rgba(255,255,255,0.1);
+  overflow: hidden;
+  min-width: 80px;
+}
+
+.metric-cell-val {
+  position: relative;
+  z-index: 2;
+  font-weight: 800;
+  font-size: 0.72rem;
+  letter-spacing: -0.02em;
+  white-space: nowrap;
+}
+
+.bg-emoji-faded {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  font-size: 1.2rem;
+  opacity: 0.12;
+  z-index: 1;
+  pointer-events: none;
+  filter: grayscale(0.5);
+}
+
+.btn-emoji {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 0.9rem;
+  transition: transform 0.2s, background 0.2s;
+  padding: 0;
+}
+.btn-emoji:hover { transform: scale(1.1); }
+.btn-emoji:active { transform: scale(0.95); }
+
 @media (max-width: 900px) {
-  .metric-pill {
+  .metric-cell {
+    min-width: 70px;
     padding: 0.05rem 0.2rem;
-    font-size: 0.68rem;
   }
-  .btn-condensed {
-    padding: 0.15rem 0.4rem !important;
-    font-size: 0.65rem !important;
-  }
+  .metric-cell-val { font-size: 0.68rem; }
+  .bg-emoji-faded { font-size: 1rem; }
 }

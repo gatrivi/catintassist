@@ -1,14 +1,20 @@
 01_SCOREBOARD.MD
 
+KNOWN ISSUES
+[] cash amounts are visible nowhere.
+
  SCOREboard should show
-1.[] current/goal daily mins
-2.[] current/goal daily cash
-3.[] current/goal monthly mins
-4.[] current/goal monthly cash
-5.[] how long since todays shift started
-6.[] how long since i started working 
-7.[] used/remaining break time
-8.[] current sprint wo breaks
+ 
+1.[] current/goal call  mins
+2.[] current/goal call cash
+3.[] current/goal daily mins
+4.[] current/goal daily cash
+5.[] current/goal monthly mins
+6.[] current/goal monthly cash
+7.[] how long since todays shift started
+8.[] how long since i started working 
+9.[] used/remaining break time
+10.[] current sprint wo breaks
 9.[] ow long till shift ends
 10.[] how long till calls cutoff
 [] cash left to earn today

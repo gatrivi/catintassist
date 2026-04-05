@@ -222,94 +222,86 @@ export const DashboardHeader = ({ onStartAudio, onStopAudio, onReconnectStream, 
 
       {/* COLLAPSED VIEW */}
       {isCollapsed && (
-        <div className="condensed-header-card" style={{ flexDirection: 'column', alignItems: 'stretch', gap: '0.1rem' }}>
-          {/* ROW 1: Controls & Session State */}
-          <div className="condensed-items-row" style={{ display: 'flex', alignItems: 'center', gap: '0.15rem' }}>
-            <ConnectionIndicator state={connectionState} message={connectionMessage} />
-            {!isActive ? (
-              <button className="btn btn-primary btn-condensed" onClick={handleStart} title="CONNECT SERVICE"><PlayIcon /> Connect</button>
-            ) : (
-              <button className="btn btn-danger recording btn-condensed" onClick={handleStop} title="STOP CALL"><StopIcon /> Stop</button>
-            )}
-            
-            <div style={{ display: 'flex', gap: '0.2rem' }}>
+        <div className="condensed-header-card" style={{ gap: '0.15rem' }}>
+          
+          {/* Controls & Mini-Stats Column */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.15rem', flexShrink: 0 }}>
+            <div style={{ display: 'flex', gap: '0.15rem', alignItems: 'center' }}>
+              <ConnectionIndicator state={connectionState} message={connectionMessage} />
+              {!isActive ? (
+                <button className="btn-emoji" onClick={handleStart} style={{ background: '#10b981', color: '#fff' }} title="CONNECT">🟢</button>
+              ) : (
+                <button className="btn-emoji" onClick={handleStop} style={{ background: '#ef4444', color: '#fff' }} title="STOP">🛑</button>
+              )}
+              
               {!isActive ? (
                 <>
-                  <button className="btn btn-condensed" onClick={isBreakActive ? stopBreak : startBreak} style={{ background: isBreakActive ? '#fb923c' : 'rgba(251,146,60,0.1)', color: isBreakActive ? 'white' : '#fdba74' }}>
-                    {isBreakActive ? 'Stop Break' : 'Break'}
-                  </button>
+                  <button className="btn-emoji" onClick={isBreakActive ? stopBreak : startBreak} style={{ background: '#fb923c', color: '#fff' }} title="BREAK">☕</button>
                   {stats.dailyMinutes > 0 && !isBreakActive && (
-                    <button className="btn btn-condensed" onClick={handleEndDay} style={{ background: 'rgba(139,92,246,0.1)', color: '#c4b5fd' }}>🌙 End</button>
+                    <button className="btn-emoji" onClick={handleEndDay} style={{ background: '#8b5cf6', color: '#fff' }} title="END DAY">🌙</button>
                   )}
                 </>
               ) : (
                 <>
-                  <button className="btn btn-condensed" onClick={() => setIsHold(!isHold)} style={{ background: isHold ? '#f59e0b' : 'rgba(255,255,255,0.1)' }}>{isHold ? `⏸ ${formatTime(holdSeconds)}` : '⏸ Hold'}</button>
-                  <button className="btn btn-condensed" onClick={onReconnectStream} style={{ background: 'rgba(56,189,248,0.1)', color: '#7dd3fc' }}>⚡ Zap</button>
+                  <button className="btn btn-condensed" onClick={() => setIsHold(!isHold)} style={{ background: isHold ? '#f59e0b' : 'rgba(255,255,255,0.1)', height: '26px' }}>{isHold ? `⏸${formatTime(holdSeconds)}` : '⏸'}</button>
+                  <button className="btn-emoji" onClick={onReconnectStream} style={{ background: '#0ea5e9' }} title="ZAP">⚡</button>
                 </>
               )}
             </div>
-
-            {isActive && (
-              <div className="metric-pill" style={{ color: '#fb923c', background: 'rgba(251,146,60,0.1)' }} title="CURRENT CALL">
-                <span style={{ fontWeight: 800 }}>📞 AR${Math.round(sessionEarnings * arsRate).toLocaleString('es-AR')}</span>
-              </div>
-            )}
-
-            <div className="metric-pill" title={`SHIFT PROGRESS: Started at ${shiftStartStr}. Elapsed: ${formatHoursMins(shiftElapsedMins)}.`}>
-              <span style={{ fontWeight: 700, fontSize: '0.7rem' }}>🏃 {formatHoursMins(shiftElapsedMins)}</span>
-            </div>
-
-            <div className="metric-pill" title={`BREAK: ${breakUsed.toFixed(0)}m used. ${breakLeft.toFixed(0)}m left of 90m.`} style={{ background: breakLeft < 15 ? 'rgba(239,68,68,0.2)' : 'rgba(255,255,255,0.05)' }}>
-              <span style={{ fontWeight: 700, fontSize: '0.7rem' }}>☕ {breakLeft.toFixed(0)}m</span>
-            </div>
-
-            <div className="metric-pill" title={`SPRINT: Time since last break.`}>
-              <span style={{ fontWeight: 700, fontSize: '0.7rem' }}>🔋 {Math.floor(workSessionMinutes)}m</span>
-            </div>
-
-            <div style={{ marginLeft: 'auto', display: 'flex', gap: '0.2rem' }}>
-              <button className="btn-icon" onClick={() => setIsNotesOpen(!isNotesOpen)} style={{ opacity: isNotesOpen ? 1 : 0.4 }} title="Notes">📝</button>
-              <button className="btn-icon" onClick={() => setIsToolbarVisible(!isToolbarVisible)} style={{ opacity: isToolbarVisible ? 1 : 0.4 }} title="Toolbar">🛠️</button>
-              <button className="btn-icon" onClick={() => setIsCollapsed(false)} title="Expand">🔼</button>
+            
+            <div style={{ display: 'flex', gap: '0.15rem', alignItems: 'center' }}>
+               <div className="metric-pill" title="SHIFT PROGRESS" style={{ height: '22px' }}>
+                 <span style={{ fontSize: '0.65rem' }}>🏃{formatHoursMins(shiftElapsedMins)}</span>
+               </div>
+               <div className="metric-pill" title="SPRINT" style={{ height: '22px' }}>
+                 <span style={{ fontSize: '0.65rem' }}>🔋{Math.floor(workSessionMinutes)}m</span>
+               </div>
+               <div className="metric-pill" title="LOG OFF" style={{ background: 'rgba(245,158,11,0.1)', border: '1px solid rgba(245,158,11,0.3)', height: '22px' }}>
+                 <span style={{ color: '#fcd34d', fontSize: '0.65rem' }}>🚪{getCompensatedLogOff()}</span>
+               </div>
             </div>
           </div>
 
-          {/* ROW 2: Money & Time Goals */}
-          <div className="condensed-items-row" style={{ display: 'flex', alignItems: 'center', gap: '0.15rem' }}>
-            <div style={{ display: 'flex', gap: '0.15rem' }} title={`SEGMENTS: M:${morningLeft.toFixed(1)}h | A:${afternoonLeft.toFixed(1)}h | E:${eveningLeft.toFixed(1)}h`}>
-              <span style={{ opacity: morningLeft > 0 ? 1 : 0.2 }}>🌅{Math.ceil(morningLeft)}</span>
-              <span style={{ opacity: afternoonLeft > 0 ? 1 : 0.2 }}>☀️{Math.ceil(afternoonLeft)}</span>
-              <span style={{ opacity: eveningLeft > 0 ? 1 : 0.2 }}>🌙{Math.ceil(eveningLeft)}</span>
+          {/* THE 2x2 METRIC GRID */}
+          <div className="metric-grid">
+            {/* ROW 1: CASH */}
+            <div className="metric-cell" title={`DAILY CASH: Quota $${dailyTargetArs.toLocaleString('es-AR')}`}>
+              <div className="bg-emoji-faded">☀️💰</div>
+              <div className="metric-cell-val">🌊${dailyArs.toLocaleString('es-AR')} / 🎯${dailyTargetArs.toLocaleString('es-AR')}</div>
             </div>
+            <div className="metric-cell" title={`MONTHLY CASH: Quota $${monthlyTargetArs.toLocaleString('es-AR')}`}>
+               <div className="bg-emoji-faded">🗓️💰</div>
+               <div className="metric-cell-val">🌊${monthlyArs.toLocaleString('es-AR')} / 🎯${monthlyTargetArs.toLocaleString('es-AR')}</div>
+            </div>
+            {/* ROW 2: MINS */}
+            <div className="metric-cell" title={`DAILY MINS: Goal ${Math.round(requiredDailyAverage)}m`}>
+               <div className="bg-emoji-faded">☀️🕒</div>
+               <div className="metric-cell-val">🌊{Math.round(stats.dailyMinutes)} / 🎯{Math.round(requiredDailyAverage)}</div>
+            </div>
+            <div className="metric-cell" title={`MONTHLY MINS: Goal ${stats.goalMinutes}m`}>
+               <div className="bg-emoji-faded">🗓️🕒</div>
+               <div className="metric-cell-val">🌊{Math.round(stats.monthlyMinutes)} / 🎯{stats.goalMinutes}</div>
+            </div>
+          </div>
 
-            <div className="metric-pill" title="DAILY MINS" onClick={() => setIsTodayDialOpen(true)}>
-              <span style={{ fontWeight: 800 }}>☀️🕒 🌊{Math.round(stats.dailyMinutes)}/🎯{Math.round(requiredDailyAverage)}</span>
-            </div>
+          {/* Right Section: Time Left, Segments, Tool Buttons */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.15rem', marginLeft: 'auto', alignItems: 'flex-end' }}>
+             <div style={{ display: 'flex', gap: '0.15rem', alignItems: 'center' }}>
+                <div className="metric-pill" title="CASH TO GOAL" style={{ background: 'rgba(52,211,153,0.15)', border: '1px solid rgba(52,211,153,0.4)', height: '22px' }}>
+                  <span style={{ color: '#6ee7b7', fontWeight: 800, fontSize: '0.65rem' }}>🏁${cashToTodayGoal.toLocaleString('es-AR')}</span>
+                </div>
+                <div style={{ display: 'flex', gap: '0.1rem', background: 'rgba(0,0,0,0.2)', padding: '0 0.2rem', borderRadius: '3px', fontSize: '0.65rem' }} title="SHIFT SEGMENTS">
+                   <span>🌅{Math.ceil(morningLeft)}</span>
+                   <span>☀️{Math.ceil(afternoonLeft)}</span>
+                   <span>🌙{Math.ceil(eveningLeft)}</span>
+                </div>
+             </div>
 
-            <div className="metric-pill" title="DAILY CASH">
-              <span style={{ fontWeight: 800 }}>☀️💰 🌊${dailyArs.toLocaleString('es-AR')}/🎯${dailyTargetArs.toLocaleString('es-AR')}</span>
-            </div>
-
-            <div className="metric-pill" title={`CASH TO GOAL: AR$${cashToTodayGoal.toLocaleString('es-AR')} remaining for today.`} style={{ background: 'rgba(52,211,153,0.2)', border: '1px solid rgba(52,211,153,0.4)' }}>
-              <span style={{ fontWeight: 800, color: '#6ee7b7' }}>🏁 ${cashToTodayGoal.toLocaleString('es-AR')}</span>
-            </div>
-
-            <div className="metric-pill" title={`MONTHLY MINS (Avg: ${Math.round(actualDailyAverage)}m/day)`}>
-              <span style={{ fontWeight: 800 }}>🗓️🕒 🌊{Math.round(stats.monthlyMinutes)}/🎯{stats.goalMinutes}</span>
-            </div>
-
-            <div className="metric-pill" title="MONTHLY CASH">
-              <span style={{ fontWeight: 800 }}>🗓️💰 🌊${monthlyArs.toLocaleString('es-AR')}/🎯${monthlyTargetArs.toLocaleString('es-AR')}</span>
-            </div>
-
-            <div className="metric-pill" title="LOG OFF TIME" style={{ background: 'rgba(245,158,11,0.2)', border: '1px solid rgba(245,158,11,0.4)' }}>
-              <span style={{ fontWeight: 800, color: '#fcd34d' }}>🚪 {getCompensatedLogOff()}</span>
-            </div>
-
-            <div className="metric-pill" title="CUTOFF (23:00)">
-              <span style={{ fontWeight: 800, opacity: 0.8 }}>🛑 {Math.floor(hoursLeftToAbsolute)}h</span>
-            </div>
+             <div style={{ display: 'flex', gap: '0.2rem' }}>
+                <button className="btn-icon" onClick={() => setIsNotesOpen(!isNotesOpen)} style={{ opacity: isNotesOpen ? 1 : 0.4 }}>📝</button>
+                <button className="btn-icon" onClick={() => setIsToolbarVisible(!isToolbarVisible)} style={{ opacity: isToolbarVisible ? 1 : 0.4 }}>🛠️</button>
+                <button className="btn-icon" onClick={() => setIsCollapsed(false)}>🔼</button>
+             </div>
           </div>
         </div>
       )}
@@ -404,30 +396,16 @@ export const DashboardHeader = ({ onStartAudio, onStopAudio, onReconnectStream, 
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.3rem', flexWrap: 'wrap' }}>
             <button className="btn" 
-              style={{ padding: '0.25rem', background: audioEngine.isMuted ? 'rgba(239,68,68,0.2)' : 'var(--panel-bg)', color: audioEngine.isMuted ? '#fca5a5' : 'var(--text-muted)', border: '1px solid var(--panel-border)' }}
+              style={{ width: '32px', height: '32px', padding: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', background: audioEngine.isMuted ? 'rgba(239,68,68,0.2)' : 'var(--panel-bg)', color: audioEngine.isMuted ? '#fca5a5' : 'var(--text-muted)', border: '1px solid var(--panel-border)' }}
               onClick={audioEngine.toggleMute} title={audioEngine.isMuted ? "Unmute" : "Silence"}>
               {audioEngine.isMuted ? '🔇' : '🔊'}
             </button>
-            {isEditingScoreboard && (
-              <button className="btn"
-                style={{
-                  backgroundColor: sttLanguage === 'auto' ? 'rgba(110,231,183,0.1)' : sttLanguage === 'en' ? 'rgba(59,130,246,0.8)' : 'rgba(16,185,129,0.8)',
-                  color: sttLanguage === 'auto' ? 'var(--text-muted)' : 'white',
-                  padding: '0.25rem 0.4rem', fontWeight: 600, fontSize: '0.65rem',
-                  border: sttLanguage === 'auto' ? '1px solid var(--panel-border)' : '1px solid transparent',
-                }}
-                onClick={onToggleLanguage} title="Auto → EN → ES">
-                {sttLanguage === 'auto' ? 'Auto Mux (EN/ES)' : sttLanguage === 'en' ? '🔒 ENG' : '🔒 SPA'}
-              </button>
-            )}
-          </div>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.15rem' }}>
-            <select className="btn" style={{ background: 'var(--panel-bg)', color: '#3b82f6', border: '1px solid rgba(59,130,246,0.4)', padding: '0.1rem 0.25rem', maxWidth: '120px', fontSize: '0.6rem' }}
+            <select className="btn" style={{ background: 'var(--panel-bg)', color: '#3b82f6', border: '1px solid rgba(59,130,246,0.4)', padding: '0.2rem 0.4rem', height: '32px', width: '110px', fontSize: '0.65rem' }}
               value={selectedMicId} onChange={e => changeMicId(e.target.value)} onFocus={fetchDevices}>
               <option value="">Default Mic</option>
               {inputDevices.map(d => <option key={d.deviceId} value={d.deviceId}>{d.label || `Mic ${d.deviceId.slice(0,5)}`}</option>)}
             </select>
-            <select className="btn" style={{ background: 'var(--panel-bg)', color: '#10b981', border: '1px solid rgba(16,185,129,0.4)', padding: '0.1rem 0.25rem', maxWidth: '120px', fontSize: '0.6rem' }}
+            <select className="btn" style={{ background: 'var(--panel-bg)', color: '#10b981', border: '1px solid rgba(16,185,129,0.4)', padding: '0.2rem 0.4rem', height: '32px', width: '110px', fontSize: '0.65rem' }}
               value={selectedSinkId} onChange={e => changeSinkId(e.target.value)} onFocus={fetchDevices}>
               <option value="">Default Speaker</option>
               {outputDevices.map(d => <option key={d.deviceId} value={d.deviceId}>{d.label || `Speaker ${d.deviceId.slice(0,5)}`}</option>)}
