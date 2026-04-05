@@ -179,8 +179,11 @@ export const DashboardHeader = ({ onStartAudio, onStopAudio, onReconnectStream, 
     nineAM.setHours(9, 0, 0, 0);
     const lateStartMs = Math.max(0, start.getTime() - nineAM.getTime());
     const totalBreakMs = (stats.dailyBreakMinutes || 0) * 60000;
-    const end = new Date(stats.lastDate + ' 18:00:00');
-    return new Date(end.getTime() + lateStartMs + totalBreakMs).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false });
+    const safeDateString = stats.lastDate || new Date().toDateString();
+    const end = new Date(safeDateString + ' 18:00:00');
+    const compensatedTime = new Date(end.getTime() + lateStartMs + totalBreakMs);
+    if (isNaN(compensatedTime.getTime())) return '18:00';
+    return compensatedTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false });
   };
 
   const shiftStartStr = stats.dayStartTime ? new Date(stats.dayStartTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false }) : '--:--';
@@ -262,25 +265,34 @@ export const DashboardHeader = ({ onStartAudio, onStopAudio, onReconnectStream, 
             </div>
           </div>
 
-          {/* THE 2x2 METRIC GRID */}
+          {/* THE 2x3 METRIC GRID */}
           <div className="metric-grid">
-            {/* ROW 1: CASH */}
+            {/* ROW 1: CASH (Row Context: 💰) */}
+            <div className="metric-cell" title={`CURRENT CALL CASH: Tracking active session.`}>
+              <div className="metric-watermark"><span>📞</span><span>💰</span><span>🌊</span><span>🎯</span></div>
+              <div className="metric-cell-val">${Math.round(sessionEarnings * arsRate)} / ${Math.round(45 * RATE_PER_MINUTE * arsRate)}</div>
+            </div>
             <div className="metric-cell" title={`DAILY CASH: Quota $${dailyTargetArs.toLocaleString('es-AR')}`}>
-              <div className="bg-emoji-faded">☀️💰</div>
-              <div className="metric-cell-val">🌊${dailyArs.toLocaleString('es-AR')} / 🎯${dailyTargetArs.toLocaleString('es-AR')}</div>
+              <div className="metric-watermark"><span>☀️</span><span>💰</span><span>🌊</span><span>🎯</span></div>
+              <div className="metric-cell-val">${dailyArs.toLocaleString('es-AR')} / ${dailyTargetArs.toLocaleString('es-AR')}</div>
             </div>
-            <div className="metric-cell" title={`MONTHLY CASH: Quota $${monthlyTargetArs.toLocaleString('es-AR')}`}>
-               <div className="bg-emoji-faded">🗓️💰</div>
-               <div className="metric-cell-val">🌊${monthlyArs.toLocaleString('es-AR')} / 🎯${monthlyTargetArs.toLocaleString('es-AR')}</div>
+            <div className="metric-cell" title={`MONTHLY CASH: Target $${monthlyTargetArs.toLocaleString('es-AR')}`}>
+               <div className="metric-watermark"><span>🗓️</span><span>💰</span><span>🌊</span><span>🎯</span></div>
+               <div className="metric-cell-val">${monthlyArs.toLocaleString('es-AR')} / ${monthlyTargetArs.toLocaleString('es-AR')}</div>
             </div>
-            {/* ROW 2: MINS */}
+
+            {/* ROW 2: MINS (Row Context: 🕒) */}
+            <div className="metric-cell" title={`CURRENT CALL MINS: 45m Ideal target.`}>
+               <div className="metric-watermark"><span>📞</span><span>🕒</span><span>🌊</span><span>🎯</span></div>
+               <div className="metric-cell-val">{(sessionSeconds / 60).toFixed(1)} / 45.0</div>
+            </div>
             <div className="metric-cell" title={`DAILY MINS: Goal ${Math.round(requiredDailyAverage)}m`}>
-               <div className="bg-emoji-faded">☀️🕒</div>
-               <div className="metric-cell-val">🌊{Math.round(stats.dailyMinutes)} / 🎯{Math.round(requiredDailyAverage)}</div>
+               <div className="metric-watermark"><span>☀️</span><span>🕒</span><span>🌊</span><span>🎯</span></div>
+               <div className="metric-cell-val">{Math.round(stats.dailyMinutes)} / {Math.round(requiredDailyAverage)}</div>
             </div>
             <div className="metric-cell" title={`MONTHLY MINS: Goal ${stats.goalMinutes}m`}>
-               <div className="bg-emoji-faded">🗓️🕒</div>
-               <div className="metric-cell-val">🌊{Math.round(stats.monthlyMinutes)} / 🎯{stats.goalMinutes}</div>
+               <div className="metric-watermark"><span>🗓️</span><span>🕒</span><span>🌊</span><span>🎯</span></div>
+               <div className="metric-cell-val">{Math.round(stats.monthlyMinutes)} / {stats.goalMinutes}</div>
             </div>
           </div>
 
@@ -410,6 +422,13 @@ export const DashboardHeader = ({ onStartAudio, onStopAudio, onReconnectStream, 
               <option value="">Default Speaker</option>
               {outputDevices.map(d => <option key={d.deviceId} value={d.deviceId}>{d.label || `Speaker ${d.deviceId.slice(0,5)}`}</option>)}
             </select>
+            {isEditingScoreboard && (
+              <button className="btn" 
+                style={{ padding: '0.2rem 0.4rem', fontSize: '0.65rem', background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(255,255,255,0.1)', height: '32px' }}
+                onClick={onToggleLanguage} title="Auto → EN → ES">
+                {sttLanguage === 'auto' ? 'Auto Mux' : sttLanguage === 'en' ? '🔒 ENG' : '🔒 SPA'}
+              </button>
+            )}
           </div>
         </div>
 

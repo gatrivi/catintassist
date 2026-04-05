@@ -1,4 +1,5 @@
 import { useState, useRef, useCallback } from 'react';
+import { useSession } from '../contexts/SessionContext';
 
 // Helper to remove overlapping prefix from a new string based on a base string
 // Example: base="Hello world", addition="world how are you" -> returns "how are you"
@@ -20,6 +21,7 @@ const removeOverlap = (base, addition) => {
 };
 
 export const useDeepgram = () => {
+  const { updateActivity } = useSession();
   const [captions, setCaptions] = useState([]);
   const [connectionState, setConnectionState] = useState('disconnected');
   const [connectionMessage, setConnectionMessage] = useState('Disconnected');
@@ -100,6 +102,7 @@ export const useDeepgram = () => {
         const isFinal = received.is_final;
 
         if (transcript) {
+          updateActivity();
           const now = Date.now();
           const timeSinceLast = now - lastTranscriptTimeRef.current;
           lastTranscriptTimeRef.current = now;

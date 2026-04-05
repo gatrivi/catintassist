@@ -8,6 +8,9 @@ export const SessionProvider = ({ children }) => {
   const [isBreakActive, setIsBreakActive] = useState(() => JSON.parse(localStorage.getItem('catint_break')) || false);
   const [breakSeconds, setBreakSeconds] = useState(() => Number(localStorage.getItem('catint_b_sec')) || 0);
   const [availSeconds, setAvailSeconds] = useState(() => Number(localStorage.getItem('catint_a_sec')) || 0);
+  const [lastActivityTime, setLastActivityTime] = useState(Date.now());
+
+  const updateActivity = () => setLastActivityTime(Date.now());
 
   useEffect(() => { localStorage.setItem('catint_active', JSON.stringify(isActive)); }, [isActive]);
   useEffect(() => { localStorage.setItem('catint_s_sec', sessionSeconds); }, [sessionSeconds]);
@@ -274,7 +277,9 @@ export const SessionProvider = ({ children }) => {
     isToolbarVisible,
     setIsToolbarVisible,
     workSessionMinutes,
-    setWorkSessionStartTime
+    setWorkSessionStartTime,
+    lastActivityTime,
+    updateActivity
   };
 
   return (

@@ -533,10 +533,11 @@ body {
 /* Metric Grid & Emoji Backgrounds */
 .metric-grid {
   display: grid;
-  grid-template-columns: repeat(2, 1fr);
+  grid-template-columns: repeat(3, 1fr);
   grid-template-rows: repeat(2, 1fr);
-  gap: 0.15rem;
+  gap: 0.1rem;
   flex-shrink: 0;
+  width: 100%;
 }
 
 .metric-cell {
@@ -544,33 +545,39 @@ body {
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 0.1rem 0.3rem;
+  padding: 0.05rem 0.2rem;
   background: rgba(255,255,255,0.06);
   border-radius: 3px;
-  border: 1px solid rgba(255,255,255,0.1);
+  border: 1px solid rgba(255,255,255,0.08);
   overflow: hidden;
-  min-width: 80px;
+  min-width: 95px;
+  min-height: 24px;
 }
 
 .metric-cell-val {
   position: relative;
-  z-index: 2;
+  z-index: 5;
   font-weight: 800;
-  font-size: 0.72rem;
+  font-size: 0.75rem;
   letter-spacing: -0.02em;
   white-space: nowrap;
+  color: rgba(255, 255, 255, 0.85); /* Numbers at ~85% opacity */
 }
 
-.bg-emoji-faded {
+.metric-watermark {
   position: absolute;
   top: 50%;
   left: 50%;
   transform: translate(-50%, -50%);
-  font-size: 1.2rem;
-  opacity: 0.12;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 1.5rem; /* Space icons behind the characters */
+  font-size: 1.4rem;
+  opacity: 0.12; /* Icons very faint */
   z-index: 1;
   pointer-events: none;
-  filter: grayscale(0.5);
+  filter: grayscale(0.2);
 }
 
 .btn-emoji {
@@ -583,17 +590,19 @@ body {
   border-radius: 4px;
   cursor: pointer;
   font-size: 0.9rem;
-  transition: transform 0.2s, background 0.2s;
+  transition: transform 0.2s;
   padding: 0;
 }
 .btn-emoji:hover { transform: scale(1.1); }
-.btn-emoji:active { transform: scale(0.95); }
 
 @media (max-width: 900px) {
   .metric-cell {
-    min-width: 70px;
-    padding: 0.05rem 0.2rem;
+    min-width: 85px;
+    padding: 0.02rem 0.1rem;
   }
-  .metric-cell-val { font-size: 0.68rem; }
-  .bg-emoji-faded { font-size: 1rem; }
+  .metric-cell-val { font-size: 0.72rem; }
+  .metric-watermark { font-size: 1.2rem; }
+}@keyframes slideUpBounce {
+  from { transform: translate(-50%, 100px); opacity: 0; }
+  to { transform: translate(-50%, 0); opacity: 1; }
 }
