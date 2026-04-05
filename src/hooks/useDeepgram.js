@@ -107,9 +107,11 @@ export const useDeepgram = () => {
           const isSilentBreak = timeSinceLast > 1800;
 
           setCaptions(prev => {
-            const isNewTurn = isSilentBreak;
-
             let last = prev[prev.length - 1];
+            const lastWordCount = (last && last.text) ? last.text.split(/\s+/).length : 0;
+            // Break into a new bubble after 1.8s of silence OR if bubble reaches 45 words
+            const isNewTurn = isSilentBreak || lastWordCount >= 45;
+
             if (!last || isNewTurn) {
               last = { 
                 id: Date.now(), 

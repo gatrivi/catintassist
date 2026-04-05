@@ -132,6 +132,17 @@ export const DashboardHeader = ({ onStartAudio, onStopAudio, onReconnectStream, 
   const currentTime = now.getHours() + (now.getMinutes() / 60);
   const totalWorkdayHours = ABSOLUTE_END - WORKDAY_START; // 14h total
   const timeElapsedRatio = Math.min(1, Math.max(0, (currentTime - WORKDAY_START) / totalWorkdayHours));
+  
+  const getDayEmoji = () => {
+    if (currentTime < 13) return '🌅';
+    if (currentTime < 17) return '☀️';
+    return '🌙';
+  };
+  const activeDayEmoji = getDayEmoji();
+
+  const morningLeft = Math.max(0, 13 - currentTime);
+  const afternoonLeft = Math.max(0, 17 - Math.max(13, currentTime));
+  const eveningLeft = Math.max(0, 23 - Math.max(17, currentTime));
 
   let hoursLeftToAbsolute = Math.max(0, ABSOLUTE_END - currentTime);
   
@@ -281,42 +292,35 @@ export const DashboardHeader = ({ onStartAudio, onStopAudio, onReconnectStream, 
               </div>
             )}
 
-            <div 
-              className="metric-pill" 
-              onClick={() => { copyValue(stats.dailyMinutes); setIsTodayDialOpen(true); }} 
-              title={`TODAY'S MINUTES: (Banked Today) / (Average Daily Goal needed to stay on pace). Based on remaining time (${hoursLeftToAbsolute.toFixed(1)}h), you can realistically hit ${Math.round(realisticMaxToday)}m today if you push hard. (1% = ${Math.floor((requiredDailyAverage || 1) / 100)}m)`}>
-              <span style={{ color: '#fcd34d', fontWeight: 800 }}>☀️ {Math.round(stats.dailyMinutes)}m</span>
-              <span style={{ opacity: 0.4, margin: '0 0.15rem', fontSize: '0.65rem' }}>{((stats.dailyMinutes / (requiredDailyAverage || 1)) * 100).toFixed(1)}%</span>
-              <span style={{ opacity: 0.6, fontWeight: 600 }}> / {Math.round(requiredDailyAverage)}m</span>
-              <span style={{ marginLeft: '0.3rem', fontSize: '0.6rem', color: '#fcd34d', opacity: 0.8 }}>(Max: {Math.round(realisticMaxToday)}m)</span>
+            <div style={{ display: 'flex', gap: '0.2rem', alignItems: 'center', background: 'rgba(255,255,255,0.05)', padding: '0.2rem 0.4rem', borderRadius: '4px', border: '1px solid rgba(255,255,255,0.1)' }} 
+              title={`Shift Segments: ${morningLeft.toFixed(1)}h Morning left, ${afternoonLeft.toFixed(1)}h Afternoon left, ${eveningLeft.toFixed(1)}h Evening left.`}>
+              <span style={{ opacity: morningLeft > 0 ? 1 : 0.2, fontSize: '0.8rem' }}>🌅{Math.ceil(morningLeft)}</span>
+              <span style={{ opacity: afternoonLeft > 0 ? 1 : 0.2, fontSize: '0.8rem' }}>☀️{Math.ceil(afternoonLeft)}</span>
+              <span style={{ opacity: eveningLeft > 0 ? 1 : 0.2, fontSize: '0.8rem' }}>🌙{Math.ceil(eveningLeft)}</span>
             </div>
 
-            <div 
-              className="metric-pill" 
-              onClick={() => { copyValue(dailyArs); setIsTodayDialOpen(true); }} 
-              title={`TODAY'S ARS: Estimated earnings for today. (Banked) / (Target Quota). (1% = AR$${Math.floor((dailyTargetArs || 1) / 100).toLocaleString('es-AR')})`}>
-              <span style={{ color: '#6ee7b7', fontWeight: 800 }}>☀️ AR${dailyArs.toLocaleString('es-AR')}</span>
-              <span style={{ opacity: 0.4, margin: '0 0.15rem', fontSize: '0.65rem' }}>{((dailyArs / (dailyTargetArs || 1)) * 100).toFixed(1)}%</span>
-              <span style={{ opacity: 0.6, fontWeight: 600 }}> / ${dailyTargetArs.toLocaleString('es-AR')}</span>
+            <div className="metric-pill" onClick={() => { copyValue(stats.dailyMinutes); setIsTodayDialOpen(true); }} 
+              title={`TODAY'S MINUTES: Banked vs Goal. (1% = ${Math.floor((requiredDailyAverage || 1) / 100)}m). Max Realistic: ${Math.round(realisticMaxToday)}m.`}>
+              <span style={{ fontWeight: 800 }}>{activeDayEmoji}🕒 🌊{Math.round(stats.dailyMinutes)} / 🎯{Math.round(requiredDailyAverage)}m</span>
+              <span style={{ opacity: 0.5, marginLeft: '0.2rem', fontSize: '0.65rem' }}>({((stats.dailyMinutes / (requiredDailyAverage || 1)) * 100).toFixed(0)}%)</span>
+            </div>
+
+            <div className="metric-pill" onClick={() => { copyValue(dailyArs); setIsTodayDialOpen(true); }} 
+              title={`TODAY'S ARS: Estimated earnings vs Quota. (1% = AR$${Math.floor((dailyTargetArs || 1) / 100).toLocaleString('es-AR')}).`}>
+              <span style={{ fontWeight: 800 }}>{activeDayEmoji}💰 🌊${dailyArs.toLocaleString('es-AR')} / 🎯${dailyTargetArs.toLocaleString('es-AR')}</span>
+              <span style={{ opacity: 0.5, marginLeft: '0.2rem', fontSize: '0.65rem' }}>({((dailyArs / (dailyTargetArs || 1)) * 100).toFixed(0)}%)</span>
             </div>
             
-            <div 
-              className="metric-pill" 
-              onClick={() => { copyValue(stats.monthlyMinutes); setIsTodayDialOpen(true); }} 
-              title={`MONTHLY MINUTES: Your total interpreted time so far this month vs your set monthly goal. (1% = ${Math.floor((stats.goalMinutes || 1) / 100)}m)`}>
-              <span style={{ color: '#c084fc', fontWeight: 800 }}>🗓️ {Math.round(stats.monthlyMinutes)}m</span>
-              <span style={{ opacity: 0.4, margin: '0 0.15rem', fontSize: '0.65rem' }}>{((stats.monthlyMinutes / (stats.goalMinutes || 1)) * 100).toFixed(1)}%</span>
-              <span style={{ opacity: 0.6, fontWeight: 600 }}> / {stats.goalMinutes}m</span>
-              <span style={{ marginLeft: '0.3rem', padding: '1px 4px', background: 'rgba(168,85,247,0.2)', borderRadius: '4px', fontSize: '0.6rem', color: '#d8b4fe', border: '1px solid rgba(168,85,247,0.3)' }}>Step {currentIdx + 1}/12</span>
+            <div className="metric-pill" onClick={() => { copyValue(stats.monthlyMinutes); setIsTodayDialOpen(true); }} 
+              title={`MONTHLY MINUTES: Total progress vs Goal. Next Ladder Step: ${nextGoalLabel} (${nextMilestone}m).`}>
+              <span style={{ fontWeight: 800 }}>🗓️🕒 🌊{Math.round(stats.monthlyMinutes)} / 🎯{stats.goalMinutes}m</span>
+              <span style={{ opacity: 0.5, marginLeft: '0.2rem', fontSize: '0.65rem' }}>({((stats.monthlyMinutes / (stats.goalMinutes || 1)) * 100).toFixed(0)}%)</span>
             </div>
 
-            <div 
-              className="metric-pill" 
-              onClick={() => { copyValue(monthlyArs); setIsTodayDialOpen(true); }} 
-              title={`MONTHLY ARS: Your total estimated earnings this month. (1% = AR$${Math.floor((monthlyTargetArs || 1) / 100).toLocaleString('es-AR')})`}>
-              <span style={{ color: '#d8b4fe', fontWeight: 800 }}>🗓️ AR${monthlyArs.toLocaleString('es-AR')}</span>
-              <span style={{ opacity: 0.4, margin: '0 0.15rem', fontSize: '0.65rem' }}>{((monthlyArs / (monthlyTargetArs || 1)) * 100).toFixed(1)}%</span>
-              <span style={{ opacity: 0.6, fontWeight: 600 }}> / ${monthlyTargetArs.toLocaleString('es-AR')}</span>
+            <div className="metric-pill" onClick={() => { copyValue(monthlyArs); setIsTodayDialOpen(true); }} 
+              title={`MONTHLY ARS: Total profit vs Goal. Current Pace: ${monthlyMaxArs} (Max Potential).`}>
+              <span style={{ fontWeight: 800 }}>🗓️💰 🌊${monthlyArs.toLocaleString('es-AR')} / 🎯${monthlyTargetArs.toLocaleString('es-AR')}</span>
+              <span style={{ opacity: 0.5, marginLeft: '0.2rem', fontSize: '0.65rem' }}>({((monthlyArs / (monthlyTargetArs || 1)) * 100).toFixed(0)}%)</span>
             </div>
 
             {remainingMinutes > 0 ? (
@@ -473,29 +477,49 @@ export const DashboardHeader = ({ onStartAudio, onStopAudio, onReconnectStream, 
           </div>
         </div>
 
-        {/* Monthly */}
+        {/* Monthly Mins */}
         {(isEditingScoreboard || visibleCards.month) && (
-        <div className="income-card income-tier-1" style={{ opacity: (!visibleCards.month && isEditingScoreboard) ? 0.3 : 1 }}>
-          {(celebration?.type === 'day' || celebration?.type === 'month') && <CelebrationParticles type={celebration.type} label={celebration.label} coins={celebration.coins} onDismiss={() => { setCelebration(null); audioEngine.stopAll(); }} />}
-          {isEditingScoreboard && <input type="checkbox" checked={visibleCards.month} onChange={() => toggleCard('month')} style={{ position: 'absolute', top: 4, right: 4, transform: 'scale(1.2)', cursor: 'pointer', zIndex: 10 }} />}
-          <span className="income-label">This Month</span>
-          <span className="income-ars" title={`Hourly Rate: AR$${Math.round(RATE_PER_MINUTE * 60 * arsRate).toLocaleString('es-AR')}`}>AR${Math.round(stats.monthlyMinutes * RATE_PER_MINUTE * arsRate).toLocaleString('es-AR')}</span>
-          <span style={{ fontSize: '0.8rem', color: '#d8b4fe', fontWeight: 600 }}>🚀 Max: AR${monthlyMaxArs}</span>
-          <span className="income-usd" style={{ opacity: 0.4, fontSize: '0.6rem' }}>${(stats.monthlyMinutes * RATE_PER_MINUTE).toFixed(2)} USD</span>
+        <div className="income-card income-tier-1" style={{ opacity: (!visibleCards.month && isEditingScoreboard) ? 0.3 : 1 }}
+          title={`Monthly Mins: Total progressive work. Paced Max: AR$${monthlyRemainingCash}`}>
+          {isEditingScoreboard && <input type="checkbox" checked={visibleCards.month} onChange={() => toggleCard('month')} style={{ position: 'absolute', top: 4, right: 4, zIndex: 10 }} />}
+          <span className="income-label">🗓️🕒 Mins</span>
+          <span className="income-ars">🌊{Math.round(stats.monthlyMinutes)} / 🎯{stats.goalMinutes}</span>
+          <span style={{ fontSize: '0.65rem', opacity: 0.6 }}>({monthlyProgressRatio.toLocaleString(undefined, {style: 'percent'})})</span>
           <EditableMinutes value={stats.monthlyMinutes} updateFn={updateStat} statKey="monthlyMinutes" />
         </div>
         )}
 
-        {/* Today */}
+        {/* Monthly Cash */}
+        {(isEditingScoreboard || visibleCards.moneyMonth) && (
+        <div className="income-card income-tier-1" style={{ opacity: (!visibleCards.month && isEditingScoreboard) ? 0.3 : 1 }}
+          title={`Monthly Cash: Estimated total profit. Paced Max: AR$${monthlyMaxArs}`}>
+          <span className="income-label">🗓️💰 Profit</span>
+          <span className="income-ars">🌊${monthlyArs.toLocaleString('es-AR')} / 🎯${monthlyTargetArs.toLocaleString('es-AR')}</span>
+          <EditableMinutes value={monthlyArs / (RATE_PER_MINUTE * arsRate)} updateFn={updateStat} statKey="monthlyMinutes" />
+        </div>
+        )}
+
+        {/* Today Mins */}
         {(isEditingScoreboard || visibleCards.today) && (
-        <div className="income-card income-tier-2" style={{ cursor: 'pointer', margin: '0 0.2rem', opacity: (!visibleCards.today && isEditingScoreboard) ? 0.3 : 1 }}>
-          {celebration?.type === 'call' && <CelebrationParticles type={celebration.type} label={celebration.label} coins={celebration.coins} onDismiss={() => { setCelebration(null); audioEngine.stopAll(); }} />}
-          {isEditingScoreboard && <input type="checkbox" checked={visibleCards.today} onChange={() => toggleCard('today')} style={{ position: 'absolute', top: 4, right: 4, transform: 'scale(1.2)', cursor: 'pointer', zIndex: 10 }} />}
-          <div onClick={() => !isEditingScoreboard && setIsTodayDialOpen(true)} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }} title="Project this rate">
-            <span className="income-label">Today</span>
-            <span className="income-ars" title={`Hourly Rate: AR$${Math.round(RATE_PER_MINUTE * 60 * arsRate).toLocaleString('es-AR')}`}>AR${Math.round(stats.dailyMinutes * RATE_PER_MINUTE * arsRate).toLocaleString('es-AR')}</span>
-            <span style={{ fontSize: '0.75rem', color: '#d8b4fe', fontWeight: 600 }}>🚀 Max: AR${dailyMaxArs}</span>
-            <span className="income-usd" style={{ opacity: 0.4, fontSize: '0.6rem' }}>${(stats.dailyMinutes * RATE_PER_MINUTE).toFixed(2)} USD</span>
+        <div className="income-card income-tier-2" style={{ cursor: 'pointer', margin: '0 0.2rem', opacity: (!visibleCards.today && isEditingScoreboard) ? 0.3 : 1 }}
+          title={`Today's Mins: Banked vs Goal. Max possible today: ${Math.round(realisticMaxToday)}m`}>
+          {isEditingScoreboard && <input type="checkbox" checked={visibleCards.today} onChange={() => toggleCard('today')} style={{ position: 'absolute', top: 4, right: 4, zIndex: 10 }} />}
+          <div onClick={() => !isEditingScoreboard && setIsTodayDialOpen(true)} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+            <span className="income-label">{activeDayEmoji}🕒 Shift</span>
+            <span className="income-ars">🌊{Math.round(stats.dailyMinutes)} / 🎯{Math.round(dailyGoal)}</span>
+            <span style={{ fontSize: '0.65rem', opacity: 0.6 }}>({(stats.dailyMinutes / (dailyGoal || 1) * 100).toFixed(0)}%)</span>
+          </div>
+          <EditableMinutes value={stats.dailyMinutes} updateFn={updateStat} statKey="dailyMinutes" />
+        </div>
+        )}
+
+        {/* Today Cash */}
+        {(isEditingScoreboard || visibleCards.moneyToday) && (
+        <div className="income-card income-tier-2" style={{ cursor: 'pointer', margin: '0 0.2rem', opacity: (!visibleCards.today && isEditingScoreboard) ? 0.3 : 1 }}
+          title={`Today's Cash: Target quota for today. Max possible: AR$${dailyMaxArs}`}>
+          <div onClick={() => !isEditingScoreboard && setIsTodayDialOpen(true)} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+            <span className="income-label">{activeDayEmoji}💰 Income</span>
+            <span className="income-ars">🌊${dailyArs.toLocaleString('es-AR')} / 🎯${dailyTargetArs.toLocaleString('es-AR')}</span>
           </div>
           <EditableMinutes value={stats.dailyMinutes} updateFn={updateStat} statKey="dailyMinutes" />
         </div>

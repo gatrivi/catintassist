@@ -26,11 +26,8 @@ export const SessionProvider = ({ children }) => {
   useEffect(() => { localStorage.setItem('catint_toolbar_visible', JSON.stringify(isToolbarVisible)); }, [isToolbarVisible]);
 
   const [visibleCards, setVisibleCards] = useState(() => {
-    try {
-      const saved = localStorage.getItem('catintassist_visible_cards');
-      if (saved) return JSON.parse(saved);
-    } catch(e) {}
-    return { controls: true, month: true, today: true, call: true, break: true, avail: true, goal: true, transcription: true };
+    const saved = localStorage.getItem('catintassist_visible_cards');
+    return saved ? JSON.parse(saved) : { month: true, moneyMonth: true, today: true, moneyToday: true, call: true, break: true, avail: true, goal: true };
   });
 
   useEffect(() => {

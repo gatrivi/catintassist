@@ -354,27 +354,17 @@ export const TranscriptionBoard = ({ captions, onClear }) => {
              '⚠️ You are OFFLINE. Press Connect above to start capturing audio!')}
           </div>
         )}
-        {captions.reduce((acc, cap, i) => {
-          if (!cap.text || !cap.text.trim()) return acc;
-          const words = cap.text.trim().split(/\s+/);
-          if (words.length > 55) {
-             const mid = Math.ceil(words.length / 2);
-             acc.push({ ...cap, text: words.slice(0, mid).join(' '), id: `${cap.id || i}-a`, isSplit: true });
-             acc.push({ ...cap, text: words.slice(mid).join(' '), id: `${cap.id || i}-b`, isSplit: true });
-          } else {
-             acc.push(cap);
-          }
-          return acc;
-        }, []).map((cap, i, flattened) => {
+        {captions.map((cap, i) => {
           if (!cap.text || !cap.text.trim()) return null;
-          const isSameAsPrevious = i > 0 && flattened[i-1].lang === cap.lang;
+          const isSameAsPrevious = i > 0 && captions[i-1].lang === cap.lang;
           const wordCount = cap.text.trim().split(/\s+/).length;
           const isPinned = pinnedIds.includes(cap.id);
+          const isSplitContinuation = isSameAsPrevious && wordCount < 50; // Simple heuristic for split segments
           
           return (
             <div key={cap.id || i} className="transcript-bubble" style={{ 
               opacity: cap.isFinal === false ? 0.8 : 1,
-              marginTop: (isSameAsPrevious || cap.isSplit) ? '0rem' : '0.4rem',
+              marginTop: isSplitContinuation ? '0rem' : '0.4rem',
               padding: '0.1rem 0',
               border: isPinned ? '2px solid #3b82f6' : 'none',
               borderRadius: isPinned ? '8px' : '6px',
@@ -391,7 +381,7 @@ export const TranscriptionBoard = ({ captions, onClear }) => {
               )}
               <TranslatedBubble 
                 id={cap.id} text={cap.text} lang={cap.lang} playTTS={playTTS} stopTTS={stopTTS} playingUrl={playingUrl} prefetchTTS={prefetchTTS} 
-                reverse={cap.lang === 'es'} ttsMode={ttsMode} wordCount={wordCount} shouldPrefetch={i >= flattened.length - 3} 
+                reverse={cap.lang === 'es'} ttsMode={ttsMode} wordCount={wordCount} shouldPrefetch={i >= captions.length - 3} 
                 emphasisMode={emphasisMode} isPinned={isPinned} onTogglePin={togglePin} 
               />
             </div>
