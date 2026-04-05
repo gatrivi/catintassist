@@ -419,22 +419,35 @@ body {
 
 /* Income Tracker Enchancements */
 .income-dashboard {
-  display: flex;
-  flex-direction: row;
-  flex-wrap: nowrap; /* Force one row if possible but overflow scroll if not */
-  justify-content: space-between;
-  align-items: center;
-  gap: 0.2rem; /* Minimum gap */
-  padding: 0.2rem 0.4rem;
-  background: rgba(0, 0, 0, 0.35);
+  display: grid;
+  grid-template-rows: auto auto; /* Two logical levels of info */
+  gap: 0.15rem;
+  padding: 0.1rem 0.3rem; 
+  background: rgba(12, 12, 18, 0.9); /* Darker, more premium feel */
   border-radius: 8px;
   border: 1px solid rgba(255, 255, 255, 0.05);
   margin-top: 0.15rem;
   text-align: center;
-  overflow-x: auto; /* Safety for very small screens */
-  scrollbar-width: none;
+  position: relative;
+  z-index: 100;
+  box-shadow: 0 4px 20px rgba(0,0,0,0.4);
 }
-.income-dashboard::-webkit-scrollbar { display: none; }
+
+/* Sub-containers for the two rows */
+.dashboard-row {
+  display: flex;
+  flex-direction: row;
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.2rem;
+  width: 100%;
+}
+
+.dashboard-row-upper {
+  border-bottom: 1px solid rgba(255,255,255,0.05);
+  padding-bottom: 0.15rem;
+  margin-bottom: 0.1rem;
+}
 
 .income-card {
   display: flex;

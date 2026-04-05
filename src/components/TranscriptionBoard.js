@@ -388,7 +388,7 @@ export const TranscriptionBoard = ({ captions, onClear }) => {
             </div>
           );
         })}
-        <div ref={bottomRef} style={{ height: '4px', flexShrink: 0 }} />
+        <div ref={bottomRef} style={{ height: '24px', flexShrink: 0 }} />
       </div>
     </div>
   );
