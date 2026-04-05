@@ -66,6 +66,8 @@ export const DashboardHeader = ({ onStartAudio, onStopAudio, onReconnectStream, 
   const [isCollapsed, setIsCollapsed] = useState(true);
   const [celebration, setCelebration] = useState(null);
   const [isTodayDialOpen, setIsTodayDialOpen] = useState(false);
+  const [displayBounty, setDisplayBounty] = useState(0);
+  const [isBountyAnimating, setIsBountyAnimating] = useState(false);
 
   useEffect(() => {
     let iv; if (isHold) iv = setInterval(() => setHoldSeconds(s => s + 1), 1000); else setHoldSeconds(0);
@@ -140,6 +142,29 @@ export const DashboardHeader = ({ onStartAudio, onStopAudio, onReconnectStream, 
   };
   const activeDayEmoji = getDayEmoji();
 
+  // Condensed View metrics
+  const dailyArs = Math.round(stats.dailyMinutes * RATE_PER_MINUTE * arsRate);
+  const dailyTargetArs = Math.round(dailyGoal * RATE_PER_MINUTE * arsRate);
+  const monthlyArs = Math.round(stats.monthlyMinutes * RATE_PER_MINUTE * arsRate);
+  const monthlyTargetArs = Math.round(stats.goalMinutes * RATE_PER_MINUTE * arsRate);
+  const currentBounty = Math.max(0, dailyTargetArs - dailyArs);
+
+  useEffect(() => {
+    if (Math.abs(displayBounty - currentBounty) > 1) {
+      setIsBountyAnimating(true);
+      const timer = setTimeout(() => {
+        setDisplayBounty(currentBounty);
+        setIsBountyAnimating(false);
+      }, 500); 
+      return () => clearTimeout(timer);
+    }
+  }, [currentBounty]);
+
+  // Initialize bounty on load
+  useEffect(() => {
+    setDisplayBounty(currentBounty);
+  }, []);
+
   const morningLeft = Math.max(0, 13 - currentTime);
   const afternoonLeft = Math.max(0, 17 - Math.max(13, currentTime));
   const eveningLeft = Math.max(0, 23 - Math.max(17, currentTime));
@@ -165,12 +190,6 @@ export const DashboardHeader = ({ onStartAudio, onStopAudio, onReconnectStream, 
   const monthlyProgressRatio = stats.goalMinutes > 0 ? Math.min(1, stats.monthlyMinutes / stats.goalMinutes) : 0;
   const monthlyPendingRatio = stats.goalMinutes > 0 ? Math.min(1, (stats.monthlyMinutes + unbankedMins) / stats.goalMinutes) : 0;
   const isDailyGoalMet = stats.dailyMinutes >= dailyGoal;
-
-  // Condensed View metrics (Calculated for AGENTS.md checklist)
-  const dailyArs = Math.round(stats.dailyMinutes * RATE_PER_MINUTE * arsRate);
-  const dailyTargetArs = Math.round(dailyGoal * RATE_PER_MINUTE * arsRate);
-  const monthlyArs = Math.round(stats.monthlyMinutes * RATE_PER_MINUTE * arsRate);
-  const monthlyTargetArs = Math.round(stats.goalMinutes * RATE_PER_MINUTE * arsRate);
 
   const getCompensatedLogOff = () => {
     if (!stats.dayStartTime) return '18:00';
@@ -318,249 +337,119 @@ export const DashboardHeader = ({ onStartAudio, onStopAudio, onReconnectStream, 
         </div>
       )}
 
-      {/* ── SINGLE UNIFIED ROW ── */}
-      <div className="income-dashboard" style={{ display: isCollapsed ? 'none' : '' }}>
-
-        {/* Controls card — sits in place of a scoreboard slot but is permanently visible */}
-        <div className="income-card" style={{ gap: '0.4rem', alignItems: 'flex-start', justifyContent: 'center', position: 'relative' }}>
+      {/* ── EXPANDED TWO-ROW DASHBOARD ── */}
+      {!isCollapsed && (
+        <div className="income-dashboard">
           
-          {isEditingScoreboard && (
-            <div className="glass-panel" style={{ display: 'flex', gap: '0.15rem', justifyContent: 'center', zIndex: 100, flexWrap: 'wrap', padding: '0.2rem', background: 'rgba(0,0,0,0.4)', borderRadius: '4px', border: '1px solid rgba(255,255,255,0.05)', marginBottom: '0.2rem', width: '100%' }}>
-               <button className="btn" onClick={() => audioEngine.playBagOpen()} style={{ fontSize: '0.55rem', background: '#333', color: '#10b981', padding: '0.1rem 0.2rem' }}>[Bag]</button>
-               <button className="btn" onClick={() => audioEngine.playTick(1)} style={{ fontSize: '0.55rem', background: '#333', color: '#6ee7b7', padding: '0.1rem 0.2rem' }}>[Min1]</button>
-               <button className="btn" onClick={() => audioEngine.playTick(20)} style={{ fontSize: '0.55rem', background: '#333', color: '#fcd34d', padding: '0.1rem 0.2rem' }}>[Min20]</button>
-               <button className="btn" onClick={() => audioEngine.playBill()} style={{ fontSize: '0.55rem', background: '#333', color: '#fb923c', padding: '0.1rem 0.2rem' }}>[Bill]</button>
-               <button className="btn" onClick={() => audioEngine.playDiamond()} style={{ fontSize: '0.55rem', background: '#333', color: '#38bdf8', padding: '0.1rem 0.2rem' }}>[Gem]</button>
-               <button className="btn" onClick={() => audioEngine.playCoin()} style={{ fontSize: '0.55rem', background: '#333', color: '#ddd', padding: '0.1rem 0.2rem' }}>[Coin]</button>
-               
-               <div style={{ width: '4px', height: '10px', background: 'rgba(255,255,255,0.1)', margin: '0 0.1rem' }} />
-
-               <button className="btn" onClick={() => { 
-                 const keys = [
-                   { name: 'Deepgram API Key', key: 'DEEPGRAM_API_KEY' },
-                   { name: 'DeepL API Key (Optional)', key: 'DEEPL_API_KEY' },
-                   { name: 'Microsoft Translator Key (Optional)', key: 'MICROSOFT_TRANSLATOR_KEY' },
-                   { name: 'Microsoft Region (e.g. eastus)', key: 'MICROSOFT_TRANSLATOR_REGION' },
-                   { name: 'OpenAI API Key (Optional for GPT-4o)', key: 'OPENAI_API_KEY' }
-                 ];
-                 keys.forEach(k => {
-                   const cur = localStorage.getItem(k.key) || '';
-                   const nk = window.prompt(`Enter ${k.name}:`, cur);
-                   if (nk !== null) { if (!nk.trim()) localStorage.removeItem(k.key); else localStorage.setItem(k.key, nk.trim()); }
-                 });
-               }} title="Set API Keys">🔑 Keys</button>
-
-               <button className="btn" onClick={() => { 
-                 // Mock 45 min payout
-                 const mins = 45; let rem = mins;
-                 const diamonds = Math.floor(rem / 20); rem %= 20;
-                 const bills = Math.floor(rem / 5); rem %= 5;
-                 const coins = rem;
-                 for(let i=0; i<diamonds; i++) setTimeout(()=>audioEngine.playDiamond(), i*400);
-                 for(let i=0; i<bills; i++) setTimeout(()=>audioEngine.playBill(), (diamonds*400)+(i*300));
-                 for(let i=0; i<coins; i++) setTimeout(()=>audioEngine.playCoin(), (diamonds*400)+(bills*300)+(i*200));
-                 setCelebration({ type: 'call', label: '+45min Mock', coins: 40 }); 
-                 setTimeout(()=>setCelebration(null), 4000);
-               }} style={{ fontSize: '0.55rem', background: '#444', color: '#fff', padding: '0.1rem 0.3rem' }}>[Mock 45m]</button>
+          {/* UPPER ROW: High-Level Progress & The Bounty */}
+          <div className="dashboard-row dashboard-row-upper">
+            
+            {/* Today's Bounty (THE STAR) */}
+            <div className="income-card" style={{ flex: '1.5', background: 'rgba(52, 211, 153, 0.1)', border: '1px solid rgba(52, 211, 153, 0.2)', padding: '0.4rem', borderRadius: '10px' }}>
+              <span className="income-label" style={{ color: '#6ee7b7', fontWeight: 800 }}>💰 TODAY'S BOUNTY</span>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                <span style={{ 
+                  fontSize: '1.4rem', 
+                  fontWeight: 900, 
+                  color: isBountyAnimating ? '#fcd34d' : '#fff',
+                  transition: 'color 0.3s ease',
+                  textShadow: isBountyAnimating ? '0 0 15px rgba(252, 211, 77, 0.5)' : 'none'
+                }}>
+                  AR${displayBounty.toLocaleString('es-AR')}
+                </span>
+                {isBountyAnimating && <span style={{ fontSize: '0.8rem', color: '#6ee7b7', animation: 'slideUpBounce 0.5s' }}>-tick</span>}
+              </div>
+              <span style={{ fontSize: '0.6rem', opacity: 0.6 }}>Target: AR${dailyTargetArs.toLocaleString('es-AR')}</span>
             </div>
-          )}
 
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', flexWrap: 'wrap', minHeight: '36px' }}>
-            <ConnectionIndicator state={connectionState} message={connectionMessage} />
-            {!isActive ? (
-              <>
-                <button className="btn btn-primary" onClick={handleStart} style={{ fontSize: '0.7rem' }}><PlayIcon /> Connect</button>
-                {isBreakActive ? (
-                  <button className="btn" onClick={stopBreak} style={{ fontSize: '0.7rem', background: '#fb923c', color: 'white', boxShadow: '0 0 8px rgba(251,146,60,0.6)' }}>
-                    Stop Break ({formatTime(breakSeconds)})
-                  </button>
-                ) : (
-                  <button className="btn" onClick={startBreak} style={{ fontSize: '0.7rem', background: 'rgba(251,146,60,0.2)', color: '#fdba74', border: '1px solid rgba(251,146,60,0.4)' }}>
-                    🪑 Break
-                  </button>
-                )}
-                {stats.dailyMinutes > 0 && (
-                  <button className="btn" onClick={handleEndDay}
-                    style={{ background: 'rgba(139,92,246,0.2)', color: '#c4b5fd', border: '1px solid rgba(139,92,246,0.4)', fontSize: '0.6rem' }}>
-                    🌙 End Day
-                  </button>
-                )}
-              </>
-            ) : (
-              <>
-                <button className="btn"
-                  style={{
-                    backgroundColor: isHold ? 'rgba(245,158,11,0.8)' : 'rgba(255,255,255,0.1)',
-                    color: isHold ? 'white' : 'var(--text-muted)',
-                    border: isHold ? 'none' : '1px solid var(--panel-border)',
-                    animation: (isHold && holdSeconds >= 900 && holdSeconds < 930) ? 'pulseDanger 1s infinite' : 'none',
-                    fontSize: '0.7rem'
-                  }}
-                  onClick={() => setIsHold(!isHold)}>
-                  {isHold ? `⏸ ${formatTime(holdSeconds)}` : '⏸ Hold'}
-                </button>
-                <button className="btn" onClick={onReconnectStream} title="Restart websockets without dropping call" style={{ background: 'rgba(56,189,248,0.1)', color: '#7dd3fc', border: '1px solid rgba(56,189,248,0.3)', fontSize: '0.7rem' }}>
-                  ⚡ Zap Stream
-                </button>
-                <button className="btn btn-danger recording" onClick={handleStop} style={{ fontSize: '0.7rem' }}><StopIcon /> Stop</button>
-              </>
+            {/* Monthly Profit */}
+            {(isEditingScoreboard || visibleCards.month) && (
+              <div className="income-card income-tier-1" style={{ flex: '1' }}>
+                <span className="income-label">🗓️ MONTHLY PROFIT</span>
+                <span className="income-ars">🌊${monthlyArs.toLocaleString('es-AR')}</span>
+                <span style={{ fontSize: '0.6rem', opacity: 0.5 }}>Goal: ${monthlyTargetArs.toLocaleString('es-AR')}</span>
+              </div>
             )}
-          </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.3rem', flexWrap: 'wrap' }}>
-            <button className="btn" 
-              style={{ width: '32px', height: '32px', padding: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', background: audioEngine.isMuted ? 'rgba(239,68,68,0.2)' : 'var(--panel-bg)', color: audioEngine.isMuted ? '#fca5a5' : 'var(--text-muted)', border: '1px solid var(--panel-border)' }}
-              onClick={audioEngine.toggleMute} title={audioEngine.isMuted ? "Unmute" : "Silence"}>
-              {audioEngine.isMuted ? '🔇' : '🔊'}
-            </button>
-            <select className="btn" style={{ background: 'var(--panel-bg)', color: '#3b82f6', border: '1px solid rgba(59,130,246,0.4)', padding: '0.2rem 0.4rem', height: '32px', width: '110px', fontSize: '0.65rem' }}
-              value={selectedMicId} onChange={e => changeMicId(e.target.value)} onFocus={fetchDevices}>
-              <option value="">Default Mic</option>
-              {inputDevices.map(d => <option key={d.deviceId} value={d.deviceId}>{d.label || `Mic ${d.deviceId.slice(0,5)}`}</option>)}
-            </select>
-            <select className="btn" style={{ background: 'var(--panel-bg)', color: '#10b981', border: '1px solid rgba(16,185,129,0.4)', padding: '0.2rem 0.4rem', height: '32px', width: '110px', fontSize: '0.65rem' }}
-              value={selectedSinkId} onChange={e => changeSinkId(e.target.value)} onFocus={fetchDevices}>
-              <option value="">Default Speaker</option>
-              {outputDevices.map(d => <option key={d.deviceId} value={d.deviceId}>{d.label || `Speaker ${d.deviceId.slice(0,5)}`}</option>)}
-            </select>
-            {isEditingScoreboard && (
-              <button className="btn" 
-                style={{ padding: '0.2rem 0.4rem', fontSize: '0.65rem', background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(255,255,255,0.1)', height: '32px' }}
-                onClick={onToggleLanguage} title="Auto → EN → ES">
-                {sttLanguage === 'auto' ? 'Auto Mux' : sttLanguage === 'en' ? '🔒 ENG' : '🔒 SPA'}
-              </button>
+
+            {/* Today's Shift Progress */}
+            {(isEditingScoreboard || visibleCards.today) && (
+              <div className="income-card income-tier-2" style={{ flex: '1', cursor: 'pointer' }} onClick={() => !isEditingScoreboard && setIsTodayDialOpen(true)}>
+                <span className="income-label">{activeDayEmoji} DAILY SHIFT</span>
+                <span className="income-ars">🌊{Math.round(stats.dailyMinutes)}m / 🎯{Math.round(dailyGoal)}m</span>
+                <span style={{ fontSize: '0.6rem', opacity: 0.6 }}>({(stats.dailyMinutes / (dailyGoal || 1) * 100).toFixed(0)}%)</span>
+              </div>
             )}
-          </div>
-        </div>
 
-        {/* Monthly Mins */}
-        {(isEditingScoreboard || visibleCards.month) && (
-        <div className="income-card income-tier-1" style={{ opacity: (!visibleCards.month && isEditingScoreboard) ? 0.3 : 1 }}
-          title={`Monthly Mins: Total progressive work. Paced Max: AR$${monthlyRemainingCash}`}>
-          {isEditingScoreboard && <input type="checkbox" checked={visibleCards.month} onChange={() => toggleCard('month')} style={{ position: 'absolute', top: 4, right: 4, zIndex: 10 }} />}
-          <span className="income-label">🗓️🕒 Mins</span>
-          <span className="income-ars">🌊{Math.round(stats.monthlyMinutes)} / 🎯{stats.goalMinutes}</span>
-          <span style={{ fontSize: '0.65rem', opacity: 0.6 }}>({monthlyProgressRatio.toLocaleString(undefined, {style: 'percent'})})</span>
-          <EditableMinutes value={stats.monthlyMinutes} updateFn={updateStat} statKey="monthlyMinutes" />
-        </div>
-        )}
-
-        {/* Monthly Cash */}
-        {(isEditingScoreboard || visibleCards.moneyMonth) && (
-        <div className="income-card income-tier-1" style={{ opacity: (!visibleCards.month && isEditingScoreboard) ? 0.3 : 1 }}
-          title={`Monthly Cash: Estimated total profit. Paced Max: AR$${monthlyMaxArs}`}>
-          <span className="income-label">🗓️💰 Profit</span>
-          <span className="income-ars">🌊${monthlyArs.toLocaleString('es-AR')} / 🎯${monthlyTargetArs.toLocaleString('es-AR')}</span>
-          <EditableMinutes value={monthlyArs / (RATE_PER_MINUTE * arsRate)} updateFn={updateStat} statKey="monthlyMinutes" />
-        </div>
-        )}
-
-        {/* Today Mins */}
-        {(isEditingScoreboard || visibleCards.today) && (
-        <div className="income-card income-tier-2" style={{ cursor: 'pointer', margin: '0 0.2rem', opacity: (!visibleCards.today && isEditingScoreboard) ? 0.3 : 1 }}
-          title={`Today's Mins: Banked vs Goal. Max possible today: ${Math.round(realisticMaxToday)}m`}>
-          {isEditingScoreboard && <input type="checkbox" checked={visibleCards.today} onChange={() => toggleCard('today')} style={{ position: 'absolute', top: 4, right: 4, zIndex: 10 }} />}
-          <div onClick={() => !isEditingScoreboard && setIsTodayDialOpen(true)} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-            <span className="income-label">{activeDayEmoji}🕒 Shift</span>
-            <span className="income-ars">🌊{Math.round(stats.dailyMinutes)} / 🎯{Math.round(dailyGoal)}</span>
-            <span style={{ fontSize: '0.65rem', opacity: 0.6 }}>({(stats.dailyMinutes / (dailyGoal || 1) * 100).toFixed(0)}%)</span>
-          </div>
-          <EditableMinutes value={stats.dailyMinutes} updateFn={updateStat} statKey="dailyMinutes" />
-        </div>
-        )}
-
-        {/* Today Cash */}
-        {(isEditingScoreboard || visibleCards.moneyToday) && (
-        <div className="income-card income-tier-2" style={{ cursor: 'pointer', margin: '0 0.2rem', opacity: (!visibleCards.today && isEditingScoreboard) ? 0.3 : 1 }}
-          title={`Today's Cash: Target quota for today. Max possible: AR$${dailyMaxArs}`}>
-          <div onClick={() => !isEditingScoreboard && setIsTodayDialOpen(true)} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-            <span className="income-label">{activeDayEmoji}💰 Income</span>
-            <span className="income-ars">🌊${dailyArs.toLocaleString('es-AR')} / 🎯${dailyTargetArs.toLocaleString('es-AR')}</span>
-          </div>
-          <EditableMinutes value={stats.dailyMinutes} updateFn={updateStat} statKey="dailyMinutes" />
-        </div>
-        )}
-
-        {/* Current Call */}
-        {(isEditingScoreboard || visibleCards.call) && (
-        <div className={`income-card income-tier-3 ${isActive ? 'active' : ''}`} style={{ opacity: (!visibleCards.call && isEditingScoreboard) ? 0.3 : 1 }}>
-          {isEditingScoreboard && <input type="checkbox" checked={visibleCards.call} onChange={() => toggleCard('call')} style={{ position: 'absolute', top: 4, right: 4, transform: 'scale(1.2)', cursor: 'pointer', zIndex: 10 }} />}
-          <span className="income-label">Current Call ({formatTime(sessionSeconds)})</span>
-          <span className="income-ars" title={`Hourly Rate: AR$${Math.round(RATE_PER_MINUTE * 60 * arsRate).toLocaleString('es-AR')}`}>AR${Math.round(sessionEarnings * arsRate).toLocaleString('es-AR')}</span>
-          <span className="income-usd" style={{ opacity: 0.7 }}>${sessionEarnings.toFixed(2)} USD</span>
-          <EditableMinutes value={sessionSeconds / 60} updateFn={(k, v) => setSessionSeconds(Math.max(0, v * 60))} statKey="sessionSeconds" />
-        </div>
-        )}
-
-        {/* Break Time Scoreboard */}
-        {(isEditingScoreboard || visibleCards.break) && (
-        <div className={`income-card income-tier-break ${isBreakActive ? 'active' : ''}`} style={{ background: isBreakActive ? 'rgba(251,146,60,0.1)' : 'transparent', padding: '0.3rem', borderRadius: '8px', border: isBreakActive ? '1px solid rgba(251,146,60,0.4)' : '1px solid transparent', opacity: (!visibleCards.break && isEditingScoreboard) ? 0.3 : 1 }}>
-          {isEditingScoreboard && <input type="checkbox" checked={visibleCards.break} onChange={() => toggleCard('break')} style={{ position: 'absolute', top: 4, right: 4, transform: 'scale(1.2)', cursor: 'pointer', zIndex: 10 }} />}
-          <span className="income-label">Break Time</span>
-          <span className="income-ars" style={{ color: '#fdba74', fontSize: '0.85rem', fontWeight: 700 }}>
-            {Math.floor((stats.dailyBreakMinutes || 0) / 60)}h {Math.round((stats.dailyBreakMinutes || 0) % 60)}m
-          </span>
-          <div style={{ width: '100%', display: 'flex', flexDirection: 'column', gap: '0.15rem', marginTop: '0.1rem' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.55rem', color: 'var(--text-muted)' }}>
-               <span>Budget: 90m</span>
-               <span style={{ color: (stats.dailyBreakMinutes || 0) > 90 ? '#ef4444' : 'inherit' }}>
-                 {(stats.dailyBreakMinutes || 0) > 90 ? `-${Math.round((stats.dailyBreakMinutes || 0) - 90)}m over` : `${Math.round(90 - (stats.dailyBreakMinutes || 0))}m left`}
-               </span>
-            </div>
-            <div style={{ height: '4px', background: 'rgba(0,0,0,0.5)', borderRadius: '2px', overflow: 'hidden' }}>
-               <div style={{ height: '100%', width: `${Math.min(100, ((stats.dailyBreakMinutes || 0) / 90) * 100)}%`, backgroundColor: (stats.dailyBreakMinutes || 0) > 90 ? '#ef4444' : '#fb923c', transition: 'width 1s' }} />
+            {/* Goal Ladder */}
+            <div className="income-card" style={{ flex: '1.2', borderLeft: '1px solid rgba(255,255,255,0.1)', paddingLeft: '0.5rem' }}>
+               <span className="income-label">🪜 NEXT LEVEL</span>
+               <span style={{ fontSize: '0.85rem', fontWeight: 800, color: '#a855f7' }}>{nextGoalLabel}</span>
+               <span style={{ fontSize: '0.6rem', opacity: 0.6 }}>Reach {nextMilestone}min</span>
             </div>
           </div>
-          <EditableMinutes value={stats.dailyBreakMinutes || 0} updateFn={updateStat} statKey="dailyBreakMinutes" />
-        </div>
-        )}
 
-        {/* Avail Time Scoreboard */}
-        {(isEditingScoreboard || visibleCards.avail) && (
-        <div className={`income-card income-tier-avail ${!isActive && !isBreakActive ? 'active' : ''}`} style={{ background: !isActive && !isBreakActive ? 'rgba(59,130,246,0.1)' : 'transparent', padding: '0.3rem', borderRadius: '8px', border: !isActive && !isBreakActive ? '1px solid rgba(59,130,246,0.4)' : '1px solid transparent', opacity: (!visibleCards.avail && isEditingScoreboard) ? 0.3 : 1 }}>
-          {isEditingScoreboard && <input type="checkbox" checked={visibleCards.avail} onChange={() => toggleCard('avail')} style={{ position: 'absolute', top: 4, right: 4, transform: 'scale(1.2)', cursor: 'pointer', zIndex: 10 }} />}
-          <span className="income-label">Avail Time {!isActive && !isBreakActive && `(${formatTime(availSeconds)})`}</span>
-          <span className="income-ars" style={{ color: '#93c5fd', fontSize: '0.85rem', fontWeight: 700 }}>
-            {Math.floor((stats.dailyAvailMinutes || 0) / 60)}h {Math.round((stats.dailyAvailMinutes || 0) % 60)}m
-          </span>
-          <EditableMinutes value={stats.dailyAvailMinutes || 0} updateFn={updateStat} statKey="dailyAvailMinutes" />
-        </div>
-        )}
+          {/* LOWER ROW: Interaction & Live Metrics */}
+          <div className="dashboard-row dashboard-row-lower">
+            
+            {/* Main Controls Group */}
+            <div style={{ display: 'flex', gap: '0.3rem', alignItems: 'center' }}>
+              {!isActive ? (
+                <button className="btn btn-primary" onClick={handleStart} style={{ padding: '0.4rem 0.8rem' }}><PlayIcon /> Connect</button>
+              ) : (
+                <button className="btn btn-danger" onClick={handleStop}><StopIcon /> STOP</button>
+              )}
+              {isBreakActive ? (
+                <button className="btn" onClick={stopBreak} style={{ background: '#fb923c', color: 'white' }}>STOP BREAK</button>
+              ) : (
+                <button className="btn" onClick={startBreak} disabled={isActive} style={{ opacity: isActive ? 0.3 : 1 }}>COFFEE</button>
+              )}
+            </div>
 
-        {/* Goal editor */}
-        {(isEditingScoreboard || visibleCards.goal) && (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem', borderLeft: '1px solid rgba(255,255,255,0.1)', paddingLeft: '0.6rem', justifyContent: 'center', position: 'relative', opacity: (!visibleCards.goal && isEditingScoreboard) ? 0.3 : 1 }}>
-          {isEditingScoreboard && <input type="checkbox" checked={visibleCards.goal} onChange={() => toggleCard('goal')} style={{ position: 'absolute', top: 0, right: 4, transform: 'scale(1.2)', cursor: 'pointer', zIndex: 10 }} />}
-          <GoalEditor statKey="goalMinutes" valueMinutes={stats.goalMinutes} updateFn={updateStat} ratePerMinute={RATE_PER_MINUTE}
-            dailyAverage={requiredDailyAverage} arsRate={arsRate} setArsRate={setArsRate}
-            monthlyMinutes={stats.monthlyMinutes} dailyMinutes={stats.dailyMinutes} remainingDays={remainingDays} />
-        </div>
-        )}
+            {/* Current Call (Live) */}
+            {(isEditingScoreboard || visibleCards.call) && (
+              <div className={`income-card ${isActive ? 'active' : ''}`} style={{ flex: '1', borderLeft: '1px solid rgba(255,255,255,0.1)', paddingLeft: '0.5rem' }}>
+                <span className="income-label" style={{ fontSize: '0.6rem' }}>LIVE CALL ({formatTime(sessionSeconds)})</span>
+                <span className="income-ars" style={{ fontSize: '0.9rem' }}>AR${Math.round(sessionEarnings * arsRate).toLocaleString('es-AR')}</span>
+              </div>
+            )}
 
-        {/* Shift / Work Session Info */}
-        <div className="income-card" style={{ borderLeft: '1px solid rgba(255,255,255,0.1)', paddingLeft: '0.6rem' }}>
-          <span className="income-label">Work Session</span>
-          <span className="income-ars" style={{ color: workSessionMinutes > 120 ? '#ef4444' : '#60a5fa', fontSize: '0.85rem' }}>{Math.floor(workSessionMinutes)}m</span>
-          <div style={{ fontSize: '0.6rem', color: 'var(--text-muted)', marginTop: '0.2rem' }}>
-            Logout: <strong style={{ color: '#fff' }}>{getCompensatedLogOff()}</strong>
+            {/* Audio Sinks */}
+            <div style={{ display: 'flex', gap: '0.2rem', alignItems: 'center' }}>
+              <select className="btn" style={{ fontSize: '0.65rem', width: '90px' }} value={selectedMicId} onChange={e => changeMicId(e.target.value)} onFocus={fetchDevices}>
+                <option value="">🎤 Mic</option>
+                {inputDevices.map(d => <option key={d.deviceId} value={d.deviceId}>{d.label || `Mic ${d.deviceId.slice(0,5)}`}</option>)}
+              </select>
+              <select className="btn" style={{ fontSize: '0.65rem', width: '90px' }} value={selectedSinkId} onChange={e => changeSinkId(e.target.value)} onFocus={fetchDevices}>
+                <option value="">🔊 Spk</option>
+                {outputDevices.map(d => <option key={d.deviceId} value={d.deviceId}>{d.label || `Spk ${d.deviceId.slice(0,5)}`}</option>)}
+              </select>
+            </div>
+
+            {/* Footer Stats: Break, Work Session */}
+            <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', borderLeft: '1px solid rgba(255,255,255,0.1)', paddingLeft: '0.5rem' }}>
+              <div className="income-card">
+                <span className="income-label">🔋SESSION</span>
+                <span style={{ fontSize: '0.8rem', color: '#60a5fa' }}>{Math.floor(workSessionMinutes)}m</span>
+              </div>
+              <div className="income-card">
+                <span className="income-label">🚪LOGOUT</span>
+                <span style={{ fontSize: '0.8rem', fontWeight: 800 }}>{getCompensatedLogOff()}</span>
+              </div>
+            </div>
+
+            {/* Compact Tool Toggles */}
+            <div style={{ display: 'flex', gap: '0.1rem', alignItems: 'center' }}>
+              <button onClick={() => setIsNotesOpen(!isNotesOpen)} className="btn-emoji" title="Notes">📝</button>
+              <button onClick={() => setIsToolbarVisible(!isToolbarVisible)} className="btn-emoji" title="Tools">🛠️</button>
+              <button onClick={() => setIsEditingScoreboard(!isEditingScoreboard)} className="btn-emoji" title="Edit">{isEditingScoreboard ? '💾' : '✏️'}</button>
+              <button onClick={() => setIsCollapsed(true)} className="btn-emoji" style={{ color: '#ef4444' }}>▲</button>
+            </div>
           </div>
         </div>
+      )}
 
-        {/* Actions toggle container - CONSOLIDATED INTO ONE ROW */}
-        <div style={{ display: 'flex', flexDirection: 'row', gap: '0.25rem', alignSelf: 'center', alignItems: 'center', paddingLeft: '0.8rem', borderLeft: '1px solid rgba(255,255,255,0.1)' }}>
-          <button onClick={() => setIsNotesOpen(!isNotesOpen)}
-            style={{ background: isNotesOpen ? 'rgba(59,130,246,0.2)' : 'none', border: 'none', color: isNotesOpen ? '#60a5fa' : 'var(--text-muted)', cursor: 'pointer', fontSize: '1rem', padding: '0.3rem', borderRadius: '4px' }}
-            title={isNotesOpen ? "Hide Notes" : "Show Notes"}>📝</button>
-          <button onClick={() => setIsToolbarVisible(!isToolbarVisible)}
-            style={{ background: isToolbarVisible ? 'rgba(16,185,129,0.2)' : 'none', border: 'none', color: isToolbarVisible ? '#34d399' : 'var(--text-muted)', cursor: 'pointer', fontSize: '1rem', padding: '0.3rem', borderRadius: '4px' }}
-            title={isToolbarVisible ? "Hide Toolbar" : "Show Toolbar"}>🛠️</button>
-          <button onClick={() => setIsEditingScoreboard(e => !e)}
-            style={{ background: isEditingScoreboard ? 'rgba(16,185,129,0.2)' : 'none', border: 'none', cursor: 'pointer', fontSize: '1rem', padding: '0.3rem', borderRadius: '4px' }}
-            title="Edit scoreboard items">{isEditingScoreboard ? '💾' : '✏️'}</button>
-          <button onClick={() => setIsCollapsed(c => !c)}
-            style={{ background: isCollapsed ? 'rgba(59,130,246,0.2)' : 'none', border: 'none', color: isCollapsed ? '#60a5fa' : 'var(--text-muted)', cursor: 'pointer', fontSize: '0.8rem', padding: '0.3rem', borderRadius: '4px' }}
-            title={isCollapsed ? "Expand dashboard" : "Collapse dashboard"}>{isCollapsed ? '▼' : '▲'}</button>
-        </div>
-      </div>
+
+      {/* Progress bars (Always Visible) */}
 
       {/* Progress bars (Always Visible) */}
       {dailyGoal > 0 && (

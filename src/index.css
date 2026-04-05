@@ -239,6 +239,27 @@ body {
   color: white;
 }
 
+.btn-emoji {
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  font-size: 1.1rem;
+  padding: 0.3rem;
+  border-radius: 4px;
+  transition: background 0.2s, transform 0.1s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.btn-emoji:hover {
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.btn-emoji:active {
+  transform: scale(0.9);
+}
+
 .btn-primary {
   background-color: var(--accent-primary);
 }
