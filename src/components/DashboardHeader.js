@@ -549,22 +549,26 @@ export const DashboardHeader = ({ onStartAudio, onStopAudio, onReconnectStream, 
               </div>
             </div>
 
-            {/* Tool toggles — readable text labels */}
-            <div style={{ display: 'flex', gap: '0.2rem', alignItems: 'center', flexShrink: 0 }}>
+            {/* Tool toggles — each has a distinct solid background so they're always readable */}
+            <div style={{ display: 'flex', gap: '0.25rem', alignItems: 'center', flexShrink: 0 }}>
               <button onClick={() => setIsNotesOpen(!isNotesOpen)}
-                className="btn" style={{ fontSize: '0.55rem', padding: '0.2rem 0.4rem', background: isNotesOpen ? 'rgba(59,130,246,0.3)' : undefined }}>
-                📝 {isNotesOpen ? 'Notes ✓' : 'Notes'}
+                style={{ fontSize: '0.6rem', padding: '0.25rem 0.5rem', borderRadius: '5px', border: 'none', cursor: 'pointer', fontWeight: 700,
+                  background: isNotesOpen ? '#2563eb' : '#1e3a5f', color: '#bfdbfe' }}>
+                📝 Notes
               </button>
               <button onClick={() => setIsToolbarVisible(!isToolbarVisible)}
-                className="btn" style={{ fontSize: '0.55rem', padding: '0.2rem 0.4rem', background: isToolbarVisible ? 'rgba(59,130,246,0.3)' : undefined }}>
-                🛠️ {isToolbarVisible ? 'Tools ✓' : 'Tools'}
+                style={{ fontSize: '0.6rem', padding: '0.25rem 0.5rem', borderRadius: '5px', border: 'none', cursor: 'pointer', fontWeight: 700,
+                  background: isToolbarVisible ? '#7c3aed' : '#3b1f6e', color: '#ddd6fe' }}>
+                🛠️ Tools
               </button>
               <button onClick={() => setIsEditingScoreboard(!isEditingScoreboard)}
-                className="btn" style={{ fontSize: '0.55rem', padding: '0.2rem 0.4rem' }}>
+                style={{ fontSize: '0.6rem', padding: '0.25rem 0.5rem', borderRadius: '5px', border: 'none', cursor: 'pointer', fontWeight: 700,
+                  background: isEditingScoreboard ? '#d97706' : '#5c3a00', color: '#fde68a' }}>
                 {isEditingScoreboard ? '💾 Save' : '✏️ Edit'}
               </button>
               <button onClick={() => setIsCollapsed(true)}
-                className="btn" style={{ fontSize: '0.55rem', padding: '0.2rem 0.4rem', color: '#fca5a5' }}>
+                style={{ fontSize: '0.6rem', padding: '0.25rem 0.5rem', borderRadius: '5px', border: 'none', cursor: 'pointer', fontWeight: 700,
+                  background: '#7f1d1d', color: '#fca5a5' }}>
                 ▲ Close
               </button>
             </div>
