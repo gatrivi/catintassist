@@ -304,8 +304,10 @@ export const DashboardHeader = ({ onStartAudio, onStopAudio, onReconnectStream, 
   const streak = stats.streak || 0;
   const callsToday = stats.callsToday || 0;
   const avgCallMins = callsToday > 0 ? Math.round(stats.dailyMinutes / callsToday) : 0;
+  // Include live unbanked session earnings so rate doesn't drop during active calls
+  const totalEarnedArs = dailyArs + Math.round(unbankedMins * RATE_PER_MINUTE * arsRate);
   const effectiveRateArsHr = shiftElapsedMins > 10
-    ? Math.round((dailyArs / shiftElapsedMins) * 60)
+    ? Math.round((totalEarnedArs / shiftElapsedMins) * 60)
     : null;
 
   const copyValue = (v) => navigator.clipboard.writeText(String(v).replace(/[^\d]/g, ''));
@@ -498,6 +500,71 @@ export const DashboardHeader = ({ onStartAudio, onStopAudio, onReconnectStream, 
                <span style={{ fontSize: '0.8rem', fontWeight: 800, color: '#a855f7', whiteSpace: 'nowrap' }}>{nextGoalLabel}</span>
                <span style={{ fontSize: '0.55rem', opacity: 0.6, whiteSpace: 'nowrap' }}>{nextMilestone}m</span>
             </div>
+          </div>
+
+          {/* MIDDLE ROW: Smart Intelligence Metrics */}
+          <div style={{ display: 'flex', gap: '0.4rem', padding: '0.2rem 0', borderTop: '1px solid rgba(255,255,255,0.06)', borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
+
+            {/* PACE ETA */}
+            <div className="income-card" style={{ flex: '1 1 0', minWidth: 0, background: 'rgba(59,130,246,0.06)' }}
+              title={`PACE: At this rate you'll hit today's goal at ${pacePrediction.label}. ${pacePrediction.detail || ''}`}>
+              <span className="income-label">🎯 PACE ETA</span>
+              <span style={{ fontSize: '1rem', fontWeight: 800, color: pacePrediction.color }}>{pacePrediction.label}</span>
+              <span style={{ fontSize: '0.5rem', opacity: 0.5 }}>{pacePrediction.detail || 'at current rate'}</span>
+            </div>
+
+            {/* QUALITY */}
+            <div className="income-card" style={{ flex: '1 1 0', minWidth: 0, background: 'rgba(59,130,246,0.06)' }}
+              title={qualityScore?.goalUnreachable
+                ? `Today's goal (${Math.round(dailyGoal)}m) unreachable before 20:00. Max ~${Math.round(maxEarnableToday)}m.`
+                : qualityScore ? `DAY QUALITY: ${qualityScore.pct}% of ideal pace for your actual session window.` : 'Not enough data yet'}>
+              <span className="income-label">📈 QUALITY</span>
+              <span style={{ fontSize: '1rem', fontWeight: 800, color: qualityScore?.goalUnreachable ? '#f59e0b' : (qualityScore?.color || 'var(--text-muted)') }}>
+                {qualityScore?.goalUnreachable ? '⚡Adapt' : qualityScore ? `${qualityScore.pct}%` : '–'}
+              </span>
+              <span style={{ fontSize: '0.5rem', opacity: 0.5 }}>vs ideal pace</span>
+            </div>
+
+            {/* STREAK */}
+            <div className="income-card" style={{ flex: '1 1 0', minWidth: 0, background: 'rgba(251,146,60,0.06)' }}
+              title={`STREAK: ${streak} consecutive day(s) hitting daily goal`}>
+              <span className="income-label">🔥 STREAK</span>
+              <span style={{ fontSize: '1rem', fontWeight: 800, color: streak >= 3 ? '#fb923c' : streak > 0 ? '#fcd34d' : 'var(--text-muted)' }}>
+                {streak > 0 ? `${streak} days 🔥` : 'none yet'}
+              </span>
+              <span style={{ fontSize: '0.5rem', opacity: 0.5 }}>daily goal days</span>
+            </div>
+
+            {/* CALL RATE */}
+            <div className="income-card" style={{ flex: '1 1 0', minWidth: 0, background: 'rgba(59,130,246,0.06)' }}
+              title={`${callsToday} calls today, avg ${avgCallMins}m each`}>
+              <span className="income-label">📞 CALLS</span>
+              <span style={{ fontSize: '1rem', fontWeight: 800, color: callsToday > 0 ? '#93c5fd' : 'var(--text-muted)' }}>
+                {callsToday > 0 ? `${callsToday}×${avgCallMins}m` : '–'}
+              </span>
+              <span style={{ fontSize: '0.5rem', opacity: 0.5 }}>count × avg mins</span>
+            </div>
+
+            {/* EFFECTIVE RATE */}
+            <div className="income-card" style={{ flex: '1 1 0', minWidth: 0, background: 'rgba(139,92,246,0.06)' }}
+              title={`Effective Rate: AR$${effectiveRateArsHr?.toLocaleString('es-AR') || '–'}/hr including avail time`}>
+              <span className="income-label">⚡ EFF. RATE</span>
+              <span style={{ fontSize: '1rem', fontWeight: 800, color: effectiveRateArsHr ? '#c4b5fd' : 'var(--text-muted)' }}>
+                {effectiveRateArsHr ? `$${effectiveRateArsHr.toLocaleString('es-AR')}/h` : '–'}
+              </span>
+              <span style={{ fontSize: '0.5rem', opacity: 0.5 }}>incl. avail time</span>
+            </div>
+
+            {/* BREAK BUDGET */}
+            <div className="income-card" style={{ flex: '1 1 0', minWidth: 0, background: breakLeft < 15 ? 'rgba(239,68,68,0.06)' : 'rgba(251,146,60,0.06)' }}
+              title={`Break budget: ${Math.round(breakLeft)}m left of ${breakLimit}m daily allowance`}>
+              <span className="income-label">☕ BREAK LEFT</span>
+              <span style={{ fontSize: '1rem', fontWeight: 800, color: breakLeft < 15 ? '#ef4444' : breakLeft < 30 ? '#f59e0b' : '#6ee7b7' }}>
+                {Math.round(breakLeft)}m
+              </span>
+              <span style={{ fontSize: '0.5rem', opacity: 0.5 }}>of {breakLimit}m budget</span>
+            </div>
+
           </div>
 
           {/* LOWER ROW: Interaction & Live Metrics */}
