@@ -85,22 +85,16 @@ body {
   flex-direction: column;
   height: 100vh;
   padding: 0.1rem;
-  gap: 0.1rem;          /* Tight gap — every pixel counts */
+  gap: 0.15rem;
   max-width: 1600px;
   margin: 0 auto;
-  overflow: hidden;     /* Hard clip — nothing bleeds out of 100vh */
-}
-
-/* Header is always fixed-size — never flex-grows */
-.app-container > header {
-  flex-shrink: 0;
-  flex-grow: 0;
 }
 
 .main-content {
   display: flex;
   flex-direction: column;
   flex: 1;
+  min-height: 0;   /* Critical: allows flex child to shrink below content height */
   gap: 0.5rem;
   overflow: hidden;
 }
@@ -160,16 +154,10 @@ body {
 .dashboard-header {
   display: flex;
   flex-direction: column;
-  gap: 0.15rem;         /* Tighter gap between banner + card */
-  padding: 0.2rem 0.25rem;
+  gap: 0.25rem;
+  padding: 0.25rem;
   min-width: 0;
-  overflow: hidden;
-  flex-shrink: 0;       /* Never let the layout compress the header */
-}
-
-/* Collapsed = max 95px total. Two rows: banner (~22px) + condensed card (~55px) + gap */
-.dashboard-header:has(.condensed-header-card) {
-  max-height: 95px;
+  flex-shrink: 0;  /* Header takes its natural height; main-content gets the rest */
 }
 
 .dashboard-title-row {
