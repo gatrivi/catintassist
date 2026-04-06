@@ -644,11 +644,8 @@ export const DashboardHeader = ({ onStartAudio, onStopAudio, onReconnectStream, 
         </div>
       )}
 
-
-      {/* Progress bars (Always Visible) */}
-
-      {/* Progress bars (Always Visible) */}
-      {dailyGoal > 0 && (
+      {/* Progress bars — only in collapsed mode, below the condensed metrics */}
+      {isCollapsed && dailyGoal > 0 && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem', padding: '0.3rem 0.4rem 0.1rem' }}>
           {/* Monthly bar */}
           <div style={{ display: 'flex', flexDirection: 'column', gap: '0.15rem' }}>
