@@ -101,7 +101,7 @@ body {
 .main-content.tools-open,
 .main-content.notes-open {
   display: grid;
-  grid-template-columns: 1fr 300px; /* Fixed width for tools side, responsive transcript */
+  grid-template-columns: 1fr 260px; /* Sidebar narrowed to leave more room for header-spanning content */
   grid-template-rows: 1fr;
 }
 
@@ -155,6 +155,8 @@ body {
   flex-direction: column;
   gap: 0.25rem;
   padding: 0.25rem;
+  min-width: 0;       /* Respect grid constraints */
+  overflow: hidden;   /* Never bleed past the viewport */
 }
 
 .dashboard-title-row {
@@ -441,10 +443,10 @@ body {
 /* Income Tracker Enchancements */
 .income-dashboard {
   display: grid;
-  grid-template-rows: auto auto; /* Two logical levels of info */
+  grid-template-rows: auto auto;
   gap: 0.15rem;
   padding: 0.1rem 0.3rem; 
-  background: rgba(12, 12, 18, 0.9); /* Darker, more premium feel */
+  background: rgba(12, 12, 18, 0.9);
   border-radius: 8px;
   border: 1px solid rgba(255, 255, 255, 0.05);
   margin-top: 0.15rem;
@@ -452,16 +454,21 @@ body {
   position: relative;
   z-index: 100;
   box-shadow: 0 4px 20px rgba(0,0,0,0.4);
+  width: 100%;          /* Never wider than the header */
+  box-sizing: border-box;
+  min-width: 0;         /* Allow shrinking inside flex parents */
 }
 
 /* Sub-containers for the two rows */
 .dashboard-row {
   display: flex;
   flex-direction: row;
-  justify-content: space-between;
+  flex-wrap: wrap;      /* Wrap instead of overflow on narrow screens */
+  justify-content: flex-start;
   align-items: center;
-  gap: 0.2rem;
+  gap: 0.25rem;
   width: 100%;
+  min-width: 0;
 }
 
 .dashboard-row-upper {
@@ -477,6 +484,8 @@ body {
   justify-content: center;
   position: relative;
   transition: all 0.3s ease;
+  min-width: 0;   /* Allow cards to shrink with flex-wrap */
+  flex-shrink: 1;
 }
 
 /* Base glowing effect for actie elements */

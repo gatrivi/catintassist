@@ -345,46 +345,47 @@ export const DashboardHeader = ({ onStartAudio, onStopAudio, onReconnectStream, 
           <div className="dashboard-row dashboard-row-upper">
             
             {/* Today's Bounty (THE STAR) */}
-            <div className="income-card" style={{ flex: '1.5', background: 'rgba(52, 211, 153, 0.1)', border: '1px solid rgba(52, 211, 153, 0.2)', padding: '0.4rem', borderRadius: '10px' }}>
+            <div className="income-card" style={{ flex: '2 1 0', minWidth: 0, background: 'rgba(52, 211, 153, 0.1)', border: '1px solid rgba(52, 211, 153, 0.2)', padding: '0.3rem 0.4rem', borderRadius: '10px' }}>
               <span className="income-label" style={{ color: '#6ee7b7', fontWeight: 800 }}>💰 TODAY'S BOUNTY</span>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.3rem', flexWrap: 'wrap', justifyContent: 'center' }}>
                 <span style={{ 
-                  fontSize: '1.4rem', 
+                  fontSize: '1.1rem', 
                   fontWeight: 900, 
                   color: isBountyAnimating ? '#fcd34d' : '#fff',
                   transition: 'color 0.3s ease',
-                  textShadow: isBountyAnimating ? '0 0 15px rgba(252, 211, 77, 0.5)' : 'none'
+                  textShadow: isBountyAnimating ? '0 0 15px rgba(252, 211, 77, 0.5)' : 'none',
+                  whiteSpace: 'nowrap'
                 }}>
                   AR${displayBounty.toLocaleString('es-AR')}
                 </span>
-                {isBountyAnimating && <span style={{ fontSize: '0.8rem', color: '#6ee7b7', animation: 'slideUpBounce 0.5s' }}>-tick</span>}
+                {isBountyAnimating && <span style={{ fontSize: '0.7rem', color: '#6ee7b7', animation: 'slideUpBounce 0.5s' }}>-tick</span>}
               </div>
-              <span style={{ fontSize: '0.6rem', opacity: 0.6 }}>Target: AR${dailyTargetArs.toLocaleString('es-AR')}</span>
+              <span style={{ fontSize: '0.55rem', opacity: 0.6, whiteSpace: 'nowrap' }}>Target: AR${dailyTargetArs.toLocaleString('es-AR')}</span>
             </div>
 
             {/* Monthly Profit */}
             {(isEditingScoreboard || visibleCards.month) && (
-              <div className="income-card income-tier-1" style={{ flex: '1' }}>
-                <span className="income-label">🗓️ MONTHLY PROFIT</span>
-                <span className="income-ars">🌊${monthlyArs.toLocaleString('es-AR')}</span>
-                <span style={{ fontSize: '0.6rem', opacity: 0.5 }}>Goal: ${monthlyTargetArs.toLocaleString('es-AR')}</span>
+              <div className="income-card income-tier-1" style={{ flex: '1 1 0', minWidth: 0 }}>
+                <span className="income-label">🗓️ MO.PROFIT</span>
+                <span className="income-ars" style={{ whiteSpace: 'nowrap' }}>🌊${monthlyArs.toLocaleString('es-AR')}</span>
+                <span style={{ fontSize: '0.55rem', opacity: 0.5, whiteSpace: 'nowrap' }}>/{monthlyTargetArs.toLocaleString('es-AR')}</span>
               </div>
             )}
 
             {/* Today's Shift Progress */}
             {(isEditingScoreboard || visibleCards.today) && (
-              <div className="income-card income-tier-2" style={{ flex: '1', cursor: 'pointer' }} onClick={() => !isEditingScoreboard && setIsTodayDialOpen(true)}>
-                <span className="income-label">{activeDayEmoji} DAILY SHIFT</span>
-                <span className="income-ars">🌊{Math.round(stats.dailyMinutes)}m / 🎯{Math.round(dailyGoal)}m</span>
-                <span style={{ fontSize: '0.6rem', opacity: 0.6 }}>({(stats.dailyMinutes / (dailyGoal || 1) * 100).toFixed(0)}%)</span>
+              <div className="income-card income-tier-2" style={{ flex: '1 1 0', minWidth: 0, cursor: 'pointer' }} onClick={() => !isEditingScoreboard && setIsTodayDialOpen(true)}>
+                <span className="income-label">{activeDayEmoji} DAILY</span>
+                <span className="income-ars" style={{ whiteSpace: 'nowrap' }}>🌊{Math.round(stats.dailyMinutes)}m/🎯{Math.round(dailyGoal)}m</span>
+                <span style={{ fontSize: '0.55rem', opacity: 0.6 }}>({(stats.dailyMinutes / (dailyGoal || 1) * 100).toFixed(0)}%)</span>
               </div>
             )}
 
             {/* Goal Ladder */}
-            <div className="income-card" style={{ flex: '1.2', borderLeft: '1px solid rgba(255,255,255,0.1)', paddingLeft: '0.5rem' }}>
-               <span className="income-label">🪜 NEXT LEVEL</span>
-               <span style={{ fontSize: '0.85rem', fontWeight: 800, color: '#a855f7' }}>{nextGoalLabel}</span>
-               <span style={{ fontSize: '0.6rem', opacity: 0.6 }}>Reach {nextMilestone}min</span>
+            <div className="income-card" style={{ flex: '1 1 0', minWidth: 0, borderLeft: '1px solid rgba(255,255,255,0.1)', paddingLeft: '0.5rem' }}>
+               <span className="income-label">🪜 NEXT</span>
+               <span style={{ fontSize: '0.8rem', fontWeight: 800, color: '#a855f7', whiteSpace: 'nowrap' }}>{nextGoalLabel}</span>
+               <span style={{ fontSize: '0.55rem', opacity: 0.6, whiteSpace: 'nowrap' }}>{nextMilestone}m</span>
             </div>
           </div>
 
@@ -407,19 +408,19 @@ export const DashboardHeader = ({ onStartAudio, onStopAudio, onReconnectStream, 
 
             {/* Current Call (Live) */}
             {(isEditingScoreboard || visibleCards.call) && (
-              <div className={`income-card ${isActive ? 'active' : ''}`} style={{ flex: '1', borderLeft: '1px solid rgba(255,255,255,0.1)', paddingLeft: '0.5rem' }}>
-                <span className="income-label" style={{ fontSize: '0.6rem' }}>LIVE CALL ({formatTime(sessionSeconds)})</span>
-                <span className="income-ars" style={{ fontSize: '0.9rem' }}>AR${Math.round(sessionEarnings * arsRate).toLocaleString('es-AR')}</span>
+              <div className={`income-card ${isActive ? 'active' : ''}`} style={{ flex: '1 1 0', minWidth: 0, borderLeft: '1px solid rgba(255,255,255,0.1)', paddingLeft: '0.5rem' }}>
+                <span className="income-label" style={{ fontSize: '0.55rem' }}>CALL ({formatTime(sessionSeconds)})</span>
+                <span className="income-ars" style={{ fontSize: '0.85rem', whiteSpace: 'nowrap' }}>AR${Math.round(sessionEarnings * arsRate).toLocaleString('es-AR')}</span>
               </div>
             )}
 
             {/* Audio Sinks */}
-            <div style={{ display: 'flex', gap: '0.2rem', alignItems: 'center' }}>
-              <select className="btn" style={{ fontSize: '0.65rem', width: '90px' }} value={selectedMicId} onChange={e => changeMicId(e.target.value)} onFocus={fetchDevices}>
+            <div style={{ display: 'flex', gap: '0.2rem', alignItems: 'center', flexShrink: 1, minWidth: 0 }}>
+              <select className="btn" style={{ fontSize: '0.6rem', maxWidth: '80px', minWidth: '50px', flex: '1 1 0' }} value={selectedMicId} onChange={e => changeMicId(e.target.value)} onFocus={fetchDevices}>
                 <option value="">🎤 Mic</option>
                 {inputDevices.map(d => <option key={d.deviceId} value={d.deviceId}>{d.label || `Mic ${d.deviceId.slice(0,5)}`}</option>)}
               </select>
-              <select className="btn" style={{ fontSize: '0.65rem', width: '90px' }} value={selectedSinkId} onChange={e => changeSinkId(e.target.value)} onFocus={fetchDevices}>
+              <select className="btn" style={{ fontSize: '0.6rem', maxWidth: '80px', minWidth: '50px', flex: '1 1 0' }} value={selectedSinkId} onChange={e => changeSinkId(e.target.value)} onFocus={fetchDevices}>
                 <option value="">🔊 Spk</option>
                 {outputDevices.map(d => <option key={d.deviceId} value={d.deviceId}>{d.label || `Spk ${d.deviceId.slice(0,5)}`}</option>)}
               </select>
