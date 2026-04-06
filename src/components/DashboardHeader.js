@@ -330,70 +330,75 @@ export const DashboardHeader = ({ onStartAudio, onStopAudio, onReconnectStream, 
   return (
     <header className="dashboard-header glass-panel" style={{ position: 'relative', zIndex: 100 }}>
 
-      {/* ── HARD CUTOFF WARNING — always visible when approaching 20:00 ── */}
-      {cutoffWarning && (
-        <div style={{
-          display: 'flex', alignItems: 'center', justifyContent: 'center',
-          gap: '0.5rem', padding: '0.15rem 0.5rem',
-          background: cutoffWarning.level === 'stop' ? 'rgba(239,68,68,0.2)' : 
-                      cutoffWarning.level === 'urgent' ? 'rgba(239,68,68,0.15)' : 'rgba(245,158,11,0.1)',
-          border: `1px solid ${cutoffWarning.color}40`,
-          borderRadius: '4px', marginBottom: '0.1rem',
-          animation: cutoffWarning.level === 'urgent' || cutoffWarning.level === 'stop' ? 'pulseDanger 1.5s infinite' : 'none'
-        }}>
-          <span style={{ fontSize: '0.65rem', fontWeight: 800, color: cutoffWarning.color, letterSpacing: '0.05em' }}>
-            {cutoffWarning.label}
-          </span>
-          <span style={{ fontSize: '0.55rem', opacity: 0.6 }}>
-            Hard stop for healthy sleep cycle
-          </span>
-          {cutoffWarning.level === 'stop' && (
-            <span style={{ fontSize: '0.6rem', color: '#fca5a5', fontWeight: 600 }}>
-              → Wind down → Sleep 23:00 → Up 7:00 → Ready 9:00
-            </span>
-          )}
-        </div>
-      )}
 
-      {/* ── MONTHLY DEFICIT / RECOVERY BANNER ── */}
-      {/* Shows when behind on monthly pace — honest, not panic-inducing */}
+      {/* ── DEFICIT / RECOVERY BANNER — always visible, has collapse toggle built-in ── */}
       {isInDeficit && monthlyDeficitMins > 30 && (
         <div style={{
-          display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+          display: 'flex', alignItems: 'center',
           gap: '0.4rem', padding: '0.12rem 0.5rem',
-          background: 'rgba(139,92,246,0.08)',
-          border: '1px solid rgba(139,92,246,0.25)',
-          borderRadius: '4px', marginBottom: '0.1rem', flexWrap: 'wrap'
+          background: cutoffWarning ? `${cutoffWarning.color}18` : 'rgba(139,92,246,0.08)',
+          border: `1px solid ${cutoffWarning ? cutoffWarning.color + '50' : 'rgba(139,92,246,0.25)'}`,
+          borderRadius: '4px', marginBottom: '0.1rem', flexWrap: 'wrap',
+          animation: cutoffWarning?.level === 'urgent' || cutoffWarning?.level === 'stop' ? 'pulseDanger 1.5s infinite' : 'none'
         }}>
+          {/* Toggle + cutoff warning folded into one button */}
+          <button
+            onClick={() => setIsCollapsed(c => !c)}
+            style={{
+              background: cutoffWarning ? `${cutoffWarning.color}30` : 'rgba(139,92,246,0.2)',
+              border: `1px solid ${cutoffWarning ? cutoffWarning.color : 'rgba(139,92,246,0.4)'}`,
+              color: cutoffWarning ? cutoffWarning.color : '#c4b5fd',
+              borderRadius: '4px', fontSize: '0.65rem', padding: '0 0.35rem',
+              cursor: 'pointer', fontWeight: 800, lineHeight: '18px', whiteSpace: 'nowrap'
+            }}
+            title={isCollapsed ? 'Expand dashboard' : 'Collapse dashboard'}>
+            {cutoffWarning ? cutoffWarning.label : (isCollapsed ? '▼ stats' : '▲ close')}
+          </button>
           <span style={{ fontSize: '0.6rem', color: '#c4b5fd', fontWeight: 700 }}>
-            📉 {Math.round(monthlyDeficitMins)}m behind pace
+            📉 {Math.round(monthlyDeficitMins)}m behind
           </span>
-          <span style={{ fontSize: '0.6rem', opacity: 0.6 }}>|</span>
-          <span style={{ fontSize: '0.6rem', color: '#a78bfa' }} title="Minutes per day needed to reach Growth tier (11,000m) by month end">
-            🎯 Recovery: <strong style={{ color: '#fff' }}>{recoveryDailyTarget}m/day</strong> → 11k
+          <span style={{ fontSize: '0.6rem', opacity: 0.5 }}>|</span>
+          <span style={{ fontSize: '0.6rem', color: '#a78bfa' }} title="Per day to reach Growth (11,000m)">
+            🎯 <strong style={{ color: '#fff' }}>{recoveryDailyTarget}m/d</strong> → 11k
           </span>
-          <span style={{ fontSize: '0.6rem', opacity: 0.6 }}>|</span>
-          <span style={{ fontSize: '0.6rem', color: '#7dd3fc' }} title="Minimum per day to hit Floor goal (5,500m = rent)">
-            🏠 Floor: <strong style={{ color: '#fff' }}>{survivalDailyTarget}m/day</strong>
+          <span style={{ fontSize: '0.6rem', opacity: 0.5 }}>|</span>
+          <span style={{ fontSize: '0.6rem', color: '#7dd3fc' }} title="Per day to cover rent (5,500m)">
+            🏠 <strong style={{ color: '#fff' }}>{survivalDailyTarget}m/d</strong>
           </span>
           <span style={{ fontSize: '0.6rem', opacity: 0.5 }}>({remainingDays}d left)</span>
         </div>
       )}
-      {/* Show "on pace" or "ahead" without a banner if in surplus */}
       {!isInDeficit && stats.monthlyMinutes > 0 && (
         <div style={{
-          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          display: 'flex', alignItems: 'center', justifyContent: 'space-between',
           gap: '0.4rem', padding: '0.1rem 0.5rem',
           background: 'rgba(16,185,129,0.05)',
           border: '1px solid rgba(16,185,129,0.15)',
           borderRadius: '4px', marginBottom: '0.1rem'
         }}>
-          <span style={{ fontSize: '0.6rem', color: '#6ee7b7' }}>
-            ✅ {Math.round(-monthlyDeficitMins)}m ahead of pace — keep it up
-          </span>
-          <span style={{ fontSize: '0.55rem', opacity: 0.5 }}>
-            | Growth target: {recoveryDailyTarget}m/day to 11k
-          </span>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+            <button
+              onClick={() => setIsCollapsed(c => !c)}
+              style={{ background: 'rgba(16,185,129,0.2)', border: '1px solid rgba(16,185,129,0.4)', color: '#6ee7b7', borderRadius: '4px', fontSize: '0.7rem', padding: '0 0.3rem', cursor: 'pointer', fontWeight: 800, lineHeight: '18px' }}
+              title={isCollapsed ? 'Expand dashboard' : 'Collapse dashboard'}>
+              {isCollapsed ? '▼' : '▲'}
+            </button>
+            <span style={{ fontSize: '0.6rem', color: '#6ee7b7' }}>
+              ✅ {Math.round(-monthlyDeficitMins)}m ahead
+            </span>
+            <span style={{ fontSize: '0.55rem', opacity: 0.5 }}>| Growth: {recoveryDailyTarget}m/d to 11k</span>
+          </div>
+        </div>
+      )}
+      {/* No banner yet (start of month/no data) — still show the toggle */}
+      {stats.monthlyMinutes === 0 && (
+        <div style={{ display: 'flex', justifyContent: 'flex-end', padding: '0.1rem 0.5rem' }}>
+          <button
+            onClick={() => setIsCollapsed(c => !c)}
+            style={{ background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.15)', color: 'var(--text-muted)', borderRadius: '4px', fontSize: '0.7rem', padding: '0 0.4rem', cursor: 'pointer', lineHeight: '18px' }}
+            title={isCollapsed ? 'Expand dashboard' : 'Collapse dashboard'}>
+            {isCollapsed ? '▼ stats' : '▲ stats'}
+          </button>
         </div>
       )}
 
@@ -644,178 +649,90 @@ export const DashboardHeader = ({ onStartAudio, onStopAudio, onReconnectStream, 
         </div>
       )}
 
-      {/* Progress bars — only in collapsed mode, below the condensed metrics */}
-      {isCollapsed && dailyGoal > 0 && (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem', padding: '0.3rem 0.4rem 0.1rem' }}>
-          {/* Monthly bar */}
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.15rem' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.6rem', color: 'var(--text-muted)', alignItems: 'center' }}>
-              <span style={{ fontWeight: 600 }}>🗓️ Day {currentDay}/{daysInMonth}</span>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '0.3rem' }}>
-                {!isMonthlyGoalMet ? (
-                  <>
-                    <span 
-                      title={`This is your next immediate target on The Pro Ladder. Reach this to level up! (1% = ${Math.floor(stats.goalMinutes / 100)}m)`}
-                      style={{ color: '#fff', background: 'rgba(59,130,246,0.3)', padding: '0.1rem 0.4rem', borderRadius: '4px', border: '1px solid rgba(59,130,246,0.4)', fontWeight: 800, cursor: 'help' }}>
-                       🪜 {nextGoalLabel} ({nextMilestone}m)
-                    </span>
-                    <span 
-                      title={`Current Progress towards your Monthly Goal. (1% = ${Math.floor(stats.goalMinutes / 100)}m)`}
-                      style={{ margin: '0 0.4rem', fontSize: '0.75rem', color: isMonthlyGoalMet ? '#10b981' : '#a855f7', fontWeight: 800, cursor: 'help' }}>
-                      {((stats.monthlyMinutes / (stats.goalMinutes || 1)) * 100).toFixed(1)}%
-                    </span>
-                    <span style={{ opacity: 0.4 }}>|</span>
-                    <span 
-                      title="Maximum potential ARS you can earn this month if you maintain your current daily pace."
-                      style={{ background: 'rgba(139,92,246,0.15)', padding: '0.1rem 0.4rem', borderRadius: '4px', border: '1px solid rgba(139,92,246,0.3)', cursor: 'help' }}>
-                      Paced Max: <strong style={{ color: '#d8b4fe', textShadow: '0 0 8px rgba(139,92,246,0.5)' }}>AR${monthlyRemainingCash}</strong>
-                    </span>
-                  </>
-                ) : (
-                  <span style={{ color: stats.monthlyMinutes > stats.goalMinutes * 1.2 ? '#fcd34d' : '#34d399', fontWeight: 800 }}>
-                    {stats.monthlyMinutes > milestones[11] ? '👑 LEGENDARY STATUS REACHED!' : stats.monthlyMinutes > stats.goalMinutes * 1.2 ? '🔥 UNSTOPPABLE!' : stats.monthlyMinutes > stats.goalMinutes * 1.1 ? '🚀 ORBIT (110%!)' : '🎉 Goal Met!'}
-                  </span>
-                )}
-              </div>
-              <span style={{ opacity: 0.5 }}>Goal: {stats.goalMinutes}m</span>
+      {/* ── ULTRA-COMPACT 3-BAR PROGRESS STACK ── always visible ── */}
+      {dailyGoal > 0 && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '2px', padding: '0.1rem 0.4rem 0.15rem' }}>
+
+          {/* Shared micro-legend: one line for all three bars */}
+          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.5rem', color: 'var(--text-muted)', lineHeight: 1, marginBottom: '1px' }}>
+            <span title="Monthly progress bar below">🗓️ {Math.round(stats.monthlyMinutes)}m / {stats.goalMinutes}m
+              <strong style={{ color: isMonthlyGoalMet ? '#10b981' : '#a855f7', marginLeft: '3px' }}>
+                {((stats.monthlyMinutes / (stats.goalMinutes || 1)) * 100).toFixed(0)}%
+              </strong>
+            </span>
+            <span title="Current ladder step progress">🪜 {milestoneLabels[currentIdx]} ({Math.round(stats.monthlyMinutes % 1375)}/1375m)</span>
+            <span title="Daily progress bar below">
+              {stats.dailyMinutes >= dailyGoal
+                ? <strong style={{ color: '#34d399' }}>✅ {Math.round(stats.dailyMinutes)}m</strong>
+                : <>{Math.round(stats.dailyMinutes)}m / {Math.round(dailyGoal)}m <strong style={{ color: pacePrediction.color }}>{pacePrediction.label}</strong></>
+              }
+            </span>
+          </div>
+
+          {/* BAR 1: Monthly — purple fill, white day-of-month cursor, tier checkpoints */}
+          <div
+            title={`MONTHLY: ${Math.round(stats.monthlyMinutes)}m of ${stats.goalMinutes}m goal. Day ${currentDay}/${daysInMonth}. Paced max: AR$${monthlyRemainingCash}. Next: ${nextGoalLabel} at ${nextMilestone}m.`}
+            style={{ height: '5px', background: 'rgba(0,0,0,0.5)', borderRadius: '3px', position: 'relative', overflow: 'hidden', cursor: 'help' }}>
+            {/* Unbanked glow */}
+            <div style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: `${monthlyPendingRatio * 100}%`, backgroundColor: '#f97316', opacity: 0.7, zIndex: 1, transition: 'width 1s linear' }} />
+            {/* Banked fill */}
+            <div style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: `${monthlyProgressRatio * 100}%`, backgroundColor: isMonthlyGoalMet ? '#10b981' : '#a855f7', zIndex: 2, transition: 'width 1s ease' }} />
+            {/* Tier markers: Floor 5.5k, Growth 11k, Legend 16.5k */}
+            {[5500, 11000, 16500].map(m => (
+              <div key={m} title={['Floor (5.5k)', 'Growth (11k)', 'Legend (16.5k)'][Math.floor(m/5500)-1]}
+                style={{ position: 'absolute', left: `${(m / 16500) * 100}%`, top: 0, bottom: 0, width: '1px', background: 'rgba(255,255,255,0.55)', zIndex: 4 }} />
+            ))}
+            {/* Day notches */}
+            <div style={{ position: 'absolute', inset: 0, display: 'flex', zIndex: 3 }}>
+              {Array.from({ length: daysInMonth }).map((_, i) => (
+                <div key={i} style={{ flex: 1, borderRight: i < daysInMonth - 1 ? '1px solid rgba(255,255,255,0.07)' : 'none' }} />
+              ))}
             </div>
-            <div style={{ height: '7px', background: 'rgba(0,0,0,0.5)', borderRadius: '4px', position: 'relative', overflow: 'hidden' }}>
-              <div style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: `${monthlyPendingRatio * 100}%`, backgroundColor: '#f97316', opacity: 0.9, transition: 'width 1s linear', zIndex: 1, boxShadow: unbankedMins > 0 ? '0 0 10px #f97316' : 'none' }} />
-              <div style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: `${monthlyProgressRatio * 100}%`, backgroundColor: isMonthlyGoalMet ? '#10b981' : '#a855f7', transition: 'width 1s cubic-bezier(0.34, 1.56, 0.64, 1)', zIndex: 2 }} />
-              {stats.monthlyMinutes > stats.goalMinutes && <div style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: `${Math.min(1, (stats.monthlyMinutes - stats.goalMinutes) / (stats.goalMinutes * 0.2)) * 100}%`, backgroundColor: 'rgba(245,158,11,0.8)', zIndex: 3 }} />}
-              
-              {/* Milestone Indicators (Checkpoints at 5.5k, 11k, 16.5k) */}
-              <div style={{ position: 'absolute', inset: 0, display: 'flex', pointerEvents: 'none', zIndex: 4 }}>
-                {[5500, 11000, 16500].map((m, i) => {
-                  const ratio = m / 16500;
-                  return (
-                    <div 
-                      key={m} 
-                      title={`Monthly Rank: ${['Floor (5.5k)', 'Growth (11k)', 'Legend (16.5k)'][i]}`}
-                      style={{ 
-                        position: 'absolute', left: `${ratio * 100}%`, top: 0, bottom: 0, width: '1px', 
-                        background: 'rgba(255,255,255,0.6)',
-                        boxShadow: '0 0 4px white',
-                        pointerEvents: 'auto', cursor: 'help'
-                      }}>
-                    </div>
-                  );
-                })}
-              </div>
+            {/* Today marker */}
+            <div style={{ position: 'absolute', top: 0, bottom: 0, left: `${monthElapsedRatio * 100}%`, width: '2px', background: 'rgba(255,255,255,0.7)', zIndex: 10 }} />
+          </div>
 
-              {/* Day Notches overlay */}
-              <div 
-                title="Each vertical notch represents one day of the month. The thick white line is TODAY."
-                style={{ position: 'absolute', inset: 0, display: 'flex', pointerEvents: 'auto', zIndex: 5, cursor: 'help' }}>
-                {Array.from({ length: daysInMonth }).map((_, i) => (
-                  <div key={i} style={{ flex: 1, borderRight: i < daysInMonth - 1 ? '1px solid rgba(255,255,255,0.1)' : 'none' }} />
-                ))}
-              </div>
-
-              <div 
-                title={`Today is Day ${currentDay}. Stay ahead of this line to keep your pace!`}
-                style={{ position: 'absolute', top: 0, bottom: 0, left: `${monthElapsedRatio * 100}%`, width: '2px', backgroundColor: 'rgba(255,255,255,0.7)', zIndex: 10, cursor: 'help', pointerEvents: 'auto' }} />
+          {/* BAR 2: Ladder step — fills every 1375m, color by tier */}
+          <div
+            title={`LADDER STEP ${currentIdx + 1}/12: ${milestoneLabels[currentIdx]}. ${Math.round(stats.monthlyMinutes % 1375)}m of 1375m this step. Next milestone: ${nextMilestone}m.`}
+            style={{ height: '5px', background: 'rgba(0,0,0,0.5)', borderRadius: '3px', position: 'relative', overflow: 'hidden', cursor: 'help' }}>
+            <div style={{
+              position: 'absolute', left: 0, top: 0, bottom: 0,
+              width: `${((stats.monthlyMinutes % 1375) / 1375) * 100}%`,
+              background: stats.monthlyMinutes >= 11000 ? '#fcd34d' : stats.monthlyMinutes >= 5500 ? '#a855f7' : '#3b82f6',
+              boxShadow: `0 0 6px ${stats.monthlyMinutes >= 11000 ? 'rgba(251,191,36,0.5)' : stats.monthlyMinutes >= 5500 ? 'rgba(139,92,246,0.5)' : 'rgba(59,130,246,0.5)'}`,
+              transition: 'width 0.5s ease-out', zIndex: 2
+            }} />
+            {/* 5-segment day markers */}
+            <div style={{ position: 'absolute', inset: 0, display: 'flex', zIndex: 3 }}>
+              {Array.from({ length: 5 }).map((_, i) => (
+                <div key={i} style={{ flex: 1, borderRight: i < 4 ? '1px solid rgba(255,255,255,0.12)' : 'none' }} />
+              ))}
             </div>
           </div>
 
-          {/* Step Goal (Weekly Replenishing Bar) */}
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.15rem' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.6rem', color: 'var(--text-muted)', alignItems: 'center' }}>
-              <span style={{ fontWeight: 600 }}>🪜 PRO LADDER PROGRESS ({currentIdx + 1}/12)</span>
-              <span title={`Each step on the Ladder represents 1,375 min. (1% of Total Goal = ${Math.floor(stats.goalMinutes / 100)}m)`}>
-                <strong style={{ color: stats.monthlyMinutes >= 11000 ? '#FCD34D' : (stats.monthlyMinutes >= 5500 ? '#C084FC' : '#60A5FA') }}>
-                  {milestoneLabels[currentIdx]}
-                </strong> ({Math.round(stats.monthlyMinutes % 1375)}m / 1375m)
-              </span>
+          {/* BAR 3: Daily — blue→purple→gold tiers, time cursor, real-time unbanked glow */}
+          <div
+            title={`DAILY: ${Math.round(stats.dailyMinutes)}m banked. Goal: ${Math.round(dailyGoal)}m. ${Math.round(workableMinsRemaining)}m workable before 23:00. Pace ETA: ${pacePrediction.label} (${pacePrediction.detail || ''}).`}
+            style={{ height: '5px', background: 'rgba(0,0,0,0.5)', borderRadius: '3px', position: 'relative', overflow: 'hidden', cursor: 'help' }}>
+            {/* Unbanked (live glow) */}
+            <div style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: `${Math.min(1, (stats.dailyMinutes + unbankedMins) / 480) * 100}%`, backgroundColor: '#f97316', opacity: 0.7, zIndex: 1, transition: 'width 1s linear' }} />
+            {/* Banked fill */}
+            <div style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: `${Math.min(1, stats.dailyMinutes / 480) * 100}%`, backgroundColor: stats.dailyMinutes >= 480 ? '#fcd34d' : stats.dailyMinutes >= 350 ? '#a855f7' : '#3b82f6', zIndex: 2, transition: 'width 1s ease' }} />
+            {/* Daily goal + growth notches */}
+            {[dailyGoal, 350].map(m => (
+              <div key={m} style={{ position: 'absolute', left: `${(m / 480) * 100}%`, top: 0, bottom: 0, width: '1px', background: 'rgba(255,255,255,0.25)', zIndex: 4 }} />
+            ))}
+            {/* Hour notches (14h window: 9am-23pm) */}
+            <div style={{ position: 'absolute', inset: 0, display: 'flex', zIndex: 3 }}>
+              {Array.from({ length: 14 }).map((_, i) => (
+                <div key={i} style={{ flex: 1, borderRight: i < 13 ? '1px solid rgba(255,255,255,0.08)' : 'none' }} />
+              ))}
             </div>
-            <div 
-              title="Weekly Ladder: This bar fills up every 1375m. It's your current sprint target."
-              style={{ height: '8px', background: 'rgba(0,0,0,0.5)', borderRadius: '4px', overflow: 'hidden', position: 'relative', cursor: 'help' }}>
-              <div style={{ 
-                position: 'absolute', left: 0, top: 0, bottom: 0, 
-                width: `${((stats.monthlyMinutes % 1375) / 1375) * 100}%`, 
-                background: stats.monthlyMinutes >= 11000 ? '#fcd34d' : (stats.monthlyMinutes >= 5500 ? '#a855f7' : '#3b82f6'),
-                boxShadow: `0 0 10px ${stats.monthlyMinutes >= 11000 ? 'rgba(251,191,36,0.4)' : (stats.monthlyMinutes >= 5500 ? 'rgba(139,92,246,0.4)' : 'rgba(59,130,246,0.4)')}`,
-                transition: 'width 0.5s ease-out',
-                zIndex: 2
-              }} />
-              {/* Day Notches (1375 / 5 = 275m intervals) */}
-              <div 
-                title="Each section represents roughly one full day of interpretive work (~275m)."
-                style={{ position: 'absolute', inset: 0, display: 'flex', pointerEvents: 'auto', zIndex: 5, cursor: 'help' }}>
-                {Array.from({ length: 5 }).map((_, i) => (
-                  <div key={i} style={{ flex: 1, borderRight: i < 4 ? '1px solid rgba(255,255,255,0.15)' : 'none' }} />
-                ))}
-              </div>
-            </div>
+            {/* Time cursor */}
+            <div style={{ position: 'absolute', top: 0, bottom: 0, left: `${timeElapsedRatio * 100}%`, width: '2px', background: 'rgba(255,255,255,0.7)', zIndex: 10 }} />
           </div>
 
-          {/* Daily bar */}
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.15rem' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.6rem', color: 'var(--text-muted)', alignItems: 'center' }}>
-              <span title="Workday starts at 9:00 AM">☀️ 09:00 (Min: {dailyGoal}m)</span>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '0.3rem' }}>
-                {stats.dailyMinutes >= 480 ? (
-                  <span style={{ color: '#fcd34d', fontWeight: 800 }}>👑 LEGENDARY DAY (480m+)</span>
-                ) : stats.dailyMinutes >= 350 ? (
-                  <span style={{ color: '#c084fc', fontWeight: 800 }}>🚀 GROWTH DAY (350m+)</span>
-                ) : stats.dailyMinutes >= dailyGoal ? (
-                  <span style={{ color: '#34d399', fontWeight: 800 }}>🎉 SHIFT MET ({dailyGoal}m)</span>
-                ) : (
-                  <>
-                    <span title="Literally how many hours are left until 11:00 PM.">⏳ {hoursLeftToAbsolute.toFixed(1)}h left (${Math.round(hoursLeftToAbsolute * 60)}m)</span>
-                    <span title="Assuming you work 35 mins per hour (allowing for breaks/avail), this is how many minutes you can realistically bank today.">({Math.round(workableMinsRemaining)}m workable)</span>
-                  </>
-                )}
-              </div>
-              <span title="Workday ends at 11:00 PM">🌙 23:00 (Focus: 480m)</span>
-            </div>
-            <div 
-              title="Daily Multi-Tier Bar: Blue (Floor), Purple (350m Growth), Gold (480m focus)."
-              style={{ height: '6px', background: 'rgba(0,0,0,0.5)', borderRadius: '3px', position: 'relative', overflow: 'hidden', cursor: 'help' }}>
-              
-              {/* Target Notches */}
-              <div style={{ position: 'absolute', inset: 0, display: 'flex', pointerEvents: 'none', zIndex: 4 }}>
-                {[dailyGoal, 350].map(m => (
-                  <div key={m} style={{ position: 'absolute', left: `${(m / 480) * 100}%`, top: 0, bottom: 0, width: '1px', background: 'rgba(255,255,255,0.3)' }} />
-                ))}
-              </div>
-
-              {/* Progress Fill (Unbanked) */}
-              <div 
-                title={`Unbanked Progress: You have ${formatTime(sessionSeconds)} in the current call.`}
-                style={{ 
-                  position: 'absolute', left: 0, top: 0, bottom: 0, 
-                  width: `${Math.min(1, (stats.dailyMinutes + unbankedMins) / 480) * 100}%`, 
-                  backgroundColor: '#f97316', 
-                  opacity: 0.9, transition: 'width 1s linear', zIndex: 1, 
-                  boxShadow: unbankedMins > 0 ? '0 0 10px #f97316' : 'none', pointerEvents: 'auto' 
-                }} />
-              
-              {/* Progress Fill (Banked) */}
-              <div 
-                title={`Daily Total: ${Math.round(stats.dailyMinutes)}m`}
-                style={{ 
-                  position: 'absolute', left: 0, top: 0, bottom: 0, 
-                  width: `${Math.min(1, stats.dailyMinutes / 480) * 100}%`, 
-                  backgroundColor: stats.dailyMinutes >= 480 ? '#fcd34d' : (stats.dailyMinutes >= 350 ? '#a855f7' : '#3b82f6'), 
-                  transition: 'width 1s cubic-bezier(0.34, 1.56, 0.64, 1)', zIndex: 2, pointerEvents: 'auto' 
-                }} />
-              
-              {/* Hour Notches overlay */}
-              <div 
-                title="Each notch represents 1 hour of the workday (9 AM - 11 PM)."
-                style={{ position: 'absolute', inset: 0, display: 'flex', pointerEvents: 'auto', zIndex: 5, cursor: 'help' }}>
-                {Array.from({ length: 14 }).map((_, i) => (
-                  <div key={i} style={{ flex: 1, borderRight: i < 13 ? '1px solid rgba(255,255,255,0.15)' : 'none' }} />
-                ))}
-              </div>
-
-              <div 
-                title="Current Time indicator. Keep the daily bar touching or ahead of this line."
-                style={{ position: 'absolute', top: 0, bottom: 0, left: `${timeElapsedRatio * 100}%`, width: '2px', backgroundColor: 'rgba(255,255,255,0.7)', zIndex: 10, cursor: 'help', pointerEvents: 'auto' }} />
-            </div>
-          </div>
         </div>
       )}
 
