@@ -237,8 +237,43 @@ export const DashboardHeader = ({ onStartAudio, onStopAudio, onReconnectStream, 
   const nextGoalLabel = milestoneLabels[currentIdx];
   const isAllGoalsMet = stats.monthlyMinutes >= milestones[11];
 
-  // ── SMART METRICS ─────────────────────────────────────────────
-  // PACE: predicted time to hit today's goal at current earned rate
+  // ── HARD CUTOFF SYSTEM ─────────────────────────────────────────
+  // 20:00 is the hard stop. 4h wind-down → 7h sleep → 2h wind-up → 9am restart.
+  const HARD_CUTOFF_HOUR = 20;
+  const minsToHardCutoff = Math.max(0, (HARD_CUTOFF_HOUR - currentTime) * 60);
+  const cutoffWarning = (() => {
+    if (minsToHardCutoff <= 0) return { level: 'stop', label: 'STOP — 20:00 CUTOFF' , color: '#ef4444' };
+    if (minsToHardCutoff <= 15) return { level: 'urgent', label: `🚨 ${Math.round(minsToHardCutoff)}m to cutoff`, color: '#ef4444' };
+    if (minsToHardCutoff <= 30) return { level: 'warn', label: `⚠️ ${Math.round(minsToHardCutoff)}m left`, color: '#f59e0b' };
+    if (minsToHardCutoff <= 60) return { level: 'notice', label: `🕐 1h to cutoff`, color: '#fcd34d' };
+    return null; // No warning before 19:00
+  })();
+
+  // Actual available window: from now until HARD_CUTOFF_HOUR, or until our estimate if already past
+  const availableWindowMins = Math.max(0, minsToHardCutoff);
+  // Realistic max for today given remaining window (35m talk-time per hour)
+  const maxEarnableToday = stats.dailyMinutes + (availableWindowMins * 0.58); // ~35m/hr density
+
+  // ── MONTHLY DEFICIT ─────────────────────────────────────────────
+  // Growth tier (11,000m) as real target, Floor (5,500m) as minimum
+  const GROWTH_TARGET = 11000;
+  const FLOOR_TARGET = 5500;
+  // Expected progress by today's date (linear pacing)
+  const expectedByToday = Math.round((stats.goalMinutes / daysInMonth) * currentDay);
+  const monthlyDeficitMins = expectedByToday - stats.monthlyMinutes; // positive = behind
+  const monthlyDeficitArs = Math.round(monthlyDeficitMins * RATE_PER_MINUTE * arsRate);
+  const isInDeficit = monthlyDeficitMins > 0;
+
+  // ── RECOVERY TARGET ─────────────────────────────────────────────
+  // How many minutes per remaining day to reach GROWTH target (11k) from current position
+  const minsToGrowth = Math.max(0, GROWTH_TARGET - stats.monthlyMinutes);
+  const recoveryDailyTarget = remainingDays > 0 ? Math.ceil(minsToGrowth / remainingDays) : 0;
+  // How many minutes per remaining day just to keep rent paid (5500m floor)
+  const minsToFloor = Math.max(0, FLOOR_TARGET - stats.monthlyMinutes);
+  const survivalDailyTarget = remainingDays > 0 ? Math.ceil(minsToFloor / remainingDays) : 0;
+
+  // ── PACE PREDICTOR ──────────────────────────────────────────────
+  // Uses current earned rate relative to shift elapsed — not clock time
   const pacePrediction = (() => {
     const remaining = Math.max(0, dailyGoal - stats.dailyMinutes);
     if (remaining <= 0) return { label: '✅ Done!', color: '#10b981', detail: null };
@@ -249,35 +284,43 @@ export const DashboardHeader = ({ onStartAudio, onStopAudio, onReconnectStream, 
     const goalTime = new Date(Date.now() + minsToGoal * 60000);
     const hh = goalTime.getHours().toString().padStart(2, '0');
     const mm = goalTime.getMinutes().toString().padStart(2, '0');
-    const isBefore6 = goalTime.getHours() < 18;
-    return {
-      label: `${hh}:${mm}`,
-      color: isBefore6 ? '#10b981' : '#f59e0b',
-      detail: isBefore6 ? 'before shift end' : 'running late'
-    };
+    // Warn if predicted time is after hard cutoff
+    const isBeforeCutoff = goalTime.getHours() < HARD_CUTOFF_HOUR;
+    const isBeforeShift = goalTime.getHours() < 18;
+    const color = isBeforeCutoff ? (isBeforeShift ? '#10b981' : '#34d399') : '#ef4444';
+    const detail = isBeforeCutoff ? 'achievable today' : 'PAST CUTOFF — not achievable today';
+    return { label: `${hh}:${mm}`, color, detail };
   })();
 
-  // QUALITY: % of ideal pace met so far today (ideal = linear over 8hr shift)
+  // ── QUALITY SCORE (LATE-START AWARE) ────────────────────────────
+  // Instead of comparing to 8hr ideal shift, compare to ACTUAL available window
+  // This means if you logged in at 14:00 with a 20:00 cutoff, 100% = perfect for a 6hr session
   const qualityScore = (() => {
     if (shiftElapsedMins < 5 || dailyGoal <= 0) return null;
-    const idealNow = dailyGoal * Math.min(1, shiftElapsedMins / 480);
+    // Total session window = elapsed + remaining (capped at goal-implied time)
+    const sessionWindowMins = shiftElapsedMins + availableWindowMins;
+    // Ideal pace = linear progress over THIS session's actual window
+    const idealNow = Math.min(dailyGoal, dailyGoal * (shiftElapsedMins / Math.max(sessionWindowMins, 30)));
+    if (idealNow <= 0) return null;
     const pct = Math.round((stats.dailyMinutes / idealNow) * 100);
     const capped = Math.min(150, pct);
     let color = '#ef4444';
     if (capped >= 100) color = '#10b981';
     else if (capped >= 80) color = '#34d399';
     else if (capped >= 60) color = '#f59e0b';
-    return { pct: capped, color };
+    // Also flag if goal simply can't be reached in remaining window
+    const goalUnreachable = maxEarnableToday < dailyGoal;
+    return { pct: capped, color, goalUnreachable };
   })();
 
-  // STREAK: consecutive good days
+  // ── STREAK ──────────────────────────────────────────────────────
   const streak = stats.streak || 0;
 
-  // CALL RATE: calls today + avg duration
+  // ── CALL RATE ───────────────────────────────────────────────────
   const callsToday = stats.callsToday || 0;
   const avgCallMins = callsToday > 0 ? Math.round(stats.dailyMinutes / callsToday) : 0;
 
-  // EFFECTIVE RATE: ARS/hr earned vs shift time elapsed (includes avail overhead)
+  // ── EFFECTIVE RATE ──────────────────────────────────────────────
   const effectiveRateArsHr = shiftElapsedMins > 10
     ? Math.round((dailyArs / shiftElapsedMins) * 60)
     : null;
@@ -286,6 +329,73 @@ export const DashboardHeader = ({ onStartAudio, onStopAudio, onReconnectStream, 
 
   return (
     <header className="dashboard-header glass-panel" style={{ position: 'relative', zIndex: 100 }}>
+
+      {/* ── HARD CUTOFF WARNING — always visible when approaching 20:00 ── */}
+      {cutoffWarning && (
+        <div style={{
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          gap: '0.5rem', padding: '0.15rem 0.5rem',
+          background: cutoffWarning.level === 'stop' ? 'rgba(239,68,68,0.2)' : 
+                      cutoffWarning.level === 'urgent' ? 'rgba(239,68,68,0.15)' : 'rgba(245,158,11,0.1)',
+          border: `1px solid ${cutoffWarning.color}40`,
+          borderRadius: '4px', marginBottom: '0.1rem',
+          animation: cutoffWarning.level === 'urgent' || cutoffWarning.level === 'stop' ? 'pulseDanger 1.5s infinite' : 'none'
+        }}>
+          <span style={{ fontSize: '0.65rem', fontWeight: 800, color: cutoffWarning.color, letterSpacing: '0.05em' }}>
+            {cutoffWarning.label}
+          </span>
+          <span style={{ fontSize: '0.55rem', opacity: 0.6 }}>
+            Hard stop for healthy sleep cycle
+          </span>
+          {cutoffWarning.level === 'stop' && (
+            <span style={{ fontSize: '0.6rem', color: '#fca5a5', fontWeight: 600 }}>
+              → Wind down → Sleep 23:00 → Up 7:00 → Ready 9:00
+            </span>
+          )}
+        </div>
+      )}
+
+      {/* ── MONTHLY DEFICIT / RECOVERY BANNER ── */}
+      {/* Shows when behind on monthly pace — honest, not panic-inducing */}
+      {isInDeficit && monthlyDeficitMins > 30 && (
+        <div style={{
+          display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+          gap: '0.4rem', padding: '0.12rem 0.5rem',
+          background: 'rgba(139,92,246,0.08)',
+          border: '1px solid rgba(139,92,246,0.25)',
+          borderRadius: '4px', marginBottom: '0.1rem', flexWrap: 'wrap'
+        }}>
+          <span style={{ fontSize: '0.6rem', color: '#c4b5fd', fontWeight: 700 }}>
+            📉 {Math.round(monthlyDeficitMins)}m behind pace
+          </span>
+          <span style={{ fontSize: '0.6rem', opacity: 0.6 }}>|</span>
+          <span style={{ fontSize: '0.6rem', color: '#a78bfa' }} title="Minutes per day needed to reach Growth tier (11,000m) by month end">
+            🎯 Recovery: <strong style={{ color: '#fff' }}>{recoveryDailyTarget}m/day</strong> → 11k
+          </span>
+          <span style={{ fontSize: '0.6rem', opacity: 0.6 }}>|</span>
+          <span style={{ fontSize: '0.6rem', color: '#7dd3fc' }} title="Minimum per day to hit Floor goal (5,500m = rent)">
+            🏠 Floor: <strong style={{ color: '#fff' }}>{survivalDailyTarget}m/day</strong>
+          </span>
+          <span style={{ fontSize: '0.6rem', opacity: 0.5 }}>({remainingDays}d left)</span>
+        </div>
+      )}
+      {/* Show "on pace" or "ahead" without a banner if in surplus */}
+      {!isInDeficit && stats.monthlyMinutes > 0 && (
+        <div style={{
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          gap: '0.4rem', padding: '0.1rem 0.5rem',
+          background: 'rgba(16,185,129,0.05)',
+          border: '1px solid rgba(16,185,129,0.15)',
+          borderRadius: '4px', marginBottom: '0.1rem'
+        }}>
+          <span style={{ fontSize: '0.6rem', color: '#6ee7b7' }}>
+            ✅ {Math.round(-monthlyDeficitMins)}m ahead of pace — keep it up
+          </span>
+          <span style={{ fontSize: '0.55rem', opacity: 0.5 }}>
+            | Growth target: {recoveryDailyTarget}m/day to 11k
+          </span>
+        </div>
+      )}
 
       {/* COLLAPSED VIEW */}
       {isCollapsed && (
@@ -364,11 +474,15 @@ export const DashboardHeader = ({ onStartAudio, onStopAudio, onReconnectStream, 
               <div style={{ fontSize: '0.42rem', opacity: 0.4, letterSpacing: '0.04em' }}>PACE ETA</div>
             </div>
 
-            {/* QUALITY: pacing vs ideal linear progress */}
-            <div className="metric-cell" title={qualityScore ? `DAY QUALITY: ${qualityScore.pct}% of ideal pace. 100% = right on track, <80% = need to pick up.` : 'Not enough data yet'} style={{ background: 'rgba(59,130,246,0.04)' }}>
+            {/* QUALITY: pacing vs ideal linear progress — late-start aware */}
+            <div className="metric-cell" title={
+              qualityScore?.goalUnreachable 
+                ? `QUALITY: Today's goal (${Math.round(dailyGoal)}m) is unreachable before 20:00 cutoff. Max possible: ~${Math.round(maxEarnableToday)}m. Adapt today's target.`
+                : qualityScore ? `DAY QUALITY: ${qualityScore.pct}% of ideal pace. 100% = right on track, <80% = pick up.` : 'Not enough data yet'
+            } style={{ background: 'rgba(59,130,246,0.04)' }}>
               <div className="metric-watermark"><span>📈</span></div>
-              <div className="metric-cell-val" style={{ color: qualityScore?.color || 'var(--text-muted)' }}>
-                {qualityScore ? `${qualityScore.pct}%` : '–'}
+              <div className="metric-cell-val" style={{ color: qualityScore?.goalUnreachable ? '#f59e0b' : (qualityScore?.color || 'var(--text-muted)') }}>
+                {qualityScore?.goalUnreachable ? '⚡Adapt' : qualityScore ? `${qualityScore.pct}%` : '–'}
               </div>
               <div style={{ fontSize: '0.42rem', opacity: 0.4, letterSpacing: '0.04em' }}>QUALITY</div>
             </div>
