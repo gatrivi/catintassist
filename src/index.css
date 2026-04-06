@@ -542,6 +542,8 @@ body {
 /* ── Condensed Header Mobile Support ── */
 .condensed-header-card {
   display: grid;
+      height: fit-content;
+
   grid-template-columns: auto 1fr auto; 
   align-items: center;
   padding: 0.1rem 0.2rem; 
