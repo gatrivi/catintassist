@@ -261,13 +261,15 @@ export const DashboardHeader = ({ onStartAudio, onStopAudio, onReconnectStream, 
   const survivalDailyTarget = remainingDays > 0 ? Math.ceil(Math.max(0, 5500 - stats.monthlyMinutes) / remainingDays) : 0;
 
   // ── SMART METRICS ────────────────────────────────────────────────
-  // PACE: predicted time to hit today's goal at current earned rate
-  // Warns red if predicted ETA is past hard cutoff (20:00)
+  // Use TOTAL (banked + live) so everything updates tick-by-tick during a call
+  const totalDailyMinsLive = stats.dailyMinutes + unbankedMins;
+
+  // PACE ETA: predicts when you'll hit today's goal at current earned rate
   const pacePrediction = (() => {
-    const remaining = Math.max(0, dailyGoal - stats.dailyMinutes);
+    const remaining = Math.max(0, dailyGoal - totalDailyMinsLive);
     if (remaining <= 0) return { label: '✅ Done!', color: '#10b981', detail: null };
-    if (stats.dailyMinutes < 5 || shiftElapsedMins < 10) return { label: '–', color: 'var(--text-muted)', detail: 'Warming up...' };
-    const ratePerShiftMin = stats.dailyMinutes / shiftElapsedMins;
+    if (totalDailyMinsLive < 5 || shiftElapsedMins < 10) return { label: '–', color: 'var(--text-muted)', detail: 'Warming up...' };
+    const ratePerShiftMin = totalDailyMinsLive / shiftElapsedMins; // live rate
     if (ratePerShiftMin <= 0) return { label: '–', color: 'var(--text-muted)', detail: null };
     const minsToGoal = remaining / ratePerShiftMin;
     const goalTime = new Date(Date.now() + minsToGoal * 60000);
@@ -282,29 +284,32 @@ export const DashboardHeader = ({ onStartAudio, onStopAudio, onReconnectStream, 
     };
   })();
 
-  // QUALITY: late-start aware — compares to actual available window, not 8hr flat
-  // If you log in at 14:00 with 20:00 cutoff, 100% = perfect for a 6hr session
-  const maxEarnableToday = stats.dailyMinutes + (availableWindowMins * 0.58); // ~35m/hr density
+  // QUALITY: late-start aware pacing score (uses live mins)
+  const maxEarnableToday = totalDailyMinsLive + (availableWindowMins * 0.58);
   const qualityScore = (() => {
     if (shiftElapsedMins < 5 || dailyGoal <= 0) return null;
     const sessionWindowMins = shiftElapsedMins + availableWindowMins;
     const idealNow = Math.min(dailyGoal, dailyGoal * (shiftElapsedMins / Math.max(sessionWindowMins, 30)));
     if (idealNow <= 0) return null;
-    const pct = Math.round((stats.dailyMinutes / idealNow) * 100);
+    const pct = Math.round((totalDailyMinsLive / idealNow) * 100);
     const capped = Math.min(150, pct);
     let color = '#ef4444';
     if (capped >= 100) color = '#10b981';
     else if (capped >= 80) color = '#34d399';
     else if (capped >= 60) color = '#f59e0b';
     const goalUnreachable = maxEarnableToday < dailyGoal;
-    return { pct: capped, color, goalUnreachable };
+    // Suggest a realistic goal rounded to nearest 5m
+    const suggestedGoal = Math.floor(maxEarnableToday / 5) * 5;
+    return { pct: capped, color, goalUnreachable, suggestedGoal };
   })();
 
-  // STREAK, CALL RATE, EFFECTIVE RATE
+  // STREAK: past days + live "today on track" indicator
   const streak = stats.streak || 0;
+  const todayOnTrack = dailyGoal > 0 && totalDailyMinsLive >= dailyGoal;
+
+  // CALL RATE, EFFECTIVE RATE
   const callsToday = stats.callsToday || 0;
-  const avgCallMins = callsToday > 0 ? Math.round(stats.dailyMinutes / callsToday) : 0;
-  // Include live unbanked session earnings so rate doesn't drop during active calls
+  const avgCallMins = callsToday > 0 ? Math.round(totalDailyMinsLive / Math.max(callsToday, 1)) : 0;
   const totalEarnedArs = dailyArs + Math.round(unbankedMins * RATE_PER_MINUTE * arsRate);
   const effectiveRateArsHr = shiftElapsedMins > 10
     ? Math.round((totalEarnedArs / shiftElapsedMins) * 60)
@@ -516,23 +521,25 @@ export const DashboardHeader = ({ onStartAudio, onStopAudio, onReconnectStream, 
             {/* QUALITY */}
             <div className="income-card" style={{ flex: '1 1 0', minWidth: 0, background: 'rgba(59,130,246,0.06)' }}
               title={qualityScore?.goalUnreachable
-                ? `Today's goal (${Math.round(dailyGoal)}m) unreachable before 20:00. Max ~${Math.round(maxEarnableToday)}m.`
-                : qualityScore ? `DAY QUALITY: ${qualityScore.pct}% of ideal pace for your actual session window.` : 'Not enough data yet'}>
+                ? `Goal (${Math.round(dailyGoal)}m) unreachable before 20:00. Suggested adaptive goal: ${qualityScore.suggestedGoal}m.`
+                : qualityScore ? `DAY QUALITY: ${qualityScore.pct}% of ideal pace for your session window.` : 'Not enough data yet'}>
               <span className="income-label">📈 QUALITY</span>
               <span style={{ fontSize: '1rem', fontWeight: 800, color: qualityScore?.goalUnreachable ? '#f59e0b' : (qualityScore?.color || 'var(--text-muted)') }}>
-                {qualityScore?.goalUnreachable ? '⚡Adapt' : qualityScore ? `${qualityScore.pct}%` : '–'}
+                {qualityScore?.goalUnreachable ? `→ ${qualityScore.suggestedGoal}m` : qualityScore ? `${qualityScore.pct}%` : '–'}
               </span>
-              <span style={{ fontSize: '0.5rem', opacity: 0.5 }}>vs ideal pace</span>
+              <span style={{ fontSize: '0.5rem', opacity: 0.5 }}>
+                {qualityScore?.goalUnreachable ? 'adapt today\'s goal' : 'vs ideal pace'}
+              </span>
             </div>
 
             {/* STREAK */}
-            <div className="income-card" style={{ flex: '1 1 0', minWidth: 0, background: 'rgba(251,146,60,0.06)' }}
-              title={`STREAK: ${streak} consecutive day(s) hitting daily goal`}>
+            <div className="income-card" style={{ flex: '1 1 0', minWidth: 0, background: todayOnTrack ? 'rgba(16,185,129,0.08)' : 'rgba(251,146,60,0.06)' }}
+              title={`STREAK: ${streak} past days + ${todayOnTrack ? 'today ✅ already hit!' : 'today in progress'}`}>
               <span className="income-label">🔥 STREAK</span>
-              <span style={{ fontSize: '1rem', fontWeight: 800, color: streak >= 3 ? '#fb923c' : streak > 0 ? '#fcd34d' : 'var(--text-muted)' }}>
-                {streak > 0 ? `${streak} days 🔥` : 'none yet'}
+              <span style={{ fontSize: '1rem', fontWeight: 800, color: todayOnTrack ? '#10b981' : streak >= 3 ? '#fb923c' : streak > 0 ? '#fcd34d' : 'var(--text-muted)' }}>
+                {streak > 0 ? `${streak}d` : ''}{todayOnTrack ? (streak > 0 ? '+today ✅' : 'today ✅') : streak === 0 ? 'none yet' : ''}
               </span>
-              <span style={{ fontSize: '0.5rem', opacity: 0.5 }}>daily goal days</span>
+              <span style={{ fontSize: '0.5rem', opacity: 0.5 }}>{todayOnTrack ? 'goal already hit!' : 'past days at goal'}</span>
             </div>
 
             {/* CALL RATE */}
