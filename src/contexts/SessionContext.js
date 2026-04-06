@@ -50,7 +50,9 @@ export const SessionProvider = ({ children }) => {
       dailyAvailMinutes: 0,
       weeklyMinutes: 0,
       monthlyMinutes: 0,
-      goalMinutes: 5500, // Meta del mes (¡A ganar plata!)
+      goalMinutes: 5500,
+      callsToday: 0,       // Track number of calls per day
+      streak: 0,           // Consecutive days at/above daily goal
       lastDate: today,
       dayStartTime: null
     };
@@ -58,9 +60,12 @@ export const SessionProvider = ({ children }) => {
       try {
         const parsed = JSON.parse(saved);
         if (parsed.lastDate !== today) {
+          // Before rolling over, check if yesterday was a good day to maintain streak
+          // Streak is preserved in the stats object itself — no reset on rollover
           parsed.dailyMinutes = 0;
           parsed.dailyBreakMinutes = 0;
           parsed.dailyAvailMinutes = 0;
+          parsed.callsToday = 0;
           parsed.dayStartTime = null;
           parsed.lastBreakEndTime = null;
           parsed.lastDate = today;
@@ -145,11 +150,14 @@ export const SessionProvider = ({ children }) => {
       setStats(prev => {
         const today = new Date().toDateString();
         const isNewDay = prev.lastDate && prev.lastDate !== today;
+        const newDailyMins = (isNewDay ? 0 : (prev.dailyMinutes || 0)) + minutesToAdd;
+        const newCallsToday = (isNewDay ? 0 : (prev.callsToday || 0)) + 1;
         const newStats = {
           ...prev,
-          dailyMinutes: (isNewDay ? 0 : (prev.dailyMinutes || 0)) + minutesToAdd,
+          dailyMinutes: newDailyMins,
           weeklyMinutes: (prev.weeklyMinutes || 0) + minutesToAdd,
           monthlyMinutes: (prev.monthlyMinutes || 0) + minutesToAdd,
+          callsToday: newCallsToday,
           lastDate: today
         };
         localStorage.setItem('catintassist_stats', JSON.stringify(newStats));
@@ -159,11 +167,28 @@ export const SessionProvider = ({ children }) => {
     }
   };
 
-  // End of Day: commit daily total to monthly (called explicitly or auto on new day)
+  // End of Day: commit daily total, check streak, reset counters
   const endDay = (onDayEnded) => {
     commitAvailTime();
     setStats(prev => {
-      const newStats = { ...prev, dailyMinutes: 0, dailyBreakMinutes: 0, dailyAvailMinutes: 0, dayStartTime: null, lastDate: new Date().toDateString() };
+      // Check if today's goal was met (requiredDailyAverage is dynamic but we use a simple heuristic)
+      const dailyGoalProxy = prev.goalMinutes > 0 && prev.monthlyMinutes > 0
+        ? Math.ceil((prev.goalMinutes - (prev.monthlyMinutes - prev.dailyMinutes)) / 
+            Math.max(1, new Date(new Date().getFullYear(), new Date().getMonth() + 1, 0).getDate() - new Date().getDate() + 1))
+        : 0;
+      const metGoal = prev.dailyMinutes >= dailyGoalProxy && dailyGoalProxy > 0;
+      const newStreak = metGoal ? (prev.streak || 0) + 1 : 0;
+      
+      const newStats = { 
+        ...prev, 
+        dailyMinutes: 0, 
+        dailyBreakMinutes: 0, 
+        dailyAvailMinutes: 0, 
+        callsToday: 0,
+        dayStartTime: null, 
+        streak: newStreak,
+        lastDate: new Date().toDateString() 
+      };
       localStorage.setItem('catintassist_stats', JSON.stringify(newStats));
       if (onDayEnded) onDayEnded(prev.dailyMinutes);
       return newStats;

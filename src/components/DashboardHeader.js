@@ -237,6 +237,51 @@ export const DashboardHeader = ({ onStartAudio, onStopAudio, onReconnectStream, 
   const nextGoalLabel = milestoneLabels[currentIdx];
   const isAllGoalsMet = stats.monthlyMinutes >= milestones[11];
 
+  // ── SMART METRICS ─────────────────────────────────────────────
+  // PACE: predicted time to hit today's goal at current earned rate
+  const pacePrediction = (() => {
+    const remaining = Math.max(0, dailyGoal - stats.dailyMinutes);
+    if (remaining <= 0) return { label: '✅ Done!', color: '#10b981', detail: null };
+    if (stats.dailyMinutes < 5 || shiftElapsedMins < 10) return { label: '–', color: 'var(--text-muted)', detail: 'Warming up...' };
+    const ratePerShiftMin = stats.dailyMinutes / shiftElapsedMins;
+    if (ratePerShiftMin <= 0) return { label: '–', color: 'var(--text-muted)', detail: null };
+    const minsToGoal = remaining / ratePerShiftMin;
+    const goalTime = new Date(Date.now() + minsToGoal * 60000);
+    const hh = goalTime.getHours().toString().padStart(2, '0');
+    const mm = goalTime.getMinutes().toString().padStart(2, '0');
+    const isBefore6 = goalTime.getHours() < 18;
+    return {
+      label: `${hh}:${mm}`,
+      color: isBefore6 ? '#10b981' : '#f59e0b',
+      detail: isBefore6 ? 'before shift end' : 'running late'
+    };
+  })();
+
+  // QUALITY: % of ideal pace met so far today (ideal = linear over 8hr shift)
+  const qualityScore = (() => {
+    if (shiftElapsedMins < 5 || dailyGoal <= 0) return null;
+    const idealNow = dailyGoal * Math.min(1, shiftElapsedMins / 480);
+    const pct = Math.round((stats.dailyMinutes / idealNow) * 100);
+    const capped = Math.min(150, pct);
+    let color = '#ef4444';
+    if (capped >= 100) color = '#10b981';
+    else if (capped >= 80) color = '#34d399';
+    else if (capped >= 60) color = '#f59e0b';
+    return { pct: capped, color };
+  })();
+
+  // STREAK: consecutive good days
+  const streak = stats.streak || 0;
+
+  // CALL RATE: calls today + avg duration
+  const callsToday = stats.callsToday || 0;
+  const avgCallMins = callsToday > 0 ? Math.round(stats.dailyMinutes / callsToday) : 0;
+
+  // EFFECTIVE RATE: ARS/hr earned vs shift time elapsed (includes avail overhead)
+  const effectiveRateArsHr = shiftElapsedMins > 10
+    ? Math.round((dailyArs / shiftElapsedMins) * 60)
+    : null;
+
   const copyValue = (v) => navigator.clipboard.writeText(String(v).replace(/[^\d]/g, ''));
 
   return (
@@ -284,48 +329,84 @@ export const DashboardHeader = ({ onStartAudio, onStopAudio, onReconnectStream, 
             </div>
           </div>
 
-          {/* THE 2x3 METRIC GRID */}
+          {/* THE SMART 2x3 GRID — Row 1: Money | Row 2: Intelligence */}
           <div className="metric-grid">
-            {/* ROW 1: CASH (Row Context: 💰) */}
-            <div className="metric-cell" title={`CURRENT CALL CASH`}>
-              <div className="metric-watermark"><span>📞💰</span></div>
-              <div className="metric-cell-val">${Math.round(sessionEarnings * arsRate)} / ${Math.round(45 * RATE_PER_MINUTE * arsRate)}</div>
+
+            {/* ── ROW 1: MONEY ── */}
+            {/* BOUNTY: remaining ARS to earn today — the most actionable single number */}
+            <div className="metric-cell" title="BOUNTY: ARS left to earn today to hit your quota" style={{ background: cashToTodayGoal <= 0 ? 'rgba(16,185,129,0.08)' : 'rgba(52,211,153,0.04)' }}>
+              <div className="metric-watermark"><span>🏹</span></div>
+              <div className="metric-cell-val" style={{ color: cashToTodayGoal <= 0 ? '#10b981' : 'rgba(255,255,255,0.8)' }}>
+                {cashToTodayGoal <= 0 ? '✅' : `$${cashToTodayGoal.toLocaleString('es-AR')}`}
+              </div>
+              <div style={{ fontSize: '0.42rem', opacity: 0.4, letterSpacing: '0.04em' }}>BOUNTY</div>
             </div>
-            <div className="metric-cell" title={`DAILY CASH`}>
+
+            {/* DAY CASH: how much earned vs today's quota */}
+            <div className="metric-cell" title="DAY CASH: Banked ARS vs daily quota">
               <div className="metric-watermark"><span>☀️💰</span></div>
               <div className="metric-cell-val">${dailyArs.toLocaleString('es-AR')} / ${dailyTargetArs.toLocaleString('es-AR')}</div>
-            </div>
-            <div className="metric-cell" title={`MONTHLY CASH`}>
-               <div className="metric-watermark"><span>🗓️💰</span></div>
-               <div className="metric-cell-val">${monthlyArs.toLocaleString('es-AR')} / ${monthlyTargetArs.toLocaleString('es-AR')}</div>
+              <div style={{ fontSize: '0.42rem', opacity: 0.4, letterSpacing: '0.04em' }}>DAY $</div>
             </div>
 
-            {/* ROW 2: MINS (Row Context: 🕒) */}
-            <div className="metric-cell" title={`CURRENT CALL MINS`}>
-               <div className="metric-watermark"><span>📞🕒</span></div>
-               <div className="metric-cell-val">{(sessionSeconds / 60).toFixed(1)} / 45.0</div>
+            {/* MONTH CASH: long-game progress */}
+            <div className="metric-cell" title="MONTH CASH: Total earned vs monthly ladder goal">
+              <div className="metric-watermark"><span>🗓️💰</span></div>
+              <div className="metric-cell-val">${monthlyArs.toLocaleString('es-AR')} / ${monthlyTargetArs.toLocaleString('es-AR')}</div>
+              <div style={{ fontSize: '0.42rem', opacity: 0.4, letterSpacing: '0.04em' }}>MONTH $</div>
             </div>
-            <div className="metric-cell" title={`DAILY MINS`}>
-               <div className="metric-watermark"><span>☀️🕒</span></div>
-               <div className="metric-cell-val">{Math.round(stats.dailyMinutes)} / {Math.round(requiredDailyAverage)}</div>
+
+            {/* ── ROW 2: INTELLIGENCE ── */}
+            {/* PACE ETA: predicts when you'll hit today's goal */}
+            <div className="metric-cell" title={`PACE: At this rate you'll hit today's goal at ${pacePrediction.label}. ${pacePrediction.detail || ''}`} style={{ background: 'rgba(59,130,246,0.04)' }}>
+              <div className="metric-watermark"><span>🎯</span></div>
+              <div className="metric-cell-val" style={{ color: pacePrediction.color }}>{pacePrediction.label}</div>
+              <div style={{ fontSize: '0.42rem', opacity: 0.4, letterSpacing: '0.04em' }}>PACE ETA</div>
             </div>
-            <div className="metric-cell" title={`MONTHLY MINS`}>
-               <div className="metric-watermark"><span>🗓️🕒</span></div>
-               <div className="metric-cell-val">{Math.round(stats.monthlyMinutes)} / {stats.goalMinutes}</div>
+
+            {/* QUALITY: pacing vs ideal linear progress */}
+            <div className="metric-cell" title={qualityScore ? `DAY QUALITY: ${qualityScore.pct}% of ideal pace. 100% = right on track, <80% = need to pick up.` : 'Not enough data yet'} style={{ background: 'rgba(59,130,246,0.04)' }}>
+              <div className="metric-watermark"><span>📈</span></div>
+              <div className="metric-cell-val" style={{ color: qualityScore?.color || 'var(--text-muted)' }}>
+                {qualityScore ? `${qualityScore.pct}%` : '–'}
+              </div>
+              <div style={{ fontSize: '0.42rem', opacity: 0.4, letterSpacing: '0.04em' }}>QUALITY</div>
             </div>
+
+            {/* STREAK: consecutive good days — loss aversion motivation */}
+            <div className="metric-cell" title={`STREAK: ${streak} consecutive day(s) hitting daily goal`} style={{ background: 'rgba(59,130,246,0.04)' }}>
+              <div className="metric-watermark"><span>🔥</span></div>
+              <div className="metric-cell-val" style={{ color: streak >= 3 ? '#fb923c' : streak > 0 ? '#fcd34d' : 'var(--text-muted)' }}>
+                {streak > 0 ? `${streak}🔥` : '–'}
+              </div>
+              <div style={{ fontSize: '0.42rem', opacity: 0.4, letterSpacing: '0.04em' }}>STREAK</div>
+            </div>
+
           </div>
 
-          {/* Right Section: Time Left, Segments, Tool Buttons */}
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.05rem', alignItems: 'flex-end', minWidth: '135px' }}>
-             <div style={{ display: 'flex', gap: '0.15rem', alignItems: 'center' }}>
-                <div className="metric-pill" title="CASH TO GOAL" style={{ background: 'rgba(52,211,153,0.15)', border: '1px solid rgba(52,211,153,0.4)', height: '22px' }}>
-                  <span style={{ color: '#6ee7b7', fontWeight: 800, fontSize: '0.65rem' }}>🏁${cashToTodayGoal.toLocaleString('es-AR')}</span>
-                </div>
-                <div style={{ display: 'flex', gap: '0.1rem', background: 'rgba(0,0,0,0.2)', padding: '0 0.2rem', borderRadius: '3px', fontSize: '0.65rem' }} title="SHIFT SEGMENTS">
-                   <span>🌅{Math.ceil(morningLeft)}</span>
-                   <span>☀️{Math.ceil(afternoonLeft)}</span>
-                   <span>🌙{Math.ceil(eveningLeft)}</span>
-                </div>
+          {/* Right Section: Call Rate + Effective Rate + Tool toggles */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.08rem', alignItems: 'flex-end', minWidth: '115px' }}>
+             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.08rem', alignItems: 'flex-end' }}>
+               {/* CALL RATE PILL */}
+               {callsToday > 0 ? (
+                 <div className="metric-pill" title={`${callsToday} calls today, avg ${avgCallMins}m each`} style={{ height: '22px', background: 'rgba(59,130,246,0.12)', border: '1px solid rgba(59,130,246,0.35)' }}>
+                   <span style={{ fontSize: '0.62rem', color: '#93c5fd', fontWeight: 700 }}>📞{callsToday}×{avgCallMins}m</span>
+                 </div>
+               ) : (
+                 <div className="metric-pill" title="No calls banked yet" style={{ height: '22px', opacity: 0.3 }}>
+                   <span style={{ fontSize: '0.62rem' }}>📞 No calls yet</span>
+                 </div>
+               )}
+               {/* EFFECTIVE RATE PILL */}
+               {effectiveRateArsHr ? (
+                 <div className="metric-pill" title={`Effective Rate: AR$${effectiveRateArsHr.toLocaleString('es-AR')}/hr including avail time`} style={{ height: '22px', background: 'rgba(139,92,246,0.12)', border: '1px solid rgba(139,92,246,0.35)' }}>
+                   <span style={{ fontSize: '0.62rem', color: '#c4b5fd', fontWeight: 700 }}>⚡${effectiveRateArsHr.toLocaleString('es-AR')}/h</span>
+                 </div>
+               ) : (
+                 <div className="metric-pill" style={{ height: '22px', opacity: 0.3 }}>
+                   <span style={{ fontSize: '0.62rem' }}>⚡ –/h</span>
+                 </div>
+               )}
              </div>
 
              <div style={{ display: 'flex', gap: '0.2rem' }}>
