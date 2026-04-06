@@ -237,8 +237,32 @@ export const DashboardHeader = ({ onStartAudio, onStopAudio, onReconnectStream, 
   const nextGoalLabel = milestoneLabels[currentIdx];
   const isAllGoalsMet = stats.monthlyMinutes >= milestones[11];
 
-  // ── SMART METRICS ─────────────────────────────────────────────
+  // ── HARD CUTOFF (20:00) ──────────────────────────────────────────
+  // 20:00 stop → 4h wind-down → 7h sleep → 2h wind-up → 9am restart
+  const HARD_CUTOFF_HOUR = 20;
+  const minsToHardCutoff = Math.max(0, (HARD_CUTOFF_HOUR - currentTime) * 60);
+  const availableWindowMins = minsToHardCutoff; // mins left before hard stop
+  // Cutoff warning: only show when within 1 hour of cutoff
+  const cutoffWarning = (() => {
+    if (minsToHardCutoff <= 0)  return { label: 'STOP 20:00', color: '#ef4444', pulse: true };
+    if (minsToHardCutoff <= 15) return { label: `🚨 ${Math.round(minsToHardCutoff)}m`, color: '#ef4444', pulse: true };
+    if (minsToHardCutoff <= 30) return { label: `⚠️ ${Math.round(minsToHardCutoff)}m`, color: '#f59e0b', pulse: false };
+    if (minsToHardCutoff <= 60) return { label: `🕐 1h`, color: '#fcd34d', pulse: false };
+    return null;
+  })();
+
+  // ── MONTHLY DEFICIT & RECOVERY ───────────────────────────────────
+  const GROWTH_TARGET = 11000; // Growth tier = real goal, Floor (5500) = survival
+  const expectedByToday = Math.round((stats.goalMinutes / daysInMonth) * currentDay);
+  const monthlyDeficitMins = expectedByToday - stats.monthlyMinutes; // positive = behind
+  const isInDeficit = monthlyDeficitMins > 30;
+  // Per-day needed to reach Growth (11k) by month end
+  const recoveryDailyTarget = remainingDays > 0 ? Math.ceil(Math.max(0, GROWTH_TARGET - stats.monthlyMinutes) / remainingDays) : 0;
+  const survivalDailyTarget = remainingDays > 0 ? Math.ceil(Math.max(0, 5500 - stats.monthlyMinutes) / remainingDays) : 0;
+
+  // ── SMART METRICS ────────────────────────────────────────────────
   // PACE: predicted time to hit today's goal at current earned rate
+  // Warns red if predicted ETA is past hard cutoff (20:00)
   const pacePrediction = (() => {
     const remaining = Math.max(0, dailyGoal - stats.dailyMinutes);
     if (remaining <= 0) return { label: '✅ Done!', color: '#10b981', detail: null };
@@ -249,35 +273,37 @@ export const DashboardHeader = ({ onStartAudio, onStopAudio, onReconnectStream, 
     const goalTime = new Date(Date.now() + minsToGoal * 60000);
     const hh = goalTime.getHours().toString().padStart(2, '0');
     const mm = goalTime.getMinutes().toString().padStart(2, '0');
-    const isBefore6 = goalTime.getHours() < 18;
+    const isBeforeCutoff = goalTime.getHours() < HARD_CUTOFF_HOUR;
+    const isBeforeShift = goalTime.getHours() < 18;
     return {
       label: `${hh}:${mm}`,
-      color: isBefore6 ? '#10b981' : '#f59e0b',
-      detail: isBefore6 ? 'before shift end' : 'running late'
+      color: isBeforeCutoff ? (isBeforeShift ? '#10b981' : '#34d399') : '#ef4444',
+      detail: isBeforeCutoff ? 'achievable today' : 'past 20:00 cutoff'
     };
   })();
 
-  // QUALITY: % of ideal pace met so far today (ideal = linear over 8hr shift)
+  // QUALITY: late-start aware — compares to actual available window, not 8hr flat
+  // If you log in at 14:00 with 20:00 cutoff, 100% = perfect for a 6hr session
+  const maxEarnableToday = stats.dailyMinutes + (availableWindowMins * 0.58); // ~35m/hr density
   const qualityScore = (() => {
     if (shiftElapsedMins < 5 || dailyGoal <= 0) return null;
-    const idealNow = dailyGoal * Math.min(1, shiftElapsedMins / 480);
+    const sessionWindowMins = shiftElapsedMins + availableWindowMins;
+    const idealNow = Math.min(dailyGoal, dailyGoal * (shiftElapsedMins / Math.max(sessionWindowMins, 30)));
+    if (idealNow <= 0) return null;
     const pct = Math.round((stats.dailyMinutes / idealNow) * 100);
     const capped = Math.min(150, pct);
     let color = '#ef4444';
     if (capped >= 100) color = '#10b981';
     else if (capped >= 80) color = '#34d399';
     else if (capped >= 60) color = '#f59e0b';
-    return { pct: capped, color };
+    const goalUnreachable = maxEarnableToday < dailyGoal;
+    return { pct: capped, color, goalUnreachable };
   })();
 
-  // STREAK: consecutive good days
+  // STREAK, CALL RATE, EFFECTIVE RATE
   const streak = stats.streak || 0;
-
-  // CALL RATE: calls today + avg duration
   const callsToday = stats.callsToday || 0;
   const avgCallMins = callsToday > 0 ? Math.round(stats.dailyMinutes / callsToday) : 0;
-
-  // EFFECTIVE RATE: ARS/hr earned vs shift time elapsed (includes avail overhead)
   const effectiveRateArsHr = shiftElapsedMins > 10
     ? Math.round((dailyArs / shiftElapsedMins) * 60)
     : null;
@@ -364,11 +390,15 @@ export const DashboardHeader = ({ onStartAudio, onStopAudio, onReconnectStream, 
               <div style={{ fontSize: '0.42rem', opacity: 0.4, letterSpacing: '0.04em' }}>PACE ETA</div>
             </div>
 
-            {/* QUALITY: pacing vs ideal linear progress */}
-            <div className="metric-cell" title={qualityScore ? `DAY QUALITY: ${qualityScore.pct}% of ideal pace. 100% = right on track, <80% = need to pick up.` : 'Not enough data yet'} style={{ background: 'rgba(59,130,246,0.04)' }}>
+            {/* QUALITY: late-start aware pacing score */}
+            <div className="metric-cell"
+              title={qualityScore?.goalUnreachable
+                ? `Today's goal (${Math.round(dailyGoal)}m) unreachable before 20:00. Max ~${Math.round(maxEarnableToday)}m. Consider adapting today's target.`
+                : qualityScore ? `DAY QUALITY: ${qualityScore.pct}% of ideal pace for your actual session window.` : 'Not enough data yet'}
+              style={{ background: 'rgba(59,130,246,0.04)' }}>
               <div className="metric-watermark"><span>📈</span></div>
-              <div className="metric-cell-val" style={{ color: qualityScore?.color || 'var(--text-muted)' }}>
-                {qualityScore ? `${qualityScore.pct}%` : '–'}
+              <div className="metric-cell-val" style={{ color: qualityScore?.goalUnreachable ? '#f59e0b' : (qualityScore?.color || 'var(--text-muted)') }}>
+                {qualityScore?.goalUnreachable ? '⚡Adapt' : qualityScore ? `${qualityScore.pct}%` : '–'}
               </div>
               <div style={{ fontSize: '0.42rem', opacity: 0.4, letterSpacing: '0.04em' }}>QUALITY</div>
             </div>
@@ -519,12 +549,24 @@ export const DashboardHeader = ({ onStartAudio, onStopAudio, onReconnectStream, 
               </div>
             </div>
 
-            {/* Compact Tool Toggles */}
-            <div style={{ display: 'flex', gap: '0.1rem', alignItems: 'center' }}>
-              <button onClick={() => setIsNotesOpen(!isNotesOpen)} className="btn-emoji" title="Notes">📝</button>
-              <button onClick={() => setIsToolbarVisible(!isToolbarVisible)} className="btn-emoji" title="Tools">🛠️</button>
-              <button onClick={() => setIsEditingScoreboard(!isEditingScoreboard)} className="btn-emoji" title="Edit">{isEditingScoreboard ? '💾' : '✏️'}</button>
-              <button onClick={() => setIsCollapsed(true)} className="btn-emoji" style={{ color: '#ef4444' }}>▲</button>
+            {/* Tool toggles — readable text labels */}
+            <div style={{ display: 'flex', gap: '0.2rem', alignItems: 'center', flexShrink: 0 }}>
+              <button onClick={() => setIsNotesOpen(!isNotesOpen)}
+                className="btn" style={{ fontSize: '0.55rem', padding: '0.2rem 0.4rem', background: isNotesOpen ? 'rgba(59,130,246,0.3)' : undefined }}>
+                📝 {isNotesOpen ? 'Notes ✓' : 'Notes'}
+              </button>
+              <button onClick={() => setIsToolbarVisible(!isToolbarVisible)}
+                className="btn" style={{ fontSize: '0.55rem', padding: '0.2rem 0.4rem', background: isToolbarVisible ? 'rgba(59,130,246,0.3)' : undefined }}>
+                🛠️ {isToolbarVisible ? 'Tools ✓' : 'Tools'}
+              </button>
+              <button onClick={() => setIsEditingScoreboard(!isEditingScoreboard)}
+                className="btn" style={{ fontSize: '0.55rem', padding: '0.2rem 0.4rem' }}>
+                {isEditingScoreboard ? '💾 Save' : '✏️ Edit'}
+              </button>
+              <button onClick={() => setIsCollapsed(true)}
+                className="btn" style={{ fontSize: '0.55rem', padding: '0.2rem 0.4rem', color: '#fca5a5' }}>
+                ▲ Close
+              </button>
             </div>
           </div>
         </div>
