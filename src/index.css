@@ -807,7 +807,7 @@ body {
   70% { top: 70%; left: 90%; transform: rotate(1260deg); }
   80% { top: 80%; left: 10%; transform: rotate(1440deg); }
   90% { top: 90%; left: 90%; transform: rotate(1620deg); }
-  100% { top: 96%; left: 40%; transform: rotate(1800deg); opacity: 0.15; }
+  100% { top: 96%; left: var(--end-x, 40%); transform: rotate(1800deg); opacity: 0.15; }
 }
 
 .falling-coin {

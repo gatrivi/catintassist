@@ -151,22 +151,28 @@ const TranslatedBubble = ({ id, text, lang, playTTS, stopTTS, playingUrl, prefet
 
 // ─── CoinRain Component ───────────────────────────────────────────────────────
 // Gamification: One coin zigzags down every minute of active call.
+// Refactored to prevent 'teleporting'—the coin that falls is the coin that stacks.
 const CoinRain = ({ isActive }) => {
-  const [activeCoins, setActiveCoins] = useState([]);
-  const [stackedCount, setStackedCount] = useState(0);
-  const [isCollecting, setIsCollecting] = useState(false);
+  const [coins, setCoins] = useState([]); // [{id, status, index}]
   const coinIdRef = useRef(0);
+  const startTimeRef = useRef(Date.now());
 
   useEffect(() => {
     if (isActive) {
-      setIsCollecting(false);
+      startTimeRef.current = Date.now();
       const spawn = () => {
         const id = ++coinIdRef.current;
-        setActiveCoins(prev => [...prev, id]);
-        // After 60s, it reach the bottom
+        setCoins(prev => {
+          // Count how many are currently falling or stacked to determine "slot"
+          const index = prev.filter(c => c.status !== 'collecting').length;
+          return [...prev, { id, status: 'falling', index }];
+        });
+        
+        // After 60s, it reach the bottom and stays there
         setTimeout(() => {
-          setActiveCoins(prev => prev.filter(c => c !== id));
-          setStackedCount(s => s + 1);
+          setCoins(current => current.map(c => 
+            c.id === id ? { ...c, status: 'stacked' } : c
+          ));
         }, 60000);
       };
       
@@ -174,44 +180,57 @@ const CoinRain = ({ isActive }) => {
       const iv = setInterval(spawn, 60000);
       return () => clearInterval(iv);
     } else {
-      // End of call: coins fly to wallet
-      if (stackedCount > 0) {
-        setIsCollecting(true);
-        const timer = setTimeout(() => {
-          setStackedCount(0);
-          setIsCollecting(false);
-        }, 12000); // Animation duration
-        return () => clearTimeout(timer);
-      }
-      setActiveCoins([]);
+      // End of call: all existing coins (falling or stacked) fly to wallet
+      setCoins(current => current.map(c => 
+        c.status !== 'collecting' ? { ...c, status: 'collecting' } : c
+      ));
+      
+      const cleanup = setTimeout(() => {
+        setCoins([]);
+        coinIdRef.current = 0;
+      }, 15000); 
+      return () => clearTimeout(cleanup);
     }
-  }, [isActive, stackedCount]);
+  }, [isActive]);
 
   return (
     <div id="coin-rain-overlay" style={{ position: 'absolute', inset: 0, pointerEvents: 'none', zIndex: 0, overflow: 'hidden' }}>
-      {/* Active falling coins */}
-      {activeCoins.map(id => (
-        <div key={id} className="falling-coin" style={{ 
-          position: 'absolute', fontSize: '1.4rem', 
-          filter: 'drop-shadow(0 0 8px rgba(252, 211, 77, 0.4))'
-        }}>💰</div>
-      ))}
+      {coins.map(coin => {
+        const xPos = 15 + (coin.index * 12); // Stacking offset
+        
+        let style = {};
+        if (coin.status === 'falling') {
+          style = {
+            top: '-10%', left: '10%',
+            animation: 'zigzagFall 60s linear forwards',
+            '--end-x': `${xPos}px`,
+            opacity: 1
+          };
+        } else if (coin.status === 'stacked') {
+          style = {
+            bottom: '8px',
+            left: `${xPos}px`,
+            opacity: 0.2
+          };
+        } else if (coin.status === 'collecting') {
+          style = {
+            bottom: '8px',
+            left: `${xPos}px`,
+            animation: 'flyToTop 1.2s ease-in forwards',
+            animationDelay: `${(coin.index % 20) * 0.1}s`, // Staggered fly
+            opacity: 1
+          };
+        }
 
-      {/* Stacked coins at the bottom */}
-      <div id="stacked-pile" style={{ 
-        position: 'absolute', bottom: '8px', left: '15px', 
-        display: 'flex', flexWrap: 'nowrap', gap: '-2px',
-        opacity: isCollecting ? 1 : 0.15,
-        transition: 'opacity 0.3s'
-      }}>
-        {Array.from({ length: stackedCount }).map((_, i) => (
-          <span key={i} className={isCollecting ? 'fly-to-wallet' : ''} style={{ 
-            fontSize: '1.1rem', 
-            animationDelay: isCollecting ? `${i * 0.1}s` : '0s',
-            marginRight: '-12px'
-          }}>💰</span>
-        ))}
-      </div>
+        return (
+          <div key={coin.id} className="coin-instance" style={{ 
+            position: 'absolute', fontSize: '1.4rem', 
+            filter: 'drop-shadow(0 0 8px rgba(252, 211, 77, 0.4))',
+            transition: 'opacity 0.5s ease',
+            ...style
+          }}>💰</div>
+        );
+      })}
     </div>
   );
 };
