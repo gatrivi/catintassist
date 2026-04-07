@@ -19,23 +19,17 @@ export const useTranslate = (text, lang, prefetchTTS, shouldPrefetch) => {
   const [translation, setTranslation] = useState('');
   const [audioUrl, setAudioUrl] = useState(null);
   const [isTranslating, setIsTranslating] = useState(false);
-  const [engineStatus, setEngineStatus] = useState('idle'); // 'idle' | 'translating' | 'buffering' | 'ready'
+  const [engineStatus, setEngineStatus] = useState('idle');
   const lastPrefetchedTextRef = useRef('');
 
-  const targetLang = lang === 'en' ? 'es' : 'en';
+  // Robust language detection
+  const sourceLang = (lang || 'en').toLowerCase().startsWith('es') ? 'es' : 'en';
+  const targetLang = sourceLang === 'en' ? 'es' : 'en';
 
   const sanitizeTranslation = (input) => {
     if (!input || typeof input !== 'string') return '';
     const upper = input.toUpperCase();
-    // Catch common 'error' or 'limit' responses from scrapers/apis
-    if (upper.includes('MYMEMORY') || 
-        upper.includes('LIMIT') || 
-        upper.includes('THROTTLED') || 
-        upper.includes('FORBIDDEN') ||
-        upper.includes('QUOTA') ||
-        input.includes('<html>') ||
-        input.length < 1
-    ) return '';
+    if (upper.includes('MYMEMORY') || upper.includes('LIMIT') || upper.includes('THROTTLED') || upper.includes('FORBIDDEN') || upper.includes('QUOTA') || input.includes('<html>') || input.length < 1) return '';
     return input.trim();
   };
 
@@ -47,7 +41,7 @@ export const useTranslate = (text, lang, prefetchTTS, shouldPrefetch) => {
     const timer = setTimeout(async () => {
       setIsTranslating(true);
       setEngineStatus('translating');
-      const langPair = `${lang}-${targetLang}`;
+      const langPair = `${sourceLang}-${targetLang}`;
       const cached = getCached(text, langPair);
       
       if (cached) { 
@@ -76,14 +70,14 @@ export const useTranslate = (text, lang, prefetchTTS, shouldPrefetch) => {
           if (!keys.DEEPL) throw 'no key';
           const r = await fetch(`https://api-free.deepl.com/v2/translate`, {
             method: 'POST', headers: { 'Authorization': `DeepL-Auth-Key ${keys.DEEPL}`, 'Content-Type': 'application/x-www-form-urlencoded' },
-            body: new URLSearchParams({ text: c, target_lang: targetLang.toUpperCase(), source_lang: lang.toUpperCase() })
+            body: new URLSearchParams({ text: c, target_lang: targetLang.toUpperCase(), source_lang: sourceLang.toUpperCase() })
           });
           if (!r.ok) throw `status ${r.status}`;
           const d = await r.json(); return d.translations?.[0]?.text;
         },
         ms: async (c) => {
           if (!keys.MS) throw 'no key';
-          const r = await fetch(`https://api.cognitive.microsofttranslator.com/translate?api-version=3.0&from=${lang}&to=${targetLang}`, {
+          const r = await fetch(`https://api.cognitive.microsofttranslator.com/translate?api-version=3.0&from=${sourceLang}&to=${targetLang}`, {
             method: 'POST', headers: { 'Ocp-Apim-Subscription-Key': keys.MS, 'Ocp-Apim-Subscription-Region': keys.MS_REG, 'Content-Type': 'application/json' },
             body: JSON.stringify([{ Text: c }])
           });
@@ -96,51 +90,52 @@ export const useTranslate = (text, lang, prefetchTTS, shouldPrefetch) => {
             method: 'POST', headers: { 'Authorization': `Bearer ${keys.OPENAI}`, 'Content-Type': 'application/json' },
             body: JSON.stringify({
               model: "gpt-4o-mini",
-              messages: [{ role: "system", content: `Translate from ${lang} to ${targetLang}. Return ONLY the direct translation.` }, { role: "user", content: c }],
+              messages: [{ role: "system", content: `Translate from ${sourceLang} to ${targetLang}. Return ONLY the direct translation.` }, { role: "user", content: c }],
               temperature: 0
             })
           });
           if (!r.ok) throw `status ${r.status}`;
           const d = await r.json(); return d.choices?.[0]?.message?.content;
         },
+        google_gtx: async (c) => {
+          const r = await fetch(`https://translate.googleapis.com/translate_a/single?client=gtx&sl=${sourceLang}&tl=${targetLang}&dt=t&q=${encodeURIComponent(c)}`);
+          if (!r.ok) throw `gtx ${r.status}`;
+          const d = await r.json(); 
+          if (!d?.[0]) return '';
+          // Join segments with space and cleanup to avoid "Helloworld" logic bugs
+          return d[0].map(s => s[0]).filter(Boolean).join(' ').replace(/\s+/g, ' ').trim();
+        },
+        mymemory: async (c) => {
+          const r = await fetch(`https://api.mymemory.translated.net/get?q=${encodeURIComponent(c)}&langpair=${sourceLang}|${targetLang}`);
+          if (!r.ok) throw `mymemory ${r.status}`;
+          const d = await r.json(); 
+          if (d.responseStatus !== 200) throw `mymemory err ${d.responseStatus}`;
+          return d.responseData?.translatedText;
+        },
         google: async (c) => {
-          const r = await fetch(`https://translate.googleapis.com/translate_a/t?client=te&v=1.0&sl=${lang}&tl=${targetLang}&q=${encodeURIComponent(c)}`);
+          const r = await fetch(`https://translate.googleapis.com/translate_a/t?client=te&v=1.0&sl=${sourceLang}&tl=${targetLang}&q=${encodeURIComponent(c)}`);
           if (!r.ok) throw `status ${r.status}`;
           const d = await r.json(); 
           if (Array.isArray(d)) return d.map(p => typeof p === 'string' ? p : (p[0] || '')).join(' ');
           return String(d);
-        },
-        google_gtx: async (c) => {
-          const r = await fetch(`https://translate.googleapis.com/translate_a/single?client=gtx&sl=${lang}&tl=${targetLang}&dt=t&q=${encodeURIComponent(c)}`);
-          if (!r.ok) throw `gtx ${r.status}`;
-          const d = await r.json(); 
-          if (!d?.[0]) return '';
-          return d[0].map(s => s[0]).filter(Boolean).join('');
-        },
-        lingva: async (c) => {
-          const r = await fetch(`https://lingva.ml/api/v1/${lang}/${targetLang}/${encodeURIComponent(c)}`);
-          if (!r.ok) throw `lingva ${r.status}`;
-          const d = await r.json(); return d.translation;
         }
       };
 
       const raceChunk = async (chunk) => {
         const pool = [];
-        // Add paid services if keys exist
         if (keys.DEEPL) pool.push({ id: 'deepl', fn: fetchers.deepl, delay: 0 });
-        if (keys.OPENAI) pool.push({ id: 'openai', fn: fetchers.openai, delay: 300 });
-        if (keys.MS) pool.push({ id: 'ms', fn: fetchers.ms, delay: 600 });
+        if (keys.OPENAI) pool.push({ id: 'openai', fn: fetchers.openai, delay: 200 });
+        if (keys.MS) pool.push({ id: 'ms', fn: fetchers.ms, delay: 400 });
         
-        // Add free fallbacks with very aggressive timing
+        // Free fallbacks - RTX is usually fastest but often blocked. MyMemory is robust.
         pool.push({ id: 'google_gtx', fn: fetchers.google_gtx, delay: 0 });
-        pool.push({ id: 'google', fn: fetchers.google, delay: 400 });
-        pool.push({ id: 'lingva', fn: fetchers.lingva, delay: 800 });
+        pool.push({ id: 'mymemory', fn: fetchers.mymemory, delay: 300 });
+        pool.push({ id: 'google', fn: fetchers.google, delay: 600 });
 
         let resolved = false;
         return new Promise((resolve) => {
           const timeouts = [];
-          
-          pool.forEach((service, idx) => {
+          pool.forEach((service) => {
             const tout = setTimeout(async () => {
               if (resolved) return;
               try {
@@ -153,21 +148,21 @@ export const useTranslate = (text, lang, prefetchTTS, shouldPrefetch) => {
                   resolve(clean.trim());
                 }
               } catch (e) {
-                // Fail silent, wait for others or absolute timeout
+                // Silently wait for other engines
               }
             }, service.delay);
             timeouts.push(tout);
           });
 
-          // Absolute safety timeout: return original text after 5s
+          // Reduced timeout to 3.5s for snappier experience
           setTimeout(() => { 
             if (!resolved) {
               resolved = true;
               timeouts.forEach(clearTimeout);
-              console.warn(`[Trans] All failed/timed out, returning original.`);
+              console.warn(`[Trans] All engines failed for chunk, returning source.`);
               resolve(chunk.trim()); 
             }
-          }, 5000); 
+          }, 3500); 
         });
       };
 
@@ -196,12 +191,11 @@ export const useTranslate = (text, lang, prefetchTTS, shouldPrefetch) => {
         setEngineStatus('ready');
         lastPrefetchedTextRef.current = final;
       }
-    }, 600);
+    }, 450); // Snappier debounce
 
     return () => clearTimeout(timer);
-  }, [text, lang, targetLang, prefetchTTS, shouldPrefetch]);
+  }, [text, lang, prefetchTTS, shouldPrefetch]);
 
   return { translation, audioUrl, isTranslating, engineStatus, targetLang };
 };
-
 
