@@ -787,7 +787,7 @@ export const DashboardHeader = ({ onStartAudio, onStopAudio, onReconnectStream, 
                 ) : (
                   <>
                     <span title="Literally how many hours are left until 11:00 PM.">⏳ {hoursLeftToAbsolute.toFixed(1)}h left (${Math.round(hoursLeftToAbsolute * 60)}m)</span>
-                    <span title="Assuming you work 35 mins per hour (allowing for breaks/avail), this is how many minutes you can realistically bank today.">({Math.round(workableMinsRemaining)}m, $ARS{workableMinsRemaining*0.13*1348} workable)</span>
+                    <span title="Assuming you work 35 mins per hour (allowing for breaks/avail), this is how many minutes you can realistically bank today.">({Math.round(workableMinsRemaining)}m, $ARS{Math.trunc(workableMinsRemaining*0.13*1348)} workable)</span>
                   </>
                 )}
               </div>
