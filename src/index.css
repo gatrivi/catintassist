@@ -794,3 +794,34 @@ body {
   justify-content: center;
 }
 .btn-icon:hover { background: rgba(255,255,255,0.08); }
+/* ── COIN RAIN ANIMATIONS ── */
+@keyframes zigzagFall {
+  0% { top: -10%; left: 10%; opacity: 0; transform: rotate(0deg); }
+  5% { opacity: 1; }
+  10% { top: 10%; left: 90%; transform: rotate(180deg); }
+  20% { top: 20%; left: 10%; transform: rotate(360deg); }
+  30% { top: 30%; left: 90%; transform: rotate(540deg); }
+  40% { top: 40%; left: 10%; transform: rotate(720deg); }
+  50% { top: 50%; left: 90%; transform: rotate(900deg); }
+  60% { top: 60%; left: 10%; transform: rotate(1080deg); }
+  70% { top: 70%; left: 90%; transform: rotate(1260deg); }
+  80% { top: 80%; left: 10%; transform: rotate(1440deg); }
+  90% { top: 90%; left: 90%; transform: rotate(1620deg); }
+  100% { top: 96%; left: 40%; transform: rotate(1800deg); opacity: 0.15; }
+}
+
+.falling-coin {
+  animation: zigzagFall 60s linear forwards;
+}
+
+.fly-to-wallet {
+  position: relative;
+  animation: flyToTop 1.2s ease-in forwards;
+  pointer-events: none;
+}
+
+@keyframes flyToTop {
+  0% { transform: translate(0, 0) scale(1); opacity: 1; }
+  30% { transform: translate(20px, -40px) scale(1.2); opacity: 0.8; }
+  100% { transform: translate(50vw, -100vh) scale(0.3); opacity: 0; }
+}

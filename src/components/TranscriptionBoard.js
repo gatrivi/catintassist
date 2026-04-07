@@ -149,6 +149,73 @@ const TranslatedBubble = ({ id, text, lang, playTTS, stopTTS, playingUrl, prefet
   );
 };
 
+// ─── CoinRain Component ───────────────────────────────────────────────────────
+// Gamification: One coin zigzags down every minute of active call.
+const CoinRain = ({ isActive }) => {
+  const [activeCoins, setActiveCoins] = useState([]);
+  const [stackedCount, setStackedCount] = useState(0);
+  const [isCollecting, setIsCollecting] = useState(false);
+  const coinIdRef = useRef(0);
+
+  useEffect(() => {
+    if (isActive) {
+      setIsCollecting(false);
+      const spawn = () => {
+        const id = ++coinIdRef.current;
+        setActiveCoins(prev => [...prev, id]);
+        // After 60s, it reach the bottom
+        setTimeout(() => {
+          setActiveCoins(prev => prev.filter(c => c !== id));
+          setStackedCount(s => s + 1);
+        }, 60000);
+      };
+      
+      spawn();
+      const iv = setInterval(spawn, 60000);
+      return () => clearInterval(iv);
+    } else {
+      // End of call: coins fly to wallet
+      if (stackedCount > 0) {
+        setIsCollecting(true);
+        const timer = setTimeout(() => {
+          setStackedCount(0);
+          setIsCollecting(false);
+        }, 12000); // Animation duration
+        return () => clearTimeout(timer);
+      }
+      setActiveCoins([]);
+    }
+  }, [isActive, stackedCount]);
+
+  return (
+    <div id="coin-rain-overlay" style={{ position: 'absolute', inset: 0, pointerEvents: 'none', zIndex: 0, overflow: 'hidden' }}>
+      {/* Active falling coins */}
+      {activeCoins.map(id => (
+        <div key={id} className="falling-coin" style={{ 
+          position: 'absolute', fontSize: '1.4rem', 
+          filter: 'drop-shadow(0 0 8px rgba(252, 211, 77, 0.4))'
+        }}>💰</div>
+      ))}
+
+      {/* Stacked coins at the bottom */}
+      <div id="stacked-pile" style={{ 
+        position: 'absolute', bottom: '8px', left: '15px', 
+        display: 'flex', flexWrap: 'nowrap', gap: '-2px',
+        opacity: isCollecting ? 1 : 0.15,
+        transition: 'opacity 0.3s'
+      }}>
+        {Array.from({ length: stackedCount }).map((_, i) => (
+          <span key={i} className={isCollecting ? 'fly-to-wallet' : ''} style={{ 
+            fontSize: '1.1rem', 
+            animationDelay: isCollecting ? `${i * 0.1}s` : '0s',
+            marginRight: '-12px'
+          }}>💰</span>
+        ))}
+      </div>
+    </div>
+  );
+};
+
 
 export const TranscriptionBoard = ({ captions, onClear }) => {
   const bottomRef = useRef(null);
@@ -254,6 +321,7 @@ export const TranscriptionBoard = ({ captions, onClear }) => {
 
   return (
     <div className="glass-panel transcription-area" style={{ position: 'relative' }}>
+      <CoinRain isActive={isActive} />
       {popover.show && (
         <div style={{
           position: 'fixed',
