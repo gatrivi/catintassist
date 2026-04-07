@@ -6,6 +6,7 @@ import { DialGoalSelector } from './DialGoalSelector';
 import { useProgressiveAudio } from '../hooks/useProgressiveAudio';
 import { MonthHeatmap } from './MonthHeatmap';
 import { TimeEditModal } from './TimeEditModal';
+import { GameScoreboard } from './GameScoreboard';
 
 const CelebrationParticles = ({ type, label, coins, onDismiss }) => {
   const [isClosing, setIsClosing] = useState(false);
@@ -71,6 +72,7 @@ export const DashboardHeader = ({ onStartAudio, onStopAudio, onReconnectStream, 
   const [displayBounty, setDisplayBounty] = useState(0);
   const [isBountyAnimating, setIsBountyAnimating] = useState(false);
   const [timeEditMode, setTimeEditMode] = useState(null); // 'call' | 'break' | null
+  const [scoreView, setScoreView] = useState('game'); // 'game' | 'numbers'
 
   useEffect(() => {
     let iv; if (isHold) iv = setInterval(() => setHoldSeconds(s => s + 1), 1000); else setHoldSeconds(0);
@@ -368,63 +370,71 @@ export const DashboardHeader = ({ onStartAudio, onStopAudio, onReconnectStream, 
             </div>
           </div>
 
-          {/* THE SMART 2x3 GRID — Row 1: Money | Row 2: Intelligence */}
-          <div className="metric-grid">
-
-            {/* ── ROW 1: MONEY ── */}
-            {/* BOUNTY: remaining ARS to earn today — the most actionable single number */}
-            <div className="metric-cell" title="BOUNTY: ARS left to earn today to hit your quota" style={{ background: cashToTodayGoal <= 0 ? 'rgba(16,185,129,0.08)' : 'rgba(52,211,153,0.04)' }}>
-              <div className="metric-watermark"><span>🏹</span></div>
-              <div className="metric-cell-val" style={{ color: cashToTodayGoal <= 0 ? '#10b981' : 'rgba(255,255,255,0.8)' }}>
-                {cashToTodayGoal <= 0 ? '✅' : `$${cashToTodayGoal.toLocaleString('es-AR')}`}
+          {/* SCOREBOARD: Game view (default) or numeric grid */}
+          <div style={{ flex: '1 1 0', minWidth: 0 }}>
+            {scoreView === 'game' ? (
+              <GameScoreboard
+                liveDailyArs={liveDailyArs} dailyTargetArs={dailyTargetArs}
+                monthlyArs={monthlyArs} monthlyTargetArs={monthlyTargetArs}
+                stats={stats} dailyGoal={dailyGoal} totalDailyMins={totalDailyMins}
+                shiftElapsedMins={shiftElapsedMins}
+                pacePrediction={pacePrediction} qualityScore={qualityScore} cutoffWarning={cutoffWarning}
+                breakLeft={breakLeft} breakLimit={breakLimit}
+                nextGoalLabel={nextGoalLabel} nextMilestone={nextMilestone}
+                daysInMonth={daysInMonth} currentDay={currentDay} remainingDays={remainingDays}
+                onSwitchToNumbers={() => setScoreView('numbers')}
+              />
+            ) : (
+              <div className="metric-grid">
+                {/* BOUNTY */}
+                <div className="metric-cell" title="BOUNTY: ARS left to earn today" style={{ background: cashToTodayGoal <= 0 ? 'rgba(16,185,129,0.08)' : 'rgba(52,211,153,0.04)' }}>
+                  <div className="metric-watermark"><span>🏹</span></div>
+                  <div className="metric-cell-val" style={{ color: cashToTodayGoal <= 0 ? '#10b981' : 'rgba(255,255,255,0.8)' }}>
+                    {cashToTodayGoal <= 0 ? '✅' : `$${cashToTodayGoal.toLocaleString('es-AR')}`}
+                  </div>
+                  <div style={{ fontSize: '0.42rem', opacity: 0.4, letterSpacing: '0.04em' }}>BOUNTY</div>
+                </div>
+                {/* DAY CASH */}
+                <div className="metric-cell" title="DAY CASH: Banked ARS vs daily quota">
+                  <div className="metric-watermark"><span>☀️💰</span></div>
+                  <div className="metric-cell-val">${dailyArs.toLocaleString('es-AR')} / ${dailyTargetArs.toLocaleString('es-AR')}</div>
+                  <div style={{ fontSize: '0.42rem', opacity: 0.4, letterSpacing: '0.04em' }}>DAY $</div>
+                </div>
+                {/* MONTH CASH */}
+                <div className="metric-cell" title="MONTH CASH: Total earned vs monthly goal">
+                  <div className="metric-watermark"><span>🗓️💰</span></div>
+                  <div className="metric-cell-val">${monthlyArs.toLocaleString('es-AR')} / ${monthlyTargetArs.toLocaleString('es-AR')}</div>
+                  <div style={{ fontSize: '0.42rem', opacity: 0.4, letterSpacing: '0.04em' }}>MONTH $</div>
+                </div>
+                {/* PACE ETA */}
+                <div className="metric-cell" title={`PACE ETA: ${pacePrediction.label}`} style={{ background: 'rgba(59,130,246,0.04)' }}>
+                  <div className="metric-watermark"><span>🎯</span></div>
+                  <div className="metric-cell-val" style={{ color: pacePrediction.color }}>{pacePrediction.label}</div>
+                  <div style={{ fontSize: '0.42rem', opacity: 0.4, letterSpacing: '0.04em' }}>PACE ETA</div>
+                </div>
+                {/* QUALITY */}
+                <div className="metric-cell" style={{ background: 'rgba(59,130,246,0.04)' }}>
+                  <div className="metric-watermark"><span>📈</span></div>
+                  <div className="metric-cell-val" style={{ color: qualityScore?.goalUnreachable ? '#f59e0b' : (qualityScore?.color || 'var(--text-muted)') }}>
+                    {qualityScore?.goalUnreachable ? '⚡Adapt' : qualityScore ? `${qualityScore.pct}%` : '–'}
+                  </div>
+                  <div style={{ fontSize: '0.42rem', opacity: 0.4, letterSpacing: '0.04em' }}>QUALITY</div>
+                </div>
+                {/* STREAK */}
+                <div className="metric-cell" style={{ background: 'rgba(59,130,246,0.04)' }}>
+                  <div className="metric-watermark"><span>🔥</span></div>
+                  <div className="metric-cell-val" style={{ color: streak >= 3 ? '#fb923c' : streak > 0 ? '#fcd34d' : 'var(--text-muted)' }}>
+                    {streak > 0 ? `${streak}🔥` : '–'}
+                  </div>
+                  <div style={{ fontSize: '0.42rem', opacity: 0.4, letterSpacing: '0.04em' }}>STREAK</div>
+                </div>
+                {/* Switch back */}
+                <div className="metric-cell" style={{ cursor: 'pointer', background: 'rgba(139,92,246,0.06)' }} onClick={() => setScoreView('game')} title="Switch to game view">
+                  <div className="metric-cell-val" style={{ fontSize: '0.9rem' }}>🎮</div>
+                  <div style={{ fontSize: '0.42rem', opacity: 0.4, letterSpacing: '0.04em' }}>GAME</div>
+                </div>
               </div>
-              <div style={{ fontSize: '0.42rem', opacity: 0.4, letterSpacing: '0.04em' }}>BOUNTY</div>
-            </div>
-
-            {/* DAY CASH: how much earned vs today's quota */}
-            <div className="metric-cell" title="DAY CASH: Banked ARS vs daily quota">
-              <div className="metric-watermark"><span>☀️💰</span></div>
-              <div className="metric-cell-val">${dailyArs.toLocaleString('es-AR')} / ${dailyTargetArs.toLocaleString('es-AR')}</div>
-              <div style={{ fontSize: '0.42rem', opacity: 0.4, letterSpacing: '0.04em' }}>DAY $</div>
-            </div>
-
-            {/* MONTH CASH: long-game progress */}
-            <div className="metric-cell" title="MONTH CASH: Total earned vs monthly ladder goal">
-              <div className="metric-watermark"><span>🗓️💰</span></div>
-              <div className="metric-cell-val">${monthlyArs.toLocaleString('es-AR')} / ${monthlyTargetArs.toLocaleString('es-AR')}</div>
-              <div style={{ fontSize: '0.42rem', opacity: 0.4, letterSpacing: '0.04em' }}>MONTH $</div>
-            </div>
-
-            {/* ── ROW 2: INTELLIGENCE ── */}
-            {/* PACE ETA: predicts when you'll hit today's goal */}
-            <div className="metric-cell" title={`PACE: At this rate you'll hit today's goal at ${pacePrediction.label}. ${pacePrediction.detail || ''}`} style={{ background: 'rgba(59,130,246,0.04)' }}>
-              <div className="metric-watermark"><span>🎯</span></div>
-              <div className="metric-cell-val" style={{ color: pacePrediction.color }}>{pacePrediction.label}</div>
-              <div style={{ fontSize: '0.42rem', opacity: 0.4, letterSpacing: '0.04em' }}>PACE ETA</div>
-            </div>
-
-            {/* QUALITY: late-start aware pacing score */}
-            <div className="metric-cell"
-              title={qualityScore?.goalUnreachable
-                ? `Today's goal (${Math.round(dailyGoal)}m) unreachable before 20:00. Max ~${Math.round(maxEarnableToday)}m. Consider adapting today's target.`
-                : qualityScore ? `DAY QUALITY: ${qualityScore.pct}% of ideal pace for your actual session window.` : 'Not enough data yet'}
-              style={{ background: 'rgba(59,130,246,0.04)' }}>
-              <div className="metric-watermark"><span>📈</span></div>
-              <div className="metric-cell-val" style={{ color: qualityScore?.goalUnreachable ? '#f59e0b' : (qualityScore?.color || 'var(--text-muted)') }}>
-                {qualityScore?.goalUnreachable ? '⚡Adapt' : qualityScore ? `${qualityScore.pct}%` : '–'}
-              </div>
-              <div style={{ fontSize: '0.42rem', opacity: 0.4, letterSpacing: '0.04em' }}>QUALITY</div>
-            </div>
-
-            {/* STREAK: consecutive good days — loss aversion motivation */}
-            <div className="metric-cell" title={`STREAK: ${streak} consecutive day(s) hitting daily goal`} style={{ background: 'rgba(59,130,246,0.04)' }}>
-              <div className="metric-watermark"><span>🔥</span></div>
-              <div className="metric-cell-val" style={{ color: streak >= 3 ? '#fb923c' : streak > 0 ? '#fcd34d' : 'var(--text-muted)' }}>
-                {streak > 0 ? `${streak}🔥` : '–'}
-              </div>
-              <div style={{ fontSize: '0.42rem', opacity: 0.4, letterSpacing: '0.04em' }}>STREAK</div>
-            </div>
-
+            )}
           </div>
 
           {/* Right Section: Call Rate + Effective Rate + Tool toggles */}
