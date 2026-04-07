@@ -382,6 +382,7 @@ export const DashboardHeader = ({ onStartAudio, onStopAudio, onReconnectStream, 
                 breakLeft={breakLeft} breakLimit={breakLimit}
                 nextGoalLabel={nextGoalLabel} nextMilestone={nextMilestone}
                 daysInMonth={daysInMonth} currentDay={currentDay} remainingDays={remainingDays}
+                isActive={isActive} isBreakActive={isBreakActive}
                 onSwitchToNumbers={() => setScoreView('numbers')}
               />
             ) : (

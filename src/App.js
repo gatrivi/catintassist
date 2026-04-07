@@ -13,7 +13,7 @@ import './index.css';
 
 const Dashboard = () => {
   const { startRecording, stopRecording, reconnectStream, captions, clearCaptions, sttLanguage, toggleLanguage, connectionState, connectionMessage } = useDeepgram();
-  const { isNotesOpen, isToolbarVisible } = useSession();
+  const { isNotesOpen, isToolbarVisible, isActive, isBreakActive } = useSession();
   const [isEditingBg, setIsEditingBg] = useState(false);
   
   useEffect(() => {
@@ -51,8 +51,18 @@ const Dashboard = () => {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [toggleLanguage]);
 
+  // Track idle time for full app vignette
+  const [idleSecs, setIdleSecs] = useState(0);
+  useEffect(() => {
+    if (isActive || isBreakActive) { setIdleSecs(0); return; }
+    const iv = setInterval(() => setIdleSecs(s => s + 1), 1000);
+    return () => clearInterval(iv);
+  }, [isActive, isBreakActive]);
+
+  const stateClass = isActive ? 'app-active' : isBreakActive ? 'app-break' : idleSecs > 45 ? 'app-idle' : '';
+
   return (
-    <div className="app-container">
+    <div className={`app-container ${stateClass}`}>
       {/* Version Tag - Always visible in the upper right */}
       <div style={{ 
         position: 'fixed', top: '1px', right: '4px', zIndex: 10000, 

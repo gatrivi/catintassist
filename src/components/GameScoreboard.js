@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 
 // ─── EmojiRow ─────────────────────────────────────────────────────────────────
 // Renders fullCount full emojis + one partially-cropped emoji representing the
@@ -63,31 +63,91 @@ const EmojiRow = ({ emoji, value, unitValue, maxValue, color = '#fff', label, su
 };
 
 // ─── DirectionalCue ──────────────────────────────────────────────────────────
-// A single punchy line telling the player what to do next.
-const DirectionalCue = ({ pacePrediction, dailyGoal, totalDailyMins, breakLeft, qualityScore, cutoffWarning }) => {
+// Coaching-style cue: encouraging on mistakes, not discouraging.
+const COACHING_TIPS = [
+  'Each call is a rep. Stay consistent.',
+  'Pick up the next one. You got this.',
+  'Pace improves with reps. Keep going.',
+  'The log doesn\'t lie — every minute counts.',
+  'You\'re still in the game. Connect again.',
+];
+const DirectionalCue = ({ pacePrediction, dailyGoal, totalDailyMins, breakLeft, qualityScore, cutoffWarning, isActive, isBreakActive }) => {
+  const tip = COACHING_TIPS[Math.floor(Date.now() / 30000) % COACHING_TIPS.length];
   if (cutoffWarning?.pulse) return (
-    <div style={{ color: '#ef4444', fontWeight: 900, fontSize: '0.75rem', animation: 'pulseWarning 1s infinite' }}>
-      🚨 HARD STOP {cutoffWarning.label} — LOG OUT NOW
+    <div style={{ color: '#ef4444', fontWeight: 900, fontSize: '0.7rem', animation: 'pulseWarning 1s infinite' }}>
+      🚨 HARD STOP — save your streak, log out now
     </div>
   );
   if (totalDailyMins >= dailyGoal) return (
-    <div style={{ color: '#10b981', fontWeight: 800, fontSize: '0.75rem' }}>✅ Daily bounty secured — every min now is pure bonus!</div>
+    <div style={{ color: '#10b981', fontWeight: 800, fontSize: '0.7rem' }}>✅ Bounty secured — anything extra is pure profit 💎</div>
   );
-  if (pacePrediction?.detail === 'past 20:00 cutoff') return (
-    <div style={{ color: '#f59e0b', fontWeight: 800, fontSize: '0.75rem' }}>⚡ Behind pace — push hard to hit daily target before cutoff</div>
+  if (isActive) return (
+    <div style={{ color: '#34d399', fontWeight: 700, fontSize: '0.7rem', animation: 'encouragePulse 2s infinite' }}>
+      ⬆️ On call — climbing. ETA {pacePrediction?.label || '?'}
+    </div>
+  );
+  if (isBreakActive) return (
+    <div style={{ color: '#fb923c', fontWeight: 700, fontSize: '0.7rem' }}>
+      ☕ Break — gap is widening. Return soon.
+    </div>
   );
   if (qualityScore?.goalUnreachable) return (
-    <div style={{ color: '#f97316', fontWeight: 800, fontSize: '0.75rem' }}>⚡ Cap hit — adapt target to ~{qualityScore.suggestedGoal}m and give it all</div>
+    <div style={{ color: '#f97316', fontWeight: 700, fontSize: '0.7rem' }}>🎯 Adapt to {qualityScore.suggestedGoal}m — still winnable, keep moving</div>
   );
   if (breakLeft <= 0) return (
-    <div style={{ color: '#ef4444', fontWeight: 800, fontSize: '0.75rem' }}>⚠️ Break budget gone — stay on calls to protect your score</div>
+    <div style={{ color: '#f59e0b', fontWeight: 700, fontSize: '0.7rem' }}>⚠️ Break budget spent — every idle minute costs. {tip}</div>
   );
   if (qualityScore && qualityScore.pct >= 100) return (
-    <div style={{ color: '#34d399', fontWeight: 800, fontSize: '0.75rem' }}>🔥 On pace — ETA {pacePrediction?.label}. Keep the streak alive.</div>
+    <div style={{ color: '#34d399', fontWeight: 700, fontSize: '0.7rem' }}>🔥 On pace! ETA {pacePrediction?.label}. Don\'t stop now.</div>
   );
   return (
-    <div style={{ color: '#93c5fd', fontWeight: 700, fontSize: '0.75rem' }}>
-      🎯 Need {Math.round(Math.max(0, dailyGoal - totalDailyMins))}m more — projected done by {pacePrediction?.label || '?'}
+    <div style={{ color: '#93c5fd', fontWeight: 600, fontSize: '0.7rem' }}>
+      📡 Idle — gap growing. {Math.round(Math.max(0, dailyGoal - totalDailyMins))}m left. {tip}
+    </div>
+  );
+};
+
+// ─── MomentumBar ─────────────────────────────────────────────────────────────
+// Shows pace as a horizontal bar: filled = where you are, ghost = where you should be.
+const MomentumBar = ({ totalDailyMins, dailyGoal, shiftElapsedMins, isActive }) => {
+  const idealNow = shiftElapsedMins > 0 && dailyGoal > 0
+    ? Math.min(dailyGoal, dailyGoal * (shiftElapsedMins / Math.max(shiftElapsedMins + 60, 60)))
+    : 0;
+  const actualRatio = dailyGoal > 0 ? Math.min(1, totalDailyMins / dailyGoal) : 0;
+  const idealRatio  = dailyGoal > 0 ? Math.min(1, idealNow / dailyGoal) : 0;
+  const deficit = idealRatio - actualRatio; // positive = behind
+  const barColor = isActive ? '#10b981' : deficit > 0.1 ? '#ef4444' : '#f59e0b';
+  return (
+    <div style={{ position: 'relative', height: '6px', background: 'rgba(0,0,0,0.4)', borderRadius: '3px', overflow: 'visible', margin: '0.1rem 0' }}>
+      {/* Ghost: where you should be */}
+      {idealRatio > 0 && (
+        <div style={{
+          position: 'absolute', left: 0, top: 0, bottom: 0,
+          width: `${idealRatio * 100}%`,
+          background: 'rgba(255,255,255,0.12)',
+          borderRadius: '3px',
+          transition: 'width 2s linear'
+        }} />
+      )}
+      {/* Actual progress */}
+      <div style={{
+        position: 'absolute', left: 0, top: 0, bottom: 0,
+        width: `${actualRatio * 100}%`,
+        background: barColor,
+        borderRadius: '3px',
+        boxShadow: isActive ? `0 0 8px ${barColor}` : 'none',
+        transition: 'width 1s ease-out, background 0.5s ease'
+      }} />
+      {/* Cursor: where you are */}
+      <div style={{
+        position: 'absolute', top: '-3px', bottom: '-3px',
+        left: `calc(${actualRatio * 100}% - 1px)`,
+        width: '2px',
+        background: '#fff',
+        borderRadius: '1px',
+        boxShadow: isActive ? '0 0 6px white' : 'none',
+        transition: 'left 1s ease-out'
+      }} />
     </div>
   );
 };
@@ -107,9 +167,22 @@ export const GameScoreboard = ({
   nextGoalLabel, nextMilestone,
   // Monthly
   daysInMonth, currentDay, remainingDays,
+  // Call state (for visual momentum)
+  isActive, isBreakActive,
   // onSwitch back to numbers
   onSwitchToNumbers
 }) => {
+  // Drift counter: how many seconds since last call ended (affects UI urgency)
+  const [idleSecs, setIdleSecs] = useState(0);
+  useEffect(() => {
+    if (isActive || isBreakActive) { setIdleSecs(0); return; }
+    const iv = setInterval(() => setIdleSecs(s => s + 1), 1000);
+    return () => clearInterval(iv);
+  }, [isActive, isBreakActive]);
+
+  // Drift label: how far behind per minute of idling
+  const minsPerIdleMin = dailyGoal > 0 ? (1 / Math.max(shiftElapsedMins + 60, 60)) * dailyGoal : 0;
+  const driftLabel = idleSecs > 30 ? `−${(minsPerIdleMin * idleSecs / 60).toFixed(1)}m drift` : null;
   const [tab, setTab] = useState('day'); // 'day' | 'month'
 
   // ── UNIT VALUES ─────────────────────────────────────────────────────────────
@@ -131,8 +204,17 @@ export const GameScoreboard = ({
   const moArsPct    = monthlyTargetArs > 0 ? Math.round((monthlyArs    / monthlyTargetArs) * 100) : 0;
   const moMinPct    = stats.goalMinutes  > 0 ? Math.round((stats.monthlyMinutes / stats.goalMinutes) * 100) : 0;
 
+  // On-call: glowing green border + rising animation / Off-call: subtle red sinking
+  const stateStyle = isActive
+    ? { border: '1px solid rgba(16,185,129,0.5)', boxShadow: '0 0 12px rgba(16,185,129,0.18)', animation: 'riseGlow 1.5s ease-in-out infinite alternate' }
+    : isBreakActive
+    ? { border: '1px solid rgba(251,146,60,0.3)', boxShadow: 'none' }
+    : idleSecs > 60
+    ? { border: '1px solid rgba(239,68,68,0.3)', boxShadow: '0 0 8px rgba(239,68,68,0.08)', animation: 'sinkDim 3s ease-in-out infinite alternate' }
+    : { border: '1px solid rgba(255,255,255,0.05)', boxShadow: 'none' };
+
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.2rem', padding: '0.35rem 0.5rem', fontFamily: 'inherit' }}>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.2rem', padding: '0.35rem 0.5rem', fontFamily: 'inherit', borderRadius: '6px', transition: 'all 0.6s ease', ...stateStyle }}>
 
       {/* Header row — tabs + numeric toggle */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -156,7 +238,31 @@ export const GameScoreboard = ({
 
       {/* ── DAY TAB ── */}
       {tab === 'day' && (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem' }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.3rem' }}>
+
+          {/* Live state indicator strip */}
+          <div style={{
+            display: 'flex', alignItems: 'center', gap: '0.4rem',
+            fontSize: '0.65rem', fontWeight: 800, letterSpacing: '0.06em',
+            color: isActive ? '#10b981' : isBreakActive ? '#fb923c' : idleSecs > 60 ? '#ef4444' : 'rgba(255,255,255,0.4)',
+            transition: 'color 0.5s ease'
+          }}>
+            <span style={{ fontSize: '0.75rem' }}>
+              {isActive ? '⬆️' : isBreakActive ? '☕' : idleSecs > 60 ? '⬇️' : '—'}
+            </span>
+            <span>
+              {isActive ? 'ON CALL — CLIMBING' : isBreakActive ? 'ON BREAK' : idleSecs > 30 ? `IDLE ${Math.floor(idleSecs / 60)}m${idleSecs % 60}s` : 'STANDBY'}
+            </span>
+            {driftLabel && !isActive && !isBreakActive && (
+              <span style={{ marginLeft: 'auto', color: '#ef4444', fontWeight: 700, fontSize: '0.6rem' }}>{driftLabel}</span>
+            )}
+          </div>
+
+          {/* Pace momentum bar */}
+          <MomentumBar
+            totalDailyMins={totalDailyMins} dailyGoal={dailyGoal}
+            shiftElapsedMins={shiftElapsedMins} isActive={isActive}
+          />
 
           <EmojiRow
             emoji="💰" value={liveDailyArs} unitValue={ARS_UNIT}
@@ -172,7 +278,7 @@ export const GameScoreboard = ({
             sublabel={`${dayMinPct}%`}
           />
 
-          {/* Break budget — inverted: empty = good (more left) */}
+          {/* Break budget */}
           <EmojiRow
             emoji="☕" value={breakLeft} unitValue={15}
             maxValue={breakLimit}
@@ -186,6 +292,7 @@ export const GameScoreboard = ({
             pacePrediction={pacePrediction} dailyGoal={dailyGoal}
             totalDailyMins={totalDailyMins} breakLeft={breakLeft}
             qualityScore={qualityScore} cutoffWarning={cutoffWarning}
+            isActive={isActive} isBreakActive={isBreakActive}
           />
         </div>
       )}
