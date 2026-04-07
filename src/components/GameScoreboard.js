@@ -241,7 +241,9 @@ export const GameScoreboard = ({
         <div style={{ display: 'flex', flexDirection: 'column', gap: '0.3rem' }}>
 
           {/* Live state indicator strip */}
-          <div style={{
+          <div 
+            title="LIVE MOMENTUM: ⬆️ ON CALL means you are advancing towards your goal. ⬇️ IDLE means you are stopped, accumulating negative drift as time passes. ☕ BREAK pauses pressure but uses your limited budget."
+            style={{
             display: 'flex', alignItems: 'center', gap: '0.4rem',
             fontSize: '0.65rem', fontWeight: 800, letterSpacing: '0.06em',
             color: isActive ? '#10b981' : isBreakActive ? '#fb923c' : idleSecs > 60 ? '#ef4444' : 'rgba(255,255,255,0.4)',
@@ -259,10 +261,12 @@ export const GameScoreboard = ({
           </div>
 
           {/* Pace momentum bar */}
-          <MomentumBar
-            totalDailyMins={totalDailyMins} dailyGoal={dailyGoal}
-            shiftElapsedMins={shiftElapsedMins} isActive={isActive}
-          />
+          <div title="MOMENTUM BAR: The bold bar is your actual progress. The faint background bar is the 'pace ghost'—representing the exact progress you should have right now to effortlessly hit your goal. Keep your bar ahead of the ghost!">
+            <MomentumBar
+              totalDailyMins={totalDailyMins} dailyGoal={dailyGoal}
+              shiftElapsedMins={shiftElapsedMins} isActive={isActive}
+            />
+          </div>
 
           <EmojiRow
             emoji="💰" value={liveDailyArs} unitValue={ARS_UNIT}
@@ -288,12 +292,14 @@ export const GameScoreboard = ({
           />
 
           {/* Directional cue */}
-          <DirectionalCue
-            pacePrediction={pacePrediction} dailyGoal={dailyGoal}
-            totalDailyMins={totalDailyMins} breakLeft={breakLeft}
-            qualityScore={qualityScore} cutoffWarning={cutoffWarning}
-            isActive={isActive} isBreakActive={isBreakActive}
-          />
+          <div title="COACH: Provides live, adaptive guidance. Helps you adjust dynamically instead of harshly punishing you for falling behind.">
+            <DirectionalCue
+              pacePrediction={pacePrediction} dailyGoal={dailyGoal}
+              totalDailyMins={totalDailyMins} breakLeft={breakLeft}
+              qualityScore={qualityScore} cutoffWarning={cutoffWarning}
+              isActive={isActive} isBreakActive={isBreakActive}
+            />
+          </div>
         </div>
       )}
 
