@@ -151,9 +151,13 @@ export const SessionProvider = ({ children }) => {
     // Catch-up logic: record the very first time we start working today
     setStats(prev => {
       const now = Date.now();
-      if (!prev.dayStartTime) {
+      const today = new Date().toDateString();
+      const isNewDay = prev.lastDate && prev.lastDate !== today;
+      
+      // If no start time OR the recorded start time is from yesterday/earlier
+      if (!prev.dayStartTime || isNewDay) {
         setWorkSessionStartTime(now);
-        return { ...prev, dayStartTime: now };
+        return { ...prev, dayStartTime: now, lastDate: today };
       }
       return prev;
     });

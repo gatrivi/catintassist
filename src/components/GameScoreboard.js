@@ -73,7 +73,7 @@ const DirectionalCue = ({ pacePrediction, dailyGoal, totalDailyMins, breakLeft, 
   const tip = COACHING_TIPS[Math.floor(Date.now() / 30000) % COACHING_TIPS.length];
   if (cutoffWarning?.pulse) return (
     <div style={{ color: '#ef4444', fontWeight: 900, fontSize: '0.7rem', animation: 'pulseWarning 1s infinite' }}>
-      🚨 HARD STOP — save your streak, log out now
+      🚨 DEADLINE NEAR — Work banks at 00:00. Log off soon to save streak!
     </div>
   );
   if (totalDailyMins >= dailyGoal) return (

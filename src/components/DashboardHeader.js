@@ -243,19 +243,21 @@ export const DashboardHeader = ({ onStartAudio, onStopAudio, onReconnectStream, 
   const nextGoalLabel = milestoneLabels[currentIdx];
   const isAllGoalsMet = stats.monthlyMinutes >= milestones[11];
 
-  // ── HARD CUTOFF (20:00) ──────────────────────────────────────────
-  // 20:00 stop → 4h wind-down → 7h sleep → 2h wind-up → 9am restart
-  const HARD_CUTOFF_HOUR = 20;
-  const minsToHardCutoff = Math.max(0, (HARD_CUTOFF_HOUR - currentTime) * 60);
-  const availableWindowMins = minsToHardCutoff; // mins left before hard stop
-  // Cutoff warning: only show when within 1 hour of cutoff
+  // ── HARD CUTOFF (00:00 Midnight) ──────────────────────────────────────────
+  // User availability stops at 00:00. This tracks how much time is left in the "day".
+  const HARD_CUTOFF_HOUR = 24; 
+  const currentHour = new Date().getHours();
+  const currentMin = new Date().getMinutes();
+  const minsToHardCutoff = Math.max(0, ((HARD_CUTOFF_HOUR * 60) - (currentHour * 60 + currentMin)));
+  
   const cutoffWarning = (() => {
-    if (minsToHardCutoff <= 0)  return { label: 'STOP 20:00', color: '#ef4444', pulse: true };
-    if (minsToHardCutoff <= 15) return { label: `🚨 ${Math.round(minsToHardCutoff)}m`, color: '#ef4444', pulse: true };
-    if (minsToHardCutoff <= 30) return { label: `⚠️ ${Math.round(minsToHardCutoff)}m`, color: '#f59e0b', pulse: false };
-    if (minsToHardCutoff <= 60) return { label: `🕐 1h`, color: '#fcd34d', pulse: false };
+    if (minsToHardCutoff <= 1)   return { label: 'MIDNIGHT DEADLINE', color: '#ef4444', pulse: true };
+    if (minsToHardCutoff <= 20)  return { label: `🚨 ${Math.round(minsToHardCutoff)}m left`, color: '#ef4444', pulse: true };
+    if (minsToHardCutoff <= 45)  return { label: `⚠️ ${Math.round(minsToHardCutoff)}m`, color: '#f59e0b', pulse: false };
+    if (minsToHardCutoff <= 90)  return { label: `🌙 Nightly Stop`, color: '#fcd34d', pulse: false };
     return null;
   })();
+  const availableWindowMins = minsToHardCutoff;
 
   // ── MONTHLY DEFICIT & RECOVERY ───────────────────────────────────
   const GROWTH_TARGET = 11000; // Growth tier = real goal, Floor (5500) = survival
@@ -355,13 +357,13 @@ export const DashboardHeader = ({ onStartAudio, onStopAudio, onReconnectStream, 
             </div>
             
             <div id="left-pills-row" style={{ display: 'flex', gap: '0.1rem', flexWrap: 'wrap', maxWidth: '140px' }}>
-               <div id="pill-shift" className="metric-pill compact-pill" title="SHIFT PROGRESS">
+               <div id="pill-shift" className="metric-pill compact-pill" title="SHIFT PROGRESS: Total time elapsed since you first connected today. Reset at midnight.">
                  <span style={{ fontSize: '0.58rem' }}>🏃{formatHoursMins(shiftElapsedMins)}</span>
                </div>
-               <div id="pill-sprint" className="metric-pill compact-pill" title="SPRINT (Active Session Mins)">
+               <div id="pill-sprint" className="metric-pill compact-pill" title="SPRINT: Number of productive minutes in the current active call.">
                  <span style={{ fontSize: '0.58rem' }}>🔋{Math.floor(workSessionMinutes)}m</span>
                </div>
-               <div id="pill-logoff" className="metric-pill compact-pill" title="ESTIMATED LOG OFF" style={{ background: 'rgba(245,158,11,0.08)', border: '1px solid rgba(245,158,11,0.2)' }}>
+               <div id="pill-logoff" className="metric-pill compact-pill" title="ESTIMATED LOG OFF: Calculated time to end your shift (usually 18:00), adjusted by your late start time and break usage today." style={{ background: 'rgba(245,158,11,0.08)', border: '1px solid rgba(245,158,11,0.2)' }}>
                  <span style={{ color: '#fcd34d', fontSize: '0.58rem' }}>🚪{getCompensatedLogOff()}</span>
                </div>
                <div id="edit-buttons-row" style={{ display: 'flex', gap: '0.08rem' }}>

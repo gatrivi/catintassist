@@ -149,6 +149,33 @@ const TranslatedBubble = ({ id, text, lang, playTTS, stopTTS, playingUrl, prefet
   );
 };
 
+// ─── Coin Sound Synthesis ──────────────────────────────────────────────────
+// Synthesizes a pleasant chime without external files (more reliable).
+const playChime = (freq = 880, vol = 0.02, harmonics = 1) => {
+  try {
+    const AudioContext = window.AudioContext || window.webkitAudioContext;
+    if (!AudioContext) return;
+    const ctx = new AudioContext();
+    const now = ctx.currentTime;
+    
+    // Base chime
+    const playTone = (f, v, d) => {
+      const osc = ctx.createOscillator();
+      const g = ctx.createGain();
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(f, now);
+      g.gain.setValueAtTime(v, now);
+      g.gain.exponentialRampToValueAtTime(0.0001, now + d);
+      osc.connect(g); g.connect(ctx.destination);
+      osc.start(); osc.stop(now + d);
+    };
+
+    playTone(freq, vol, 0.4);
+    if (harmonics > 1) playTone(freq * 1.5, vol * 0.5, 0.3);
+    if (harmonics > 2) playTone(freq * 2.01, vol * 0.3, 0.2);
+  } catch(e) {}
+};
+
 // ─── CoinRain Component ───────────────────────────────────────────────────────
 // Gamification: One coin zigzags down every minute of active call.
 // Refactored to prevent 'teleporting'—the coin that falls is the coin that stacks.
@@ -163,16 +190,20 @@ const CoinRain = ({ isActive }) => {
       const spawn = () => {
         const id = ++coinIdRef.current;
         setCoins(prev => {
-          // Count how many are currently falling or stacked to determine "slot"
           const index = prev.filter(c => c.status !== 'collecting').length;
+          // Play a light spawning chime, frequency grows with index
+          playChime(660 + (index * 20), 0.015, 1);
           return [...prev, { id, status: 'falling', index }];
         });
         
-        // After 60s, it reach the bottom and stays there
         setTimeout(() => {
-          setCoins(current => current.map(c => 
-            c.id === id ? { ...c, status: 'stacked' } : c
-          ));
+          setCoins(current => current.map(c => {
+            // BUG FIX: Only set to stacked if it's not already collecting
+            if (c.id === id && c.status === 'falling') {
+              return { ...c, status: 'stacked' };
+            }
+            return c;
+          }));
         }, 60000);
       };
       
@@ -180,10 +211,22 @@ const CoinRain = ({ isActive }) => {
       const iv = setInterval(spawn, 60000);
       return () => clearInterval(iv);
     } else {
-      // End of call: all existing coins (falling or stacked) fly to wallet
-      setCoins(current => current.map(c => 
-        c.status !== 'collecting' ? { ...c, status: 'collecting' } : c
-      ));
+      // End of call: all existing coins fly to wallet
+      setCoins(current => {
+        const toCollect = current.filter(c => c.status !== 'collecting');
+        if (toCollect.length > 0) {
+          // Play rewards: symphony of chimes
+          toCollect.forEach((c, i) => {
+            setTimeout(() => {
+              const richness = 1 + Math.floor(toCollect.length / 5);
+              playChime(880 + (i * 44), 0.02, richness);
+            }, i * 150);
+          });
+        }
+        return current.map(c => 
+          c.status !== 'collecting' ? { ...c, status: 'collecting' } : c
+        );
+      });
       
       const cleanup = setTimeout(() => {
         setCoins([]);
