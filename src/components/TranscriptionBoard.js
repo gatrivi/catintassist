@@ -184,21 +184,24 @@ const CoinRain = ({ isActive }) => {
   const coinIdRef = useRef(0);
   const startTimeRef = useRef(Date.now());
 
+  const cleanupRef = useRef(null);
+
   useEffect(() => {
     if (isActive) {
+      if (cleanupRef.current) clearTimeout(cleanupRef.current);
+      setCoins([]); // Instant reset for new call
       startTimeRef.current = Date.now();
+      
       const spawn = () => {
         const id = ++coinIdRef.current;
         setCoins(prev => {
           const index = prev.filter(c => c.status !== 'collecting').length;
-          // Play a light spawning chime, frequency grows with index
           playChime(660 + (index * 20), 0.015, 1);
           return [...prev, { id, status: 'falling', index }];
         });
         
         setTimeout(() => {
           setCoins(current => current.map(c => {
-            // BUG FIX: Only set to stacked if it's not already collecting
             if (c.id === id && c.status === 'falling') {
               return { ...c, status: 'stacked' };
             }
@@ -209,13 +212,14 @@ const CoinRain = ({ isActive }) => {
       
       spawn();
       const iv = setInterval(spawn, 60000);
-      return () => clearInterval(iv);
+      return () => {
+        clearInterval(iv);
+      };
     } else {
       // End of call: all existing coins fly to wallet
       setCoins(current => {
         const toCollect = current.filter(c => c.status !== 'collecting');
         if (toCollect.length > 0) {
-          // Play rewards: symphony of chimes
           toCollect.forEach((c, i) => {
             setTimeout(() => {
               const richness = 1 + Math.floor(toCollect.length / 5);
@@ -228,11 +232,13 @@ const CoinRain = ({ isActive }) => {
         );
       });
       
-      const cleanup = setTimeout(() => {
+      cleanupRef.current = setTimeout(() => {
         setCoins([]);
         coinIdRef.current = 0;
       }, 15000); 
-      return () => clearTimeout(cleanup);
+      return () => {
+        if (cleanupRef.current) clearTimeout(cleanupRef.current);
+      };
     }
   }, [isActive]);
 

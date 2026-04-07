@@ -178,9 +178,9 @@ export const GameScoreboard = ({
     return () => clearInterval(iv);
   }, [isActive, isBreakActive]);
 
-  // Drift label: how far behind per minute of idling
-  const minsPerIdleMin = dailyGoal > 0 ? (1 / Math.max(shiftElapsedMins + 60, 60)) * dailyGoal : 0;
-  const driftLabel = idleSecs > 15 ? `−${(minsPerIdleMin * idleSecs / 60).toFixed(1)}m` : null;
+  // Drift label: how far behind per minute of idling. Normalized to a standard 9h shift (540m).
+  const minsPerIdleMin = dailyGoal > 0 ? (dailyGoal / 540) : 0;
+  const driftLabel = idleSecs > 15 ? `−${((minsPerIdleMin * idleSecs) / 60).toFixed(1)}m` : null;
   const [tab, setTab] = useState('day'); // 'day' | 'month'
 
   // ── UNIT VALUES ─────────────────────────────────────────────────────────────

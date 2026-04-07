@@ -143,6 +143,12 @@ export const SessionProvider = ({ children }) => {
   // EMPEZAR LLAMADA: Dejamos de descansar y empezamos a contar los minutos de la llamada.
   const startSession = () => {
     updateActivity(); // <--- Reset silence timer on start
+    
+    // Logic fix: If a call starts while on break, automatically end the break.
+    if (isBreakActive) {
+      stopBreak();
+    }
+    
     commitAvailTime();
     setSessionSeconds(0);
     accumulatorRef.current = 0;
@@ -154,7 +160,6 @@ export const SessionProvider = ({ children }) => {
       const today = new Date().toDateString();
       const isNewDay = prev.lastDate && prev.lastDate !== today;
       
-      // If no start time OR the recorded start time is from yesterday/earlier
       if (!prev.dayStartTime || isNewDay) {
         setWorkSessionStartTime(now);
         return { ...prev, dayStartTime: now, lastDate: today };
