@@ -147,6 +147,7 @@ export const DashboardHeader = ({ onStartAudio, onStopAudio, onReconnectStream, 
 
   // Condensed View metrics
   const liveDailyArs = Math.round(totalDailyMins * RATE_PER_MINUTE * arsRate);
+  const dailyArs = Math.round(stats.dailyMinutes * RATE_PER_MINUTE * arsRate);
   const dailyTargetArs = Math.round(dailyGoal * RATE_PER_MINUTE * arsRate);
   const monthlyArs = Math.round(stats.monthlyMinutes * RATE_PER_MINUTE * arsRate);
   const monthlyTargetArs = Math.round(stats.goalMinutes * RATE_PER_MINUTE * arsRate);
@@ -213,7 +214,7 @@ export const DashboardHeader = ({ onStartAudio, onStopAudio, onReconnectStream, 
   const breakLimit = 90;
   const breakUsed = stats.dailyBreakMinutes || 0;
   const breakLeft = Math.max(0, breakLimit - breakUsed);
-  const cashToTodayGoal = Math.max(0, dailyTargetArs - dailyArs);
+  const cashToTodayGoal = Math.max(0, dailyTargetArs - liveDailyArs);
 
   const formatHoursMins = (totalMins) => {
     const h = Math.floor(totalMins / 60);
@@ -313,9 +314,8 @@ export const DashboardHeader = ({ onStartAudio, onStopAudio, onReconnectStream, 
   // CALL RATE, EFFECTIVE RATE
   const callsToday = stats.callsToday || 0;
   const avgCallMins = callsToday > 0 ? Math.round(totalDailyMinsLive / Math.max(callsToday, 1)) : 0;
-  const totalEarnedArs = dailyArs + Math.round(unbankedMins * RATE_PER_MINUTE * arsRate);
   const effectiveRateArsHr = shiftElapsedMins > 10
-    ? Math.round((totalEarnedArs / shiftElapsedMins) * 60)
+    ? Math.round((liveDailyArs / shiftElapsedMins) * 60)
     : null;
 
   const copyValue = (v) => navigator.clipboard.writeText(String(v).replace(/[^\d]/g, ''));
@@ -786,8 +786,8 @@ export const DashboardHeader = ({ onStartAudio, onStopAudio, onReconnectStream, 
                   <span style={{ color: '#34d399', fontWeight: 800 }}>🎉 SHIFT MET ({dailyGoal}m)</span>
                 ) : (
                   <>
-                    <span title="Literally how many hours are left until 11:00 PM.">⏳ {hoursLeftToAbsolute.toFixed(1)}h left (${Math.round(hoursLeftToAbsolute * 60)}m)</span>
-                    <span title="Assuming you work 35 mins per hour (allowing for breaks/avail), this is how many minutes you can realistically bank today.">({Math.round(workableMinsRemaining)}m, $ARS{Math.trunc(workableMinsRemaining*0.13*1348)} workable)</span>
+                    <span title="Literally how many hours are left until 11:00 PM.">⏳ {hoursLeftToAbsolute.toFixed(1)}h left</span>
+                    <span title="Assuming you work 35 mins per hour (allowing for breaks/avail), this is how many minutes/money you can bank today.">({Math.round(workableMinsRemaining)}m / AR$${Math.round(workableMinsRemaining * RATE_PER_MINUTE * arsRate).toLocaleString('es-AR')})</span>
                   </>
                 )}
               </div>
