@@ -329,49 +329,50 @@ export const DashboardHeader = ({ onStartAudio, onStopAudio, onReconnectStream, 
       {isCollapsed && (
         <div className="condensed-header-card" style={{ gap: '0.15rem' }}>
           
-          {/* Controls & Mini-Stats Column */}
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.05rem', flexShrink: 0, minWidth: '130px' }}>
-            <div style={{ display: 'flex', gap: '0.15rem', alignItems: 'center' }}>
+          {/* Controls & Mini-Stats Column (LEFT) */}
+          <div id="controls-left-col" className={`header-column-side ${isActive ? 'active-working-state' : ''}`} style={{ display: 'flex', flexDirection: 'column', gap: '0.04rem', flexShrink: 0, justifyContent: 'center' }}>
+            <div id="connection-controls-row" style={{ display: 'flex', gap: '0.12rem', alignItems: 'center', marginBottom: '0.02rem' }}>
               <ConnectionIndicator state={connectionState} message={connectionMessage} />
               {!isActive ? (
-                <button id="connect-btn" className="btn-emoji" onClick={handleStart} style={{ background: '#10b981', color: '#fff' }} title="CONNECT">🟢</button>
+                <button id="header-connect-btn" className="btn-emoji" onClick={handleStart} style={{ background: '#10b981', color: '#fff', width: '22px', height: '22px' }} title="CONNECT">🟢</button>
               ) : (
-                <button id="stop-btn" className="btn-emoji" onClick={handleStop} style={{ background: '#ef4444', color: '#fff' }} title="STOP">🛑</button>
+                <button id="header-stop-btn" className="btn-emoji" onClick={handleStop} style={{ background: '#ef4444', color: '#fff', width: '22px', height: '22px' }} title="STOP">🛑</button>
               )}
 
               {!isActive ? (
                 <>
-                  <button id="break-btn" className="btn-emoji" onClick={isBreakActive ? stopBreak : startBreak} style={{ background: '#fb923c', color: '#fff' }} title="BREAK">☕</button>
+                  <button id="header-break-btn" className="btn-emoji" onClick={isBreakActive ? stopBreak : startBreak} style={{ background: '#fb923c', color: '#fff', width: '22px', height: '22px' }} title="BREAK">☕</button>
                   {stats.dailyMinutes > 0 && !isBreakActive && (
-                    <button id="end-day-btn" className="btn-emoji" onClick={handleEndDay} style={{ background: '#8b5cf6', color: '#fff' }} title="END DAY">🌙</button>
+                    <button id="header-end-day-btn" className="btn-emoji" onClick={handleEndDay} style={{ background: '#8b5cf6', color: '#fff', width: '22px', height: '22px' }} title="END DAY">🌙</button>
                   )}
                 </>
               ) : (
                 <>
-                  <button id="hold-btn" className="btn btn-condensed" onClick={() => setIsHold(!isHold)} style={{ background: isHold ? '#f59e0b' : 'rgba(255,255,255,0.1)', height: '26px' }}>{isHold ? `⏸${formatTime(holdSeconds)}` : '⏸'}</button>
-                  <button id="zap-btn" className="btn-emoji" onClick={onReconnectStream} style={{ background: '#0ea5e9' }} title="ZAP">⚡</button>
+                  <button id="header-hold-btn" className="btn btn-condensed" onClick={() => setIsHold(!isHold)} style={{ background: isHold ? '#f59e0b' : 'rgba(255,255,255,0.08)', height: '22px', padding: '0 0.3rem', fontSize: '0.6rem' }}>{isHold ? `⏸${formatTime(holdSeconds)}` : '⏸'}</button>
+                  <button id="header-zap-btn" className="btn-emoji" onClick={onReconnectStream} style={{ background: '#0ea5e9', width: '22px', height: '22px' }} title="ZAP">⚡</button>
                 </>
               )}
             </div>
             
-            <div style={{ display: 'flex', gap: '0.15rem', alignItems: 'center' }}>
-               <div className="metric-pill" title="SHIFT PROGRESS" style={{ height: '22px' }}>
-                 <span style={{ fontSize: '0.65rem' }}>🏃{formatHoursMins(shiftElapsedMins)}</span>
+            <div id="left-pills-row" style={{ display: 'flex', gap: '0.1rem', flexWrap: 'wrap', maxWidth: '140px' }}>
+               <div id="pill-shift" className="metric-pill compact-pill" title="SHIFT PROGRESS">
+                 <span style={{ fontSize: '0.58rem' }}>🏃{formatHoursMins(shiftElapsedMins)}</span>
                </div>
-               <div className="metric-pill" title="SPRINT" style={{ height: '22px' }}>
-                 <span style={{ fontSize: '0.65rem' }}>🔋{Math.floor(workSessionMinutes)}m</span>
+               <div id="pill-sprint" className="metric-pill compact-pill" title="SPRINT (Active Session Mins)">
+                 <span style={{ fontSize: '0.58rem' }}>🔋{Math.floor(workSessionMinutes)}m</span>
                </div>
-               <div className="metric-pill" title="LOG OFF" style={{ background: 'rgba(245,158,11,0.1)', border: '1px solid rgba(245,158,11,0.3)', height: '22px' }}>
-                 <span style={{ color: '#fcd34d', fontSize: '0.65rem' }}>🚪{getCompensatedLogOff()}</span>
+               <div id="pill-logoff" className="metric-pill compact-pill" title="ESTIMATED LOG OFF" style={{ background: 'rgba(245,158,11,0.08)', border: '1px solid rgba(245,158,11,0.2)' }}>
+                 <span style={{ color: '#fcd34d', fontSize: '0.58rem' }}>🚪{getCompensatedLogOff()}</span>
                </div>
-               {/* Quick-edit call/break time */}
-               <button id="call-edit-btn" onClick={() => setTimeEditMode('call')} title="Edit call time" style={{ background: 'rgba(59,130,246,0.15)', border: '1px solid rgba(59,130,246,0.3)', borderRadius: '3px', padding: '0 0.25rem', height: '22px', cursor: 'pointer', fontSize: '0.6rem', color: '#93c5fd' }}>✏️📞</button>
-               <button id="break-edit-btn" onClick={() => setTimeEditMode('break')} title="Edit break time" style={{ background: 'rgba(251,146,60,0.15)', border: '1px solid rgba(251,146,60,0.3)', borderRadius: '3px', padding: '0 0.25rem', height: '22px', cursor: 'pointer', fontSize: '0.6rem', color: '#fdba74' }}>✏️☕</button>
+               <div id="edit-buttons-row" style={{ display: 'flex', gap: '0.08rem' }}>
+                 <button id="header-call-edit-btn" className="edit-btn-tiny" onClick={() => setTimeEditMode('call')} title="Edit call time">✏️📞</button>
+                 <button id="header-break-edit-btn" className="edit-btn-tiny" onClick={() => setTimeEditMode('break')} title="Edit break time">✏️☕</button>
+               </div>
             </div>
           </div>
 
-          {/* SCOREBOARD: Game view (default) or numeric grid */}
-          <div style={{ flex: '1 1 0', minWidth: 0 }}>
+          {/* SCOREBOARD: Game view (CENTER) */}
+          <div id="header-scoreboard-center" style={{ flex: '1 1 0', minWidth: 0, margin: '0 0.1rem' }}>
             {scoreView === 'game' ? (
               <GameScoreboard
                 liveDailyArs={liveDailyArs} dailyTargetArs={dailyTargetArs}
@@ -386,9 +387,9 @@ export const DashboardHeader = ({ onStartAudio, onStopAudio, onReconnectStream, 
                 onSwitchToNumbers={() => setScoreView('numbers')}
               />
             ) : (
-              <div className="metric-grid">
+              <div id="numeric-metric-grid" className="metric-grid">
                 {/* BOUNTY */}
-                <div className="metric-cell" title="BOUNTY: ARS left to earn today" style={{ background: cashToTodayGoal <= 0 ? 'rgba(16,185,129,0.08)' : 'rgba(52,211,153,0.04)' }}>
+                <div id="cell-bounty" className="metric-cell" title="BOUNTY: ARS left to earn today" style={{ background: cashToTodayGoal <= 0 ? 'rgba(16,185,129,0.08)' : 'rgba(52,211,153,0.04)' }}>
                   <div className="metric-watermark"><span>🏹</span></div>
                   <div className="metric-cell-val" style={{ color: cashToTodayGoal <= 0 ? '#10b981' : 'rgba(255,255,255,0.8)' }}>
                     {cashToTodayGoal <= 0 ? '✅' : `$${cashToTodayGoal.toLocaleString('es-AR')}`}
@@ -396,25 +397,25 @@ export const DashboardHeader = ({ onStartAudio, onStopAudio, onReconnectStream, 
                   <div style={{ fontSize: '0.42rem', opacity: 0.4, letterSpacing: '0.04em' }}>BOUNTY</div>
                 </div>
                 {/* DAY CASH */}
-                <div className="metric-cell" title="DAY CASH: Banked ARS vs daily quota">
+                <div id="cell-day-cash" className="metric-cell" title="DAY CASH: Banked ARS vs daily quota">
                   <div className="metric-watermark"><span>☀️💰</span></div>
                   <div className="metric-cell-val">${dailyArs.toLocaleString('es-AR')} / ${dailyTargetArs.toLocaleString('es-AR')}</div>
                   <div style={{ fontSize: '0.42rem', opacity: 0.4, letterSpacing: '0.04em' }}>DAY $</div>
                 </div>
                 {/* MONTH CASH */}
-                <div className="metric-cell" title="MONTH CASH: Total earned vs monthly goal">
+                <div id="cell-month-cash" className="metric-cell" title="MONTH CASH: Total earned vs monthly goal">
                   <div className="metric-watermark"><span>🗓️💰</span></div>
                   <div className="metric-cell-val">${monthlyArs.toLocaleString('es-AR')} / ${monthlyTargetArs.toLocaleString('es-AR')}</div>
                   <div style={{ fontSize: '0.42rem', opacity: 0.4, letterSpacing: '0.04em' }}>MONTH $</div>
                 </div>
                 {/* PACE ETA */}
-                <div className="metric-cell" title={`PACE ETA: ${pacePrediction.label}`} style={{ background: 'rgba(59,130,246,0.04)' }}>
+                <div id="cell-pace-eta" className="metric-cell" title={`PACE ETA: ${pacePrediction.label}`} style={{ background: 'rgba(59,130,246,0.04)' }}>
                   <div className="metric-watermark"><span>🎯</span></div>
                   <div className="metric-cell-val" style={{ color: pacePrediction.color }}>{pacePrediction.label}</div>
                   <div style={{ fontSize: '0.42rem', opacity: 0.4, letterSpacing: '0.04em' }}>PACE ETA</div>
                 </div>
                 {/* QUALITY */}
-                <div className="metric-cell" style={{ background: 'rgba(59,130,246,0.04)' }}>
+                <div id="cell-quality" className="metric-cell" style={{ background: 'rgba(59,130,246,0.04)' }}>
                   <div className="metric-watermark"><span>📈</span></div>
                   <div className="metric-cell-val" style={{ color: qualityScore?.goalUnreachable ? '#f59e0b' : (qualityScore?.color || 'var(--text-muted)') }}>
                     {qualityScore?.goalUnreachable ? '⚡Adapt' : qualityScore ? `${qualityScore.pct}%` : '–'}
@@ -422,7 +423,7 @@ export const DashboardHeader = ({ onStartAudio, onStopAudio, onReconnectStream, 
                   <div style={{ fontSize: '0.42rem', opacity: 0.4, letterSpacing: '0.04em' }}>QUALITY</div>
                 </div>
                 {/* STREAK */}
-                <div className="metric-cell" style={{ background: 'rgba(59,130,246,0.04)' }}>
+                <div id="cell-streak" className="metric-cell" style={{ background: 'rgba(59,130,246,0.04)' }}>
                   <div className="metric-watermark"><span>🔥</span></div>
                   <div className="metric-cell-val" style={{ color: streak >= 3 ? '#fb923c' : streak > 0 ? '#fcd34d' : 'var(--text-muted)' }}>
                     {streak > 0 ? `${streak}🔥` : '–'}
@@ -430,7 +431,7 @@ export const DashboardHeader = ({ onStartAudio, onStopAudio, onReconnectStream, 
                   <div style={{ fontSize: '0.42rem', opacity: 0.4, letterSpacing: '0.04em' }}>STREAK</div>
                 </div>
                 {/* Switch back */}
-                <div className="metric-cell" style={{ cursor: 'pointer', background: 'rgba(139,92,246,0.06)' }} onClick={() => setScoreView('game')} title="Switch to game view">
+                <div id="cell-switch-game" className="metric-cell" style={{ cursor: 'pointer', background: 'rgba(139,92,246,0.06)' }} onClick={() => setScoreView('game')} title="Switch to game view">
                   <div className="metric-cell-val" style={{ fontSize: '0.9rem' }}>🎮</div>
                   <div style={{ fontSize: '0.42rem', opacity: 0.4, letterSpacing: '0.04em' }}>GAME</div>
                 </div>
@@ -438,36 +439,36 @@ export const DashboardHeader = ({ onStartAudio, onStopAudio, onReconnectStream, 
             )}
           </div>
 
-          {/* Right Section: Call Rate + Effective Rate + Tool toggles */}
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.08rem', alignItems: 'flex-end', minWidth: '115px' }}>
-             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.08rem', alignItems: 'flex-end' }}>
+          {/* Stats Column (RIGHT) */}
+          <div id="controls-right-col" className="header-column-side" style={{ display: 'flex', flexDirection: 'column', gap: '0.04rem', flexShrink: 0, justifyContent: 'center' }}>
+             <div id="right-pills-stack" style={{ display: 'flex', flexDirection: 'column', gap: '0.04rem', alignItems: 'flex-end' }}>
                {/* CALL RATE PILL */}
                {callsToday > 0 ? (
-                 <div className="metric-pill" title={`${callsToday} calls today, avg ${avgCallMins}m each`} style={{ height: '22px', background: 'rgba(59,130,246,0.12)', border: '1px solid rgba(59,130,246,0.35)' }}>
-                   <span style={{ fontSize: '0.62rem', color: '#93c5fd', fontWeight: 700 }}>📞{callsToday}×{avgCallMins}m</span>
+                 <div id="pill-call-rate" className="metric-pill compact-pill" title={`${callsToday} calls today, avg ${avgCallMins}m each`} style={{ background: 'rgba(59,130,246,0.08)', border: '1px solid rgba(59,130,246,0.2)' }}>
+                   <span style={{ fontSize: '0.58rem', color: '#93c5fd', fontWeight: 700 }}>📞{callsToday}×{avgCallMins}m</span>
                  </div>
                ) : (
-                 <div className="metric-pill" title="No calls banked yet" style={{ height: '22px', opacity: 0.3 }}>
-                   <span style={{ fontSize: '0.62rem' }}>📞 No calls yet</span>
+                 <div id="pill-no-calls" className="metric-pill compact-pill" style={{ opacity: 0.2 }}>
+                   <span style={{ fontSize: '0.58rem' }}>📞 –</span>
                  </div>
                )}
                {/* EFFECTIVE RATE PILL */}
                {effectiveRateArsHr ? (
-                 <div className="metric-pill" title={`Effective Rate: AR$${effectiveRateArsHr.toLocaleString('es-AR')}/hr including avail time`} style={{ height: '22px', background: 'rgba(139,92,246,0.12)', border: '1px solid rgba(139,92,246,0.35)' }}>
-                   <span style={{ fontSize: '0.62rem', color: '#c4b5fd', fontWeight: 700 }}>⚡${effectiveRateArsHr.toLocaleString('es-AR')}/h</span>
+                 <div id="pill-eff-rate" className="metric-pill compact-pill" title={`Effective Rate: AR$${effectiveRateArsHr.toLocaleString('es-AR')}/hr`} style={{ background: 'rgba(139,92,246,0.08)', border: '1px solid rgba(139,92,246,0.2)' }}>
+                   <span style={{ fontSize: '0.58rem', color: '#c4b5fd', fontWeight: 700 }}>⚡${effectiveRateArsHr.toLocaleString('es-AR')}/h</span>
                  </div>
                ) : (
-                 <div className="metric-pill" style={{ height: '22px', opacity: 0.3 }}>
-                   <span style={{ fontSize: '0.62rem' }}>⚡ –/h</span>
+                 <div id="pill-no-rate" className="metric-pill compact-pill" style={{ opacity: 0.2 }}>
+                   <span style={{ fontSize: '0.58rem' }}>⚡ –</span>
                  </div>
                )}
              </div>
 
-             <div style={{ display: 'flex', gap: '0.2rem' }}>
-                <button id="notes-toggle-btn" className="btn-icon" onClick={() => setIsNotesOpen(!isNotesOpen)} style={{ opacity: isNotesOpen ? 1 : 0.4 }}>📝</button>
-                <button id="tools-toggle-btn" className="btn-icon" onClick={() => setIsToolbarVisible(!isToolbarVisible)} style={{ opacity: isToolbarVisible ? 1 : 0.4 }}>🛠️</button>
-                <button id="heatmap-btn" className="btn-icon" onClick={() => setIsHeatmapOpen(true)} title="Monthly Heatmap">📅</button>
-                <button id="expand-btn" className="btn-icon" onClick={() => setIsCollapsed(false)}>🔼</button>
+             <div id="feature-toggles-row" style={{ display: 'flex', gap: '0.12rem', marginTop: '0.02rem', justifyContent: 'flex-end' }}>
+                <button id="header-notes-btn" className="btn-icon tiny-btn" onClick={() => setIsNotesOpen(!isNotesOpen)} style={{ opacity: isNotesOpen ? 1 : 0.3 }}>📝</button>
+                <button id="header-tools-btn" className="btn-icon tiny-btn" onClick={() => setIsToolbarVisible(!isToolbarVisible)} style={{ opacity: isToolbarVisible ? 1 : 0.3 }}>🛠️</button>
+                <button id="header-heatmap-btn" className="btn-icon tiny-btn" onClick={() => setIsHeatmapOpen(true)} title="Monthly Heatmap">📅</button>
+                <button id="header-expand-btn" className="btn-icon tiny-btn" onClick={() => setIsCollapsed(false)}>🔼</button>
              </div>
           </div>
         </div>

@@ -583,25 +583,16 @@ body {
 /* ── Condensed Header Mobile Support ── */
 .condensed-header-card {
   display: grid;
-      height: fit-content;
-
+  height: fit-content;
   grid-template-columns: auto 1fr auto; 
   align-items: center;
-  padding: 0.1rem 0.2rem; 
-  gap: 0.15rem; 
+  padding: 0.05rem 0.1rem; 
+  gap: 0.08rem; 
   width: 100%;
   overflow: hidden;
-  background: rgba(0,0,0,0.4);
-  border: 1px solid rgba(255,255,255,0.05);
+  background: rgba(0,0,0,0.5);
+  border: 1px solid rgba(255,255,255,0.08);
   border-radius: 4px;
-}
-
-.condensed-items-row {
-  display: flex;
-  align-items: center;
-  gap: 0.15rem;
-  flex-wrap: nowrap;
-  width: 100%;
 }
 
 .metric-pill {
@@ -613,11 +604,68 @@ body {
   border-radius: 3px;
   border: 1px solid rgba(255,255,255,0.1);
   white-space: nowrap;
-  font-size: 0.72rem;
+  font-size: 0.65rem;
   cursor: copy;
   transition: background 0.2s;
 }
-.metric-pill:hover { background: rgba(255,255,255,0.1); }
+
+.compact-pill {
+  padding: 0 0.25rem !important;
+  height: 16px !important;
+  border-radius: 2px !important;
+  background: rgba(255, 255, 255, 0.03) !important;
+  border: 1px solid rgba(255, 255, 255, 0.08) !important;
+  font-size: 0.58rem !important;
+}
+
+.edit-btn-tiny {
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 2px;
+  padding: 0 0.1rem;
+  height: 16px;
+  cursor: pointer;
+  font-size: 0.5rem;
+  color: #93c5fd;
+  display: flex;
+  align-items: center;
+}
+
+.tiny-btn {
+  width: 20px !important;
+  height: 20px !important;
+  font-size: 0.7rem !important;
+  padding: 0 !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+}
+
+/* THE MAGIC: Active working state glow */
+.active-working-state {
+  position: relative;
+  z-index: 10;
+}
+
+.active-working-state::after {
+  content: '';
+  position: absolute;
+  inset: -3px;
+  border-radius: 6px;
+  background: linear-gradient(45deg, transparent, rgba(16, 185, 129, 0.3), transparent);
+  background-size: 200% 200%;
+  animation: shineSweep 3s linear infinite;
+  pointer-events: none;
+  z-index: -1;
+  box-shadow: 0 0 10px rgba(16, 185, 129, 0.1);
+}
+
+@keyframes shineSweep {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+
+
 
 /* Metric Grid & Emoji Backgrounds */
 .metric-grid {
