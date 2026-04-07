@@ -3,7 +3,7 @@ import React, { useState, useEffect, useRef } from 'react';
 // ─── EmojiRow ─────────────────────────────────────────────────────────────────
 // Renders fullCount full emojis + one partially-cropped emoji representing the
 // fractional remainder. Uses CSS clip-path on a wrapper for zero-DOM overhead.
-const EmojiRow = ({ emoji, value, unitValue, maxValue, color = '#fff', label, sublabel, warnThreshold = 0.3 }) => {
+const EmojiRow = ({ emoji, value, unitValue, maxValue, color = '#fff', label, sublabel, warnThreshold = 0.3, title }) => {
   const fullCount  = Math.floor(value / unitValue);
   const fraction   = (value % unitValue) / unitValue; // 0–1
   const maxCount   = Math.ceil(maxValue / unitValue);
@@ -18,30 +18,25 @@ const EmojiRow = ({ emoji, value, unitValue, maxValue, color = '#fff', label, su
                 : '#ef4444';                         // danger – red
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.1rem' }}>
-      {/* Row label */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '0.55rem', color: 'rgba(255,255,255,0.35)', letterSpacing: '0.08em', textTransform: 'uppercase' }}>
-        <span>{label}</span>
-        <span style={{ color: rowColor, fontWeight: 700 }}>{sublabel}</span>
-      </div>
-
-      {/* Emoji track */}
-      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '1px', lineHeight: 1 }}>
+    <div title={title} style={{ display: 'flex', flexDirection: 'column', gap: '0' }}>
+      {/* Emoji track & label inline for maximum spatial efficiency */}
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '1px', lineHeight: 1, alignItems: 'center' }}>
+        <span style={{ fontSize: '0.48rem', color: 'rgba(255,255,255,0.25)', textTransform: 'uppercase', marginRight: '0.3rem', whiteSpace: 'nowrap' }}>{label.split('   ')[0]}</span>
 
         {/* Full emojis */}
         {Array.from({ length: Math.min(fullCount, maxCount) }).map((_, i) => (
-          <span key={`f${i}`} style={{ fontSize: '1.2rem', filter: `drop-shadow(0 0 4px ${rowColor}88)` }}>
+          <span key={`f${i}`} style={{ fontSize: '1.1rem', filter: `drop-shadow(0 0 4px ${rowColor}88)` }} title={title}>
             {emoji}
           </span>
         ))}
 
-        {/* Partial emoji – clipped by fraction using inline overflow trick */}
+        {/* Partial emoji */}
         {fraction > 0.04 && fullCount < maxCount && (
-          <span style={{
+          <span title={title} style={{
             display: 'inline-block',
             overflow: 'hidden',
-            width:  `calc(${fraction} * 1.3rem)`, // clip to fraction of full width
-            fontSize: '1.2rem',
+            width:  `calc(${fraction} * 1.2rem)`, 
+            fontSize: '1.1rem',
             lineHeight: 1,
             whiteSpace: 'nowrap',
             filter: `drop-shadow(0 0 3px ${rowColor}66)`,
@@ -51,13 +46,16 @@ const EmojiRow = ({ emoji, value, unitValue, maxValue, color = '#fff', label, su
           </span>
         )}
 
-        {/* Ghost (empty) emojis to show remaining capacity */}
+        {/* Ghost (empty) emojis */}
         {Array.from({ length: Math.min(emptyCount, 30) }).map((_, i) => (
-          <span key={`e${i}`} style={{ fontSize: '1.2rem', opacity: 0.1 }}>
+          <span key={`e${i}`} style={{ fontSize: '1.1rem', opacity: 0.08 }} title={title}>
             {emoji}
           </span>
         ))}
+
+        <span style={{ marginLeft: 'auto', color: rowColor, fontWeight: 800, fontSize: '0.65rem', animation: ratio >= 1 ? 'pulseWarning 2s infinite' : 'none' }}>{sublabel}</span>
       </div>
+      <div style={{ fontSize: '0.45rem', opacity: 0.3, letterSpacing: '0.04em', color: 'gray', marginTop: '-2px' }}>{label.split('   ')[1] || ''}</div>
     </div>
   );
 };
@@ -182,7 +180,7 @@ export const GameScoreboard = ({
 
   // Drift label: how far behind per minute of idling
   const minsPerIdleMin = dailyGoal > 0 ? (1 / Math.max(shiftElapsedMins + 60, 60)) * dailyGoal : 0;
-  const driftLabel = idleSecs > 30 ? `−${(minsPerIdleMin * idleSecs / 60).toFixed(1)}m drift` : null;
+  const driftLabel = idleSecs > 15 ? `−${(minsPerIdleMin * idleSecs / 60).toFixed(1)}m` : null;
   const [tab, setTab] = useState('day'); // 'day' | 'month'
 
   // ── UNIT VALUES ─────────────────────────────────────────────────────────────
@@ -214,7 +212,7 @@ export const GameScoreboard = ({
     : { border: '1px solid rgba(255,255,255,0.05)', boxShadow: 'none' };
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.2rem', padding: '0.35rem 0.5rem', fontFamily: 'inherit', borderRadius: '6px', transition: 'all 0.6s ease', ...stateStyle }}>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.1rem', padding: '0.2rem 0.4rem', fontFamily: 'inherit', borderRadius: '6px', transition: 'all 0.6s ease', ...stateStyle }}>
 
       {/* Header row — tabs + numeric toggle */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -238,25 +236,25 @@ export const GameScoreboard = ({
 
       {/* ── DAY TAB ── */}
       {tab === 'day' && (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.3rem' }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.15rem' }}>
 
           {/* Live state indicator strip */}
           <div 
             title="LIVE MOMENTUM: ⬆️ ON CALL means you are advancing towards your goal. ⬇️ IDLE means you are stopped, accumulating negative drift as time passes. ☕ BREAK pauses pressure but uses your limited budget."
             style={{
             display: 'flex', alignItems: 'center', gap: '0.4rem',
-            fontSize: '0.65rem', fontWeight: 800, letterSpacing: '0.06em',
-            color: isActive ? '#10b981' : isBreakActive ? '#fb923c' : idleSecs > 60 ? '#ef4444' : 'rgba(255,255,255,0.4)',
+            fontSize: '0.62rem', fontWeight: 900, letterSpacing: '0.06em',
+            color: isActive ? '#10b981' : isBreakActive ? '#fb923c' : idleSecs > 15 ? '#ef4444' : 'rgba(255,255,255,0.4)',
             transition: 'color 0.5s ease'
           }}>
             <span style={{ fontSize: '0.75rem' }}>
-              {isActive ? '⬆️' : isBreakActive ? '☕' : idleSecs > 60 ? '⬇️' : '—'}
+              {isActive ? '⬆️' : isBreakActive ? '☕' : idleSecs > 15 ? '⬇️' : '—'}
             </span>
-            <span>
-              {isActive ? 'ON CALL — CLIMBING' : isBreakActive ? 'ON BREAK' : idleSecs > 30 ? `IDLE ${Math.floor(idleSecs / 60)}m${idleSecs % 60}s` : 'STANDBY'}
+            <span style={{ textShadow: isActive ? '0 0 10px #10b981' : 'none' }}>
+              {isActive ? 'ON CALL' : isBreakActive ? 'BREAK' : idleSecs > 15 ? `IDLE ${Math.floor(idleSecs / 60)}m${idleSecs % 60}s` : 'STANDBY'}
             </span>
             {driftLabel && !isActive && !isBreakActive && (
-              <span style={{ marginLeft: 'auto', color: '#ef4444', fontWeight: 700, fontSize: '0.6rem' }}>{driftLabel}</span>
+              <span style={{ marginLeft: 'auto', color: '#ef4444', fontWeight: 900, animation: 'pulseWarning 1s infinite' }}>{driftLabel}</span>
             )}
           </div>
 
@@ -273,6 +271,7 @@ export const GameScoreboard = ({
             maxValue={dailyTargetArs > 0 ? dayArsMax : ARS_UNIT * 5}
             label={`earned   AR$${Math.round(liveDailyArs / 1000)}k / AR$${Math.round(dailyTargetArs / 1000)}k`}
             sublabel={`${dayArsPct}%`}
+            title="MONEYBAGS: Each bag represent AR$10k earned. Fill the row to hit your daily bounty targets."
           />
 
           <EmojiRow
@@ -280,6 +279,7 @@ export const GameScoreboard = ({
             maxValue={dayMinMax}
             label={`mins   ${Math.round(totalDailyMins)}m / ${Math.round(dailyGoal)}m`}
             sublabel={`${dayMinPct}%`}
+            title="CLOCKS: Each clock represents 30 productive minutes. Aim for consistent session blocks."
           />
 
           {/* Break budget */}
@@ -289,6 +289,7 @@ export const GameScoreboard = ({
             label={`break left   ${Math.round(breakLeft)}m / ${breakLimit}m`}
             sublabel={breakLeft > 30 ? 'OK' : breakLeft > 0 ? 'LOW' : 'GONE'}
             warnThreshold={0.5}
+            title="BREAK CUPS: 90m total daily budget. Each cup is 15m. When they are gone, you are in the red zone."
           />
 
           {/* Directional cue */}
@@ -305,13 +306,14 @@ export const GameScoreboard = ({
 
       {/* ── MONTH TAB ── */}
       {tab === 'month' && (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem' }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.15rem' }}>
 
           <EmojiRow
             emoji="💰" value={monthlyArs} unitValue={ARS_UNIT * 5}
             maxValue={moArsMax}
             label={`monthly ARS   $${Math.round(monthlyArs / 1000)}k / $${Math.round(monthlyTargetArs / 1000)}k`}
             sublabel={`${moArsPct}%`}
+            title="MONTHLY CASH: Cumulative earnings for this month vs your target tier."
           />
 
           <EmojiRow
@@ -319,6 +321,7 @@ export const GameScoreboard = ({
             maxValue={moMinMax}
             label={`monthly mins   ${Math.round(stats.monthlyMinutes)}m / ${stats.goalMinutes}m`}
             sublabel={`${moMinPct}%`}
+            title="MONTHLY MINUTES: How many productive minutes you've logged this month."
           />
 
           {/* Days consumed */}
@@ -327,6 +330,7 @@ export const GameScoreboard = ({
             maxValue={daysInMonth}
             label={`day ${currentDay} of ${daysInMonth}   (${remainingDays}d left)`}
             sublabel={`${Math.round((currentDay / daysInMonth) * 100)}% thru month`}
+            title="CALENDAR PROGRESS: Your position in the current month."
           />
 
           {/* Next ladder step */}

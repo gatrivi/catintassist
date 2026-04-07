@@ -38,7 +38,10 @@ const convertNumberWords = (text) => {
 
 const InteractiveText = ({ text }) => {
   if (!text) return null;
-  const processedText = convertNumberWords(text);
+  // GROUP PHONE NUMBERS: If we see 9 or 10 single digits separated by spaces, join them.
+  // One-liner fix for phone number readout issues.
+  const groupedDigits = text.replace(/(?:\b\d\b\s+){8,9}\b\d\b/g, (m) => m.replace(/\s+/g, ''));
+  const processedText = convertNumberWords(groupedDigits);
   // NÚMEROS MÁGICOS: Detectamos números de teléfono, años y códigos.
   // Los resaltamos para que puedas copiarlos rápido si haces clic.
   const numRegex = /(\+?\(?\d{1,4}?\)?[\s.\-]?\(?\d{2,4}?\)?[\s.\-]?\d{3,4}[\s.\-]?\d{3,4}|\b\d+[\d.,/\\\-]*\b)/g;
