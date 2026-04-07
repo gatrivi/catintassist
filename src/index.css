@@ -769,9 +769,9 @@ body {
 
 /* Danger pulse for hard cutoff warning */
 @keyframes pulseWarning {
-  0%   { opacity: 1; transform: scale(1); }
-  50%  { opacity: 0.6; transform: scale(1.03); }
-  100% { opacity: 1; transform: scale(1); }
+  0%   { opacity: 1; }
+  50%  { opacity: 0.6; }
+  100% { opacity: 1; }
 }
 
 @keyframes heatPulse {

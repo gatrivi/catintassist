@@ -479,18 +479,18 @@ export const TranscriptionBoard = ({ captions, onClear }) => {
         {/* Pinned Reference Section REMOVED - Pins now highlight in-place */}
 
         {captions.length === 0 && (
-          <div style={{ 
-            color: isActive ? 'var(--text-muted)' : (isBreakActive ? '#fb923c' : '#ef4444'), 
+          <div id="offline-messenger" style={{ 
+            color: isActive ? 'var(--text-muted)' : (isBreakActive ? '#fb923c' : 'rgba(255,255,255,0.2)'), 
             fontStyle: 'italic', 
             fontWeight: isActive ? 400 : 700, 
             textAlign: 'center', 
             marginBottom: '20vh',
-            animation: (!isActive && !isBreakActive) ? 'pulseWarning 2s infinite' : 'none',
-            opacity: isBreakActive ? 0.8 : 1
+            animation: (!isActive && !isBreakActive) ? 'encouragePulse 3s infinite' : 'none',
+            opacity: isBreakActive ? 0.6 : 1
           }}>
-            {isActive ? 'Livestream audio capture active... waiting for speech.' : 
-             (isBreakActive ? '⏸️ You are currently on Break. Timer is ticking, get some rest!' : 
-             '⚠️ You are OFFLINE. Press Connect above to start capturing audio!')}
+            {isActive ? '📡 Standing by... waiting for patient audio.' : 
+             (isBreakActive ? '⏸️ Recharge Mode: Break timer is active.' : 
+             '📡 Session Paused. Ready to connect when you are.')}
           </div>
         )}
         {captions.map((cap, i) => {
@@ -527,7 +527,7 @@ export const TranscriptionBoard = ({ captions, onClear }) => {
             </div>
           );
         })}
-        <div ref={bottomRef} style={{ height: '24px', flexShrink: 0 }} />
+        <div id="scroll-bottom-anchor" ref={bottomRef} style={{ height: '24px', flexShrink: 0, pointerEvents: 'none' }} />
       </div>
     </div>
   );

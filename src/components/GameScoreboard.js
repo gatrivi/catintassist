@@ -76,31 +76,38 @@ const DirectionalCue = ({ pacePrediction, dailyGoal, totalDailyMins, breakLeft, 
       🚨 DEADLINE NEAR — Work banks at 00:00. Log off soon to save streak!
     </div>
   );
-  if (totalDailyMins >= dailyGoal) return (
+  const h = new Date().getHours();
+  const goalsMet = totalDailyMins >= (dailyGoal || 1);
+
+  if (goalsMet && h >= 18) return (
+    <div style={{ color: '#10b981', fontWeight: 800, fontSize: '0.7rem' }}>
+      🌙 Daily goal reached and it's late. Rest up and win tomorrow? 💎
+    </div>
+  );
+  if (goalsMet) return (
     <div style={{ color: '#10b981', fontWeight: 800, fontSize: '0.7rem' }}>✅ Bounty secured — anything extra is pure profit 💎</div>
   );
   if (isActive) return (
-    <div style={{ color: '#34d399', fontWeight: 700, fontSize: '0.7rem', animation: 'encouragePulse 2s infinite' }}>
-      ⬆️ On call — climbing. ETA {pacePrediction?.label || '?'}
+    <div style={{ color: '#2dd4bf', fontWeight: 700, fontSize: '0.7rem', animation: 'encouragePulse 2s infinite' }}>
+      ⬆️ Climbing — ETA {pacePrediction?.label || '?'}
     </div>
   );
   if (isBreakActive) return (
     <div style={{ color: '#fb923c', fontWeight: 700, fontSize: '0.7rem' }}>
-      ☕ Break — gap is widening. Return soon.
+      ☕ Break. Return soon to keep the momentum.
     </div>
   );
   if (qualityScore?.goalUnreachable) return (
-    <div style={{ color: '#f97316', fontWeight: 700, fontSize: '0.7rem' }}>🎯 Adapt to {qualityScore.suggestedGoal}m — still winnable, keep moving</div>
+    <div style={{ color: '#f97316', fontWeight: 700, fontSize: '0.7rem' }}>🎯 Adapt to {qualityScore.suggestedGoal}m — still winnable. {tip}</div>
   );
   if (breakLeft <= 0) return (
-    <div style={{ color: '#f59e0b', fontWeight: 700, fontSize: '0.7rem' }}>⚠️ Break budget spent — every idle minute costs. {tip}</div>
+    <div style={{ color: '#f59e0b', fontWeight: 700, fontSize: '0.7rem' }}>⚠️ Break budget spent. Every idle minute costs. {tip}</div>
   );
-  if (qualityScore && qualityScore.pct >= 100) return (
-    <div style={{ color: '#34d399', fontWeight: 700, fontSize: '0.7rem' }}>🔥 On pace! ETA {pacePrediction?.label}. Don\'t stop now.</div>
-  );
+  
+  // SUPPORTIVE IDLE: Instead of "gap growing", we are "Standing By"
   return (
-    <div style={{ color: '#93c5fd', fontWeight: 600, fontSize: '0.7rem' }}>
-      📡 Idle — gap growing. {Math.round(Math.max(0, dailyGoal - totalDailyMins))}m left. {tip}
+    <div style={{ color: '#9dffed', fontWeight: 600, fontSize: '0.7rem' }}>
+      📡 Standing By — Ready for the next one. {tip}
     </div>
   );
 };
