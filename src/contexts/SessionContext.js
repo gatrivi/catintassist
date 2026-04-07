@@ -142,6 +142,7 @@ export const SessionProvider = ({ children }) => {
 
   // EMPEZAR LLAMADA: Dejamos de descansar y empezamos a contar los minutos de la llamada.
   const startSession = () => {
+    updateActivity(); // <--- Reset silence timer on start
     commitAvailTime();
     setSessionSeconds(0);
     accumulatorRef.current = 0;
@@ -293,6 +294,7 @@ export const SessionProvider = ({ children }) => {
   };
   
   const stopBreak = () => {
+    updateActivity(); // <--- Reset silence timer when returning to work
     setIsBreakActive(false);
     const minutesToAdd = breakSeconds / 60;
     const now = Date.now();

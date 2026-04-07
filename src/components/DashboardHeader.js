@@ -146,11 +146,11 @@ export const DashboardHeader = ({ onStartAudio, onStopAudio, onReconnectStream, 
   const activeDayEmoji = getDayEmoji();
 
   // Condensed View metrics
-  const dailyArs = Math.round(stats.dailyMinutes * RATE_PER_MINUTE * arsRate);
+  const liveDailyArs = Math.round(totalDailyMins * RATE_PER_MINUTE * arsRate);
   const dailyTargetArs = Math.round(dailyGoal * RATE_PER_MINUTE * arsRate);
   const monthlyArs = Math.round(stats.monthlyMinutes * RATE_PER_MINUTE * arsRate);
   const monthlyTargetArs = Math.round(stats.goalMinutes * RATE_PER_MINUTE * arsRate);
-  const currentBounty = Math.max(0, dailyTargetArs - dailyArs);
+  const currentBounty = Math.max(0, dailyTargetArs - liveDailyArs);
 
   useEffect(() => {
     if (Math.abs(displayBounty - currentBounty) > 1) {
@@ -825,10 +825,35 @@ export const DashboardHeader = ({ onStartAudio, onStopAudio, onReconnectStream, 
                   transition: 'width 1s cubic-bezier(0.34, 1.56, 0.64, 1)', zIndex: 2, pointerEvents: 'auto' 
                 }} />
               
-              {/* Hour Notches overlay */}
+              {/* Hour Notches overlay with Financial Overlays */}
               <div 
-                title="Each notch represents 1 hour of the workday (9 AM - 11 PM)."
-                style={{ position: 'absolute', inset: 0, display: 'flex', pointerEvents: 'auto', zIndex: 5, cursor: 'help' }}>
+                title={`Progress: ${liveDailyArs.toLocaleString('es-AR')} / ${dailyTargetArs.toLocaleString('es-AR')} ARS. Each notch represents 1 hour of the workday (9 AM - 11 PM).`}
+                style={{ position: 'absolute', inset: 0, display: 'flex', pointerEvents: 'auto', zIndex: 11, cursor: 'help' }}>
+                
+                {/* Banked Money Label (Left) */}
+                <div style={{ 
+                  position: 'absolute', left: '0.4rem', top: '-11px', 
+                  fontSize: '0.48rem', fontWeight: 900, 
+                  color: '#fff', textShadow: '0 0 8px rgba(16,185,129,0.8)',
+                  background: 'rgba(16,185,129,0.3)', padding: '0 0.3rem', 
+                  borderRadius: '2px', border: '1px solid rgba(16,185,129,0.4)',
+                  pointerEvents: 'none', letterSpacing: '0.04em'
+                }}>
+                  BANKED: AR${liveDailyArs.toLocaleString('es-AR')}
+                </div>
+                
+                {/* Est Max Label (Right) */}
+                <div style={{ 
+                  position: 'absolute', right: '0.4rem', top: '-11px', 
+                  fontSize: '0.48rem', fontWeight: 700, 
+                  color: 'rgba(255,255,255,0.6)', 
+                  background: 'rgba(0,0,0,0.4)', padding: '0 0.3rem', 
+                  borderRadius: '2px', border: '1px solid rgba(255,255,255,0.1)',
+                  pointerEvents: 'none', letterSpacing: '0.02em'
+                }}>
+                  EST. MAX: AR${Math.round(realisticMaxToday * RATE_PER_MINUTE * arsRate).toLocaleString('es-AR')}
+                </div>
+
                 {Array.from({ length: 14 }).map((_, i) => (
                   <div key={i} style={{ flex: 1, borderRight: i < 13 ? '1px solid rgba(255,255,255,0.15)' : 'none' }} />
                 ))}

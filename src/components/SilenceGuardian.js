@@ -72,19 +72,21 @@ export const SilenceGuardian = () => {
         </div>
         <div style={{ fontSize: '0.8rem', color: 'rgba(255,255,255,0.7)', lineHeight: '1.4' }}>
           You've been silent for <strong>{silenceMins}m</strong>. <br/>
-          {silenceMins >= 14 ? '⚠️ Provider limit is 15m.' : 'Still on a call or waiting for provider?'}
+          {silenceMins >= 14 ? '⚠️ Provider limit reached! Stop now to prevent ghost time.' : 'Still on a call or waiting? "Still Working" keeps your current minutes.'}
         </div>
       </div>
 
       <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.5rem' }}>
         <button 
+          id="silence-still-working-btn"
           className="btn btn-primary" 
           onClick={() => { updateActivity(); setShowWarning(false); }} 
           style={{ flex: 1.5, padding: '0.7rem', fontSize: '0.85rem' }}
         >
-          Still Working
+          Still Working (Keep Mins)
         </button>
         <button 
+          id="silence-end-call-btn"
           className="btn btn-danger" 
           onClick={() => { stopSession(); setShowWarning(false); }} 
           style={{ flex: 1, padding: '0.7rem', fontSize: '0.8rem', background: 'rgba(239, 68, 68, 0.2)', color: '#fca5a5' }}
@@ -94,6 +96,7 @@ export const SilenceGuardian = () => {
       </div>
       
       <button 
+        id="silence-forgot-break-btn"
         className="btn" 
         onClick={() => { stopSession(); startBreak(); setShowWarning(false); }} 
         style={{ 
@@ -105,11 +108,11 @@ export const SilenceGuardian = () => {
           marginTop: '0.2rem'
         }}
       >
-        I forgot to set Break ☕
+        I forgot to set Break ☕ (Auto-corrects stats)
       </button>
 
       <div style={{ fontSize: '0.6rem', color: 'rgba(255,255,255,0.3)', textAlign: 'center', marginTop: '0.2rem' }}>
-        Prevents metrics from "veering into fantasy"
+        Clicking 'Still Working' resets the 10m silence timer.
       </div>
     </div>
   );
