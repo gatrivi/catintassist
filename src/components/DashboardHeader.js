@@ -4,6 +4,8 @@ import { useAudioSettings } from '../contexts/AudioSettingsContext';
 import { PlayIcon, StopIcon, KeyIcon, formatTime, GoalEditor, EditableMinutes, ConnectionIndicator } from './HeaderWidgets';
 import { DialGoalSelector } from './DialGoalSelector';
 import { useProgressiveAudio } from '../hooks/useProgressiveAudio';
+import { MonthHeatmap } from './MonthHeatmap';
+import { TimeEditModal } from './TimeEditModal';
 
 const CelebrationParticles = ({ type, label, coins, onDismiss }) => {
   const [isClosing, setIsClosing] = useState(false);
@@ -57,7 +59,7 @@ const CelebrationParticles = ({ type, label, coins, onDismiss }) => {
 };
 
 export const DashboardHeader = ({ onStartAudio, onStopAudio, onReconnectStream, sttLanguage, onToggleLanguage, connectionState, connectionMessage }) => {
-  const { isActive, sessionSeconds, setSessionSeconds, sessionEarnings, stats, updateStat, startSession, stopSession, endDay, RATE_PER_MINUTE, arsRate, setArsRate, isBreakActive, breakSeconds, startBreak, stopBreak, availSeconds, isEditingScoreboard, setIsEditingScoreboard, visibleCards, toggleCard, isNotesOpen, setIsNotesOpen, isToolbarVisible, setIsToolbarVisible, workSessionMinutes } = useSession();
+  const { isActive, sessionSeconds, setSessionSeconds, sessionEarnings, stats, updateStat, startSession, stopSession, endDay, RATE_PER_MINUTE, arsRate, setArsRate, isBreakActive, breakSeconds, startBreak, stopBreak, availSeconds, isEditingScoreboard, setIsEditingScoreboard, visibleCards, toggleCard, isNotesOpen, setIsNotesOpen, isToolbarVisible, setIsToolbarVisible, workSessionMinutes, isHeatmapOpen, setIsHeatmapOpen } = useSession();
   const { outputDevices, inputDevices, selectedSinkId, selectedMicId, changeSinkId, changeMicId, fetchDevices } = useAudioSettings();
   const audioEngine = useProgressiveAudio();
 
@@ -68,6 +70,7 @@ export const DashboardHeader = ({ onStartAudio, onStopAudio, onReconnectStream, 
   const [isTodayDialOpen, setIsTodayDialOpen] = useState(false);
   const [displayBounty, setDisplayBounty] = useState(0);
   const [isBountyAnimating, setIsBountyAnimating] = useState(false);
+  const [timeEditMode, setTimeEditMode] = useState(null); // 'call' | 'break' | null
 
   useEffect(() => {
     let iv; if (isHold) iv = setInterval(() => setHoldSeconds(s => s + 1), 1000); else setHoldSeconds(0);
@@ -329,22 +332,22 @@ export const DashboardHeader = ({ onStartAudio, onStopAudio, onReconnectStream, 
             <div style={{ display: 'flex', gap: '0.15rem', alignItems: 'center' }}>
               <ConnectionIndicator state={connectionState} message={connectionMessage} />
               {!isActive ? (
-                <button className="btn-emoji" onClick={handleStart} style={{ background: '#10b981', color: '#fff' }} title="CONNECT">🟢</button>
+                <button id="connect-btn" className="btn-emoji" onClick={handleStart} style={{ background: '#10b981', color: '#fff' }} title="CONNECT">🟢</button>
               ) : (
-                <button className="btn-emoji" onClick={handleStop} style={{ background: '#ef4444', color: '#fff' }} title="STOP">🛑</button>
+                <button id="stop-btn" className="btn-emoji" onClick={handleStop} style={{ background: '#ef4444', color: '#fff' }} title="STOP">🛑</button>
               )}
-              
+
               {!isActive ? (
                 <>
-                  <button className="btn-emoji" onClick={isBreakActive ? stopBreak : startBreak} style={{ background: '#fb923c', color: '#fff' }} title="BREAK">☕</button>
+                  <button id="break-btn" className="btn-emoji" onClick={isBreakActive ? stopBreak : startBreak} style={{ background: '#fb923c', color: '#fff' }} title="BREAK">☕</button>
                   {stats.dailyMinutes > 0 && !isBreakActive && (
-                    <button className="btn-emoji" onClick={handleEndDay} style={{ background: '#8b5cf6', color: '#fff' }} title="END DAY">🌙</button>
+                    <button id="end-day-btn" className="btn-emoji" onClick={handleEndDay} style={{ background: '#8b5cf6', color: '#fff' }} title="END DAY">🌙</button>
                   )}
                 </>
               ) : (
                 <>
-                  <button className="btn btn-condensed" onClick={() => setIsHold(!isHold)} style={{ background: isHold ? '#f59e0b' : 'rgba(255,255,255,0.1)', height: '26px' }}>{isHold ? `⏸${formatTime(holdSeconds)}` : '⏸'}</button>
-                  <button className="btn-emoji" onClick={onReconnectStream} style={{ background: '#0ea5e9' }} title="ZAP">⚡</button>
+                  <button id="hold-btn" className="btn btn-condensed" onClick={() => setIsHold(!isHold)} style={{ background: isHold ? '#f59e0b' : 'rgba(255,255,255,0.1)', height: '26px' }}>{isHold ? `⏸${formatTime(holdSeconds)}` : '⏸'}</button>
+                  <button id="zap-btn" className="btn-emoji" onClick={onReconnectStream} style={{ background: '#0ea5e9' }} title="ZAP">⚡</button>
                 </>
               )}
             </div>
@@ -359,6 +362,9 @@ export const DashboardHeader = ({ onStartAudio, onStopAudio, onReconnectStream, 
                <div className="metric-pill" title="LOG OFF" style={{ background: 'rgba(245,158,11,0.1)', border: '1px solid rgba(245,158,11,0.3)', height: '22px' }}>
                  <span style={{ color: '#fcd34d', fontSize: '0.65rem' }}>🚪{getCompensatedLogOff()}</span>
                </div>
+               {/* Quick-edit call/break time */}
+               <button id="call-edit-btn" onClick={() => setTimeEditMode('call')} title="Edit call time" style={{ background: 'rgba(59,130,246,0.15)', border: '1px solid rgba(59,130,246,0.3)', borderRadius: '3px', padding: '0 0.25rem', height: '22px', cursor: 'pointer', fontSize: '0.6rem', color: '#93c5fd' }}>✏️📞</button>
+               <button id="break-edit-btn" onClick={() => setTimeEditMode('break')} title="Edit break time" style={{ background: 'rgba(251,146,60,0.15)', border: '1px solid rgba(251,146,60,0.3)', borderRadius: '3px', padding: '0 0.25rem', height: '22px', cursor: 'pointer', fontSize: '0.6rem', color: '#fdba74' }}>✏️☕</button>
             </div>
           </div>
 
@@ -447,9 +453,10 @@ export const DashboardHeader = ({ onStartAudio, onStopAudio, onReconnectStream, 
              </div>
 
              <div style={{ display: 'flex', gap: '0.2rem' }}>
-                <button className="btn-icon" onClick={() => setIsNotesOpen(!isNotesOpen)} style={{ opacity: isNotesOpen ? 1 : 0.4 }}>📝</button>
-                <button className="btn-icon" onClick={() => setIsToolbarVisible(!isToolbarVisible)} style={{ opacity: isToolbarVisible ? 1 : 0.4 }}>🛠️</button>
-                <button className="btn-icon" onClick={() => setIsCollapsed(false)}>🔼</button>
+                <button id="notes-toggle-btn" className="btn-icon" onClick={() => setIsNotesOpen(!isNotesOpen)} style={{ opacity: isNotesOpen ? 1 : 0.4 }}>📝</button>
+                <button id="tools-toggle-btn" className="btn-icon" onClick={() => setIsToolbarVisible(!isToolbarVisible)} style={{ opacity: isToolbarVisible ? 1 : 0.4 }}>🛠️</button>
+                <button id="heatmap-btn" className="btn-icon" onClick={() => setIsHeatmapOpen(true)} title="Monthly Heatmap">📅</button>
+                <button id="expand-btn" className="btn-icon" onClick={() => setIsCollapsed(false)}>🔼</button>
              </div>
           </div>
         </div>
@@ -580,15 +587,17 @@ export const DashboardHeader = ({ onStartAudio, onStopAudio, onReconnectStream, 
             {/* Main Controls Group */}
             <div style={{ display: 'flex', gap: '0.3rem', alignItems: 'center' }}>
               {!isActive ? (
-                <button className="btn btn-primary" onClick={handleStart} style={{ padding: '0.4rem 0.8rem' }}><PlayIcon /> Connect</button>
+                <button id="connect-btn" className="btn btn-primary" onClick={handleStart} style={{ padding: '0.4rem 0.8rem' }}><PlayIcon /> Connect</button>
               ) : (
-                <button className="btn btn-danger" onClick={handleStop}><StopIcon /> STOP</button>
+                <button id="stop-btn" className="btn btn-danger" onClick={handleStop}><StopIcon /> STOP</button>
               )}
               {isBreakActive ? (
-                <button className="btn" onClick={stopBreak} style={{ background: '#fb923c', color: 'white' }}>STOP BREAK</button>
+                <button id="stop-break-btn" className="btn" onClick={stopBreak} style={{ background: '#fb923c', color: 'white' }}>STOP BREAK</button>
               ) : (
-                <button className="btn" onClick={startBreak} disabled={isActive} style={{ opacity: isActive ? 0.3 : 1 }}>COFFEE</button>
+                <button id="break-btn" className="btn" onClick={startBreak} disabled={isActive} style={{ opacity: isActive ? 0.3 : 1 }}>COFFEE</button>
               )}
+              <button id="call-edit-btn-expanded" onClick={() => setTimeEditMode('call')} title="Edit call time" style={{ background: 'rgba(59,130,246,0.15)', border: '1px solid rgba(59,130,246,0.3)', borderRadius: '6px', padding: '0.3rem 0.5rem', cursor: 'pointer', fontSize: '0.6rem', color: '#93c5fd' }}>✏️📞</button>
+              <button id="break-edit-btn-expanded" onClick={() => setTimeEditMode('break')} title="Edit break time" style={{ background: 'rgba(251,146,60,0.15)', border: '1px solid rgba(251,146,60,0.3)', borderRadius: '6px', padding: '0.3rem 0.5rem', cursor: 'pointer', fontSize: '0.6rem', color: '#fdba74' }}>✏️☕</button>
             </div>
 
             {/* Current Call (Live) */}
@@ -623,24 +632,29 @@ export const DashboardHeader = ({ onStartAudio, onStopAudio, onReconnectStream, 
               </div>
             </div>
 
-            {/* Tool toggles — each has a distinct solid background so they're always readable */}
+            {/* Tool toggles — all on one row with proper IDs */}
             <div style={{ display: 'flex', gap: '0.25rem', alignItems: 'center', flexShrink: 0 }}>
-              <button onClick={() => setIsNotesOpen(!isNotesOpen)}
+              <button id="notes-toggle-btn" onClick={() => setIsNotesOpen(!isNotesOpen)}
                 style={{ fontSize: '0.6rem', padding: '0.25rem 0.5rem', borderRadius: '5px', border: 'none', cursor: 'pointer', fontWeight: 700,
                   background: isNotesOpen ? '#2563eb' : '#1e3a5f', color: '#bfdbfe' }}>
                 📝 Notes
               </button>
-              <button onClick={() => setIsToolbarVisible(!isToolbarVisible)}
+              <button id="tools-toggle-btn" onClick={() => setIsToolbarVisible(!isToolbarVisible)}
                 style={{ fontSize: '0.6rem', padding: '0.25rem 0.5rem', borderRadius: '5px', border: 'none', cursor: 'pointer', fontWeight: 700,
                   background: isToolbarVisible ? '#7c3aed' : '#3b1f6e', color: '#ddd6fe' }}>
                 🛠️ Tools
               </button>
-              <button onClick={() => setIsEditingScoreboard(!isEditingScoreboard)}
+              <button id="heatmap-btn-expanded" onClick={() => setIsHeatmapOpen(true)}
+                style={{ fontSize: '0.6rem', padding: '0.25rem 0.5rem', borderRadius: '5px', border: 'none', cursor: 'pointer', fontWeight: 700,
+                  background: '#0c4a6e', color: '#7dd3fc' }}>
+                📅 Map
+              </button>
+              <button id="edit-scoreboard-btn" onClick={() => setIsEditingScoreboard(!isEditingScoreboard)}
                 style={{ fontSize: '0.6rem', padding: '0.25rem 0.5rem', borderRadius: '5px', border: 'none', cursor: 'pointer', fontWeight: 700,
                   background: isEditingScoreboard ? '#d97706' : '#5c3a00', color: '#fde68a' }}>
                 {isEditingScoreboard ? '💾 Save' : '✏️ Edit'}
               </button>
-              <button onClick={() => setIsCollapsed(true)}
+              <button id="collapse-btn" onClick={() => setIsCollapsed(true)}
                 style={{ fontSize: '0.6rem', padding: '0.25rem 0.5rem', borderRadius: '5px', border: 'none', cursor: 'pointer', fontWeight: 700,
                   background: '#7f1d1d', color: '#fca5a5' }}>
                 ▲ Close
@@ -773,7 +787,7 @@ export const DashboardHeader = ({ onStartAudio, onStopAudio, onReconnectStream, 
                 ) : (
                   <>
                     <span title="Literally how many hours are left until 11:00 PM.">⏳ {hoursLeftToAbsolute.toFixed(1)}h left (${Math.round(hoursLeftToAbsolute * 60)}m)</span>
-                    <span title="Assuming you work 35 mins per hour (allowing for breaks/avail), this is how many minutes you can realistically bank today.">({Math.round(workableMinsRemaining)}m workable)</span>
+                    <span title="Assuming you work 35 mins per hour (allowing for breaks/avail), this is how many minutes you can realistically bank today.">({Math.round(workableMinsRemaining)}m, $ARS{workableMinsRemaining*0.13*1348} workable)</span>
                   </>
                 )}
               </div>
@@ -830,15 +844,21 @@ export const DashboardHeader = ({ onStartAudio, onStopAudio, onReconnectStream, 
 
       {/* GLOBAL DIAL SELECTOR TRIGGER */}
       {isTodayDialOpen && (
-        <DialGoalSelector 
-          ratePerMinute={RATE_PER_MINUTE} 
-          arsRate={arsRate} 
+        <DialGoalSelector
+          ratePerMinute={RATE_PER_MINUTE}
+          arsRate={arsRate}
           setArsRate={setArsRate}
           initialGoalMinutes={stats.goalMinutes}
-          onSave={(m) => { updateStat('goalMinutes', m); setIsTodayDialOpen(false); }} 
-          onCancel={() => setIsTodayDialOpen(false)} 
+          onSave={(m) => { updateStat('goalMinutes', m); setIsTodayDialOpen(false); }}
+          onCancel={() => setIsTodayDialOpen(false)}
         />
       )}
+
+      {/* MONTH HEATMAP */}
+      {isHeatmapOpen && <MonthHeatmap />}
+
+      {/* TIME EDIT MODAL */}
+      {timeEditMode && <TimeEditModal mode={timeEditMode} onClose={() => setTimeEditMode(null)} />}
     </header>
   );
 };

@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect, useRef } from 'react';
+import React, { createContext, useContext, useState, useEffect, useRef, useCallback } from 'react';
 
 const SessionContext = createContext();
 
@@ -39,8 +39,17 @@ export const SessionProvider = ({ children }) => {
 
   const toggleCard = (key) => setVisibleCards(v => ({ ...v, [key]: !v[key] }));
 
-  // GUARDAMOS TODO: Aquí anotamos cuánto trabajamos hoy, en la semana y en el mes.
-  // Revisamos si es un nuevo día para poner el contador de hoy en cero (0).
+  // GUARDAMOS TODO: daily log tracks minutes per calendar day for the heatmap.
+  const [dailyLog, setDailyLog] = useState(() => {
+    try { return JSON.parse(localStorage.getItem('catintassist_daily_log')) || {}; } catch(e) { return {}; }
+  });
+  useEffect(() => { localStorage.setItem('catintassist_daily_log', JSON.stringify(dailyLog)); }, [dailyLog]);
+
+  // Write today's final minutes into dailyLog (called on endDay or midnight rollover)
+  const commitDayToLog = useCallback((dateStr, minutes) => {
+    setDailyLog(prev => ({ ...prev, [dateStr]: Math.round(minutes) }));
+  }, []);
+
   const [stats, setStats] = useState(() => {
     const saved = localStorage.getItem('catintassist_stats');
     const today = new Date().toDateString();
@@ -51,17 +60,21 @@ export const SessionProvider = ({ children }) => {
       weeklyMinutes: 0,
       monthlyMinutes: 0,
       goalMinutes: 5500,
-      callsToday: 0,       // Track number of calls per day
-      streak: 0,           // Consecutive days at/above daily goal
+      callsToday: 0,
+      streak: 0,
       lastDate: today,
       dayStartTime: null
     };
     if (saved) {
       try {
         const parsed = JSON.parse(saved);
-        if (parsed.lastDate !== today) {
-          // Before rolling over, check if yesterday was a good day to maintain streak
-          // Streak is preserved in the stats object itself — no reset on rollover
+        if (parsed.lastDate && parsed.lastDate !== today) {
+          // Midnight rollover: write previous day's minutes into log
+          const prevLog = JSON.parse(localStorage.getItem('catintassist_daily_log')) || {};
+          if (parsed.dailyMinutes > 0) {
+            prevLog[parsed.lastDate] = Math.round(parsed.dailyMinutes);
+            localStorage.setItem('catintassist_daily_log', JSON.stringify(prevLog));
+          }
           parsed.dailyMinutes = 0;
           parsed.dailyBreakMinutes = 0;
           parsed.dailyAvailMinutes = 0;
@@ -75,6 +88,9 @@ export const SessionProvider = ({ children }) => {
     }
     return initialStats;
   });
+
+  // HEATMAP OPEN STATE
+  const [isHeatmapOpen, setIsHeatmapOpen] = useState(false);
 
   const [workSessionStartTime, setWorkSessionStartTime] = useState(() => stats.lastBreakEndTime || stats.dayStartTime || Date.now());
   const [workSessionMinutes, setWorkSessionMinutes] = useState(0);
@@ -167,33 +183,58 @@ export const SessionProvider = ({ children }) => {
     }
   };
 
-  // End of Day: commit daily total, check streak, reset counters
+  // End of Day: commit daily total to log, check streak, reset counters
   const endDay = (onDayEnded) => {
     commitAvailTime();
     setStats(prev => {
-      // Check if today's goal was met (requiredDailyAverage is dynamic but we use a simple heuristic)
+      // Write today into daily log before zeroing
+      const todayStr = prev.lastDate || new Date().toDateString();
+      commitDayToLog(todayStr, prev.dailyMinutes);
+
       const dailyGoalProxy = prev.goalMinutes > 0 && prev.monthlyMinutes > 0
-        ? Math.ceil((prev.goalMinutes - (prev.monthlyMinutes - prev.dailyMinutes)) / 
+        ? Math.ceil((prev.goalMinutes - (prev.monthlyMinutes - prev.dailyMinutes)) /
             Math.max(1, new Date(new Date().getFullYear(), new Date().getMonth() + 1, 0).getDate() - new Date().getDate() + 1))
         : 0;
       const metGoal = prev.dailyMinutes >= dailyGoalProxy && dailyGoalProxy > 0;
       const newStreak = metGoal ? (prev.streak || 0) + 1 : 0;
-      
-      const newStats = { 
-        ...prev, 
-        dailyMinutes: 0, 
-        dailyBreakMinutes: 0, 
-        dailyAvailMinutes: 0, 
+
+      const newStats = {
+        ...prev,
+        dailyMinutes: 0,
+        dailyBreakMinutes: 0,
+        dailyAvailMinutes: 0,
         callsToday: 0,
-        dayStartTime: null, 
+        dayStartTime: null,
         streak: newStreak,
-        lastDate: new Date().toDateString() 
+        lastDate: new Date().toDateString()
       };
       localStorage.setItem('catintassist_stats', JSON.stringify(newStats));
       if (onDayEnded) onDayEnded(prev.dailyMinutes);
       return newStats;
     });
   };
+
+  // MIDNIGHT AUTO-LOGOFF: if break is running and clock crosses 00:00, stop break
+  useEffect(() => {
+    const midnightGuard = setInterval(() => {
+      const h = new Date().getHours();
+      const m = new Date().getMinutes();
+      // Trigger at 00:00–00:01 window
+      if (h === 0 && m === 0 && isBreakActive) {
+        setIsBreakActive(false);
+        const minutesToAdd = breakSeconds / 60;
+        if (minutesToAdd > 0) {
+          setStats(prev => {
+            const newStats = { ...prev, dailyBreakMinutes: (prev.dailyBreakMinutes || 0) + minutesToAdd };
+            localStorage.setItem('catintassist_stats', JSON.stringify(newStats));
+            return newStats;
+          });
+        }
+        setBreakSeconds(0);
+      }
+    }, 30000); // check every 30s is sufficient
+    return () => clearInterval(midnightGuard);
+  }, [isBreakActive, breakSeconds]);
 
   useEffect(() => {
     localStorage.setItem('catintassist_stats', JSON.stringify(stats));
@@ -290,6 +331,7 @@ export const SessionProvider = ({ children }) => {
     setArsRate,
     isBreakActive,
     breakSeconds,
+    setBreakSeconds,   // exposed for TimeEditModal
     startBreak,
     stopBreak,
     availSeconds,
@@ -304,7 +346,11 @@ export const SessionProvider = ({ children }) => {
     workSessionMinutes,
     setWorkSessionStartTime,
     lastActivityTime,
-    updateActivity
+    updateActivity,
+    dailyLog,
+    commitDayToLog,
+    isHeatmapOpen,
+    setIsHeatmapOpen
   };
 
   return (
