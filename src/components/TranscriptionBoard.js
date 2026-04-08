@@ -41,7 +41,7 @@ const InteractiveText = ({ text }) => {
   if (!text) return null;
   // GROUP PHONE NUMBERS: If we see 9 or 10 single digits separated by spaces, join them.
   // One-liner fix for phone number readout issues.
-  const groupedDigits = text.replace(/(?:\b\d\b\s+){8,9}\b\d\b/g, (m) => m.replace(/\s+/g, ''));
+  const groupedDigits = text.replace(/\b(?:\d\s+){8,9}\d+\b/g, (m) => m.replace(/\s+/g, ''));
   const processedText = convertNumberWords(groupedDigits);
   // NÚMEROS MÁGICOS: Detectamos números de teléfono, años y códigos.
   // Los resaltamos para que puedas copiarlos rápido si haces clic.
@@ -249,7 +249,9 @@ const CoinRain = ({ isActive, onCollect }) => {
   return (
     <div id="coin-rain-overlay" style={{ position: 'absolute', inset: 0, pointerEvents: 'none', zIndex: 0, overflow: 'hidden' }}>
       {coins.map(coin => {
-        const xPos = 15 + (coin.index * 12); // Stacking offset
+        const COINS_PER_ROW = 45; // Safe wrap for 900px wide app
+        const xPos = 15 + (coin.index % COINS_PER_ROW) * 12; // Stacking offset
+        const yPos = 8 + Math.floor(coin.index / COINS_PER_ROW) * 16; // Upward stacking
         
         let style = {};
         if (coin.status === 'falling') {
@@ -261,13 +263,13 @@ const CoinRain = ({ isActive, onCollect }) => {
           };
         } else if (coin.status === 'stacked') {
           style = {
-            bottom: '8px',
+            bottom: `${yPos}px`,
             left: `${xPos}px`,
             opacity: 0.2
           };
         } else if (coin.status === 'collecting') {
           style = {
-            bottom: '8px',
+            bottom: `${yPos}px`,
             left: `${xPos}px`,
             animation: 'flyToTop 1.2s ease-in forwards',
             animationDelay: `${(coin.index % 20) * 0.1}s`, // Staggered fly
