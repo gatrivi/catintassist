@@ -777,17 +777,27 @@ body {
 /* ── SCOREBOARD GRID HUD ──────────────────────────────────────────────────── */
 .scoreboard-grid {
   display: grid;
+  grid-template-columns: 1fr;
+  grid-template-rows: auto auto auto auto;
   grid-template-areas: 
     "top-bar"
     "main-status"
     "timers"
     "actions";
-  gap: 0.15rem;
-  padding: 0.2rem 0.4rem;
-  border-radius: 8px;
+  gap: 0.25rem;
+  padding: 0.35rem 0.5rem;
+  border-radius: 10px;
   transition: all 0.5s cubic-bezier(0.4, 0, 0.2, 1);
   overflow: hidden;
   position: relative;
+  background: rgba(15, 23, 42, 0.4);
+  backdrop-filter: blur(8px);
+}
+
+.scoreboard-area {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
 }
 
 /* ── STATE-DRIVEN ROOT THEMES ──────────────────────────────────────────────── */

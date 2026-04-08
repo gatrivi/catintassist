@@ -193,7 +193,7 @@ export const GameScoreboard = ({
   const ARS_UNIT    = 10000;  // 1 💰 = 10k ARS
   const MIN_UNIT    = 30;     // 1 ⏱️ = 30 productive mins
 
-  // Day view
+  // Computed Maxes
   const dayArsMax   = Math.max(dailyTargetArs, liveDailyArs, ARS_UNIT);
   const dayMinMax   = Math.max(dailyGoal, totalDailyMins, MIN_UNIT);
   const moArsMax    = Math.max(monthlyTargetArs, monthlyArs, ARS_UNIT);
@@ -207,12 +207,9 @@ export const GameScoreboard = ({
   const hudState = isActive ? 'call' : isBreakActive ? 'break' : 'avail';
 
   return (
-    <div 
-      className="scoreboard-grid"
-      data-state={hudState}
-      style={{ fontFamily: 'inherit', transition: 'all 0.6s ease' }}
-    >
-      {/* AREA 1: top-bar */}
+    <div className="scoreboard-grid" data-state={hudState}>
+      
+      {/* AREA: top-bar */}
       <div style={{ gridArea: 'top-bar', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <div style={{ display: 'flex', gap: '0.2rem' }}>
           {['day', 'month'].map(t => (
@@ -232,18 +229,14 @@ export const GameScoreboard = ({
         }} title="Switch to number view">123</button>
       </div>
 
-      {/* AREA 2: main-status */}
-      <div style={{ gridArea: 'main-status' }}>
-        <div 
-          title="LIVE MOMENTUM: ⬆️ ON CALL / 📡 STANDBY / ☕ BREAK"
-          style={{
+      {/* AREA: main-status */}
+      <div style={{ gridArea: 'main-status', display: 'flex', flexDirection: 'column' }}>
+        <div style={{
             display: 'flex', alignItems: 'center', gap: '0.4rem',
             fontSize: '0.62rem', fontWeight: 900, letterSpacing: '0.06em',
             color: isActive ? '#10b981' : isBreakActive ? '#fb923c' : idleSecs > 15 ? '#ef4444' : 'rgba(255,255,255,0.4)',
-            transition: 'color 0.5s ease',
             marginBottom: '0.1rem'
-          }}
-        >
+          }}>
           <span style={{ fontSize: '0.75rem' }}>
             {isActive ? '⬆️' : isBreakActive ? '☕' : (idleSecs > 15 && !isActive) ? '⏳' : '📡'}
           </span>
@@ -262,15 +255,15 @@ export const GameScoreboard = ({
         />
       </div>
 
-      {/* AREA 3: timers */}
-      <div style={{ gridArea: 'timers' }} title="MOMENTUM BAR: Filled = You, Ghost = Goal. Stay ahead!">
+      {/* AREA: timers */}
+      <div style={{ gridArea: 'timers' }}>
         <MomentumBar
           totalDailyMins={totalDailyMins} dailyGoal={dailyGoal}
           shiftElapsedMins={shiftElapsedMins} isActive={isActive}
         />
       </div>
 
-      {/* AREA 4: actions (Emoji Tracks) */}
+      {/* AREA: actions */}
       <div style={{ gridArea: 'actions', display: 'flex', flexDirection: 'column', gap: '0.15rem' }}>
         {tab === 'day' ? (
           <>
