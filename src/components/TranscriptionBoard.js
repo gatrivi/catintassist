@@ -4,6 +4,7 @@ import { useTTS } from '../hooks/useTTS';
 import { useTranslate } from '../hooks/useTranslate';
 import { useSession } from '../contexts/SessionContext';
 import { useProgressiveAudio } from '../hooks/useProgressiveAudio';
+import { useRewardAudio } from '../hooks/useRewardAudio';
 
 // EL TABLERO DE TEXTO: Aquí es donde aparece todo lo que dicen en la llamada.
 // Muestra quién habla, lo traduce y te deja copiar los números con un clic.
@@ -179,7 +180,7 @@ const playChime = (freq = 880, vol = 0.02, harmonics = 1) => {
 // ─── CoinRain Component ───────────────────────────────────────────────────────
 // Gamification: One coin zigzags down every minute of active call.
 // Refactored to prevent 'teleporting'—the coin that falls is the coin that stacks.
-const CoinRain = ({ isActive }) => {
+const CoinRain = ({ isActive, onCollect }) => {
   const [coins, setCoins] = useState([]); // [{id, status, index}]
   const coinIdRef = useRef(0);
   const startTimeRef = useRef(Date.now());
@@ -220,6 +221,9 @@ const CoinRain = ({ isActive }) => {
       setCoins(current => {
         const toCollect = current.filter(c => c.status !== 'collecting');
         if (toCollect.length > 0) {
+          // Play synthesized reward sound
+          onCollect?.();
+          
           toCollect.forEach((c, i) => {
             setTimeout(() => {
               const richness = 1 + Math.floor(toCollect.length / 5);
@@ -295,6 +299,7 @@ export const TranscriptionBoard = ({ captions, onClear }) => {
   const [pinnedIds, setPinnedIds] = useState(() => JSON.parse(localStorage.getItem('catint_pinned')) || []);
   const { playTTS, stopTTS, isPlaying, playingUrl, prefetchTTS } = useTTS();
   const { playWarningPing } = useProgressiveAudio();
+  const { playChaChing } = useRewardAudio();
   const { isEditingScoreboard, visibleCards, toggleCard, isActive, isBreakActive, isToolbarVisible } = useSession();
   const warnedBubblesRef = useRef(new Set());
   
@@ -389,7 +394,7 @@ export const TranscriptionBoard = ({ captions, onClear }) => {
 
   return (
     <div className="glass-panel transcription-area" style={{ position: 'relative' }}>
-      <CoinRain isActive={isActive} />
+      <CoinRain isActive={isActive} onCollect={playChaChing} />
       {popover.show && (
         <div style={{
           position: 'fixed',

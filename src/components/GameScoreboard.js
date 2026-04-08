@@ -3,7 +3,7 @@ import React, { useState, useEffect, useRef } from 'react';
 // ─── EmojiRow ─────────────────────────────────────────────────────────────────
 // Renders fullCount full emojis + one partially-cropped emoji representing the
 // fractional remainder. Uses CSS clip-path on a wrapper for zero-DOM overhead.
-const EmojiRow = ({ emoji, value, unitValue, maxValue, color = '#fff', label, sublabel, warnThreshold = 0.3, title }) => {
+const EmojiRow = ({ emoji, emptyEmoji, value, unitValue, maxValue, color = '#fff', label, sublabel, warnThreshold = 0.3, title, className = "" }) => {
   const fullCount  = Math.floor(value / unitValue);
   const fraction   = (value % unitValue) / unitValue; // 0–1
   const maxCount   = Math.ceil(maxValue / unitValue);
@@ -18,8 +18,7 @@ const EmojiRow = ({ emoji, value, unitValue, maxValue, color = '#fff', label, su
                 : '#ef4444';                         // danger – red
 
   return (
-    <div title={title} style={{ display: 'flex', flexDirection: 'column', gap: '0' }}>
-      {/* Emoji track & label inline for maximum spatial efficiency */}
+    <div title={title} className={className} style={{ display: 'flex', flexDirection: 'column', gap: '0' }}>
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: '1px', lineHeight: 1, alignItems: 'center' }}>
         <span style={{ fontSize: '0.48rem', color: 'rgba(255,255,255,0.25)', textTransform: 'uppercase', marginRight: '0.3rem', whiteSpace: 'nowrap' }}>{label.split('   ')[0]}</span>
 
@@ -49,7 +48,7 @@ const EmojiRow = ({ emoji, value, unitValue, maxValue, color = '#fff', label, su
         {/* Ghost (empty) emojis */}
         {Array.from({ length: Math.min(emptyCount, 30) }).map((_, i) => (
           <span key={`e${i}`} style={{ fontSize: '1.1rem', opacity: 0.08 }} title={title}>
-            {emoji}
+            {emptyEmoji || emoji}
           </span>
         ))}
 
@@ -195,34 +194,25 @@ export const GameScoreboard = ({
   const MIN_UNIT    = 30;     // 1 ⏱️ = 30 productive mins
 
   // Day view
-  const dayArsMax   = Math.max(dailyTargetArs, liveDailyArs, ARS_UNIT);
   const dayMinMax   = Math.max(dailyGoal, totalDailyMins, MIN_UNIT);
-  const breakUsed   = Math.max(0, breakLimit - breakLeft);
-
-  // Month view
   const moArsMax    = Math.max(monthlyTargetArs, monthlyArs, ARS_UNIT);
   const moMinMax    = Math.max(stats.goalMinutes, stats.monthlyMinutes, MIN_UNIT);
 
-  // Progress pct labels
   const dayArsPct   = dailyTargetArs > 0 ? Math.round((liveDailyArs  / dailyTargetArs)  * 100) : 0;
   const dayMinPct   = dailyGoal      > 0 ? Math.round((totalDailyMins / dailyGoal)        * 100) : 0;
   const moArsPct    = monthlyTargetArs > 0 ? Math.round((monthlyArs    / monthlyTargetArs) * 100) : 0;
   const moMinPct    = stats.goalMinutes  > 0 ? Math.round((stats.monthlyMinutes / stats.goalMinutes) * 100) : 0;
 
-  // On-call: glowing green border + rising animation / Off-call: subtle red sinking
-  const stateStyle = isActive
-    ? { border: '1px solid rgba(16,185,129,0.5)', boxShadow: '0 0 12px rgba(16,185,129,0.18)', animation: 'riseGlow 1.5s ease-in-out infinite alternate' }
-    : isBreakActive
-    ? { border: '1px solid rgba(251,146,60,0.3)', boxShadow: 'none' }
-    : idleSecs > 60
-    ? { border: '1px solid rgba(239,68,68,0.3)', boxShadow: '0 0 8px rgba(239,68,68,0.08)', animation: 'sinkDim 3s ease-in-out infinite alternate' }
-    : { border: '1px solid rgba(255,255,255,0.05)', boxShadow: 'none' };
+  const hudState = isActive ? 'call' : isBreakActive ? 'break' : 'avail';
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.1rem', padding: '0.2rem 0.4rem', fontFamily: 'inherit', borderRadius: '6px', transition: 'all 0.6s ease', ...stateStyle }}>
-
-      {/* Header row — tabs + numeric toggle */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+    <div 
+      className="scoreboard-grid"
+      data-state={hudState}
+      style={{ fontFamily: 'inherit', transition: 'all 0.6s ease' }}
+    >
+      {/* AREA 1: top-bar */}
+      <div style={{ gridArea: 'top-bar', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <div style={{ display: 'flex', gap: '0.2rem' }}>
           {['day', 'month'].map(t => (
             <button key={t} onClick={() => setTab(t)} style={{
@@ -241,111 +231,90 @@ export const GameScoreboard = ({
         }} title="Switch to number view">123</button>
       </div>
 
-      {/* ── DAY TAB ── */}
-      {tab === 'day' && (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.15rem' }}>
-
-          {/* Live state indicator strip */}
-          <div 
-            title="LIVE MOMENTUM: ⬆️ ON CALL means you are advancing towards your goal. ⬇️ IDLE means you are stopped, accumulating negative drift as time passes. ☕ BREAK pauses pressure but uses your limited budget."
-            style={{
+      {/* AREA 2: main-status */}
+      <div style={{ gridArea: 'main-status' }}>
+        <div 
+          title="LIVE MOMENTUM: ⬆️ ON CALL / 📡 STANDBY / ☕ BREAK"
+          style={{
             display: 'flex', alignItems: 'center', gap: '0.4rem',
             fontSize: '0.62rem', fontWeight: 900, letterSpacing: '0.06em',
             color: isActive ? '#10b981' : isBreakActive ? '#fb923c' : idleSecs > 15 ? '#ef4444' : 'rgba(255,255,255,0.4)',
-            transition: 'color 0.5s ease'
-          }}>
-            <span style={{ fontSize: '0.75rem' }}>
-              {isActive ? '⬆️' : isBreakActive ? '☕' : idleSecs > 15 ? '⬇️' : '—'}
-            </span>
-            <span style={{ textShadow: isActive ? '0 0 10px #10b981' : 'none' }}>
-              {isActive ? 'ON CALL' : isBreakActive ? 'BREAK' : idleSecs > 15 ? `IDLE ${Math.floor(idleSecs / 60)}m${idleSecs % 60}s` : 'STANDBY'}
-            </span>
-            {driftLabel && !isActive && !isBreakActive && (
-              <span style={{ marginLeft: 'auto', color: '#ef4444', fontWeight: 900, animation: 'pulseWarning 1s infinite' }}>{driftLabel}</span>
-            )}
-          </div>
-
-          {/* Pace momentum bar */}
-          <div title="MOMENTUM BAR: The bold bar is your actual progress. The faint background bar is the 'pace ghost'—representing the exact progress you should have right now to effortlessly hit your goal. Keep your bar ahead of the ghost!">
-            <MomentumBar
-              totalDailyMins={totalDailyMins} dailyGoal={dailyGoal}
-              shiftElapsedMins={shiftElapsedMins} isActive={isActive}
-            />
-          </div>
-
-          <EmojiRow
-            emoji="💰" value={liveDailyArs} unitValue={ARS_UNIT}
-            maxValue={dailyTargetArs > 0 ? dayArsMax : ARS_UNIT * 5}
-            label={`earned   AR$${Math.round(liveDailyArs / 1000)}k / AR$${Math.round(dailyTargetArs / 1000)}k`}
-            sublabel={`${dayArsPct}%`}
-            title="MONEYBAGS: Each bag represent AR$10k earned. Fill the row to hit your daily bounty targets."
-          />
-
-          <EmojiRow
-            emoji="⏱️" value={totalDailyMins} unitValue={MIN_UNIT}
-            maxValue={dayMinMax}
-            label={`mins   ${Math.round(totalDailyMins)}m / ${Math.round(dailyGoal)}m`}
-            sublabel={`${dayMinPct}%`}
-            title="CLOCKS: Each clock represents 30 productive minutes. Aim for consistent session blocks."
-          />
-
-          {/* Break budget */}
-          <EmojiRow
-            emoji="☕" value={breakLeft} unitValue={15}
-            maxValue={breakLimit}
-            label={`break left   ${Math.round(breakLeft)}m / ${breakLimit}m`}
-            sublabel={breakLeft > 30 ? 'OK' : breakLeft > 0 ? 'LOW' : 'GONE'}
-            warnThreshold={0.5}
-            title="BREAK CUPS: 90m total daily budget. Each cup is 15m. When they are gone, you are in the red zone."
-          />
-
-          {/* Directional cue */}
-          <div title="COACH: Provides live, adaptive guidance. Helps you adjust dynamically instead of harshly punishing you for falling behind.">
-            <DirectionalCue
-              pacePrediction={pacePrediction} dailyGoal={dailyGoal}
-              totalDailyMins={totalDailyMins} breakLeft={breakLeft}
-              qualityScore={qualityScore} cutoffWarning={cutoffWarning}
-              isActive={isActive} isBreakActive={isBreakActive}
-            />
-          </div>
+            transition: 'color 0.5s ease',
+            marginBottom: '0.1rem'
+          }}
+        >
+          <span style={{ fontSize: '0.75rem' }}>
+            {isActive ? '⬆️' : isBreakActive ? '☕' : (idleSecs > 15 && !isActive) ? '⏳' : '📡'}
+          </span>
+          <span style={{ textShadow: isActive ? '0 0 10px #10b981' : 'none' }}>
+            {isActive ? 'ON CALL' : isBreakActive ? 'BREAK' : idleSecs > 15 ? `IDLE ${Math.floor(idleSecs / 60)}m` : 'STANDBY'}
+          </span>
+          {driftLabel && !isActive && !isBreakActive && (
+            <span style={{ marginLeft: 'auto', color: '#ef4444', fontWeight: 900 }}>{driftLabel}</span>
+          )}
         </div>
-      )}
+        <DirectionalCue 
+          pacePrediction={pacePrediction} dailyGoal={dailyGoal} 
+          totalDailyMins={totalDailyMins} breakLeft={breakLeft} 
+          qualityScore={qualityScore} cutoffWarning={cutoffWarning}
+          isActive={isActive} isBreakActive={isBreakActive}
+        />
+      </div>
 
-      {/* ── MONTH TAB ── */}
-      {tab === 'month' && (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.15rem' }}>
+      {/* AREA 3: timers */}
+      <div style={{ gridArea: 'timers' }} title="MOMENTUM BAR: Filled = You, Ghost = Goal. Stay ahead!">
+        <MomentumBar
+          totalDailyMins={totalDailyMins} dailyGoal={dailyGoal}
+          shiftElapsedMins={shiftElapsedMins} isActive={isActive}
+        />
+      </div>
 
-          <EmojiRow
-            emoji="💰" value={monthlyArs} unitValue={ARS_UNIT * 5}
-            maxValue={moArsMax}
-            label={`monthly ARS   $${Math.round(monthlyArs / 1000)}k / $${Math.round(monthlyTargetArs / 1000)}k`}
-            sublabel={`${moArsPct}%`}
-            title="MONTHLY CASH: Cumulative earnings for this month vs your target tier."
-          />
+      {/* AREA 4: actions (Emoji Tracks) */}
+      <div style={{ gridArea: 'actions', display: 'flex', flexDirection: 'column', gap: '0.15rem' }}>
+        {tab === 'day' ? (
+          <>
+            <EmojiRow
+              emoji="💰" className="emoji-money" value={liveDailyArs} unitValue={ARS_UNIT}
+              maxValue={dailyTargetArs > 0 ? dayArsMax : ARS_UNIT * 5}
+              label={`earned   AR$${Math.round(liveDailyArs / 1000)}k / AR$${Math.round(dailyTargetArs / 1000)}k`}
+              sublabel={`${dayArsPct}%`}
+            />
 
-          <EmojiRow
-            emoji="⏱️" value={stats.monthlyMinutes} unitValue={MIN_UNIT * 4}
-            maxValue={moMinMax}
-            label={`monthly mins   ${Math.round(stats.monthlyMinutes)}m / ${stats.goalMinutes}m`}
-            sublabel={`${moMinPct}%`}
-            title="MONTHLY MINUTES: How many productive minutes you've logged this month."
-          />
+            <EmojiRow
+              emoji="⏱️" value={totalDailyMins} unitValue={MIN_UNIT}
+              maxValue={dayMinMax}
+              label={`mins   ${Math.round(totalDailyMins)}m / ${Math.round(dailyGoal)}m`}
+              sublabel={`${dayMinPct}%`}
+            />
 
-          {/* Days consumed */}
-          <EmojiRow
-            emoji="📅" value={currentDay} unitValue={1}
-            maxValue={daysInMonth}
-            label={`day ${currentDay} of ${daysInMonth}   (${remainingDays}d left)`}
-            sublabel={`${Math.round((currentDay / daysInMonth) * 100)}% thru month`}
-            title="CALENDAR PROGRESS: Your position in the current month."
-          />
-
-          {/* Next ladder step */}
-          <div style={{ fontSize: '0.6rem', color: '#a855f7', fontWeight: 700, padding: '0.15rem 0', letterSpacing: '0.04em' }}>
-            🪜 NEXT — {nextGoalLabel} ({nextMilestone}m)
-          </div>
-        </div>
-      )}
+            <EmojiRow
+              emoji="☕" emptyEmoji="🍵" className="emoji-break"
+              value={breakLeft} unitValue={15} maxValue={breakLimit}
+              label={`break   ${Math.round(breakLeft)}m / ${breakLimit}m`}
+              sublabel={breakLeft > 0 ? 'READY' : 'SPENT'}
+              warnThreshold={0.5}
+            />
+          </>
+        ) : (
+          <>
+            <EmojiRow
+              emoji="💰" value={monthlyArs} unitValue={ARS_UNIT * 10}
+              maxValue={moArsMax}
+              label={`monthly   AR$${Math.round(monthlyArs / 1000)}k / AR$${Math.round(monthlyTargetArs / 1000)}k`}
+              sublabel={`${moArsPct}%`}
+            />
+            <EmojiRow
+              emoji="🏗️" value={stats.monthlyMinutes} unitValue={MIN_UNIT * 10}
+              maxValue={moMinMax}
+              label={`ladder   ${Math.round(stats.monthlyMinutes)}m / ${Math.round(stats.goalMinutes)}m`}
+              sublabel={`${moMinPct}%`}
+            />
+            <div style={{ fontSize: '0.55rem', color: 'rgba(255,255,255,0.4)', textAlign: 'right', marginTop: '0.1rem' }}>
+               Tier Progress: <strong>{nextGoalLabel}</strong> — {remainingDays} days left
+            </div>
+          </>
+        )}
+      </div>
     </div>
   );
 };

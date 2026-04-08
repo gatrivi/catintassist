@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useRewardAudio } from '../hooks/useRewardAudio';
 import { useSession } from '../contexts/SessionContext';
 import { useAudioSettings } from '../contexts/AudioSettingsContext';
 import { PlayIcon, StopIcon, KeyIcon, formatTime, GoalEditor, EditableMinutes, ConnectionIndicator } from './HeaderWidgets';
@@ -63,6 +64,7 @@ export const DashboardHeader = ({ onStartAudio, onStopAudio, onReconnectStream, 
   const { isActive, sessionSeconds, setSessionSeconds, sessionEarnings, stats, updateStat, startSession, stopSession, endDay, RATE_PER_MINUTE, arsRate, setArsRate, isBreakActive, breakSeconds, startBreak, stopBreak, availSeconds, isEditingScoreboard, setIsEditingScoreboard, visibleCards, toggleCard, isNotesOpen, setIsNotesOpen, isToolbarVisible, setIsToolbarVisible, workSessionMinutes, isHeatmapOpen, setIsHeatmapOpen } = useSession();
   const { outputDevices, inputDevices, selectedSinkId, selectedMicId, changeSinkId, changeMicId, fetchDevices } = useAudioSettings();
   const audioEngine = useProgressiveAudio();
+  const { initAudio } = useRewardAudio();
 
   const [isHold, setIsHold] = useState(false);
   const [holdSeconds, setHoldSeconds] = useState(0);
@@ -87,6 +89,7 @@ export const DashboardHeader = ({ onStartAudio, onStopAudio, onReconnectStream, 
   }, [isActive, sessionSeconds, audioEngine.playTick]);
 
   const handleStart = async () => { 
+    initAudio();
     audioEngine.playBagOpen(); 
     const ok = await onStartAudio(); 
     if (ok) startSession(); 
@@ -118,6 +121,11 @@ export const DashboardHeader = ({ onStartAudio, onStopAudio, onReconnectStream, 
       setCelebration({ type: 'day', label: `Day Banked! +AR$${Math.round(mins * RATE_PER_MINUTE * arsRate).toLocaleString('es-AR')}`, coins: dynamicItems });
       setTimeout(() => setCelebration(null), 5000 + Math.min(3000, dynamicItems * 25));
     });
+  };
+
+  const handleStartBreak = () => {
+    initAudio();
+    startBreak();
   };
 
   // Calculations
@@ -343,7 +351,7 @@ export const DashboardHeader = ({ onStartAudio, onStopAudio, onReconnectStream, 
 
               {!isActive ? (
                 <>
-                  <button id="header-break-btn" className="btn-emoji" onClick={isBreakActive ? stopBreak : startBreak} style={{ background: '#fb923c', color: '#fff', width: '22px', height: '22px' }} title="BREAK">☕</button>
+                  <button id="header-break-btn" className="btn-emoji" onClick={isBreakActive ? stopBreak : handleStartBreak} style={{ background: '#fb923c', color: '#fff', width: '22px', height: '22px' }} title="BREAK">☕</button>
                   {stats.dailyMinutes > 0 && !isBreakActive && (
                     <button id="header-end-day-btn" className="btn-emoji" onClick={handleEndDay} style={{ background: '#8b5cf6', color: '#fff', width: '22px', height: '22px' }} title="END DAY">🌙</button>
                   )}

@@ -774,11 +774,71 @@ body {
   100% { opacity: 1; }
 }
 
+/* ── SCOREBOARD GRID HUD ──────────────────────────────────────────────────── */
+.scoreboard-grid {
+  display: grid;
+  grid-template-areas: 
+    "top-bar"
+    "main-status"
+    "timers"
+    "actions";
+  gap: 0.15rem;
+  padding: 0.2rem 0.4rem;
+  border-radius: 8px;
+  transition: all 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+  overflow: hidden;
+  position: relative;
+}
+
+[data-state="avail"] {
+  border: 1px solid rgba(251, 191, 36, 0.2);
+  background: rgba(0, 0, 0, 0.2);
+  box-shadow: inset 0 0 20px rgba(0, 0, 0, 0.4);
+  animation: availHold 4s infinite alternate;
+}
+
+[data-state="call"] {
+  border: 1px solid rgba(16, 185, 129, 0.6);
+  background: rgba(16, 185, 129, 0.04);
+  box-shadow: 0 0 15px rgba(16, 185, 129, 0.12);
+}
+
+[data-state="break"] {
+  border: 1px solid rgba(139, 92, 246, 0.4);
+  background: rgba(139, 92, 246, 0.04);
+}
+
+@keyframes availHold {
+  from { border-color: rgba(251, 191, 36, 0.1); }
+  to   { border-color: rgba(251, 191, 36, 0.3); }
+}
+
+/* Specific item animations */
+[data-state="call"] .emoji-money {
+  animation: coinShine 1.5s infinite;
+}
+
+@keyframes coinShine {
+  0%   { filter: brightness(1) drop-shadow(0 0 2px #10b981); }
+  50%  { filter: brightness(1.5) drop-shadow(0 0 8px #fbbf24); transform: scale(1.1); }
+  100% { filter: brightness(1) drop-shadow(0 0 2px #10b981); }
+}
+
+[data-state="break"] .emoji-break {
+  animation: cooling 3s infinite alternate;
+}
+
+@keyframes cooling {
+  from { filter: saturate(1) brightness(1); }
+  to   { filter: saturate(0.5) brightness(1.2); }
+}
+
 @keyframes heatPulse {
   0%   { box-shadow: 0 0 0 0 rgba(59,130,246,0.5); }
   50%  { box-shadow: 0 0 0 4px rgba(59,130,246,0.15); }
   100% { box-shadow: 0 0 0 0 rgba(59,130,246,0.5); }
 }
+
 
 /* btn-icon: small square emoji-style icon button */
 .btn-icon {
