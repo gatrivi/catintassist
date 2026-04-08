@@ -71,9 +71,9 @@ const StateIndicators = ({ state, breakMinutes }) => {
     const cups = 9;
     const spentCups = Math.min(cups, Math.floor(breakMinutes / 10));
     return (
-      <div className="resource-drain" title={`Break Budget: ${Math.floor(breakMinutes)}/90m used`}>
+      <div className="resource-drain" title={`Break Budget: ${Math.floor(breakMinutes)}/90m used`} style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '1px', marginBottom: '4px' }}>
         {Array.from({ length: cups }).map((_, i) => (
-          <span key={i} className={`resource-item ${i < spentCups ? 'spent' : ''}`} style={{ fontSize: '0.9rem' }}>
+          <span key={i} className={`resource-item ${i < spentCups ? 'spent' : ''}`} style={{ fontSize: '0.85rem', lineHeight: 1 }}>
             {i < spentCups ? '🍵' : '☕'}
           </span>
         ))}
@@ -374,8 +374,8 @@ export const DashboardHeader = ({ onStartAudio, onStopAudio, onReconnectStream, 
         <div className="condensed-header-card" style={{ gap: '0.15rem' }}>
           
           {/* Controls & Mini-Stats Column (LEFT) */}
-          <div id="controls-left-col" className={`header-column-side ${isActive ? 'active-working-state' : ''}`} style={{ display: 'flex', flexDirection: 'column', gap: '0.04rem', flexShrink: 0, justifyContent: 'center' }}>
-            <div id="connection-controls-row" style={{ display: 'flex', gap: '0.12rem', alignItems: 'center', marginBottom: '0.02rem' }}>
+          <div id="controls-left-col" className={`header-column-side ${isActive ? 'active-working-state' : ''}`} style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem', flexShrink: 0, justifyContent: 'flex-start', alignItems: 'center' }}>
+            <div id="connection-controls-row" style={{ display: 'flex', flexDirection: 'column', gap: '0.15rem', alignItems: 'center' }}>
               <StateIndicators state={isActive ? 'call' : isBreakActive ? 'break' : 'avail'} breakMinutes={stats.dailyBreakMinutes || 0} />
               <ConnectionIndicator state={connectionState} message={connectionMessage} />
               {!isActive ? (
@@ -399,7 +399,7 @@ export const DashboardHeader = ({ onStartAudio, onStopAudio, onReconnectStream, 
               )}
             </div>
             
-            <div id="left-pills-row" style={{ display: 'flex', gap: '0.1rem', flexWrap: 'wrap', maxWidth: '140px' }}>
+            <div id="left-pills-row" style={{ display: 'flex', flexDirection: 'column', gap: '0.1rem' }}>
                <div id="pill-shift" className="metric-pill compact-pill" title="SHIFT PROGRESS: Total time elapsed since you first connected today. Reset at midnight.">
                  <span style={{ fontSize: '0.58rem' }}>🏃{formatHoursMins(shiftElapsedMins)}</span>
                </div>
@@ -485,8 +485,8 @@ export const DashboardHeader = ({ onStartAudio, onStopAudio, onReconnectStream, 
           </div>
 
           {/* Stats Column (RIGHT) */}
-          <div id="controls-right-col" className="header-column-side" style={{ display: 'flex', flexDirection: 'column', gap: '0.04rem', flexShrink: 0, justifyContent: 'center' }}>
-             <div id="right-pills-stack" style={{ display: 'flex', flexDirection: 'column', gap: '0.04rem', alignItems: 'flex-end' }}>
+          <div id="controls-right-col" className="header-column-side" style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem', flexShrink: 0, justifyContent: 'flex-start', alignItems: 'center' }}>
+             <div id="right-pills-stack" style={{ display: 'flex', flexDirection: 'column', gap: '0.04rem', alignItems: 'center' }}>
                {/* CALL RATE PILL */}
                {callsToday > 0 ? (
                  <div id="pill-call-rate" className="metric-pill compact-pill" title={`${callsToday} calls today, avg ${avgCallMins}m each`} style={{ background: 'rgba(59,130,246,0.08)', border: '1px solid rgba(59,130,246,0.2)' }}>
@@ -509,7 +509,7 @@ export const DashboardHeader = ({ onStartAudio, onStopAudio, onReconnectStream, 
                )}
              </div>
 
-             <div id="feature-toggles-row" style={{ display: 'flex', gap: '0.12rem', marginTop: '0.02rem', justifyContent: 'flex-end' }}>
+             <div id="feature-toggles-row" style={{ display: 'flex', flexDirection: 'column', gap: '0.15rem', marginTop: '0.15rem', alignItems: 'center' }}>
                 <button id="header-notes-btn" className="btn-icon tiny-btn" onClick={() => setIsNotesOpen(!isNotesOpen)} style={{ opacity: isNotesOpen ? 1 : 0.3 }}>📝</button>
                 <button id="header-tools-btn" className="btn-icon tiny-btn" onClick={() => setIsToolbarVisible(!isToolbarVisible)} style={{ opacity: isToolbarVisible ? 1 : 0.3 }}>🛠️</button>
                 <button id="header-heatmap-btn" className="btn-icon tiny-btn" onClick={() => setIsHeatmapOpen(true)} title="Monthly Heatmap">📅</button>
