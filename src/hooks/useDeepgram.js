@@ -133,7 +133,7 @@ export const useDeepgram = () => {
             if (lang === 'en') {
               let cleanedTranscript = removeOverlap(current.enFinalized || prevBubbleText, transcript);
               // Group 9-10 single digits back-to-back (phone numbers)
-              cleanedTranscript = cleanedTranscript.replace(/(?:\b\d\b\s+){8,9}\b\d\b/g, m => m.replace(/\s+/g, ''));
+              cleanedTranscript = cleanedTranscript.replace(/\b(?:\d\s+){8,9}\d+\b/g, m => m.replace(/\s+/g, ''));
               
               if (!cleanedTranscript.trim()) return prev; // Avoid empty word bubbles
 
@@ -147,7 +147,7 @@ export const useDeepgram = () => {
             } else {
               let cleanedTranscript = removeOverlap(current.esFinalized || prevBubbleText, transcript);
               // Group 9-10 single digits back-to-back (phone numbers)
-              cleanedTranscript = cleanedTranscript.replace(/(?:\b\d\b\s+){8,9}\b\d\b/g, m => m.replace(/\s+/g, ''));
+              cleanedTranscript = cleanedTranscript.replace(/\b(?:\d\s+){8,9}\d+\b/g, m => m.replace(/\s+/g, ''));
 
               if (!cleanedTranscript.trim()) return prev;
 
