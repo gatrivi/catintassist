@@ -194,6 +194,7 @@ export const GameScoreboard = ({
   const MIN_UNIT    = 30;     // 1 ⏱️ = 30 productive mins
 
   // Day view
+  const dayArsMax   = Math.max(dailyTargetArs, liveDailyArs, ARS_UNIT);
   const dayMinMax   = Math.max(dailyGoal, totalDailyMins, MIN_UNIT);
   const moArsMax    = Math.max(monthlyTargetArs, monthlyArs, ARS_UNIT);
   const moMinMax    = Math.max(stats.goalMinutes, stats.monthlyMinutes, MIN_UNIT);

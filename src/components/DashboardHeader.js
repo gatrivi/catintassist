@@ -64,7 +64,7 @@ export const DashboardHeader = ({ onStartAudio, onStopAudio, onReconnectStream, 
   const { isActive, sessionSeconds, setSessionSeconds, sessionEarnings, stats, updateStat, startSession, stopSession, endDay, RATE_PER_MINUTE, arsRate, setArsRate, isBreakActive, breakSeconds, startBreak, stopBreak, availSeconds, isEditingScoreboard, setIsEditingScoreboard, visibleCards, toggleCard, isNotesOpen, setIsNotesOpen, isToolbarVisible, setIsToolbarVisible, workSessionMinutes, isHeatmapOpen, setIsHeatmapOpen } = useSession();
   const { outputDevices, inputDevices, selectedSinkId, selectedMicId, changeSinkId, changeMicId, fetchDevices } = useAudioSettings();
   const audioEngine = useProgressiveAudio();
-  const { initAudio } = useRewardAudio();
+  const { initAudio, playChaChing, playCoinStack } = useRewardAudio();
 
   const [isHold, setIsHold] = useState(false);
   const [holdSeconds, setHoldSeconds] = useState(0);
@@ -83,10 +83,13 @@ export const DashboardHeader = ({ onStartAudio, onStopAudio, onReconnectStream, 
 
   useEffect(() => {
     if (isActive && sessionSeconds > 0 && sessionSeconds % 60 === 0) {
-      // Dynamic tick: minute 1 is quiet, minute 10+ is ringing
-      audioEngine.playTick(Math.floor(sessionSeconds / 60));
+      // PRO LADDER / SOUNDSCAPE INTERPRETER: 
+      // Every minute played is a coin earned. Richer sound as minutes pass.
+      const currentMin = Math.floor(sessionSeconds / 60);
+      playChaChing(currentMin);
+      audioEngine.playTick(currentMin); // KEEP legacy bronze tick for depth
     }
-  }, [isActive, sessionSeconds, audioEngine.playTick]);
+  }, [isActive, sessionSeconds, playChaChing, audioEngine]);
 
   const handleStart = async () => { 
     initAudio();
@@ -103,6 +106,9 @@ export const DashboardHeader = ({ onStartAudio, onStopAudio, onReconnectStream, 
       const diamonds = Math.floor(rem / 20); rem %= 20;
       const bills = Math.floor(rem / 5); rem %= 5;
       const coins = rem;
+
+      // PRO LADDER / SOUNDSCAPE INTERPRETER: Play synthesized stack crash
+      playCoinStack(mins);
 
       // Play summary sounds sequentially
       for(let i=0; i < diamonds; i++) setTimeout(() => audioEngine.playDiamond(), i * 400);
