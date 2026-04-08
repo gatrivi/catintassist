@@ -790,32 +790,72 @@ body {
   position: relative;
 }
 
+/* ── STATE-DRIVEN ROOT THEMES ──────────────────────────────────────────────── */
+/* These drive the global look and feel based on current working mode */
+
 [data-state="avail"] {
+  --accent-primary: #94a3b8;
+  --accent-glow: rgba(148, 163, 184, 0.2);
   border: 1px solid rgba(251, 191, 36, 0.2);
-  background: rgba(0, 0, 0, 0.2);
-  box-shadow: inset 0 0 20px rgba(0, 0, 0, 0.4);
+  background: rgba(15, 23, 42, 0.8);
   animation: availHold 4s infinite alternate;
 }
 
 [data-state="call"] {
+  --accent-primary: #10b981;
+  --accent-glow: rgba(16, 185, 129, 0.4);
   border: 1px solid rgba(16, 185, 129, 0.6);
-  background: rgba(16, 185, 129, 0.04);
-  box-shadow: 0 0 15px rgba(16, 185, 129, 0.12);
+  background: rgba(6, 78, 59, 0.1);
+  box-shadow: inset 0 0 40px rgba(16, 185, 129, 0.05);
 }
 
 [data-state="break"] {
+  --accent-primary: #8b5cf6;
+  --accent-glow: rgba(139, 92, 246, 0.3);
   border: 1px solid rgba(139, 92, 246, 0.4);
-  background: rgba(139, 92, 246, 0.04);
+  background: rgba(30, 27, 75, 0.2);
 }
 
 @keyframes availHold {
-  from { border-color: rgba(251, 191, 36, 0.1); }
-  to   { border-color: rgba(251, 191, 36, 0.3); }
+  from { border-color: rgba(148, 163, 184, 0.1); filter: grayscale(0.5); }
+  to   { border-color: rgba(251, 191, 36, 0.3); filter: grayscale(0.2); }
 }
 
 /* Specific item animations */
+.emoji-money {
+  display: inline-block;
+  transition: all 0.3s ease;
+}
+
 [data-state="call"] .emoji-money {
   animation: coinShine 1.5s infinite;
+}
+
+@keyframes coinShine {
+  0%   { filter: brightness(1) drop-shadow(0 0 2px #10b981); transform: scale(1) rotate(0deg); }
+  50%  { filter: brightness(1.7) drop-shadow(0 0 12px #fbbf24); transform: scale(1.3) rotate(10deg); }
+  100% { filter: brightness(1) drop-shadow(0 0 2px #10b981); transform: scale(1) rotate(0deg); }
+}
+
+.resource-drain {
+  display: flex;
+  gap: 2px;
+  filter: drop-shadow(0 0 5px rgba(139, 92, 246, 0.3));
+}
+
+.resource-item {
+  transition: all 0.8s cubic-bezier(0.4, 0, 0.2, 1);
+  opacity: 0.8;
+}
+
+.resource-item.spent {
+  filter: grayscale(1) opacity(0.3);
+  transform: scale(0.8) translateY(2px);
+}
+
+@keyframes cooling {
+  from { filter: saturate(1) brightness(1); }
+  to   { filter: saturate(0.5) brightness(1.2); }
 }
 
 @keyframes coinShine {

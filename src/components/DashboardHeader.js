@@ -60,6 +60,34 @@ const CelebrationParticles = ({ type, label, coins, onDismiss }) => {
   );
 };
 
+const StateIndicators = ({ state, breakMinutes }) => {
+  if (state === 'call') {
+    return (
+      <div className="emoji-money" style={{ fontSize: '1.1rem', marginRight: '0.2rem' }}>💰</div>
+    );
+  }
+  if (state === 'break') {
+    // 90 mins total budget. Each cup = 10 mins approx (total 9 cups)
+    const cups = 9;
+    const spentCups = Math.min(cups, Math.floor(breakMinutes / 10));
+    return (
+      <div className="resource-drain" title={`Break Budget: ${Math.floor(breakMinutes)}/90m used`}>
+        {Array.from({ length: cups }).map((_, i) => (
+          <span key={i} className={`resource-item ${i < spentCups ? 'spent' : ''}`} style={{ fontSize: '0.9rem' }}>
+            {i < spentCups ? '🍵' : '☕'}
+          </span>
+        ))}
+      </div>
+    );
+  }
+  // Avail
+  return (
+    <div style={{ animation: 'encouragePulse 3s infinite', fontSize: '1rem', marginRight: '0.2rem' }}>
+      {Math.floor(Date.now() / 2000) % 2 === 0 ? '📡' : '⏳'}
+    </div>
+  );
+};
+
 export const DashboardHeader = ({ onStartAudio, onStopAudio, onReconnectStream, sttLanguage, onToggleLanguage, connectionState, connectionMessage }) => {
   const { isActive, sessionSeconds, setSessionSeconds, sessionEarnings, stats, updateStat, startSession, stopSession, endDay, RATE_PER_MINUTE, arsRate, setArsRate, isBreakActive, breakSeconds, startBreak, stopBreak, availSeconds, isEditingScoreboard, setIsEditingScoreboard, visibleCards, toggleCard, isNotesOpen, setIsNotesOpen, isToolbarVisible, setIsToolbarVisible, workSessionMinutes, isHeatmapOpen, setIsHeatmapOpen } = useSession();
   const { outputDevices, inputDevices, selectedSinkId, selectedMicId, changeSinkId, changeMicId, fetchDevices } = useAudioSettings();
@@ -348,6 +376,7 @@ export const DashboardHeader = ({ onStartAudio, onStopAudio, onReconnectStream, 
           {/* Controls & Mini-Stats Column (LEFT) */}
           <div id="controls-left-col" className={`header-column-side ${isActive ? 'active-working-state' : ''}`} style={{ display: 'flex', flexDirection: 'column', gap: '0.04rem', flexShrink: 0, justifyContent: 'center' }}>
             <div id="connection-controls-row" style={{ display: 'flex', gap: '0.12rem', alignItems: 'center', marginBottom: '0.02rem' }}>
+              <StateIndicators state={isActive ? 'call' : isBreakActive ? 'break' : 'avail'} breakMinutes={stats.dailyBreakMinutes || 0} />
               <ConnectionIndicator state={connectionState} message={connectionMessage} />
               {!isActive ? (
                 <button id="header-connect-btn" className="btn-emoji" onClick={handleStart} style={{ background: '#10b981', color: '#fff', width: '22px', height: '22px' }} title="CONNECT">🟢</button>
@@ -614,6 +643,7 @@ export const DashboardHeader = ({ onStartAudio, onStopAudio, onReconnectStream, 
             
             {/* Main Controls Group */}
             <div style={{ display: 'flex', gap: '0.3rem', alignItems: 'center' }}>
+              <StateIndicators state={isActive ? 'call' : isBreakActive ? 'break' : 'avail'} breakMinutes={stats.dailyBreakMinutes || 0} />
               {!isActive ? (
                 <button id="connect-btn" className="btn btn-primary" onClick={handleStart} style={{ padding: '0.4rem 0.8rem' }}><PlayIcon /> Connect</button>
               ) : (

@@ -60,9 +60,10 @@ const Dashboard = () => {
   }, [isActive, isBreakActive]);
 
   const stateClass = isActive ? 'app-active' : isBreakActive ? 'app-break' : idleSecs > 45 ? 'app-idle' : '';
+  const appState = isActive ? 'call' : isBreakActive ? 'break' : 'avail';
 
   return (
-    <div className={`app-container ${stateClass}`}>
+    <div className={`app-container ${stateClass}`} data-state={appState}>
       {/* Version Tag - Always visible in the upper right */}
       <div style={{ 
         position: 'fixed', top: '1px', right: '4px', zIndex: 10000, 
