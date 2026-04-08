@@ -289,6 +289,65 @@ const CoinRain = ({ isActive, onCollect }) => {
     </div>
   );
 };
+const PSALMS = [
+  { ref: "Psalm 1:1", text: "Blessed is the man that walketh not in the counsel of the ungodly, nor standeth in the way of sinners, nor sitteth in the seat of the scornful." },
+  { ref: "Psalm 23:1", text: "The LORD is my shepherd; I shall not want. He maketh me to lie down in green pastures: he leadeth me beside the still waters." },
+  { ref: "Psalm 34:1", text: "I will bless the LORD at all times: his praise shall continually be in my mouth. My soul shall make her boast in the LORD." },
+  { ref: "Psalm 46:1", text: "God is our refuge and strength, a very present help in trouble. Therefore will not we fear, though the earth be removed." },
+  { ref: "Psalm 91:1", text: "He that dwelleth in the secret place of the most High shall abide under the shadow of the Almighty. I will say of the LORD, He is my refuge." },
+  { ref: "Psalm 100:1", text: "Make a joyful noise unto the LORD, all ye lands. Serve the LORD with gladness: come before his presence with singing." },
+  { ref: "Psalm 121:1", text: "I will lift up mine eyes unto the hills, from whence cometh my help. My help cometh from the LORD, which made heaven and earth." },
+  { ref: "Psalm 133:1", text: "Behold, how good and how pleasant it is for brethren to dwell together in unity! It is like the precious ointment upon the head." }
+];
+
+const GuidanceHeader = ({ isActive, isBreakActive, stats, dailyGoal }) => {
+  const currentMins = Math.round(stats.dailyMinutes || 0);
+  const remaining = Math.max(0, dailyGoal - currentMins);
+  const pct = Math.round((currentMins / (dailyGoal || 1)) * 100);
+  
+  const [psalmIdx, setPsalmIdx] = React.useState(() => Math.floor(Math.random() * PSALMS.length));
+  
+  const nextPsalm = () => setPsalmIdx(prev => (prev + 1) % PSALMS.length);
+
+  return (
+    <div id="guidance-overlay" style={{ padding: '2rem', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '2rem', opacity: 0.8 }}>
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '1.5rem', justifyContent: 'center' }}>
+        <div className="guidance-stat-card glass-panel" style={{ padding: '1rem', border: '1px solid rgba(255,255,255,0.1)', minWidth: '180px' }}>
+          <div style={{ fontSize: '0.65rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.1em' }}>Where I Am</div>
+          <div style={{ fontSize: '1.6rem', fontWeight: 900, color: '#6ee7b7' }}>{pct}% <span style={{ fontSize: '0.8rem', opacity: 0.5 }}>of Daily</span></div>
+          <div style={{ fontSize: '0.75rem', opacity: 0.7 }}>Mapped: {currentMins}m / {dailyGoal}m</div>
+        </div>
+        
+        <div className="guidance-stat-card glass-panel" style={{ padding: '1rem', border: '1px solid rgba(255,255,255,0.1)', minWidth: '180px' }}>
+          <div style={{ fontSize: '0.65rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.1em' }}>What I Must Do</div>
+          {remaining > 0 ? (
+            <>
+              <div style={{ fontSize: '1.6rem', fontWeight: 900, color: '#fcd34d' }}>{remaining}m <span style={{ fontSize: '0.8rem', opacity: 0.5 }}>Left</span></div>
+              <div style={{ fontSize: '0.75rem', opacity: 0.7 }}>to hit today's yield target</div>
+            </>
+          ) : (
+            <>
+              <div style={{ fontSize: '1.6rem', fontWeight: 900, color: '#10b981' }}>GOAL MET</div>
+              <div style={{ fontSize: '0.75rem', opacity: 0.7 }}>Exceeding today's quota!</div>
+            </>
+          )}
+        </div>
+      </div>
+
+      <div className="psalm-study-card glass-panel" onClick={nextPsalm} style={{ padding: '2rem', maxWidth: '600px', cursor: 'pointer', border: '1px solid rgba(255,255,255,0.1)', position: 'relative', transition: 'transform 0.2s', textAlign: 'center' }}>
+        <div style={{ position: 'absolute', top: '0.5rem', right: '1rem', fontSize: '0.6rem', opacity: 0.3 }}>[Click for Next]</div>
+        <div style={{ fontSize: '0.7rem', color: '#a855f7', fontWeight: 700, textTransform: 'uppercase', marginBottom: '0.8rem' }}>Study: {PSALMS[psalmIdx].ref}</div>
+        <div style={{ fontSize: '1.1rem', fontStyle: 'italic', lineHeight: 1.5, color: '#fff', textShadow: '0 2px 4px rgba(0,0,0,0.3)' }}>
+          "{PSALMS[psalmIdx].text}"
+        </div>
+      </div>
+
+      <div style={{ animation: 'encouragePulse 3s infinite', fontSize: '0.9rem', color: isBreakActive ? '#fb923c' : 'rgba(255,255,255,0.3)', fontWeight: 600 }}>
+        {isBreakActive ? '⏸️ Recharge Mode: Break timer is active.' : '📡 Ready to connect. Awaiting incoming call.'}
+      </div>
+    </div>
+  );
+};
 
 
 export const TranscriptionBoard = ({ captions, onClear }) => {
@@ -302,7 +361,7 @@ export const TranscriptionBoard = ({ captions, onClear }) => {
   const { playTTS, stopTTS, isPlaying, playingUrl, prefetchTTS } = useTTS();
   const { playWarningPing } = useProgressiveAudio();
   const { playChaChing } = useRewardAudio();
-  const { isEditingScoreboard, visibleCards, toggleCard, isActive, isBreakActive, isToolbarVisible } = useSession();
+  const { isEditingScoreboard, visibleCards, toggleCard, isActive, isBreakActive, isToolbarVisible, stats, dailyGoal } = useSession();
   const warnedBubblesRef = useRef(new Set());
   
   const [popover, setPopover] = useState({ show: false, x: 0, y: 0, text: '' });
@@ -486,18 +545,20 @@ export const TranscriptionBoard = ({ captions, onClear }) => {
         {/* Pinned Reference Section REMOVED - Pins now highlight in-place */}
 
         {captions.length === 0 && (
-          <div id="offline-messenger" style={{ 
-            color: isActive ? 'var(--text-muted)' : (isBreakActive ? '#fb923c' : 'rgba(255,255,255,0.2)'), 
-            fontStyle: 'italic', 
-            fontWeight: isActive ? 400 : 700, 
-            textAlign: 'center', 
-            marginBottom: '20vh',
-            animation: (!isActive && !isBreakActive) ? 'encouragePulse 3s infinite' : 'none',
-            opacity: isBreakActive ? 0.6 : 1
-          }}>
-            {isActive ? '📡 Standing by... waiting for patient audio.' : 
-             (isBreakActive ? '⏸️ Recharge Mode: Break timer is active.' : 
-             '📡 Session Paused. Ready to connect when you are.')}
+          <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            {!isActive ? (
+              <GuidanceHeader isActive={isActive} isBreakActive={isBreakActive} stats={stats} dailyGoal={dailyGoal} />
+            ) : (
+              <div id="offline-messenger" style={{ 
+                color: 'var(--text-muted)', 
+                fontStyle: 'italic', 
+                fontWeight: 400, 
+                textAlign: 'center', 
+                marginBottom: '20vh'
+              }}>
+                📡 Standing by... waiting for patient audio.
+              </div>
+            )}
           </div>
         )}
         {captions.map((cap, i) => {

@@ -361,7 +361,17 @@ export const SessionProvider = ({ children }) => {
     dailyLog,
     commitDayToLog,
     isHeatmapOpen,
-    setIsHeatmapOpen
+    setIsHeatmapOpen,
+    dailyGoal: (() => {
+      const now = new Date();
+      const year = now.getFullYear(), month = now.getMonth(), currentDay = now.getDate();
+      const daysInMonth = new Date(year, month + 1, 0).getDate();
+      const remainingDays = daysInMonth - currentDay + 1;
+      const minutesBeforeToday = Math.max(0, stats.monthlyMinutes - stats.dailyMinutes);
+      const remainingMinutesFromStartOfDay = Math.max(0, stats.goalMinutes - minutesBeforeToday);
+      const requiredDailyAverage = remainingDays > 0 ? (remainingMinutesFromStartOfDay / remainingDays) : 0;
+      return Math.round(requiredDailyAverage);
+    })()
   };
 
   return (
