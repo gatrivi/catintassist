@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { RollingNumber } from './RollingNumber';
 
 // ─── EmojiRow ─────────────────────────────────────────────────────────────────
 // Renders fullCount full emojis + one partially-cropped emoji representing the
@@ -20,7 +21,9 @@ const EmojiRow = ({ emoji, emptyEmoji, value, unitValue, maxValue, color = '#fff
   return (
     <div title={title} className={className} style={{ display: 'flex', flexDirection: 'column', gap: '0' }}>
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: '1px', lineHeight: 1, alignItems: 'center' }}>
-        <span style={{ fontSize: '0.48rem', color: 'rgba(255,255,255,0.25)', textTransform: 'uppercase', marginRight: '0.3rem', whiteSpace: 'nowrap' }}>{label.split('   ')[0]}</span>
+        <span style={{ fontSize: '0.48rem', color: 'rgba(255,255,255,0.25)', textTransform: 'uppercase', marginRight: '0.3rem', whiteSpace: 'nowrap' }}>
+          {typeof label === 'string' ? label.split('   ')[0] : label}
+        </span>
 
         {/* Full emojis */}
         {Array.from({ length: Math.min(fullCount, maxCount) }).map((_, i) => (
@@ -54,7 +57,9 @@ const EmojiRow = ({ emoji, emptyEmoji, value, unitValue, maxValue, color = '#fff
 
         <span style={{ marginLeft: 'auto', color: rowColor, fontWeight: 800, fontSize: '0.65rem', animation: ratio >= 1 ? 'pulseWarning 2s infinite' : 'none' }}>{sublabel}</span>
       </div>
-      <div style={{ fontSize: '0.45rem', opacity: 0.3, letterSpacing: '0.04em', color: 'gray', marginTop: '-2px' }}>{label.split('   ')[1] || ''}</div>
+      <div style={{ fontSize: '0.45rem', opacity: 0.3, letterSpacing: '0.04em', color: 'gray', marginTop: '-2px' }}>
+        {typeof label === 'string' ? (label.split('   ')[1] || '') : ''}
+      </div>
     </div>
   );
 };
@@ -270,7 +275,14 @@ export const GameScoreboard = ({
             <EmojiRow
               emoji="💰" className="emoji-money" value={liveDailyArs} unitValue={ARS_UNIT}
               maxValue={dailyTargetArs > 0 ? dayArsMax : ARS_UNIT * 5}
-              label={`earned   AR$${Math.round(liveDailyArs / 1000)}k / AR$${Math.round(dailyTargetArs / 1000)}k`}
+              label={
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.2rem' }}>
+                  <span>earned</span>
+                  <RollingNumber value={liveDailyArs} prefix="AR$" height={10} />
+                  <span>/</span>
+                  <RollingNumber value={dailyTargetArs} prefix="AR$" height={10} />
+                </div>
+              }
               sublabel={`${dayArsPct}%`}
             />
 
@@ -294,7 +306,14 @@ export const GameScoreboard = ({
             <EmojiRow
               emoji="💰" value={monthlyArs} unitValue={ARS_UNIT * 10}
               maxValue={moArsMax}
-              label={`monthly   AR$${Math.round(monthlyArs / 1000)}k / AR$${Math.round(monthlyTargetArs / 1000)}k`}
+              label={
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.2rem' }}>
+                  <span>monthly</span>
+                  <RollingNumber value={monthlyArs} prefix="AR$" height={10} />
+                  <span>/</span>
+                  <RollingNumber value={monthlyTargetArs} prefix="AR$" height={10} />
+                </div>
+              }
               sublabel={`${moArsPct}%`}
             />
             <EmojiRow

@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { RollingNumber } from './RollingNumber';
 import { useRewardAudio } from '../hooks/useRewardAudio';
 import { useSession } from '../contexts/SessionContext';
 import { useAudioSettings } from '../contexts/AudioSettingsContext';
@@ -52,8 +53,14 @@ const CelebrationParticles = ({ type, label, coins, onDismiss }) => {
           color: type === 'day' || type === 'month' ? '#fcd34d' : '#6ee7b7',
           textShadow: `0 0 20px ${type === 'day' ? '#f59e0b' : '#10b981'}`,
           whiteSpace: 'nowrap', animation: `textFloatTarget 2s ease-out forwards`,
+          display: 'flex', flexDirection: 'column', alignItems: 'center'
       }}>
-        {label}
+        {label.includes('AR$') ? (
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.2rem' }}>
+            <span>{label.split('AR$')[0]}</span>
+            <RollingNumber value={label.split('AR$')[1].replace(/[^\d]/g, '')} prefix="AR$" height={24} />
+          </div>
+        ) : label}
         <div style={{ fontSize: '0.5rem', fontWeight: 400, color: 'rgba(255,255,255,0.7)', textShadow: 'none', marginTop: '0.2rem' }}>[Click to Skip]</div>
       </div>
     </div>
@@ -227,7 +234,8 @@ export const DashboardHeader = ({ onStartAudio, onStopAudio, onReconnectStream, 
   
   const remainingWorkdaysThisMonth = Math.max(0, remainingDays - 1);
   const monthlyMaxMins = stats.monthlyMinutes + workableMinsRemaining + (remainingWorkdaysThisMonth * 14 * 35);
-  const monthlyRemainingCash = Math.round((workableMinsRemaining + remainingWorkdaysThisMonth * 14 * 35) * RATE_PER_MINUTE * arsRate).toLocaleString('es-AR');
+  const monthlyRemainingCashVal = Math.round((workableMinsRemaining + remainingWorkdaysThisMonth * 14 * 35) * RATE_PER_MINUTE * arsRate);
+  const monthlyRemainingCash = monthlyRemainingCashVal.toLocaleString('es-AR');
   const dailyMaxArs = Math.round(realisticMaxToday * RATE_PER_MINUTE * arsRate).toLocaleString('es-AR');
   const monthlyMaxArs = Math.round(monthlyMaxMins * RATE_PER_MINUTE * arsRate).toLocaleString('es-AR');
   const actualDailyAverage = currentDay > 0 ? (stats.monthlyMinutes / currentDay) : 0;
@@ -403,7 +411,7 @@ export const DashboardHeader = ({ onStartAudio, onStopAudio, onReconnectStream, 
                <div id="pill-shift" className="metric-pill compact-pill" title="SHIFT PROGRESS: Total time elapsed since you first connected today. Reset at midnight.">
                  <span style={{ fontSize: '0.58rem' }}>🏃{formatHoursMins(shiftElapsedMins)}</span>
                </div>
-               <div id="pill-sprint" className="metric-pill compact-pill" title="SPRINT: Number of productive minutes in the current active call.">
+               <div id="pill-sprint" className="metric-pill compact-pill" title="SPRINT: Unbroken session time elapsed since your day started or since your last coffee break. Resets when you start a break.">
                  <span style={{ fontSize: '0.58rem' }}>🔋{Math.floor(workSessionMinutes)}m</span>
                </div>
                <div id="pill-logoff" className="metric-pill compact-pill" title="ESTIMATED LOG OFF: Calculated time to end your shift (usually 18:00), adjusted by your late start time and break usage today." style={{ background: 'rgba(245,158,11,0.08)', border: '1px solid rgba(245,158,11,0.2)' }}>
@@ -437,20 +445,28 @@ export const DashboardHeader = ({ onStartAudio, onStopAudio, onReconnectStream, 
                 <div id="cell-bounty" className="metric-cell" title="BOUNTY: ARS left to earn today" style={{ background: cashToTodayGoal <= 0 ? 'rgba(16,185,129,0.08)' : 'rgba(52,211,153,0.04)' }}>
                   <div className="metric-watermark"><span>🏹</span></div>
                   <div className="metric-cell-val" style={{ color: cashToTodayGoal <= 0 ? '#10b981' : 'rgba(255,255,255,0.8)' }}>
-                    {cashToTodayGoal <= 0 ? '✅' : `$${cashToTodayGoal.toLocaleString('es-AR')}`}
+                    {cashToTodayGoal <= 0 ? '✅' : <RollingNumber value={cashToTodayGoal} prefix="$" height={16} />}
                   </div>
                   <div style={{ fontSize: '0.42rem', opacity: 0.4, letterSpacing: '0.04em' }}>BOUNTY</div>
                 </div>
                 {/* DAY CASH */}
                 <div id="cell-day-cash" className="metric-cell" title="DAY CASH: Banked ARS vs daily quota">
                   <div className="metric-watermark"><span>☀️💰</span></div>
-                  <div className="metric-cell-val">${dailyArs.toLocaleString('es-AR')} / ${dailyTargetArs.toLocaleString('es-AR')}</div>
+                  <div className="metric-cell-val" style={{ display: 'flex', gap: '0.2rem' }}>
+                    <RollingNumber value={dailyArs} prefix="$" height={16} />
+                    <span>/</span>
+                    <RollingNumber value={dailyTargetArs} prefix="$" height={16} />
+                  </div>
                   <div style={{ fontSize: '0.42rem', opacity: 0.4, letterSpacing: '0.04em' }}>DAY $</div>
                 </div>
                 {/* MONTH CASH */}
                 <div id="cell-month-cash" className="metric-cell" title="MONTH CASH: Total earned vs monthly goal">
                   <div className="metric-watermark"><span>🗓️💰</span></div>
-                  <div className="metric-cell-val">${monthlyArs.toLocaleString('es-AR')} / ${monthlyTargetArs.toLocaleString('es-AR')}</div>
+                  <div className="metric-cell-val" style={{ display: 'flex', gap: '0.2rem' }}>
+                    <RollingNumber value={monthlyArs} prefix="$" height={16} />
+                    <span>/</span>
+                    <RollingNumber value={monthlyTargetArs} prefix="$" height={16} />
+                  </div>
                   <div style={{ fontSize: '0.42rem', opacity: 0.4, letterSpacing: '0.04em' }}>MONTH $</div>
                 </div>
                 {/* PACE ETA */}
@@ -489,7 +505,7 @@ export const DashboardHeader = ({ onStartAudio, onStopAudio, onReconnectStream, 
              <div id="right-pills-stack" style={{ display: 'flex', flexDirection: 'column', gap: '0.04rem', alignItems: 'center' }}>
                {/* CALL RATE PILL */}
                {callsToday > 0 ? (
-                 <div id="pill-call-rate" className="metric-pill compact-pill" title={`${callsToday} calls today, avg ${avgCallMins}m each`} style={{ background: 'rgba(59,130,246,0.08)', border: '1px solid rgba(59,130,246,0.2)' }}>
+                 <div id="pill-call-rate" className="metric-pill compact-pill" title={`CALL METRICS: You've taken ${callsToday} calls today. Your average call duration is ${avgCallMins} minutes per call.`} style={{ background: 'rgba(59,130,246,0.08)', border: '1px solid rgba(59,130,246,0.2)' }}>
                    <span style={{ fontSize: '0.58rem', color: '#93c5fd', fontWeight: 700 }}>📞{callsToday}×{avgCallMins}m</span>
                  </div>
                ) : (
@@ -499,7 +515,7 @@ export const DashboardHeader = ({ onStartAudio, onStopAudio, onReconnectStream, 
                )}
                {/* EFFECTIVE RATE PILL */}
                {effectiveRateArsHr ? (
-                 <div id="pill-eff-rate" className="metric-pill compact-pill" title={`Effective Rate: AR$${effectiveRateArsHr.toLocaleString('es-AR')}/hr`} style={{ background: 'rgba(139,92,246,0.08)', border: '1px solid rgba(139,92,246,0.2)' }}>
+                 <div id="pill-eff-rate" className="metric-pill compact-pill" title={`EFFECTIVE RATE: Your actual AR$ earned per hour, including the dead time (Avail) spent waiting for calls. Currently AR$${effectiveRateArsHr.toLocaleString('es-AR')}/hr.`} style={{ background: 'rgba(139,92,246,0.08)', border: '1px solid rgba(139,92,246,0.2)' }}>
                    <span style={{ fontSize: '0.58rem', color: '#c4b5fd', fontWeight: 700 }}>⚡${effectiveRateArsHr.toLocaleString('es-AR')}/h</span>
                  </div>
                ) : (
@@ -527,10 +543,10 @@ export const DashboardHeader = ({ onStartAudio, onStopAudio, onReconnectStream, 
           <div className="dashboard-row dashboard-row-upper">
             
             {/* Today's Bounty (THE STAR) */}
-            <div className="income-card" style={{ flex: '2 1 0', minWidth: 0, background: 'rgba(52, 211, 153, 0.1)', border: '1px solid rgba(52, 211, 153, 0.2)', padding: '0.3rem 0.4rem', borderRadius: '10px' }}>
+            <div className="income-card" style={{ flex: '2 1 0', minWidth: 0, background: 'rgba(52, 211, 153, 0.1)', border: '1px solid rgba(52, 211, 153, 0.2)', padding: '0.3rem 0.4rem', borderRadius: '10px' }} title={`TODAY'S BOUNTY: The remaining AR$ you need to earn today to hit your personalized daily goal (Target: AR$${dailyTargetArs.toLocaleString('es-AR')}).`}>
               <span className="income-label" style={{ color: '#6ee7b7', fontWeight: 800 }}>💰 TODAY'S BOUNTY</span>
               <div style={{ display: 'flex', alignItems: 'center', gap: '0.3rem', flexWrap: 'wrap', justifyContent: 'center' }}>
-                <span style={{ 
+                <div style={{ 
                   fontSize: '1.1rem', 
                   fontWeight: 900, 
                   color: isBountyAnimating ? '#fcd34d' : '#fff',
@@ -538,8 +554,8 @@ export const DashboardHeader = ({ onStartAudio, onStopAudio, onReconnectStream, 
                   textShadow: isBountyAnimating ? '0 0 15px rgba(252, 211, 77, 0.5)' : 'none',
                   whiteSpace: 'nowrap'
                 }}>
-                  AR${displayBounty.toLocaleString('es-AR')}
-                </span>
+                  <RollingNumber value={displayBounty} prefix="AR$" height={26} />
+                </div>
                 {isBountyAnimating && <span style={{ fontSize: '0.7rem', color: '#6ee7b7', animation: 'slideUpBounce 0.5s' }}>-tick</span>}
               </div>
               <span style={{ fontSize: '0.55rem', opacity: 0.6, whiteSpace: 'nowrap' }}>Target: AR${dailyTargetArs.toLocaleString('es-AR')}</span>
@@ -547,16 +563,22 @@ export const DashboardHeader = ({ onStartAudio, onStopAudio, onReconnectStream, 
 
             {/* Monthly Profit */}
             {(isEditingScoreboard || visibleCards.month) && (
-              <div className="income-card income-tier-1" style={{ flex: '1 1 0', minWidth: 0 }}>
+              <div className="income-card income-tier-1" style={{ flex: '1 1 0', minWidth: 0 }} title="MONTHLY PROFIT: Your total banked earnings for the month against your ultimate monthly target.">
                 <span className="income-label">🗓️ MO.PROFIT</span>
-                <span className="income-ars" style={{ whiteSpace: 'nowrap' }}>🌊${monthlyArs.toLocaleString('es-AR')}</span>
-                <span style={{ fontSize: '0.55rem', opacity: 0.5, whiteSpace: 'nowrap' }}>/{monthlyTargetArs.toLocaleString('es-AR')}</span>
+                <span className="income-ars" style={{ whiteSpace: 'nowrap', display: 'flex', alignItems: 'center', gap: '0.2rem' }}>
+                  <span>🌊</span>
+                  <RollingNumber value={monthlyArs} prefix="$" height={24} />
+                </span>
+                <span style={{ fontSize: '0.55rem', opacity: 0.5, whiteSpace: 'nowrap', display: 'flex', gap: '0.1rem' }}>
+                  <span>/</span>
+                  <RollingNumber value={monthlyTargetArs} prefix="$" height={10} />
+                </span>
               </div>
             )}
 
             {/* Today's Shift Progress */}
             {(isEditingScoreboard || visibleCards.today) && (
-              <div className="income-card income-tier-2" style={{ flex: '1 1 0', minWidth: 0, cursor: 'pointer' }} onClick={() => !isEditingScoreboard && setIsTodayDialOpen(true)}>
+              <div className="income-card income-tier-2" style={{ flex: '1 1 0', minWidth: 0, cursor: 'pointer' }} onClick={() => !isEditingScoreboard && setIsTodayDialOpen(true)} title="DAILY PROGRESS: Minutes banked today out of your total daily target minutes required based on your monthly pacing.">
                 <span className="income-label">{activeDayEmoji} DAILY</span>
                 <span className="income-ars" style={{ whiteSpace: 'nowrap' }}>🌊{Math.round(stats.dailyMinutes)}m/🎯{Math.round(dailyGoal)}m</span>
                 <span style={{ fontSize: '0.55rem', opacity: 0.6 }}>({(stats.dailyMinutes / (dailyGoal || 1) * 100).toFixed(0)}%)</span>
@@ -564,7 +586,7 @@ export const DashboardHeader = ({ onStartAudio, onStopAudio, onReconnectStream, 
             )}
 
             {/* Goal Ladder */}
-            <div className="income-card" style={{ flex: '1 1 0', minWidth: 0, borderLeft: '1px solid rgba(255,255,255,0.1)', paddingLeft: '0.5rem' }}>
+            <div className="income-card" style={{ flex: '1 1 0', minWidth: 0, borderLeft: '1px solid rgba(255,255,255,0.1)', paddingLeft: '0.5rem' }} title={`PRO LADDER: Your next immediate target on the 12-step ladder. Reaching ${nextMilestone}m levels you up!`}>
                <span className="income-label">🪜 NEXT</span>
                <span style={{ fontSize: '0.8rem', fontWeight: 800, color: '#a855f7', whiteSpace: 'nowrap' }}>{nextGoalLabel}</span>
                <span style={{ fontSize: '0.55rem', opacity: 0.6, whiteSpace: 'nowrap' }}>{nextMilestone}m</span>
@@ -576,7 +598,7 @@ export const DashboardHeader = ({ onStartAudio, onStopAudio, onReconnectStream, 
 
             {/* PACE ETA */}
             <div className="income-card" style={{ flex: '1 1 0', minWidth: 0, background: 'rgba(59,130,246,0.06)' }}
-              title={`PACE: At this rate you'll hit today's goal at ${pacePrediction.label}. ${pacePrediction.detail || ''}`}>
+              title={`PACE ETA: Predicts the exact clock time you will hit your daily goal if you maintain your current rate of earning minutes. Currently projecting ${pacePrediction.label}. ${pacePrediction.detail || ''}`}>
               <span className="income-label">🎯 PACE ETA</span>
               <span style={{ fontSize: '1rem', fontWeight: 800, color: pacePrediction.color }}>{pacePrediction.label}</span>
               <span style={{ fontSize: '0.5rem', opacity: 0.5 }}>{pacePrediction.detail || 'at current rate'}</span>
@@ -585,8 +607,8 @@ export const DashboardHeader = ({ onStartAudio, onStopAudio, onReconnectStream, 
             {/* QUALITY */}
             <div className="income-card" style={{ flex: '1 1 0', minWidth: 0, background: 'rgba(59,130,246,0.06)' }}
               title={qualityScore?.goalUnreachable
-                ? `Goal (${Math.round(dailyGoal)}m) unreachable before 20:00. Suggested adaptive goal: ${qualityScore.suggestedGoal}m.`
-                : qualityScore ? `DAY QUALITY: ${qualityScore.pct}% of ideal pace for your session window.` : 'Not enough data yet'}>
+                ? `DAY QUALITY: Goal (${Math.round(dailyGoal)}m) unreachable before midnight cutoff. Suggested adaptive realistic goal: ${qualityScore.suggestedGoal}m.`
+                : qualityScore ? `DAY QUALITY: ${qualityScore.pct}% of your ideal required pace for your current session window. Keep it near 100%!` : 'DAY QUALITY: Not enough data yet to calculate pacing quality.'}>
               <span className="income-label">📈 QUALITY</span>
               <span style={{ fontSize: '1rem', fontWeight: 800, color: qualityScore?.goalUnreachable ? '#f59e0b' : (qualityScore?.color || 'var(--text-muted)') }}>
                 {qualityScore?.goalUnreachable ? `→ ${qualityScore.suggestedGoal}m` : qualityScore ? `${qualityScore.pct}%` : '–'}
@@ -598,7 +620,7 @@ export const DashboardHeader = ({ onStartAudio, onStopAudio, onReconnectStream, 
 
             {/* STREAK */}
             <div className="income-card" style={{ flex: '1 1 0', minWidth: 0, background: todayOnTrack ? 'rgba(16,185,129,0.08)' : 'rgba(251,146,60,0.06)' }}
-              title={`STREAK: ${streak} past days + ${todayOnTrack ? 'today ✅ already hit!' : 'today in progress'}`}>
+              title={`STREAK: You have hit your goal for ${streak} consecutive past days. ${todayOnTrack ? 'You have already hit today\\'s goal! (+1 day added to streak at midnight)' : 'Today is still in progress.'}`}>
               <span className="income-label">🔥 STREAK</span>
               <span style={{ fontSize: '1rem', fontWeight: 800, color: todayOnTrack ? '#10b981' : streak >= 3 ? '#fb923c' : streak > 0 ? '#fcd34d' : 'var(--text-muted)' }}>
                 {streak > 0 ? `${streak}d` : ''}{todayOnTrack ? (streak > 0 ? '+today ✅' : 'today ✅') : streak === 0 ? 'none yet' : ''}
@@ -608,7 +630,7 @@ export const DashboardHeader = ({ onStartAudio, onStopAudio, onReconnectStream, 
 
             {/* CALL RATE */}
             <div className="income-card" style={{ flex: '1 1 0', minWidth: 0, background: 'rgba(59,130,246,0.06)' }}
-              title={`${callsToday} calls today, avg ${avgCallMins}m each`}>
+              title={`CALLS: You have taken ${callsToday} calls today, with an average duration of ${avgCallMins} minutes each.`}>
               <span className="income-label">📞 CALLS</span>
               <span style={{ fontSize: '1rem', fontWeight: 800, color: callsToday > 0 ? '#93c5fd' : 'var(--text-muted)' }}>
                 {callsToday > 0 ? `${callsToday}×${avgCallMins}m` : '–'}
@@ -618,7 +640,7 @@ export const DashboardHeader = ({ onStartAudio, onStopAudio, onReconnectStream, 
 
             {/* EFFECTIVE RATE */}
             <div className="income-card" style={{ flex: '1 1 0', minWidth: 0, background: 'rgba(139,92,246,0.06)' }}
-              title={`Effective Rate: AR$${effectiveRateArsHr?.toLocaleString('es-AR') || '–'}/hr including avail time`}>
+              title={`EFFECTIVE RATE: AR$${effectiveRateArsHr?.toLocaleString('es-AR') || '–'}/hr. This represents your true hourly wage today, factoring in both active call time and unpaid waiting time (Avail).`}>
               <span className="income-label">⚡ EFF. RATE</span>
               <span style={{ fontSize: '1rem', fontWeight: 800, color: effectiveRateArsHr ? '#c4b5fd' : 'var(--text-muted)' }}>
                 {effectiveRateArsHr ? `$${effectiveRateArsHr.toLocaleString('es-AR')}/h` : '–'}
@@ -628,7 +650,7 @@ export const DashboardHeader = ({ onStartAudio, onStopAudio, onReconnectStream, 
 
             {/* BREAK BUDGET */}
             <div className="income-card" style={{ flex: '1 1 0', minWidth: 0, background: breakLeft < 15 ? 'rgba(239,68,68,0.06)' : 'rgba(251,146,60,0.06)' }}
-              title={`Break budget: ${Math.round(breakLeft)}m left of ${breakLimit}m daily allowance`}>
+              title={`BREAK BUDGET: You have ${Math.round(breakLeft)} minutes left of your ${breakLimit}-minute daily coffee break allowance.`}>
               <span className="income-label">☕ BREAK LEFT</span>
               <span style={{ fontSize: '1rem', fontWeight: 800, color: breakLeft < 15 ? '#ef4444' : breakLeft < 30 ? '#f59e0b' : '#6ee7b7' }}>
                 {Math.round(breakLeft)}m
@@ -660,9 +682,11 @@ export const DashboardHeader = ({ onStartAudio, onStopAudio, onReconnectStream, 
 
             {/* Current Call (Live) */}
             {(isEditingScoreboard || visibleCards.call) && (
-              <div className={`income-card ${isActive ? 'active' : ''}`} style={{ flex: '1 1 0', minWidth: 0, borderLeft: '1px solid rgba(255,255,255,0.1)', paddingLeft: '0.5rem' }}>
+              <div className={`income-card ${isActive ? 'active' : ''}`} style={{ flex: '1 1 0', minWidth: 0, borderLeft: '1px solid rgba(255,255,255,0.1)', paddingLeft: '0.5rem' }} title="CURRENT CALL: Active duration and unbanked earnings of the ongoing call. Resets every time you hit STOP.">
                 <span className="income-label" style={{ fontSize: '0.55rem' }}>CALL ({formatTime(sessionSeconds)})</span>
-                <span className="income-ars" style={{ fontSize: '0.85rem', whiteSpace: 'nowrap' }}>AR${Math.round(sessionEarnings * arsRate).toLocaleString('es-AR')}</span>
+                <span className="income-ars" style={{ fontSize: '0.85rem', whiteSpace: 'nowrap' }}>
+                  <RollingNumber value={Math.round(sessionEarnings * arsRate)} prefix="AR$" height={18} />
+                </span>
               </div>
             )}
 
@@ -680,11 +704,11 @@ export const DashboardHeader = ({ onStartAudio, onStopAudio, onReconnectStream, 
 
             {/* Footer Stats: Break, Work Session */}
             <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', borderLeft: '1px solid rgba(255,255,255,0.1)', paddingLeft: '0.5rem' }}>
-              <div className="income-card">
+              <div className="income-card" title="SESSION (SPRINT): Unbroken session time elapsed since your day started or since your last coffee break. Tracks your endurance! Resets when you start a break.">
                 <span className="income-label">🔋SESSION</span>
                 <span style={{ fontSize: '0.8rem', color: '#60a5fa' }}>{Math.floor(workSessionMinutes)}m</span>
               </div>
-              <div className="income-card">
+              <div className="income-card" title="ESTIMATED LOG OFF: The exact clock time you should log off to meet your daily targeted hours, pushed backward or forward by late arrivals and break times.">
                 <span className="income-label">🚪LOGOUT</span>
                 <span style={{ fontSize: '0.8rem', fontWeight: 800 }}>{getCompensatedLogOff()}</span>
               </div>
@@ -749,7 +773,9 @@ export const DashboardHeader = ({ onStartAudio, onStopAudio, onReconnectStream, 
                     <span 
                       title="Maximum potential ARS you can earn this month if you maintain your current daily pace."
                       style={{ background: 'rgba(139,92,246,0.15)', padding: '0.1rem 0.4rem', borderRadius: '4px', border: '1px solid rgba(139,92,246,0.3)', cursor: 'help' }}>
-                      Paced Max: <strong style={{ color: '#d8b4fe', textShadow: '0 0 8px rgba(139,92,246,0.5)' }}>AR${monthlyRemainingCash}</strong>
+                      Paced Max: <strong style={{ color: '#d8b4fe', textShadow: '0 0 8px rgba(139,92,246,0.5)', display: 'inline-flex', alignItems: 'center' }}>
+                        <RollingNumber value={monthlyRemainingCashVal} prefix="AR$" height={12} />
+                      </strong>
                     </span>
                   </>
                 ) : (

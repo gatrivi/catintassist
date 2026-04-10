@@ -111,7 +111,7 @@ const TranslatedBubble = ({ id, text, lang, playTTS, stopTTS, playingUrl, prefet
 
   const isThisPlaying = playingUrl && audioUrl && playingUrl === audioUrl;
   const transcriptColor = emphasisMode === 'flipped' ? '#93c5fd' : '#ffffff';
-  const translationColor = emphasisMode === 'flipped' ? '#bfdbfe' : 'rgba(255,255,255,0.4)';
+  const translationColor = emphasisMode === 'flipped' ? '#bfdbfe' : 'rgba(255,255,255,0.65)';
 
   return (
     <div style={{ display: 'flex', gap: '0.4rem', marginTop: '0.1rem', flexDirection: reverse ? 'row-reverse' : 'row', alignItems: 'flex-start' }}>
@@ -249,7 +249,7 @@ const CoinRain = ({ isActive, onCollect }) => {
   return (
     <div id="coin-rain-overlay" style={{ position: 'absolute', inset: 0, pointerEvents: 'none', zIndex: 0, overflow: 'hidden' }}>
       {coins.map(coin => {
-        const COINS_PER_ROW = 45; // Safe wrap for 900px wide app
+        const COINS_PER_ROW = 30; // 30 mins per row for easy visual estimation (rows = 0.5hr units)
         const xPos = 15 + (coin.index % COINS_PER_ROW) * 12; // Stacking offset
         const yPos = 8 + Math.floor(coin.index / COINS_PER_ROW) * 16; // Upward stacking
         
