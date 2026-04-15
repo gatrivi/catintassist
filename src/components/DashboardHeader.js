@@ -109,7 +109,7 @@ export const DashboardHeader = ({ onStartAudio, onStopAudio, onReconnectStream, 
   const [displayBounty, setDisplayBounty] = useState(0);
   const [isBountyAnimating, setIsBountyAnimating] = useState(false);
   const [timeEditMode, setTimeEditMode] = useState(null); // 'call' | 'break' | null
-  const [scoreView, setScoreView] = useState('game'); // 'game' | 'numbers'
+  const [scoreView, setScoreView] = useState('numbers'); // 'game' | 'numbers'
 
   useEffect(() => {
     let iv; if (isHold) iv = setInterval(() => setHoldSeconds(s => s + 1), 1000); else setHoldSeconds(0);
@@ -440,61 +440,86 @@ export const DashboardHeader = ({ onStartAudio, onStopAudio, onReconnectStream, 
                 onSwitchToNumbers={() => setScoreView('numbers')}
               />
             ) : (
-              <div id="numeric-metric-grid" className="metric-grid">
-                {/* BOUNTY */}
-                <div id="cell-bounty" className="metric-cell" title="BOUNTY: ARS left to earn today" style={{ background: cashToTodayGoal <= 0 ? 'rgba(16,185,129,0.08)' : 'rgba(52,211,153,0.04)' }}>
-                  <div className="metric-watermark"><span>🏹</span></div>
-                  <div className="metric-cell-val" style={{ color: cashToTodayGoal <= 0 ? '#10b981' : 'rgba(255,255,255,0.8)' }}>
-                    {cashToTodayGoal <= 0 ? '✅' : <RollingNumber value={cashToTodayGoal} prefix="$" height={16} />}
+              <div id="numeric-metric-grid" className="metric-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '4px', width: '100%', padding: '0 4px', height: '100%' }}>
+                {/* 1. Mins worked today */}
+                <div className="metric-cell" title="Minutes worked today" style={{ background: 'rgba(59,130,246,0.06)' }}>
+                  <div className="metric-cell-val" style={{ color: '#60a5fa' }}>{Math.round(totalDailyMins)}m</div>
+                  <div style={{ fontSize: '0.42rem', opacity: 0.4, letterSpacing: '0.04em' }}>1. MINS TODAY</div>
+                </div>
+
+                {/* 2. Mins left for goal */}
+                <div className="metric-cell" title="Minutes left for daily goal" style={{ background: 'rgba(239,68,68,0.04)' }}>
+                  <div className="metric-cell-val" style={{ color: '#fca5a5' }}>{Math.round(Math.max(0, dailyGoal - totalDailyMins))}m</div>
+                  <div style={{ fontSize: '0.42rem', opacity: 0.4, letterSpacing: '0.04em' }}>2. LEFT TODAY</div>
+                </div>
+
+                {/* 3. Goal mins */}
+                <div className="metric-cell" title="Target goal minutes for today" style={{ background: 'rgba(52,211,153,0.04)' }}>
+                  <div className="metric-cell-val">{Math.round(dailyGoal)}m</div>
+                  <div style={{ fontSize: '0.42rem', opacity: 0.4, letterSpacing: '0.04em' }}>3. TODAY GOAL</div>
+                </div>
+
+                {/* 4. Money today */}
+                <div className="metric-cell" title="Money earned today" style={{ background: 'rgba(16,185,129,0.06)' }}>
+                  <div className="metric-cell-val" style={{ color: '#34d399' }}><RollingNumber value={liveDailyArs} prefix="$" height={16} /></div>
+                  <div style={{ fontSize: '0.42rem', opacity: 0.4, letterSpacing: '0.04em' }}>4. $ TODAY</div>
+                </div>
+
+                {/* 5. Money to be made today */}
+                <div className="metric-cell" title="Money remaining for today's goal" style={{ background: 'rgba(245,158,11,0.04)' }}>
+                  <div className="metric-cell-val" style={{ color: '#fcd34d' }}><RollingNumber value={cashToTodayGoal} prefix="$" height={16} /></div>
+                  <div style={{ fontSize: '0.42rem', opacity: 0.4, letterSpacing: '0.04em' }}>5. $ LEFT TODAY</div>
+                </div>
+
+                {/* 6. Money month */}
+                <div className="metric-cell" title="Money earned this month">
+                  <div className="metric-cell-val"><RollingNumber value={monthlyArs} prefix="$" height={16} /></div>
+                  <div style={{ fontSize: '0.42rem', opacity: 0.4, letterSpacing: '0.04em' }}>6. $ MONTH</div>
+                </div>
+
+                {/* 7. Money left month */}
+                <div className="metric-cell" title="Money remaining for monthly goal">
+                  <div className="metric-cell-val"><RollingNumber value={Math.max(0, monthlyTargetArs - monthlyArs)} prefix="$" height={16} /></div>
+                  <div style={{ fontSize: '0.42rem', opacity: 0.4, letterSpacing: '0.04em' }}>7. $ LEFT MONTH</div>
+                </div>
+
+                {/* 8. Breaks used today */}
+                <div className="metric-cell" title="Break minutes used today" style={{ background: 'rgba(251,146,60,0.06)' }}>
+                  <div className="metric-cell-val" style={{ color: '#fdba74' }}>{Math.round(stats.dailyBreakMinutes || 0)}m</div>
+                  <div style={{ fontSize: '0.42rem', opacity: 0.4, letterSpacing: '0.04em' }}>8. BREAK USED</div>
+                </div>
+
+                {/* 9. Avg so far mo */}
+                <div className="metric-cell" title="Average minutes per day so far this month" style={{ background: 'rgba(139,92,246,0.04)' }}>
+                  <div className="metric-cell-val">{Math.round(actualDailyAverage)}m</div>
+                  <div style={{ fontSize: '0.42rem', opacity: 0.4, letterSpacing: '0.04em' }}>9. MO AVG</div>
+                </div>
+
+                {/* 10. Avg to meet min goal */}
+                <div className="metric-cell" title="Average needed per day for Level 1 (Min Goal)">
+                  <div className="metric-cell-val" style={{ color: '#9ca3af' }}>{Math.round(survivalDailyTarget)}m</div>
+                  <div style={{ fontSize: '0.42rem', opacity: 0.4, letterSpacing: '0.04em' }}>10. REQ TO MIN</div>
+                </div>
+
+                {/* 11. Avg to meet goal lvl 2 */}
+                <div className="metric-cell" title="Average needed per day for Level 2 (Growth Goal)" style={{ background: 'rgba(168,85,247,0.06)' }}>
+                  <div className="metric-cell-val" style={{ color: '#c084fc' }}>{Math.round(recoveryDailyTarget)}m</div>
+                  <div style={{ fontSize: '0.42rem', opacity: 0.4, letterSpacing: '0.04em' }}>11. REQ TO LVL2</div>
+                </div>
+
+                {/* 12. Current call min and cash */}
+                <div className="metric-cell" title="Current call duration and unbanked cash" style={{ background: isActive ? 'rgba(16,185,129,0.1)' : 'rgba(255,255,255,0.02)', border: isActive ? '1px solid rgba(16,185,129,0.3)' : 'none' }}>
+                  <div className="metric-cell-val" style={{ display: 'flex', gap: '0.2rem', alignItems: 'center' }}>
+                    <span>{formatTime(sessionSeconds)}</span>
+                    <span style={{ fontSize: '0.6rem', color: '#34d399' }}>${Math.round(sessionEarnings * arsRate)}</span>
                   </div>
-                  <div style={{ fontSize: '0.42rem', opacity: 0.4, letterSpacing: '0.04em' }}>BOUNTY</div>
+                  <div style={{ fontSize: '0.42rem', opacity: 0.4, letterSpacing: '0.04em' }}>12. CURR CALL</div>
                 </div>
-                {/* DAY CASH */}
-                <div id="cell-day-cash" className="metric-cell" title="DAY CASH: Banked ARS vs daily quota">
-                  <div className="metric-watermark"><span>☀️💰</span></div>
-                  <div className="metric-cell-val" style={{ display: 'flex', gap: '0.2rem' }}>
-                    <RollingNumber value={dailyArs} prefix="$" height={16} />
-                    <span>/</span>
-                    <RollingNumber value={dailyTargetArs} prefix="$" height={16} />
-                  </div>
-                  <div style={{ fontSize: '0.42rem', opacity: 0.4, letterSpacing: '0.04em' }}>DAY $</div>
-                </div>
-                {/* MONTH CASH */}
-                <div id="cell-month-cash" className="metric-cell" title="MONTH CASH: Total earned vs monthly goal">
-                  <div className="metric-watermark"><span>🗓️💰</span></div>
-                  <div className="metric-cell-val" style={{ display: 'flex', gap: '0.2rem' }}>
-                    <RollingNumber value={monthlyArs} prefix="$" height={16} />
-                    <span>/</span>
-                    <RollingNumber value={monthlyTargetArs} prefix="$" height={16} />
-                  </div>
-                  <div style={{ fontSize: '0.42rem', opacity: 0.4, letterSpacing: '0.04em' }}>MONTH $</div>
-                </div>
-                {/* PACE ETA */}
-                <div id="cell-pace-eta" className="metric-cell" title={`PACE ETA: ${pacePrediction.label}`} style={{ background: 'rgba(59,130,246,0.04)' }}>
-                  <div className="metric-watermark"><span>🎯</span></div>
-                  <div className="metric-cell-val" style={{ color: pacePrediction.color }}>{pacePrediction.label}</div>
-                  <div style={{ fontSize: '0.42rem', opacity: 0.4, letterSpacing: '0.04em' }}>PACE ETA</div>
-                </div>
-                {/* QUALITY */}
-                <div id="cell-quality" className="metric-cell" style={{ background: 'rgba(59,130,246,0.04)' }}>
-                  <div className="metric-watermark"><span>📈</span></div>
-                  <div className="metric-cell-val" style={{ color: qualityScore?.goalUnreachable ? '#f59e0b' : (qualityScore?.color || 'var(--text-muted)') }}>
-                    {qualityScore?.goalUnreachable ? '⚡Adapt' : qualityScore ? `${qualityScore.pct}%` : '–'}
-                  </div>
-                  <div style={{ fontSize: '0.42rem', opacity: 0.4, letterSpacing: '0.04em' }}>QUALITY</div>
-                </div>
-                {/* STREAK */}
-                <div id="cell-streak" className="metric-cell" style={{ background: 'rgba(59,130,246,0.04)' }}>
-                  <div className="metric-watermark"><span>🔥</span></div>
-                  <div className="metric-cell-val" style={{ color: streak >= 3 ? '#fb923c' : streak > 0 ? '#fcd34d' : 'var(--text-muted)' }}>
-                    {streak > 0 ? `${streak}🔥` : '–'}
-                  </div>
-                  <div style={{ fontSize: '0.42rem', opacity: 0.4, letterSpacing: '0.04em' }}>STREAK</div>
-                </div>
-                {/* Switch back */}
-                <div id="cell-switch-game" className="metric-cell" style={{ cursor: 'pointer', background: 'rgba(139,92,246,0.06)' }} onClick={() => setScoreView('game')} title="Switch to game view">
-                  <div className="metric-cell-val" style={{ fontSize: '0.9rem' }}>🎮</div>
-                  <div style={{ fontSize: '0.42rem', opacity: 0.4, letterSpacing: '0.04em' }}>GAME</div>
+                
+                {/* Switch back row */}
+                <div id="cell-switch-game" className="metric-cell" style={{ cursor: 'pointer', background: 'rgba(255,255,255,0.04)', gridColumn: 'span 4', flexDirection: 'row', minHeight: '16px' }} onClick={() => setScoreView('game')} title="Switch back to gamified game view">
+                  <span style={{ fontSize: '0.7rem', marginRight: '4px' }}>🎮</span>
+                  <div style={{ fontSize: '0.42rem', opacity: 0.6, letterSpacing: '0.04em' }}>RETURN TO GAMIFIED VIEW</div>
                 </div>
               </div>
             )}
@@ -620,7 +645,7 @@ export const DashboardHeader = ({ onStartAudio, onStopAudio, onReconnectStream, 
 
             {/* STREAK */}
             <div className="income-card" style={{ flex: '1 1 0', minWidth: 0, background: todayOnTrack ? 'rgba(16,185,129,0.08)' : 'rgba(251,146,60,0.06)' }}
-              title={`STREAK: You have hit your goal for ${streak} consecutive past days. ${todayOnTrack ? 'You have already hit today\\'s goal! (+1 day added to streak at midnight)' : 'Today is still in progress.'}`}>
+              title={`STREAK: You have hit your goal for ${streak} consecutive past days. ${todayOnTrack ? "You have already hit today's goal! (+1 day added to streak at midnight)" : "Today is still in progress."}`}>
               <span className="income-label">🔥 STREAK</span>
               <span style={{ fontSize: '1rem', fontWeight: 800, color: todayOnTrack ? '#10b981' : streak >= 3 ? '#fb923c' : streak > 0 ? '#fcd34d' : 'var(--text-muted)' }}>
                 {streak > 0 ? `${streak}d` : ''}{todayOnTrack ? (streak > 0 ? '+today ✅' : 'today ✅') : streak === 0 ? 'none yet' : ''}

@@ -24,43 +24,10 @@ export const useTTS = () => {
 
   const prefetchTTS = async (text, lang) => {
     if (!text) return null;
-    try {
-      const voiceId = lang === 'es' ? 'default-p8cwhu21piysovy7xa6dwg__catspa0' : 'default-p8cwhu21piysovy7xa6dwg__cateng0';
-      const url = 'https://api.inworld.ai/tts/v1/voice';
-      const options = {
-        method: 'POST',
-        headers: {
-          'Authorization': 'Basic a3M3bXFtUWlxakcwbmF1cTRYR0Z5emRFcGNJbGRzMVU6TmdiZkVFU2ZsQll1b0t6aFM5S2Vhb1BJMGxLbTNTNWwyNGJXYUY1Q3RCaVFKM2hSSlp0RDEwdXpkVTVkVWY0eQ==',
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          text,
-          voiceId,
-          modelId: "inworld-tts-1.5-max",
-          timestampType: "WORD",
-          speakingRate: 1,
-          temperature: 1
-        }),
-      };
-      
-      const res = await fetch(url, options);
-      if (!res.ok) {
-        console.warn(`Inworld TTS failed (${res.status}). Falling back to browser TTS.`);
-        return null; 
-      }
-      const result = await res.json();
-      
-      const byteCharacters = atob(result.audioContent);
-      const byteNumbers = new Array(byteCharacters.length);
-      for (let i = 0; i < byteCharacters.length; i++) {
-        byteNumbers[i] = byteCharacters.charCodeAt(i);
-      }
-      const byteArray = new Uint8Array(byteNumbers);
-      const blob = new Blob([byteArray], { type: 'audio/mp3' });
-      return URL.createObjectURL(blob);
-    } catch (err) {
-      return null;
-    }
+    
+    // Inworld TTS disabled temporarily due to 402 Payment Required errors.
+    // Returning null to immediately trigger the browser TTS fallback.
+    return null;
   };
 
   const playTTS = async (text, lang, preloadedAudioUrl = null) => {
