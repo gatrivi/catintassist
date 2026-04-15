@@ -897,13 +897,39 @@ export const DashboardHeader = ({ onStartAudio, onStopAudio, onReconnectStream, 
                 transition: 'width 0.5s ease-out',
                 zIndex: 2
               }} />
-              {/* Day Notches (1375 / 5 = 275m intervals) */}
-              <div 
-                title="Each section represents roughly one full day of interpretive work (~275m)."
-                style={{ position: 'absolute', inset: 0, display: 'flex', pointerEvents: 'auto', zIndex: 5, cursor: 'help' }}>
-                {Array.from({ length: 5 }).map((_, i) => (
-                  <div key={i} style={{ flex: 1, borderRight: i < 4 ? '1px solid rgba(255,255,255,0.15)' : 'none' }} />
-                ))}
+              
+              {/* 500min Nudges (8h shifts) overlay for the Step Bar */}
+              <div style={{ position: 'absolute', inset: 0, display: 'block', pointerEvents: 'none', zIndex: 5 }}>
+                {(() => {
+                  const stepStart = currentIdx * 1375;
+                  const stepEnd = stepStart + 1375;
+                  const firstShiftIdx = Math.floor(stepStart / 500) + 1;
+                  const nudges = [];
+                  let shiftM = firstShiftIdx * 500;
+                  while (shiftM < stepEnd) {
+                    nudges.push(shiftM);
+                    shiftM += 500;
+                  }
+                  
+                  const valuePerShift = Math.round(500 * RATE_PER_MINUTE * arsRate).toLocaleString('es-AR');
+                  
+                  return nudges.map(m => {
+                    const ratio = (m - stepStart) / 1375;
+                    const shiftNumber = m / 500;
+                    return (
+                      <div 
+                        key={m} 
+                        title={`Shift #${shiftNumber} Threshold (${m}m elapsed total). Completing an 8-hour shift guarantees ~AR$${valuePerShift}. Keep pushing!`}
+                        style={{ 
+                          position: 'absolute', left: `${ratio * 100}%`, top: 0, bottom: 0, width: '2px', 
+                          background: 'rgba(59,130,246,0.8)',
+                          boxShadow: '0 0 4px rgba(59,130,246,0.8)',
+                          pointerEvents: 'auto', cursor: 'help'
+                        }}>
+                      </div>
+                    );
+                  });
+                })()}
               </div>
             </div>
           </div>
