@@ -835,6 +835,32 @@ export const DashboardHeader = ({ onStartAudio, onStopAudio, onReconnectStream, 
                 })}
               </div>
 
+              {/* 500min Nudges (8h shifts) overlay */}
+              <div style={{ position: 'absolute', inset: 0, display: 'block', pointerEvents: 'none', zIndex: 4 }}>
+                {Array.from({ length: Math.max(0, Math.floor((stats.goalMinutes || 16500) / 500)) }).map((_, i) => {
+                  const m = (i + 1) * 500;
+                  const ratio = m / (stats.goalMinutes || 16500);
+                  if (ratio >= 1) return null;
+                  
+                  // Calculate absolute distance to the NEXT milestone on the Pro Ladder (steps of 1375)
+                  const nextMilestoneAbsolute = Math.ceil((m + 1) / 1375) * 1375;
+                  const minsToNextMilestone = nextMilestoneAbsolute - m;
+                  const shiftsToNextMilestone = (minsToNextMilestone / 500).toFixed(1);
+
+                  return (
+                    <div 
+                      key={m} 
+                      title={`Shift Checkpoint: ${m}m. You are ${shiftsToNextMilestone} shifts (${minsToNextMilestone}m) away from the next Ladder Milestone (${nextMilestoneAbsolute}m).`}
+                      style={{ 
+                        position: 'absolute', left: `${ratio * 100}%`, top: 0, bottom: 0, width: '1px', 
+                        background: 'rgba(59,130,246,0.5)',
+                        pointerEvents: 'auto', cursor: 'help'
+                      }}>
+                    </div>
+                  );
+                })}
+              </div>
+
               {/* Day Notches overlay */}
               <div 
                 title="Each vertical notch represents one day of the month. The thick white line is TODAY."
