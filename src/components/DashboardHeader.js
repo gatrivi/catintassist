@@ -811,7 +811,21 @@ export const DashboardHeader = ({ onStartAudio, onStopAudio, onReconnectStream, 
               </div>
               <span style={{ opacity: 0.5 }}>Goal: {stats.goalMinutes}m</span>
             </div>
-            <div style={{ height: '7px', background: 'rgba(0,0,0,0.5)', borderRadius: '4px', position: 'relative', overflow: 'hidden' }}>
+            <div style={{ position: 'relative', marginTop: '0.3rem' }}>
+              <div style={{ position: 'absolute', inset: 0, pointerEvents: 'none', zIndex: 11 }}>
+                {[5500, 11000, 16500].map((m, i) => {
+                  const ratio = m / 16500;
+                  const labels = ['MIN GOAL', 'GOOD', 'EXCELLENT'];
+                  return (
+                    <div key={`lbl-${m}`} style={{ position: 'absolute', left: `${ratio * 100}%`, top: '-11px' }}>
+                      <span style={{ position: 'absolute', left: '-50%', transform: 'translateX(-50%)', background: 'rgba(0,0,0,0.6)', padding: '1px 4px', borderRadius: '4px', fontSize: '0.45rem', fontWeight: 800, color: 'rgba(255,255,255,0.9)', whiteSpace: 'nowrap' }}>
+                        {labels[i]}
+                      </span>
+                    </div>
+                  );
+                })}
+              </div>
+              <div style={{ height: '7px', background: 'rgba(0,0,0,0.5)', borderRadius: '4px', position: 'relative', overflow: 'hidden' }}>
               <div style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: `${monthlyPendingRatio * 100}%`, backgroundColor: '#f97316', opacity: 0.9, transition: 'width 1s linear', zIndex: 1, boxShadow: unbankedMins > 0 ? '0 0 10px #f97316' : 'none' }} />
               <div style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: `${monthlyProgressRatio * 100}%`, backgroundColor: isMonthlyGoalMet ? '#10b981' : '#a855f7', transition: 'width 1s cubic-bezier(0.34, 1.56, 0.64, 1)', zIndex: 2 }} />
               {stats.monthlyMinutes > stats.goalMinutes && <div style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: `${Math.min(1, (stats.monthlyMinutes - stats.goalMinutes) / (stats.goalMinutes * 0.2)) * 100}%`, backgroundColor: 'rgba(245,158,11,0.8)', zIndex: 3 }} />}
@@ -875,12 +889,18 @@ export const DashboardHeader = ({ onStartAudio, onStopAudio, onReconnectStream, 
                 style={{ position: 'absolute', top: 0, bottom: 0, left: `${monthElapsedRatio * 100}%`, width: '2px', backgroundColor: 'rgba(255,255,255,0.7)', zIndex: 10, cursor: 'help', pointerEvents: 'auto' }} />
             </div>
           </div>
+          </div>
 
           {/* Step Goal (Weekly Replenishing Bar) */}
           <div style={{ display: 'flex', flexDirection: 'column', gap: '0.15rem' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.6rem', color: 'var(--text-muted)', alignItems: 'center' }}>
-              <span style={{ fontWeight: 600 }}>🪜 PRO LADDER PROGRESS ({currentIdx + 1}/12)</span>
-              <span title={`Each step on the Ladder represents 1,375 min. (1% of Total Goal = ${Math.floor(stats.goalMinutes / 100)}m)`}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                <span style={{ fontWeight: 600 }}>🪜 STEP {currentIdx + 1}/12 (1 WEEK OF MINIMUM WORK)</span>
+                <span style={{ background: 'rgba(255,255,255,0.1)', padding: '0.1rem 0.3rem', borderRadius: '4px', color: '#fff', fontSize: '0.55rem', fontWeight: 800 }}>
+                  🗓️ Day {currentDay} (Week {Math.ceil(currentDay / 7)})
+                </span>
+              </div>
+              <span title={`Each step on the Ladder is 1,375m. 4 steps = Min Goal (5.5k). 8 steps = Growth (11k). 12 steps = Legend (16.5k).`}>
                 <strong style={{ color: stats.monthlyMinutes >= 11000 ? '#FCD34D' : (stats.monthlyMinutes >= 5500 ? '#C084FC' : '#60A5FA') }}>
                   {milestoneLabels[currentIdx]}
                 </strong> ({Math.round(stats.monthlyMinutes % 1375)}m / 1375m)
