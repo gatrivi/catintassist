@@ -674,7 +674,7 @@ body {
   grid-template-rows: repeat(2, 1fr);
   gap: 0.15rem; /* Slightly more gap for breathing room */
   flex-grow: 1;
-  max-width: 500px;
+  width: 100%;
   margin: 0 auto; 
 }
 /* Sub-grid tinting for easy recognition */
@@ -684,25 +684,34 @@ body {
 .metric-cell {
   position: relative;
   display: flex;
+  flex-direction: column;
   align-items: center;
   justify-content: center;
-  padding: 0.02rem 0.1rem;
+  padding: 0.25rem 0.4rem;
   background: rgba(255,255,255,0.06);
-  border-radius: 3px;
+  border-radius: 6px;
   border: 1px solid rgba(255,255,255,0.08);
   overflow: hidden;
-  min-width: 70px; /* Reduced min-width */
-  height: 24px;
+  min-width: 70px;
+  min-height: 50px;
 }
 
 .metric-cell-val {
   position: relative;
   z-index: 5;
   font-weight: 800;
-  font-size: 0.68rem;
-  letter-spacing: -0.01em; /* Less tight for legibility */
+  font-size: 1.15rem;
+  letter-spacing: -0.01em;
   white-space: nowrap;
-  color: rgba(255, 255, 255, 0.75); /* Dimmed white for better balance */
+  color: rgba(255, 255, 255, 0.9);
+}
+
+.metric-cell-label {
+  font-size: 0.6rem;
+  opacity: 0.6;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  margin-top: 0.15rem;
 }
 
 .metric-watermark {
