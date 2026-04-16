@@ -337,19 +337,21 @@ const ReminderMessage = ({ isActive }) => {
 
   return (
     <div style={{
-      position: 'absolute',
-      bottom: '15px',
-      left: '15px',
-      zIndex: 50,
+      position: 'fixed',
+      bottom: '10px',
+      left: '50%',
+      transform: 'translateX(-50%)',
+      zIndex: 10000,
       opacity: pulse ? 0.7 : 0.05,
       transition: 'opacity 2500ms ease-out, color 2500ms ease-out, text-shadow 2500ms ease-out',
       color: `hsl(${pulseConfig.hue}, 90%, 65%)`,
-      fontSize: '0.75rem',
+      fontSize: '0.8rem',
       fontWeight: 600,
       fontStyle: 'italic',
       pointerEvents: 'none',
       textShadow: pulse ? `0 0 12px hsl(${pulseConfig.hue}, 90%, 65%)` : 'none',
-      letterSpacing: '0.05em'
+      letterSpacing: '0.05em',
+      whiteSpace: 'nowrap'
     }}>
       te pagan por hora: estira la llamada
     </div>
