@@ -289,6 +289,72 @@ const CoinRain = ({ isActive, onCollect }) => {
     </div>
   );
 };
+
+const ReminderMessage = ({ isActive }) => {
+  const [pulse, setPulse] = useState(false);
+  const [pulseConfig, setPulseConfig] = useState({ hue: 45, delayMs: 60000 });
+
+  useEffect(() => {
+    if (!isActive) return;
+
+    let timeoutId;
+    
+    const triggerPulse = () => {
+      // Calculate position of sun based on hour (0-23.99)
+      const d = new Date();
+      const hour = d.getHours() + d.getMinutes() / 60;
+      
+      let hue;
+      let delayMs;
+
+      // Map hour to sun progression (approx)
+      if (hour >= 6 && hour < 18) {
+         // Daytime (6am to 6pm): 6am = Gold (60), 12pm = Yellow (50), 6pm = Red/Orange (15)
+         const sunRatio = (hour - 6) / 12; // 0 to 1
+         hue = 60 - (sunRatio * 45); // 60 down to 15
+         // Rhythm: morning is steady 60s, lazy afternoon slows to 65s
+         delayMs = 58000 + (sunRatio * 7000); 
+      } else {
+         // Nighttime: Deep Blue (220) to Purple (280)
+         hue = 220 + Math.random() * 40; 
+         // Rhythm: Night is slower, relaxed
+         delayMs = 65000 + Math.random() * 5000;
+      }
+
+      setPulseConfig({ hue, delayMs });
+      setPulse(true);
+      
+      setTimeout(() => setPulse(false), 2500); // 2.5s fade out
+      
+      timeoutId = setTimeout(triggerPulse, delayMs);
+    };
+
+    triggerPulse();
+    return () => clearTimeout(timeoutId);
+  }, [isActive]);
+
+  if (!isActive) return null;
+
+  return (
+    <div style={{
+      position: 'absolute',
+      bottom: '15px',
+      left: '15px',
+      zIndex: 50,
+      opacity: pulse ? 0.7 : 0.05,
+      transition: 'opacity 2500ms ease-out, color 2500ms ease-out, text-shadow 2500ms ease-out',
+      color: `hsl(${pulseConfig.hue}, 90%, 65%)`,
+      fontSize: '0.75rem',
+      fontWeight: 600,
+      fontStyle: 'italic',
+      pointerEvents: 'none',
+      textShadow: pulse ? `0 0 12px hsl(${pulseConfig.hue}, 90%, 65%)` : 'none',
+      letterSpacing: '0.05em'
+    }}>
+      te pagan por hora: estira la llamada
+    </div>
+  );
+};
 const PSALMS = [
   { ref: "Psalm 1:1", text: "Blessed is the man that walketh not in the counsel of the ungodly, nor standeth in the way of sinners, nor sitteth in the seat of the scornful." },
   { ref: "Psalm 23:1", text: "The LORD is my shepherd; I shall not want. He maketh me to lie down in green pastures: he leadeth me beside the still waters." },
@@ -456,6 +522,7 @@ export const TranscriptionBoard = ({ captions, onClear }) => {
   return (
     <div className="glass-panel transcription-area" style={{ position: 'relative' }}>
       <CoinRain isActive={isActive} onCollect={playChaChing} />
+      <ReminderMessage isActive={isActive} />
       {popover.show && (
         <div style={{
           position: 'fixed',
