@@ -342,14 +342,14 @@ const ReminderMessage = ({ isActive }) => {
       left: '50%',
       transform: 'translateX(-50%)',
       zIndex: 10000,
-      opacity: pulse ? 0.7 : 0.05,
+      opacity: pulse ? 1 : 0.4,
       transition: 'opacity 2500ms ease-out, color 2500ms ease-out, text-shadow 2500ms ease-out',
       color: `hsl(${pulseConfig.hue}, 90%, 65%)`,
       fontSize: '0.8rem',
       fontWeight: 600,
       fontStyle: 'italic',
       pointerEvents: 'none',
-      textShadow: pulse ? `0 0 12px hsl(${pulseConfig.hue}, 90%, 65%)` : 'none',
+      textShadow: pulse ? `0 0 12px hsl(${pulseConfig.hue}, 90%, 65%)` : `0 0 2px rgba(0,0,0,0.5)`,
       letterSpacing: '0.05em',
       whiteSpace: 'nowrap'
     }}>
