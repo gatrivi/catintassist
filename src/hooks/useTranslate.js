@@ -65,6 +65,17 @@ export const useTranslate = (text, lang, prefetchTTS, shouldPrefetch, mood = 'de
     const normText = text.trim().replace(/\s+/g, ' ');
     const wordCount = normText.split(/\s+/).length;
 
+    // POLICY CHECK: Skip if too long, too short, or just noise/filler
+    const IS_FILLER = /^bueno[.,!?]*$/i.test(normText);
+    const IS_TOO_LONG = wordCount > 40;
+    const IS_TOO_SHORT = normText.length < 2 && !/\d/.test(normText);
+
+    if (IS_TOO_LONG || IS_FILLER || IS_TOO_SHORT) {
+      setEngineStatus(IS_TOO_LONG ? 'ready' : 'idle');
+      if (IS_TOO_LONG) setTranslation('(Text too long for direct translation)');
+      return;
+    }
+
     // SAFETY VALVE: Only translate if significant words added (except in FAST mood)
     const wordDelta = Math.abs(wordCount - lastWordCountRef.current);
     const isPunctuationEnding = /[.!?]$/.test(normText);
