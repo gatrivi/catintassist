@@ -68,13 +68,14 @@ export const useTranslate = (text, lang, prefetchTTS, shouldPrefetch, mood = 'de
     const wordCount = normText.split(/\s+/).length;
 
     // POLICY CHECK: Skip if too long, too short, or just noise/filler
-    const IS_FILLER = /^bueno[.,!?]*$/i.test(normText);
-    const IS_TOO_LONG = wordCount > 60; // Increased from 40 to 60 to accommodate 45-word bubbles
+    const wordDelta = Math.abs(wordCount - lastWordCountRef.current);
+    const IS_FILLER = /^bueno[.,!?]*$/i.test(normText) && wordDelta < 2 && lastTranslatedTextRef.current;
+    const IS_TOO_LONG = wordCount > 80; 
     const IS_TOO_SHORT = normText.length < 2 && !/\d/.test(normText);
 
     if (IS_TOO_LONG || IS_FILLER || IS_TOO_SHORT) {
       setEngineStatus(IS_TOO_LONG ? 'ready' : 'idle');
-      if (IS_TOO_LONG) setTranslation(`(Text too long for direct translation [v3.9.2])`);
+      if (IS_TOO_LONG) setTranslation(`(Text too long for direct translation [v4.0.0])`);
       return;
     }
 
@@ -101,7 +102,7 @@ export const useTranslate = (text, lang, prefetchTTS, shouldPrefetch, mood = 'de
     if (debounceTimerRef.current) clearTimeout(debounceTimerRef.current);
 
     debounceTimerRef.current = setTimeout(async () => {
-      if (forceTrigger) console.log(`[v3.9.1] Smart Trigger: ${wordCount} words + punctuation detected.`);
+      if (forceTrigger) console.log(`[v4.0.0] Smart Trigger: ${wordCount} words + punctuation detected.`);
       
       // KILL Previous Request if still running
       if (abortControllerRef.current) abortControllerRef.current.abort();
@@ -168,12 +169,11 @@ export const useTranslate = (text, lang, prefetchTTS, shouldPrefetch, mood = 'de
           if (d.responseStatus !== 200) throw `mymemory err ${d.responseStatus}`;
           return d.responseData?.translatedText;
         },
-        google: async (c) => {
-          const r = await fetch(`https://translate.googleapis.com/translate_a/t?client=te&v=1.0&sl=${sourceLang}&tl=${targetLang}&q=${encodeURIComponent(c)}`, { signal });
-          if (!r.ok) throw `status ${r.status}`;
-          const d = await r.json(); 
-          if (Array.isArray(d)) return d.map(p => typeof p === 'string' ? p : (p[0] || '')).join(' ');
-          return String(d);
+        lingva: async (c) => {
+          const r = await fetch(`https://lingva.ml/api/v1/${sourceLang}/${targetLang}/${encodeURIComponent(c)}`, { signal });
+          if (!r.ok) throw `lingva ${r.status}`;
+          const d = await r.json();
+          return d.translation;
         }
       };
 
@@ -185,8 +185,13 @@ export const useTranslate = (text, lang, prefetchTTS, shouldPrefetch, mood = 'de
         if (keys.OPENAI) pool.push({ id: 'openai', fn: fetchers.openai, delay: 200 });
         
         if (!isBlocked('google_gtx')) pool.push({ id: 'google_gtx', fn: fetchers.google_gtx, delay: 0 });
-        if (!isBlocked('mymemory')) pool.push({ id: 'mymemory', fn: fetchers.mymemory, delay: 400 });
-        if (!isBlocked('google')) pool.push({ id: 'google', fn: fetchers.google, delay: 800 });
+        if (!isBlocked('lingva')) pool.push({ id: 'lingva', fn: fetchers.lingva, delay: 200 });
+        if (!isBlocked('mymemory')) pool.push({ id: 'mymemory', fn: fetchers.mymemory, delay: 600 });
+
+        if (pool.length === 0) {
+          console.warn("[v4.0.0] ALL free engines throttled. Failing back to source.");
+          return chunk.trim();
+        }
 
         let resolved = false;
         return new Promise((resolve) => {
@@ -219,7 +224,7 @@ export const useTranslate = (text, lang, prefetchTTS, shouldPrefetch, mood = 'de
               timeouts.forEach(clearTimeout);
               resolve(chunk.trim()); 
             }
-          }, 3500); 
+          }, 3000); 
         });
       };
 

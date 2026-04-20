@@ -78,20 +78,40 @@ const InteractiveText = ({ text }) => {
 };
 
 const StatusProgress = ({ status }) => {
-  const steps = ['translating', 'buffering', 'ready'];
-  const currentIndex = steps.indexOf(status);
+  const steps = ['translating', 'processing', 'ready'];
+  const currentIndex = steps.indexOf(status === 'buffering' ? 'processing' : status);
+  const labels = ['T', 'P', 'R'];
+  const tooltips = [
+    'Transcribing: Converting audio to text...',
+    'Processing: Routing through translation engines...',
+    'Ready: Translation delivered and ready for playback'
+  ];
   
   return (
-    <div style={{ display: 'flex', gap: '2px', alignItems: 'center', height: '3px', width: '100%', marginBottom: '4px' }}>
+    <div style={{ display: 'flex', gap: '2px', alignItems: 'center', height: '6px', width: '100%', marginBottom: '4px' }}>
       {steps.map((step, i) => (
-        <div key={step} style={{ 
-          flex: 1, 
-          height: '100%', 
-          borderRadius: '1px',
-          background: i <= currentIndex ? (step === 'ready' ? '#10b981' : '#3b82f6') : 'rgba(255,255,255,0.1)',
-          boxShadow: (i === currentIndex && step !== 'ready') ? '0 0 4px #3b82f6' : 'none',
-          transition: 'all 0.3s'
-        }} />
+        <div 
+          key={step} 
+          title={tooltips[i]}
+          className="status-bar-segment"
+          style={{ 
+            flex: 1, 
+            height: '100%', 
+            borderRadius: '1px',
+            background: i <= currentIndex ? (step === 'ready' ? '#10b981' : '#3b82f6') : 'rgba(255,255,255,0.1)',
+            boxShadow: (i === currentIndex && step !== 'ready') ? '0 0 4px #3b82f6' : 'none',
+            transition: 'all 0.3s',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            fontSize: '0.4rem',
+            color: 'rgba(255,255,255,0.8)',
+            fontWeight: 900,
+            cursor: 'help'
+          }}
+        >
+          {labels[i]}
+        </div>
       ))}
     </div>
   );
@@ -438,31 +458,35 @@ export const TranscriptionBoard = ({ captions, onClearAll, onReconnect }) => {
   const resetScrollTimer = () => {
     if (scrollTimeoutRef.current) clearTimeout(scrollTimeoutRef.current);
     scrollTimeoutRef.current = setTimeout(() => {
-      // Only auto-return if we haven't manually stayed up for 30s
-      // isScrolledUpRef.current = false; 
-    }, 30000); 
+      // Automatic resume: If user hasn't scrolled for 15s, resume following the bottom
+      isScrolledUpRef.current = false;
+      bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
+    }, 15000); 
   };
 
   const handleScroll = () => {
     if (!scrollAreaRef.current) return;
     const { scrollTop, scrollHeight, clientHeight } = scrollAreaRef.current;
     
-    // We are at bottom if within 30px of the edge
-    const isAtBottom = scrollHeight - scrollTop - clientHeight <= 30;
+    // We are at bottom if within 35px of the edge (allowing for bit of slack)
+    const isAtBottom = scrollHeight - scrollTop - clientHeight <= 35;
     
     if (isAtBottom) {
       isScrolledUpRef.current = false;
       if (scrollTimeoutRef.current) clearTimeout(scrollTimeoutRef.current);
     } else {
-      // If we are NOT at bottom, user definitely scrolled up
+      // User is looking at history
       isScrolledUpRef.current = true;
+      resetScrollTimer();
     }
   };
 
   const handleWheel = (e) => {
-    // If scrolling UP (deltaY < 0), lock the scroll
+    // ONLY lock if scrolling UP (deltaY < 0)
+    // Scrolling down (deltaY > 0) should not lock, allowing handleScroll to unlock at bottom
     if (e.deltaY < 0) {
       isScrolledUpRef.current = true;
+      resetScrollTimer();
     }
   };
 

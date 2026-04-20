@@ -784,24 +784,25 @@ export const DashboardHeader = ({ onStartAudio, onStopAudio, onReconnectStream, 
             <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.6rem', color: 'var(--text-muted)', alignItems: 'center' }}>
               <span style={{ fontWeight: 600 }}>🗓️ Day {currentDay}/{daysInMonth}</span>
               <div style={{ display: 'flex', alignItems: 'center', gap: '0.3rem' }}>
-                {!isMonthlyGoalMet ? (
                   <>
                     <span 
-                      title={`This is your next immediate target on The Pro Ladder. Reach this to level up! (1% = ${Math.floor(stats.goalMinutes / 100)}m)`}
+                      title={`PRO LADDER: Step ${currentIdx+1} of 12. Next target is ${nextMilestone}m. Reaching this unlocks richer sounds and levels up your status!`}
                       style={{ color: '#fff', background: 'rgba(59,130,246,0.3)', padding: '0.1rem 0.4rem', borderRadius: '4px', border: '1px solid rgba(59,130,246,0.4)', fontWeight: 800, cursor: 'help' }}>
                        🪜 {nextGoalLabel} ({nextMilestone}m)
                     </span>
                     <span 
-                      title={`Current Progress towards your Monthly Goal. (1% = ${Math.floor(stats.goalMinutes / 100)}m)`}
-                      style={{ margin: '0 0.4rem', fontSize: '0.75rem', color: isMonthlyGoalMet ? '#10b981' : '#a855f7', fontWeight: 800, cursor: 'help' }}>
+                      title={`MONTHLY PROGRESS: ${Math.round(stats.monthlyMinutes)}m banked out of ${stats.goalMinutes}m target. 
+You are ${((stats.monthlyMinutes / stats.goalMinutes) * 100).toFixed(1)}% through your goal.
+${isInDeficit ? `⚠️ DEFICIT: Behind pace by ${Math.round(monthlyDeficitMins)}m.` : `✅ ON PACE: Ahead of projected daily average.`}`}
+                      style={{ margin: '0 0.4rem', fontSize: '0.75rem', color: isMonthlyGoalMet ? '#10b981' : (isInDeficit ? '#f59e0b' : '#a855f7'), fontWeight: 800, cursor: 'help' }}>
                       {((stats.monthlyMinutes / (stats.goalMinutes || 1)) * 100).toFixed(1)}%
                     </span>
                     <span style={{ opacity: 0.4 }}>|</span>
                     <span 
-                      title="Maximum potential ARS you can earn this month if you maintain your current daily pace."
+                      title={`PACED MAX: If you keep working ${requiredDailyAverage}m every day for the rest of the month, you are on track to bank AR$${monthlyMaxArs} total. Target is AR$${monthlyTargetArs.toLocaleString('es-AR')}.`}
                       style={{ background: 'rgba(139,92,246,0.15)', padding: '0.1rem 0.4rem', borderRadius: '4px', border: '1px solid rgba(139,92,246,0.3)', cursor: 'help' }}>
                       Paced Max: <strong style={{ color: '#d8b4fe', textShadow: '0 0 8px rgba(139,92,246,0.5)', display: 'inline-flex', alignItems: 'center' }}>
-                        <RollingNumber value={monthlyRemainingCashVal} prefix="AR$" height={12} />
+                        <RollingNumber value={monthlyRemainingCashVal + monthlyArs} prefix="AR$" height={12} />
                       </strong>
                     </span>
                   </>
@@ -969,8 +970,10 @@ export const DashboardHeader = ({ onStartAudio, onStopAudio, onReconnectStream, 
                   <span style={{ color: '#34d399', fontWeight: 800 }}>🎉 SHIFT MET ({dailyGoal}m)</span>
                 ) : (
                   <>
-                    <span title="Literally how many hours are left until 11:00 PM.">⏳ {hoursLeftToAbsolute.toFixed(1)}h left</span>
-                    <span title="Assuming you work 35 mins per hour (allowing for breaks/avail), this is how many minutes/money you can bank today.">({Math.round(workableMinsRemaining)}m / AR$${Math.round(workableMinsRemaining * RATE_PER_MINUTE * arsRate).toLocaleString('es-AR')})</span>
+                  <>
+                    <span title={`WORKDAY REMAINING: There are ${hoursLeftToAbsolute.toFixed(1)} hours left until the 23:00 hard stop. Use them wisely!`}>⏳ {hoursLeftToAbsolute.toFixed(1)}h left</span>
+                    <span title={`ESTIMATED YIELD: Based on your current rate, you can realistically bank another ${Math.round(workableMinsRemaining)}m today, worth AR$${Math.round(workableMinsRemaining * RATE_PER_MINUTE * arsRate).toLocaleString('es-AR')}.`}>({Math.round(workableMinsRemaining)}m / AR$${Math.round(workableMinsRemaining * RATE_PER_MINUTE * arsRate).toLocaleString('es-AR')})</span>
+                  </>
                   </>
                 )}
               </div>

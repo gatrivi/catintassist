@@ -108,8 +108,9 @@ export const EditableMinutes = ({ value, updateFn, statKey }) => {
 export const ConnectionIndicator = ({ state, message }) => {
   let color = 'gray';
   let title = message || 'Interpreting Service: Disconnected (Press Connect to start)';
+  const isConnected = state === 'connected';
   
-  if (state === 'connected') { 
+  if (isConnected) { 
     color = '#10b981'; 
   }
   else if (state === 'connecting') { 
@@ -119,19 +120,31 @@ export const ConnectionIndicator = ({ state, message }) => {
     color = '#ef4444'; 
   }
 
+  const pulseKeyframes = `
+    @keyframes heartbeat {
+      0% { transform: scale(1); opacity: 1; box-shadow: 0 0 0px #10b981; }
+      50% { transform: scale(1.15); opacity: 0.8; box-shadow: 0 0 10px #10b981; }
+      100% { transform: scale(1); opacity: 1; box-shadow: 0 0 0px #10b981; }
+    }
+  `;
+
   return (
-    <div 
-      style={{
-        width: '12px',
-        height: '12px',
-        borderRadius: '50%',
-        backgroundColor: color,
-        boxShadow: state === 'connected' ? '0 0 8px #10b981' : (state === 'connecting' ? '0 0 8px #f59e0b' : 'none'),
-        transition: 'all 0.3s ease',
-        cursor: 'help',
-        flexShrink: 0
-      }}
-      title={title}
-    />
+    <>
+      <style>{pulseKeyframes}</style>
+      <div 
+        style={{
+          width: '12px',
+          height: '12px',
+          borderRadius: '50%',
+          backgroundColor: color,
+          boxShadow: state === 'connected' ? '0 0 8px #10b981' : (state === 'connecting' ? '0 0 8px #f59e0b' : 'none'),
+          transition: 'all 0.3s ease',
+          cursor: 'help',
+          flexShrink: 0,
+          animation: isConnected ? 'heartbeat 2s infinite ease-in-out' : 'none'
+        }}
+        title={title}
+      />
+    </>
   );
 };
