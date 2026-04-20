@@ -2,17 +2,39 @@ import { useState, useCallback, useRef, useEffect } from 'react';
 
 // Persistent Cache to save quota for repetitive phrases
 let TRANS_CACHE = {}; 
-const MAX_CACHE_SIZE = 500;
+const MAX_MEM_CACHE = 500;
+const MAX_STORAGE_CACHE = 1000;
+
+const pruneStorage = () => {
+  try {
+    const keys = Object.keys(localStorage).filter(k => k.startsWith('trans_cache:'));
+    if (keys.length > MAX_STORAGE_CACHE) {
+      // Clear all translation cache if it gets too big - simple and effective for a "toddler" logic
+      keys.forEach(k => localStorage.removeItem(k));
+      console.log(`[Storage] Cleared ${keys.length} cache entries to free space.`);
+    }
+  } catch (e) {}
+};
 
 const getCached = (text, langPair) => {
   if (TRANS_CACHE[`${langPair}:${text}`]) return TRANS_CACHE[`${langPair}:${text}`];
   return localStorage.getItem(`trans_cache:${langPair}:${text}`);
 };
+
 const setCached = (text, langPair, result) => {
-  // Simple check to prevent memory leak
-  if (Object.keys(TRANS_CACHE).length > MAX_CACHE_SIZE) TRANS_CACHE = {}; 
+  if (Object.keys(TRANS_CACHE).length > MAX_MEM_CACHE) TRANS_CACHE = {}; 
   TRANS_CACHE[`${langPair}:${text}`] = result;
-  try { localStorage.setItem(`trans_cache:${langPair}:${text}`, result); } catch(e) {}
+  try { 
+    localStorage.setItem(`trans_cache:${langPair}:${text}`, result); 
+    // Periodically prune 
+    if (Math.random() < 0.05) pruneStorage();
+  } catch(e) {
+    if (e.name === 'QuotaExceededError') {
+      // Emergency cleanup: clear ALL trans_cache items and try one last time
+      Object.keys(localStorage).filter(k => k.startsWith('trans_cache:')).forEach(k => localStorage.removeItem(k));
+      try { localStorage.setItem(`trans_cache:${langPair}:${text}`, result); } catch(err) {}
+    }
+  }
 };
 
 export const useTranslate = (text, lang, prefetchTTS, shouldPrefetch) => {

@@ -39,9 +39,9 @@ const convertNumberWords = (text) => {
 
 const InteractiveText = ({ text }) => {
   if (!text) return null;
-  // GROUP PHONE NUMBERS: If we see 9 or 10 single digits separated by spaces, join them.
-  // One-liner fix for phone number readout issues.
-  const groupedDigits = text.replace(/\b(?:\d\s+){8,9}\d+\b/g, (m) => m.replace(/\s+/g, ''));
+  // GROUP PHONE NUMBERS: If we see 9 or 10 digits read out singly (with spaces), join them.
+  // Handles reading 10 digits as "33 23 23 82 76" or "3 3 2 3..." etc.
+  const groupedDigits = text.replace(/(?:\b\d{1,2}\s+){4,9}\b\d{1,2}\b/g, (m) => m.replace(/\s+/g, ''));
   const processedText = convertNumberWords(groupedDigits);
   // NÚMEROS MÁGICOS: Detectamos números de teléfono, años y códigos.
   // Los resaltamos para que puedas copiarlos rápido si haces clic.
@@ -124,7 +124,7 @@ const TranslatedBubble = ({ id, text, lang, playTTS, stopTTS, playingUrl, prefet
       <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', width: '32px', flexShrink: 0, marginTop: '2px' }}>
         <button 
           onClick={() => onTogglePin(id)} 
-          style={{ background: 'transparent', border: 'none', cursor: 'pointer', fontSize: '0.75rem', padding: '0', opacity: isPinned ? 1 : 0.15, marginBottom: '2px' }}
+          style={{ background: 'transparent', border: 'none', cursor: 'pointer', fontSize: '0.8rem', padding: '0', opacity: isPinned ? 1 : 0.1, marginBottom: '2px', filter: isPinned ? 'drop-shadow(0 0 5px #3b82f6)' : 'none' }}
           title={isPinned ? "Unpin" : "Pin"}
         >
           📌
@@ -137,7 +137,7 @@ const TranslatedBubble = ({ id, text, lang, playTTS, stopTTS, playingUrl, prefet
           style={{ background: 'transparent', border: 'none', cursor: (!isThisPlaying && (!translation || !audioUrl)) ? 'not-allowed' : 'pointer', fontSize: '1.1rem', padding: 0, opacity: (!isThisPlaying && (!translation || !audioUrl)) ? 0.3 : 1 }}
           title={isThisPlaying ? "Stop" : (!audioUrl ? "Engine working..." : "Play")}
         >
-          {isThisPlaying ? '🔊' : '🔊'}
+          🔊
         </button>
       </div>
 

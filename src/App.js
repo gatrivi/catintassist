@@ -13,7 +13,7 @@ import './index.css';
 
 const Dashboard = () => {
   const { startRecording, stopRecording, reconnectStream, captions, clearCaptions, sttLanguage, toggleLanguage, connectionState, connectionMessage } = useDeepgram();
-  const { isNotesOpen, isToolbarVisible, isActive, isBreakActive } = useSession();
+  const { isNotesOpen, isToolbarVisible, isActive, isBreakActive, minutesSinceLastBreak } = useSession();
   const [isEditingBg, setIsEditingBg] = useState(false);
   
   useEffect(() => {
@@ -59,7 +59,8 @@ const Dashboard = () => {
     return () => clearInterval(iv);
   }, [isActive, isBreakActive]);
 
-  const stateClass = isActive ? 'app-active' : isBreakActive ? 'app-break' : idleSecs > 45 ? 'app-idle' : '';
+  const isBurnoutWarning = !isBreakActive && minutesSinceLastBreak > 110;
+  const stateClass = isActive ? 'app-active' : isBreakActive ? 'app-break' : (isBurnoutWarning ? 'burnout-alert' : (idleSecs > 45 ? 'app-idle' : ''));
   const appState = isActive ? 'call' : isBreakActive ? 'break' : 'avail';
 
   return (

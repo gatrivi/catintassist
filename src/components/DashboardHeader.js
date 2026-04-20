@@ -442,78 +442,90 @@ export const DashboardHeader = ({ onStartAudio, onStopAudio, onReconnectStream, 
             ) : (
               <div id="numeric-metric-grid" className="metric-grid">
                 {/* 1. Mins worked today */}
-                <div className="metric-cell" title="Minutes worked today" style={{ background: 'rgba(59,130,246,0.06)' }}>
+                <div className={`metric-cell ${isEditingScoreboard ? 'edit-mode-outline' : ''}`} title="Minutes worked today" style={{ position: 'relative', background: 'rgba(59,130,246,0.06)' }}>
+                  {isEditingScoreboard && <span className="edit-label">1. MINS TODAY</span>}
                   <div className="metric-cell-val" style={{ color: '#60a5fa' }}>{Math.round(totalDailyMins)}m</div>
-                  <div className="metric-cell-label">1. MINS TODAY</div>
+                  <div className="metric-cell-label">{!isEditingScoreboard && '1. MINS TODAY'}</div>
                 </div>
 
                 {/* 2. Mins left for goal */}
-                <div className="metric-cell" title="Minutes left for daily goal" style={{ background: 'rgba(239,68,68,0.04)' }}>
+                <div className={`metric-cell ${isEditingScoreboard ? 'edit-mode-outline' : ''}`} title="Minutes left for daily goal" style={{ position: 'relative', background: 'rgba(239,68,68,0.04)' }}>
+                  {isEditingScoreboard && <span className="edit-label">2. LEFT TODAY</span>}
                   <div className="metric-cell-val" style={{ color: '#fca5a5' }}>{Math.round(Math.max(0, dailyGoal - totalDailyMins))}m</div>
-                  <div className="metric-cell-label">2. LEFT TODAY</div>
+                  <div className="metric-cell-label">{!isEditingScoreboard && '2. LEFT TODAY'}</div>
                 </div>
 
                 {/* 3. Goal mins */}
-                <div className="metric-cell" title="Target goal minutes for today" style={{ background: 'rgba(52,211,153,0.04)' }}>
+                <div className={`metric-cell ${isEditingScoreboard ? 'edit-mode-outline' : ''}`} title="Target goal minutes for today" style={{ position: 'relative', background: 'rgba(52,211,153,0.04)' }}>
+                  {isEditingScoreboard && <span className="edit-label">3. TODAY GOAL</span>}
                   <div className="metric-cell-val">{Math.round(dailyGoal)}m</div>
-                  <div className="metric-cell-label">3. TODAY GOAL</div>
+                  <div className="metric-cell-label">{!isEditingScoreboard && '3. TODAY GOAL'}</div>
                 </div>
 
                 {/* 4. Money today */}
-                <div className="metric-cell" title="Money earned today" style={{ background: 'rgba(16,185,129,0.06)' }}>
+                <div className={`metric-cell ${isEditingScoreboard ? 'edit-mode-outline' : ''}`} title="Money earned today" style={{ position: 'relative', background: 'rgba(16,185,129,0.06)' }}>
+                  {isEditingScoreboard && <span className="edit-label">4. $ TODAY</span>}
                   <div className="metric-cell-val" style={{ color: '#34d399' }}><RollingNumber value={liveDailyArs} prefix="$" height={24} /></div>
-                  <div className="metric-cell-label">4. $ TODAY</div>
+                  <div className="metric-cell-label">{!isEditingScoreboard && '4. $ TODAY'}</div>
                 </div>
 
                 {/* 5. Money to be made today */}
-                <div className="metric-cell" title="Money remaining for today's goal" style={{ background: 'rgba(245,158,11,0.04)' }}>
+                <div className={`metric-cell ${isEditingScoreboard ? 'edit-mode-outline' : ''}`} title="Money remaining for today's goal" style={{ position: 'relative', background: 'rgba(245,158,11,0.04)' }}>
+                  {isEditingScoreboard && <span className="edit-label">5. $ LEFT TODAY</span>}
                   <div className="metric-cell-val" style={{ color: '#fcd34d' }}><RollingNumber value={cashToTodayGoal} prefix="$" height={24} /></div>
-                  <div className="metric-cell-label">5. $ LEFT TODAY</div>
+                  <div className="metric-cell-label">{!isEditingScoreboard && '5. $ LEFT TODAY'}</div>
                 </div>
 
                 {/* 6. Money month */}
-                <div className="metric-cell" title="Money earned this month">
+                <div className={`metric-cell ${isEditingScoreboard ? 'edit-mode-outline' : ''}`} title="Money earned this month" style={{ position: 'relative' }}>
+                  {isEditingScoreboard && <span className="edit-label">6. $ MONTH</span>}
                   <div className="metric-cell-val"><RollingNumber value={monthlyArs} prefix="$" height={24} /></div>
-                  <div className="metric-cell-label">6. $ MONTH</div>
+                  <div className="metric-cell-label">{!isEditingScoreboard && '6. $ MONTH'}</div>
                 </div>
 
                 {/* 7. Money left month */}
-                <div className="metric-cell" title="Money remaining for monthly goal">
+                <div className={`metric-cell ${isEditingScoreboard ? 'edit-mode-outline' : ''}`} title="Money remaining for monthly goal" style={{ position: 'relative' }}>
+                  {isEditingScoreboard && <span className="edit-label">7. $ LEFT MONTH</span>}
                   <div className="metric-cell-val"><RollingNumber value={Math.max(0, monthlyTargetArs - monthlyArs)} prefix="$" height={24} /></div>
-                  <div className="metric-cell-label">7. $ LEFT MONTH</div>
+                  <div className="metric-cell-label">{!isEditingScoreboard && '7. $ LEFT MONTH'}</div>
                 </div>
 
                 {/* 8. Breaks used today */}
-                <div className="metric-cell" title="Break minutes used today" style={{ background: 'rgba(251,146,60,0.06)' }}>
+                <div className={`metric-cell ${isEditingScoreboard ? 'edit-mode-outline' : ''}`} title="Break minutes used today" style={{ position: 'relative', background: 'rgba(251,146,60,0.06)' }}>
+                  {isEditingScoreboard && <span className="edit-label">8. BREAK USED</span>}
                   <div className="metric-cell-val" style={{ color: '#fdba74' }}>{Math.round(stats.dailyBreakMinutes || 0)}m</div>
-                  <div className="metric-cell-label">8. BREAK USED</div>
+                  <div className="metric-cell-label">{!isEditingScoreboard && '8. BREAK USED'}</div>
                 </div>
 
                 {/* 9. Avg so far mo */}
-                <div className="metric-cell" title="Average minutes per day so far this month" style={{ background: 'rgba(139,92,246,0.04)' }}>
+                <div className={`metric-cell ${isEditingScoreboard ? 'edit-mode-outline' : ''}`} title="Average minutes per day so far this month" style={{ position: 'relative', background: 'rgba(139,92,246,0.04)' }}>
+                  {isEditingScoreboard && <span className="edit-label">9. MO AVG</span>}
                   <div className="metric-cell-val">{Math.round(actualDailyAverage)}m</div>
-                  <div className="metric-cell-label">9. MO AVG</div>
+                  <div className="metric-cell-label">{!isEditingScoreboard && '9. MO AVG'}</div>
                 </div>
 
                 {/* 10. Avg to meet min goal */}
-                <div className="metric-cell" title="Average needed per day for Level 1 (Min Goal)">
+                <div className={`metric-cell ${isEditingScoreboard ? 'edit-mode-outline' : ''}`} title="Average needed per day for Level 1 (Min Goal)" style={{ position: 'relative' }}>
+                  {isEditingScoreboard && <span className="edit-label">10. REQ TO MIN</span>}
                   <div className="metric-cell-val" style={{ color: '#9ca3af' }}>{Math.round(survivalDailyTarget)}m</div>
-                  <div className="metric-cell-label">10. REQ TO MIN</div>
+                  <div className="metric-cell-label">{!isEditingScoreboard && '10. REQ TO MIN'}</div>
                 </div>
 
                 {/* 11. Avg to meet goal lvl 2 */}
-                <div className="metric-cell" title="Average needed per day for Level 2 (Growth Goal)" style={{ background: 'rgba(168,85,247,0.06)' }}>
+                <div className={`metric-cell ${isEditingScoreboard ? 'edit-mode-outline' : ''}`} title="Average needed per day for Level 2 (Growth Goal)" style={{ position: 'relative', background: 'rgba(168,85,247,0.06)' }}>
+                  {isEditingScoreboard && <span className="edit-label">11. REQ TO LVL2</span>}
                   <div className="metric-cell-val" style={{ color: '#c084fc' }}>{Math.round(recoveryDailyTarget)}m</div>
-                  <div className="metric-cell-label">11. REQ TO LVL2</div>
+                  <div className="metric-cell-label">{!isEditingScoreboard && '11. REQ TO LVL2'}</div>
                 </div>
 
                 {/* 12. Current call min and cash */}
-                <div className="metric-cell" title="Current call duration and unbanked cash" style={{ background: isActive ? 'rgba(16,185,129,0.1)' : 'rgba(255,255,255,0.02)', border: isActive ? '1px solid rgba(16,185,129,0.3)' : 'none' }}>
+                <div className={`metric-cell ${isEditingScoreboard ? 'edit-mode-outline' : ''}`} title="Current call duration and unbanked cash" style={{ position: 'relative', background: isActive ? 'rgba(16,185,129,0.1)' : 'rgba(255,255,255,0.02)', border: isActive ? '1px solid rgba(16,185,129,0.3)' : 'none' }}>
+                  {isEditingScoreboard && <span className="edit-label">12. CURR CALL</span>}
                   <div className="metric-cell-val" style={{ display: 'flex', gap: '0.2rem', alignItems: 'center' }}>
                     <span>{formatTime(sessionSeconds)}</span>
                     <span style={{ fontSize: '1rem', color: '#34d399' }}>${Math.round(sessionEarnings * arsRate)}</span>
                   </div>
-                  <div className="metric-cell-label">12. CURR CALL</div>
+                  <div className="metric-cell-label">{!isEditingScoreboard && '12. CURR CALL'}</div>
                 </div>
                 
                 {/* Switch back row */}
@@ -739,33 +751,15 @@ export const DashboardHeader = ({ onStartAudio, onStopAudio, onReconnectStream, 
               </div>
             </div>
 
-            {/* Tool toggles — all on one row with proper IDs */}
-            <div style={{ display: 'flex', gap: '0.25rem', alignItems: 'center', flexShrink: 0 }}>
-              <button id="notes-toggle-btn" onClick={() => setIsNotesOpen(!isNotesOpen)}
-                style={{ fontSize: '0.6rem', padding: '0.25rem 0.5rem', borderRadius: '5px', border: 'none', cursor: 'pointer', fontWeight: 700,
-                  background: isNotesOpen ? '#2563eb' : '#1e3a5f', color: '#bfdbfe' }}>
-                📝 Notes
+            {/* Tool toggles — consolidated single row */}
+            <div style={{ display: 'flex', gap: '0.2rem', alignItems: 'center', flexShrink: 0 }}>
+              <button id="notes-toggle-btn" className={`btn-compact ${isNotesOpen ? 'active' : ''}`} onClick={() => setIsNotesOpen(!isNotesOpen)} title="Toggle Notes">📝</button>
+              <button id="tools-toggle-btn" className={`btn-compact ${isToolbarVisible ? 'active' : ''}`} onClick={() => setIsToolbarVisible(!isToolbarVisible)} title="Toggle Tools">🛠️</button>
+              <button id="heatmap-btn-expanded" className="btn-compact" onClick={() => setIsHeatmapOpen(true)} title="Monthly Heatmap">📅</button>
+              <button id="edit-scoreboard-btn" className={`btn-compact ${isEditingScoreboard ? 'active-edit' : ''}`} onClick={() => setIsEditingScoreboard(!isEditingScoreboard)} title={isEditingScoreboard ? 'Save Grid' : 'Edit Grid'}>
+                {isEditingScoreboard ? '💾' : '✏️'}
               </button>
-              <button id="tools-toggle-btn" onClick={() => setIsToolbarVisible(!isToolbarVisible)}
-                style={{ fontSize: '0.6rem', padding: '0.25rem 0.5rem', borderRadius: '5px', border: 'none', cursor: 'pointer', fontWeight: 700,
-                  background: isToolbarVisible ? '#7c3aed' : '#3b1f6e', color: '#ddd6fe' }}>
-                🛠️ Tools
-              </button>
-              <button id="heatmap-btn-expanded" onClick={() => setIsHeatmapOpen(true)}
-                style={{ fontSize: '0.6rem', padding: '0.25rem 0.5rem', borderRadius: '5px', border: 'none', cursor: 'pointer', fontWeight: 700,
-                  background: '#0c4a6e', color: '#7dd3fc' }}>
-                📅 Map
-              </button>
-              <button id="edit-scoreboard-btn" onClick={() => setIsEditingScoreboard(!isEditingScoreboard)}
-                style={{ fontSize: '0.6rem', padding: '0.25rem 0.5rem', borderRadius: '5px', border: 'none', cursor: 'pointer', fontWeight: 700,
-                  background: isEditingScoreboard ? '#d97706' : '#5c3a00', color: '#fde68a' }}>
-                {isEditingScoreboard ? '💾 Save' : '✏️ Edit'}
-              </button>
-              <button id="collapse-btn" onClick={() => setIsCollapsed(true)}
-                style={{ fontSize: '0.6rem', padding: '0.25rem 0.5rem', borderRadius: '5px', border: 'none', cursor: 'pointer', fontWeight: 700,
-                  background: '#7f1d1d', color: '#fca5a5' }}>
-                ▲ Close
-              </button>
+              <button id="collapse-btn" className="btn-compact danger" onClick={() => setIsCollapsed(true)} title="Collapse Scoreboard">▲</button>
             </div>
           </div>
         </div>

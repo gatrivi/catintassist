@@ -63,7 +63,8 @@ export const SessionProvider = ({ children }) => {
       callsToday: 0,
       streak: 0,
       lastDate: today,
-      dayStartTime: null
+      dayStartTime: null,
+      shiftStartSentiment: 0 // minutes late from 9am
     };
     if (saved) {
       try {
@@ -161,8 +162,12 @@ export const SessionProvider = ({ children }) => {
       const isNewDay = prev.lastDate && prev.lastDate !== today;
       
       if (!prev.dayStartTime || isNewDay) {
+        const nineAM = new Date();
+        nineAM.setHours(9, 0, 0, 0);
+        const lateMins = Math.max(0, (now - nineAM.getTime()) / 60000);
+        
         setWorkSessionStartTime(now);
-        return { ...prev, dayStartTime: now, lastDate: today };
+        return { ...prev, dayStartTime: now, lastDate: today, shiftStartSentiment: lateMins };
       }
       return prev;
     });
@@ -325,6 +330,21 @@ export const SessionProvider = ({ children }) => {
     setStats(prev => ({ ...prev, [key]: Number(value) }));
   };
 
+  const getCompensatedLogOff = () => {
+    if (!stats.dayStartTime) return '18:00';
+    // Shift ends at 18:00 + (minutes late from 9am) + (total break minutes used)
+    const lateMs = (stats.shiftStartSentiment || 0) * 60000;
+    const breakMs = (stats.dailyBreakMinutes || 0) * 60000;
+    
+    const baseEnd = new Date(stats.lastDate || new Date().toDateString());
+    baseEnd.setHours(18, 0, 0, 0);
+    
+    const finalEnd = new Date(baseEnd.getTime() + lateMs + breakMs);
+    return finalEnd.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false });
+  };
+
+  const minutesSinceLastBreak = Math.max(0, (Date.now() - workSessionStartTime) / 60000);
+
   const sessionEarnings = (sessionSeconds / 60) * RATE_PER_MINUTE;
 
   const value = {
@@ -362,6 +382,8 @@ export const SessionProvider = ({ children }) => {
     commitDayToLog,
     isHeatmapOpen,
     setIsHeatmapOpen,
+    getCompensatedLogOff,
+    minutesSinceLastBreak,
     dailyGoal: (() => {
       const now = new Date();
       const year = now.getFullYear(), month = now.getMonth(), currentDay = now.getDate();
