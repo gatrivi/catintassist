@@ -2,7 +2,7 @@ import React, { useEffect, useRef, useState } from 'react';
 
 import { useTTS } from '../hooks/useTTS';
 import { useTranslate } from '../hooks/useTranslate';
-import { useSession } from '../contexts/SessionContext';
+import { useSession, safeSet } from '../contexts/SessionContext';
 import { useProgressiveAudio } from '../hooks/useProgressiveAudio';
 import { useRewardAudio } from '../hooks/useRewardAudio';
 
@@ -436,7 +436,7 @@ export const TranscriptionBoard = ({ captions, onClear }) => {
   const popoverTimerRef = useRef(null);
 
   useEffect(() => {
-    localStorage.setItem('catint_pinned', JSON.stringify(pinnedIds));
+    safeSet('catint_pinned', JSON.stringify(pinnedIds));
   }, [pinnedIds]);
 
   const togglePin = (id) => {

@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { safeSet } from '../contexts/SessionContext';
 import { useTTS } from '../hooks/useTTS';
 import { useSession } from '../contexts/SessionContext';
 
@@ -10,20 +11,21 @@ export const NotePad = () => {
   });
 
   const prevActiveRef = useRef(isActive);
+  const saveTimeoutRef = useRef(null);
 
   useEffect(() => {
     if (prevActiveRef.current && !isActive) {
       setNotes('');
     }
+    if (saveTimeoutRef.current) {
+      clearTimeout(saveTimeoutRef.current);
+    }
+    saveTimeoutRef.current = setTimeout(() => {
+      safeSet('catintassist_notes', notes);
+    }, 500); 
     prevActiveRef.current = isActive;
-  }, [isActive]);
-
-  useEffect(() => {
-    const timeout = setTimeout(() => {
-      localStorage.setItem('catintassist_notes', notes);
-    }, 1000);
-    return () => clearTimeout(timeout);
-  }, [notes]);
+    return () => clearTimeout(saveTimeoutRef.current);
+  }, [isActive, notes]);
 
   const clearNotes = () => {
     if (window.confirm("Are you sure you want to clear your session notes?")) {

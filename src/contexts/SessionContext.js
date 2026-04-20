@@ -1,5 +1,30 @@
 import React, { createContext, useContext, useState, useEffect, useRef, useCallback } from 'react';
 
+const PURGE_KEYS_PREFIX = 'trans_cache:';
+
+const safeLocalStorageSet = (key, value) => {
+  try {
+    localStorage.setItem(key, value);
+  } catch (e) {
+    if (e.name === 'QuotaExceededError') {
+      console.warn('[Storage] Quota exceeded, purging non-essential data...');
+      // Emergency: clear all translation caches to make room for critical stats
+      Object.keys(localStorage)
+        .filter(k => k.startsWith(PURGE_KEYS_PREFIX))
+        .forEach(k => localStorage.removeItem(k));
+      
+      // Try one last time
+      try {
+        localStorage.setItem(key, value);
+      } catch (err) {
+        console.error('[Storage] CRITICAL: Could not save after purge!', err);
+      }
+    }
+  }
+};
+
+export const safeSet = safeLocalStorageSet;
+
 const SessionContext = createContext();
 
 export const SessionProvider = ({ children }) => {
@@ -12,11 +37,11 @@ export const SessionProvider = ({ children }) => {
 
   const updateActivity = () => setLastActivityTime(Date.now());
 
-  useEffect(() => { localStorage.setItem('catint_active', JSON.stringify(isActive)); }, [isActive]);
-  useEffect(() => { localStorage.setItem('catint_s_sec', sessionSeconds); }, [sessionSeconds]);
-  useEffect(() => { localStorage.setItem('catint_break', JSON.stringify(isBreakActive)); }, [isBreakActive]);
-  useEffect(() => { localStorage.setItem('catint_b_sec', breakSeconds); }, [breakSeconds]);
-  useEffect(() => { localStorage.setItem('catint_a_sec', availSeconds); }, [availSeconds]);
+  useEffect(() => { safeLocalStorageSet('catint_active', JSON.stringify(isActive)); }, [isActive]);
+  useEffect(() => { safeLocalStorageSet('catint_s_sec', sessionSeconds); }, [sessionSeconds]);
+  useEffect(() => { safeLocalStorageSet('catint_break', JSON.stringify(isBreakActive)); }, [isBreakActive]);
+  useEffect(() => { safeLocalStorageSet('catint_b_sec', breakSeconds); }, [breakSeconds]);
+  useEffect(() => { safeLocalStorageSet('catint_a_sec', availSeconds); }, [availSeconds]);
 
   const [isEditingScoreboard, setIsEditingScoreboard] = useState(false);
   const [isNotesOpen, setIsNotesOpen] = useState(() => JSON.parse(localStorage.getItem('catint_notes_open')) || false);
@@ -25,8 +50,7 @@ export const SessionProvider = ({ children }) => {
     return saved !== null ? JSON.parse(saved) : true;
   });
 
-  useEffect(() => { localStorage.setItem('catint_notes_open', JSON.stringify(isNotesOpen)); }, [isNotesOpen]);
-  useEffect(() => { localStorage.setItem('catint_toolbar_visible', JSON.stringify(isToolbarVisible)); }, [isToolbarVisible]);
+  useEffect(() => { safeLocalStorageSet('catint_toolbar_visible', JSON.stringify(isToolbarVisible)); }, [isToolbarVisible]);
 
   const [visibleCards, setVisibleCards] = useState(() => {
     const saved = localStorage.getItem('catintassist_visible_cards');
@@ -34,7 +58,7 @@ export const SessionProvider = ({ children }) => {
   });
 
   useEffect(() => {
-    localStorage.setItem('catintassist_visible_cards', JSON.stringify(visibleCards));
+    safeLocalStorageSet('catintassist_visible_cards', JSON.stringify(visibleCards));
   }, [visibleCards]);
 
   const toggleCard = (key) => setVisibleCards(v => ({ ...v, [key]: !v[key] }));
@@ -43,7 +67,7 @@ export const SessionProvider = ({ children }) => {
   const [dailyLog, setDailyLog] = useState(() => {
     try { return JSON.parse(localStorage.getItem('catintassist_daily_log')) || {}; } catch(e) { return {}; }
   });
-  useEffect(() => { localStorage.setItem('catintassist_daily_log', JSON.stringify(dailyLog)); }, [dailyLog]);
+  useEffect(() => { safeLocalStorageSet('catintassist_daily_log', JSON.stringify(dailyLog)); }, [dailyLog]);
 
   // Write today's final minutes into dailyLog (called on endDay or midnight rollover)
   const commitDayToLog = useCallback((dateStr, minutes) => {
@@ -74,7 +98,7 @@ export const SessionProvider = ({ children }) => {
           const prevLog = JSON.parse(localStorage.getItem('catintassist_daily_log')) || {};
           if (parsed.dailyMinutes > 0) {
             prevLog[parsed.lastDate] = Math.round(parsed.dailyMinutes);
-            localStorage.setItem('catintassist_daily_log', JSON.stringify(prevLog));
+            safeLocalStorageSet('catintassist_daily_log', JSON.stringify(prevLog));
           }
           parsed.dailyMinutes = 0;
           parsed.dailyBreakMinutes = 0;
@@ -133,7 +157,7 @@ export const SessionProvider = ({ children }) => {
         const minutesToAdd = currentAvail / 60;
         setStats(prev => {
           const newStats = { ...prev, dailyAvailMinutes: (prev.dailyAvailMinutes || 0) + minutesToAdd };
-          localStorage.setItem('catintassist_stats', JSON.stringify(newStats));
+          safeLocalStorageSet('catintassist_stats', JSON.stringify(newStats));
           return newStats;
         });
       }
@@ -191,7 +215,7 @@ export const SessionProvider = ({ children }) => {
           callsToday: newCallsToday,
           lastDate: today
         };
-        localStorage.setItem('catintassist_stats', JSON.stringify(newStats));
+        safeLocalStorageSet('catintassist_stats', JSON.stringify(newStats));
         return newStats;
       });
       if (onCallEnded) onCallEnded(minutesToAdd);
@@ -223,7 +247,7 @@ export const SessionProvider = ({ children }) => {
         streak: newStreak,
         lastDate: new Date().toDateString()
       };
-      localStorage.setItem('catintassist_stats', JSON.stringify(newStats));
+      safeLocalStorageSet('catintassist_stats', JSON.stringify(newStats));
       if (onDayEnded) onDayEnded(prev.dailyMinutes);
       return newStats;
     });
@@ -241,7 +265,7 @@ export const SessionProvider = ({ children }) => {
         if (minutesToAdd > 0) {
           setStats(prev => {
             const newStats = { ...prev, dailyBreakMinutes: (prev.dailyBreakMinutes || 0) + minutesToAdd };
-            localStorage.setItem('catintassist_stats', JSON.stringify(newStats));
+            safeLocalStorageSet('catintassist_stats', JSON.stringify(newStats));
             return newStats;
           });
         }
@@ -252,7 +276,7 @@ export const SessionProvider = ({ children }) => {
   }, [isBreakActive, breakSeconds]);
 
   useEffect(() => {
-    localStorage.setItem('catintassist_stats', JSON.stringify(stats));
+    safeLocalStorageSet('catintassist_stats', JSON.stringify(stats));
   }, [stats]);
 
   useEffect(() => {
@@ -320,7 +344,7 @@ export const SessionProvider = ({ children }) => {
           dailyBreakMinutes: (prev.dailyBreakMinutes || 0) + minutesToAdd,
           lastBreakEndTime: now
         };
-        localStorage.setItem('catintassist_stats', JSON.stringify(newStats));
+        safeLocalStorageSet('catintassist_stats', JSON.stringify(newStats));
         return newStats;
       });
     }
