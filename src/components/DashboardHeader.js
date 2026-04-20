@@ -96,7 +96,7 @@ const StateIndicators = ({ state, breakMinutes }) => {
 };
 
 export const DashboardHeader = ({ onStartAudio, onStopAudio, onReconnectStream, sttLanguage, onToggleLanguage, connectionState, connectionMessage }) => {
-  const { isActive, sessionSeconds, setSessionSeconds, sessionEarnings, stats, updateStat, startSession, stopSession, endDay, RATE_PER_MINUTE, arsRate, setArsRate, isBreakActive, breakSeconds, startBreak, stopBreak, availSeconds, isEditingScoreboard, setIsEditingScoreboard, visibleCards, toggleCard, isNotesOpen, setIsNotesOpen, isToolbarVisible, setIsToolbarVisible, workSessionMinutes, isHeatmapOpen, setIsHeatmapOpen } = useSession();
+  const { isActive, sessionSeconds, setSessionSeconds, sessionEarnings, stats, updateStat, startSession, stopSession, endDay, RATE_PER_MINUTE, arsRate, setArsRate, isBreakActive, breakSeconds, startBreak, stopBreak, availSeconds, isEditingScoreboard, setIsEditingScoreboard, visibleCards, toggleCard, isNotesOpen, setIsNotesOpen, isToolbarVisible, setIsToolbarVisible, workSessionMinutes, isHeatmapOpen, setIsHeatmapOpen, isZombieCall, clearZombieState } = useSession();
   const { outputDevices, inputDevices, selectedSinkId, selectedMicId, changeSinkId, changeMicId, fetchDevices } = useAudioSettings();
   const audioEngine = useProgressiveAudio();
   const { initAudio, playChaChing, playCoinStack } = useRewardAudio();
@@ -376,6 +376,12 @@ export const DashboardHeader = ({ onStartAudio, onStopAudio, onReconnectStream, 
 
   return (
     <header className="dashboard-header glass-panel" style={{ position: 'relative', zIndex: 100 }}>
+      {isZombieCall && (
+        <div className="zombie-banner-premium" onClick={() => { handleStart(); clearZombieState(); }}>
+          <span style={{ fontSize: '1.1rem' }}>🤖</span> 
+          <span>Master, app was restarted mid-call. <b>Press to Reconnect.</b></span>
+        </div>
+      )}
 
       {/* COLLAPSED VIEW */}
       {isCollapsed && (

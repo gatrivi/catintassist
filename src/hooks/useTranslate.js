@@ -1,7 +1,7 @@
-import { useState, useCallback, useRef, useEffect } from 'react';
-
-// Persistent Cache to save quota for repetitive phrases
+// Persistent Cache and Blacklist to save quota and skip broken services
 let TRANS_CACHE = {}; 
+const BLACKBOX = {}; // Stores { service_id: timestamp_of_error }
+
 const MAX_MEM_CACHE = 500;
 const MAX_STORAGE_CACHE = 1000;
 
@@ -9,30 +9,28 @@ const pruneStorage = () => {
   try {
     const keys = Object.keys(localStorage).filter(k => k.startsWith('trans_cache:'));
     if (keys.length > MAX_STORAGE_CACHE) {
-      // Clear all translation cache if it gets too big - simple and effective for a "toddler" logic
       keys.forEach(k => localStorage.removeItem(k));
-      console.log(`[Storage] Cleared ${keys.length} cache entries to free space.`);
     }
   } catch (e) {}
 };
 
 const getCached = (text, langPair) => {
-  if (TRANS_CACHE[`${langPair}:${text}`]) return TRANS_CACHE[`${langPair}:${text}`];
-  return localStorage.getItem(`trans_cache:${langPair}:${text}`);
+  const norm = text.trim().replace(/\s+/g, ' ').toLowerCase();
+  if (TRANS_CACHE[`${langPair}:${norm}`]) return TRANS_CACHE[`${langPair}:${norm}`];
+  return localStorage.getItem(`trans_cache:${langPair}:${norm}`);
 };
 
 const setCached = (text, langPair, result) => {
+  const norm = text.trim().replace(/\s+/g, ' ').toLowerCase();
   if (Object.keys(TRANS_CACHE).length > MAX_MEM_CACHE) TRANS_CACHE = {}; 
-  TRANS_CACHE[`${langPair}:${text}`] = result;
+  TRANS_CACHE[`${langPair}:${norm}`] = result;
   try { 
-    localStorage.setItem(`trans_cache:${langPair}:${text}`, result); 
-    // Periodically prune 
+    localStorage.setItem(`trans_cache:${langPair}:${norm}`, result); 
     if (Math.random() < 0.05) pruneStorage();
   } catch(e) {
     if (e.name === 'QuotaExceededError') {
-      // Emergency cleanup: clear ALL trans_cache items and try one last time
       Object.keys(localStorage).filter(k => k.startsWith('trans_cache:')).forEach(k => localStorage.removeItem(k));
-      try { localStorage.setItem(`trans_cache:${langPair}:${text}`, result); } catch(err) {}
+      try { localStorage.setItem(`trans_cache:${langPair}:${norm}`, result); } catch(err) {}
     }
   }
 };
@@ -43,16 +41,16 @@ export const useTranslate = (text, lang, prefetchTTS, shouldPrefetch) => {
   const [isTranslating, setIsTranslating] = useState(false);
   const [engineStatus, setEngineStatus] = useState('idle');
   const lastPrefetchedTextRef = useRef('');
+  const debounceTimerRef = useRef(null);
 
-  // Robust language detection
   const sourceLang = (lang || 'en').toLowerCase().startsWith('es') ? 'es' : 'en';
   const targetLang = sourceLang === 'en' ? 'es' : 'en';
 
   const sanitizeTranslation = (input) => {
     if (!input || typeof input !== 'string') return '';
     const upper = input.toUpperCase();
-    if (upper.includes('MYMEMORY') || upper.includes('LIMIT') || upper.includes('THROTTLED') || upper.includes('FORBIDDEN') || upper.includes('QUOTA') || input.includes('<html>') || input.length < 1) return '';
-    return input.trim();
+    const isError = upper.includes('MYMEMORY') || upper.includes('LIMIT') || upper.includes('THROTTLED') || upper.includes('FORBIDDEN') || upper.includes('QUOTA') || input.includes('<html>');
+    return isError ? '' : input.trim();
   };
 
   useEffect(() => {
@@ -60,7 +58,9 @@ export const useTranslate = (text, lang, prefetchTTS, shouldPrefetch) => {
       setTranslation(''); setAudioUrl(null); setEngineStatus('idle'); return;
     }
 
-    const timer = setTimeout(async () => {
+    if (debounceTimerRef.current) clearTimeout(debounceTimerRef.current);
+
+    debounceTimerRef.current = setTimeout(async () => {
       setIsTranslating(true);
       setEngineStatus('translating');
       const langPair = `${sourceLang}-${targetLang}`;
@@ -71,10 +71,8 @@ export const useTranslate = (text, lang, prefetchTTS, shouldPrefetch) => {
         setIsTranslating(false); 
         setEngineStatus('ready');
         if (shouldPrefetch && typeof prefetchTTS === 'function') {
-          setEngineStatus('buffering');
           const url = await prefetchTTS(cached, targetLang);
           setAudioUrl(url);
-          setEngineStatus('ready');
           lastPrefetchedTextRef.current = cached;
         }
         return; 
@@ -97,15 +95,6 @@ export const useTranslate = (text, lang, prefetchTTS, shouldPrefetch) => {
           if (!r.ok) throw `status ${r.status}`;
           const d = await r.json(); return d.translations?.[0]?.text;
         },
-        ms: async (c) => {
-          if (!keys.MS) throw 'no key';
-          const r = await fetch(`https://api.cognitive.microsofttranslator.com/translate?api-version=3.0&from=${sourceLang}&to=${targetLang}`, {
-            method: 'POST', headers: { 'Ocp-Apim-Subscription-Key': keys.MS, 'Ocp-Apim-Subscription-Region': keys.MS_REG, 'Content-Type': 'application/json' },
-            body: JSON.stringify([{ Text: c }])
-          });
-          if (!r.ok) throw `status ${r.status}`;
-          const d = await r.json(); return d[0]?.translations?.[0]?.text;
-        },
         openai: async (c) => {
           if (!keys.OPENAI) throw 'no key';
           const r = await fetch('https://api.openai.com/v1/chat/completions', {
@@ -123,12 +112,10 @@ export const useTranslate = (text, lang, prefetchTTS, shouldPrefetch) => {
           const r = await fetch(`https://translate.googleapis.com/translate_a/single?client=gtx&sl=${sourceLang}&tl=${targetLang}&dt=t&q=${encodeURIComponent(c)}`);
           if (!r.ok) throw `gtx ${r.status}`;
           const d = await r.json(); 
-          if (!d?.[0]) return '';
-          // Join segments with space and cleanup to avoid "Helloworld" logic bugs
-          return d[0].map(s => s[0]).filter(Boolean).join(' ').replace(/\s+/g, ' ').trim();
+          return d?.[0]?.map(s => s[0]).filter(Boolean).join(' ').replace(/\s+/g, ' ').trim() || '';
         },
         mymemory: async (c) => {
-          const r = await fetch(`https://api.mymemory.translated.net/get?q=${encodeURIComponent(c)}&langpair=${sourceLang}|${targetLang}`);
+          const r = await fetch(`https://api.mymemory.translated.net/get?q=${encodeURIComponent(c)}&langpair=${sourceLang}|${targetLang}&de=catintassist@example.com`);
           if (!r.ok) throw `mymemory ${r.status}`;
           const d = await r.json(); 
           if (d.responseStatus !== 200) throw `mymemory err ${d.responseStatus}`;
@@ -145,14 +132,14 @@ export const useTranslate = (text, lang, prefetchTTS, shouldPrefetch) => {
 
       const raceChunk = async (chunk) => {
         const pool = [];
+        const isBlocked = (id) => BLACKBOX[id] && (Date.now() - BLACKBOX[id] < 300000); // 5 min ban
+
         if (keys.DEEPL) pool.push({ id: 'deepl', fn: fetchers.deepl, delay: 0 });
         if (keys.OPENAI) pool.push({ id: 'openai', fn: fetchers.openai, delay: 200 });
-        if (keys.MS) pool.push({ id: 'ms', fn: fetchers.ms, delay: 400 });
         
-        // Free fallbacks - RTX is usually fastest but often blocked. MyMemory is robust.
-        pool.push({ id: 'google_gtx', fn: fetchers.google_gtx, delay: 0 });
-        pool.push({ id: 'mymemory', fn: fetchers.mymemory, delay: 300 });
-        pool.push({ id: 'google', fn: fetchers.google, delay: 600 });
+        if (!isBlocked('google_gtx')) pool.push({ id: 'google_gtx', fn: fetchers.google_gtx, delay: 0 });
+        if (!isBlocked('mymemory')) pool.push({ id: 'mymemory', fn: fetchers.mymemory, delay: 400 });
+        if (!isBlocked('google')) pool.push({ id: 'google', fn: fetchers.google, delay: 800 });
 
         let resolved = false;
         return new Promise((resolve) => {
@@ -166,22 +153,22 @@ export const useTranslate = (text, lang, prefetchTTS, shouldPrefetch) => {
                 if (clean && !resolved) {
                   resolved = true;
                   timeouts.forEach(clearTimeout);
-                  console.log(`[Trans] Winner: ${service.id}`);
                   resolve(clean.trim());
                 }
               } catch (e) {
-                // Silently wait for other engines
+                if (e.toString().includes('429') || e.toString().includes('403')) {
+                  BLACKBOX[service.id] = Date.now();
+                  console.warn(`[Trans] Service ${service.id} throttled/blocked. Blacklisting for 5m.`);
+                }
               }
             }, service.delay);
             timeouts.push(tout);
           });
 
-          // Reduced timeout to 3.5s for snappier experience
           setTimeout(() => { 
             if (!resolved) {
               resolved = true;
               timeouts.forEach(clearTimeout);
-              console.warn(`[Trans] All engines failed for chunk, returning source.`);
               resolve(chunk.trim()); 
             }
           }, 3500); 
@@ -191,18 +178,26 @@ export const useTranslate = (text, lang, prefetchTTS, shouldPrefetch) => {
       const chunks = [];
       let rem = text;
       while (rem.length > 0) {
-        if (rem.length <= 450) { chunks.push(rem); break; }
-        let idx = rem.lastIndexOf('. ', 450);
-        if (idx === -1) idx = rem.lastIndexOf(' ', 450);
-        if (idx === -1) idx = 450;
+        if (rem.length <= 400) { chunks.push(rem); break; }
+        let idx = rem.lastIndexOf('. ', 400);
+        if (idx === -1) idx = rem.lastIndexOf(' ', 400);
+        if (idx === -1) idx = 400;
         chunks.push(rem.substring(0, idx + 1).trim());
         rem = rem.substring(idx + 1).trim();
       }
 
-      const results = await Promise.all(chunks.map(raceChunk));
+      // Process chunks with a slight gap to avoid hitting rate-limiters at the exact same microsecond
+      const results = [];
+      for (const c of chunks) {
+        results.push(await raceChunk(c));
+        await new Promise(r => setTimeout(r, 100)); // Stagger
+      }
+
       const final = results.join(' ').trim();
-      setTranslation(final);
-      setCached(text, langPair, final);
+      if (final) {
+        setTranslation(final);
+        setCached(text, langPair, final);
+      }
       setIsTranslating(false);
       setEngineStatus('ready');
 
@@ -213,11 +208,11 @@ export const useTranslate = (text, lang, prefetchTTS, shouldPrefetch) => {
         setEngineStatus('ready');
         lastPrefetchedTextRef.current = final;
       }
-    }, 450); // Snappier debounce
+    }, 600); // 600ms Debounce
 
-    return () => clearTimeout(timer);
-  }, [text, lang, prefetchTTS, shouldPrefetch]);
-
+    return () => {
+      if (debounceTimerRef.current) clearTimeout(debounceTimerRef.current);
+    };
   return { translation, audioUrl, isTranslating, engineStatus, targetLang };
 };
 

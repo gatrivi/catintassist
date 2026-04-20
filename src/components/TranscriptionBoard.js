@@ -150,37 +150,12 @@ const TranslatedBubble = ({ id, text, lang, playTTS, stopTTS, playingUrl, prefet
   );
 };
 
-// ─── Coin Sound Synthesis ──────────────────────────────────────────────────
-// Synthesizes a pleasant chime without external files (more reliable).
-const playChime = (freq = 880, vol = 0.02, harmonics = 1) => {
-  try {
-    const AudioContext = window.AudioContext || window.webkitAudioContext;
-    if (!AudioContext) return;
-    const ctx = new AudioContext();
-    const now = ctx.currentTime;
-    
-    // Base chime
-    const playTone = (f, v, d) => {
-      const osc = ctx.createOscillator();
-      const g = ctx.createGain();
-      osc.type = 'sine';
-      osc.frequency.setValueAtTime(f, now);
-      g.gain.setValueAtTime(v, now);
-      g.gain.exponentialRampToValueAtTime(0.0001, now + d);
-      osc.connect(g); g.connect(ctx.destination);
-      osc.start(); osc.stop(now + d);
-    };
-
-    playTone(freq, vol, 0.4);
-    if (harmonics > 1) playTone(freq * 1.5, vol * 0.5, 0.3);
-    if (harmonics > 2) playTone(freq * 2.01, vol * 0.3, 0.2);
-  } catch(e) {}
-};
+// (Removed raw playChime - now uses useRewardAudio)
 
 // ─── CoinRain Component ───────────────────────────────────────────────────────
 // Gamification: One coin zigzags down every minute of active call.
 // Refactored to prevent 'teleporting'—the coin that falls is the coin that stacks.
-const CoinRain = ({ isActive, onCollect }) => {
+  const { playChaChing } = useRewardAudio();
   const [coins, setCoins] = useState([]); // [{id, status, index}]
   const coinIdRef = useRef(0);
   const startTimeRef = useRef(Date.now());
@@ -197,7 +172,7 @@ const CoinRain = ({ isActive, onCollect }) => {
         const id = ++coinIdRef.current;
         setCoins(prev => {
           const index = prev.filter(c => c.status !== 'collecting').length;
-          playChime(660 + (index * 20), 0.015, 1);
+          playChaChing(index + 1);
           return [...prev, { id, status: 'falling', index }];
         });
         

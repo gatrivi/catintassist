@@ -1036,3 +1036,38 @@ body {
   75% { transform: translateY(45vh) translateX(20px); }
   100% { transform: translateY(90vh) translateX(var(--end-x)); }
 }
+
+.zombie-banner-premium {
+  position: absolute;
+  top: -45px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(16, 185, 129, 0.25);
+  backdrop-filter: blur(12px);
+  border: 1px solid rgba(16, 185, 129, 0.4);
+  color: #fff;
+  padding: 8px 16px;
+  border-radius: 99px;
+  font-size: 0.8rem;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  cursor: pointer;
+  white-space: nowrap;
+  box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+  z-index: 1000;
+  animation: slideInDown 0.4s ease-out, zombiePulse 2s infinite;
+  transition: all 0.2s ease;
+}
+
+.zombie-banner-premium:hover {
+  background: rgba(16, 185, 129, 0.4);
+  transform: translateX(-50%) translateY(-2px);
+  box-shadow: 0 6px 20px rgba(16, 185, 129, 0.3);
+}
+
+@keyframes zombiePulse {
+  0% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.4); }
+  70% { box-shadow: 0 0 0 10px rgba(16, 185, 129, 0); }
+  100% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0); }
+}

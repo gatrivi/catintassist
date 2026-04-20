@@ -28,7 +28,16 @@ export const safeSet = safeLocalStorageSet;
 const SessionContext = createContext();
 
 export const SessionProvider = ({ children }) => {
-  const [isActive, setIsActive] = useState(() => JSON.parse(localStorage.getItem('catint_active')) || false);
+  const [isActive, setIsActive] = useState(false); // ALWAYS start false on refresh to avoid zombie states
+  const [isZombieCall, setIsZombieCall] = useState(() => {
+    const wasActive = localStorage.getItem('catint_active');
+    return wasActive === 'true'; // If it was saved as true, we have a zombie call on mount
+  });
+
+  const clearZombieState = () => {
+    setIsZombieCall(false);
+    safeLocalStorageSet('catint_active', 'false');
+  };
   const [sessionSeconds, setSessionSeconds] = useState(() => Number(localStorage.getItem('catint_s_sec')) || 0);
   const [isBreakActive, setIsBreakActive] = useState(() => JSON.parse(localStorage.getItem('catint_break')) || false);
   const [breakSeconds, setBreakSeconds] = useState(() => Number(localStorage.getItem('catint_b_sec')) || 0);
@@ -404,6 +413,8 @@ export const SessionProvider = ({ children }) => {
     updateActivity,
     dailyLog,
     commitDayToLog,
+    isZombieCall,
+    clearZombieState,
     isHeatmapOpen,
     setIsHeatmapOpen,
     getCompensatedLogOff,
