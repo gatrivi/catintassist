@@ -394,7 +394,7 @@ const GuidanceHeader = ({ isActive, isBreakActive, stats, dailyGoal }) => {
 };
 
 
-export const TranscriptionBoard = ({ captions, onClear }) => {
+export const TranscriptionBoard = ({ captions, onClearAll, onReconnect }) => {
   const bottomRef = useRef(null);
   const scrollAreaRef = useRef(null);
   const isScrolledUpRef = useRef(false);
@@ -565,8 +565,8 @@ export const TranscriptionBoard = ({ captions, onClear }) => {
             >
               🛑 Stop AI
             </button>
-            {onClear && (
-              <button onClick={onClear} className="btn" style={{ background: 'transparent', color: 'var(--text-muted)', border: '1px solid var(--panel-border)', padding: '0.2rem 0.5rem', fontSize: '0.7rem' }}>
+            {onClearAll && (
+              <button onClick={onClearAll} className="btn" style={{ background: 'transparent', color: 'var(--text-muted)', border: '1px solid var(--panel-border)', padding: '0.2rem 0.5rem', fontSize: '0.7rem' }}>
                 🗑️ Clear
               </button>
             )}
@@ -597,7 +597,7 @@ export const TranscriptionBoard = ({ captions, onClear }) => {
             boxShadow: '0 4px 20px rgba(0,0,0,0.4)', cursor: 'pointer',
             animation: 'pulseWarning 2s infinite',
             border: '2px solid #000'
-          }} onClick={() => { startSession(true); clearZombieState(); }}>
+          }} onClick={onReconnect}>
             ⚠️ Master, Browser Refreshed Mid-Call! <br/>
             <span style={{ fontSize: '1rem' }}>CLICK HERE TO RECONNECT TRANSCRIPTION</span>
           </div>

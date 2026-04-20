@@ -63,6 +63,15 @@ const Dashboard = () => {
   const stateClass = isActive ? 'app-active' : isBreakActive ? 'app-break' : (isBurnoutWarning ? 'burnout-alert' : (idleSecs > 45 ? 'app-idle' : ''));
   const appState = isActive ? 'call' : isBreakActive ? 'break' : 'avail';
 
+  // UNIFIED CONNECTION ENGINE: Ensures all start/reconnect buttons follow the exactly same gesture chain
+  const handleConnection = async (isRecovery = false) => {
+    const ok = await startRecording();
+    if (ok) {
+      startSession(isRecovery);
+      clearZombieState();
+    }
+  };
+
   return (
     <div className={`app-container ${stateClass}`} data-state={appState}>
       {/* Version Tag - Always visible in the upper right */}
@@ -71,7 +80,7 @@ const Dashboard = () => {
         fontSize: '0.55rem', fontWeight: 900, color: 'rgba(255,255,255,0.2)', 
         pointerEvents: 'none', textTransform: 'uppercase', letterSpacing: '0.05em'
       }}>
-        v3.8.9 (Reconnect Fixed)
+        v3.9.0 (Unified Reconnect)
       </div>
 
       <div id="top-mic-bar-container" style={{ position: 'fixed', top: 0, left: 0, right: 0, height: '3px', zIndex: 9999, pointerEvents: 'none' }}>
@@ -81,21 +90,26 @@ const Dashboard = () => {
       <SilenceGuardian />
 
       <DashboardHeader 
-        onStartAudio={startRecording} 
+        onStartAudio={() => handleConnection(false)} 
         onStopAudio={stopRecording} 
         onReconnectStream={reconnectStream}
+        onRecovery={() => handleConnection(true)}
         sttLanguage={sttLanguage}
         onToggleLanguage={toggleLanguage}
-        onRecovery={() => { startSession(true); clearZombieState(); }}
         connectionState={connectionState}
         connectionMessage={connectionMessage}
       />
 
-      <main className={`main-content ${(isNotesOpen || isToolbarVisible) ? 'notes-open' : ''}`}>
-        <TranscriptionBoard 
-          captions={captions} 
-          onClear={clearCaptions} 
-        />
+      <main className="main-content">
+        <div className="transcription-pane">
+            <TranscriptionBoard 
+              captions={captions} 
+              isActive={isActive} 
+              isBreakActive={isBreakActive}
+              onClearAll={clearCaptions}
+              onReconnect={() => handleConnection(true)}
+            />
+        </div>
         {(isNotesOpen || isToolbarVisible) && (
           <div className="tools-column">
              {isToolbarVisible && (
