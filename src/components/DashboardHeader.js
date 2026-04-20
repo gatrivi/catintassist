@@ -134,11 +134,11 @@ export const DashboardHeader = ({ onStartAudio, onStopAudio, onReconnectStream, 
     }
   }, [isActive, sessionSeconds, playChaChing, audioEngine]);
 
-  const handleStart = async () => { 
+  const handleStart = async (isRecovery = false) => { 
     initAudio();
     audioEngine.playBagOpen(); 
     const ok = await onStartAudio(); 
-    if (ok) startSession(); 
+    if (ok) startSession(isRecovery); 
   };
 
   const handleStop = () => {
