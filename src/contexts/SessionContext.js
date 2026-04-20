@@ -181,7 +181,7 @@ export const SessionProvider = ({ children }) => {
   };
 
   // EMPEZAR LLAMADA: Dejamos de descansar y empezamos a contar los minutos de la llamada.
-  const startSession = () => {
+  const startSession = (isRecovery = false) => {
     updateActivity(); // <--- Reset silence timer on start
     
     // Logic fix: If a call starts while on break, automatically end the break.
@@ -190,8 +190,12 @@ export const SessionProvider = ({ children }) => {
     }
     
     commitAvailTime();
-    setSessionSeconds(0);
-    accumulatorRef.current = 0;
+    
+    if (!isRecovery) {
+      setSessionSeconds(0);
+      accumulatorRef.current = 0;
+    }
+    
     setIsActive(true);
     
     // Catch-up logic: record the very first time we start working today

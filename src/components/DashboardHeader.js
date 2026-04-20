@@ -385,7 +385,7 @@ export const DashboardHeader = ({ onStartAudio, onStopAudio, onReconnectStream, 
   return (
     <header className="dashboard-header glass-panel" style={{ position: 'relative', zIndex: 100 }}>
       {isZombieCall && (
-        <div className="zombie-banner-premium" onClick={() => { handleStart(); clearZombieState(); }}>
+        <div className="zombie-banner-premium" onClick={() => { handleStart(true); clearZombieState(); }}>
           <span style={{ fontSize: '1.1rem' }}>🤖</span> 
           <span>Master, app was restarted mid-call. <b>Press to Reconnect.</b></span>
         </div>
@@ -401,7 +401,7 @@ export const DashboardHeader = ({ onStartAudio, onStopAudio, onReconnectStream, 
               <StateIndicators state={isActive ? 'call' : isBreakActive ? 'break' : 'avail'} breakMinutes={stats.dailyBreakMinutes || 0} isZombie={isZombieCall} />
               <ConnectionIndicator state={connectionState} message={connectionMessage} />
               {!isActive ? (
-                <button id="header-connect-btn" className="btn-emoji" onClick={() => { handleStart(); clearZombieState(); }} style={{ background: isZombieCall ? '#f59e0b' : '#10b981', color: '#fff', width: '22px', height: '22px' }} title={isZombieCall ? "RECONNECT" : "CONNECT"}>{isZombieCall ? '🟠' : '🟢'}</button>
+                <button id="header-connect-btn" className="btn-emoji" onClick={() => { handleStart(isZombieCall); clearZombieState(); }} style={{ background: isZombieCall ? '#f59e0b' : '#10b981', color: '#fff', width: '22px', height: '22px' }} title={isZombieCall ? "RECONNECT" : "CONNECT"}>{isZombieCall ? '🟠' : '🟢'}</button>
               ) : (
                 <button id="header-stop-btn" className="btn-emoji" onClick={handleStop} style={{ background: '#ef4444', color: '#fff', width: '22px', height: '22px' }} title="STOP">🛑</button>
               )}
@@ -717,7 +717,7 @@ export const DashboardHeader = ({ onStartAudio, onStopAudio, onReconnectStream, 
             <div style={{ display: 'flex', gap: '0.3rem', alignItems: 'center' }}>
               <StateIndicators state={isActive ? 'call' : isBreakActive ? 'break' : 'avail'} breakMinutes={stats.dailyBreakMinutes || 0} />
               {!isActive ? (
-                <button id="connect-btn" className="btn btn-primary" onClick={handleStart} style={{ padding: '0.4rem 0.8rem' }}><PlayIcon /> Connect</button>
+                <button id="connect-btn" className="btn btn-primary" onClick={() => handleStart()} style={{ padding: '0.4rem 0.8rem' }}><PlayIcon /> Connect</button>
               ) : (
                 <button id="stop-btn" className="btn btn-danger" onClick={handleStop}><StopIcon /> STOP</button>
               )}

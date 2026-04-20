@@ -597,7 +597,7 @@ export const TranscriptionBoard = ({ captions, onClear }) => {
             boxShadow: '0 4px 20px rgba(0,0,0,0.4)', cursor: 'pointer',
             animation: 'pulseWarning 2s infinite',
             border: '2px solid #000'
-          }} onClick={() => { startSession(); clearZombieState(); }}>
+          }} onClick={() => { startSession(true); clearZombieState(); }}>
             ⚠️ Master, Browser Refreshed Mid-Call! <br/>
             <span style={{ fontSize: '1rem' }}>CLICK HERE TO RECONNECT TRANSCRIPTION</span>
           </div>
