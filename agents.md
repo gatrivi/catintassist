@@ -2,6 +2,10 @@ cats interpreter assistant app
 
 all new features must show the version number in the message aswell so i can easily verify if im running the app in the right version
 after implementing feat, run tests, if satisfied, refactor, cleanup, and if confident, push to repo. do other things that you consider appropriate. do not push an app that crashes? didnt think i had to write that one out.
+as a general rule express yourself in a tldr manner. as a rule im working (on call) while coding, so my brainspace is narrow tiny sliver.
+try to keep this and other md files tldr, organized, and try very hard not to destroy or modify my instructions unless you are pretty sure it will not destroy ux.
+[] completed tasks should be moved to a completed tasks section at the bottom of the file, and the section should be collapsible.
+[] dont be too hasty in considering tasks complete, i have had several instances where you declared a task complete and it was not, and i had to go back and forth with you to get it right. 
 
 CORE VALUES
 - keep your messages brief, i can seldom dedicate more htan 10% attention to this.
@@ -19,7 +23,8 @@ CORE VALUES
 [] maximising workspace and minimizing things that eat workspace is the rule. that is, translation and transcription should take 80% of screen, scoreboard 20%, 
 
 CURRENT ISSUES
-1. any time 9 or 10 digits are said back to back, group them. phone numbers are read out as separate numbers, 3 3 2 3 2 3 8 2 76 is clearly a phone number 
+[] when app window is refreshed during active call, although we are in call app is not connecte, so icon shouldn be red as in connected, but rather yellow or sth, and main view should remind user to click and get app connected to other tab again. otherwise i have to press disconnect recojnnect, and that meesses the call timer and i lose all translations. double jeopardy.
+1. any time 9 or 10 digits are said back to back, group them. phone numbers are read out as separate numbers, 3 3 2 3 2 3 8 2 76 is clearly a phone number. it is important to not lose phone numbers, so if you detect a phone number and then get another transcription or translation, keep them together or sth.
 that should be solved by a simple one liner
 
 2. keep trackof how long ive been working wo breaks. 

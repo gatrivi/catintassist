@@ -67,7 +67,7 @@ const CelebrationParticles = ({ type, label, coins, onDismiss }) => {
   );
 };
 
-const StateIndicators = ({ state, breakMinutes }) => {
+const StateIndicators = ({ state, breakMinutes, isZombie }) => {
   if (state === 'call') {
     return (
       <div className="emoji-money" style={{ fontSize: '1.1rem', marginRight: '0.2rem' }}>💰</div>
@@ -84,6 +84,14 @@ const StateIndicators = ({ state, breakMinutes }) => {
             {i < spentCups ? '🍵' : '☕'}
           </span>
         ))}
+      </div>
+    );
+  }
+  // Zombie
+  if (isZombie) {
+    return (
+      <div style={{ animation: 'pulseWarning 1s infinite', fontSize: '1rem', marginRight: '0.2rem', color: '#f59e0b' }}>
+        🤖
       </div>
     );
   }
@@ -390,10 +398,10 @@ export const DashboardHeader = ({ onStartAudio, onStopAudio, onReconnectStream, 
           {/* Controls & Mini-Stats Column (LEFT) */}
           <div id="controls-left-col" className={`header-column-side ${isActive ? 'active-working-state' : ''}`} style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem', flexShrink: 0, justifyContent: 'flex-start', alignItems: 'center' }}>
             <div id="connection-controls-row" style={{ display: 'flex', flexDirection: 'column', gap: '0.15rem', alignItems: 'center' }}>
-              <StateIndicators state={isActive ? 'call' : isBreakActive ? 'break' : 'avail'} breakMinutes={stats.dailyBreakMinutes || 0} />
+              <StateIndicators state={isActive ? 'call' : isBreakActive ? 'break' : 'avail'} breakMinutes={stats.dailyBreakMinutes || 0} isZombie={isZombieCall} />
               <ConnectionIndicator state={connectionState} message={connectionMessage} />
               {!isActive ? (
-                <button id="header-connect-btn" className="btn-emoji" onClick={handleStart} style={{ background: '#10b981', color: '#fff', width: '22px', height: '22px' }} title="CONNECT">🟢</button>
+                <button id="header-connect-btn" className="btn-emoji" onClick={() => { handleStart(); clearZombieState(); }} style={{ background: isZombieCall ? '#f59e0b' : '#10b981', color: '#fff', width: '22px', height: '22px' }} title={isZombieCall ? "RECONNECT" : "CONNECT"}>{isZombieCall ? '🟠' : '🟢'}</button>
               ) : (
                 <button id="header-stop-btn" className="btn-emoji" onClick={handleStop} style={{ background: '#ef4444', color: '#fff', width: '22px', height: '22px' }} title="STOP">🛑</button>
               )}
@@ -542,8 +550,8 @@ export const DashboardHeader = ({ onStartAudio, onStopAudio, onReconnectStream, 
             )}
           </div>
 
-          {/* Stats Column (RIGHT) */}
-          <div id="controls-right-col" className="header-column-side" style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem', flexShrink: 0, justifyContent: 'flex-start', alignItems: 'center' }}>
+          {/* Stats Column (RIGHT) - Constrained to prevent workspace waste */}
+          <div id="controls-right-col" className="header-column-side" style={{ display: 'flex', flexDirection: 'column', gap: '0.15rem', flexShrink: 0, justifyContent: 'flex-start', alignItems: 'center', width: '60px' }}>
              <div id="right-pills-stack" style={{ display: 'flex', flexDirection: 'column', gap: '0.04rem', alignItems: 'center' }}>
                {/* CALL RATE PILL */}
                {callsToday > 0 ? (

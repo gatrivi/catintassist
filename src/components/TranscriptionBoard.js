@@ -122,7 +122,7 @@ const TranslatedBubble = ({ id, text, lang, playTTS, stopTTS, playingUrl, prefet
         </div>
       </div>
 
-      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', width: '32px', flexShrink: 0, marginTop: '2px' }}>
+      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', width: '28px', flexShrink: 0, marginTop: '2px' }}>
         <button 
           onClick={() => onTogglePin(id)} 
           style={{ background: 'transparent', border: 'none', cursor: 'pointer', fontSize: '0.75rem', padding: '0', opacity: isPinned ? 1 : 0.05, filter: isPinned ? 'drop-shadow(0 0 5px #3b82f6)' : 'none', transition: 'all 0.2s' }}
@@ -405,7 +405,7 @@ export const TranscriptionBoard = ({ captions, onClear }) => {
   const { playTTS, stopTTS, isPlaying, playingUrl, prefetchTTS } = useTTS();
   const { playWarningPing } = useProgressiveAudio();
   const { playChaChing } = useRewardAudio();
-  const { isEditingScoreboard, visibleCards, toggleCard, isActive, isBreakActive, isToolbarVisible, stats, dailyGoal } = useSession();
+  const { isEditingScoreboard, visibleCards, toggleCard, isActive, isBreakActive, isToolbarVisible, stats, dailyGoal, isZombieCall, startSession, clearZombieState } = useSession();
   const warnedBubblesRef = useRef(new Set());
   
   const [popover, setPopover] = useState({ show: false, x: 0, y: 0, text: '' });
@@ -587,6 +587,22 @@ export const TranscriptionBoard = ({ captions, onClear }) => {
       >
         <div style={{ flex: '1 1 auto' }} />
         
+        {/* Zombie Call Reconnect Reminder Banner */}
+        {isZombieCall && !isActive && (
+          <div style={{ 
+            position: 'sticky', top: '5px', zIndex: 100,
+            background: 'rgba(245, 158, 11, 0.95)', color: '#000',
+            padding: '0.6rem', textAlign: 'center', fontWeight: '900',
+            fontSize: '0.85rem', borderRadius: '8px', margin: '0.5rem',
+            boxShadow: '0 4px 20px rgba(0,0,0,0.4)', cursor: 'pointer',
+            animation: 'pulseWarning 2s infinite',
+            border: '2px solid #000'
+          }} onClick={() => { startSession(); clearZombieState(); }}>
+            ⚠️ Master, Browser Refreshed Mid-Call! <br/>
+            <span style={{ fontSize: '1rem' }}>CLICK HERE TO RECONNECT TRANSCRIPTION</span>
+          </div>
+        )}
+
         {/* Pinned Reference Section REMOVED - Pins now highlight in-place */}
 
         {captions.length === 0 && (
