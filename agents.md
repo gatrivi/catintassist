@@ -83,22 +83,19 @@ good friday
 
 CURRENT INBOX
 
-[x] condensed view should contain
-  [x][x] todays current mins / target mins
-  [x][x] todays current $$ / total $$
-  [x][x] months current mins / target mins
-  [x][x] months current $$ / total $$
+[ ] maximizing workspace and minimizing things that eat workspace is the rule. translation and transcription 80%, scoreboard 20%.
 
-[x] daily and monthly min amts can be edited from condensed view. (Click pills)
-[x] the progress bar now says literal hours left, it should also say est workable hours left.
-[x] msgs can be pinned so they dont scroll away
-[x] avail starts running at 9am and stops at 00hs
+<details>
+<summary><b>Completed Tasks</b></summary>
 
-[x] popover that shows up if you highlight a word and wait a bit for dictionary. 
-[x] all numbers should be highlighted, when you click they auto copy. 
-[x] all numbers should be written in numbers, not string (1-90, tens, teens).
-
-[x] intermediary goals (12 step goals):
-  [X] Level 1 (Floor - 5500m): 1375m, 2750m, 4125m, 5500m
-  [X] Level 2 (Growth - 11000m): 6875m, 8250m, 9625m, 11000m
-  [X] Level 3 (Legend - 16500m): 12375m, 13750m, 15125m, 16500m
+- [x] translation trigger: 10+ words and punctuation (dot, comma, ?) force request (v3.9.1)
+- [x] condensed view should contain (mins/target, $/total for day/month)
+- [x] daily and monthly min amts can be edited from condensed view (Click pills)
+- [x] progress bar says literal hours left and est workable hours left
+- [x] msgs can be pinned so they dont scroll away
+- [x] avail starts running at 9am and stops at 00hs
+- [x] popover that shows up if you highlight a word and wait a bit for dictionary
+- [x] all numbers should be highlighted, click to auto copy
+- [x] all numbers should be written in numbers, not string (1-90, tens, teens)
+- [x] intermediary goals (12 step goals): Level 1 (Floor), Level 2 (Growth), Level 3 (Legend)
+</details>

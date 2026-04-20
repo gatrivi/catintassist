@@ -80,8 +80,17 @@ export const useTranslate = (text, lang, prefetchTTS, shouldPrefetch, mood = 'de
 
     // SAFETY VALVE: Only translate if significant words added (except in FAST mood)
     const wordDelta = Math.abs(wordCount - lastWordCountRef.current);
+    const hasPunctuation = /[.,?]/.test(normText);
     const isPunctuationEnding = /[.!?]$/.test(normText);
-    const shouldSkipDueToDelta = mood !== 'fast' && wordDelta < 3 && !isPunctuationEnding && lastTranslatedTextRef.current;
+    
+    // User requirement: if 10+ words and contains dot, comma or question mark, force translation.
+    const forceTrigger = wordCount >= 10 && hasPunctuation;
+
+    const shouldSkipDueToDelta = mood !== 'fast' && 
+                                 wordDelta < 3 && 
+                                 !isPunctuationEnding && 
+                                 !forceTrigger && 
+                                 lastTranslatedTextRef.current;
     
     if (shouldSkipDueToDelta) return;
 
@@ -92,6 +101,8 @@ export const useTranslate = (text, lang, prefetchTTS, shouldPrefetch, mood = 'de
     if (debounceTimerRef.current) clearTimeout(debounceTimerRef.current);
 
     debounceTimerRef.current = setTimeout(async () => {
+      if (forceTrigger) console.log(`[v3.9.1] Smart Trigger: ${wordCount} words + punctuation detected.`);
+      
       // KILL Previous Request if still running
       if (abortControllerRef.current) abortControllerRef.current.abort();
       abortControllerRef.current = new AbortController();
