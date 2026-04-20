@@ -156,6 +156,7 @@ const TranslatedBubble = ({ id, text, lang, playTTS, stopTTS, playingUrl, prefet
 // ─── CoinRain Component ───────────────────────────────────────────────────────
 // Gamification: One coin zigzags down every minute of active call.
 // Refactored to prevent 'teleporting'—the coin that falls is the coin that stacks.
+const CoinRain = ({ isActive, onCollect }) => {
   const { playChaChing } = useRewardAudio();
   const [coins, setCoins] = useState([]); // [{id, status, index}]
   const coinIdRef = useRef(0);
@@ -202,8 +203,7 @@ const TranslatedBubble = ({ id, text, lang, playTTS, stopTTS, playingUrl, prefet
           
           toCollect.forEach((c, i) => {
             setTimeout(() => {
-              const richness = 1 + Math.floor(toCollect.length / 5);
-              playChime(880 + (i * 44), 0.02, richness);
+              playChaChing(i + 1);
             }, i * 150);
           });
         }

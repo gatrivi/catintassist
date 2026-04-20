@@ -1,3 +1,5 @@
+import { useState, useRef, useEffect } from 'react';
+
 // Persistent Cache and Blacklist to save quota and skip broken services
 let TRANS_CACHE = {}; 
 const BLACKBOX = {}; // Stores { service_id: timestamp_of_error }

@@ -1,5 +1,8 @@
 cats interpreter assistant app
 
+all new features must show the version number in the message aswell so i can easily verify if im running the app in the right version
+after implementing feat, run tests, if satisfied, refactor, cleanup, and if confident, push to repo. do other things that you consider appropriate. do not push an app that crashes? didnt think i had to write that one out.
+
 CORE VALUES
 - keep your messages brief, i can seldom dedicate more htan 10% attention to this.
 - code as if for a toddler, simple, clear, organize, anottated, and in all manners try to economize tokens, it makes no sense to set a data center on fire to change a font on an invisible sub menu.
