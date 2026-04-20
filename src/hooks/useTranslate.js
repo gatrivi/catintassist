@@ -69,12 +69,12 @@ export const useTranslate = (text, lang, prefetchTTS, shouldPrefetch, mood = 'de
 
     // POLICY CHECK: Skip if too long, too short, or just noise/filler
     const IS_FILLER = /^bueno[.,!?]*$/i.test(normText);
-    const IS_TOO_LONG = wordCount > 40;
+    const IS_TOO_LONG = wordCount > 60; // Increased from 40 to 60 to accommodate 45-word bubbles
     const IS_TOO_SHORT = normText.length < 2 && !/\d/.test(normText);
 
     if (IS_TOO_LONG || IS_FILLER || IS_TOO_SHORT) {
       setEngineStatus(IS_TOO_LONG ? 'ready' : 'idle');
-      if (IS_TOO_LONG) setTranslation('(Text too long for direct translation)');
+      if (IS_TOO_LONG) setTranslation(`(Text too long for direct translation [v3.9.2])`);
       return;
     }
 

@@ -23,6 +23,9 @@ CORE VALUES
 [] maximising workspace and minimizing things that eat workspace is the rule. that is, translation and transcription should take 80% of screen, scoreboard 20%, 
 
 CURRENT ISSUES
+[] when speakers speeaks too long, message is split, this is good as it makes for easier reading, but has two problems
+[] sometimes it seems that on message split the translation is garbled, an existing tranlsation destroyed. in general do not destroy transaltions
+[] word count is split, so if user speaks more than 40 worsd, it actually says 40 then 10, when the actual wordcount is clearly more than that... 
 [] when app window is refreshed during active call, although we are in call app is not connecte, so icon shouldn be red as in connected, but rather yellow or sth, and main view should remind user to click and get app connected to other tab again. otherwise i have to press disconnect recojnnect, and that meesses the call timer and i lose all translations. double jeopardy.
 1. any time 9 or 10 digits are said back to back, group them. phone numbers are read out as separate numbers, 3 3 2 3 2 3 8 2 76 is clearly a phone number. it is important to not lose phone numbers, so if you detect a phone number and then get another transcription or translation, keep them together or sth.
 that should be solved by a simple one liner

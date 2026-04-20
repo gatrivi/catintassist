@@ -421,7 +421,8 @@ export const TranscriptionBoard = ({ captions, onClearAll, onReconnect }) => {
 
   useEffect(() => {
     if (!isScrolledUpRef.current) {
-      bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
+      // Instant scroll is much better for high-frequency updates to avoid 'fighting' the user
+      bottomRef.current?.scrollIntoView({ behavior: 'auto' });
     }
 
     const lastCap = captions[captions.length - 1];
@@ -437,28 +438,32 @@ export const TranscriptionBoard = ({ captions, onClearAll, onReconnect }) => {
   const resetScrollTimer = () => {
     if (scrollTimeoutRef.current) clearTimeout(scrollTimeoutRef.current);
     scrollTimeoutRef.current = setTimeout(() => {
-      isScrolledUpRef.current = false;
-      bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
-    }, 15000); 
+      // Only auto-return if we haven't manually stayed up for 30s
+      // isScrolledUpRef.current = false; 
+    }, 30000); 
   };
 
   const handleScroll = () => {
     if (!scrollAreaRef.current) return;
     const { scrollTop, scrollHeight, clientHeight } = scrollAreaRef.current;
-    const isAtBottom = scrollHeight - scrollTop - clientHeight <= 10;
+    
+    // We are at bottom if within 30px of the edge
+    const isAtBottom = scrollHeight - scrollTop - clientHeight <= 30;
     
     if (isAtBottom) {
       isScrolledUpRef.current = false;
       if (scrollTimeoutRef.current) clearTimeout(scrollTimeoutRef.current);
     } else {
+      // If we are NOT at bottom, user definitely scrolled up
       isScrolledUpRef.current = true;
-      resetScrollTimer();
     }
   };
 
   const handleWheel = (e) => {
-    isScrolledUpRef.current = true;
-    resetScrollTimer();
+    // If scrolling UP (deltaY < 0), lock the scroll
+    if (e.deltaY < 0) {
+      isScrolledUpRef.current = true;
+    }
   };
 
   useEffect(() => {
