@@ -117,7 +117,7 @@ const StatusProgress = ({ status }) => {
   );
 };
 
-const TranslatedBubble = ({ id, text, lang, playTTS, stopTTS, playingUrl, prefetchTTS, reverse = false, ttsMode, wordCount, shouldPrefetch, emphasisMode, isPinned, onTogglePin }) => {
+const TranslatedBubble = ({ id, text, lang, playTTS, stopTTS, playingUrl, prefetchTTS, reverse = false, ttsMode, wordCount, turnWordCount, shouldPrefetch, emphasisMode, isPinned, onTogglePin }) => {
   const { translationMood } = useSession();
   const { translation, audioUrl, isTranslating, engineStatus, targetLang } = useTranslate(text, lang, prefetchTTS, shouldPrefetch, translationMood);
   const hasAutoPlayedRef = useRef(false);
@@ -143,15 +143,13 @@ const TranslatedBubble = ({ id, text, lang, playTTS, stopTTS, playingUrl, prefet
       </div>
 
       <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', width: '28px', flexShrink: 0, marginTop: '2px' }}>
-        <button 
-          onClick={() => onTogglePin(id)} 
-          style={{ background: 'transparent', border: 'none', cursor: 'pointer', fontSize: '0.75rem', padding: '0', opacity: isPinned ? 1 : 0.05, filter: isPinned ? 'drop-shadow(0 0 5px #3b82f6)' : 'none', transition: 'all 0.2s' }}
-          title={isPinned ? "Unpin" : "Pin"}
-        >
-          📌
-        </button>
         <StatusProgress status={engineStatus} />
-        <span style={{ fontSize: '0.55rem', fontWeight: 700, color: wordCount >= 40 ? 'var(--danger)' : wordCount >= 34 ? '#f59e0b' : 'var(--text-muted)', marginBottom: '1px' }}>{wordCount}</span>
+        <span 
+          style={{ fontSize: '0.55rem', fontWeight: 700, color: (turnWordCount || wordCount) >= 40 ? 'var(--danger)' : (turnWordCount || wordCount) >= 34 ? '#f59e0b' : 'var(--text-muted)', marginBottom: '1px' }}
+          title={turnWordCount ? `Current Turn: ${turnWordCount} words (Bubble: ${wordCount})` : ""}
+        >
+          {turnWordCount || wordCount}
+        </span>
         <button 
           onClick={() => isThisPlaying ? stopTTS() : playTTS(translation, targetLang, audioUrl)} 
           disabled={!isThisPlaying && (!translation || !audioUrl)}
@@ -677,9 +675,28 @@ export const TranscriptionBoard = ({ captions, onClearAll, onReconnect }) => {
                   </span>
                 </div>
               )}
+              
+              <button 
+                onClick={() => togglePin(cap.id)} 
+                className="pin-bubble-btn"
+                style={{ 
+                  position: 'absolute', top: '-10px', right: '-10px', zIndex: 20,
+                  background: isPinned ? '#3b82f6' : 'rgba(255,255,255,0.05)',
+                  border: '1px solid rgba(255,255,255,0.1)',
+                  borderRadius: '50%', width: '22px', height: '22px',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  fontSize: '0.7rem', cursor: 'pointer',
+                  opacity: isPinned ? 1 : 0,
+                  transition: 'all 0.2s',
+                  boxShadow: isPinned ? '0 0 10px rgba(59,130,246,0.5)' : 'none'
+                }}
+                title={isPinned ? "Unpin" : "Pin"}
+              >
+                📌
+              </button>
               <TranslatedBubble 
                 id={cap.id} text={cap.text} lang={cap.lang} playTTS={playTTS} stopTTS={stopTTS} playingUrl={playingUrl} prefetchTTS={prefetchTTS} 
-                reverse={cap.lang === 'es'} ttsMode={ttsMode} wordCount={wordCount} shouldPrefetch={i >= captions.length - 3} 
+                reverse={cap.lang === 'es'} ttsMode={ttsMode} wordCount={wordCount} turnWordCount={cap.turnWordCount} shouldPrefetch={i >= captions.length - 3} 
                 emphasisMode={emphasisMode} isPinned={isPinned} onTogglePin={togglePin} 
               />
             </div>

@@ -63,6 +63,13 @@ export const useTranslate = (text, lang, prefetchTTS, shouldPrefetch, mood = 'de
       setTranslation(''); setAudioUrl(null); setEngineStatus('idle'); return;
     }
 
+    const t = () => new Date().toLocaleTimeString('en-GB', { hour12: false }) + '.' + String(new Date().getMilliseconds()).padStart(3, '0');
+    
+    // Log version once on start/mount
+    if (lastWordCountRef.current === 0 && lastTranslatedTextRef.current === '') {
+      console.log(`[${t()}] [v4.1.0] Translation Engine Initialized.`);
+    }
+
     // NORMALIZE TEXT for comparison
     const normText = text.trim().replace(/\s+/g, ' ');
     const wordCount = normText.split(/\s+/).length;
@@ -75,123 +82,109 @@ export const useTranslate = (text, lang, prefetchTTS, shouldPrefetch, mood = 'de
 
     if (IS_TOO_LONG || IS_FILLER || IS_TOO_SHORT) {
       setEngineStatus(IS_TOO_LONG ? 'ready' : 'idle');
-      if (IS_TOO_LONG) setTranslation(`(Text too long for direct translation [v4.0.0])`);
+      if (IS_TOO_LONG) setTranslation(`(Text too long for direct translation [v4.1.0])`);
       return;
     }
 
     // SAFETY VALVE: Only translate if significant words added (except in FAST mood)
-    const wordDelta = Math.abs(wordCount - lastWordCountRef.current);
-    const hasPunctuation = /[.,?]/.test(normText);
-    const isPunctuationEnding = /[.!?]$/.test(normText);
     
-    // User requirement: if 10+ words and contains dot, comma or question mark, force translation.
-    const forceTrigger = wordCount >= 10 && hasPunctuation;
+    // User requirement: if 10+ words, force translation even without punctuation.
+    const hasPunctuation = /[.,?]/.test(normText);
+    const forceTrigger = wordCount >= 10 || hasPunctuation;
+
+    // NOISE FILTER: If text is just a repeating word or extremely short punctuation noise, skip it
+    const isNoise = normText.length < 3 && !/\w/.test(normText);
+    if (isNoise) return;
 
     const shouldSkipDueToDelta = mood !== 'fast' && 
-                                 wordDelta < 3 && 
-                                 !isPunctuationEnding && 
+                                 wordDelta < 2 && 
                                  !forceTrigger && 
                                  lastTranslatedTextRef.current;
     
     if (shouldSkipDueToDelta) return;
 
-    // DEBOUNCE based on MOOD
-    const debounceTimes = { fast: 400, default: 700, chill: 1200 };
-    const waitTime = debounceTimes[mood] || 700;
+    // DEBOUNCE based on MOOD (or Turbo for forced segments)
+    const debounceTimes = { fast: 300, default: 600, chill: 1000 };
+    const waitTime = forceTrigger ? 200 : (debounceTimes[mood] || 600);
 
     if (debounceTimerRef.current) clearTimeout(debounceTimerRef.current);
 
     debounceTimerRef.current = setTimeout(async () => {
-      if (forceTrigger) console.log(`[v4.0.0] Smart Trigger: ${wordCount} words + punctuation detected.`);
-      
       // KILL Previous Request if still running
       if (abortControllerRef.current) abortControllerRef.current.abort();
       abortControllerRef.current = new AbortController();
       const { signal } = abortControllerRef.current;
 
+      console.log(`[${t()}] [v4.1.0] Triggering Translation (${wordCount} words): "${normText.substring(0, 30)}..."`);
+
       setIsTranslating(true);
       setEngineStatus('translating');
       const langPair = `${sourceLang}-${targetLang}`;
-      const cached = getCached(normText, langPair);
+
+      // SEGMENTATION LOGIC: Split into stable segments and active segment
+      // regex matches punctuation and the spaces after them
+      const segmentRegex = /([^.,!?]+[.,!?]+\s*)/g;
+      const stableMatches = normText.match(segmentRegex) || [];
+      const activeText = normText.replace(segmentRegex, '').trim();
       
-      if (cached) { 
-        setTranslation(cached); 
-        setIsTranslating(false); 
-        setEngineStatus('ready');
-        lastTranslatedTextRef.current = normText;
-        lastWordCountRef.current = wordCount;
-        if (shouldPrefetch && typeof prefetchTTS === 'function') {
-          const url = await prefetchTTS(cached, targetLang);
-          setAudioUrl(url);
-          lastPrefetchedTextRef.current = cached;
-        }
-        return; 
-      }
-
-      const keys = {
-        DEEPL: localStorage.getItem('DEEPL_API_KEY'),
-        OPENAI: localStorage.getItem('OPENAI_API_KEY')
-      };
-
-      const fetchers = {
-        deepl: async (c) => {
-          if (!keys.DEEPL) throw 'no key';
-          const r = await fetch(`https://api-free.deepl.com/v2/translate`, {
-            method: 'POST', signal, headers: { 'Authorization': `DeepL-Auth-Key ${keys.DEEPL}`, 'Content-Type': 'application/x-www-form-urlencoded' },
-            body: new URLSearchParams({ text: c, target_lang: targetLang.toUpperCase(), source_lang: sourceLang.toUpperCase() })
-          });
-          if (!r.ok) throw `status ${r.status}`;
-          const d = await r.json(); return d.translations?.[0]?.text;
-        },
-        openai: async (c) => {
-          if (!keys.OPENAI) throw 'no key';
-          const r = await fetch('https://api.openai.com/v1/chat/completions', {
-            method: 'POST', signal, headers: { 'Authorization': `Bearer ${keys.OPENAI}`, 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              model: "gpt-4o-mini",
-              messages: [{ role: "system", content: `Translate from ${sourceLang} to ${targetLang}. Return ONLY the direct translation.` }, { role: "user", content: c }],
-              temperature: 0
-            })
-          });
-          if (!r.ok) throw `status ${r.status}`;
-          const d = await r.json(); return d.choices?.[0]?.message?.content;
-        },
-        google_gtx: async (c) => {
-          const r = await fetch(`https://translate.googleapis.com/translate_a/single?client=gtx&sl=${sourceLang}&tl=${targetLang}&dt=t&q=${encodeURIComponent(c)}`, { signal });
-          if (!r.ok) throw `gtx ${r.status}`;
-          const d = await r.json(); 
-          return d?.[0]?.map(s => s[0]).filter(Boolean).join(' ').replace(/\s+/g, ' ').trim() || '';
-        },
-        mymemory: async (c) => {
-          const r = await fetch(`https://api.mymemory.translated.net/get?q=${encodeURIComponent(c)}&langpair=${sourceLang}|${targetLang}&de=catintassist@example.com`, { signal });
-          if (!r.ok) throw `mymemory ${r.status}`;
-          const d = await r.json(); 
-          if (d.responseStatus !== 200) throw `mymemory err ${d.responseStatus}`;
-          return d.responseData?.translatedText;
-        },
-        lingva: async (c) => {
-          const r = await fetch(`https://lingva.ml/api/v1/${sourceLang}/${targetLang}/${encodeURIComponent(c)}`, { signal });
-          if (!r.ok) throw `lingva ${r.status}`;
-          const d = await r.json();
-          return d.translation;
-        }
-      };
-
+      const results = [];
+      
       const raceChunk = async (chunk) => {
+        const norm = chunk.trim().replace(/\s+/g, ' ');
+        const cached = getCached(norm, langPair);
+        if (cached) return cached;
+
+        const keys = {
+          DEEPL: localStorage.getItem('DEEPL_API_KEY'),
+          OPENAI: localStorage.getItem('OPENAI_API_KEY')
+        };
+
+        const fetchers = {
+          deepl: async (c) => {
+            if (!keys.DEEPL) throw 'no key';
+            const r = await fetch(`https://api-free.deepl.com/v2/translate`, {
+              method: 'POST', signal, headers: { 'Authorization': `DeepL-Auth-Key ${keys.DEEPL}`, 'Content-Type': 'application/x-www-form-urlencoded' },
+              body: new URLSearchParams({ text: c, target_lang: targetLang.toUpperCase(), source_lang: sourceLang.toUpperCase() })
+            });
+            if (!r.ok) throw `status ${r.status}`;
+            const d = await r.json(); return d.translations?.[0]?.text;
+          },
+          openai: async (c) => {
+            if (!keys.OPENAI) throw 'no key';
+            const r = await fetch('https://api.openai.com/v1/chat/completions', {
+              method: 'POST', signal, headers: { 'Authorization': `Bearer ${keys.OPENAI}`, 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                model: "gpt-4o-mini",
+                messages: [{ role: "system", content: `Translate from ${sourceLang} to ${targetLang}. Return ONLY the direct translation.` }, { role: "user", content: c }],
+                temperature: 0
+              })
+            });
+            if (!r.ok) throw `status ${r.status}`;
+            const d = await r.json(); return d.choices?.[0]?.message?.content;
+          },
+          google_gtx: async (c) => {
+            const r = await fetch(`https://translate.googleapis.com/translate_a/single?client=gtx&sl=${sourceLang}&tl=${targetLang}&dt=t&q=${encodeURIComponent(c)}`, { signal });
+            if (!r.ok) throw `gtx ${r.status}`;
+            const d = await r.json(); 
+            return d?.[0]?.map(s => s[0]).filter(Boolean).join(' ').replace(/\s+/g, ' ').trim() || '';
+          },
+          lingva: async (c) => {
+            const r = await fetch(`https://lingva.ml/api/v1/${sourceLang}/${targetLang}/${encodeURIComponent(c)}`, { signal });
+            if (!r.ok) throw `lingva ${r.status}`;
+            const d = await r.json();
+            return d.translation;
+          }
+        };
+
         const pool = [];
-        const isBlocked = (id) => BLACKBOX[id] && (Date.now() - BLACKBOX[id] < 300000); // 5 min ban
+        const isBlocked = (id) => BLACKBOX[id] && (Date.now() - BLACKBOX[id] < 300000);
 
         if (keys.DEEPL) pool.push({ id: 'deepl', fn: fetchers.deepl, delay: 0 });
-        if (keys.OPENAI) pool.push({ id: 'openai', fn: fetchers.openai, delay: 200 });
-        
+        if (keys.OPENAI) pool.push({ id: 'openai', fn: fetchers.openai, delay: 100 });
         if (!isBlocked('google_gtx')) pool.push({ id: 'google_gtx', fn: fetchers.google_gtx, delay: 0 });
         if (!isBlocked('lingva')) pool.push({ id: 'lingva', fn: fetchers.lingva, delay: 200 });
-        if (!isBlocked('mymemory')) pool.push({ id: 'mymemory', fn: fetchers.mymemory, delay: 600 });
 
-        if (pool.length === 0) {
-          console.warn("[v4.0.0] ALL free engines throttled. Failing back to source.");
-          return chunk.trim();
-        }
+        if (pool.length === 0) return norm;
 
         let resolved = false;
         return new Promise((resolve) => {
@@ -200,64 +193,50 @@ export const useTranslate = (text, lang, prefetchTTS, shouldPrefetch, mood = 'de
             const tout = setTimeout(async () => {
               if (resolved || signal.aborted) return;
               try {
-                const res = await service.fn(chunk);
+                const res = await service.fn(norm);
                 const clean = sanitizeTranslation(String(res));
                 if (clean && !resolved && !signal.aborted) {
                   resolved = true;
                   timeouts.forEach(clearTimeout);
+                  setCached(norm, langPair, clean);
                   resolve(clean.trim());
                 }
               } catch (e) {
                 if (e.name === 'AbortError') return;
                 if (e.toString().includes('429') || e.toString().includes('403')) {
                   BLACKBOX[service.id] = Date.now();
-                  console.warn(`[Trans] Service ${service.id} throttled. Blacklisting for 5m.`);
                 }
               }
             }, service.delay);
             timeouts.push(tout);
           });
 
-          setTimeout(() => { 
-            if (!resolved && !signal.aborted) {
-              resolved = true;
-              timeouts.forEach(clearTimeout);
-              resolve(chunk.trim()); 
-            }
-          }, 3000); 
+          setTimeout(() => { if (!resolved && !signal.aborted) { resolved = true; resolve(norm); } }, 2500); 
         });
       };
 
       try {
-        const chunks = [];
-        let rem = normText;
-        while (rem.length > 0) {
-          if (rem.length <= 400) { chunks.push(rem); break; }
-          let idx = rem.lastIndexOf('. ', 400);
-          if (idx === -1) idx = rem.lastIndexOf(' ', 400);
-          if (idx === -1) idx = 400;
-          chunks.push(rem.substring(0, idx + 1).trim());
-          rem = rem.substring(idx + 1).trim();
+        // Translate stable segments in parallel or sequentially (cached will be instant)
+        for (const segment of stableMatches) {
+          if (signal.aborted) return;
+          results.push(await raceChunk(segment));
         }
 
-        const results = [];
-        for (const c of chunks) {
-          if (signal.aborted) break;
-          results.push(await raceChunk(c));
-          await new Promise(res => setTimeout(res, 80)); // Stagger
+        // Translate active segment if it exists
+        if (activeText && !signal.aborted) {
+          results.push(await raceChunk(activeText));
         }
 
         if (signal.aborted) return;
 
-        const final = results.join(' ').trim();
+        const final = results.join(' ').replace(/\s+/g, ' ').trim();
         if (final) {
           setTranslation(final);
-          setCached(normText, langPair, final);
           lastTranslatedTextRef.current = normText;
           lastWordCountRef.current = wordCount;
         }
       } catch (e) {
-        if (e.name !== 'AbortError') console.error('[Trans] Final catch:', e);
+        if (e.name !== 'AbortError') console.error('[Trans] Incremental catch:', e);
       } finally {
         if (!signal.aborted) {
           setIsTranslating(false);

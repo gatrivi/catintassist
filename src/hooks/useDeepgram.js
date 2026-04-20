@@ -33,6 +33,7 @@ export const useDeepgram = () => {
   const streamRef = useRef(null);
   const isActiveRef = useRef(false);
   const lastTranscriptTimeRef = useRef(Date.now());
+  const turnWordCountRef = useRef(0);
   const overrideTimeoutRef = useRef(null);
 
   const closeConnections = useCallback(() => {
@@ -106,20 +107,30 @@ export const useDeepgram = () => {
           const now = Date.now();
           const timeSinceLast = now - lastTranscriptTimeRef.current;
           lastTranscriptTimeRef.current = now;
-          // Break into a new bubble after 1.8s of absolute silence. 
-          const isSilentBreak = timeSinceLast > 1800;
+          // Break into a new bubble after 2.0s of absolute silence (relaxed from 1.8s). 
+          const isSilentBreak = timeSinceLast > 2000;
 
           setCaptions(prev => {
             let last = prev[prev.length - 1];
             const lastWordCount = (last && last.text) ? last.text.split(/\s+/).length : 0;
-            // Break into a new bubble after 1.8s of silence OR if bubble reaches 45 words
-            const isNewTurn = isSilentBreak || lastWordCount >= 45;
+            
+            // Split at first punctuation after 30 words, or hard cutoff at 80 words
+            const hasPunctuation = /[.,!?]/.test(last?.text || '');
+            const isNewTurn = isSilentBreak || (lastWordCount >= 30 && hasPunctuation) || lastWordCount >= 80;
 
             if (!last || isNewTurn) {
+              if (isSilentBreak || !last) turnWordCountRef.current = 0;
+              else {
+                // If we split due to overflow (not silence), preserve the previous turn count
+                const prevBubble = prev[prev.length - 1];
+                if (prevBubble) turnWordCountRef.current = prevBubble.turnWordCount || 0;
+              }
+              
               last = { 
                 id: Date.now(), 
                 enFinalized: '', enInterim: '', enConf: 0,
                 esFinalized: '', esInterim: '', esConf: 0,
+                turnWordCount: 0
               };
               prev = [...prev, last];
             }
@@ -188,7 +199,11 @@ export const useDeepgram = () => {
             current.text = winnerLang === 'en' ? enFull : esFull;
             current.enFull = enFull;
             current.esFull = esFull;
-            current.isFinal = false; // We just keep updating styles actively
+            current.isFinal = false; 
+            
+            // Calculate total turn words
+            const currentBubbleWords = current.text.trim().split(/\s+/).filter(Boolean).length;
+            current.turnWordCount = turnWordCountRef.current + currentBubbleWords;
             
             let newArr = [...prev];
             newArr[newArr.length - 1] = current;

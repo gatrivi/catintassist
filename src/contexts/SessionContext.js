@@ -129,6 +129,8 @@ export const SessionProvider = ({ children }) => {
     return initialStats;
   });
 
+  // HELP OVERLAY STATE
+  const [isScoreboardHelpVisible, setIsScoreboardHelpVisible] = useState(false);
   // HEATMAP OPEN STATE
   const [isHeatmapOpen, setIsHeatmapOpen] = useState(false);
 
@@ -429,6 +431,8 @@ export const SessionProvider = ({ children }) => {
     setTranslationMood,
     isHeatmapOpen,
     setIsHeatmapOpen,
+    isScoreboardHelpVisible,
+    setIsScoreboardHelpVisible,
     getCompensatedLogOff,
     minutesSinceLastBreak,
     dailyGoal: (() => {

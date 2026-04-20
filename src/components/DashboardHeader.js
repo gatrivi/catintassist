@@ -104,7 +104,12 @@ const StateIndicators = ({ state, breakMinutes, isZombie }) => {
 };
 
 export const DashboardHeader = ({ onStartAudio, onStopAudio, onReconnectStream, sttLanguage, onToggleLanguage, onRecovery, connectionState, connectionMessage }) => {
-  const { isActive, sessionSeconds, setSessionSeconds, sessionEarnings, stats, updateStat, startSession, stopSession, endDay, RATE_PER_MINUTE, arsRate, setArsRate, isBreakActive, breakSeconds, startBreak, stopBreak, availSeconds, isEditingScoreboard, setIsEditingScoreboard, visibleCards, toggleCard, isNotesOpen, setIsNotesOpen, isToolbarVisible, setIsToolbarVisible, workSessionMinutes, isHeatmapOpen, setIsHeatmapOpen, isZombieCall, clearZombieState, translationMood, setTranslationMood } = useSession();
+  const { isActive, sessionSeconds, setSessionSeconds, sessionEarnings, stats, updateStat, startSession, stopSession, endDay, RATE_PER_MINUTE, arsRate, setArsRate, isBreakActive, breakSeconds, startBreak, stopBreak, availSeconds, isEditingScoreboard, setIsEditingScoreboard, visibleCards, toggleCard, isNotesOpen, setIsNotesOpen, isToolbarVisible, setIsToolbarVisible, workSessionMinutes, isHeatmapOpen, setIsHeatmapOpen, isZombieCall, clearZombieState, translationMood, setTranslationMood, isScoreboardHelpVisible, setIsScoreboardHelpVisible } = useSession();
+
+  const helpStyle = isScoreboardHelpVisible ? { outline: '1px dashed #3b82f6', position: 'relative' } : {};
+  const HelpLabel = ({ text }) => isScoreboardHelpVisible ? (
+    <div style={{ position: 'absolute', top: '-8px', left: '4px', fontSize: '0.45rem', background: '#3b82f6', color: 'white', padding: '0 3px', borderRadius: '2px', zIndex: 100, pointerEvents: 'none', fontWeight: 'bold', textTransform: 'uppercase', boxShadow: '0 1px 3px rgba(0,0,0,0.3)' }}>{text}</div>
+  ) : null;
   const { outputDevices, inputDevices, selectedSinkId, selectedMicId, changeSinkId, changeMicId, fetchDevices } = useAudioSettings();
   const audioEngine = useProgressiveAudio();
   const { initAudio, playChaChing, playCoinStack } = useRewardAudio();
@@ -547,7 +552,8 @@ export const DashboardHeader = ({ onStartAudio, onStopAudio, onReconnectStream, 
 
           {/* Stats Column (RIGHT) - Constrained to prevent workspace waste */}
           <div id="controls-right-col" className="header-column-side" style={{ display: 'flex', flexDirection: 'column', gap: '0.15rem', flexShrink: 0, justifyContent: 'flex-start', alignItems: 'center', width: '60px' }}>
-             <div id="right-pills-stack" style={{ display: 'flex', flexDirection: 'column', gap: '0.04rem', alignItems: 'center' }}>
+             <div id="right-pills-stack" style={{ display: 'flex', flexDirection: 'column', gap: '0.04rem', alignItems: 'center', ...helpStyle }}>
+               <HelpLabel text="Rates" />
                {/* CALL RATE PILL */}
                {callsToday > 0 ? (
                  <div id="pill-call-rate" className="metric-pill compact-pill" title={`CALL METRICS: You've taken ${callsToday} calls today. Your average call duration is ${avgCallMins} minutes per call.`} style={{ background: 'rgba(59,130,246,0.08)', border: '1px solid rgba(59,130,246,0.2)' }}>
@@ -570,12 +576,14 @@ export const DashboardHeader = ({ onStartAudio, onStopAudio, onReconnectStream, 
                )}
              </div>
 
-             <div id="feature-toggles-row" style={{ display: 'flex', gap: '0.1rem', marginTop: '0.15rem', alignItems: 'center', justifyContent: 'center', flexWrap: 'wrap' }}>
-                <button id="header-notes-btn" className="btn-icon tiny-btn" onClick={() => setIsNotesOpen(!isNotesOpen)} style={{ opacity: isNotesOpen ? 1 : 0.3 }} title="Notes">📝</button>
-                <button id="header-tools-btn" className="btn-icon tiny-btn" onClick={() => setIsToolbarVisible(!isToolbarVisible)} style={{ opacity: isToolbarVisible ? 1 : 0.3 }} title="Tools">🛠️</button>
-                <button id="header-heatmap-btn" className="btn-icon tiny-btn" onClick={() => setIsHeatmapOpen(true)} title="Monthly Heatmap">📅</button>
-                <button id="header-expand-btn" className="btn-icon tiny-btn" onClick={() => setIsCollapsed(false)} title="Expand HUD">🔼</button>
-             </div>
+             <div id="feature-toggles-row" style={{ display: 'flex', gap: '0.15rem', marginTop: '0.2rem', alignItems: 'center', justifyContent: 'center', flexWrap: 'nowrap', background: 'rgba(255,255,255,0.05)', padding: '0.1rem 0.3rem', borderRadius: '20px' }}>
+                 <button id="header-notes-btn" className="btn-icon tiny-btn" onClick={() => setIsNotesOpen(!isNotesOpen)} style={{ opacity: isNotesOpen ? 1 : 0.3, fontSize: '0.75rem' }} title="Notes">📝</button>
+                 <button id="header-tools-btn" className="btn-icon tiny-btn" onClick={() => setIsToolbarVisible(!isToolbarVisible)} style={{ opacity: isToolbarVisible ? 1 : 0.3, fontSize: '0.75rem' }} title="Tools">🛠️</button>
+                 <button id="header-edit-btn" className="btn-icon tiny-btn" onClick={() => { if(isCollapsed) setIsCollapsed(false); setIsEditingScoreboard(!isEditingScoreboard); }} style={{ opacity: isEditingScoreboard ? 1 : 0.3, fontSize: '0.75rem' }} title="Edit Grid">✏️</button>
+                 <button id="header-help-btn" className="btn-icon tiny-btn" onClick={() => setIsScoreboardHelpVisible(!isScoreboardHelpVisible)} style={{ opacity: isScoreboardHelpVisible ? 1 : 0.3, background: isScoreboardHelpVisible ? 'rgba(59,130,246,0.3)' : 'transparent', fontSize: '0.75rem' }} title="Toggle Labels">❓</button>
+                 <button id="header-heatmap-btn" className="btn-icon tiny-btn" onClick={() => setIsHeatmapOpen(true)} style={{ fontSize: '0.75rem' }} title="Monthly Heatmap">📅</button>
+                 <button id="header-expand-btn" className="btn-icon tiny-btn" onClick={() => setIsCollapsed(!isCollapsed)} style={{ fontSize: '0.75rem' }} title={isCollapsed ? "Expand HUD" : "Collapse HUD"}>{isCollapsed ? '🔼' : '▼'}</button>
+              </div>
           </div>
         </div>
       )}
@@ -588,7 +596,8 @@ export const DashboardHeader = ({ onStartAudio, onStopAudio, onReconnectStream, 
           <div className="dashboard-row dashboard-row-upper">
             
             {/* Today's Bounty (THE STAR) */}
-            <div className="income-card" style={{ flex: '2 1 0', minWidth: 0, background: 'rgba(52, 211, 153, 0.1)', border: '1px solid rgba(52, 211, 153, 0.2)', padding: '0.3rem 0.4rem', borderRadius: '10px' }} title={`TODAY'S BOUNTY: The remaining AR$ you need to earn today to hit your personalized daily goal (Target: AR$${dailyTargetArs.toLocaleString('es-AR')}).`}>
+            <div className="income-card" style={{ flex: '2 1 0', minWidth: 0, background: 'rgba(52, 211, 153, 0.1)', border: '1px solid rgba(52, 211, 153, 0.2)', padding: '0.3rem 0.4rem', borderRadius: '10px', ...helpStyle }} title={`TODAY'S BOUNTY: The remaining AR$ you need to earn today to hit your personalized daily goal (Target: AR$${dailyTargetArs.toLocaleString('es-AR')}).`}>
+              <HelpLabel text="Bounty" />
               <span className="income-label" style={{ color: '#6ee7b7', fontWeight: 800 }}>💰 TODAY'S BOUNTY</span>
               <div style={{ display: 'flex', alignItems: 'center', gap: '0.3rem', flexWrap: 'wrap', justifyContent: 'center' }}>
                 <div style={{ 
@@ -623,7 +632,8 @@ export const DashboardHeader = ({ onStartAudio, onStopAudio, onReconnectStream, 
 
             {/* Today's Shift Progress */}
             {(isEditingScoreboard || visibleCards.today) && (
-              <div className="income-card income-tier-2" style={{ flex: '1 1 0', minWidth: 0, cursor: 'pointer' }} onClick={() => !isEditingScoreboard && setIsTodayDialOpen(true)} title="DAILY PROGRESS: Minutes banked today out of your total daily target minutes required based on your monthly pacing.">
+              <div className="income-card income-tier-2" style={{ flex: '1 1 0', minWidth: 0, cursor: 'pointer', ...helpStyle }} onClick={() => !isEditingScoreboard && setIsTodayDialOpen(true)} title="DAILY PROGRESS: Minutes banked today out of your total daily target minutes required based on your monthly pacing.">
+                <HelpLabel text="Daily Mins" />
                 <span className="income-label">{activeDayEmoji} DAILY</span>
                 <span className="income-ars" style={{ whiteSpace: 'nowrap' }}>🌊{Math.round(stats.dailyMinutes)}m/🎯{Math.round(dailyGoal)}m</span>
                 <span style={{ fontSize: '0.55rem', opacity: 0.6 }}>({(stats.dailyMinutes / (dailyGoal || 1) * 100).toFixed(0)}%)</span>
@@ -631,7 +641,8 @@ export const DashboardHeader = ({ onStartAudio, onStopAudio, onReconnectStream, 
             )}
 
             {/* Goal Ladder */}
-            <div className="income-card" style={{ flex: '1 1 0', minWidth: 0, borderLeft: '1px solid rgba(255,255,255,0.1)', paddingLeft: '0.5rem' }} title={`PRO LADDER: Your next immediate target on the 12-step ladder. Reaching ${nextMilestone}m levels you up!`}>
+            <div className="income-card" style={{ flex: '1 1 0', minWidth: 0, borderLeft: '1px solid rgba(255,255,255,0.1)', paddingLeft: '0.5rem', ...helpStyle }} title={`PRO LADDER: Your next immediate target on the 12-step ladder. Reaching ${nextMilestone}m levels you up!`}>
+               <HelpLabel text="Ladder" />
                <span className="income-label">🪜 NEXT</span>
                <span style={{ fontSize: '0.8rem', fontWeight: 800, color: '#a855f7', whiteSpace: 'nowrap' }}>{nextGoalLabel}</span>
                <span style={{ fontSize: '0.55rem', opacity: 0.6, whiteSpace: 'nowrap' }}>{nextMilestone}m</span>
@@ -727,7 +738,8 @@ export const DashboardHeader = ({ onStartAudio, onStopAudio, onReconnectStream, 
 
             {/* Current Call (Live) */}
             {(isEditingScoreboard || visibleCards.call) && (
-              <div className={`income-card ${isActive ? 'active' : ''}`} style={{ flex: '1 1 0', minWidth: 0, borderLeft: '1px solid rgba(255,255,255,0.1)', paddingLeft: '0.5rem' }} title="CURRENT CALL: Active duration and unbanked earnings of the ongoing call. Resets every time you hit STOP.">
+              <div className={`income-card ${isActive ? 'active' : ''}`} style={{ flex: '1 1 0', minWidth: 0, borderLeft: '1px solid rgba(255,255,255,0.1)', paddingLeft: '0.5rem', ...helpStyle }} title="CURRENT CALL: Active duration and unbanked earnings of the ongoing call. Resets every time you hit STOP.">
+                <HelpLabel text="Call" />
                 <span className="income-label" style={{ fontSize: '0.55rem' }}>CALL ({formatTime(sessionSeconds)})</span>
                 <span className="income-ars" style={{ fontSize: '0.85rem', whiteSpace: 'nowrap' }}>
                   <RollingNumber value={Math.round(sessionEarnings * arsRate)} prefix="AR$" height={18} />
@@ -760,13 +772,14 @@ export const DashboardHeader = ({ onStartAudio, onStopAudio, onReconnectStream, 
             </div>
 
             {/* Tool toggles — consolidated single row to maximize workspace */}
-            <div className="consolidated-toolbar" style={{ display: 'flex', gap: '0.2rem', alignItems: 'center', flexShrink: 0, paddingLeft: '0.5rem', borderLeft: '1px solid rgba(255,255,255,0.1)' }}>
+            <div className="consolidated-toolbar" style={{ display: 'flex', gap: '0.2rem', alignItems: 'center', flexShrink: 0, padding: '0.2rem 0.5rem', background: 'rgba(255,255,255,0.05)', borderRadius: '10px' }}>
               <button id="notes-toggle-btn" className={`btn-compact ${isNotesOpen ? 'active' : ''}`} onClick={() => setIsNotesOpen(!isNotesOpen)} title="Toggle Notes">📝</button>
               <button id="tools-toggle-btn" className={`btn-compact ${isToolbarVisible ? 'active' : ''}`} onClick={() => setIsToolbarVisible(!isToolbarVisible)} title="Toggle Tools">🛠️</button>
-              <button id="heatmap-btn-expanded" className="btn-compact" onClick={() => setIsHeatmapOpen(true)} title="Monthly Heatmap">📅</button>
               <button id="edit-scoreboard-btn" className={`btn-compact ${isEditingScoreboard ? 'active-edit' : ''}`} onClick={() => setIsEditingScoreboard(!isEditingScoreboard)} title={isEditingScoreboard ? 'Save Grid' : 'Edit Grid'}>
                 {isEditingScoreboard ? '💾' : '✏️'}
               </button>
+              <button id="help-toggle-btn" className={`btn-compact ${isScoreboardHelpVisible ? 'active' : ''}`} onClick={() => setIsScoreboardHelpVisible(!isScoreboardHelpVisible)} title="Toggle Label Outlines">❓</button>
+              <button id="heatmap-btn-expanded" className="btn-compact" onClick={() => setIsHeatmapOpen(true)} title="Monthly Heatmap">📅</button>
               <button id="collapse-btn" className="btn-compact danger" onClick={() => setIsCollapsed(true)} title="Collapse Scoreboard">▲</button>
             </div>
           </div>
