@@ -96,7 +96,7 @@ const StateIndicators = ({ state, breakMinutes }) => {
 };
 
 export const DashboardHeader = ({ onStartAudio, onStopAudio, onReconnectStream, sttLanguage, onToggleLanguage, connectionState, connectionMessage }) => {
-  const { isActive, sessionSeconds, setSessionSeconds, sessionEarnings, stats, updateStat, startSession, stopSession, endDay, RATE_PER_MINUTE, arsRate, setArsRate, isBreakActive, breakSeconds, startBreak, stopBreak, availSeconds, isEditingScoreboard, setIsEditingScoreboard, visibleCards, toggleCard, isNotesOpen, setIsNotesOpen, isToolbarVisible, setIsToolbarVisible, workSessionMinutes, isHeatmapOpen, setIsHeatmapOpen, isZombieCall, clearZombieState } = useSession();
+  const { isActive, sessionSeconds, setSessionSeconds, sessionEarnings, stats, updateStat, startSession, stopSession, endDay, RATE_PER_MINUTE, arsRate, setArsRate, isBreakActive, breakSeconds, startBreak, stopBreak, availSeconds, isEditingScoreboard, setIsEditingScoreboard, visibleCards, toggleCard, isNotesOpen, setIsNotesOpen, isToolbarVisible, setIsToolbarVisible, workSessionMinutes, isHeatmapOpen, setIsHeatmapOpen, isZombieCall, clearZombieState, translationMood, setTranslationMood } = useSession();
   const { outputDevices, inputDevices, selectedSinkId, selectedMicId, changeSinkId, changeMicId, fetchDevices } = useAudioSettings();
   const audioEngine = useProgressiveAudio();
   const { initAudio, playChaChing, playCoinStack } = useRewardAudio();

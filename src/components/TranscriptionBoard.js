@@ -98,7 +98,8 @@ const StatusProgress = ({ status }) => {
 };
 
 const TranslatedBubble = ({ id, text, lang, playTTS, stopTTS, playingUrl, prefetchTTS, reverse = false, ttsMode, wordCount, shouldPrefetch, emphasisMode, isPinned, onTogglePin }) => {
-  const { translation, audioUrl, isTranslating, engineStatus, targetLang } = useTranslate(text, lang, prefetchTTS, shouldPrefetch);
+  const { translationMood } = useSession();
+  const { translation, audioUrl, isTranslating, engineStatus, targetLang } = useTranslate(text, lang, prefetchTTS, shouldPrefetch, translationMood);
   const hasAutoPlayedRef = useRef(false);
 
   useEffect(() => {

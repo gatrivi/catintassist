@@ -35,13 +35,16 @@ const setCached = (text, langPair, result) => {
   }
 };
 
-export const useTranslate = (text, lang, prefetchTTS, shouldPrefetch) => {
+export const useTranslate = (text, lang, prefetchTTS, shouldPrefetch, mood = 'default') => {
   const [translation, setTranslation] = useState('');
   const [audioUrl, setAudioUrl] = useState(null);
   const [isTranslating, setIsTranslating] = useState(false);
   const [engineStatus, setEngineStatus] = useState('idle');
   const lastPrefetchedTextRef = useRef('');
+  const lastTranslatedTextRef = useRef('');
+  const lastWordCountRef = useRef(0);
   const debounceTimerRef = useRef(null);
+  const abortControllerRef = useRef(null);
 
   const sourceLang = (lang || 'en').toLowerCase().startsWith('es') ? 'es' : 'en';
   const targetLang = sourceLang === 'en' ? 'es' : 'en';
@@ -58,18 +61,40 @@ export const useTranslate = (text, lang, prefetchTTS, shouldPrefetch) => {
       setTranslation(''); setAudioUrl(null); setEngineStatus('idle'); return;
     }
 
+    // NORMALIZE TEXT for comparison
+    const normText = text.trim().replace(/\s+/g, ' ');
+    const wordCount = normText.split(/\s+/).length;
+
+    // SAFETY VALVE: Only translate if significant words added (except in FAST mood)
+    const wordDelta = Math.abs(wordCount - lastWordCountRef.current);
+    const isPunctuationEnding = /[.!?]$/.test(normText);
+    const shouldSkipDueToDelta = mood !== 'fast' && wordDelta < 3 && !isPunctuationEnding && lastTranslatedTextRef.current;
+    
+    if (shouldSkipDueToDelta) return;
+
+    // DEBOUNCE based on MOOD
+    const debounceTimes = { fast: 400, default: 700, chill: 1200 };
+    const waitTime = debounceTimes[mood] || 700;
+
     if (debounceTimerRef.current) clearTimeout(debounceTimerRef.current);
 
     debounceTimerRef.current = setTimeout(async () => {
+      // KILL Previous Request if still running
+      if (abortControllerRef.current) abortControllerRef.current.abort();
+      abortControllerRef.current = new AbortController();
+      const { signal } = abortControllerRef.current;
+
       setIsTranslating(true);
       setEngineStatus('translating');
       const langPair = `${sourceLang}-${targetLang}`;
-      const cached = getCached(text, langPair);
+      const cached = getCached(normText, langPair);
       
       if (cached) { 
         setTranslation(cached); 
         setIsTranslating(false); 
         setEngineStatus('ready');
+        lastTranslatedTextRef.current = normText;
+        lastWordCountRef.current = wordCount;
         if (shouldPrefetch && typeof prefetchTTS === 'function') {
           const url = await prefetchTTS(cached, targetLang);
           setAudioUrl(url);
@@ -80,8 +105,6 @@ export const useTranslate = (text, lang, prefetchTTS, shouldPrefetch) => {
 
       const keys = {
         DEEPL: localStorage.getItem('DEEPL_API_KEY'),
-        MS: localStorage.getItem('MICROSOFT_TRANSLATOR_KEY'),
-        MS_REG: localStorage.getItem('MICROSOFT_TRANSLATOR_REGION') || 'eastus',
         OPENAI: localStorage.getItem('OPENAI_API_KEY')
       };
 
@@ -89,7 +112,7 @@ export const useTranslate = (text, lang, prefetchTTS, shouldPrefetch) => {
         deepl: async (c) => {
           if (!keys.DEEPL) throw 'no key';
           const r = await fetch(`https://api-free.deepl.com/v2/translate`, {
-            method: 'POST', headers: { 'Authorization': `DeepL-Auth-Key ${keys.DEEPL}`, 'Content-Type': 'application/x-www-form-urlencoded' },
+            method: 'POST', signal, headers: { 'Authorization': `DeepL-Auth-Key ${keys.DEEPL}`, 'Content-Type': 'application/x-www-form-urlencoded' },
             body: new URLSearchParams({ text: c, target_lang: targetLang.toUpperCase(), source_lang: sourceLang.toUpperCase() })
           });
           if (!r.ok) throw `status ${r.status}`;
@@ -98,7 +121,7 @@ export const useTranslate = (text, lang, prefetchTTS, shouldPrefetch) => {
         openai: async (c) => {
           if (!keys.OPENAI) throw 'no key';
           const r = await fetch('https://api.openai.com/v1/chat/completions', {
-            method: 'POST', headers: { 'Authorization': `Bearer ${keys.OPENAI}`, 'Content-Type': 'application/json' },
+            method: 'POST', signal, headers: { 'Authorization': `Bearer ${keys.OPENAI}`, 'Content-Type': 'application/json' },
             body: JSON.stringify({
               model: "gpt-4o-mini",
               messages: [{ role: "system", content: `Translate from ${sourceLang} to ${targetLang}. Return ONLY the direct translation.` }, { role: "user", content: c }],
@@ -109,20 +132,20 @@ export const useTranslate = (text, lang, prefetchTTS, shouldPrefetch) => {
           const d = await r.json(); return d.choices?.[0]?.message?.content;
         },
         google_gtx: async (c) => {
-          const r = await fetch(`https://translate.googleapis.com/translate_a/single?client=gtx&sl=${sourceLang}&tl=${targetLang}&dt=t&q=${encodeURIComponent(c)}`);
+          const r = await fetch(`https://translate.googleapis.com/translate_a/single?client=gtx&sl=${sourceLang}&tl=${targetLang}&dt=t&q=${encodeURIComponent(c)}`, { signal });
           if (!r.ok) throw `gtx ${r.status}`;
           const d = await r.json(); 
           return d?.[0]?.map(s => s[0]).filter(Boolean).join(' ').replace(/\s+/g, ' ').trim() || '';
         },
         mymemory: async (c) => {
-          const r = await fetch(`https://api.mymemory.translated.net/get?q=${encodeURIComponent(c)}&langpair=${sourceLang}|${targetLang}&de=catintassist@example.com`);
+          const r = await fetch(`https://api.mymemory.translated.net/get?q=${encodeURIComponent(c)}&langpair=${sourceLang}|${targetLang}&de=catintassist@example.com`, { signal });
           if (!r.ok) throw `mymemory ${r.status}`;
           const d = await r.json(); 
           if (d.responseStatus !== 200) throw `mymemory err ${d.responseStatus}`;
           return d.responseData?.translatedText;
         },
         google: async (c) => {
-          const r = await fetch(`https://translate.googleapis.com/translate_a/t?client=te&v=1.0&sl=${sourceLang}&tl=${targetLang}&q=${encodeURIComponent(c)}`);
+          const r = await fetch(`https://translate.googleapis.com/translate_a/t?client=te&v=1.0&sl=${sourceLang}&tl=${targetLang}&q=${encodeURIComponent(c)}`, { signal });
           if (!r.ok) throw `status ${r.status}`;
           const d = await r.json(); 
           if (Array.isArray(d)) return d.map(p => typeof p === 'string' ? p : (p[0] || '')).join(' ');
@@ -146,19 +169,20 @@ export const useTranslate = (text, lang, prefetchTTS, shouldPrefetch) => {
           const timeouts = [];
           pool.forEach((service) => {
             const tout = setTimeout(async () => {
-              if (resolved) return;
+              if (resolved || signal.aborted) return;
               try {
                 const res = await service.fn(chunk);
                 const clean = sanitizeTranslation(String(res));
-                if (clean && !resolved) {
+                if (clean && !resolved && !signal.aborted) {
                   resolved = true;
                   timeouts.forEach(clearTimeout);
                   resolve(clean.trim());
                 }
               } catch (e) {
+                if (e.name === 'AbortError') return;
                 if (e.toString().includes('429') || e.toString().includes('403')) {
                   BLACKBOX[service.id] = Date.now();
-                  console.warn(`[Trans] Service ${service.id} throttled/blocked. Blacklisting for 5m.`);
+                  console.warn(`[Trans] Service ${service.id} throttled. Blacklisting for 5m.`);
                 }
               }
             }, service.delay);
@@ -166,7 +190,7 @@ export const useTranslate = (text, lang, prefetchTTS, shouldPrefetch) => {
           });
 
           setTimeout(() => { 
-            if (!resolved) {
+            if (!resolved && !signal.aborted) {
               resolved = true;
               timeouts.forEach(clearTimeout);
               resolve(chunk.trim()); 
@@ -175,44 +199,56 @@ export const useTranslate = (text, lang, prefetchTTS, shouldPrefetch) => {
         });
       };
 
-      const chunks = [];
-      let rem = text;
-      while (rem.length > 0) {
-        if (rem.length <= 400) { chunks.push(rem); break; }
-        let idx = rem.lastIndexOf('. ', 400);
-        if (idx === -1) idx = rem.lastIndexOf(' ', 400);
-        if (idx === -1) idx = 400;
-        chunks.push(rem.substring(0, idx + 1).trim());
-        rem = rem.substring(idx + 1).trim();
+      try {
+        const chunks = [];
+        let rem = normText;
+        while (rem.length > 0) {
+          if (rem.length <= 400) { chunks.push(rem); break; }
+          let idx = rem.lastIndexOf('. ', 400);
+          if (idx === -1) idx = rem.lastIndexOf(' ', 400);
+          if (idx === -1) idx = 400;
+          chunks.push(rem.substring(0, idx + 1).trim());
+          rem = rem.substring(idx + 1).trim();
+        }
+
+        const results = [];
+        for (const c of chunks) {
+          if (signal.aborted) break;
+          results.push(await raceChunk(c));
+          await new Promise(res => setTimeout(res, 80)); // Stagger
+        }
+
+        if (signal.aborted) return;
+
+        const final = results.join(' ').trim();
+        if (final) {
+          setTranslation(final);
+          setCached(normText, langPair, final);
+          lastTranslatedTextRef.current = normText;
+          lastWordCountRef.current = wordCount;
+        }
+      } catch (e) {
+        if (e.name !== 'AbortError') console.error('[Trans] Final catch:', e);
+      } finally {
+        if (!signal.aborted) {
+          setIsTranslating(false);
+          setEngineStatus('ready');
+        }
       }
 
-      // Process chunks with a slight gap to avoid hitting rate-limiters at the exact same microsecond
-      const results = [];
-      for (const c of chunks) {
-        results.push(await raceChunk(c));
-        await new Promise(r => setTimeout(r, 100)); // Stagger
-      }
-
-      const final = results.join(' ').trim();
-      if (final) {
-        setTranslation(final);
-        setCached(text, langPair, final);
-      }
-      setIsTranslating(false);
-      setEngineStatus('ready');
-
-      if (shouldPrefetch && final && final !== lastPrefetchedTextRef.current && typeof prefetchTTS === 'function') {
-        setEngineStatus('buffering');
-        const url = await prefetchTTS(final, targetLang);
+      if (!signal.aborted && shouldPrefetch && typeof prefetchTTS === 'function' && translation) {
+        const url = await prefetchTTS(translation, targetLang);
         setAudioUrl(url);
-        setEngineStatus('ready');
-        lastPrefetchedTextRef.current = final;
+        lastPrefetchedTextRef.current = translation;
       }
-    }, 600); // 600ms Debounce
+    }, waitTime);
 
     return () => {
       if (debounceTimerRef.current) clearTimeout(debounceTimerRef.current);
+      if (abortControllerRef.current) abortControllerRef.current.abort();
     };
+  }, [text, lang, shouldPrefetch, prefetchTTS, sourceLang, targetLang, mood]);
+
   return { translation, audioUrl, isTranslating, engineStatus, targetLang };
 };
 

@@ -38,6 +38,12 @@ export const SessionProvider = ({ children }) => {
     setIsZombieCall(false);
     safeLocalStorageSet('catint_active', 'false');
   };
+
+  const [translationMood, setTranslationMood] = useState(() => localStorage.getItem('catint_trans_mood') || 'default');
+  
+  useEffect(() => {
+    localStorage.setItem('catint_trans_mood', translationMood);
+  }, [translationMood]);
   const [sessionSeconds, setSessionSeconds] = useState(() => Number(localStorage.getItem('catint_s_sec')) || 0);
   const [isBreakActive, setIsBreakActive] = useState(() => JSON.parse(localStorage.getItem('catint_break')) || false);
   const [breakSeconds, setBreakSeconds] = useState(() => Number(localStorage.getItem('catint_b_sec')) || 0);
@@ -415,6 +421,8 @@ export const SessionProvider = ({ children }) => {
     commitDayToLog,
     isZombieCall,
     clearZombieState,
+    translationMood,
+    setTranslationMood,
     isHeatmapOpen,
     setIsHeatmapOpen,
     getCompensatedLogOff,
