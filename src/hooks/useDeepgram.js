@@ -131,17 +131,19 @@ export const useDeepgram = () => {
         const confidence = alt?.confidence || 0;
         const isFinal = received.is_final;
 
-        if (transcript) {
-          updateActivity();
+        if (transcript && transcript.trim().length > 0) {
+          const words = transcript.trim().split(/\s+/);
+          const isSignificant = words.length >= 3 || confidence > 0.85;
+
+          if (isSignificant) {
+            updateActivity();
+            setLastDataTime(Date.now());
+          }
+
           const now = Date.now();
-          setLastDataTime(now);
           const timeSinceLast = now - lastTranscriptTimeRef.current;
           lastTranscriptTimeRef.current = now;
-          // Break into a new bubble after 2.0s of absolute silence (relaxed from 1.8s). 
           const isSilentBreak = timeSinceLast > 2000;
-          
-          // AUTO-CLEAR: If we have reached a major silence gap (>120s), we clear the board
-          // to ensure the "Next Call" starts clean.
           const isMajorGap = timeSinceLast > 120000;
 
           setCaptions(prev => {
