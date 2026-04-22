@@ -117,7 +117,7 @@ const StateIndicators = ({ state, breakMinutes, isZombie, silenceCount }) => {
 };
 
 export const DashboardHeader = ({ onStartAudio, onStopAudio, onReconnectStream, sttLanguage, onToggleLanguage, onRecovery, connectionState, connectionMessage, lastDataTime }) => {
-  const { isActive, sessionSeconds, setSessionSeconds, sessionEarnings, stats, updateStat, startSession, stopSession, endDay, RATE_PER_MINUTE, arsRate, setArsRate, isBreakActive, breakSeconds, startBreak, stopBreak, availSeconds, isEditingScoreboard, setIsEditingScoreboard, visibleCards, toggleCard, isNotesOpen, setIsNotesOpen, isToolbarVisible, setIsToolbarVisible, workSessionMinutes, isHeatmapOpen, setIsHeatmapOpen, isZombieCall, clearZombieState, translationMood, setTranslationMood, isScoreboardHelpVisible, setIsScoreboardHelpVisible, isHold, setIsHold, holdSeconds, setHoldSeconds, dailyTimeline, historyTimeline, dailyLog, lastActivityTime } = useSession();
+  const { isActive, sessionSeconds, setSessionSeconds, sessionEarnings, stats, updateStat, startSession, stopSession, endDay, RATE_PER_MINUTE, arsRate, setArsRate, isBreakActive, breakSeconds, startBreak, stopBreak, availSeconds, isEditingScoreboard, setIsEditingScoreboard, visibleCards, toggleCard, isNotesOpen, setIsNotesOpen, isToolbarVisible, setIsToolbarVisible, workSessionMinutes, isHeatmapOpen, setIsHeatmapOpen, isZombieCall, clearZombieState, translationMood, setTranslationMood, isScoreboardHelpVisible, setIsScoreboardHelpVisible, isHold, setIsHold, holdSeconds, setHoldSeconds, dailyTimeline, historyTimeline, dailyLog, lastActivityTime, isCallDetectionEnabled, setIsCallDetectionEnabled } = useSession();
 
   const helpStyle = isScoreboardHelpVisible ? { outline: '1px dashed #3b82f6', position: 'relative' } : {};
   const HelpLabel = ({ text }) => isScoreboardHelpVisible ? (
@@ -708,6 +708,7 @@ export const DashboardHeader = ({ onStartAudio, onStopAudio, onReconnectStream, 
                  <button id="header-help-btn" className="btn-icon tiny-btn" onClick={() => setIsScoreboardHelpVisible(!isScoreboardHelpVisible)} style={{ opacity: isScoreboardHelpVisible ? 1 : 0.3, background: isScoreboardHelpVisible ? 'rgba(59,130,246,0.3)' : 'transparent', fontSize: '0.7rem' }} title="Toggle Labels">❓</button>
                  <button id="header-heatmap-btn" className="btn-icon tiny-btn" onClick={() => setIsHeatmapOpen(true)} style={{ fontSize: '0.7rem' }} title="Monthly Heatmap">📅</button>
                  <button id="header-expand-btn" className="btn-icon tiny-btn" onClick={() => setIsCollapsed(!isCollapsed)} style={{ fontSize: '0.7rem' }} title={isCollapsed ? "Expand HUD" : "Collapse HUD"}>{isCollapsed ? '🔼' : '▼'}</button>
+                 <button id="header-calldetect-btn" className="btn-icon tiny-btn" onClick={() => setIsCallDetectionEnabled(!isCallDetectionEnabled)} style={{ opacity: isCallDetectionEnabled ? 1 : 0.3, background: isCallDetectionEnabled ? 'rgba(16,185,129,0.1)' : 'transparent', fontSize: '0.7rem' }} title="Call Detection">{isCallDetectionEnabled ? '📡' : '📵'}</button>
               </div>
           </div>
         </div>

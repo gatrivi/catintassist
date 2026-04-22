@@ -102,8 +102,16 @@ export const SessionProvider = ({ children }) => {
     const saved = localStorage.getItem('catint_toolbar_visible');
     return saved !== null ? JSON.parse(saved) : true;
   });
+  const [isHeatmapOpen, setIsHeatmapOpen] = useState(false);
+  const [isScoreboardHelpVisible, setIsScoreboardHelpVisible] = useState(false);
+  const [isCallDetectionEnabled, setIsCallDetectionEnabled] = useState(() => {
+    const saved = localStorage.getItem('catint_call_detect');
+    return saved === null ? true : saved === 'true';
+  });
 
-  useEffect(() => { safeLocalStorageSet('catint_toolbar_visible', JSON.stringify(isToolbarVisible)); }, [isToolbarVisible]);
+  useEffect(() => { localStorage.setItem('catint_notes_open', JSON.stringify(isNotesOpen)); }, [isNotesOpen]);
+  useEffect(() => { localStorage.setItem('catint_toolbar_visible', JSON.stringify(isToolbarVisible)); }, [isToolbarVisible]);
+  useEffect(() => { localStorage.setItem('catint_call_detect', JSON.stringify(isCallDetectionEnabled)); }, [isCallDetectionEnabled]);
 
   const [visibleCards, setVisibleCards] = useState(() => {
     const saved = localStorage.getItem('catintassist_visible_cards');
@@ -182,11 +190,6 @@ export const SessionProvider = ({ children }) => {
     }
     return initialStats;
   });
-
-  // HELP OVERLAY STATE
-  const [isScoreboardHelpVisible, setIsScoreboardHelpVisible] = useState(false);
-  // HEATMAP OPEN STATE
-  const [isHeatmapOpen, setIsHeatmapOpen] = useState(false);
 
   const [workSessionStartTime, setWorkSessionStartTime] = useState(() => stats.lastBreakEndTime || stats.dayStartTime || Date.now());
   const [workSessionMinutes, setWorkSessionMinutes] = useState(0);
@@ -536,6 +539,8 @@ export const SessionProvider = ({ children }) => {
     setIsHeatmapOpen,
     isScoreboardHelpVisible,
     setIsScoreboardHelpVisible,
+    isCallDetectionEnabled,
+    setIsCallDetectionEnabled,
     getCompensatedLogOff,
     minutesSinceLastBreak,
     historyTimeline,

@@ -73,7 +73,7 @@ const removeOverlap = (base, addition) => {
 };
 
 export const useDeepgram = () => {
-  const { updateActivity } = useSession();
+  const { updateActivity, isCallDetectionEnabled } = useSession();
   const [captions, setCaptions] = useState([]);
   const [connectionState, setConnectionState] = useState('disconnected');
   const [connectionMessage, setConnectionMessage] = useState('Disconnected');
@@ -158,9 +158,10 @@ export const useDeepgram = () => {
 
         if (transcript && transcript.trim().length > 0) {
           const words = transcript.trim().split(/\s+/);
-          const isSignificant = words.length >= 3 || confidence > 0.85;
+          // Stricter significance to filter out music lyrics/ambient noise
+          const isSignificant = words.length >= 5 || (confidence > 0.9 && words.length >= 2);
 
-          if (isSignificant) {
+          if (isSignificant && isCallDetectionEnabled) {
             updateActivity();
             setLastDataTime(Date.now());
           }
