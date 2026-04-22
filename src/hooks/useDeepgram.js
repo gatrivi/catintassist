@@ -15,7 +15,7 @@ const removeOverlap = (base, addition) => {
   const baseWords = base.trim().split(/\s+/);
   const additionWords = addition.trim().split(/\s+/);
   
-  // 2. CLASSIC OVERLAP: Find the longest suffix of base that matches a prefix of addition
+  // 2. CLASSIC TAIL-HEAD OVERLAP (Longest to shortest)
   for (let i = Math.min(baseWords.length, additionWords.length); i > 0; i--) {
     const baseSuffix = normalize(baseWords.slice(-i).join(''));
     const additionPrefix = normalize(additionWords.slice(0, i).join(''));
@@ -25,22 +25,18 @@ const removeOverlap = (base, addition) => {
     }
   }
 
-  // 3. FUZZY TAIL MATCH: If the start of addition exists anywhere in the last 20 words of base
+  // 3. AGGRESSIVE FRAGMENT MATCH (Deepgram Rewinds)
+  // If the addition starts with a significant chunk (3-6 words) that appears 
+  // anywhere in the last 25 words of the base, prune it.
   if (additionWords.length >= 3) {
-    const startOfAddition = normalize(additionWords.slice(0, 3).join(''));
-    for (let j = Math.max(0, baseWords.length - 20); j < baseWords.length - 2; j++) {
-      const baseWindow = normalize(baseWords.slice(j, j + 3).join(''));
-      if (baseWindow === startOfAddition) {
-         // Found a potential mid-sentence rewind. 
-         // Check if the rest of addition matches from this point.
-         let matchCount = 0;
-         while (j + matchCount < baseWords.length && matchCount < additionWords.length) {
-            if (normalize(baseWords[j + matchCount]) === normalize(additionWords[matchCount])) {
-              matchCount++;
-            } else break;
-         }
-         if (matchCount >= 3) return additionWords.slice(matchCount).join(' ');
-      }
+    for (let n = Math.min(6, additionWords.length); n >= 3; n--) {
+       const head = normalize(additionWords.slice(0, n).join(''));
+       for (let j = Math.max(0, baseWords.length - 25); j <= baseWords.length - n; j++) {
+          const window = normalize(baseWords.slice(j, j + n).join(''));
+          if (window === head) {
+             return additionWords.slice(n).join(' ');
+          }
+       }
     }
   }
 
