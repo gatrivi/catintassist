@@ -421,8 +421,8 @@ export const DashboardHeader = ({ onStartAudio, onStopAudio, onReconnectStream, 
   const monthlyDeficitMins = expectedByToday - stats.monthlyMinutes; // positive = behind
   const isInDeficit = monthlyDeficitMins > 30;
   // Per-day needed to reach Growth (11k) by month end
-  const recoveryDailyTarget = remainingWorkDays > 0 ? Math.ceil(Math.max(0, GROWTH_TARGET - stats.monthlyMinutes) / remainingWorkDays) : baseYield;
-  const survivalDailyTarget = remainingWorkDays > 0 ? Math.ceil(Math.max(0, 5500 - stats.monthlyMinutes) / remainingWorkDays) : baseYield;
+  const recoveryDailyTarget = Math.min(600, remainingWorkDays > 0 ? Math.ceil(Math.max(0, GROWTH_TARGET - stats.monthlyMinutes) / remainingWorkDays) : baseYield);
+  const survivalDailyTarget = Math.min(600, remainingWorkDays > 0 ? Math.ceil(Math.max(0, 5500 - stats.monthlyMinutes) / remainingWorkDays) : baseYield);
 
   // ── SMART METRICS ────────────────────────────────────────────────
   // Use TOTAL (banked + live) so everything updates tick-by-tick during a call
