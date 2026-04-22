@@ -1,23 +1,49 @@
 import { useState, useRef, useCallback, useEffect } from 'react';
 import { useSession } from '../contexts/SessionContext';
 
-// Helper to remove overlapping prefix from a new string based on a base string
-// Example: base="Hello world.", addition="world how are you" -> returns "how are you"
+// Aggressive deduplication helper
+// Normalizes strings by removing ALL non-alphanumeric characters and extra spaces
+const normalize = (s) => (s || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+
 const removeOverlap = (base, addition) => {
   if (!base || !addition) return addition;
+  
   const baseWords = base.trim().split(/\s+/);
   const additionWords = addition.trim().split(/\s+/);
   
-  // Look for the longest suffix of base that matches prefix of addition
+  // Try to find the longest overlapping word sequence
   for (let i = Math.min(baseWords.length, additionWords.length); i > 0; i--) {
-    // Normalize: lowercase and strip punctuation for the comparison
-    const baseSuffix = baseWords.slice(-i).join(' ').toLowerCase().replace(/[.,!?]/g, '');
-    const additionPrefix = additionWords.slice(0, i).join(' ').toLowerCase().replace(/[.,!?]/g, '');
+    const baseSuffix = normalize(baseWords.slice(-i).join(''));
+    const additionPrefix = normalize(additionWords.slice(0, i).join(''));
     
     if (baseSuffix === additionPrefix && baseSuffix.length > 0) {
+      // We found a match! Return the non-overlapping part of the addition
       return additionWords.slice(i).join(' ');
     }
   }
+
+  // SECONDARY DEFENSE: If the first 5 words of addition exist anywhere in the last 15 words of base
+  // This catches cases where Deepgram rewinds to a slightly different offset
+  if (additionWords.length >= 3) {
+    const startOfAddition = normalize(additionWords.slice(0, 3).join(''));
+    for (let j = 0; j < baseWords.length - 2; j++) {
+      const baseWindow = normalize(baseWords.slice(j, j + 3).join(''));
+      if (baseWindow === startOfAddition) {
+        // If we find a 3-word match, check how much follows it
+        // For simplicity, if we find a match in the last 15 words, we skip those words
+        if (j > baseWords.length - 15) {
+           // This is a bit risky but handles the "rewind" well
+           // Let's refine: find the longest matching sequence starting at j
+           let k = 0;
+           while (j + k < baseWords.length && k < additionWords.length && normalize(baseWords[j+k]) === normalize(additionWords[k])) {
+             k++;
+           }
+           if (k >= 3) return additionWords.slice(k).join(' ');
+        }
+      }
+    }
+  }
+
   return addition;
 };
 
