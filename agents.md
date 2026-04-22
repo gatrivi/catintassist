@@ -109,4 +109,5 @@ CURRENT INBOX
 - [x] UI: improved contrast for 'In Call' segments with white glow effect (v4.2.2)
 - [x] health: Smart Status Dot and 'Zap' button for stale connections (v4.2.3)
 - [x] alerts: 'Interpretation Stuck' warning banner in SilenceGuardian (v4.2.3)
+- [x] HUD: real-time silence counter that resets on speech (v4.2.4)
 </details>

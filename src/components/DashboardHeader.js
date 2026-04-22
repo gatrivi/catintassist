@@ -121,6 +121,14 @@ export const DashboardHeader = ({ onStartAudio, onStopAudio, onReconnectStream, 
   const [isBountyAnimating, setIsBountyAnimating] = useState(false);
   const [timeEditMode, setTimeEditMode] = useState(null); // 'call' | 'break' | null
   const [scoreView, setScoreView] = useState('numbers'); // 'game' | 'numbers'
+  const [silenceCount, setSilenceCount] = useState(0);
+
+  useEffect(() => {
+    const iv = setInterval(() => {
+      setSilenceCount(Math.floor((Date.now() - lastActivityTime) / 1000));
+    }, 1000);
+    return () => clearInterval(iv);
+  }, [lastActivityTime]);
 
   const startOfToday = new Date().setHours(0,0,0,0);
   const timelineStart = startOfToday + 9 * 3600000;
@@ -750,7 +758,20 @@ export const DashboardHeader = ({ onStartAudio, onStopAudio, onReconnectStream, 
             {(isEditingScoreboard || visibleCards.call) && (
               <div className={`income-card ${isActive ? 'active' : ''}`} style={{ flex: '1 1 0', minWidth: 0, borderLeft: '1px solid rgba(255,255,255,0.1)', paddingLeft: '0.5rem', ...helpStyle }} title="CURRENT CALL: Active duration and unbanked earnings of the ongoing call. Resets every time you hit STOP.">
                 <HelpLabel text="Call" />
-                <span className="income-label" style={{ fontSize: '0.55rem' }}>CALL ({formatTime(sessionSeconds)})</span>
+                <span className="income-label" style={{ fontSize: '0.55rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <span>CALL ({formatTime(sessionSeconds)})</span>
+                  {isActive && silenceCount > 1 && (
+                    <span style={{ 
+                      color: silenceCount > 60 ? '#ef4444' : (silenceCount > 30 ? '#f59e0b' : 'rgba(255,255,255,0.6)'),
+                      fontWeight: silenceCount > 30 ? 800 : 400,
+                      animation: silenceCount > 60 ? 'pulseWarning 1s infinite' : 'none',
+                      background: silenceCount > 30 ? 'rgba(0,0,0,0.3)' : 'transparent',
+                      padding: '0 4px', borderRadius: '4px'
+                    }}>
+                      🔇 {silenceCount}s
+                    </span>
+                  )}
+                </span>
                 <span className="income-ars" style={{ fontSize: '0.85rem', whiteSpace: 'nowrap' }}>
                   <RollingNumber value={Math.round(sessionEarnings * arsRate)} prefix="AR$" height={18} />
                 </span>
