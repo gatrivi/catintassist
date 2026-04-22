@@ -135,6 +135,7 @@ export const DashboardHeader = ({ onStartAudio, onStopAudio, onReconnectStream, 
   const [timeEditMode, setTimeEditMode] = useState(null); // 'call' | 'break' | null
   const [scoreView, setScoreView] = useState('numbers'); // 'game' | 'numbers'
   const [silenceCount, setSilenceCount] = useState(0);
+  const [hoveredTimelineEvent, setHoveredTimelineEvent] = useState(null);
 
   useEffect(() => {
     const iv = setInterval(() => {
@@ -1053,23 +1054,66 @@ ${isInDeficit ? `⚠️ DEFICIT: Behind pace by ${Math.round(monthlyDeficitMins)
               </div>
 
               {/* Chronological Timeline Segments */}
-              <div style={{ position: 'absolute', inset: 0, zIndex: 6, pointerEvents: 'none' }}>
+              <div style={{ position: 'absolute', inset: 0, zIndex: 6, pointerEvents: 'auto' }}>
                 {dailyTimeline.map((evt, idx) => {
                   const startPos = getTimelinePos(evt.start);
                   const endPos = getTimelinePos(evt.end || Date.now());
+                  const isHovered = hoveredTimelineEvent?.idx === idx;
+                  
                   return (
                     <div 
                       key={idx}
                       className={`timeline-segment ${evt.type} ${!evt.end ? 'ongoing' : ''}`}
-                      title={`${evt.type.toUpperCase()}: ${new Date(evt.start).toLocaleTimeString()} - ${evt.end ? new Date(evt.end).toLocaleTimeString() : 'Now'}`}
+                      onMouseEnter={(e) => {
+                        const rect = e.currentTarget.getBoundingClientRect();
+                        setHoveredTimelineEvent({ ...evt, idx, left: rect.left + rect.width/2 });
+                      }}
+                      onMouseLeave={() => setHoveredTimelineEvent(null)}
                       style={{ 
                         left: `${startPos}%`, 
                         width: `${Math.max(0.5, endPos - startPos)}%`,
-                        zIndex: evt.type === 'work' ? 10 : (evt.type === 'break' ? 9 : 8)
+                        zIndex: evt.type === 'work' ? 10 : (evt.type === 'break' ? 9 : 8),
+                        cursor: 'crosshair',
+                        opacity: hoveredTimelineEvent && !isHovered ? 0.3 : 1,
+                        transition: 'opacity 0.2s ease'
                       }} 
                     />
                   );
                 })}
+
+                {/* Popover */}
+                {hoveredTimelineEvent && (
+                  <div style={{
+                    position: 'fixed',
+                    left: `${hoveredTimelineEvent.left}px`,
+                    bottom: 'calc(100% - 10px)',
+                    transform: 'translateX(-50%) translateY(-20px)',
+                    background: 'rgba(15, 23, 42, 0.95)',
+                    backdropFilter: 'blur(10px)',
+                    border: `1px solid ${hoveredTimelineEvent.type === 'work' ? '#60a5fa' : '#fb923c'}`,
+                    padding: '0.4rem 0.6rem',
+                    borderRadius: '8px',
+                    boxShadow: '0 10px 25px rgba(0,0,0,0.5)',
+                    zIndex: 1000,
+                    pointerEvents: 'none',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: '2px',
+                    animation: 'slideUpBounce 0.2s cubic-bezier(0.17, 0.88, 0.32, 1.28) forwards'
+                  }}>
+                    <div style={{ fontSize: '0.6rem', textTransform: 'uppercase', fontWeight: 900, color: hoveredTimelineEvent.type === 'work' ? '#60a5fa' : '#fb923c', letterSpacing: '0.05em' }}>
+                      {hoveredTimelineEvent.type} PERIOD
+                    </div>
+                    <div style={{ fontSize: '0.8rem', fontWeight: 700, color: '#fff', whiteSpace: 'nowrap' }}>
+                      {new Date(hoveredTimelineEvent.start).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} 
+                      <span style={{ margin: '0 4px', opacity: 0.5 }}>→</span>
+                      {hoveredTimelineEvent.end ? new Date(hoveredTimelineEvent.end).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'NOW'}
+                    </div>
+                    <div style={{ fontSize: '0.55rem', opacity: 0.6 }}>
+                      Duration: {Math.round(((hoveredTimelineEvent.end || Date.now()) - hoveredTimelineEvent.start) / 60000)}m
+                    </div>
+                  </div>
+                )}
 
                 {/* Fill Avail gaps proactively - and visualize the "current" unrecorded state if any */}
                 {(() => {

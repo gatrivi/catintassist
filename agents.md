@@ -111,4 +111,5 @@ CURRENT INBOX
 - [x] alerts: 'Interpretation Stuck' warning banner in SilenceGuardian (v4.2.3)
 - [x] HUD: real-time silence counter that resets on speech (v4.2.4)
 - [x] HUD: universal idle counter that tracks time off-call regardless of state (v4.2.5)
+- [x] HUD: immediate popovers for timeline segments showing start/end times (v4.2.6)
 </details>
