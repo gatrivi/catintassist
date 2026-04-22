@@ -43,11 +43,19 @@ const InteractiveText = ({ text }) => {
   // This version is a robust one-liner that matches 9 or 10 digits with optional spaces.
   const groupedDigits = text.replace(/\b(\d\s*){9,10}\b/g, (m) => m.replace(/\s+/g, ''));
   const processedText = convertNumberWords(groupedDigits);
+  
+  // NYC ZIP REPAIR: In NYC, people often say "one hundred thirty four" for 10034.
+  // Deepgram might transcribe "New York 134". We fix it to "New York 10034".
+  const repairedText = processedText.replace(/\b(New York|NY|N\.Y\.)\s*,?\s*(\d{3})\b/gi, (m, city, zip) => {
+    const suffix = zip.slice(-2);
+    return `${city} 100${suffix}`;
+  });
+
   // NÚMEROS MÁGICOS: Detectamos números de teléfono, años y códigos.
   // Los resaltamos para que puedas copiarlos rápido si haces clic.
   const numRegex = /(\+?\(?\d{1,4}?\)?[\s.\-]?\(?\d{2,4}?\)?[\s.\-]?\d{3,4}[\s.\-]?\d{3,4}|\b\d+[\d.,/\\\-]*\b)/g;
 
-  const parts = processedText.split(numRegex);
+  const parts = repairedText.split(numRegex);
 
   const handleCopy = (num) => {
     const clean = num.trim();
