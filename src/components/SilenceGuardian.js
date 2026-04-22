@@ -115,6 +115,23 @@ export const SilenceGuardian = ({ lastDataTime }) => {
     );
   }
 
+  const getNudgeMessage = () => {
+    if (promptCount >= 3) return {
+      title: '📵 Final Orbit',
+      body: `Total silence for ${silenceMins}m. We're assuming this call is a ghost. Moving to break in 60s to save your stats.`
+    };
+    if (promptCount === 2) return {
+      title: '🛰️ Signal Lost?',
+      body: `It's been ${silenceMins} minutes of radio silence. If the meter is running but no one is talking, you're burning precious energy.`
+    };
+    return {
+      title: '🔇 The Void Beckons',
+      body: `Silence has reigned for ${silenceMins}m. Still there? Give the universe (or the patient) a sign.`
+    };
+  };
+
+  const nudge = getNudgeMessage();
+
   return (
     <div className="glass-panel" style={{
       position: 'fixed', 
@@ -135,12 +152,11 @@ export const SilenceGuardian = ({ lastDataTime }) => {
       animation: 'slideUpBounce 0.4s cubic-bezier(0.17, 0.88, 0.32, 1.28) forwards'
     }}>
       <div style={{ textAlign: 'center' }}>
-        <div style={{ fontSize: '1.4rem', marginBottom: '0.4rem', filter: 'drop-shadow(0 0 5px rgba(139, 92, 246, 0.5))' }}>
-          {promptCount >= 3 ? '📵 Final Warning' : `🔇 Silence Prompt ${promptCount}/3`}
+        <div style={{ fontSize: '1.4rem', marginBottom: '0.4rem', filter: 'drop-shadow(0 0 5px rgba(139, 92, 246, 0.5))', fontWeight: 900 }}>
+          {nudge.title}
         </div>
-        <div style={{ fontSize: '0.8rem', color: 'rgba(255,255,255,0.7)', lineHeight: '1.4' }}>
-          You've been silent for <strong>{silenceMins}m {silenceSecsTotal % 60}s</strong>. <br/>
-          {promptCount >= 3 ? '⚠️ AUTO-STOP in 60s if no response! We will move you to Break.' : '"Still Working" resets the silence timer.'}
+        <div style={{ fontSize: '0.85rem', color: 'rgba(255,255,255,0.8)', lineHeight: '1.5', padding: '0 10px' }}>
+          {nudge.body}
         </div>
       </div>
 
@@ -149,9 +165,9 @@ export const SilenceGuardian = ({ lastDataTime }) => {
           id="silence-still-working-btn"
           className="btn btn-primary" 
           onClick={() => { updateActivity(); setShowWarning(false); }} 
-          style={{ flex: 1.5, padding: '0.7rem', fontSize: '0.85rem' }}
+          style={{ flex: 1.5, padding: '0.7rem', fontSize: '0.85rem', fontWeight: 800 }}
         >
-          Still Working (Keep Mins)
+          {promptCount >= 2 ? 'ESTIRA LA LLAMADA 🚀' : 'STILL WORKING 🔋'}
         </button>
         <button 
           id="silence-end-call-btn"
