@@ -2,7 +2,7 @@ import { useState, useRef, useCallback, useEffect } from 'react';
 import { useSession } from '../contexts/SessionContext';
 
 // Helper to remove overlapping prefix from a new string based on a base string
-// Example: base="Hello world", addition="world how are you" -> returns "how are you"
+// Example: base="Hello world.", addition="world how are you" -> returns "how are you"
 const removeOverlap = (base, addition) => {
   if (!base || !addition) return addition;
   const baseWords = base.trim().split(/\s+/);
@@ -10,10 +10,11 @@ const removeOverlap = (base, addition) => {
   
   // Look for the longest suffix of base that matches prefix of addition
   for (let i = Math.min(baseWords.length, additionWords.length); i > 0; i--) {
-    const baseSuffix = baseWords.slice(-i).join(' ').toLowerCase();
-    const additionPrefix = additionWords.slice(0, i).join(' ').toLowerCase();
-    // Use simple string comparison but normalize. We could also use fuzzy but let's keep it simple as requested.
-    if (baseSuffix === additionPrefix) {
+    // Normalize: lowercase and strip punctuation for the comparison
+    const baseSuffix = baseWords.slice(-i).join(' ').toLowerCase().replace(/[.,!?]/g, '');
+    const additionPrefix = additionWords.slice(0, i).join(' ').toLowerCase().replace(/[.,!?]/g, '');
+    
+    if (baseSuffix === additionPrefix && baseSuffix.length > 0) {
       return additionWords.slice(i).join(' ');
     }
   }
@@ -127,9 +128,18 @@ export const useDeepgram = () => {
             let last = prev[prev.length - 1];
             const lastWordCount = (last && last.text) ? last.text.split(/\s+/).length : 0;
             
-            // Split at first punctuation after 30 words, or hard cutoff at 80 words
-            const hasPunctuation = /[.,!?]/.test(last?.text || '');
-            const isNewTurn = isSilentBreak || (lastWordCount >= 30 && hasPunctuation) || lastWordCount >= 80;
+            // PRESERVE SENTENCE INTEGRITY: Split after 10 words IF there is a period/question/exclamation
+            // This prevents cutting sentences in half. Hard cutoff remains at 80 for safety.
+            const hasSentenceEnd = /[.!?]/.test(last?.text || '');
+            const hasComma = /[,]/.test(last?.text || '');
+            
+            // Priority 1: 10 words + Sentence End
+            // Priority 2: 25 words + Comma (softer break)
+            // Priority 3: 80 words (Hard limit)
+            const isNewTurn = isSilentBreak || 
+                              (lastWordCount >= 10 && hasSentenceEnd) || 
+                              (lastWordCount >= 25 && hasComma) ||
+                              lastWordCount >= 80;
 
             if (!last || isNewTurn) {
               if (isSilentBreak || !last) turnWordCountRef.current = 0;
