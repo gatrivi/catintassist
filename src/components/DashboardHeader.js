@@ -245,9 +245,22 @@ export const DashboardHeader = ({ onStartAudio, onStopAudio, onReconnectStream, 
   const remainingMinutes = Math.max(0, stats.goalMinutes - stats.monthlyMinutes);
   const minutesBeforeToday = Math.max(0, stats.monthlyMinutes - stats.dailyMinutes);
   const remainingMinutesFromStartOfDay = Math.max(0, stats.goalMinutes - minutesBeforeToday);
-  const requiredDailyAverage = remainingDays > 0 ? (remainingMinutesFromStartOfDay / remainingDays).toFixed(0) : 0;
+  const getRemainingWorkDays = (y, m, dStart) => {
+    let count = 0;
+    const dInMo = new Date(y, m + 1, 0).getDate();
+    for (let d = dStart; d <= dInMo; d++) {
+      const dow = new Date(y, m, d).getDay();
+      if (dow !== 0 && dow !== 6) count++; 
+    }
+    return count;
+  };
+
+  const remainingWorkDays = getRemainingWorkDays(year, month, currentDay);
+  const baseYield = (stats.goalMinutes || 5500) / (getWorkingDays(year, month) || 22);
   
-  const dailyGoal = parseFloat(requiredDailyAverage) || 0;
+  // REALISTIC CATCH-UP: Divide remaining by workdays, but cap at 600m (10h)
+  const rawCatchUp = remainingWorkDays > 0 ? (remainingMinutesFromStartOfDay / remainingWorkDays) : baseYield;
+  const dailyGoal = Math.min(600, Math.max(baseYield, rawCatchUp));
   
   const unbankedMins = isActive ? (sessionSeconds / 60) : 0;
   const totalDailyMins = stats.dailyMinutes + unbankedMins;
@@ -405,8 +418,8 @@ export const DashboardHeader = ({ onStartAudio, onStopAudio, onReconnectStream, 
   const monthlyDeficitMins = expectedByToday - stats.monthlyMinutes; // positive = behind
   const isInDeficit = monthlyDeficitMins > 30;
   // Per-day needed to reach Growth (11k) by month end
-  const recoveryDailyTarget = remainingDays > 0 ? Math.ceil(Math.max(0, GROWTH_TARGET - stats.monthlyMinutes) / remainingDays) : 0;
-  const survivalDailyTarget = remainingDays > 0 ? Math.ceil(Math.max(0, 5500 - stats.monthlyMinutes) / remainingDays) : 0;
+  const recoveryDailyTarget = remainingWorkDays > 0 ? Math.ceil(Math.max(0, GROWTH_TARGET - stats.monthlyMinutes) / remainingWorkDays) : baseYield;
+  const survivalDailyTarget = remainingWorkDays > 0 ? Math.ceil(Math.max(0, 5500 - stats.monthlyMinutes) / remainingWorkDays) : baseYield;
 
   // ── SMART METRICS ────────────────────────────────────────────────
   // Use TOTAL (banked + live) so everything updates tick-by-tick during a call
@@ -488,7 +501,20 @@ export const DashboardHeader = ({ onStartAudio, onStopAudio, onReconnectStream, 
                 onZap={onReconnectStream}
               />
               {!isActive ? (
-                <button id="header-connect-btn" className="btn-emoji" onClick={isZombieCall ? onRecovery : onStartAudio} style={{ background: isZombieCall ? '#f59e0b' : '#10b981', color: '#fff', width: '22px', height: '22px' }} title={isZombieCall ? "RECONNECT" : "CONNECT"}>{isZombieCall ? '🟠' : '🟢'}</button>
+                <button 
+                  id="header-connect-btn" 
+                  className="btn-emoji" 
+                  onClick={isZombieCall ? onRecovery : onStartAudio} 
+                  style={{ 
+                    background: isZombieCall ? '#f59e0b' : '#10b981', 
+                    color: '#fff', width: '22px', height: '22px',
+                    animation: (!isActive && !isBreakActive && (Date.now() - (lastDataTime || 0) < 5000)) ? 'pulseReminder 0.8s infinite' : 'none',
+                    boxShadow: (!isActive && !isBreakActive && (Date.now() - (lastDataTime || 0) < 5000)) ? '0 0 12px #10b981' : 'none'
+                  }} 
+                  title={isZombieCall ? "RECONNECT" : "CONNECT"}
+                >
+                  {isZombieCall ? '🟠' : '🟢'}
+                </button>
               ) : (
                 <button id="header-stop-btn" className="btn-emoji" onClick={handleStop} style={{ background: '#ef4444', color: '#fff', width: '22px', height: '22px' }} title="STOP">🛑</button>
               )}
@@ -913,7 +939,7 @@ ${isInDeficit ? `⚠️ DEFICIT: Behind pace by ${Math.round(monthlyDeficitMins)
                     </span>
                     <span style={{ opacity: 0.4 }}>|</span>
                     <span 
-                      title={`PACED MAX: If you keep working ${requiredDailyAverage}m every day for the rest of the month, you are on track to bank AR$${monthlyMaxArs} total. Target is AR$${monthlyTargetArs.toLocaleString('es-AR')}.`}
+                      title={`PACED MAX: If you keep working ${Math.round(dailyGoal)}m every day for the rest of the month, you are on track to bank AR$${monthlyMaxArs} total. Target is AR$${monthlyTargetArs.toLocaleString('es-AR')}.`}
                       style={{ background: 'rgba(139,92,246,0.15)', padding: '0.1rem 0.4rem', borderRadius: '4px', border: '1px solid rgba(139,92,246,0.3)', cursor: 'help' }}>
                       Paced Max: <strong style={{ color: '#d8b4fe', textShadow: '0 0 8px rgba(139,92,246,0.5)', display: 'inline-flex', alignItems: 'center' }}>
                         <RollingNumber value={monthlyRemainingCashVal + monthlyArs} prefix="AR$" height={12} />

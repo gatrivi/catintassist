@@ -420,7 +420,7 @@ const GuidanceHeader = ({ isActive, isBreakActive, stats, dailyGoal }) => {
 };
 
 
-export const TranscriptionBoard = ({ captions, onClearAll, onReconnect }) => {
+export const TranscriptionBoard = ({ captions, onClearAll, onReconnect, lastDataTime }) => {
   const bottomRef = useRef(null);
   const scrollAreaRef = useRef(null);
   const isScrolledUpRef = useRef(false);
@@ -638,6 +638,17 @@ export const TranscriptionBoard = ({ captions, onClearAll, onReconnect }) => {
                 marginBottom: '20vh'
               }}>
                 📡 Standing by... waiting for patient audio.
+              </div>
+            )}
+            {(!isActive && !isBreakActive && (Date.now() - (lastDataTime || 0) < 5000)) && (
+              <div id="call-detected-reminder" onClick={onReconnect} style={{
+                position: 'absolute', top: '40%', left: '50%', transform: 'translate(-50%, -50%)',
+                background: 'rgba(16, 185, 129, 0.95)', color: '#fff', padding: '1.5rem 3rem', borderRadius: '1rem',
+                boxShadow: '0 0 30px rgba(16, 185, 129, 0.5)', cursor: 'pointer', zIndex: 1000,
+                textAlign: 'center', animation: 'pulseReminder 1s infinite alternate'
+              }}>
+                <div style={{ fontSize: '1.5rem', fontWeight: 900 }}>📞 CALL DETECTED!</div>
+                <div style={{ fontSize: '0.8rem', opacity: 0.9, marginTop: '0.5rem' }}>Click here to connect app & start session</div>
               </div>
             )}
           </div>
