@@ -760,7 +760,43 @@ body {
   .metric-pill { padding: 0.02rem 0.15rem; font-size: 0.6rem; }
   .metric-cell-val { font-size: 0.65rem; }
   .metric-watermark { font-size: 1.1rem; }
-}@keyframes slideUpBounce {
+}
+/* ── Timeline Segments ────────────────────────────────────── */
+.timeline-segment {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  border-radius: 1px;
+  transition: all 0.3s ease;
+  min-width: 1px;
+}
+
+.timeline-segment.work {
+  background-color: #3b82f6;
+  box-shadow: 0 0 5px rgba(59, 130, 246, 0.4);
+}
+
+.timeline-segment.break {
+  background-color: #f97316;
+  box-shadow: 0 0 5px rgba(249, 115, 22, 0.4);
+}
+
+.timeline-segment.avail {
+  background-color: #fb923c;
+  opacity: 0.8;
+}
+
+.timeline-segment.ongoing {
+  animation: timelinePulse 2s infinite ease-in-out;
+}
+
+@keyframes timelinePulse {
+  0% { filter: brightness(1); opacity: 0.8; }
+  50% { filter: brightness(1.4); opacity: 1; box-shadow: 0 0 12px currentColor; }
+  100% { filter: brightness(1); opacity: 0.8; }
+}
+
+@keyframes slideUpBounce {
   from { transform: translate(-50%, 100px); opacity: 0; }
   to { transform: translate(-50%, 0); opacity: 1; }
 }

@@ -104,7 +104,7 @@ const StateIndicators = ({ state, breakMinutes, isZombie }) => {
 };
 
 export const DashboardHeader = ({ onStartAudio, onStopAudio, onReconnectStream, sttLanguage, onToggleLanguage, onRecovery, connectionState, connectionMessage }) => {
-  const { isActive, sessionSeconds, setSessionSeconds, sessionEarnings, stats, updateStat, startSession, stopSession, endDay, RATE_PER_MINUTE, arsRate, setArsRate, isBreakActive, breakSeconds, startBreak, stopBreak, availSeconds, isEditingScoreboard, setIsEditingScoreboard, visibleCards, toggleCard, isNotesOpen, setIsNotesOpen, isToolbarVisible, setIsToolbarVisible, workSessionMinutes, isHeatmapOpen, setIsHeatmapOpen, isZombieCall, clearZombieState, translationMood, setTranslationMood, isScoreboardHelpVisible, setIsScoreboardHelpVisible } = useSession();
+  const { isActive, sessionSeconds, setSessionSeconds, sessionEarnings, stats, updateStat, startSession, stopSession, endDay, RATE_PER_MINUTE, arsRate, setArsRate, isBreakActive, breakSeconds, startBreak, stopBreak, availSeconds, isEditingScoreboard, setIsEditingScoreboard, visibleCards, toggleCard, isNotesOpen, setIsNotesOpen, isToolbarVisible, setIsToolbarVisible, workSessionMinutes, isHeatmapOpen, setIsHeatmapOpen, isZombieCall, clearZombieState, translationMood, setTranslationMood, isScoreboardHelpVisible, setIsScoreboardHelpVisible, isHold, setIsHold, holdSeconds, setHoldSeconds, dailyTimeline } = useSession();
 
   const helpStyle = isScoreboardHelpVisible ? { outline: '1px dashed #3b82f6', position: 'relative' } : {};
   const HelpLabel = ({ text }) => isScoreboardHelpVisible ? (
@@ -114,8 +114,6 @@ export const DashboardHeader = ({ onStartAudio, onStopAudio, onReconnectStream, 
   const audioEngine = useProgressiveAudio();
   const { initAudio, playChaChing, playCoinStack } = useRewardAudio();
 
-  const [isHold, setIsHold] = useState(false);
-  const [holdSeconds, setHoldSeconds] = useState(0);
   const [isCollapsed, setIsCollapsed] = useState(true);
   const [celebration, setCelebration] = useState(null);
   const [isTodayDialOpen, setIsTodayDialOpen] = useState(false);
@@ -124,10 +122,16 @@ export const DashboardHeader = ({ onStartAudio, onStopAudio, onReconnectStream, 
   const [timeEditMode, setTimeEditMode] = useState(null); // 'call' | 'break' | null
   const [scoreView, setScoreView] = useState('numbers'); // 'game' | 'numbers'
 
-  useEffect(() => {
-    let iv; if (isHold) iv = setInterval(() => setHoldSeconds(s => s + 1), 1000); else setHoldSeconds(0);
-    return () => clearInterval(iv);
-  }, [isHold]);
+  const startOfToday = new Date().setHours(0,0,0,0);
+  const timelineStart = startOfToday + 9 * 3600000;
+  const timelineEnd = startOfToday + 23 * 3600000;
+  const timelineDuration = timelineEnd - timelineStart;
+
+  const getTimelinePos = (time) => {
+    if (!time) return getTimelinePos(Date.now());
+    const t = typeof time === 'number' ? time : new Date(time).getTime();
+    return Math.max(0, Math.min(100, ((t - timelineStart) / timelineDuration) * 100));
+  };
 
   useEffect(() => {
     if (isActive && sessionSeconds > 0 && sessionSeconds % 60 === 0) {
@@ -994,7 +998,7 @@ ${isInDeficit ? `⚠️ DEFICIT: Behind pace by ${Math.round(monthlyDeficitMins)
             </div>
             <div 
               title="Daily Multi-Tier Bar: Blue (Floor), Purple (350m Growth), Gold (480m focus)."
-              style={{ height: '6px', background: 'rgba(0,0,0,0.5)', borderRadius: '3px', position: 'relative', overflow: 'hidden', cursor: 'help' }}>
+              style={{ height: '6px', background: 'rgba(251, 146, 60, 0.1)', borderRadius: '3px', position: 'relative', overflow: 'hidden', cursor: 'help' }}>
               
               {/* Target Notches */}
               <div style={{ position: 'absolute', inset: 0, display: 'flex', pointerEvents: 'none', zIndex: 4 }}>
@@ -1003,25 +1007,56 @@ ${isInDeficit ? `⚠️ DEFICIT: Behind pace by ${Math.round(monthlyDeficitMins)
                 ))}
               </div>
 
-              {/* Progress Fill (Unbanked) */}
+              {/* Chronological Timeline Segments */}
+              <div style={{ position: 'absolute', inset: 0, zIndex: 6, pointerEvents: 'none' }}>
+                {dailyTimeline.map((evt, idx) => {
+                  const startPos = getTimelinePos(evt.start);
+                  const endPos = getTimelinePos(evt.end || Date.now());
+                  return (
+                    <div 
+                      key={idx}
+                      className={`timeline-segment ${evt.type} ${!evt.end ? 'ongoing' : ''}`}
+                      title={`${evt.type.toUpperCase()}: ${new Date(evt.start).toLocaleTimeString()} - ${evt.end ? new Date(evt.end).toLocaleTimeString() : 'Now'}`}
+                      style={{ 
+                        left: `${startPos}%`, 
+                        width: `${Math.max(0.5, endPos - startPos)}%`,
+                        zIndex: evt.type === 'work' ? 10 : (evt.type === 'break' ? 9 : 8)
+                      }} 
+                    />
+                  );
+                })}
+
+                {/* Fill Avail gaps proactively - and visualize the "current" unrecorded state if any */}
+                {(() => {
+                  const items = [];
+                  if (dailyTimeline.length === 0 && stats.dayStartTime) {
+                    const startPos = getTimelinePos(stats.dayStartTime);
+                    const endPos = getTimelinePos(Date.now());
+                    items.push(<div key="init-avail" className="timeline-segment avail ongoing" style={{ left: `${startPos}%`, width: `${endPos-startPos}%` }} />);
+                  }
+                  return items;
+                })()}
+              </div>
+
+              {/* Progress Fill (Unbanked) - Pulse effect for the active edge */}
               <div 
                 title={`Unbanked Progress: You have ${formatTime(sessionSeconds)} in the current call.`}
                 style={{ 
                   position: 'absolute', left: 0, top: 0, bottom: 0, 
                   width: `${Math.min(1, (stats.dailyMinutes + unbankedMins) / 480) * 100}%`, 
                   backgroundColor: '#f97316', 
-                  opacity: 0.9, transition: 'width 1s linear', zIndex: 1, 
-                  boxShadow: unbankedMins > 0 ? '0 0 10px #f97316' : 'none', pointerEvents: 'auto' 
+                  opacity: 0.3, transition: 'width 1s linear', zIndex: 1, 
+                  pointerEvents: 'none' 
                 }} />
               
-              {/* Progress Fill (Banked) */}
+              {/* Progress Fill (Total Mins Goal Overlay - Background) */}
               <div 
                 title={`Daily Total: ${Math.round(stats.dailyMinutes)}m`}
                 style={{ 
                   position: 'absolute', left: 0, top: 0, bottom: 0, 
                   width: `${Math.min(1, stats.dailyMinutes / 480) * 100}%`, 
-                  backgroundColor: stats.dailyMinutes >= 480 ? '#fcd34d' : (stats.dailyMinutes >= 350 ? '#a855f7' : '#3b82f6'), 
-                  transition: 'width 1s cubic-bezier(0.34, 1.56, 0.64, 1)', zIndex: 2, pointerEvents: 'auto' 
+                  backgroundColor: 'rgba(255,255,255,0.05)', 
+                  transition: 'width 1s cubic-bezier(0.34, 1.56, 0.64, 1)', zIndex: 2, pointerEvents: 'none' 
                 }} />
               
               {/* Hour Notches overlay with Financial Overlays */}

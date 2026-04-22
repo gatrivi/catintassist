@@ -49,8 +49,38 @@ export const SessionProvider = ({ children }) => {
   const [breakSeconds, setBreakSeconds] = useState(() => Number(localStorage.getItem('catint_b_sec')) || 0);
   const [availSeconds, setAvailSeconds] = useState(() => Number(localStorage.getItem('catint_a_sec')) || 0);
   const [lastActivityTime, setLastActivityTime] = useState(Date.now());
+  const [dailyTimeline, setDailyTimeline] = useState(() => {
+    try { return JSON.parse(localStorage.getItem('catintassist_timeline')) || []; } catch(e) { return []; }
+  });
+  const [isHold, setIsHold] = useState(() => JSON.parse(localStorage.getItem('catint_hold')) || false);
+  const [holdSeconds, setHoldSeconds] = useState(() => Number(localStorage.getItem('catint_hold_sec')) || 0);
 
   const updateActivity = () => setLastActivityTime(Date.now());
+
+  const recordTimelineEvent = useCallback((type) => {
+    const now = Date.now();
+    setDailyTimeline(prev => {
+      // Close the previous event if it exists
+      const newTimeline = [...prev];
+      if (newTimeline.length > 0) {
+        const last = newTimeline[newTimeline.length - 1];
+        if (!last.end) {
+          last.end = now;
+        }
+      }
+      // Add the new event
+      if (type !== 'none') {
+        newTimeline.push({ type, start: now, end: null });
+      }
+      safeLocalStorageSet('catintassist_timeline', JSON.stringify(newTimeline));
+      return newTimeline;
+    });
+  }, []);
+
+  // Sync timeline to storage
+  useEffect(() => { safeLocalStorageSet('catintassist_timeline', JSON.stringify(dailyTimeline)); }, [dailyTimeline]);
+  useEffect(() => { safeLocalStorageSet('catint_hold', JSON.stringify(isHold)); }, [isHold]);
+  useEffect(() => { safeLocalStorageSet('catint_hold_sec', holdSeconds); }, [holdSeconds]);
 
   useEffect(() => { safeLocalStorageSet('catint_active', JSON.stringify(isActive)); }, [isActive]);
   useEffect(() => { safeLocalStorageSet('catint_s_sec', sessionSeconds); }, [sessionSeconds]);
@@ -122,6 +152,11 @@ export const SessionProvider = ({ children }) => {
           parsed.dayStartTime = null;
           parsed.lastBreakEndTime = null;
           parsed.lastDate = today;
+          // Clear timeline on new day
+          safeLocalStorageSet('catintassist_timeline', JSON.stringify([]));
+          setDailyTimeline([]);
+          setHoldSeconds(0);
+          setIsHold(false);
         }
         initialStats = { ...initialStats, ...parsed };
       } catch(e) {}
@@ -182,6 +217,17 @@ export const SessionProvider = ({ children }) => {
     });
   };
 
+  // Timer for Hold
+  useEffect(() => {
+    let iv;
+    if (isHold && isActive) {
+      iv = setInterval(() => setHoldSeconds(s => s + 1), 1000);
+    } else {
+      setHoldSeconds(0);
+    }
+    return () => clearInterval(iv);
+  }, [isHold, isActive]);
+
   // EMPEZAR LLAMADA: Dejamos de descansar y empezamos a contar los minutos de la llamada.
   const startSession = (isRecovery = false) => {
     updateActivity(); // <--- Reset silence timer on start
@@ -198,7 +244,10 @@ export const SessionProvider = ({ children }) => {
       accumulatorRef.current = 0;
     }
     
+    
     setIsActive(true);
+    setIsHold(false);
+    recordTimelineEvent('work');
     
     // Catch-up logic: record the very first time we start working today
     setStats(prev => {
@@ -212,7 +261,13 @@ export const SessionProvider = ({ children }) => {
         const lateMins = Math.max(0, (now - nineAM.getTime()) / 60000);
         
         setWorkSessionStartTime(now);
-        return { ...prev, dayStartTime: now, lastDate: today, shiftStartSentiment: lateMins };
+        const newStats = { ...prev, dayStartTime: now, lastDate: today, shiftStartSentiment: lateMins };
+        
+        // Initialize timeline with avail starting at dayStartTime (or 9am if earlier)
+        const timelineStart = Math.min(now, nineAM.getTime());
+        setDailyTimeline([{ type: 'avail', start: timelineStart, end: now }]);
+        
+        return newStats;
       }
       return prev;
     });
@@ -241,6 +296,9 @@ export const SessionProvider = ({ children }) => {
       });
       if (onCallEnded) onCallEnded(minutesToAdd);
     }
+    setIsHold(false);
+    // If we stop session, we default to 'avail' unless we immediately start a break
+    recordTimelineEvent('avail');
   };
 
   // End of Day: commit daily total to log, check streak, reset counters
@@ -350,11 +408,13 @@ export const SessionProvider = ({ children }) => {
     commitAvailTime();
     setBreakSeconds(0);
     setIsBreakActive(true);
+    recordTimelineEvent('break');
   };
   
   const stopBreak = () => {
     updateActivity(); // <--- Reset silence timer when returning to work
     setIsBreakActive(false);
+    recordTimelineEvent('avail');
     const minutesToAdd = breakSeconds / 60;
     const now = Date.now();
     setWorkSessionStartTime(now);
@@ -397,6 +457,12 @@ export const SessionProvider = ({ children }) => {
     sessionSeconds,
     setSessionSeconds,
     sessionEarnings,
+    isHold,
+    setIsHold,
+    holdSeconds,
+    setHoldSeconds,
+    dailyTimeline,
+    recordTimelineEvent,
     stats,
     updateStat,
     startSession,

@@ -80,7 +80,7 @@ const Dashboard = () => {
         fontSize: '0.55rem', fontWeight: 900, color: 'rgba(255,255,255,0.2)', 
         pointerEvents: 'none', textTransform: 'uppercase', letterSpacing: '0.05em'
       }}>
-        v4.1.0 (Incremental Translation & Turn Tracking)
+        v4.2.1 (Orange Availability Timeline)
       </div>
 
       <div id="top-mic-bar-container" style={{ position: 'fixed', top: 0, left: 0, right: 0, height: '3px', zIndex: 9999, pointerEvents: 'none' }}>

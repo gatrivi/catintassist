@@ -8,14 +8,20 @@ import { useProgressiveAudio } from '../hooks/useProgressiveAudio';
  * for a sustained period while the session is active.
  */
 export const SilenceGuardian = () => {
-  const { isActive, lastActivityTime, updateActivity, stopSession, startBreak } = useSession();
+  const { isActive, lastActivityTime, updateActivity, stopSession, startBreak, isHold, holdSeconds } = useSession();
   const audioEngine = useProgressiveAudio();
   const [showWarning, setShowWarning] = useState(false);
+  const [showHoldWarning, setShowHoldWarning] = useState(false);
   const [lastAlertTime, setLastAlertTime] = useState(0);
+  const [alertedLevels, setAlertedLevels] = useState({ 1: false, 2: false, 3: false });
+  const [promptCount, setPromptCount] = useState(0);
 
   useEffect(() => {
     if (!isActive) {
       setShowWarning(false);
+      setShowHoldWarning(false);
+      setAlertedLevels({ 1: false, 2: false, 3: false });
+      setPromptCount(0);
       return;
     }
 
@@ -23,29 +29,89 @@ export const SilenceGuardian = () => {
       const now = Date.now();
       const silenceSecs = (now - lastActivityTime) / 1000;
       
-      // TRIGGER 1: Initial nudge at 10 mins (600s)
-      // High density tracking prevents "Metrics veering into fantasy"
-      if (silenceSecs > 600) {
+      // HOLD WARNING: Prompt after 15m (900s) on Hold
+      if (isHold && holdSeconds >= 900) {
+        setShowHoldWarning(true);
+      } else {
+        setShowHoldWarning(false);
+      }
+
+      // PRE-PROMPT AUDIO NUDGES (Keep tiered sounds but aligned with new thresholds)
+      if (silenceSecs >= 360 && !alertedLevels[3]) {
+        audioEngine.playWarningTiered(3);
+        setAlertedLevels(prev => ({ ...prev, 3: true }));
         setShowWarning(true);
-        
-        // REPEAT ALERT: Sound plays every 3 minutes (180s) to grab attention without being obnoxious
+        setPromptCount(3);
+      } else if (silenceSecs >= 240 && !alertedLevels[2]) {
+        audioEngine.playWarningTiered(2);
+        setAlertedLevels(prev => ({ ...prev, 2: true }));
+        setShowWarning(true);
+        setPromptCount(2);
+      } else if (silenceSecs >= 120 && !alertedLevels[1]) {
+        audioEngine.playWarningTiered(1);
+        setAlertedLevels(prev => ({ ...prev, 1: true }));
+        setShowWarning(true);
+        setPromptCount(1);
+      }
+
+      // RESET ALERTS: if user speaks, reset alerted state
+      if (silenceSecs < 10 && (alertedLevels[1] || alertedLevels[2] || alertedLevels[3])) {
+        setAlertedLevels({ 1: false, 2: false, 3: false });
+        setPromptCount(0);
+        setShowWarning(false);
+      }
+
+      // AUTO-STOP LOGIC: If 3rd prompt is ignored for more than 1 minute (total 7m+ silence)
+      if (silenceSecs > 420 && promptCount >= 3) {
+        // Auto-correct to break
+        stopSession();
+        startBreak();
+        setShowWarning(false);
+        setPromptCount(0);
+        audioEngine.playWarningTiered(1); // Small sound to notify auto-stop
+      }
+
+      // Keep legacy 10m sound if everything else failed
+      if (silenceSecs > 600) {
         const timeSinceAlert = (now - lastAlertTime) / 1000;
         if (timeSinceAlert > 180) {
           audioEngine.playWarningPing();
           setLastAlertTime(now);
         }
-      } else {
-        if (showWarning) setShowWarning(false);
       }
     };
 
     const iv = setInterval(checkSilence, 5000);
     return () => clearInterval(iv);
-  }, [isActive, lastActivityTime, lastAlertTime, showWarning, audioEngine]);
+  }, [isActive, lastActivityTime, lastAlertTime, showWarning, alertedLevels, audioEngine]);
 
-  if (!showWarning) return null;
+  if (!showWarning && !showHoldWarning) return null;
 
-  const silenceMins = Math.floor((Date.now() - lastActivityTime) / 60000);
+  const silenceSecsTotal = Math.floor((Date.now() - lastActivityTime) / 1000);
+  const silenceMins = Math.floor(silenceSecsTotal / 60);
+
+  if (showHoldWarning) {
+    return (
+      <div className="glass-panel" style={{
+        position: 'fixed', bottom: '30px', left: '50%', transform: 'translateX(-50%)',
+        zIndex: 10000, padding: '1.2rem', border: '1px solid #f59e0b',
+        background: 'rgba(15, 23, 42, 0.98)', backdropFilter: 'blur(20px)',
+        boxShadow: '0 15px 50px rgba(0,0,0,0.9)', display: 'flex', flexDirection: 'column', 
+        gap: '0.8rem', width: '340px', borderRadius: '12px',
+        animation: 'slideUpBounce 0.4s cubic-bezier(0.17, 0.88, 0.32, 1.28) forwards'
+      }}>
+        <div style={{ textAlign: 'center' }}>
+          <div style={{ fontSize: '1.4rem', marginBottom: '0.4rem', color: '#fcd34d' }}>⏳ Long Hold Detected</div>
+          <div style={{ fontSize: '0.8rem', color: 'rgba(255,255,255,0.7)', lineHeight: '1.4' }}>
+            You've been on **Hold** for <strong>{Math.floor(holdSeconds / 60)}m</strong>. <br/>
+            Is the patient still there?
+          </div>
+        </div>
+        <button className="btn btn-primary" onClick={() => updateActivity()}>Still Holding</button>
+        <button className="btn btn-danger" onClick={() => stopSession()}>End Call</button>
+      </div>
+    );
+  }
 
   return (
     <div className="glass-panel" style={{
@@ -68,11 +134,11 @@ export const SilenceGuardian = () => {
     }}>
       <div style={{ textAlign: 'center' }}>
         <div style={{ fontSize: '1.4rem', marginBottom: '0.4rem', filter: 'drop-shadow(0 0 5px rgba(139, 92, 246, 0.5))' }}>
-          {silenceMins >= 15 ? '🔇 Silence Limit!' : '🔇 Detecting Silence'}
+          {promptCount >= 3 ? '📵 Final Warning' : `🔇 Silence Prompt ${promptCount}/3`}
         </div>
         <div style={{ fontSize: '0.8rem', color: 'rgba(255,255,255,0.7)', lineHeight: '1.4' }}>
-          You've been silent for <strong>{silenceMins}m</strong>. <br/>
-          {silenceMins >= 14 ? '⚠️ Provider limit reached! Stop now to prevent ghost time.' : 'Still on a call or waiting? "Still Working" keeps your current minutes.'}
+          You've been silent for <strong>{silenceMins}m {silenceSecsTotal % 60}s</strong>. <br/>
+          {promptCount >= 3 ? '⚠️ AUTO-STOP in 60s if no response! We will move you to Break.' : '"Still Working" resets the silence timer.'}
         </div>
       </div>
 

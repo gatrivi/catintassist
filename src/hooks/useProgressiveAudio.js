@@ -138,6 +138,28 @@ export const useProgressiveAudio = () => {
     });
   }, [initAudio, isMuted]);
 
+  const playWarningTiered = useCallback((level) => {
+    if (isMuted) return;
+    initAudio();
+    if (!audioCtxRef.current) return;
+    const ctx = audioCtxRef.current;
+    const t = ctx.currentTime;
+    const configs = {
+      1: { count: 1, freq: 800, delay: 0.1 },
+      2: { count: 2, freq: 1000, delay: 0.15 },
+      3: { count: 3, freq: 1400, delay: 0.12 }
+    };
+    const cfg = configs[level] || configs[1];
+    for (let i = 0; i < cfg.count; i++) {
+      const nextT = t + (i * cfg.delay);
+      const osc = ctx.createOscillator(); osc.type = 'triangle';
+      osc.frequency.setValueAtTime(cfg.freq, nextT);
+      const g = createGain(ctx, 0.05, 0.1, nextT);
+      osc.connect(g); g.connect(ctx.destination);
+      osc.start(nextT); osc.stop(nextT + 0.1);
+    }
+  }, [initAudio, isMuted]);
+
   const playMetalChest = useCallback(() => { /* Legacy */ }, []);
   const playCarriageVault = useCallback(() => { /* Legacy */ }, []);
 
@@ -148,6 +170,6 @@ export const useProgressiveAudio = () => {
   }, []);
 
   return useMemo(() => ({ 
-    isMuted, toggleMute, initAudio, playBagOpen, playTick, playBill, playDiamond, playCoin, playWarningPing, playMetalChest, playCarriageVault, stopAll 
-  }), [isMuted, toggleMute, initAudio, playBagOpen, playTick, playBill, playDiamond, playCoin, playWarningPing, stopAll]);
+    isMuted, toggleMute, initAudio, playBagOpen, playTick, playBill, playDiamond, playCoin, playWarningPing, playWarningTiered, playMetalChest, playCarriageVault, stopAll 
+  }), [isMuted, toggleMute, initAudio, playBagOpen, playTick, playBill, playDiamond, playCoin, playWarningPing, playWarningTiered, stopAll]);
 };

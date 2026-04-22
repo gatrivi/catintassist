@@ -1,4 +1,4 @@
-import { useState, useRef, useCallback } from 'react';
+import { useState, useRef, useCallback, useEffect } from 'react';
 import { useSession } from '../contexts/SessionContext';
 
 // Helper to remove overlapping prefix from a new string based on a base string
@@ -109,8 +109,19 @@ export const useDeepgram = () => {
           lastTranscriptTimeRef.current = now;
           // Break into a new bubble after 2.0s of absolute silence (relaxed from 1.8s). 
           const isSilentBreak = timeSinceLast > 2000;
+          
+          // AUTO-CLEAR: If we have reached a major silence gap (>120s), we clear the board
+          // to ensure the "Next Call" starts clean.
+          const isMajorGap = timeSinceLast > 120000;
 
           setCaptions(prev => {
+            // If it's a major gap and we already have some captions, clear them
+            if (isMajorGap && prev.length > 0) {
+              console.log("[Deepgram] Major silence gap detected (>120s). Clearing board.");
+              turnWordCountRef.current = 0;
+              return [];
+            }
+            
             let last = prev[prev.length - 1];
             const lastWordCount = (last && last.text) ? last.text.split(/\s+/).length : 0;
             
@@ -230,6 +241,24 @@ export const useDeepgram = () => {
     socketRefEn.current = createSocket('en');
     socketRefEs.current = createSocket('es');
   };
+
+  // WATCHDOG: Check if sockets are still alive when we expect to be transcribing
+  useEffect(() => {
+    if (connectionState !== 'connected' || !isActiveRef.current) return;
+    
+    const watchdog = setInterval(() => {
+      const enOpen = socketRefEn.current?.readyState === 1;
+      const esOpen = socketRefEs.current?.readyState === 1;
+      
+      if (!enOpen && !esOpen) {
+        console.warn("[Deepgram] Watchdog: All sockets lost. Updating state.");
+        setConnectionState('error');
+        setConnectionMessage('Connection Timed Out');
+      }
+    }, 10000); // Check every 10s
+    
+    return () => clearInterval(watchdog);
+  }, [connectionState]);
 
   const startRecording = async () => {
     try {
