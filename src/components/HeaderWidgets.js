@@ -105,46 +105,62 @@ export const EditableMinutes = ({ value, updateFn, statKey }) => {
   );
 };
 
-export const ConnectionIndicator = ({ state, message }) => {
+export const ConnectionIndicator = ({ state, message, lastDataTime, isActive, onZap }) => {
+  const timeSinceLastPacket = Date.now() - (lastDataTime || 0);
+  const isStale = isActive && state === 'connected' && timeSinceLastPacket > 30000;
+  const isCritical = isActive && state === 'connected' && timeSinceLastPacket > 60000;
+
   let color = 'gray';
   let title = message || 'Interpreting Service: Disconnected (Press Connect to start)';
-  const isConnected = state === 'connected';
-  
-  if (isConnected) { 
-    color = '#10b981'; 
-  }
-  else if (state === 'connecting') { 
-    color = '#f59e0b'; 
-  }
-  else if (state === 'error') { 
-    color = '#ef4444'; 
-  }
+  let animation = 'none';
 
-  const pulseKeyframes = `
-    @keyframes heartbeat {
-      0% { transform: scale(1); opacity: 1; box-shadow: 0 0 0px #10b981; }
-      50% { transform: scale(1.15); opacity: 0.8; box-shadow: 0 0 10px #10b981; }
-      100% { transform: scale(1); opacity: 1; box-shadow: 0 0 0px #10b981; }
+  if (state === 'connected') {
+    if (isCritical) {
+      color = '#ef4444';
+      animation = 'pulseError 1.5s infinite';
+      title = 'CRITICAL: No audio data received in over 60 seconds!';
+    } else if (isStale) {
+      color = '#f59e0b';
+      animation = 'pulseStale 2s infinite';
+      title = 'STALE: No audio data received in 30 seconds. Check Tab Audio sharing.';
+    } else {
+      color = '#10b981';
+      animation = 'heartbeat 2s infinite ease-in-out';
+      title = 'ACTIVE: Interpreting service is healthy and receiving data.';
     }
-  `;
+  } else if (state === 'connecting') {
+    color = '#f59e0b';
+    title = 'Connecting to Deepgram...';
+  } else if (state === 'error') {
+    color = '#ef4444';
+    title = `Error: ${message || 'Connection failed'}`;
+  }
 
   return (
-    <>
-      <style>{pulseKeyframes}</style>
+    <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
       <div 
         style={{
-          width: '12px',
-          height: '12px',
-          borderRadius: '50%',
+          width: '12px', height: '12px', borderRadius: '50%',
           backgroundColor: color,
-          boxShadow: state === 'connected' ? '0 0 8px #10b981' : (state === 'connecting' ? '0 0 8px #f59e0b' : 'none'),
-          transition: 'all 0.3s ease',
-          cursor: 'help',
-          flexShrink: 0,
-          animation: isConnected ? 'heartbeat 2s infinite ease-in-out' : 'none'
+          boxShadow: state === 'connected' ? `0 0 8px ${color}` : 'none',
+          transition: 'all 0.3s ease', cursor: 'help', flexShrink: 0,
+          animation: animation
         }}
         title={title}
       />
-    </>
+      {(isStale || isCritical) && onZap && (
+        <button 
+          onClick={onZap}
+          style={{ 
+            background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)',
+            borderRadius: '4px', cursor: 'pointer', padding: '2px 4px', fontSize: '0.7rem',
+            animation: 'encouragePulse 2s infinite'
+          }}
+          title="Zap Connection: Click to force a refresh of the transcription stream"
+        >
+          ⚡ ZAP
+        </button>
+      )}
+    </div>
   );
 };

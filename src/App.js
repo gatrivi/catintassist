@@ -12,7 +12,7 @@ import { loadFile, generateObjectUrl } from './utils/storage';
 import './index.css';
 
 const Dashboard = () => {
-  const { startRecording, stopRecording, reconnectStream, captions, clearCaptions, sttLanguage, toggleLanguage, connectionState, connectionMessage } = useDeepgram();
+  const { startRecording, stopRecording, reconnectStream, captions, clearCaptions, sttLanguage, toggleLanguage, connectionState, connectionMessage, lastDataTime } = useDeepgram();
   const { isNotesOpen, isToolbarVisible, isActive, isBreakActive, minutesSinceLastBreak, startSession, clearZombieState } = useSession();
   const [isEditingBg, setIsEditingBg] = useState(false);
   
@@ -80,14 +80,14 @@ const Dashboard = () => {
         fontSize: '0.55rem', fontWeight: 900, color: 'rgba(255,255,255,0.2)', 
         pointerEvents: 'none', textTransform: 'uppercase', letterSpacing: '0.05em'
       }}>
-        v4.2.2 (Stability & Contrast Focus)
+        v4.2.3 (Interpretation Sentinel)
       </div>
 
       <div id="top-mic-bar-container" style={{ position: 'fixed', top: 0, left: 0, right: 0, height: '3px', zIndex: 9999, pointerEvents: 'none' }}>
         <div id="top-mic-bar" style={{ height: '100%', width: '0%', background: '#10b981', transition: 'width 0.05s ease-out', opacity: 0, boxShadow: '0 0 8px #10b981' }} />
       </div>
 
-      <SilenceGuardian />
+      <SilenceGuardian lastDataTime={lastDataTime} />
 
       <DashboardHeader 
         onStartAudio={() => handleConnection(false)} 
@@ -98,6 +98,7 @@ const Dashboard = () => {
         onToggleLanguage={toggleLanguage}
         connectionState={connectionState}
         connectionMessage={connectionMessage}
+        lastDataTime={lastDataTime}
       />
 
       <main className="main-content">

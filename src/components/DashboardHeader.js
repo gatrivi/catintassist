@@ -103,7 +103,7 @@ const StateIndicators = ({ state, breakMinutes, isZombie }) => {
   );
 };
 
-export const DashboardHeader = ({ onStartAudio, onStopAudio, onReconnectStream, sttLanguage, onToggleLanguage, onRecovery, connectionState, connectionMessage }) => {
+export const DashboardHeader = ({ onStartAudio, onStopAudio, onReconnectStream, sttLanguage, onToggleLanguage, onRecovery, connectionState, connectionMessage, lastDataTime }) => {
   const { isActive, sessionSeconds, setSessionSeconds, sessionEarnings, stats, updateStat, startSession, stopSession, endDay, RATE_PER_MINUTE, arsRate, setArsRate, isBreakActive, breakSeconds, startBreak, stopBreak, availSeconds, isEditingScoreboard, setIsEditingScoreboard, visibleCards, toggleCard, isNotesOpen, setIsNotesOpen, isToolbarVisible, setIsToolbarVisible, workSessionMinutes, isHeatmapOpen, setIsHeatmapOpen, isZombieCall, clearZombieState, translationMood, setTranslationMood, isScoreboardHelpVisible, setIsScoreboardHelpVisible, isHold, setIsHold, holdSeconds, setHoldSeconds, dailyTimeline } = useSession();
 
   const helpStyle = isScoreboardHelpVisible ? { outline: '1px dashed #3b82f6', position: 'relative' } : {};
@@ -403,7 +403,13 @@ export const DashboardHeader = ({ onStartAudio, onStopAudio, onReconnectStream, 
           <div id="controls-left-col" className={`header-column-side ${isActive ? 'active-working-state' : ''}`} style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem', flexShrink: 0, justifyContent: 'flex-start', alignItems: 'center' }}>
             <div id="connection-controls-row" style={{ display: 'flex', flexDirection: 'column', gap: '0.15rem', alignItems: 'center' }}>
               <StateIndicators state={isActive ? 'call' : isBreakActive ? 'break' : 'avail'} breakMinutes={stats.dailyBreakMinutes || 0} isZombie={isZombieCall} />
-              <ConnectionIndicator state={connectionState} message={connectionMessage} />
+              <ConnectionIndicator 
+                state={connectionState} 
+                message={connectionMessage} 
+                lastDataTime={lastDataTime}
+                isActive={isActive}
+                onZap={onReconnectStream}
+              />
               {!isActive ? (
                 <button id="header-connect-btn" className="btn-emoji" onClick={isZombieCall ? onRecovery : onStartAudio} style={{ background: isZombieCall ? '#f59e0b' : '#10b981', color: '#fff', width: '22px', height: '22px' }} title={isZombieCall ? "RECONNECT" : "CONNECT"}>{isZombieCall ? '🟠' : '🟢'}</button>
               ) : (

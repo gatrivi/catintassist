@@ -7,10 +7,11 @@ import { useProgressiveAudio } from '../hooks/useProgressiveAudio';
  * or forgotten disconnects. It prompts the user if no audio activity is detected
  * for a sustained period while the session is active.
  */
-export const SilenceGuardian = () => {
+export const SilenceGuardian = ({ lastDataTime }) => {
   const { isActive, lastActivityTime, updateActivity, stopSession, startBreak, isHold, holdSeconds } = useSession();
   const audioEngine = useProgressiveAudio();
   const [showWarning, setShowWarning] = useState(false);
+  const [showStuckWarning, setShowStuckWarning] = useState(false);
   const [showHoldWarning, setShowHoldWarning] = useState(false);
   const [lastAlertTime, setLastAlertTime] = useState(0);
   const [alertedLevels, setAlertedLevels] = useState({ 1: false, 2: false, 3: false });
@@ -19,6 +20,7 @@ export const SilenceGuardian = () => {
   useEffect(() => {
     if (!isActive) {
       setShowWarning(false);
+      setShowStuckWarning(false);
       setShowHoldWarning(false);
       setAlertedLevels({ 1: false, 2: false, 3: false });
       setPromptCount(0);
@@ -28,6 +30,14 @@ export const SilenceGuardian = () => {
     const checkSilence = () => {
       const now = Date.now();
       const silenceSecs = (now - lastActivityTime) / 1000;
+      const stuckSecs = (now - (lastDataTime || 0)) / 1000;
+
+      // STUCK WARNING: If active but no data for 45s
+      if (isActive && stuckSecs > 45 && !isHold) {
+        setShowStuckWarning(true);
+      } else {
+        setShowStuckWarning(false);
+      }
       
       // HOLD WARNING: Prompt after 15m (900s) on Hold
       if (isHold && holdSeconds >= 900) {
@@ -85,10 +95,34 @@ export const SilenceGuardian = () => {
     return () => clearInterval(iv);
   }, [isActive, lastActivityTime, lastAlertTime, showWarning, alertedLevels, audioEngine]);
 
-  if (!showWarning && !showHoldWarning) return null;
+  if (!showWarning && !showHoldWarning && !showStuckWarning) return null;
 
-  const silenceSecsTotal = Math.floor((Date.now() - lastActivityTime) / 1000);
+  const now = Date.now();
+  const silenceSecsTotal = Math.floor((now - lastActivityTime) / 1000);
+  const stuckSecsTotal = Math.floor((now - (lastDataTime || 0)) / 1000);
   const silenceMins = Math.floor(silenceSecsTotal / 60);
+
+  if (showStuckWarning) {
+    return (
+      <div className="glass-panel" style={{
+        position: 'fixed', bottom: '30px', left: '50%', transform: 'translateX(-50%)',
+        zIndex: 10000, padding: '1.2rem', border: '1px solid #ef4444',
+        background: 'rgba(15, 23, 42, 0.98)', backdropFilter: 'blur(20px)',
+        boxShadow: '0 15px 50px rgba(0,0,0,0.9)', display: 'flex', flexDirection: 'column', 
+        gap: '0.8rem', width: '340px', borderRadius: '12px',
+        animation: 'slideUpBounce 0.4s cubic-bezier(0.17, 0.88, 0.32, 1.28) forwards'
+      }}>
+        <div style={{ textAlign: 'center' }}>
+          <div style={{ fontSize: '1.4rem', marginBottom: '0.4rem', color: '#fca5a5' }}>⚠️ Interpretation Stuck?</div>
+          <div style={{ fontSize: '0.8rem', color: 'rgba(255,255,255,0.7)', lineHeight: '1.4' }}>
+            No audio detected for <strong>{stuckSecsTotal}s</strong>. <br/>
+            Check your tab audio sharing or click the ⚡ ZAP button in the header.
+          </div>
+        </div>
+        <button className="btn btn-primary" onClick={() => updateActivity()}>I am Speaking</button>
+      </div>
+    );
+  }
 
   if (showHoldWarning) {
     return (

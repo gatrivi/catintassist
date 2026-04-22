@@ -26,6 +26,7 @@ export const useDeepgram = () => {
   const [connectionState, setConnectionState] = useState('disconnected');
   const [connectionMessage, setConnectionMessage] = useState('Disconnected');
   const [sttLanguage, setSttLanguage] = useState('auto');
+  const [lastDataTime, setLastDataTime] = useState(Date.now());
   const langModeRef = useRef('auto');
   const socketRefEn = useRef(null);
   const socketRefEs = useRef(null);
@@ -105,6 +106,7 @@ export const useDeepgram = () => {
         if (transcript) {
           updateActivity();
           const now = Date.now();
+          setLastDataTime(now);
           const timeSinceLast = now - lastTranscriptTimeRef.current;
           lastTranscriptTimeRef.current = now;
           // Break into a new bubble after 2.0s of absolute silence (relaxed from 1.8s). 
@@ -370,5 +372,5 @@ export const useDeepgram = () => {
     });
   };
 
-  return { startRecording, stopRecording, reconnectStream, captions, clearCaptions, sttLanguage, toggleLanguage, connectionState, connectionMessage };
+  return { startRecording, stopRecording, reconnectStream, captions, clearCaptions, sttLanguage, toggleLanguage, connectionState, connectionMessage, lastDataTime };
 };

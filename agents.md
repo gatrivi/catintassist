@@ -107,4 +107,6 @@ CURRENT INBOX
 - [x] timeline: painting orange in the progress bar during non-call time (v4.2.1)
 - [x] stability: auto-reconnect for Deepgram WebSockets and fixed timeline race conditions (v4.2.2)
 - [x] UI: improved contrast for 'In Call' segments with white glow effect (v4.2.2)
+- [x] health: Smart Status Dot and 'Zap' button for stale connections (v4.2.3)
+- [x] alerts: 'Interpretation Stuck' warning banner in SilenceGuardian (v4.2.3)
 </details>
