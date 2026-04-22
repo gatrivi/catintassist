@@ -171,18 +171,29 @@ export const DashboardHeader = ({ onStartAudio, onStopAudio, onReconnectStream, 
 
     // Chronological Render (Orange/Blue thing)
     return (
-      <div style={{ position: 'absolute', inset: 0, background: 'rgba(251, 146, 60, 0.1)' }}>
+      <div 
+        title={`Waiting/Available: ${dailyMins}m worked today.`}
+        style={{ position: 'absolute', inset: 0, background: 'rgba(251, 146, 60, 0.15)', cursor: 'crosshair' }}>
         {timeline.map((evt, i) => {
           const s = getTimelinePos(evt.start);
           const e = getTimelinePos(evt.end || Date.now());
+          const startTime = new Date(evt.start).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false });
+          const endTime = evt.end ? new Date(evt.end).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false }) : 'Ongoing';
+          const duration = Math.round(((evt.end || Date.now()) - evt.start) / 60000);
+
           if (evt.type === 'avail') return null; // Avail is the background orange
+          
           return (
-            <div key={i} style={{ 
-              position: 'absolute', left: `${s}%`, width: `${Math.max(1, e - s)}%`, 
-              top: 0, bottom: 0, 
-              background: evt.type === 'work' ? '#60a5fa' : (evt.type === 'break' ? '#fb923c' : 'transparent'),
-              opacity: 0.8
-            }} />
+            <div key={i} 
+              title={`${evt.type.toUpperCase()}: ${startTime} - ${endTime} (${duration}m)`}
+              style={{ 
+                position: 'absolute', left: `${s}%`, width: `${Math.max(0.5, e - s)}%`, 
+                top: 0, bottom: 0, 
+                background: evt.type === 'work' ? '#60a5fa' : (evt.type === 'break' ? '#fb923c' : 'transparent'),
+                opacity: 0.8,
+                zIndex: 10,
+                borderLeft: '1px solid rgba(255,255,255,0.2)'
+              }} />
           );
         })}
       </div>
