@@ -117,7 +117,7 @@ const StateIndicators = ({ state, breakMinutes, isZombie, silenceCount }) => {
 };
 
 export const DashboardHeader = ({ onStartAudio, onStopAudio, onReconnectStream, sttLanguage, onToggleLanguage, onRecovery, connectionState, connectionMessage, lastDataTime }) => {
-  const { isActive, sessionSeconds, setSessionSeconds, sessionEarnings, stats, updateStat, startSession, stopSession, endDay, RATE_PER_MINUTE, arsRate, setArsRate, isBreakActive, breakSeconds, startBreak, stopBreak, availSeconds, isEditingScoreboard, setIsEditingScoreboard, visibleCards, toggleCard, isNotesOpen, setIsNotesOpen, isToolbarVisible, setIsToolbarVisible, workSessionMinutes, isHeatmapOpen, setIsHeatmapOpen, isZombieCall, clearZombieState, translationMood, setTranslationMood, isScoreboardHelpVisible, setIsScoreboardHelpVisible, isHold, setIsHold, holdSeconds, setHoldSeconds, dailyTimeline } = useSession();
+  const { isActive, sessionSeconds, setSessionSeconds, sessionEarnings, stats, updateStat, startSession, stopSession, endDay, RATE_PER_MINUTE, arsRate, setArsRate, isBreakActive, breakSeconds, startBreak, stopBreak, availSeconds, isEditingScoreboard, setIsEditingScoreboard, visibleCards, toggleCard, isNotesOpen, setIsNotesOpen, isToolbarVisible, setIsToolbarVisible, workSessionMinutes, isHeatmapOpen, setIsHeatmapOpen, isZombieCall, clearZombieState, translationMood, setTranslationMood, isScoreboardHelpVisible, setIsScoreboardHelpVisible, isHold, setIsHold, holdSeconds, setHoldSeconds, dailyTimeline, historyTimeline, dailyLog, lastActivityTime } = useSession();
 
   const helpStyle = isScoreboardHelpVisible ? { outline: '1px dashed #3b82f6', position: 'relative' } : {};
   const HelpLabel = ({ text }) => isScoreboardHelpVisible ? (
@@ -153,6 +153,40 @@ export const DashboardHeader = ({ onStartAudio, onStopAudio, onReconnectStream, 
     if (!time) return getTimelinePos(Date.now());
     const t = typeof time === 'number' ? time : new Date(time).getTime();
     return Math.max(0, Math.min(100, ((t - timelineStart) / timelineDuration) * 100));
+  };
+
+  // Mini-timeline renderer for day notches
+  const MiniDayTimeline = ({ dateStr, currentTimeline, dailyMins, goalMins }) => {
+    const timeline = currentTimeline || historyTimeline[dateStr];
+    
+    // Fallback: If no chronological data, just show a solid block based on minutes worked
+    if (!timeline || timeline.length === 0) {
+      const fillPct = Math.min(100, (dailyMins / (goalMins || 1)) * 100);
+      return (
+        <div style={{ position: 'absolute', inset: 0, background: 'rgba(255,255,255,0.05)' }}>
+           <div style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: `${fillPct}%`, background: dailyMins >= goalMins ? 'rgba(16, 185, 129, 0.4)' : 'rgba(59, 130, 246, 0.4)' }} />
+        </div>
+      );
+    }
+
+    // Chronological Render (Orange/Blue thing)
+    return (
+      <div style={{ position: 'absolute', inset: 0, background: 'rgba(251, 146, 60, 0.1)' }}>
+        {timeline.map((evt, i) => {
+          const s = getTimelinePos(evt.start);
+          const e = getTimelinePos(evt.end || Date.now());
+          if (evt.type === 'avail') return null; // Avail is the background orange
+          return (
+            <div key={i} style={{ 
+              position: 'absolute', left: `${s}%`, width: `${Math.max(1, e - s)}%`, 
+              top: 0, bottom: 0, 
+              background: evt.type === 'work' ? '#60a5fa' : (evt.type === 'break' ? '#fb923c' : 'transparent'),
+              opacity: 0.8
+            }} />
+          );
+        })}
+      </div>
+    );
   };
 
   useEffect(() => {
@@ -214,6 +248,30 @@ export const DashboardHeader = ({ onStartAudio, onStopAudio, onReconnectStream, 
   const requiredDailyAverage = remainingDays > 0 ? (remainingMinutesFromStartOfDay / remainingDays).toFixed(0) : 0;
   
   const dailyGoal = parseFloat(requiredDailyAverage) || 0;
+  
+  // ── MILESTONE TARGETS ──────────────────────────────────────────────────────
+  // Milestone 1: 5500m/month (5 days/week)
+  // Milestone 2: 480m/day (6 days/week)
+  const getWorkingDays = (y, m) => {
+    let count = 0;
+    const days = new Date(y, m + 1, 0).getDate();
+    for (let d = 1; d <= days; d++) {
+      const dow = new Date(y, m, d).getDay();
+      if (dow !== 0 && dow !== 6) count++; // Mon-Fri
+    }
+    return count || 22;
+  };
+  const workingDaysMo = getWorkingDays(year, month);
+  const totalWindowMins = shiftElapsedMins + minsToHardCutoff;
+  const timeRatio = totalWindowMins > 0 ? shiftElapsedMins / totalWindowMins : 0;
+
+  const milestoneTargets = {
+    m5500: 5500 / workingDaysMo,
+    m480: 480,
+    m5500Ideal: (5500 / workingDaysMo) * timeRatio,
+    m480Ideal: 480 * timeRatio
+  };
+
   const unbankedMins = isActive ? (sessionSeconds / 60) : 0;
   const totalDailyMins = stats.dailyMinutes + unbankedMins;
 
@@ -483,6 +541,7 @@ export const DashboardHeader = ({ onStartAudio, onStopAudio, onReconnectStream, 
                 daysInMonth={daysInMonth} currentDay={currentDay} remainingDays={remainingDays}
                 isActive={isActive} isBreakActive={isBreakActive}
                 onSwitchToNumbers={() => setScoreView('numbers')}
+                milestoneTargets={milestoneTargets}
               />
             ) : (
               <div id="numeric-metric-grid" className="metric-grid">
@@ -939,9 +998,27 @@ ${isInDeficit ? `⚠️ DEFICIT: Behind pace by ${Math.round(monthlyDeficitMins)
               <div 
                 title="Each vertical notch represents one day of the month. The thick white line is TODAY."
                 style={{ position: 'absolute', inset: 0, display: 'flex', pointerEvents: 'auto', zIndex: 5, cursor: 'help' }}>
-                {Array.from({ length: daysInMonth }).map((_, i) => (
-                  <div key={i} style={{ flex: 1, borderRight: i < daysInMonth - 1 ? '1px solid rgba(255,255,255,0.1)' : 'none' }} />
-                ))}
+                {Array.from({ length: daysInMonth }).map((_, i) => {
+                  const d = i + 1;
+                  const dateObj = new Date(year, month, d);
+                  const dStr = dateObj.toDateString();
+                  const isToday = d === currentDay;
+                  
+                  return (
+                    <div key={i} style={{ 
+                      flex: 1, position: 'relative', 
+                      borderRight: i < daysInMonth - 1 ? '1px solid rgba(255,255,255,0.1)' : 'none',
+                      overflow: 'hidden'
+                    }}>
+                      <MiniDayTimeline 
+                        dateStr={dStr} 
+                        currentTimeline={isToday ? dailyTimeline : null}
+                        dailyMins={isToday ? totalDailyMinsLive : (dailyLog[dStr] || 0)}
+                        goalMins={dailyGoal}
+                      />
+                    </div>
+                  );
+                })}
               </div>
 
               <div 
@@ -979,37 +1056,26 @@ ${isInDeficit ? `⚠️ DEFICIT: Behind pace by ${Math.round(monthlyDeficitMins)
               }} />
               
               {/* 500min Nudges (8h shifts) overlay for the Step Bar */}
-              <div style={{ position: 'absolute', inset: 0, display: 'block', pointerEvents: 'none', zIndex: 5 }}>
-                {(() => {
-                  const stepStart = currentIdx * 1375;
-                  const stepEnd = stepStart + 1375;
-                  const firstShiftIdx = Math.floor(stepStart / 500) + 1;
-                  const nudges = [];
-                  let shiftM = firstShiftIdx * 500;
-                  while (shiftM < stepEnd) {
-                    nudges.push(shiftM);
-                    shiftM += 500;
-                  }
-                  
-                  const valuePerShift = Math.round(500 * RATE_PER_MINUTE * arsRate).toLocaleString('es-AR');
-                  
-                  return nudges.map(m => {
-                    const ratio = (m - stepStart) / 1375;
-                    const shiftNumber = m / 500;
-                    return (
-                      <div 
-                        key={m} 
-                        title={`Shift #${shiftNumber} Threshold (${m}m elapsed total). Completing an 8-hour shift guarantees ~AR$${valuePerShift}. Keep pushing!`}
-                        style={{ 
-                          position: 'absolute', left: `${ratio * 100}%`, top: 0, bottom: 0, width: '2px', 
-                          background: 'rgba(59,130,246,0.8)',
-                          boxShadow: '0 0 4px rgba(59,130,246,0.8)',
-                          pointerEvents: 'auto', cursor: 'help'
-                        }}>
-                      </div>
-                    );
-                  });
-                })()}
+              <div style={{ position: 'absolute', inset: 0, display: 'flex', pointerEvents: 'none', zIndex: 5 }}>
+                {Array.from({ length: 7 }).map((_, i) => {
+                   // Map 7 segments to the current week
+                   const dayOfStep = Math.floor(currentDay / 7) * 7 + i;
+                   if (dayOfStep > daysInMonth) return null;
+                   const dateObj = new Date(year, month, dayOfStep);
+                   const dStr = dateObj.toDateString();
+                   const isToday = dayOfStep === currentDay;
+
+                   return (
+                     <div key={i} style={{ flex: 1, position: 'relative', borderRight: '1px solid rgba(255,255,255,0.15)', overflow: 'hidden' }}>
+                        <MiniDayTimeline 
+                           dateStr={dStr} 
+                           currentTimeline={isToday ? dailyTimeline : null}
+                           dailyMins={isToday ? totalDailyMinsLive : (dailyLog[dStr] || 0)}
+                           goalMins={dailyGoal}
+                        />
+                     </div>
+                   );
+                })}
               </div>
             </div>
           </div>

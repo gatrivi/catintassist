@@ -52,6 +52,9 @@ export const SessionProvider = ({ children }) => {
   const [dailyTimeline, setDailyTimeline] = useState(() => {
     try { return JSON.parse(localStorage.getItem('catintassist_timeline')) || []; } catch(e) { return []; }
   });
+  const [historyTimeline, setHistoryTimeline] = useState(() => {
+    try { return JSON.parse(localStorage.getItem('catintassist_history_timeline')) || {}; } catch(e) { return {}; }
+  });
   const [isHold, setIsHold] = useState(() => JSON.parse(localStorage.getItem('catint_hold')) || false);
   const [holdSeconds, setHoldSeconds] = useState(() => Number(localStorage.getItem('catint_hold_sec')) || 0);
 
@@ -83,6 +86,7 @@ export const SessionProvider = ({ children }) => {
 
   // Sync timeline to storage
   useEffect(() => { safeLocalStorageSet('catintassist_timeline', JSON.stringify(dailyTimeline)); }, [dailyTimeline]);
+  useEffect(() => { safeLocalStorageSet('catintassist_history_timeline', JSON.stringify(historyTimeline)); }, [historyTimeline]);
   useEffect(() => { safeLocalStorageSet('catint_hold', JSON.stringify(isHold)); }, [isHold]);
   useEffect(() => { safeLocalStorageSet('catint_hold_sec', holdSeconds); }, [holdSeconds]);
 
@@ -145,10 +149,21 @@ export const SessionProvider = ({ children }) => {
         if (parsed.lastDate && parsed.lastDate !== today) {
           // Midnight rollover: write previous day's minutes into log
           const prevLog = JSON.parse(localStorage.getItem('catintassist_daily_log')) || {};
+          const prevHistory = JSON.parse(localStorage.getItem('catintassist_history_timeline')) || {};
+          
           if (parsed.dailyMinutes > 0) {
             prevLog[parsed.lastDate] = Math.round(parsed.dailyMinutes);
             safeLocalStorageSet('catintassist_daily_log', JSON.stringify(prevLog));
           }
+
+          // Archive timeline
+          const currentTimeline = JSON.parse(localStorage.getItem('catintassist_timeline')) || [];
+          if (currentTimeline.length > 0) {
+             prevHistory[parsed.lastDate] = currentTimeline;
+             safeLocalStorageSet('catintassist_history_timeline', JSON.stringify(prevHistory));
+             setHistoryTimeline(prevHistory);
+          }
+
           parsed.dailyMinutes = 0;
           parsed.dailyBreakMinutes = 0;
           parsed.dailyAvailMinutes = 0;
@@ -319,6 +334,13 @@ export const SessionProvider = ({ children }) => {
       const todayStr = prev.lastDate || new Date().toDateString();
       commitDayToLog(todayStr, prev.dailyMinutes);
 
+      // Archive timeline
+      setHistoryTimeline(h => {
+        const newH = { ...h, [todayStr]: dailyTimeline };
+        safeLocalStorageSet('catintassist_history_timeline', JSON.stringify(newH));
+        return newH;
+      });
+
       const dailyGoalProxy = prev.goalMinutes > 0 && prev.monthlyMinutes > 0
         ? Math.ceil((prev.goalMinutes - (prev.monthlyMinutes - prev.dailyMinutes)) /
             Math.max(1, new Date(new Date().getFullYear(), new Date().getMonth() + 1, 0).getDate() - new Date().getDate() + 1))
@@ -337,6 +359,11 @@ export const SessionProvider = ({ children }) => {
         lastDate: new Date().toDateString()
       };
       safeLocalStorageSet('catintassist_stats', JSON.stringify(newStats));
+      
+      // Clear current timeline
+      setDailyTimeline([]);
+      safeLocalStorageSet('catintassist_timeline', JSON.stringify([]));
+
       if (onDayEnded) onDayEnded(prev.dailyMinutes);
       return newStats;
     });
@@ -511,6 +538,7 @@ export const SessionProvider = ({ children }) => {
     setIsScoreboardHelpVisible,
     getCompensatedLogOff,
     minutesSinceLastBreak,
+    historyTimeline,
     dailyGoal: (() => {
       const now = new Date();
       const year = now.getFullYear(), month = now.getMonth(), currentDay = now.getDate();

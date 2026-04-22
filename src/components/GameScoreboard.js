@@ -4,7 +4,7 @@ import { RollingNumber } from './RollingNumber';
 // ─── EmojiRow ─────────────────────────────────────────────────────────────────
 // Renders fullCount full emojis + one partially-cropped emoji representing the
 // fractional remainder. Uses CSS clip-path on a wrapper for zero-DOM overhead.
-const EmojiRow = ({ emoji, emptyEmoji, value, unitValue, maxValue, color = '#fff', label, sublabel, warnThreshold = 0.3, title, className = "" }) => {
+const EmojiRow = ({ emoji, emptyEmoji, value, unitValue, maxValue, color = '#fff', label, sublabel, warnThreshold = 0.3, title, className = "", markers = [] }) => {
   const fullCount  = Math.floor(value / unitValue);
   const fraction   = (value % unitValue) / unitValue; // 0–1
   const maxCount   = Math.ceil(maxValue / unitValue);
@@ -19,11 +19,21 @@ const EmojiRow = ({ emoji, emptyEmoji, value, unitValue, maxValue, color = '#fff
                 : '#ef4444';                         // danger – red
 
   return (
-    <div title={title} className={className} style={{ display: 'flex', flexDirection: 'column', gap: '0' }}>
-      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '1px', lineHeight: 1, alignItems: 'center' }}>
-        <span style={{ fontSize: '0.48rem', color: 'rgba(255,255,255,0.25)', textTransform: 'uppercase', marginRight: '0.3rem', whiteSpace: 'nowrap' }}>
+    <div title={title} className={className} style={{ display: 'flex', flexDirection: 'column', gap: '0', position: 'relative' }}>
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '1px', lineHeight: 1, alignItems: 'center', position: 'relative' }}>
+        <span style={{ fontSize: '0.48rem', color: 'rgba(255,255,255,0.25)', textTransform: 'uppercase', marginRight: '0.3rem', whiteSpace: 'nowrap', zIndex: 10 }}>
           {typeof label === 'string' ? label.split('   ')[0] : label}
         </span>
+
+        {/* Milestone Markers */}
+        {markers.map((m, i) => (
+          <div key={i} style={{
+            position: 'absolute', top: '-1px', bottom: '-1px',
+            left: `calc(${(m.value / (maxValue || 1)) * 100}% + 1.2rem)`, // Offset by label
+            width: '2px', background: m.color, zIndex: 5, opacity: 0.6,
+            borderRadius: '1px'
+          }} title={m.label} />
+        ))}
 
         {/* Full emojis */}
         {Array.from({ length: Math.min(fullCount, maxCount) }).map((_, i) => (
@@ -118,7 +128,7 @@ const DirectionalCue = ({ pacePrediction, dailyGoal, totalDailyMins, breakLeft, 
 
 // ─── MomentumBar ─────────────────────────────────────────────────────────────
 // Shows pace as a horizontal bar: filled = where you are, ghost = where you should be.
-const MomentumBar = ({ totalDailyMins, dailyGoal, shiftElapsedMins, isActive }) => {
+const MomentumBar = ({ totalDailyMins, dailyGoal, shiftElapsedMins, isActive, milestoneTargets }) => {
   const idealNow = shiftElapsedMins > 0 && dailyGoal > 0
     ? Math.min(dailyGoal, dailyGoal * (shiftElapsedMins / Math.max(shiftElapsedMins + 60, 60)))
     : 0;
@@ -126,22 +136,48 @@ const MomentumBar = ({ totalDailyMins, dailyGoal, shiftElapsedMins, isActive }) 
   const idealRatio  = dailyGoal > 0 ? Math.min(1, idealNow / dailyGoal) : 0;
   const deficit = idealRatio - actualRatio; // positive = behind
   const barColor = isActive ? '#10b981' : deficit > 0.1 ? '#ef4444' : '#f59e0b';
+
+  // Milestone Ratios (where you should be for each benchmark)
+  const m5500Ratio = (dailyGoal > 0 && milestoneTargets) ? (milestoneTargets.m5500Ideal / dailyGoal) : 0;
+  const m480Ratio  = (dailyGoal > 0 && milestoneTargets) ? (milestoneTargets.m480Ideal / dailyGoal) : 0;
+
   return (
     <div style={{ position: 'relative', height: '6px', background: 'rgba(0,0,0,0.4)', borderRadius: '3px', overflow: 'visible', margin: '0.1rem 0' }}>
-      {/* Ghost: where you should be */}
+      {/* Ghost: where you should be for current goal */}
       {idealRatio > 0 && (
         <div style={{
           position: 'absolute', left: 0, top: 0, bottom: 0,
-          width: `${idealRatio * 100}%`,
+          width: `${Math.min(100, idealRatio * 100)}%`,
           background: 'rgba(255,255,255,0.12)',
           borderRadius: '3px',
           transition: 'width 2s linear'
         }} />
       )}
+
+      {/* Milestone 1: 5500 Marker (Blue) */}
+      {m5500Ratio > 0 && (
+        <div style={{
+          position: 'absolute', top: '-2px', bottom: '-2px',
+          left: `calc(${Math.min(110, m5500Ratio * 100)}% - 1px)`,
+          width: '2px', background: '#3b82f6', borderRadius: '1px', opacity: 0.6,
+          zIndex: 10, transition: 'left 2s linear'
+        }} title={`5500m Benchmark: Where you should be for survival floor (${Math.round(milestoneTargets.m5500Ideal)}m)`} />
+      )}
+
+      {/* Milestone 2: 480 Marker (Gold) */}
+      {m480Ratio > 0 && (
+        <div style={{
+          position: 'absolute', top: '-2px', bottom: '-2px',
+          left: `calc(${Math.min(110, m480Ratio * 100)}% - 1px)`,
+          width: '2px', background: '#f59e0b', borderRadius: '1px', opacity: 0.6,
+          zIndex: 10, transition: 'left 2s linear'
+        }} title={`480m Benchmark: Where you should be for growth target (${Math.round(milestoneTargets.m480Ideal)}m)`} />
+      )}
+
       {/* Actual progress */}
       <div style={{
         position: 'absolute', left: 0, top: 0, bottom: 0,
-        width: `${actualRatio * 100}%`,
+        width: `${Math.min(100, actualRatio * 100)}%`,
         background: barColor,
         borderRadius: '3px',
         boxShadow: isActive ? `0 0 8px ${barColor}` : 'none',
@@ -155,7 +191,8 @@ const MomentumBar = ({ totalDailyMins, dailyGoal, shiftElapsedMins, isActive }) 
         background: '#fff',
         borderRadius: '1px',
         boxShadow: isActive ? '0 0 6px white' : 'none',
-        transition: 'left 1s ease-out'
+        transition: 'left 1s ease-out',
+        zIndex: 20
       }} />
     </div>
   );
@@ -176,11 +213,13 @@ export const GameScoreboard = ({
   nextGoalLabel, nextMilestone,
   // Monthly
   daysInMonth, currentDay, remainingDays,
-  // Call state (for visual momentum)
-  isActive, isBreakActive,
-  // onSwitch back to numbers
-  onSwitchToNumbers
-}) => {
+   // call state (for visual momentum)
+   isActive, isBreakActive,
+   // milestone targets
+   milestoneTargets,
+   // onSwitch back to numbers
+   onSwitchToNumbers
+ }) => {
   // Drift counter: how many seconds since last call ended (affects UI urgency)
   const [idleSecs, setIdleSecs] = useState(0);
   useEffect(() => {
@@ -200,7 +239,7 @@ export const GameScoreboard = ({
 
   // Computed Maxes
   const dayArsMax   = Math.max(dailyTargetArs, liveDailyArs, ARS_UNIT);
-  const dayMinMax   = Math.max(dailyGoal, totalDailyMins, MIN_UNIT);
+  const dayMinMax   = Math.max(dailyGoal, totalDailyMins, MIN_UNIT, milestoneTargets?.m5500Ideal || 0, milestoneTargets?.m480Ideal || 0);
   const moArsMax    = Math.max(monthlyTargetArs, monthlyArs, ARS_UNIT);
   const moMinMax    = Math.max(stats.goalMinutes, stats.monthlyMinutes, MIN_UNIT);
 
@@ -265,6 +304,7 @@ export const GameScoreboard = ({
         <MomentumBar
           totalDailyMins={totalDailyMins} dailyGoal={dailyGoal}
           shiftElapsedMins={shiftElapsedMins} isActive={isActive}
+          milestoneTargets={milestoneTargets}
         />
       </div>
 
@@ -291,6 +331,10 @@ export const GameScoreboard = ({
               maxValue={dayMinMax}
               label={`mins   ${Math.round(totalDailyMins)}m / ${Math.round(dailyGoal)}m`}
               sublabel={`${dayMinPct}%`}
+              markers={[
+                { value: milestoneTargets?.m5500Ideal, color: '#3b82f6', label: `5500m Benchmark (${Math.round(milestoneTargets?.m5500Ideal)}m)` },
+                { value: milestoneTargets?.m480Ideal, color: '#f59e0b', label: `480m Benchmark (${Math.round(milestoneTargets?.m480Ideal)}m)` }
+              ]}
             />
 
             <EmojiRow
