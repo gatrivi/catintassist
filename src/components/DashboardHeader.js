@@ -249,29 +249,6 @@ export const DashboardHeader = ({ onStartAudio, onStopAudio, onReconnectStream, 
   
   const dailyGoal = parseFloat(requiredDailyAverage) || 0;
   
-  // ── MILESTONE TARGETS ──────────────────────────────────────────────────────
-  // Milestone 1: 5500m/month (5 days/week)
-  // Milestone 2: 480m/day (6 days/week)
-  const getWorkingDays = (y, m) => {
-    let count = 0;
-    const days = new Date(y, m + 1, 0).getDate();
-    for (let d = 1; d <= days; d++) {
-      const dow = new Date(y, m, d).getDay();
-      if (dow !== 0 && dow !== 6) count++; // Mon-Fri
-    }
-    return count || 22;
-  };
-  const workingDaysMo = getWorkingDays(year, month);
-  const totalWindowMins = shiftElapsedMins + minsToHardCutoff;
-  const timeRatio = totalWindowMins > 0 ? shiftElapsedMins / totalWindowMins : 0;
-
-  const milestoneTargets = {
-    m5500: 5500 / workingDaysMo,
-    m480: 480,
-    m5500Ideal: (5500 / workingDaysMo) * timeRatio,
-    m480Ideal: 480 * timeRatio
-  };
-
   const unbankedMins = isActive ? (sessionSeconds / 60) : 0;
   const totalDailyMins = stats.dailyMinutes + unbankedMins;
 
@@ -385,12 +362,33 @@ export const DashboardHeader = ({ onStartAudio, onStopAudio, onReconnectStream, 
   const nextGoalLabel = milestoneLabels[currentIdx];
   const isAllGoalsMet = stats.monthlyMinutes >= milestones[11];
 
-  // ── HARD CUTOFF (00:00 Midnight) ──────────────────────────────────────────
-  // User availability stops at 00:00. This tracks how much time is left in the "day".
   const HARD_CUTOFF_HOUR = 24; 
   const currentHour = new Date().getHours();
   const currentMin = new Date().getMinutes();
   const minsToHardCutoff = Math.max(0, ((HARD_CUTOFF_HOUR * 60) - (currentHour * 60 + currentMin)));
+
+  // ── MILESTONE TARGETS ──────────────────────────────────────────────────────
+  // Milestone 1: 5500m/month (5 days/week)
+  // Milestone 2: 480m/day (6 days/week)
+  const getWorkingDays = (y, m) => {
+    let count = 0;
+    const daysInMo = new Date(year, month + 1, 0).getDate();
+    for (let d = 1; d <= daysInMo; d++) {
+      const dow = new Date(year, month, d).getDay();
+      if (dow !== 0 && dow !== 6) count++; // Mon-Fri
+    }
+    return count || 22;
+  };
+  const workingDaysMo = getWorkingDays(year, month);
+  const totalWindowMins = shiftElapsedMins + minsToHardCutoff;
+  const timeRatio = totalWindowMins > 0 ? shiftElapsedMins / totalWindowMins : 0;
+
+  const milestoneTargets = {
+    m5500: 5500 / workingDaysMo,
+    m480: 480,
+    m5500Ideal: (5500 / workingDaysMo) * timeRatio,
+    m480Ideal: 480 * timeRatio
+  };
   
   const cutoffWarning = (() => {
     if (minsToHardCutoff <= 1)   return { label: 'MIDNIGHT DEADLINE', color: '#ef4444', pulse: true };
