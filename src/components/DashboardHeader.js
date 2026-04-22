@@ -535,21 +535,22 @@ export const DashboardHeader = ({ onStartAudio, onStopAudio, onReconnectStream, 
                   <button id="header-zap-btn" className="btn-emoji" onClick={onReconnectStream} style={{ background: '#0ea5e9', width: '22px', height: '22px' }} title="ZAP">⚡</button>
                 </>
               )}
+              
+              <div id="header-edit-tools" style={{ display: 'flex', gap: '0.1rem', marginLeft: '0.1rem', borderLeft: '1px solid rgba(255,255,255,0.1)', paddingLeft: '0.1rem' }}>
+                <button className="edit-btn-tiny" onClick={() => setTimeEditMode('call')} title="Edit call time">✏️📞</button>
+                <button className="edit-btn-tiny" onClick={() => setTimeEditMode('break')} title="Edit break time">✏️☕</button>
+              </div>
             </div>
             
-            <div id="left-pills-row" style={{ display: 'flex', flexDirection: 'column', gap: '0.1rem' }}>
+            <div id="left-pills-row" style={{ display: 'flex', gap: '0.1rem' }}>
                <div id="pill-shift" className="metric-pill compact-pill" title="SHIFT PROGRESS: Total time elapsed since you first connected today. Reset at midnight.">
-                 <span style={{ fontSize: '0.58rem' }}>🏃{formatHoursMins(shiftElapsedMins)}</span>
+                 <span style={{ fontSize: '0.55rem' }}>🏃{formatHoursMins(shiftElapsedMins)}</span>
                </div>
                <div id="pill-sprint" className="metric-pill compact-pill" title="SPRINT: Unbroken session time elapsed since your day started or since your last coffee break. Resets when you start a break.">
-                 <span style={{ fontSize: '0.58rem' }}>🔋{Math.floor(workSessionMinutes)}m</span>
+                 <span style={{ fontSize: '0.55rem' }}>🔋{Math.floor(workSessionMinutes)}m</span>
                </div>
                <div id="pill-logoff" className="metric-pill compact-pill" title="ESTIMATED LOG OFF: Calculated time to end your shift (usually 18:00), adjusted by your late start time and break usage today." style={{ background: 'rgba(245,158,11,0.08)', border: '1px solid rgba(245,158,11,0.2)' }}>
-                 <span style={{ color: '#fcd34d', fontSize: '0.58rem' }}>🚪{getCompensatedLogOff()}</span>
-               </div>
-               <div id="edit-buttons-row" style={{ display: 'flex', gap: '0.08rem' }}>
-                 <button id="header-call-edit-btn" className="edit-btn-tiny" onClick={() => setTimeEditMode('call')} title="Edit call time">✏️📞</button>
-                 <button id="header-break-edit-btn" className="edit-btn-tiny" onClick={() => setTimeEditMode('break')} title="Edit break time">✏️☕</button>
+                 <span style={{ color: '#fcd34d', fontSize: '0.55rem' }}>🚪{getCompensatedLogOff()}</span>
                </div>
             </div>
           </div>
@@ -700,13 +701,13 @@ export const DashboardHeader = ({ onStartAudio, onStopAudio, onReconnectStream, 
                )}
              </div>
 
-             <div id="feature-toggles-row" style={{ display: 'flex', gap: '0.15rem', marginTop: '0.2rem', alignItems: 'center', justifyContent: 'center', flexWrap: 'nowrap', background: 'rgba(255,255,255,0.05)', padding: '0.1rem 0.3rem', borderRadius: '20px' }}>
-                 <button id="header-notes-btn" className="btn-icon tiny-btn" onClick={() => setIsNotesOpen(!isNotesOpen)} style={{ opacity: isNotesOpen ? 1 : 0.3, fontSize: '0.75rem' }} title="Notes">📝</button>
-                 <button id="header-tools-btn" className="btn-icon tiny-btn" onClick={() => setIsToolbarVisible(!isToolbarVisible)} style={{ opacity: isToolbarVisible ? 1 : 0.3, fontSize: '0.75rem' }} title="Tools">🛠️</button>
-                 <button id="header-edit-btn" className="btn-icon tiny-btn" onClick={() => { if(isCollapsed) setIsCollapsed(false); setIsEditingScoreboard(!isEditingScoreboard); }} style={{ opacity: isEditingScoreboard ? 1 : 0.3, fontSize: '0.75rem' }} title="Edit Grid">✏️</button>
-                 <button id="header-help-btn" className="btn-icon tiny-btn" onClick={() => setIsScoreboardHelpVisible(!isScoreboardHelpVisible)} style={{ opacity: isScoreboardHelpVisible ? 1 : 0.3, background: isScoreboardHelpVisible ? 'rgba(59,130,246,0.3)' : 'transparent', fontSize: '0.75rem' }} title="Toggle Labels">❓</button>
-                 <button id="header-heatmap-btn" className="btn-icon tiny-btn" onClick={() => setIsHeatmapOpen(true)} style={{ fontSize: '0.75rem' }} title="Monthly Heatmap">📅</button>
-                 <button id="header-expand-btn" className="btn-icon tiny-btn" onClick={() => setIsCollapsed(!isCollapsed)} style={{ fontSize: '0.75rem' }} title={isCollapsed ? "Expand HUD" : "Collapse HUD"}>{isCollapsed ? '🔼' : '▼'}</button>
+             <div id="right-tool-grid" style={{ display: 'flex', gap: '0.1rem', marginTop: '0.1rem', alignItems: 'center', justifyContent: 'center', background: 'rgba(255,255,255,0.03)', padding: '0.1rem', borderRadius: '8px' }}>
+                 <button id="header-notes-btn" className="btn-icon tiny-btn" onClick={() => setIsNotesOpen(!isNotesOpen)} style={{ opacity: isNotesOpen ? 1 : 0.3, fontSize: '0.7rem' }} title="Notes">📝</button>
+                 <button id="header-tools-btn" className="btn-icon tiny-btn" onClick={() => setIsToolbarVisible(!isToolbarVisible)} style={{ opacity: isToolbarVisible ? 1 : 0.3, fontSize: '0.7rem' }} title="Tools">🛠️</button>
+                 <button id="header-edit-btn" className="btn-icon tiny-btn" onClick={() => { if(isCollapsed) setIsCollapsed(false); setIsEditingScoreboard(!isEditingScoreboard); }} style={{ opacity: isEditingScoreboard ? 1 : 0.3, fontSize: '0.7rem' }} title="Edit Grid">✏️</button>
+                 <button id="header-help-btn" className="btn-icon tiny-btn" onClick={() => setIsScoreboardHelpVisible(!isScoreboardHelpVisible)} style={{ opacity: isScoreboardHelpVisible ? 1 : 0.3, background: isScoreboardHelpVisible ? 'rgba(59,130,246,0.3)' : 'transparent', fontSize: '0.7rem' }} title="Toggle Labels">❓</button>
+                 <button id="header-heatmap-btn" className="btn-icon tiny-btn" onClick={() => setIsHeatmapOpen(true)} style={{ fontSize: '0.7rem' }} title="Monthly Heatmap">📅</button>
+                 <button id="header-expand-btn" className="btn-icon tiny-btn" onClick={() => setIsCollapsed(!isCollapsed)} style={{ fontSize: '0.7rem' }} title={isCollapsed ? "Expand HUD" : "Collapse HUD"}>{isCollapsed ? '🔼' : '▼'}</button>
               </div>
           </div>
         </div>
