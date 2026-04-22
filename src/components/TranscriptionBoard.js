@@ -379,26 +379,36 @@ const GuidanceHeader = ({ isActive, isBreakActive, stats, dailyGoal }) => {
   
   const nextPsalm = () => setPsalmIdx(prev => (prev + 1) % PSALMS.length);
 
+  const currentHour = new Date().getHours();
+  const minsLeftInDay = Math.max(1, (24 - currentHour) * 60);
+  const isUnreachable = remaining > minsLeftInDay;
+  const safeGoal = Math.floor(minsLeftInDay * 0.9); // 90% utilization limit
+
   return (
-    <div id="guidance-overlay" style={{ padding: '2rem', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '2rem', opacity: 0.8 }}>
-      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '1.5rem', justifyContent: 'center' }}>
-        <div className="guidance-stat-card glass-panel" style={{ padding: '1rem', border: '1px solid rgba(255,255,255,0.1)', minWidth: '180px' }}>
-          <div style={{ fontSize: '0.65rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.1em' }}>Where I Am</div>
-          <div style={{ fontSize: '1.6rem', fontWeight: 900, color: '#6ee7b7' }}>{pct}% <span style={{ fontSize: '0.8rem', opacity: 0.5 }}>of Daily</span></div>
-          <div style={{ fontSize: '0.75rem', opacity: 0.7 }}>Mapped: {currentMins}m / {dailyGoal}m</div>
+    <div id="guidance-overlay" style={{ padding: '2rem', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '1.5rem', opacity: 0.9 }}>
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '1rem', justifyContent: 'center' }}>
+        <div className="guidance-stat-card glass-panel" style={{ padding: '0.8rem 1.2rem', border: '1px solid rgba(255,255,255,0.1)', minWidth: '180px', background: 'rgba(255,255,255,0.03)', borderRadius: '12px', boxShadow: '0 8px 32px rgba(0,0,0,0.2)' }}>
+          <div style={{ fontSize: '0.6rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: '0.4rem' }}>Daily Progress</div>
+          <div style={{ fontSize: '1.4rem', fontWeight: 900, color: '#6ee7b7' }}>{pct}% <span style={{ fontSize: '0.7rem', opacity: 0.5 }}>Done</span></div>
+          <div style={{ fontSize: '0.65rem', opacity: 0.6 }}>Mapped: {currentMins}m / {dailyGoal}m</div>
         </div>
         
-        <div className="guidance-stat-card glass-panel" style={{ padding: '1rem', border: '1px solid rgba(255,255,255,0.1)', minWidth: '180px' }}>
-          <div style={{ fontSize: '0.65rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.1em' }}>What I Must Do</div>
+        <div className="guidance-stat-card glass-panel" style={{ padding: '0.8rem 1.2rem', border: '1px solid rgba(255,255,255,0.1)', minWidth: '180px', background: 'rgba(255,255,255,0.03)', borderRadius: '12px', boxShadow: '0 8px 32px rgba(0,0,0,0.2)' }}>
+          <div style={{ fontSize: '0.6rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: '0.4rem' }}>Target Action</div>
           {remaining > 0 ? (
             <>
-              <div style={{ fontSize: '1.6rem', fontWeight: 900, color: '#fcd34d' }}>{remaining}m <span style={{ fontSize: '0.8rem', opacity: 0.5 }}>Left</span></div>
-              <div style={{ fontSize: '0.75rem', opacity: 0.7 }}>to hit today's yield target</div>
+              <div style={{ fontSize: '1.4rem', fontWeight: 900, color: isUnreachable ? '#f87171' : '#fcd34d' }}>
+                {isUnreachable ? `${safeGoal}m` : `${remaining}m`} 
+                <span style={{ fontSize: '0.7rem', opacity: 0.5 }}> {isUnreachable ? 'Limit' : 'Left'}</span>
+              </div>
+              <div style={{ fontSize: '0.65rem', opacity: 0.8, color: isUnreachable ? '#f87171' : 'inherit' }}>
+                {isUnreachable ? `⚠️ Goal unreachable today. Aim for ${safeGoal}m.` : 'to hit today\'s yield target'}
+              </div>
             </>
           ) : (
             <>
-              <div style={{ fontSize: '1.6rem', fontWeight: 900, color: '#10b981' }}>GOAL MET</div>
-              <div style={{ fontSize: '0.75rem', opacity: 0.7 }}>Exceeding today's quota!</div>
+              <div style={{ fontSize: '1.4rem', fontWeight: 900, color: '#10b981' }}>GOAL MET</div>
+              <div style={{ fontSize: '0.65rem', opacity: 0.6 }}>Exceeding today's quota!</div>
             </>
           )}
         </div>
