@@ -614,21 +614,6 @@ export const TranscriptionBoard = ({ captions, onClearAll, onReconnect }) => {
       >
         <div style={{ flex: '1 1 auto' }} />
         
-        {/* Zombie Call Reconnect Reminder Banner */}
-        {isZombieCall && !isActive && (
-          <div style={{ 
-            position: 'sticky', top: '5px', zIndex: 100,
-            background: 'rgba(245, 158, 11, 0.95)', color: '#000',
-            padding: '0.6rem', textAlign: 'center', fontWeight: '900',
-            fontSize: '0.85rem', borderRadius: '8px', margin: '0.5rem',
-            boxShadow: '0 4px 20px rgba(0,0,0,0.4)', cursor: 'pointer',
-            animation: 'pulseWarning 2s infinite',
-            border: '2px solid #000'
-          }} onClick={onReconnect}>
-            ⚠️ Master, Browser Refreshed Mid-Call! <br/>
-            <span style={{ fontSize: '1rem' }}>CLICK HERE TO RECONNECT TRANSCRIPTION</span>
-          </div>
-        )}
 
         {/* Pinned Reference Section REMOVED - Pins now highlight in-place */}
 

@@ -410,12 +410,6 @@ export const DashboardHeader = ({ onStartAudio, onStopAudio, onReconnectStream, 
 
   return (
     <header className="dashboard-header glass-panel" style={{ position: 'relative', zIndex: 100 }}>
-      {isZombieCall && (
-        <div className="zombie-banner-premium" onClick={onRecovery}>
-          <span style={{ fontSize: '1.1rem' }}>🤖</span> 
-          <span>Master, app was restarted mid-call. <b>Press to Reconnect.</b></span>
-        </div>
-      )}
 
       {/* COLLAPSED VIEW */}
       {isCollapsed && (
