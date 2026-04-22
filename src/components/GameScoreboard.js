@@ -200,25 +200,9 @@ const MomentumBar = ({ totalDailyMins, dailyGoal, shiftElapsedMins, isActive, mi
 
 // ─── GameScoreboard ───────────────────────────────────────────────────────────
 // Props mirror the computed values already in DashboardHeader.
-export const GameScoreboard = ({
-  // Money
-  liveDailyArs, dailyTargetArs, monthlyArs, monthlyTargetArs,
-  // Time
-  stats, dailyGoal, totalDailyMins, shiftElapsedMins,
-  // Intelligence
-  pacePrediction, qualityScore, cutoffWarning,
-  // Break
-  breakLeft, breakLimit,
-  // Ladder
-  nextGoalLabel, nextMilestone,
-  // Monthly
-  daysInMonth, currentDay, remainingDays,
-   // call state (for visual momentum)
-   isActive, isBreakActive,
-   // milestone targets
-   milestoneTargets,
-   // onSwitch back to numbers
-   onSwitchToNumbers
+export const GameScoreboard = ({ 
+  liveDailyArs, dailyTargetArs, monthlyArs, monthlyTargetArs, stats, dailyGoal, totalDailyMins, totalOffCallMins, shiftElapsedMins,
+  pacePrediction, qualityScore, cutoffWarning, breakLeft, breakLimit, nextGoalLabel, nextMilestone, daysInMonth, currentDay, remainingDays, isActive, isBreakActive, onSwitchToNumbers, milestoneTargets
  }) => {
   // Drift counter: how many seconds since last call ended (affects UI urgency)
   const [idleSecs, setIdleSecs] = useState(0);
@@ -343,6 +327,13 @@ export const GameScoreboard = ({
               label={`break   ${Math.round(breakLeft)}m / ${breakLimit}m`}
               sublabel={breakLeft > 0 ? 'READY' : 'SPENT'}
               warnThreshold={0.5}
+            />
+
+            <EmojiRow
+              emoji="🔌" value={totalOffCallMins} unitValue={MIN_UNIT} maxValue={shiftElapsedMins || 60}
+              label={`idle    ${Math.round(totalOffCallMins)}m off-call`}
+              sublabel={isActive ? 'CALL' : 'IDLE'}
+              color="#fb923c"
             />
           </>
         ) : (

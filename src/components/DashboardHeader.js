@@ -237,14 +237,16 @@ export const DashboardHeader = ({ onStartAudio, onStopAudio, onReconnectStream, 
     startBreak();
   };
 
-  // Calculations
-  const now = new Date();
-  const year = now.getFullYear(), month = now.getMonth(), currentDay = now.getDate();
-  const daysInMonth = new Date(year, month + 1, 0).getDate();
-  const remainingDays = daysInMonth - currentDay + 1;
-  const remainingMinutes = Math.max(0, stats.goalMinutes - stats.monthlyMinutes);
-  const minutesBeforeToday = Math.max(0, stats.monthlyMinutes - stats.dailyMinutes);
-  const remainingMinutesFromStartOfDay = Math.max(0, stats.goalMinutes - minutesBeforeToday);
+  const getWorkingDays = (y, m) => {
+    let count = 0;
+    const daysInMo = new Date(y, m + 1, 0).getDate();
+    for (let d = 1; d <= daysInMo; d++) {
+      const dow = new Date(y, m, d).getDay();
+      if (dow !== 0 && dow !== 6) count++; // Mon-Fri
+    }
+    return count || 22;
+  };
+
   const getRemainingWorkDays = (y, m, dStart) => {
     let count = 0;
     const dInMo = new Date(y, m + 1, 0).getDate();
@@ -255,6 +257,15 @@ export const DashboardHeader = ({ onStartAudio, onStopAudio, onReconnectStream, 
     return count;
   };
 
+  // Calculations
+  const now = new Date();
+  const year = now.getFullYear(), month = now.getMonth(), currentDay = now.getDate();
+  const daysInMonth = new Date(year, month + 1, 0).getDate();
+  const remainingDays = daysInMonth - currentDay + 1;
+  const remainingMinutes = Math.max(0, stats.goalMinutes - stats.monthlyMinutes);
+  const minutesBeforeToday = Math.max(0, stats.monthlyMinutes - stats.dailyMinutes);
+  const remainingMinutesFromStartOfDay = Math.max(0, stats.goalMinutes - minutesBeforeToday);
+
   const remainingWorkDays = getRemainingWorkDays(year, month, currentDay);
   const baseYield = (stats.goalMinutes || 5500) / (getWorkingDays(year, month) || 22);
   
@@ -264,6 +275,7 @@ export const DashboardHeader = ({ onStartAudio, onStopAudio, onReconnectStream, 
   
   const unbankedMins = isActive ? (sessionSeconds / 60) : 0;
   const totalDailyMins = stats.dailyMinutes + unbankedMins;
+  const totalOffCallMins = (stats.dailyAvailMinutes || 0) + (stats.dailyBreakMinutes || 0) + (availSeconds / 60) + (breakSeconds / 60);
 
   // CATCH-UP LOGIC: Dynamic shifts and SUCCESS ZONES
   const WORKDAY_START = 9, CORE_END = 18, ABSOLUTE_END = 23;
@@ -383,15 +395,6 @@ export const DashboardHeader = ({ onStartAudio, onStopAudio, onReconnectStream, 
   // ── MILESTONE TARGETS ──────────────────────────────────────────────────────
   // Milestone 1: 5500m/month (5 days/week)
   // Milestone 2: 480m/day (6 days/week)
-  const getWorkingDays = (y, m) => {
-    let count = 0;
-    const daysInMo = new Date(year, month + 1, 0).getDate();
-    for (let d = 1; d <= daysInMo; d++) {
-      const dow = new Date(year, month, d).getDay();
-      if (dow !== 0 && dow !== 6) count++; // Mon-Fri
-    }
-    return count || 22;
-  };
   const workingDaysMo = getWorkingDays(year, month);
   const totalWindowMins = shiftElapsedMins + minsToHardCutoff;
   const timeRatio = totalWindowMins > 0 ? shiftElapsedMins / totalWindowMins : 0;
@@ -558,6 +561,7 @@ export const DashboardHeader = ({ onStartAudio, onStopAudio, onReconnectStream, 
                 liveDailyArs={liveDailyArs} dailyTargetArs={dailyTargetArs}
                 monthlyArs={monthlyArs} monthlyTargetArs={monthlyTargetArs}
                 stats={stats} dailyGoal={dailyGoal} totalDailyMins={totalDailyMins}
+                totalOffCallMins={totalOffCallMins}
                 shiftElapsedMins={shiftElapsedMins}
                 pacePrediction={pacePrediction} qualityScore={qualityScore} cutoffWarning={cutoffWarning}
                 breakLeft={breakLeft} breakLimit={breakLimit}
@@ -601,6 +605,12 @@ export const DashboardHeader = ({ onStartAudio, onStopAudio, onReconnectStream, 
                   {isEditingScoreboard && <span className="edit-grid-label">5. $ LEFT TODAY</span>}
                   <div className="metric-cell-val" style={{ color: '#fcd34d' }}><RollingNumber value={cashToTodayGoal} prefix="$" height={24} /></div>
                   <div className="metric-cell-label">{!isEditingScoreboard && '5. $ LEFT TODAY'}</div>
+                </div>
+
+                <div className={`metric-cell ${isEditingScoreboard ? 'grid-edit-mode' : ''}`} title="Total off-call time today (Availability + Breaks)" style={{ position: 'relative', background: 'rgba(251,146,60,0.04)' }}>
+                  {isEditingScoreboard && <span className="edit-grid-label">10. OFF CALL</span>}
+                  <div className="metric-cell-val" style={{ color: '#fb923c' }}>{Math.round(totalOffCallMins)}m</div>
+                  <div className="metric-cell-label">{!isEditingScoreboard && '10. OFF CALL'}</div>
                 </div>
 
                 {/* 6. Money month */}
