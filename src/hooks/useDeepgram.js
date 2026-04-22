@@ -3,6 +3,37 @@ import { useSession } from '../contexts/SessionContext';
 
 const normalize = (s) => (s || '').toLowerCase().replace(/[^a-z0-9]/g, '');
 
+const hallucinationGuard = (text) => {
+  if (!text) return text;
+  const words = text.trim().split(/\s+/);
+  if (words.length < 4) return text;
+
+  let cleaned = [];
+  let repeatCount = 0;
+  let lastWord = '';
+
+  for (let word of words) {
+    const norm = normalize(word);
+    if (norm === lastWord && norm.length > 0) {
+      repeatCount++;
+    } else {
+      repeatCount = 0;
+      lastWord = norm;
+    }
+
+    if (repeatCount < 2) { // Allow "word word", prune "word word word..."
+      cleaned.push(word);
+    }
+  }
+
+  // If the result is significantly shorter due to pruning, it was likely a stutter hallucination
+  if (words.length > 15 && cleaned.length < words.length * 0.5) {
+     return cleaned.slice(0, 10).join(' ') + "... [Stutter Pruned]";
+  }
+
+  return cleaned.join(' ');
+};
+
 const removeOverlap = (base, addition) => {
   if (!base || !addition) return addition;
   
@@ -26,8 +57,6 @@ const removeOverlap = (base, addition) => {
   }
 
   // 3. AGGRESSIVE FRAGMENT MATCH (Deepgram Rewinds)
-  // If the addition starts with a significant chunk (3-6 words) that appears 
-  // anywhere in the last 25 words of the base, prune it.
   if (additionWords.length >= 3) {
     for (let n = Math.min(6, additionWords.length); n >= 3; n--) {
        const head = normalize(additionWords.slice(0, n).join(''));
@@ -200,6 +229,8 @@ export const useDeepgram = () => {
             
             if (lang === 'en') {
               let cleanedTranscript = removeOverlap(current.enFinalized || prevFinalized, transcript);
+              cleanedTranscript = hallucinationGuard(cleanedTranscript);
+
               // Group 9-10 single digits back-to-back (phone numbers)
               cleanedTranscript = cleanedTranscript.replace(/\b(?:\d\s+){8,9}\d+\b/g, m => m.replace(/\s+/g, ''));
               
@@ -214,6 +245,8 @@ export const useDeepgram = () => {
               if (confidence > 0) current.enConf = confidence; 
             } else {
               let cleanedTranscript = removeOverlap(current.esFinalized || prevFinalized, transcript);
+              cleanedTranscript = hallucinationGuard(cleanedTranscript);
+
               // Group 9-10 single digits back-to-back (phone numbers)
               cleanedTranscript = cleanedTranscript.replace(/\b(?:\d\s+){8,9}\d+\b/g, m => m.replace(/\s+/g, ''));
 
