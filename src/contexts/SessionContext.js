@@ -64,6 +64,10 @@ export const SessionProvider = ({ children }) => {
       const newTimeline = [...prev];
       if (newTimeline.length > 0) {
         const last = newTimeline[newTimeline.length - 1];
+        // If the new event is the same type as the last ongoing one, just keep it going
+        if (last.type === type && !last.end) {
+          return prev;
+        }
         if (!last.end) {
           last.end = now;
         }
@@ -261,14 +265,20 @@ export const SessionProvider = ({ children }) => {
         const lateMins = Math.max(0, (now - nineAM.getTime()) / 60000);
         
         setWorkSessionStartTime(now);
-        const newStats = { ...prev, dayStartTime: now, lastDate: today, shiftStartSentiment: lateMins };
-        
-        // Initialize timeline with avail starting at dayStartTime (or 9am if earlier)
         const timelineStart = Math.min(now, nineAM.getTime());
-        setDailyTimeline([{ type: 'avail', start: timelineStart, end: now }]);
         
-        return newStats;
+        // Initialize timeline and start work in one go to prevent race condition
+        const initialTimeline = [
+          { type: 'avail', start: timelineStart, end: now },
+          { type: 'work', start: now, end: null }
+        ];
+        setDailyTimeline(initialTimeline);
+        safeLocalStorageSet('catintassist_timeline', JSON.stringify(initialTimeline));
+        
+        return { ...prev, dayStartTime: now, lastDate: today, shiftStartSentiment: lateMins };
       }
+      
+      // If not a new day, just record the work event normally (handled by line 250)
       return prev;
     });
   };

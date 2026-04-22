@@ -229,9 +229,22 @@ export const useDeepgram = () => {
       };
 
       ws.onclose = (event) => {
-        if (event.code === 1006) {
-          setConnectionState('error');
-          setConnectionMessage('Connection Rejected (Check API Key)');
+        if (event.code === 1006 || event.code === 1001) {
+          console.warn(`[Deepgram] Socket ${lang} closed unexpectedly (${event.code}).`);
+          if (isActiveRef.current) {
+            setConnectionMessage(`Reconnecting ${lang}...`);
+            // Attempt auto-reconnect if still active
+            setTimeout(() => {
+              if (isActiveRef.current && streamRef.current) {
+                console.log(`[Deepgram] Attempting auto-reconnect for ${lang}...`);
+                if (lang === 'en') socketRefEn.current = createSocket('en');
+                else socketRefEs.current = createSocket('es');
+              }
+            }, 2000);
+          }
+        } else if (event.code === 4000) {
+           setConnectionState('error');
+           setConnectionMessage('Connection Rejected (Check API Key)');
         }
       };
       
@@ -250,12 +263,20 @@ export const useDeepgram = () => {
       const enOpen = socketRefEn.current?.readyState === 1;
       const esOpen = socketRefEs.current?.readyState === 1;
       
+      // If one is down but the other is up, try to fix the broken one
+      if (!enOpen && isActiveRef.current && streamRef.current) {
+        console.warn("[Deepgram] Watchdog: EN socket down. Reconnecting...");
+        socketRefEn.current = startDeepgram(streamRef.current); // This is a bit recursive, better to just createSocket
+      }
+      
       if (!enOpen && !esOpen) {
         console.warn("[Deepgram] Watchdog: All sockets lost. Updating state.");
         setConnectionState('error');
-        setConnectionMessage('Connection Timed Out');
+        setConnectionMessage('Connection Timed Out - Reconnecting...');
+        // Force a full zapping reconnect
+        reconnectStream();
       }
-    }, 10000); // Check every 10s
+    }, 15000); // Check every 15s
     
     return () => clearInterval(watchdog);
   }, [connectionState]);

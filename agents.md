@@ -105,4 +105,6 @@ CURRENT INBOX
 - [x] formatting: automatic grouping of 9-10 digit sequences (v4.1.0)
 - [x] intermediary goals (12 step goals): Level 1 (Floor), Level 2 (Growth), Level 3 (Legend)
 - [x] timeline: painting orange in the progress bar during non-call time (v4.2.1)
+- [x] stability: auto-reconnect for Deepgram WebSockets and fixed timeline race conditions (v4.2.2)
+- [x] UI: improved contrast for 'In Call' segments with white glow effect (v4.2.2)
 </details>

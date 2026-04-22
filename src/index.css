@@ -772,8 +772,9 @@ body {
 }
 
 .timeline-segment.work {
-  background-color: #3b82f6;
-  box-shadow: 0 0 5px rgba(59, 130, 246, 0.4);
+  background-color: #60a5fa;
+  box-shadow: 0 0 10px rgba(255, 255, 255, 0.4), 0 0 5px rgba(96, 165, 250, 0.6);
+  border: 1px solid rgba(255, 255, 255, 0.2);
 }
 
 .timeline-segment.break {
@@ -783,7 +784,7 @@ body {
 
 .timeline-segment.avail {
   background-color: #fb923c;
-  opacity: 0.8;
+  opacity: 0.4;
 }
 
 .timeline-segment.ongoing {
