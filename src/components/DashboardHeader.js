@@ -67,7 +67,7 @@ const CelebrationParticles = ({ type, label, coins, onDismiss }) => {
   );
 };
 
-const StateIndicators = ({ state, breakMinutes, isZombie }) => {
+const StateIndicators = ({ state, breakMinutes, isZombie, silenceCount }) => {
   if (state === 'call') {
     return (
       <div className="emoji-money" style={{ fontSize: '1.1rem', marginRight: '0.2rem' }}>💰</div>
@@ -78,27 +78,40 @@ const StateIndicators = ({ state, breakMinutes, isZombie }) => {
     const cups = 9;
     const spentCups = Math.min(cups, Math.floor(breakMinutes / 10));
     return (
-      <div className="resource-drain" title={`Break Budget: ${Math.floor(breakMinutes)}/90m used`} style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '1px', marginBottom: '4px' }}>
-        {Array.from({ length: cups }).map((_, i) => (
-          <span key={i} className={`resource-item ${i < spentCups ? 'spent' : ''}`} style={{ fontSize: '0.85rem', lineHeight: 1 }}>
-            {i < spentCups ? '🍵' : '☕'}
-          </span>
-        ))}
+      <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+        <div className="resource-drain" title={`Break Budget: ${Math.floor(breakMinutes)}/90m used`} style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '1px' }}>
+          {Array.from({ length: cups }).map((_, i) => (
+            <span key={i} className={`resource-item ${i < spentCups ? 'spent' : ''}`} style={{ fontSize: '0.85rem', lineHeight: 1 }}>
+              {i < spentCups ? '🍵' : '☕'}
+            </span>
+          ))}
+        </div>
+        {silenceCount > 5 && (
+          <span style={{ fontSize: '0.65rem', color: '#fb923c', fontWeight: 600 }}>{formatTime(silenceCount)}</span>
+        )}
       </div>
     );
   }
   // Zombie
   if (isZombie) {
     return (
-      <div style={{ animation: 'pulseWarning 1s infinite', fontSize: '1rem', marginRight: '0.2rem', color: '#f59e0b' }}>
-        🤖
+      <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+        <div style={{ animation: 'pulseWarning 1s infinite', fontSize: '1rem', color: '#f59e0b' }}>🤖</div>
+        <span style={{ fontSize: '0.65rem', color: '#f59e0b', fontWeight: 800 }}>{formatTime(silenceCount)}</span>
       </div>
     );
   }
   // Avail
   return (
-    <div style={{ animation: 'encouragePulse 3s infinite', fontSize: '1rem', marginRight: '0.2rem' }}>
-      {Math.floor(Date.now() / 2000) % 2 === 0 ? '📡' : '⏳'}
+    <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+      <div style={{ animation: 'encouragePulse 3s infinite', fontSize: '1rem', color: '#fb923c' }}>
+        {Math.floor(Date.now() / 2000) % 2 === 0 ? '📡' : '⏳'}
+      </div>
+      {silenceCount > 0 && (
+        <span style={{ fontSize: '0.75rem', color: '#fb923c', fontWeight: 800, background: 'rgba(251, 146, 60, 0.1)', padding: '0 4px', borderRadius: '4px' }}>
+          {formatTime(silenceCount)}
+        </span>
+      )}
     </div>
   );
 };
@@ -410,7 +423,12 @@ export const DashboardHeader = ({ onStartAudio, onStopAudio, onReconnectStream, 
           {/* Controls & Mini-Stats Column (LEFT) */}
           <div id="controls-left-col" className={`header-column-side ${isActive ? 'active-working-state' : ''}`} style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem', flexShrink: 0, justifyContent: 'flex-start', alignItems: 'center' }}>
             <div id="connection-controls-row" style={{ display: 'flex', flexDirection: 'column', gap: '0.15rem', alignItems: 'center' }}>
-              <StateIndicators state={isActive ? 'call' : isBreakActive ? 'break' : 'avail'} breakMinutes={stats.dailyBreakMinutes || 0} isZombie={isZombieCall} />
+              <StateIndicators 
+                state={isActive ? 'call' : isBreakActive ? 'break' : 'avail'} 
+                breakMinutes={stats.dailyBreakMinutes || 0} 
+                isZombie={isZombieCall} 
+                silenceCount={silenceCount}
+              />
               <ConnectionIndicator 
                 state={connectionState} 
                 message={connectionMessage} 
