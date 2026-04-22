@@ -1,45 +1,45 @@
 import { useState, useRef, useCallback, useEffect } from 'react';
 import { useSession } from '../contexts/SessionContext';
 
-// Aggressive deduplication helper
-// Normalizes strings by removing ALL non-alphanumeric characters and extra spaces
 const normalize = (s) => (s || '').toLowerCase().replace(/[^a-z0-9]/g, '');
 
 const removeOverlap = (base, addition) => {
   if (!base || !addition) return addition;
   
+  const normBase = normalize(base);
+  const normAddition = normalize(addition);
+  
+  // 1. EXACT OR SUBSET MATCH: If addition is already fully contained in base, it's a duplicate
+  if (normBase.includes(normAddition)) return '';
+
   const baseWords = base.trim().split(/\s+/);
   const additionWords = addition.trim().split(/\s+/);
   
-  // Try to find the longest overlapping word sequence
+  // 2. CLASSIC OVERLAP: Find the longest suffix of base that matches a prefix of addition
   for (let i = Math.min(baseWords.length, additionWords.length); i > 0; i--) {
     const baseSuffix = normalize(baseWords.slice(-i).join(''));
     const additionPrefix = normalize(additionWords.slice(0, i).join(''));
     
     if (baseSuffix === additionPrefix && baseSuffix.length > 0) {
-      // We found a match! Return the non-overlapping part of the addition
       return additionWords.slice(i).join(' ');
     }
   }
 
-  // SECONDARY DEFENSE: If the first 5 words of addition exist anywhere in the last 15 words of base
-  // This catches cases where Deepgram rewinds to a slightly different offset
+  // 3. FUZZY TAIL MATCH: If the start of addition exists anywhere in the last 20 words of base
   if (additionWords.length >= 3) {
     const startOfAddition = normalize(additionWords.slice(0, 3).join(''));
-    for (let j = 0; j < baseWords.length - 2; j++) {
+    for (let j = Math.max(0, baseWords.length - 20); j < baseWords.length - 2; j++) {
       const baseWindow = normalize(baseWords.slice(j, j + 3).join(''));
       if (baseWindow === startOfAddition) {
-        // If we find a 3-word match, check how much follows it
-        // For simplicity, if we find a match in the last 15 words, we skip those words
-        if (j > baseWords.length - 15) {
-           // This is a bit risky but handles the "rewind" well
-           // Let's refine: find the longest matching sequence starting at j
-           let k = 0;
-           while (j + k < baseWords.length && k < additionWords.length && normalize(baseWords[j+k]) === normalize(additionWords[k])) {
-             k++;
-           }
-           if (k >= 3) return additionWords.slice(k).join(' ');
-        }
+         // Found a potential mid-sentence rewind. 
+         // Check if the rest of addition matches from this point.
+         let matchCount = 0;
+         while (j + matchCount < baseWords.length && matchCount < additionWords.length) {
+            if (normalize(baseWords[j + matchCount]) === normalize(additionWords[matchCount])) {
+              matchCount++;
+            } else break;
+         }
+         if (matchCount >= 3) return additionWords.slice(matchCount).join(' ');
       }
     }
   }
@@ -62,6 +62,7 @@ export const useDeepgram = () => {
   const isActiveRef = useRef(false);
   const lastTranscriptTimeRef = useRef(Date.now());
   const turnWordCountRef = useRef(0);
+  const bubbleIdCounterRef = useRef(0);
   const overrideTimeoutRef = useRef(null);
 
   const closeConnections = useCallback(() => {
@@ -168,6 +169,13 @@ export const useDeepgram = () => {
                               lastWordCount >= 80;
 
             if (!last || isNewTurn) {
+              // If this transcript is a full duplicate of the previous bubble, don't even create a new turn
+              const prevB = prev[prev.length - 1];
+              const prevText = lang === 'en' ? (prevB?.enFull || prevB?.text || '') : (prevB?.esFull || prevB?.text || '');
+              if (normalize(prevText).includes(normalize(transcript))) {
+                 return prev; 
+              }
+
               if (isSilentBreak || !last) turnWordCountRef.current = 0;
               else {
                 // If we split due to overflow (not silence), preserve the previous turn count
@@ -176,10 +184,11 @@ export const useDeepgram = () => {
               }
               
               last = { 
-                id: Date.now(), 
+                id: `${Date.now()}-${++bubbleIdCounterRef.current}`, 
                 enFinalized: '', enInterim: '', enConf: 0,
                 esFinalized: '', esInterim: '', esConf: 0,
-                turnWordCount: 0
+                turnWordCount: 0,
+                isSplit: !isSilentBreak // Mark as split if not a silence break
               };
               prev = [...prev, last];
             }
@@ -188,10 +197,11 @@ export const useDeepgram = () => {
             
             // Clean the transcript of any overlap with its own finalized text (internal dedupe)
             // If it's a new turn, we ALSO check against the PREVIOUS bubble's finalized text
-            const prevBubbleText = isNewTurn ? (prev[prev.length - 2]?.text || '') : '';
+            const prevB = isNewTurn ? prev[prev.length - 2] : null;
+            const prevFinalized = lang === 'en' ? (prevB?.enFull || prevB?.text || '') : (prevB?.esFull || prevB?.text || '');
             
             if (lang === 'en') {
-              let cleanedTranscript = removeOverlap(current.enFinalized || prevBubbleText, transcript);
+              let cleanedTranscript = removeOverlap(current.enFinalized || prevFinalized, transcript);
               // Group 9-10 single digits back-to-back (phone numbers)
               cleanedTranscript = cleanedTranscript.replace(/\b(?:\d\s+){8,9}\d+\b/g, m => m.replace(/\s+/g, ''));
               
@@ -205,7 +215,7 @@ export const useDeepgram = () => {
               }
               if (confidence > 0) current.enConf = confidence; 
             } else {
-              let cleanedTranscript = removeOverlap(current.esFinalized || prevBubbleText, transcript);
+              let cleanedTranscript = removeOverlap(current.esFinalized || prevFinalized, transcript);
               // Group 9-10 single digits back-to-back (phone numbers)
               cleanedTranscript = cleanedTranscript.replace(/\b(?:\d\s+){8,9}\d+\b/g, m => m.replace(/\s+/g, ''));
 
