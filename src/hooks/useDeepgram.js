@@ -261,7 +261,18 @@ export const useDeepgram = () => {
             // If it's a new turn, we ALSO check against the PREVIOUS bubble's finalized text
             // Look back at the last 3 bubbles to catch cross-bubble repetitions
             const recentBubbles = prev.slice(-4, -1); // Current is at index length-1
-            const baseContext = recentBubbles.map(b => lang === 'en' ? (b.enFull || b.text || '') : (b.esFull || b.text || '')).join(' ');
+            const baseContext = recentBubbles.map(b => lang === 'en' ? (b.enFinalized || b.enInterim || '') : (b.esFinalized || b.esInterim || '')).join(' ');
+            
+            // Internal Transcript Dedupe: Catch "evolving" fragments within the same incoming string
+            // (e.g. "give you muscle relax Muscle relaxant" -> "give you muscle relaxant")
+            const words = transcript.trim().split(/\s+/);
+            if (words.length > 8) {
+              const mid = Math.floor(words.length / 2);
+              const head = words.slice(0, mid).join(' ');
+              const tail = words.slice(mid).join(' ');
+              const cleanedTail = removeOverlap(head, tail);
+              transcript = (head + ' ' + cleanedTail).trim();
+            }
             
             if (lang === 'en') {
               // Check overlap against BOTH current bubble's finalized text AND previous bubble's tail
