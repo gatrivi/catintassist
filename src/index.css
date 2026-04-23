@@ -1191,3 +1191,34 @@ body {
 .consolidated-toolbar {
   padding-left: 0.2rem !important;
 }
+
+/* Blueprint Mode Outlines */
+.grid-edit-mode {
+  outline: 2px dashed #06b6d4 !important;
+  outline-offset: -2px;
+  background: rgba(6, 182, 212, 0.05) !important;
+  animation: blueprintPulse 2s infinite ease-in-out;
+}
+
+.edit-grid-label {
+  position: absolute;
+  top: 0;
+  left: 0;
+  background: #06b6d4;
+  color: white;
+  font-size: 0.45rem;
+  font-weight: 900;
+  padding: 0 4px;
+  border-bottom-right-radius: 4px;
+  z-index: 100;
+  text-transform: uppercase;
+  pointer-events: none;
+  box-shadow: 1px 1px 4px rgba(0,0,0,0.4);
+}
+
+@keyframes blueprintPulse {
+  0% { outline-color: rgba(6, 182, 212, 0.4); }
+  50% { outline-color: rgba(6, 182, 212, 1); }
+  100% { outline-color: rgba(6, 182, 212, 0.4); }
+}
+

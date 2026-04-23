@@ -47,7 +47,8 @@ const removeOverlap = (base, addition) => {
   const baseWords = base.trim().split(/\s+/);
   const additionWords = addition.trim().split(/\s+/);
   
-  // 2. CLASSIC WORD-BASED OVERLAP (Safest)
+  // 2. CLASSIC JUNCTION OVERLAP: Check if suffix of base matches prefix of addition
+  // This is the most reliable way to join contiguous segments.
   for (let i = Math.min(baseWords.length, additionWords.length); i > 0; i--) {
     const baseSuffix = normalize(baseWords.slice(-i).join(''));
     const additionPrefix = normalize(additionWords.slice(0, i).join(''));
@@ -57,39 +58,41 @@ const removeOverlap = (base, addition) => {
     }
   }
 
-  // 3. ROBUST CHARACTER-BASED OVERLAP (Handles re-formatting discrepancies)
-  // Find the longest suffix of normBase that is a prefix of normAddition
-  let overlapLen = 0;
-  // Optimization: check if normAddition starts with normBase (Full overlap of history)
-  if (normAddition.startsWith(normBase)) {
-    overlapLen = normBase.length;
-  } else {
-    // Sliding window check for partial overlap (limit to significant overlaps > 10 chars)
-    const minOverlap = 10;
-    const maxCheck = Math.min(normBase.length, normAddition.length);
-    for (let i = maxCheck; i >= minOverlap; i--) {
-      if (normBase.endsWith(normAddition.substring(0, i))) {
-        overlapLen = i;
-        break;
-      }
+  // 3. ROBUST PREFIX-IN-BODY MATCH: If addition starts with words found elsewhere in history
+  // This catches cases where Deepgram re-sends a segment from the middle of a previous bubble.
+  // We check prefixes of increasing length (at least 3 words or 12 chars).
+  let maxPrefixIdx = 0;
+  for (let i = 1; i <= additionWords.length; i++) {
+    const prefix = normalize(additionWords.slice(0, i).join(''));
+    if (prefix.length < 12 && i < 3) continue; // Minimum significance
+    
+    if (normBase.includes(prefix)) {
+      maxPrefixIdx = i;
+    } else {
+      break; // Diverged
     }
   }
 
-  if (overlapLen > 0) {
-    let currentNormLen = 0;
-    let splitIdx = 0;
-    for (let i = 0; i < additionWords.length; i++) {
-      currentNormLen += normalize(additionWords[i]).length;
-      if (currentNormLen >= overlapLen) {
-        splitIdx = i + 1;
-        // If we are cutting into a word (currentNormLen > overlapLen), 
-        // we check if the remaining part of the word is significant.
-        // For phone numbers/IDs, we'd rather keep the word if unsure.
-        // But for duplicates, we usually want it gone.
-        break;
+  if (maxPrefixIdx > 0) {
+    return additionWords.slice(maxPrefixIdx).join(' ');
+  }
+
+  // 4. CHARACTER-BASED SLIDING WINDOW (Deepgram re-formatting fallback)
+  const minOverlap = 15;
+  const maxCheck = Math.min(normBase.length, normAddition.length);
+  for (let i = maxCheck; i >= minOverlap; i--) {
+    if (normBase.endsWith(normAddition.substring(0, i))) {
+      let currentNormLen = 0;
+      let splitIdx = 0;
+      for (let j = 0; j < additionWords.length; j++) {
+        currentNormLen += normalize(additionWords[j]).length;
+        if (currentNormLen >= i) {
+          splitIdx = j + 1;
+          break;
+        }
       }
+      return additionWords.slice(splitIdx).join(' ');
     }
-    return additionWords.slice(splitIdx).join(' ');
   }
 
   return addition;
@@ -256,9 +259,9 @@ export const useDeepgram = () => {
             
             // Clean the transcript of any overlap with its own finalized text (internal dedupe)
             // If it's a new turn, we ALSO check against the PREVIOUS bubble's finalized text
-            const prevB = prev[prev.length - 2];
-            const prevFinalized = lang === 'en' ? (prevB?.enFull || prevB?.text || '') : (prevB?.esFull || prevB?.text || '');
-            const baseContext = prevFinalized;
+            // Look back at the last 3 bubbles to catch cross-bubble repetitions
+            const recentBubbles = prev.slice(-4, -1); // Current is at index length-1
+            const baseContext = recentBubbles.map(b => lang === 'en' ? (b.enFull || b.text || '') : (b.esFull || b.text || '')).join(' ');
             
             if (lang === 'en') {
               // Check overlap against BOTH current bubble's finalized text AND previous bubble's tail

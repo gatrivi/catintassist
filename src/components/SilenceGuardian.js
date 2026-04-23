@@ -36,6 +36,13 @@ export const SilenceGuardian = ({ lastDataTime }) => {
         setShowHoldWarning(false);
       }
 
+      // BYPASS: If on hold, do not play intrusive alerts or auto-disconnect
+      if (isHold) {
+        if (showWarning) setShowWarning(false);
+        if (promptCount > 0) setPromptCount(0);
+        return;
+      }
+
       // PRE-PROMPT AUDIO NUDGES (Keep tiered sounds but aligned with new thresholds)
       if (silenceSecs >= 360 && !alertedLevels[3]) {
         audioEngine.playWarningTiered(3);

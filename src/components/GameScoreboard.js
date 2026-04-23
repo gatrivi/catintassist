@@ -4,7 +4,7 @@ import { RollingNumber } from './RollingNumber';
 // ─── EmojiRow ─────────────────────────────────────────────────────────────────
 // Renders fullCount full emojis + one partially-cropped emoji representing the
 // fractional remainder. Uses CSS clip-path on a wrapper for zero-DOM overhead.
-const EmojiRow = ({ emoji, emptyEmoji, value, unitValue, maxValue, color = '#fff', label, sublabel, warnThreshold = 0.3, title, className = "", markers = [] }) => {
+const EmojiRow = ({ emoji, emptyEmoji, value, unitValue, maxValue, color = '#fff', label, sublabel, warnThreshold = 0.3, title, className = "", markers = [], isEditing, helpLabel }) => {
   const fullCount  = Math.floor(value / unitValue);
   const fraction   = (value % unitValue) / unitValue; // 0–1
   const maxCount   = Math.ceil(maxValue / unitValue);
@@ -19,7 +19,8 @@ const EmojiRow = ({ emoji, emptyEmoji, value, unitValue, maxValue, color = '#fff
                 : '#ef4444';                         // danger – red
 
   return (
-    <div title={title} className={className} style={{ display: 'flex', flexDirection: 'column', gap: '0', position: 'relative' }}>
+    <div title={title} className={`${className} ${isEditing ? 'grid-edit-mode' : ''}`} style={{ display: 'flex', flexDirection: 'column', gap: '0', position: 'relative', padding: isEditing ? '2px' : '0' }}>
+      {isEditing && <span className="edit-grid-label">{helpLabel}</span>}
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: '1px', lineHeight: 1, alignItems: 'center', position: 'relative' }}>
         <span style={{ fontSize: '0.48rem', color: 'rgba(255,255,255,0.25)', textTransform: 'uppercase', marginRight: '0.3rem', whiteSpace: 'nowrap', zIndex: 10 }}>
           {typeof label === 'string' ? label.split('   ')[0] : label}
@@ -202,7 +203,8 @@ const MomentumBar = ({ totalDailyMins, dailyGoal, shiftElapsedMins, isActive, mi
 // Props mirror the computed values already in DashboardHeader.
 export const GameScoreboard = ({ 
   liveDailyArs, dailyTargetArs, monthlyArs, monthlyTargetArs, stats, dailyGoal, totalDailyMins, totalOffCallMins, shiftElapsedMins,
-  pacePrediction, qualityScore, cutoffWarning, breakLeft, breakLimit, nextGoalLabel, nextMilestone, daysInMonth, currentDay, remainingDays, isActive, isBreakActive, onSwitchToNumbers, milestoneTargets
+  pacePrediction, qualityScore, cutoffWarning, breakLeft, breakLimit, nextGoalLabel, nextMilestone, daysInMonth, currentDay, remainingDays, isActive, isBreakActive, onSwitchToNumbers, milestoneTargets,
+  isEditingScoreboard, getCompensatedLogOff
  }) => {
   // Drift counter: how many seconds since last call ended (affects UI urgency)
   const [idleSecs, setIdleSecs] = useState(0);
@@ -299,6 +301,7 @@ export const GameScoreboard = ({
             <EmojiRow
               emoji="💰" className="emoji-money" value={liveDailyArs} unitValue={ARS_UNIT}
               maxValue={dailyTargetArs > 0 ? dayArsMax : ARS_UNIT * 5}
+              isEditing={isEditingScoreboard} helpLabel="MONEY_DAY"
               label={
                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.2rem' }}>
                   <span>earned</span>
@@ -312,7 +315,7 @@ export const GameScoreboard = ({
 
             <EmojiRow
               emoji="⏱️" value={totalDailyMins} unitValue={MIN_UNIT}
-              maxValue={dayMinMax}
+              maxValue={dayMinMax} isEditing={isEditingScoreboard} helpLabel="MINS_DAY"
               label={`mins   ${Math.round(totalDailyMins)}m / ${Math.round(dailyGoal)}m`}
               sublabel={`${dayMinPct}%`}
               markers={[
@@ -324,17 +327,28 @@ export const GameScoreboard = ({
             <EmojiRow
               emoji="☕" emptyEmoji="🍵" className="emoji-break"
               value={breakLeft} unitValue={15} maxValue={breakLimit}
+              isEditing={isEditingScoreboard} helpLabel="BREAK_DAY"
               label={`break   ${Math.round(breakLeft)}m / ${breakLimit}m`}
               sublabel={breakLeft > 0 ? 'READY' : 'SPENT'}
               warnThreshold={0.5}
             />
 
             <EmojiRow
-              emoji="🔌" value={totalOffCallMins} unitValue={MIN_UNIT} maxValue={shiftElapsedMins || 60}
-              label={`idle    ${Math.round(totalOffCallMins)}m off-call`}
-              sublabel={isActive ? 'CALL' : 'IDLE'}
+              emoji="🔋" value={totalDailyMins} unitValue={Math.max(1, stats.dailyBreakMinutes || 1)} maxValue={totalDailyMins * 1.2}
+              isEditing={isEditingScoreboard} helpLabel="STAMINA_RATIO"
+              label={`stamina  ${(totalDailyMins / Math.max(1, stats.dailyBreakMinutes)).toFixed(1)}x ratio`}
+              sublabel={(totalDailyMins / Math.max(1, stats.dailyBreakMinutes)) >= 5.3 ? 'ELITE' : 'TIRED'}
               color="#fb923c"
             />
+            
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '0.1rem', borderTop: '1px solid rgba(255,255,255,0.05)', paddingTop: '0.1rem' }}>
+               <div style={{ fontSize: '0.52rem', color: 'rgba(255,255,255,0.4)' }}>
+                 🚪 LOG-OFF ESTIMATE: <strong style={{ color: '#fcd34d' }}>{getCompensatedLogOff ? getCompensatedLogOff() : '18:00'}</strong>
+               </div>
+               <div style={{ fontSize: '0.52rem', color: 'rgba(255,255,255,0.4)' }}>
+                 Ratio Target: <strong>5.3x</strong>
+               </div>
+            </div>
           </>
         ) : (
           <>

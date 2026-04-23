@@ -578,103 +578,99 @@ export const DashboardHeader = ({ onStartAudio, onStopAudio, onReconnectStream, 
                 isActive={isActive} isBreakActive={isBreakActive}
                 onSwitchToNumbers={() => setScoreView('numbers')}
                 milestoneTargets={milestoneTargets}
+                isEditingScoreboard={isEditingScoreboard}
+                getCompensatedLogOff={getCompensatedLogOff}
               />
             ) : (
               <div id="numeric-metric-grid" className="metric-grid">
                 {/* 1. Mins worked today */}
                 <div className={`metric-cell ${isEditingScoreboard ? 'grid-edit-mode' : ''}`} title="Minutes worked today" style={{ position: 'relative', background: 'rgba(59,130,246,0.06)' }}>
-                  {isEditingScoreboard && <span className="edit-grid-label">1. MINS TODAY</span>}
+                  <HelpLabel text="1. MINS TODAY" />
                   <div className="metric-cell-val" style={{ color: '#60a5fa' }}>{Math.round(totalDailyMins)}m</div>
-                  <div className="metric-cell-label">{!isEditingScoreboard && '1. MINS TODAY'}</div>
+                  <div className="metric-cell-label">MINS TODAY</div>
                 </div>
 
                 <div className={`metric-cell ${isEditingScoreboard ? 'grid-edit-mode' : ''}`} title="Minutes left for daily goal" style={{ position: 'relative', background: 'rgba(239,68,68,0.04)' }}>
-                  {isEditingScoreboard && <span className="edit-grid-label">2. LEFT TODAY</span>}
+                  <HelpLabel text="2. LEFT TODAY" />
                   <div className="metric-cell-val" style={{ color: '#fca5a5' }}>{Math.round(Math.max(0, dailyGoal - totalDailyMins))}m</div>
-                  <div className="metric-cell-label">{!isEditingScoreboard && '2. LEFT TODAY'}</div>
+                  <div className="metric-cell-label">LEFT TODAY</div>
                 </div>
 
                 {/* 3. Goal mins */}
                 <div className={`metric-cell ${isEditingScoreboard ? 'grid-edit-mode' : ''}`} title="Target goal minutes for today" style={{ position: 'relative', background: 'rgba(52,211,153,0.04)' }}>
-                  {isEditingScoreboard && <span className="edit-grid-label">3. TODAY GOAL</span>}
+                  <HelpLabel text="3. TODAY GOAL" />
                   <div className="metric-cell-val">{Math.round(dailyGoal)}m</div>
-                  <div className="metric-cell-label">{!isEditingScoreboard && '3. TODAY GOAL'}</div>
+                  <div className="metric-cell-label">TODAY GOAL</div>
                 </div>
 
                 {/* 4. Money today */}
                 <div className={`metric-cell ${isEditingScoreboard ? 'grid-edit-mode' : ''}`} title="Money earned today" style={{ position: 'relative', background: 'rgba(16,185,129,0.06)' }}>
-                  {isEditingScoreboard && <span className="edit-grid-label">4. $ TODAY</span>}
+                  <HelpLabel text="4. $ TODAY" />
                   <div className="metric-cell-val" style={{ color: '#34d399' }}><RollingNumber value={liveDailyArs} prefix="$" height={24} /></div>
-                  <div className="metric-cell-label">{!isEditingScoreboard && '4. $ TODAY'}</div>
+                  <div className="metric-cell-label">$ TODAY</div>
                 </div>
 
                 {/* 5. Money to be made today */}
                 <div className={`metric-cell ${isEditingScoreboard ? 'grid-edit-mode' : ''}`} title="Money remaining for today's goal" style={{ position: 'relative', background: 'rgba(245,158,11,0.04)' }}>
-                  {isEditingScoreboard && <span className="edit-grid-label">5. $ LEFT TODAY</span>}
+                  <HelpLabel text="5. $ LEFT TODAY" />
                   <div className="metric-cell-val" style={{ color: '#fcd34d' }}><RollingNumber value={cashToTodayGoal} prefix="$" height={24} /></div>
-                  <div className="metric-cell-label">{!isEditingScoreboard && '5. $ LEFT TODAY'}</div>
+                  <div className="metric-cell-label">$ LEFT TODAY</div>
                 </div>
 
-                <div className={`metric-cell ${isEditingScoreboard ? 'grid-edit-mode' : ''}`} title="Total off-call time today (Availability + Breaks)" style={{ position: 'relative', background: 'rgba(251,146,60,0.04)' }}>
-                  {isEditingScoreboard && <span className="edit-grid-label">10. OFF CALL</span>}
-                  <div className="metric-cell-val" style={{ color: '#fb923c' }}>{Math.round(totalOffCallMins)}m</div>
-                  <div className="metric-cell-label">{!isEditingScoreboard && '10. OFF CALL'}</div>
+                {/* 6. Stamina Ratio (On-Call vs Break) */}
+                <div className={`metric-cell ${isEditingScoreboard ? 'grid-edit-mode' : ''}`} title="STAMINA RATIO: Your on-call minutes divided by break minutes. Target is 5.3x (8h on / 90m off)." style={{ position: 'relative', background: 'rgba(168,85,247,0.04)' }}>
+                  <HelpLabel text="6. STAMINA RATIO" />
+                  <div className="metric-cell-val" style={{ color: (totalDailyMins / Math.max(1, stats.dailyBreakMinutes)) >= 5.3 ? '#c084fc' : '#9ca3af' }}>
+                    {(totalDailyMins / Math.max(1, stats.dailyBreakMinutes)).toFixed(1)}x
+                  </div>
+                  <div className="metric-cell-label">STAMINA RATIO</div>
                 </div>
 
-                {/* 6. Money month */}
+                {/* 7. Money month */}
                 <div className={`metric-cell ${isEditingScoreboard ? 'grid-edit-mode' : ''}`} title="Money earned this month" style={{ position: 'relative' }}>
-                  {isEditingScoreboard && <span className="edit-grid-label">6. $ MONTH</span>}
+                  <HelpLabel text="7. $ MONTH" />
                   <div className="metric-cell-val"><RollingNumber value={monthlyArs} prefix="$" height={24} /></div>
-                  <div className="metric-cell-label">{!isEditingScoreboard && '6. $ MONTH'}</div>
+                  <div className="metric-cell-label">$ MONTH</div>
                 </div>
 
-                {/* 7. Money left month */}
+                {/* 8. Money left month */}
                 <div className={`metric-cell ${isEditingScoreboard ? 'grid-edit-mode' : ''}`} title="Money remaining for monthly goal" style={{ position: 'relative' }}>
-                  {isEditingScoreboard && <span className="edit-grid-label">7. $ LEFT MONTH</span>}
+                  <HelpLabel text="8. $ LEFT MONTH" />
                   <div className="metric-cell-val"><RollingNumber value={Math.max(0, monthlyTargetArs - monthlyArs)} prefix="$" height={24} /></div>
-                  <div className="metric-cell-label">{!isEditingScoreboard && '7. $ LEFT MONTH'}</div>
+                  <div className="metric-cell-label">$ LEFT MONTH</div>
                 </div>
 
-                {/* 8. Breaks used today */}
+                {/* 9. Breaks used today */}
                 <div className={`metric-cell ${isEditingScoreboard ? 'grid-edit-mode' : ''}`} title="Break minutes used today" style={{ position: 'relative', background: 'rgba(251,146,60,0.06)' }}>
-                  {isEditingScoreboard && <span className="edit-grid-label">8. BREAK USED</span>}
+                  <HelpLabel text="9. BREAK USED" />
                   <div className="metric-cell-val" style={{ color: '#fdba74' }}>{Math.round(stats.dailyBreakMinutes || 0)}m</div>
-                  <div className="metric-cell-label">{!isEditingScoreboard && '8. BREAK USED'}</div>
+                  <div className="metric-cell-label">BREAK USED</div>
                 </div>
 
-                {/* 9. Avg so far mo */}
+                {/* 10. Avg so far mo */}
                 <div className={`metric-cell ${isEditingScoreboard ? 'grid-edit-mode' : ''}`} title="Average minutes per day so far this month" style={{ position: 'relative', background: 'rgba(139,92,246,0.04)' }}>
-                  {isEditingScoreboard && <span className="edit-grid-label">9. MO AVG</span>}
+                  <HelpLabel text="10. MO AVG" />
                   <div className="metric-cell-val">{Math.round(actualDailyAverage)}m</div>
-                  <div className="metric-cell-label">{!isEditingScoreboard && '9. MO AVG'}</div>
-                </div>
-
-                {/* 10. Avg to meet min goal */}
-                <div className={`metric-cell ${isEditingScoreboard ? 'grid-edit-mode' : ''}`} title="Average needed per day for Level 1 (Min Goal)" style={{ position: 'relative' }}>
-                  {isEditingScoreboard && <span className="edit-grid-label">10. REQ TO MIN</span>}
-                  <div className="metric-cell-val" style={{ color: '#9ca3af' }}>{Math.round(survivalDailyTarget)}m</div>
-                  <div className="metric-cell-label">{!isEditingScoreboard && '10. REQ TO MIN'}</div>
+                  <div className="metric-cell-label">MO AVG</div>
                 </div>
 
                 {/* 11. Avg to meet goal lvl 2 */}
                 <div className={`metric-cell ${isEditingScoreboard ? 'grid-edit-mode' : ''}`} title="Average needed per day for Level 2 (Growth Goal)" style={{ position: 'relative', background: 'rgba(168,85,247,0.06)' }}>
-                  {isEditingScoreboard && <span className="edit-grid-label">11. REQ TO LVL2</span>}
+                  <HelpLabel text="11. REQ TO LVL2" />
                   <div className="metric-cell-val" style={{ color: '#c084fc' }}>{Math.round(recoveryDailyTarget)}m</div>
-                  <div className="metric-cell-label">{!isEditingScoreboard && '11. REQ TO LVL2'}</div>
+                  <div className="metric-cell-label">REQ TO LVL2</div>
                 </div>
 
                 {/* 12. Current call min and cash */}
                 <div className={`metric-cell ${isEditingScoreboard ? 'grid-edit-mode' : ''}`} title="Current call duration and unbanked cash" style={{ position: 'relative', background: isActive ? 'rgba(16,185,129,0.1)' : 'rgba(255,255,255,0.02)', border: isActive ? '1px solid rgba(16,185,129,0.3)' : 'none' }}>
-                  {isEditingScoreboard && <span className="edit-grid-label">12. CURR CALL</span>}
+                  <HelpLabel text="12. CURR CALL" />
                   <div className="metric-cell-val" style={{ display: 'flex', gap: '0.2rem', alignItems: 'center' }}>
                     <span>{formatTime(sessionSeconds)}</span>
                     <span style={{ fontSize: '1rem', color: '#34d399' }}>${Math.round(sessionEarnings * arsRate)}</span>
                   </div>
-                  <div className="metric-cell-label">{!isEditingScoreboard && '12. CURR CALL'}</div>
+                  <div className="metric-cell-label">CURR CALL</div>
                 </div>
-                
-                {/* Switch back row */}
-                <div id="cell-switch-game" className="metric-cell" style={{ cursor: 'pointer', background: 'rgba(255,255,255,0.04)', gridColumn: 'span 4', flexDirection: 'row', minHeight: '30px' }} onClick={() => setScoreView('game')} title="Switch back to gamified game view">
+                <div id="cell-switch-game" className="metric-cell" style={{ cursor: 'pointer', background: 'rgba(255,255,255,0.04)', gridColumn: 'span 3', flexDirection: 'row', minHeight: '30px' }} onClick={() => setScoreView('game')} title="Switch back to gamified view">
                   <span style={{ fontSize: '0.9rem', marginRight: '6px' }}>🎮</span>
                   <div className="metric-cell-label" style={{ opacity: 0.8 }}>RETURN TO GAMIFIED VIEW</div>
                 </div>
@@ -858,7 +854,12 @@ export const DashboardHeader = ({ onStartAudio, onStopAudio, onReconnectStream, 
               {!isActive ? (
                  <button id="connect-btn" className="btn btn-primary" onClick={onStartAudio} style={{ padding: '0.4rem 0.8rem' }}><PlayIcon /> Connect</button>
               ) : (
-                <button id="stop-btn" className="btn btn-danger" onClick={handleStop}><StopIcon /> STOP</button>
+                <div style={{ display: 'flex', gap: '0.3rem' }}>
+                  <button id="stop-btn" className="btn btn-danger" onClick={handleStop}><StopIcon /> STOP</button>
+                  <button id="header-hold-btn" className="btn" onClick={() => setIsHold(!isHold)} style={{ background: isHold ? '#f59e0b' : 'rgba(255,255,255,0.08)', border: isHold ? '1px solid #d97706' : '1px solid rgba(255,255,255,0.1)', color: isHold ? 'white' : 'inherit' }}>
+                    {isHold ? `⏸ HOLD ${formatTime(holdSeconds)}` : '⏸ HOLD'}
+                  </button>
+                </div>
               )}
               {isBreakActive ? (
                 <button id="stop-break-btn" className="btn" onClick={stopBreak} style={{ background: '#fb923c', color: 'white' }}>STOP BREAK</button>
