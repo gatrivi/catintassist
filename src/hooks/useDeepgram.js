@@ -195,9 +195,9 @@ export const useDeepgram = () => {
         }
 
         const alt = received.channel?.alternatives?.[0];
-        const transcript = alt?.transcript;
-        const confidence = alt?.confidence || 0;
-        const isFinal = received.is_final;
+        let transcript = alt?.transcript;
+        let confidence = alt?.confidence || 0;
+        let isFinal = received.is_final;
 
         if (transcript && transcript.trim().length > 0) {
           const words = transcript.trim().split(/\s+/);
@@ -282,18 +282,19 @@ export const useDeepgram = () => {
             
             // Internal Transcript Dedupe: Catch "evolving" fragments within the same incoming string
             // (e.g. "give you muscle relax Muscle relaxant" -> "give you muscle relaxant")
-            const words = transcript.trim().split(/\s+/);
+            const words = (transcript || "").trim().split(/\s+/);
+            let processedTranscript = transcript;
             if (words.length > 8) {
               const mid = Math.floor(words.length / 2);
               const head = words.slice(0, mid).join(' ');
               const tail = words.slice(mid).join(' ');
               const cleanedTail = removeOverlap(head, tail);
-              transcript = (head + ' ' + cleanedTail).trim();
+              processedTranscript = (head + ' ' + cleanedTail).trim();
             }
             
             if (lang === 'en') {
               // Check overlap against BOTH current bubble's finalized text AND previous bubble's tail
-              let cleanedTranscript = removeOverlap(baseContext + ' ' + (current.enFinalized || ''), transcript);
+              let cleanedTranscript = removeOverlap(baseContext + ' ' + (current.enFinalized || ''), processedTranscript);
               cleanedTranscript = hallucinationGuard(cleanedTranscript);
 
               // Group 9-10 single digits back-to-back (phone numbers)
@@ -310,7 +311,7 @@ export const useDeepgram = () => {
               if (confidence > 0) current.enConf = confidence; 
             } else {
               // Check overlap against BOTH current bubble's finalized text AND previous bubble's tail
-              let cleanedTranscript = removeOverlap(baseContext + ' ' + (current.esFinalized || ''), transcript);
+              let cleanedTranscript = removeOverlap(baseContext + ' ' + (current.esFinalized || ''), processedTranscript);
               cleanedTranscript = hallucinationGuard(cleanedTranscript);
 
               // Group 9-10 single digits back-to-back (phone numbers)
