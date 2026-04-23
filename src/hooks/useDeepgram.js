@@ -6,30 +6,34 @@ const normalize = (s) => (s || '').toLowerCase().replace(/[^a-z0-9]/g, '');
 const hallucinationGuard = (text) => {
   if (!text) return text;
   const words = text.trim().split(/\s+/);
-  if (words.length < 4) return text;
+  if (words.length < 2) return text;
 
   let cleaned = [];
-  let repeatCount = 0;
   let lastWord = '';
+  let lastPair = '';
 
-  for (let word of words) {
+  for (let i = 0; i < words.length; i++) {
+    const word = words[i];
     const norm = normalize(word);
-    const isNumber = /^\d+$/.test(norm);
-    if (norm === lastWord && norm.length > 0 && !isNumber) {
-      repeatCount++;
-    } else {
-      repeatCount = 0;
-      lastWord = norm;
+    const pair = i > 0 ? normalize(words[i-1] + word) : '';
+    
+    // 1. Single word back-to-back stutter
+    if (norm === lastWord && norm.length > 1 && !/^\d+$/.test(norm)) {
+      continue; 
+    }
+    // 2. Phrase/Pair back-to-back stutter (e.g. "I can't I can't")
+    if (pair === lastPair && pair.length > 4) {
+      continue;
     }
 
-    if (repeatCount < 2) { // Allow "word word", prune "word word word..."
-      cleaned.push(word);
-    }
+    cleaned.push(word);
+    lastWord = norm;
+    lastPair = pair;
   }
 
-  // If the result is significantly shorter due to pruning, it was likely a stutter hallucination
-  if (words.length > 15 && cleaned.length < words.length * 0.5) {
-     return cleaned.slice(0, 10).join(' ') + "... [Stutter Pruned]";
+  // 3. Global stutter check (too many repetitions in total)
+  if (words.length > 15 && cleaned.length < words.length * 0.6) {
+     return cleaned.slice(0, 12).join(' ') + "... [Stutter Pruned]";
   }
 
   return cleaned.join(' ');
@@ -77,7 +81,20 @@ const removeOverlap = (base, addition) => {
     return additionWords.slice(maxPrefixIdx).join(' ');
   }
 
-  // 4. CHARACTER-BASED SLIDING WINDOW (Deepgram re-formatting fallback)
+  // 4. ANCHOR-BASED LOOKAHEAD: If a 4-word sequence in addition exists in base, 
+  // everything before it in addition is likely a repeat or a correction of history.
+  if (additionWords.length >= 4) {
+    for (let i = 0; i <= additionWords.length - 4; i++) {
+      const anchor = normalize(additionWords.slice(i, i + 4).join(''));
+      if (normBase.includes(anchor)) {
+        // We found an anchor. The part [0...i] of addition is redundant.
+        // We recursively call removeOverlap to handle any remaining suffix/prefix logic.
+        return removeOverlap(base, additionWords.slice(i).join(' '));
+      }
+    }
+  }
+
+  // 5. CHARACTER-BASED SLIDING WINDOW (Deepgram re-formatting fallback)
   const minOverlap = 15;
   const maxCheck = Math.min(normBase.length, normAddition.length);
   for (let i = maxCheck; i >= minOverlap; i--) {
