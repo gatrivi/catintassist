@@ -538,8 +538,13 @@ export const GreetingsPanel = ({ onEditModeChange }) => {
                 <span style={{ position: 'relative', zIndex: 1, textAlign: 'center', padding: '0.2rem', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
                   {!hasAudio ? `➕ Add ${action.label}` : (isItPlaying ? '⏹ STOP' : action.label)}
                   {hasAudio && healthScores[activeKey] !== undefined && (
-                    <div style={{ width: '40px', height: '3px', background: 'rgba(255,255,255,0.2)', borderRadius: '2px', overflow: 'hidden', marginTop: '4px' }}>
-                       <div style={{ height: '100%', width: getHealthMeta(healthScores[activeKey])?.width || '0%', backgroundColor: getHealthMeta(healthScores[activeKey])?.color || '#94a3b8' }} />
+                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', marginTop: '4px' }}>
+                      <div style={{ width: '40px', height: '4px', background: 'rgba(255,255,255,0.2)', borderRadius: '2px', overflow: 'hidden', border: '1px solid rgba(0,0,0,0.3)' }}>
+                         <div style={{ height: '100%', width: getHealthMeta(healthScores[activeKey])?.width || '0%', backgroundColor: getHealthMeta(healthScores[activeKey])?.color || '#94a3b8' }} />
+                      </div>
+                      <span style={{ fontSize: '0.45rem', fontWeight: 900, color: getHealthMeta(healthScores[activeKey])?.color || '#94a3b8', marginTop: '1px', textShadow: '0 1px 2px rgba(0,0,0,0.8)' }}>
+                        {getHealthMeta(healthScores[activeKey])?.label}
+                      </span>
                     </div>
                   )}
                 </span>

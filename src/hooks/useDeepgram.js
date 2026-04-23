@@ -14,7 +14,8 @@ const hallucinationGuard = (text) => {
 
   for (let word of words) {
     const norm = normalize(word);
-    if (norm === lastWord && norm.length > 0) {
+    const isNumber = /^\d+$/.test(norm);
+    if (norm === lastWord && norm.length > 0 && !isNumber) {
       repeatCount++;
     } else {
       repeatCount = 0;
@@ -46,7 +47,7 @@ const removeOverlap = (base, addition) => {
   const baseWords = base.trim().split(/\s+/);
   const additionWords = addition.trim().split(/\s+/);
   
-  // 2. CLASSIC TAIL-HEAD OVERLAP (Longest to shortest)
+  // 2. CLASSIC WORD-BASED OVERLAP (Safest)
   for (let i = Math.min(baseWords.length, additionWords.length); i > 0; i--) {
     const baseSuffix = normalize(baseWords.slice(-i).join(''));
     const additionPrefix = normalize(additionWords.slice(0, i).join(''));
@@ -56,17 +57,39 @@ const removeOverlap = (base, addition) => {
     }
   }
 
-  // 3. AGGRESSIVE FRAGMENT MATCH (Deepgram Rewinds)
-  if (additionWords.length >= 3) {
-    for (let n = Math.min(6, additionWords.length); n >= 3; n--) {
-       const head = normalize(additionWords.slice(0, n).join(''));
-       for (let j = Math.max(0, baseWords.length - 25); j <= baseWords.length - n; j++) {
-          const window = normalize(baseWords.slice(j, j + n).join(''));
-          if (window === head) {
-             return additionWords.slice(n).join(' ');
-          }
-       }
+  // 3. ROBUST CHARACTER-BASED OVERLAP (Handles re-formatting discrepancies)
+  // Find the longest suffix of normBase that is a prefix of normAddition
+  let overlapLen = 0;
+  // Optimization: check if normAddition starts with normBase (Full overlap of history)
+  if (normAddition.startsWith(normBase)) {
+    overlapLen = normBase.length;
+  } else {
+    // Sliding window check for partial overlap (limit to significant overlaps > 10 chars)
+    const minOverlap = 10;
+    const maxCheck = Math.min(normBase.length, normAddition.length);
+    for (let i = maxCheck; i >= minOverlap; i--) {
+      if (normBase.endsWith(normAddition.substring(0, i))) {
+        overlapLen = i;
+        break;
+      }
     }
+  }
+
+  if (overlapLen > 0) {
+    let currentNormLen = 0;
+    let splitIdx = 0;
+    for (let i = 0; i < additionWords.length; i++) {
+      currentNormLen += normalize(additionWords[i]).length;
+      if (currentNormLen >= overlapLen) {
+        splitIdx = i + 1;
+        // If we are cutting into a word (currentNormLen > overlapLen), 
+        // we check if the remaining part of the word is significant.
+        // For phone numbers/IDs, we'd rather keep the word if unsure.
+        // But for duplicates, we usually want it gone.
+        break;
+      }
+    }
+    return additionWords.slice(splitIdx).join(' ');
   }
 
   return addition;
@@ -197,6 +220,14 @@ export const useDeepgram = () => {
                               lastWordCount >= 80;
 
             if (!last || isNewTurn) {
+              // FINALIZE PREVIOUS BUBBLE: If we are splitting, the previous one MUST be marked final
+              // so the translation engine and UI treat it as a completed block.
+              if (last) {
+                last.isFinal = true;
+                // Force word count update for the final state
+                last.turnWordCount = turnWordCountRef.current + (last.text ? last.text.trim().split(/\s+/).length : 0);
+              }
+
               // If this transcript is a full duplicate of the previous bubble, don't even create a new turn
               const prevB = prev[prev.length - 1];
               const prevText = lang === 'en' ? (prevB?.enFull || prevB?.text || '') : (prevB?.esFull || prevB?.text || '');
@@ -225,15 +256,17 @@ export const useDeepgram = () => {
             
             // Clean the transcript of any overlap with its own finalized text (internal dedupe)
             // If it's a new turn, we ALSO check against the PREVIOUS bubble's finalized text
-            const prevB = isNewTurn ? prev[prev.length - 2] : null;
+            const prevB = prev[prev.length - 2];
             const prevFinalized = lang === 'en' ? (prevB?.enFull || prevB?.text || '') : (prevB?.esFull || prevB?.text || '');
+            const baseContext = prevFinalized;
             
             if (lang === 'en') {
-              let cleanedTranscript = removeOverlap(current.enFinalized || prevFinalized, transcript);
+              // Check overlap against BOTH current bubble's finalized text AND previous bubble's tail
+              let cleanedTranscript = removeOverlap(baseContext + ' ' + (current.enFinalized || ''), transcript);
               cleanedTranscript = hallucinationGuard(cleanedTranscript);
 
               // Group 9-10 single digits back-to-back (phone numbers)
-              cleanedTranscript = cleanedTranscript.replace(/\b(?:\d\s+){8,9}\d+\b/g, m => m.replace(/\s+/g, ''));
+              cleanedTranscript = cleanedTranscript.replace(/\b(?:\d[\s.,\-:]*){8,11}\d+\b/g, m => m.replace(/[\s.,\-:]+/g, ''));
               
               if (!cleanedTranscript.trim()) return prev; // Avoid empty word bubbles
 
@@ -245,11 +278,12 @@ export const useDeepgram = () => {
               }
               if (confidence > 0) current.enConf = confidence; 
             } else {
-              let cleanedTranscript = removeOverlap(current.esFinalized || prevFinalized, transcript);
+              // Check overlap against BOTH current bubble's finalized text AND previous bubble's tail
+              let cleanedTranscript = removeOverlap(baseContext + ' ' + (current.esFinalized || ''), transcript);
               cleanedTranscript = hallucinationGuard(cleanedTranscript);
 
               // Group 9-10 single digits back-to-back (phone numbers)
-              cleanedTranscript = cleanedTranscript.replace(/\b(?:\d\s+){8,9}\d+\b/g, m => m.replace(/\s+/g, ''));
+              cleanedTranscript = cleanedTranscript.replace(/\b(?:\d[\s.,\-:]*){8,11}\d+\b/g, m => m.replace(/[\s.,\-:]+/g, ''));
 
               if (!cleanedTranscript.trim()) return prev;
 
@@ -290,7 +324,7 @@ export const useDeepgram = () => {
             current.text = winnerLang === 'en' ? enFull : esFull;
             current.enFull = enFull;
             current.esFull = esFull;
-            current.isFinal = false; 
+            current.isFinal = isFinal; 
             
             // Calculate total turn words
             const currentBubbleWords = current.text.trim().split(/\s+/).filter(Boolean).length;

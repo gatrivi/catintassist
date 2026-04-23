@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useState, useEffect, useRef, useCallback } from 'react';
+import { useRewardAudio } from '../hooks/useRewardAudio';
 
 const PURGE_KEYS_PREFIX = 'trans_cache:';
 
@@ -28,6 +29,7 @@ export const safeSet = safeLocalStorageSet;
 const SessionContext = createContext();
 
 export const SessionProvider = ({ children }) => {
+  const { playPurseOpen, playCoinStack, initAudio: initRewardAudio } = useRewardAudio();
   const [isActive, setIsActive] = useState(false); // ALWAYS start false on refresh to avoid zombie states
   const [isZombieCall, setIsZombieCall] = useState(() => {
     const wasActive = localStorage.getItem('catint_active');
@@ -271,6 +273,9 @@ export const SessionProvider = ({ children }) => {
     setIsHold(false);
     recordTimelineEvent('work');
     
+    initRewardAudio();
+    playPurseOpen();
+    
     // Catch-up logic: record the very first time we start working today
     setStats(prev => {
       const now = Date.now();
@@ -323,6 +328,7 @@ export const SessionProvider = ({ children }) => {
         return newStats;
       });
       if (onCallEnded) onCallEnded(minutesToAdd);
+      playCoinStack(minutesToAdd);
     }
     setIsHold(false);
     // If we stop session, we default to 'avail' unless we immediately start a break

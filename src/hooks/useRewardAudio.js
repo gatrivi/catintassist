@@ -54,24 +54,75 @@ export const useRewardAudio = () => {
   }, []);
 
   /**
-   * playCoinStack
-   * Synthesizes a rapid sequence of coin sounds.
-   * @param {number} count - Determines the length and richness of the 'crash'.
+   * playPurseOpen
+   * Synthesizes a "purse opening" sound (zip + metallic click).
    */
-  const playCoinStack = useCallback((count = 1) => {
+  const playPurseOpen = useCallback(() => {
+    if (!audioCtxRef.current) return;
+    const ctx = audioCtxRef.current;
+    const time = ctx.currentTime;
+    
+    // Zip sound
+    const osc1 = ctx.createOscillator();
+    const gain1 = ctx.createGain();
+    osc1.type = 'triangle';
+    osc1.frequency.setValueAtTime(200, time);
+    osc1.frequency.exponentialRampToValueAtTime(1200, time + 0.15);
+    gain1.gain.setValueAtTime(0, time);
+    gain1.gain.linearRampToValueAtTime(0.1, time + 0.05);
+    gain1.gain.linearRampToValueAtTime(0, time + 0.15);
+    osc1.connect(gain1);
+    gain1.connect(ctx.destination);
+    osc1.start(time);
+    osc1.stop(time + 0.15);
+
+    // Satisfying "clink"
+    const osc2 = ctx.createOscillator();
+    const gain2 = ctx.createGain();
+    osc2.type = 'sine';
+    osc2.frequency.setValueAtTime(4500, time + 0.14);
+    gain2.gain.setValueAtTime(0, time + 0.14);
+    gain2.gain.linearRampToValueAtTime(0.3, time + 0.15);
+    gain2.gain.exponentialRampToValueAtTime(0.01, time + 0.25);
+    osc2.connect(gain2);
+    gain2.connect(ctx.destination);
+    osc2.start(time + 0.14);
+    osc2.stop(time + 0.25);
+  }, []);
+
+  /**
+   * playCoinStack
+   * Synthesizes a rapid sequence of coin sounds for a 'crash' effect.
+   * @param {number} mins - Determines the length and richness of the 'crash'.
+   */
+  const playCoinStack = useCallback((mins = 1) => {
     if (!audioCtxRef.current) return;
     const ctx = audioCtxRef.current;
     
-    // SOUNDSCAPE INTERPRETER: "proportional stack of coins crashing into a purse"
-    // We stagger the pings to create a "pour" effect.
-    const stackSize = Math.min(15, Math.ceil(count / 2)); 
-    for (let i = 0; i < stackSize; i++) {
-        const delay = i * 60;
-        setTimeout(() => {
-            playChaChing(1 + (i / 3));
-        }, delay);
+    // PRO LADDER: Proportional crash based on minutes banked
+    const count = Math.min(30, Math.ceil(mins * 0.8)); 
+    for (let i = 0; i < count; i++) {
+        const delay = i * 0.04;
+        const time = ctx.currentTime + delay;
+        
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        
+        const freq = 1800 + (Math.random() * 2200);
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(freq, time);
+        osc.frequency.exponentialRampToValueAtTime(freq * 0.4, time + 0.15);
+        
+        gain.gain.setValueAtTime(0, time);
+        gain.gain.linearRampToValueAtTime(0.2, time + 0.01);
+        gain.gain.exponentialRampToValueAtTime(0.01, time + 0.15);
+        
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        osc.start(time);
+        osc.stop(time + 0.15);
     }
-  }, [playChaChing]);
+  }, []);
 
-  return { initAudio, playChaChing, playCoinStack };
+  return { initAudio, playChaChing, playCoinStack, playPurseOpen };
 };

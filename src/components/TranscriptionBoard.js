@@ -41,7 +41,7 @@ const InteractiveText = ({ text }) => {
   if (!text) return null;
   // GROUP PHONE NUMBERS: If we see 9 or 10 digits read out singly (with spaces), join them.
   // This version is a robust one-liner that matches 9 or 10 digits with optional spaces.
-  const groupedDigits = text.replace(/\b(\d\s*){9,10}\b/g, (m) => m.replace(/\s+/g, ''));
+  const groupedDigits = text.replace(/\b(\d[\s.,\-:]*){9,12}\b/g, (m) => m.replace(/[\s.,\-:]+/g, ''));
   const processedText = convertNumberWords(groupedDigits);
   
   // NYC ZIP REPAIR: In NYC, people often say "one hundred thirty four" for 10034.
