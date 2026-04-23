@@ -51,47 +51,56 @@ const removeOverlap = (base, addition) => {
   const baseWords = base.trim().split(/\s+/);
   const additionWords = addition.trim().split(/\s+/);
   
-  // 2. CLASSIC JUNCTION OVERLAP: Check if suffix of base matches prefix of addition
-  // This is the most reliable way to join contiguous segments.
-  for (let i = Math.min(baseWords.length, additionWords.length); i > 0; i--) {
-    const baseSuffix = normalize(baseWords.slice(-i).join(''));
-    const additionPrefix = normalize(additionWords.slice(0, i).join(''));
+  // 2. CHARACTER-BASED SUFFIX MATCH (Hyper-Robust)
+  // We check if the end of the base matches the start of the addition.
+  // This handles punctuation/whitespace differences perfectly.
+  const minCharOverlap = 12;
+  const maxCheck = Math.min(normBase.length, normAddition.length);
+  for (let i = maxCheck; i >= minCharOverlap; i--) {
+    const baseSuffix = normBase.slice(-i);
+    const addPrefix = normAddition.slice(0, i);
     
-    if (baseSuffix === additionPrefix && baseSuffix.length > 0) {
-      return additionWords.slice(i).join(' ');
+    if (baseSuffix === addPrefix) {
+      // Find where this character overlap ends in word indices
+      let currentNormLen = 0;
+      let splitIdx = 0;
+      for (let j = 0; j < additionWords.length; j++) {
+        currentNormLen += normalize(additionWords[j]).length;
+        if (currentNormLen >= i) {
+          splitIdx = j + 1;
+          break;
+        }
+      }
+      return additionWords.slice(splitIdx).join(' ');
     }
   }
 
-  // 3. ROBUST PREFIX-IN-BODY MATCH: If addition starts with words found elsewhere in history
-  // This catches cases where Deepgram re-sends a segment from the middle of a previous bubble.
-  // We check prefixes of increasing length (at least 3 words or 12 chars).
-  let maxPrefixIdx = 0;
-  for (let i = 1; i <= additionWords.length; i++) {
-    const prefix = normalize(additionWords.slice(0, i).join(''));
-    if (prefix.length < 12 && i < 3) continue; // Minimum significance
-    
-    if (normBase.includes(prefix)) {
-      maxPrefixIdx = i;
-    } else {
-      break; // Diverged
-    }
-  }
-
-  if (maxPrefixIdx > 0) {
-    return additionWords.slice(maxPrefixIdx).join(' ');
-  }
-
-  // 4. ANCHOR-BASED LOOKAHEAD: If a 4-word sequence in addition exists in base, 
+  // 3. ANCHOR-BASED LOOKAHEAD: If a 4-word sequence in addition exists anywhere in base, 
   // everything before it in addition is likely a repeat or a correction of history.
   if (additionWords.length >= 4) {
     for (let i = 0; i <= additionWords.length - 4; i++) {
       const anchor = normalize(additionWords.slice(i, i + 4).join(''));
       if (normBase.includes(anchor)) {
-        // We found an anchor. The part [0...i] of addition is redundant.
-        // We recursively call removeOverlap to handle any remaining suffix/prefix logic.
         return removeOverlap(base, additionWords.slice(i).join(' '));
       }
     }
+  }
+
+  // 4. ROBUST PREFIX-IN-BODY MATCH
+  let maxPrefixIdx = 0;
+  for (let i = 1; i <= additionWords.length; i++) {
+    const prefix = normalize(additionWords.slice(0, i).join(''));
+    if (prefix.length < 12 && i < 3) continue; 
+    
+    if (normBase.includes(prefix)) {
+      maxPrefixIdx = i;
+    } else {
+      break; 
+    }
+  }
+
+  if (maxPrefixIdx > 0) {
+    return additionWords.slice(maxPrefixIdx).join(' ');
   }
 
   // 5. CHARACTER-BASED SLIDING WINDOW (Deepgram re-formatting fallback)
@@ -245,12 +254,12 @@ export const useDeepgram = () => {
               if (last) {
                 last.isFinal = true;
                 // Force word count update for the final state
-                last.turnWordCount = turnWordCountRef.current + (last.text ? last.text.trim().split(/\s+/).length : 0);
+                last.turnWordCount = turnWordCountRef.current + (last.enFinalized ? last.enFinalized.trim().split(/\s+/).length : 0);
               }
 
               // If this transcript is a full duplicate of the previous bubble, don't even create a new turn
               const prevB = prev[prev.length - 1];
-              const prevText = lang === 'en' ? (prevB?.enFull || prevB?.text || '') : (prevB?.esFull || prevB?.text || '');
+              const prevText = lang === 'en' ? (prevB?.enFinalized || '') : (prevB?.esFinalized || '');
               if (normalize(prevText).includes(normalize(transcript))) {
                  return prev; 
               }
