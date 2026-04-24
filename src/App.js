@@ -11,6 +11,15 @@ import { useDeepgram } from './hooks/useDeepgram';
 import { loadFile, generateObjectUrl } from './utils/storage';
 import './index.css';
 
+const CloudSyncIndicator = () => {
+  const { syncStatus } = useSession();
+  const colors = { syncing: '#3b82f6', synced: '#10b981', error: '#ef4444', idle: 'transparent' };
+  const label = { syncing: '☁️...', synced: '☁️ ok', error: '☁️ !', idle: '' };
+  return (
+    <span style={{ color: colors[syncStatus], transition: 'color 0.3s' }}>{label[syncStatus]}</span>
+  );
+};
+
 const Dashboard = () => {
   const { startRecording, stopRecording, reconnectStream, captions, clearCaptions, sttLanguage, toggleLanguage, connectionState, connectionMessage, lastDataTime } = useDeepgram();
   const { isNotesOpen, isToolbarVisible, isActive, isBreakActive, minutesSinceLastBreak, startSession, clearZombieState } = useSession();
@@ -60,6 +69,7 @@ const Dashboard = () => {
   }, [isActive, isBreakActive]);
 
   const isBurnoutWarning = !isBreakActive && minutesSinceLastBreak > 110;
+  // PRIORITY FIX: isActive (Call) must always block app-idle vignette
   const stateClass = isActive ? 'app-active' : isBreakActive ? 'app-break' : (isBurnoutWarning ? 'burnout-alert' : (idleSecs > 45 ? 'app-idle' : ''));
   const appState = isActive ? 'call' : isBreakActive ? 'break' : 'avail';
 
@@ -78,9 +88,11 @@ const Dashboard = () => {
       <div style={{ 
         position: 'fixed', top: '1px', right: '4px', zIndex: 10000, 
         fontSize: '0.55rem', fontWeight: 900, color: 'rgba(255,255,255,0.2)', 
-        pointerEvents: 'none', textTransform: 'uppercase', letterSpacing: '0.05em'
+        pointerEvents: 'none', textTransform: 'uppercase', letterSpacing: '0.05em',
+        display: 'flex', alignItems: 'center', gap: '4px'
       }}>
-        v4.9.0 (Analog-Odometer)
+        <CloudSyncIndicator />
+        v4.9.3 (Sync-Stable)
       </div>
 
       <div id="top-mic-bar-container" style={{ position: 'fixed', top: 0, left: 0, right: 0, height: '3px', zIndex: 9999, pointerEvents: 'none' }}>

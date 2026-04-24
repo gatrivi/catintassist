@@ -418,13 +418,11 @@ export const DashboardHeader = ({ onStartAudio, onStopAudio, onReconnectStream, 
   })();
   const availableWindowMins = minsToHardCutoff;
 
-  // ── MONTHLY DEFICIT & RECOVERY ───────────────────────────────────
-  const GROWTH_TARGET = 11000; // Growth tier = real goal, Floor (5500) = survival
+  // ── MONTHLY DEFICIT ───────────────────────────────────
   const expectedByToday = Math.round((stats.goalMinutes / daysInMonth) * currentDay);
   const monthlyDeficitMins = expectedByToday - stats.monthlyMinutes; // positive = behind
   const isInDeficit = monthlyDeficitMins > 30;
-  // Per-day needed to reach Growth (11k) by month end
-  const recoveryDailyTarget = Math.min(600, remainingWorkDays > 0 ? Math.ceil(Math.max(0, GROWTH_TARGET - stats.monthlyMinutes) / remainingWorkDays) : baseYield);
+
 
   // PACE ETA: predicts when you'll hit today's goal at current earned rate
   const pacePrediction = (() => {
@@ -641,11 +639,12 @@ export const DashboardHeader = ({ onStartAudio, onStopAudio, onReconnectStream, 
                   <div className="metric-cell-label">MO AVG</div>
                 </div>
 
-                {/* 11. Avg to meet goal lvl 2 */}
-                <div className={`metric-cell ${isEditingScoreboard ? 'grid-edit-mode' : ''}`} title="Average needed per day for Level 2 (Click to toggle H:M)" style={{ position: 'relative', background: 'rgba(168,85,247,0.06)', cursor: 'pointer' }} onClick={() => setShowAsHours(!showAsHours)}>
-                  <HelpLabel text="11. REQ TO LVL2" />
-                  <div className="metric-cell-val" style={{ color: '#c084fc' }}>{formatValue(recoveryDailyTarget)}</div>
-                  <div className="metric-cell-label">REQ TO LVL2</div>
+                {/* 11. Silence/Idle Timer */}
+                <div className={`metric-cell ${isEditingScoreboard ? 'grid-edit-mode' : ''}`} title="Time since last audio activity (Reset by speech). In call, this tracks patient/user silence." style={{ position: 'relative', background: isActive ? 'rgba(239,68,68,0.06)' : 'rgba(255,255,255,0.04)' }}>
+                  <HelpLabel text="11. SILENCE" />
+                  <div className="metric-watermark">{isActive ? '🔇' : '⏳'}</div>
+                  <div className="metric-cell-val" style={{ color: silenceCount > 600 ? '#f87171' : 'white' }}>{formatTime(silenceCount)}</div>
+                  <div className="metric-cell-label">{isActive ? 'CALL SILENCE' : 'APP IDLE'}</div>
                 </div>
 
                 {/* 12. Current call min and cash */}

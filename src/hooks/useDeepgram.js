@@ -1,7 +1,13 @@
 import { useState, useRef, useCallback } from 'react';
 import { useSession } from '../contexts/SessionContext';
 
-const normalize = (s) => (s || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+const normalize = (s) => 
+  (s || '')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '') // Remove accents/diacritics
+    .toLowerCase()
+    .replace(/[^a-z0-9]/g, ''); // Keep only alphanumeric
+
 
 const hallucinationGuard = (text) => {
   if (!text) return text;
@@ -34,59 +40,30 @@ const hallucinationGuard = (text) => {
 
 const removeOverlap = (base, addition) => {
   if (!base || !addition) return addition;
+  
   const normBase = normalize(base);
   const normAddition = normalize(addition);
 
-  // 1. GLOBAL DUPLICATE CHECK
+  // 1. EXACT GLOBAL CHECK
   if (normBase.includes(normAddition)) return '';
 
-  const baseWords = base.trim().split(/\s+/);
-  const addWords = addition.trim().split(/\s+/);
+  const bWords = base.trim().split(/\s+/).map(normalize);
+  const aWords = addition.trim().split(/\s+/).map(normalize);
+  const aWordsRaw = addition.trim().split(/\s+/);
 
-  // 2. THE SLIDING PIVOT (Word-based)
-  // Finds the longest sequence of words at the START of addition that is a SUFFIX of the base.
-  let pivotIdx = 0;
-  const maxOverlap = Math.min(addWords.length, baseWords.length, 50);
+  // 2. WORD-WALK (Find the longest prefix of A that is a suffix of B)
+  let bestOverlap = 0;
+  const maxCheck = Math.min(aWords.length, bWords.length, 50);
 
-  for (let i = 1; i <= maxOverlap; i++) {
-    const head = normalize(addWords.slice(0, i).join(''));
-    if (normBase.endsWith(head)) {
-      pivotIdx = i;
+  for (let i = 1; i <= maxCheck; i++) {
+    const aPrefix = aWords.slice(0, i).join('');
+    const bSuffix = bWords.slice(-i).join('');
+    if (aPrefix === bSuffix) {
+      bestOverlap = i;
     }
   }
 
-  if (pivotIdx > 0) return addWords.slice(pivotIdx).join(' ');
-
-  // 3. ANCHOR SEARCH (Correction handling)
-  // If no suffix-prefix match found, search for a 3-word anchor anywhere in the recent context.
-  if (addWords.length >= 3) {
-    for (let i = 0; i <= Math.min(addWords.length - 3, 15); i++) {
-      const anchor = normalize(addWords.slice(i, i + 3).join(''));
-      const lastMatch = normBase.lastIndexOf(anchor);
-      if (lastMatch !== -1 && lastMatch > normBase.length * 0.4) {
-        // Recurse with a strictly smaller subset to guarantee termination
-        return removeOverlap(base, addWords.slice(i + 1).join(' '));
-      }
-    }
-  }
-
-  // 4. FUZZY CHARACTER MATCH (Last Resort)
-  const baseTailChar = normBase.slice(-15);
-  const addHeadChar = normAddition.slice(0, 15);
-  if (baseTailChar.includes(addHeadChar) || addHeadChar.includes(baseTailChar)) {
-     for (let i = 15; i >= 6; i--) {
-       const sub = normAddition.slice(0, i);
-       if (normBase.endsWith(sub)) {
-         let charLen = 0;
-         for (let w = 0; w < addWords.length; w++) {
-           charLen += normalize(addWords[w]).length;
-           if (charLen >= i) return addWords.slice(w + 1).join(' ');
-         }
-       }
-     }
-  }
-
-  return addition;
+  return aWordsRaw.slice(bestOverlap).join(' ');
 };
 
 export const useDeepgram = () => {
@@ -97,7 +74,7 @@ export const useDeepgram = () => {
   const [connectionState, setConnectionState] = useState('disconnected');
   const [connectionMessage, setConnectionMessage] = useState('Disconnected');
   const [sttLanguage, setSttLanguage] = useState('auto');
-  const [lastDataTime, setLastDataTime] = useState(Date.now());
+  const [lastDataTime, setLastDataTime] = useState(0); // FIXED: Initialize to 0 so it doesn't trigger 'Call Detected' alert on refresh
   
   const langModeRef = useRef('auto');
   const socketRefEn = useRef(null);
@@ -174,7 +151,9 @@ export const useDeepgram = () => {
         const confidence = alt?.confidence || 0;
         const isFinal = received.is_final;
 
-        if (isCallDetectionEnabled) {
+        // Filter out noise/hallucinations (confidence > 0.4) to ensure only real speech 
+        // from the tab updates the activity metrics.
+        if (isCallDetectionEnabled && confidence > 0.4) {
           updateActivity();
           setLastDataTime(Date.now());
         }
@@ -220,11 +199,15 @@ export const useDeepgram = () => {
           const current = { ...last };
           // CORRECTED SLICE: prev.slice(-5) includes the most recent bubble. 
           // prev.slice(-5, -1) was skipping the immediate history!
-          const historyText = prev.slice(-5).map(c => (lang === 'en' ? c.enFinalized : c.esFinalized)).join(' ');
-          const baseContext = historyText + ' ' + (lang === 'en' ? current.enFinalized : current.esFinalized);
+          // UNIFIED HISTORY: Deduplicate against what was actually shown to the user (c.text)
+          // instead of isolated language buckets. This prevents cross-socket duplicates.
+          const historyText = prev.slice(-5).map(c => c.text || '').join(' ');
+          const currentFinalized = (lang === 'en' ? current.enFinalized : current.esFinalized) || '';
+          const baseContext = (historyText + ' ' + currentFinalized).trim();
+
+          const cleaned = removeOverlap(baseContext, transcript);
 
           if (isFinal) {
-            const cleaned = removeOverlap(baseContext, transcript);
             if (lang === 'en') {
               current.enFinalized = hallucinationGuard((current.enFinalized + ' ' + cleaned).trim());
               current.enInterim = '';
@@ -233,8 +216,9 @@ export const useDeepgram = () => {
               current.esInterim = '';
             }
           } else {
-            if (lang === 'en') current.enInterim = transcript;
-            else current.esInterim = transcript;
+            // Also clean interim results to prevent UI stutters
+            if (lang === 'en') current.enInterim = cleaned;
+            else current.esInterim = cleaned;
           }
 
           // Winner logic
@@ -295,6 +279,11 @@ export const useDeepgram = () => {
 
   const stopRecording = useCallback(() => {
     isActiveRef.current = false;
+    if (streamRef.current) {
+      // FIXED: Stop all tracks to release the browser 'Sharing Tab' indicator and stop audio processing
+      streamRef.current.getTracks().forEach(track => track.stop());
+      streamRef.current = null;
+    }
     closeConnections();
     setCaptions([]);
     captionsRef.current = [];

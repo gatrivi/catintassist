@@ -51,14 +51,133 @@ export const SessionProvider = ({ children }) => {
   const [breakSeconds, setBreakSeconds] = useState(() => Number(localStorage.getItem('catint_b_sec')) || 0);
   const [availSeconds, setAvailSeconds] = useState(() => Number(localStorage.getItem('catint_a_sec')) || 0);
   const [lastActivityTime, setLastActivityTime] = useState(Date.now());
-  const [dailyTimeline, setDailyTimeline] = useState(() => {
-    try { return JSON.parse(localStorage.getItem('catintassist_timeline')) || []; } catch(e) { return []; }
-  });
   const [historyTimeline, setHistoryTimeline] = useState(() => {
     try { return JSON.parse(localStorage.getItem('catintassist_history_timeline')) || {}; } catch(e) { return {}; }
   });
   const [isHold, setIsHold] = useState(() => JSON.parse(localStorage.getItem('catint_hold')) || false);
   const [holdSeconds, setHoldSeconds] = useState(() => Number(localStorage.getItem('catint_hold_sec')) || 0);
+  const [dailyTimeline, setDailyTimeline] = useState(() => {
+    try { return JSON.parse(localStorage.getItem('catintassist_timeline')) || []; } catch(e) { return []; }
+  });
+  
+  const [stats, setStats] = useState(() => {
+    const saved = localStorage.getItem('catintassist_stats');
+    const today = new Date().toDateString();
+    let initialStats = {
+      dailyMinutes: 0,
+      dailyBreakMinutes: 0,
+      dailyAvailMinutes: 0,
+      weeklyMinutes: 0,
+      monthlyMinutes: 0,
+      goalMinutes: 5500,
+      callsToday: 0,
+      streak: 0,
+      lastDate: today,
+      dayStartTime: null,
+      shiftStartSentiment: 0 // minutes late from 9am
+    };
+    if (saved) {
+      try {
+        const parsed = JSON.parse(saved);
+        if (parsed.lastDate && parsed.lastDate !== today) {
+          // Midnight rollover: write previous day's minutes into log
+          const prevLog = JSON.parse(localStorage.getItem('catintassist_daily_log')) || {};
+          const prevHistory = JSON.parse(localStorage.getItem('catintassist_history_timeline')) || {};
+          
+          if (parsed.dailyMinutes > 0) {
+            prevLog[parsed.lastDate] = Math.round(parsed.dailyMinutes);
+            safeLocalStorageSet('catintassist_daily_log', JSON.stringify(prevLog));
+          }
+
+          // Archive timeline
+          const currentTimeline = JSON.parse(localStorage.getItem('catintassist_timeline')) || [];
+          if (currentTimeline.length > 0) {
+             prevHistory[parsed.lastDate] = currentTimeline;
+             safeLocalStorageSet('catintassist_history_timeline', JSON.stringify(prevHistory));
+             setHistoryTimeline(prevHistory);
+          }
+
+          parsed.dailyMinutes = 0;
+          parsed.dailyBreakMinutes = 0;
+          parsed.dailyAvailMinutes = 0;
+          parsed.callsToday = 0;
+          parsed.dayStartTime = null;
+          parsed.lastBreakEndTime = null;
+          parsed.lastDate = today;
+          // Clear timeline on new day
+          safeLocalStorageSet('catintassist_timeline', JSON.stringify([]));
+          setDailyTimeline([]);
+          setHoldSeconds(0);
+        }
+        return { ...initialStats, ...parsed };
+      } catch (e) { return initialStats; }
+    }
+    return initialStats;
+  });
+
+  useEffect(() => {
+    safeLocalStorageSet('catintassist_stats', JSON.stringify(stats));
+  }, [stats]);
+
+  // CLOUD SYNC: Zero-auth syncing via ntfy.sh
+  const [syncStatus, setSyncStatus] = useState('idle');
+  const syncIdRef = useRef(null);
+
+  useEffect(() => {
+    const key = localStorage.getItem('DEEPGRAM_API_KEY');
+    if (key && key.length > 10) {
+      // Simple hash to create a unique topic
+      let hash = 0;
+      for (let i = 0; i < key.length; i++) hash = ((hash << 5) - hash) + key.charCodeAt(i);
+      syncIdRef.current = `catint_sync_${Math.abs(hash).toString(36)}`;
+    }
+  }, []);
+
+  const pushState = useCallback(async (forceStats = null) => {
+    if (!syncIdRef.current) return;
+    try {
+      const payload = {
+        stats: forceStats || stats,
+        isActive,
+        isBreakActive,
+        lastUpdate: Date.now()
+      };
+      setSyncStatus('syncing');
+      await fetch(`https://ntfy.sh/${syncIdRef.current}`, {
+        method: 'POST',
+        body: JSON.stringify(payload),
+        headers: { 'Title': 'App State Sync', 'Tags': 'gear' }
+      });
+      setSyncStatus('synced');
+    } catch (e) {
+      setSyncStatus('error');
+    }
+  }, [stats, isActive, isBreakActive]);
+
+  // Pull state on mount or when API key is found
+  useEffect(() => {
+    if (!syncIdRef.current) return;
+    const pull = async () => {
+      try {
+        const res = await fetch(`https://ntfy.sh/${syncIdRef.current}/json?poll=1&limit=1`);
+        const data = await res.json();
+        if (data && data.length > 0) {
+          const remote = JSON.parse(data[0].message);
+          // Only hydrate if remote is newer and local is empty/smaller
+          if (remote.stats && stats.dailyMinutes === 0) {
+            setStats(prev => ({ ...prev, ...remote.stats }));
+          }
+        }
+      } catch (e) {}
+    };
+    pull();
+  }, [syncIdRef.current]); // eslint-disable-line
+
+  // Periodic push
+  useEffect(() => {
+    const iv = setInterval(() => pushState(), 60000);
+    return () => clearInterval(iv);
+  }, [pushState]);
 
   const [holdIntentAt, setHoldIntentAt] = useState(0);
 
@@ -140,61 +259,6 @@ export const SessionProvider = ({ children }) => {
     setDailyLog(prev => ({ ...prev, [dateStr]: Math.round(minutes) }));
   }, []);
 
-  const [stats, setStats] = useState(() => {
-    const saved = localStorage.getItem('catintassist_stats');
-    const today = new Date().toDateString();
-    let initialStats = {
-      dailyMinutes: 0,
-      dailyBreakMinutes: 0,
-      dailyAvailMinutes: 0,
-      weeklyMinutes: 0,
-      monthlyMinutes: 0,
-      goalMinutes: 5500,
-      callsToday: 0,
-      streak: 0,
-      lastDate: today,
-      dayStartTime: null,
-      shiftStartSentiment: 0 // minutes late from 9am
-    };
-    if (saved) {
-      try {
-        const parsed = JSON.parse(saved);
-        if (parsed.lastDate && parsed.lastDate !== today) {
-          // Midnight rollover: write previous day's minutes into log
-          const prevLog = JSON.parse(localStorage.getItem('catintassist_daily_log')) || {};
-          const prevHistory = JSON.parse(localStorage.getItem('catintassist_history_timeline')) || {};
-          
-          if (parsed.dailyMinutes > 0) {
-            prevLog[parsed.lastDate] = Math.round(parsed.dailyMinutes);
-            safeLocalStorageSet('catintassist_daily_log', JSON.stringify(prevLog));
-          }
-
-          // Archive timeline
-          const currentTimeline = JSON.parse(localStorage.getItem('catintassist_timeline')) || [];
-          if (currentTimeline.length > 0) {
-             prevHistory[parsed.lastDate] = currentTimeline;
-             safeLocalStorageSet('catintassist_history_timeline', JSON.stringify(prevHistory));
-             setHistoryTimeline(prevHistory);
-          }
-
-          parsed.dailyMinutes = 0;
-          parsed.dailyBreakMinutes = 0;
-          parsed.dailyAvailMinutes = 0;
-          parsed.callsToday = 0;
-          parsed.dayStartTime = null;
-          parsed.lastBreakEndTime = null;
-          parsed.lastDate = today;
-          // Clear timeline on new day
-          safeLocalStorageSet('catintassist_timeline', JSON.stringify([]));
-          setDailyTimeline([]);
-          setHoldSeconds(0);
-          setIsHold(false);
-        }
-        initialStats = { ...initialStats, ...parsed };
-      } catch(e) {}
-    }
-    return initialStats;
-  });
 
   const [workSessionStartTime, setWorkSessionStartTime] = useState(() => stats.lastBreakEndTime || stats.dayStartTime || Date.now());
   const [workSessionMinutes, setWorkSessionMinutes] = useState(0);
@@ -565,6 +629,8 @@ export const SessionProvider = ({ children }) => {
     getCompensatedLogOff,
     minutesSinceLastBreak,
     historyTimeline,
+    syncStatus,
+    pushState,
     dailyGoal: (() => {
       const now = new Date();
       const year = now.getFullYear(), month = now.getMonth(), currentDay = now.getDate();
