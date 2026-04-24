@@ -16,7 +16,7 @@ const RollingDigit = ({ digit, height = 24 }) => {
   }, [digit, height, isNumber]);
 
   if (!isNumber) {
-    return <span style={{ px: '1px' }}>{digit}</span>;
+    return <span style={{ width: '0.4em', textAlign: 'center' }}>{digit}</span>;
   }
 
   return (
@@ -24,19 +24,35 @@ const RollingDigit = ({ digit, height = 24 }) => {
       className="digit-container" 
       style={{ 
         height, 
-        width: '0.6em',
-        ...(height < 14 ? { background: 'none', boxShadow: 'none' } : {}) 
+        width: '0.65em', // Slightly wider for stability
+        overflow: 'hidden',
+        position: 'relative',
+        display: 'inline-block',
+        fontVariantNumeric: 'tabular-nums' // Force monospaced digits
       }}
     >
       <div 
         className="digit-strip" 
         style={{ 
+          position: 'absolute',
+          top: 0,
+          left: 0,
+          right: 0,
           transform: `translateY(-${offset}px)`,
-          transition: 'transform 0.8s cubic-bezier(0.34, 1.56, 0.64, 1)' 
+          transition: 'transform 0.6s cubic-bezier(0.16, 1, 0.3, 1)', // Smooth standard out, no overshoot
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center'
         }}
       >
         {[0, 1, 2, 3, 4, 5, 6, 7, 8, 9].map(n => (
-          <div key={n} className="digit-value" style={{ height }}>{n}</div>
+          <div key={n} className="digit-value" style={{ 
+            height, 
+            display: 'flex', 
+            alignItems: 'center', 
+            justifyContent: 'center',
+            width: '100%'
+          }}>{n}</div>
         ))}
       </div>
     </div>
@@ -44,8 +60,6 @@ const RollingDigit = ({ digit, height = 24 }) => {
 };
 
 export const RollingNumber = ({ value, prefix = '', suffix = '', height = 24, className = '' }) => {
-  // Convert value to string and split into characters
-  // We handle numbers by formatting them with commas if they are numeric
   const displayValue = typeof value === 'number' 
     ? Math.round(value).toLocaleString('es-AR') 
     : String(value);
@@ -53,9 +67,9 @@ export const RollingNumber = ({ value, prefix = '', suffix = '', height = 24, cl
   const characters = (prefix + displayValue + suffix).split('');
 
   return (
-    <div className={`rolling-number-wrapper ${className}`} style={{ height, display: 'inline-flex', alignItems: 'center' }}>
+    <div className={`rolling-number-wrapper ${className}`} style={{ height, display: 'inline-flex', alignItems: 'center', overflow: 'hidden' }}>
       {characters.map((char, i) => (
-        <RollingDigit key={`${i}-${char}`} digit={char} height={height} />
+        <RollingDigit key={i} digit={char} height={height} />
       ))}
     </div>
   );
