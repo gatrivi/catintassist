@@ -137,6 +137,9 @@ export const DashboardHeader = ({ onStartAudio, onStopAudio, onReconnectStream, 
   const [silenceCount, setSilenceCount] = useState(0);
   const [hoveredTimelineEvent, setHoveredTimelineEvent] = useState(null);
 
+  const [showAsHours, setShowAsHours] = useState(false);
+  const [rateView, setRateView] = useState('effective'); // 'effective' | 'active'
+
   useEffect(() => {
     const iv = setInterval(() => {
       setSilenceCount(Math.floor((Date.now() - lastActivityTime) / 1000));
@@ -364,6 +367,11 @@ export const DashboardHeader = ({ onStartAudio, onStopAudio, onReconnectStream, 
     return `${h}h${m > 0 ? `${m}m` : ''}`;
   };
 
+  const formatValue = (mins) => {
+    if (showAsHours) return formatHoursMins(mins);
+    return `${Math.round(mins)}m`;
+  };
+
   // SIMPLIFIED 12-STEP ENGINE (5500m floor based)
   const WEEK_STEP = 1375; // 5500 / 4
   
@@ -467,6 +475,11 @@ export const DashboardHeader = ({ onStartAudio, onStopAudio, onReconnectStream, 
     ? Math.round((liveDailyArs / shiftElapsedMins) * 60)
     : null;
 
+  const activeRateArsHr = totalDailyMins > 0
+    ? Math.round((liveDailyArs / totalDailyMins) * 60)
+    : null;
+
+  const rateOf = (view) => view === 'effective' ? effectiveRateArsHr : activeRateArsHr;
 
   return (
     <header className="dashboard-header glass-panel" style={{ position: 'relative', zIndex: 100 }}>
@@ -556,23 +569,23 @@ export const DashboardHeader = ({ onStartAudio, onStopAudio, onReconnectStream, 
               />
             ) : (
               <div id="numeric-metric-grid" className="metric-grid">
-                {/* 1. Mins worked today */}
-                <div className={`metric-cell ${isEditingScoreboard ? 'grid-edit-mode' : ''}`} title="Minutes worked today" style={{ position: 'relative', background: 'rgba(59,130,246,0.06)' }}>
+                 {/* 1. Mins worked today */}
+                <div className={`metric-cell ${isEditingScoreboard ? 'grid-edit-mode' : ''}`} title="Minutes worked today (Click to toggle H:M)" style={{ position: 'relative', background: 'rgba(59,130,246,0.06)', cursor: 'pointer' }} onClick={() => setShowAsHours(!showAsHours)}>
                   <HelpLabel text="1. MINS TODAY" />
-                  <div className="metric-cell-val" style={{ color: '#60a5fa' }}>{Math.round(totalDailyMins)}m</div>
+                  <div className="metric-cell-val" style={{ color: '#60a5fa' }}>{formatValue(totalDailyMins)}</div>
                   <div className="metric-cell-label">MINS TODAY</div>
                 </div>
 
-                <div className={`metric-cell ${isEditingScoreboard ? 'grid-edit-mode' : ''}`} title="Minutes left for daily goal" style={{ position: 'relative', background: 'rgba(239,68,68,0.04)' }}>
+                <div className={`metric-cell ${isEditingScoreboard ? 'grid-edit-mode' : ''}`} title="Minutes left for daily goal (Click to toggle H:M)" style={{ position: 'relative', background: 'rgba(239,68,68,0.04)', cursor: 'pointer' }} onClick={() => setShowAsHours(!showAsHours)}>
                   <HelpLabel text="2. LEFT TODAY" />
-                  <div className="metric-cell-val" style={{ color: '#fca5a5' }}>{Math.round(Math.max(0, dailyGoal - totalDailyMins))}m</div>
+                  <div className="metric-cell-val" style={{ color: '#fca5a5' }}>{formatValue(Math.max(0, dailyGoal - totalDailyMins))}</div>
                   <div className="metric-cell-label">LEFT TODAY</div>
                 </div>
 
                 {/* 3. Goal mins */}
-                <div className={`metric-cell ${isEditingScoreboard ? 'grid-edit-mode' : ''}`} title="Target goal minutes for today" style={{ position: 'relative', background: 'rgba(52,211,153,0.04)' }}>
+                <div className={`metric-cell ${isEditingScoreboard ? 'grid-edit-mode' : ''}`} title="Target goal minutes for today (Click to toggle H:M)" style={{ position: 'relative', background: 'rgba(52,211,153,0.04)', cursor: 'pointer' }} onClick={() => setShowAsHours(!showAsHours)}>
                   <HelpLabel text="3. TODAY GOAL" />
-                  <div className="metric-cell-val">{Math.round(dailyGoal)}m</div>
+                  <div className="metric-cell-val">{formatValue(dailyGoal)}</div>
                   <div className="metric-cell-label">TODAY GOAL</div>
                 </div>
 
@@ -613,24 +626,24 @@ export const DashboardHeader = ({ onStartAudio, onStopAudio, onReconnectStream, 
                   <div className="metric-cell-label">$ LEFT MONTH</div>
                 </div>
 
-                {/* 9. Off-call total today */}
-                <div className={`metric-cell ${isEditingScoreboard ? 'grid-edit-mode' : ''}`} title="Total time spent off-call today (Available + Break time)" style={{ position: 'relative', background: 'rgba(251,146,60,0.06)' }}>
+                 {/* 9. Off-call total today */}
+                <div className={`metric-cell ${isEditingScoreboard ? 'grid-edit-mode' : ''}`} title="Total time spent off-call today (Click to toggle H:M)" style={{ position: 'relative', background: 'rgba(251,146,60,0.06)', cursor: 'pointer' }} onClick={() => setShowAsHours(!showAsHours)}>
                   <HelpLabel text="9. OFF CALL" />
-                  <div className="metric-cell-val" style={{ color: '#fdba74' }}>{Math.round(totalOffCallMins)}m</div>
+                  <div className="metric-cell-val" style={{ color: '#fdba74' }}>{formatValue(totalOffCallMins)}</div>
                   <div className="metric-cell-label">OFF CALL</div>
                 </div>
 
                 {/* 10. Avg so far mo */}
-                <div className={`metric-cell ${isEditingScoreboard ? 'grid-edit-mode' : ''}`} title="Average minutes per day so far this month" style={{ position: 'relative', background: 'rgba(139,92,246,0.04)' }}>
+                <div className={`metric-cell ${isEditingScoreboard ? 'grid-edit-mode' : ''}`} title="Average minutes per day so far (Click to toggle H:M)" style={{ position: 'relative', background: 'rgba(139,92,246,0.04)', cursor: 'pointer' }} onClick={() => setShowAsHours(!showAsHours)}>
                   <HelpLabel text="10. MO AVG" />
-                  <div className="metric-cell-val">{Math.round(actualDailyAverage)}m</div>
+                  <div className="metric-cell-val">{formatValue(actualDailyAverage)}</div>
                   <div className="metric-cell-label">MO AVG</div>
                 </div>
 
                 {/* 11. Avg to meet goal lvl 2 */}
-                <div className={`metric-cell ${isEditingScoreboard ? 'grid-edit-mode' : ''}`} title="Average needed per day for Level 2 (Growth Goal)" style={{ position: 'relative', background: 'rgba(168,85,247,0.06)' }}>
+                <div className={`metric-cell ${isEditingScoreboard ? 'grid-edit-mode' : ''}`} title="Average needed per day for Level 2 (Click to toggle H:M)" style={{ position: 'relative', background: 'rgba(168,85,247,0.06)', cursor: 'pointer' }} onClick={() => setShowAsHours(!showAsHours)}>
                   <HelpLabel text="11. REQ TO LVL2" />
-                  <div className="metric-cell-val" style={{ color: '#c084fc' }}>{Math.round(recoveryDailyTarget)}m</div>
+                  <div className="metric-cell-val" style={{ color: '#c084fc' }}>{formatValue(recoveryDailyTarget)}</div>
                   <div className="metric-cell-label">REQ TO LVL2</div>
                 </div>
 
@@ -667,8 +680,13 @@ export const DashboardHeader = ({ onStartAudio, onStopAudio, onReconnectStream, 
                 </div>
               )}
               {effectiveRateArsHr ? (
-                <div id="pill-eff-rate" className="metric-pill compact-pill" title={`EFFECTIVE RATE: Your actual AR$ earned per hour, including the dead time (Avail) spent waiting for calls. Currently AR$${effectiveRateArsHr.toLocaleString('es-AR')}/hr.`} style={{ background: 'rgba(139,92,246,0.08)', border: '1px solid rgba(139,92,246,0.2)', padding: '0.05rem 0.15rem' }}>
-                  <span style={{ fontSize: '0.55rem', color: '#c4b5fd', fontWeight: 700 }}>⚡${Math.round(effectiveRateArsHr / 1000)}k/h</span>
+                <div id="pill-eff-rate" className="metric-pill compact-pill" 
+                  onClick={() => setRateView(prev => prev === 'effective' ? 'active' : 'effective')}
+                  title={rateView === 'effective' ? "EFFECTIVE RATE: Hourly wage including dead time. Click to see ACTIVE RATE." : "ACTIVE RATE: Hourly wage during actual calls (Max Rate). Click to see EFFECTIVE RATE."} 
+                  style={{ background: rateView === 'effective' ? 'rgba(139,92,246,0.08)' : 'rgba(16,185,129,0.08)', border: rateOf(rateView) ? `1px solid ${rateView === 'effective' ? 'rgba(139,92,246,0.2)' : 'rgba(16,185,129,0.2)'}` : 'none', padding: '0.05rem 0.15rem', cursor: 'pointer' }}>
+                  <span style={{ fontSize: '0.55rem', color: rateView === 'effective' ? '#c4b5fd' : '#10b981', fontWeight: 700 }}>
+                    {rateView === 'effective' ? '⚡' : '🔥'}${Math.round(rateOf(rateView) / 1000)}k/h
+                  </span>
                 </div>
               ) : (
                 <div id="pill-no-rate" className="metric-pill compact-pill" style={{ opacity: 0.2, padding: '0.05rem 0.15rem' }}>
