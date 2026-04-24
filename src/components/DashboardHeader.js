@@ -130,7 +130,7 @@ export const DashboardHeader = ({ onStartAudio, onStopAudio, onReconnectStream, 
   const [isCollapsed, setIsCollapsed] = useState(true);
   const [celebration, setCelebration] = useState(null); // Keep celebration for sound logic
   const [isTodayDialOpen, setIsTodayDialOpen] = useState(false);
-  const [displayBounty, setDisplayBounty] = useState(() => Math.max(0, Math.round(dailyGoal * RATE_PER_MINUTE * arsRate) - Math.round((stats.dailyMinutes + unbankedMins) * RATE_PER_MINUTE * arsRate)));
+  const [displayBounty, setDisplayBounty] = useState(0);
   const [isBountyAnimating, setIsBountyAnimating] = useState(false);
   const [timeEditMode, setTimeEditMode] = useState(null); // 'call' | 'break' | null
   const [scoreView, setScoreView] = useState('numbers'); // 'game' | 'numbers'
@@ -314,7 +314,10 @@ export const DashboardHeader = ({ onStartAudio, onStopAudio, onReconnectStream, 
     }
   }, [currentBounty, displayBounty]);
 
-  // Initialize bounty on load removed (now in useState init)
+  // Initialize bounty on load
+  useEffect(() => {
+    setDisplayBounty(currentBounty);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
 
   let hoursLeftToAbsolute = Math.max(0, ABSOLUTE_END - currentTime);
