@@ -350,12 +350,7 @@ export const GameScoreboard = ({
             <EmojiRow
               emoji="🔋" value={totalDailyMins} unitValue={Math.max(1, stats.dailyBreakMinutes || 1)} maxValue={totalDailyMins * 1.2}
               isEditing={isEditingScoreboard} helpLabel="STAMINA_RATIO"
-              label={
-                <div style={{ display: 'flex', alignItems: 'center', gap: '0.2rem' }}>
-                  <span>stamina</span>
-                  <RollingNumber value={(totalDailyMins / Math.max(1, stats.dailyBreakMinutes)).toFixed(1)} suffix="x ratio" height={10} />
-                </div>
-              }
+              label={`stamina  ${(totalDailyMins / Math.max(1, stats.dailyBreakMinutes)).toFixed(1)}x ratio`}
               sublabel={(totalDailyMins / Math.max(1, stats.dailyBreakMinutes)) >= 5.3 ? 'ELITE' : 'TIRED'}
               color="#fb923c"
             />
