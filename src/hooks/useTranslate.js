@@ -141,16 +141,16 @@ export const useTranslate = (text, lang, prefetchTTS, shouldPrefetch, mood = 'de
 
         const fetchers = {
           deepl: async (c) => {
-            if (!keys.DEEPL) throw 'no key';
+            if (!keys.DEEPL) throw new Error('no key');
             const r = await fetch(`https://api-free.deepl.com/v2/translate`, {
               method: 'POST', signal, headers: { 'Authorization': `DeepL-Auth-Key ${keys.DEEPL}`, 'Content-Type': 'application/x-www-form-urlencoded' },
               body: new URLSearchParams({ text: c, target_lang: targetLang.toUpperCase(), source_lang: sourceLang.toUpperCase() })
             });
-            if (!r.ok) throw `status ${r.status}`;
+            if (!r.ok) throw new Error(`status ${r.status}`);
             const d = await r.json(); return d.translations?.[0]?.text;
           },
           openai: async (c) => {
-            if (!keys.OPENAI) throw 'no key';
+            if (!keys.OPENAI) throw new Error('no key');
             const r = await fetch('https://api.openai.com/v1/chat/completions', {
               method: 'POST', signal, headers: { 'Authorization': `Bearer ${keys.OPENAI}`, 'Content-Type': 'application/json' },
               body: JSON.stringify({
@@ -159,18 +159,18 @@ export const useTranslate = (text, lang, prefetchTTS, shouldPrefetch, mood = 'de
                 temperature: 0
               })
             });
-            if (!r.ok) throw `status ${r.status}`;
+            if (!r.ok) throw new Error(`status ${r.status}`);
             const d = await r.json(); return d.choices?.[0]?.message?.content;
           },
           google_gtx: async (c) => {
             const r = await fetch(`https://translate.googleapis.com/translate_a/single?client=gtx&sl=${sourceLang}&tl=${targetLang}&dt=t&q=${encodeURIComponent(c)}`, { signal });
-            if (!r.ok) throw `gtx ${r.status}`;
+            if (!r.ok) throw new Error(`gtx ${r.status}`);
             const d = await r.json(); 
             return d?.[0]?.map(s => s[0]).filter(Boolean).join(' ').replace(/\s+/g, ' ').trim() || '';
           },
           lingva: async (c) => {
             const r = await fetch(`https://lingva.ml/api/v1/${sourceLang}/${targetLang}/${encodeURIComponent(c)}`, { signal });
-            if (!r.ok) throw `lingva ${r.status}`;
+            if (!r.ok) throw new Error(`lingva ${r.status}`);
             const d = await r.json();
             return d.translation;
           }
@@ -255,7 +255,7 @@ export const useTranslate = (text, lang, prefetchTTS, shouldPrefetch, mood = 'de
       if (debounceTimerRef.current) clearTimeout(debounceTimerRef.current);
       if (abortControllerRef.current) abortControllerRef.current.abort();
     };
-  }, [text, lang, shouldPrefetch, prefetchTTS, sourceLang, targetLang, mood]);
+  }, [text, lang, shouldPrefetch, prefetchTTS, sourceLang, targetLang, mood, translation]);
 
   return { translation, audioUrl, isTranslating, engineStatus, targetLang };
 };

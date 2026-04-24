@@ -1,4 +1,4 @@
-import { useState, useRef, useCallback, useEffect } from 'react';
+import { useState, useRef, useCallback } from 'react';
 import { useSession } from '../contexts/SessionContext';
 
 const normalize = (s) => (s || '').toLowerCase().replace(/[^a-z0-9]/g, '');
@@ -133,7 +133,7 @@ export const useDeepgram = () => {
     setConnectionMessage('Disconnected');
   }, []);
 
-  const startDeepgram = (stream) => {
+  const startDeepgram = useCallback((stream) => {
     const API_KEY = localStorage.getItem('DEEPGRAM_API_KEY') || process.env.REACT_APP_DEEPGRAM_API_KEY;
     if (!API_KEY || API_KEY.trim() === '' || API_KEY === 'your_deepgram_api_key_here') {
       alert("Deepgram API Key Missing");
@@ -206,9 +206,10 @@ export const useDeepgram = () => {
           }
 
           const current = { ...last };
-          // Deduplicate against history PLUS current bubble's finalized text
-          const baseContext = prev.slice(-5, -1).map(c => (lang === 'en' ? c.enFinalized : c.esFinalized)).join(' ') 
-                            + ' ' + (lang === 'en' ? current.enFinalized : current.esFinalized);
+          // CORRECTED SLICE: prev.slice(-5) includes the most recent bubble. 
+          // prev.slice(-5, -1) was skipping the immediate history!
+          const historyText = prev.slice(-5).map(c => (lang === 'en' ? c.enFinalized : c.esFinalized)).join(' ');
+          const baseContext = historyText + ' ' + (lang === 'en' ? current.enFinalized : current.esFinalized);
 
           if (isFinal) {
             const cleaned = removeOverlap(baseContext, transcript);
@@ -257,7 +258,7 @@ export const useDeepgram = () => {
 
     socketRefEn.current = createSocket('en');
     socketRefEs.current = createSocket('es');
-  };
+  }, [isCallDetectionEnabled, updateActivity, updateCaptionsState]);
 
   const startRecording = async () => {
     try {
@@ -293,7 +294,7 @@ export const useDeepgram = () => {
     setTimeout(() => {
       if (streamRef.current && isActiveRef.current) startDeepgram(streamRef.current);
     }, 400);
-  }, [closeConnections]);
+  }, [closeConnections, startDeepgram]);
 
   const clearCaptions = () => {
     setCaptions([]);

@@ -23,43 +23,36 @@ export const AudioSettingsProvider = ({ children }) => {
   const passthroughAudioRef = useRef(new Audio());
 
   // Fetch available devices
-  const fetchDevices = async () => {
+  const fetchDevices = useCallback(async () => {
     try {
-      // Browsers often require mic permission to access device labels reliably
       let devices = await navigator.mediaDevices.enumerateDevices();
-      
       const needsPermission = devices.some(d => d.label === '' || d.label.toLowerCase() === 'speaker' || d.label.toLowerCase() === 'microphone');
-      
       if (needsPermission) {
         try {
           const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
           stream.getTracks().forEach(t => t.stop());
-          // Re-fetch now that we have permission
           devices = await navigator.mediaDevices.enumerateDevices();
         } catch (e) {
-          console.warn('Microphone permission denied. Device labels may be missing.', e);
+          console.warn('Microphone permission denied.', e);
         }
       }
-
       const outputs = devices.filter(d => d.kind === 'audiooutput');
       const inputs = devices.filter(d => d.kind === 'audioinput');
       setOutputDevices(outputs);
       setInputDevices(inputs);
-      
-      // If the selected sink no longer exists (e.g., unplugged), revert to default
       if (selectedSinkId && !outputs.some(d => d.deviceId === selectedSinkId)) {
         setSelectedSinkId('');
       }
     } catch (err) {
       console.error('Failed to enumerate audio devices:', err);
     }
-  };
+  }, [selectedSinkId]);
 
   useEffect(() => {
     fetchDevices();
     navigator.mediaDevices.addEventListener('devicechange', fetchDevices);
     return () => navigator.mediaDevices.removeEventListener('devicechange', fetchDevices);
-  }, []);
+  }, [fetchDevices]);
 
   // Core Mixer Logic: If both Mic and Sink are selected, pipe them together.
   useEffect(() => {
@@ -142,10 +135,11 @@ export const AudioSettingsProvider = ({ children }) => {
     
     setupPassthrough();
 
+    const currentPipeline = passthroughAudioRef.current;
     return () => {
       isMounted = false;
       if (stream) stream.getTracks().forEach(t => t.stop());
-      passthroughAudioRef.current.srcObject = null;
+      currentPipeline.srcObject = null;
     };
   }, [selectedMicId, selectedSinkId]);
 
@@ -174,7 +168,7 @@ export const AudioSettingsProvider = ({ children }) => {
       if (monitorStreamRef.current) { monitorStreamRef.current.getTracks().forEach(t => t.stop()); monitorStreamRef.current = null; }
       if (monitorCtxRef.current) { monitorCtxRef.current.close().catch(()=>{}); monitorCtxRef.current = null; }
     };
-  }, [monitorMic, selectedMicId]);
+  }, [monitorMic, selectedMicId, monitorVolume]);
 
   useEffect(() => {
     if (monitorGainRef.current) monitorGainRef.current.gain.value = monitorVolume;

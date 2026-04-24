@@ -5,7 +5,7 @@ import React, { useEffect, useState, useRef } from 'react';
  * A premium digit-by-digit rolling animator for currency and numbers.
  * Inspired by mechanical counters and early iPhone aesthetics.
  */
-const RollingDigit = ({ digit, height = 24 }) => {
+const RollingDigit = ({ digit, height = 24, speed = 1.5 }) => {
   const [targetDigit, setTargetDigit] = useState(0);
   const [displayOffset, setDisplayOffset] = useState(0);
   const prevDigitRef = useRef(0);
@@ -16,11 +16,8 @@ const RollingDigit = ({ digit, height = 24 }) => {
       const newDigit = parseInt(digit);
       const prevDigit = prevDigitRef.current;
       
-      // Calculate how many "steps" to move forward
-      // If we go from 9 to 0, that's +1 step
-      // If we go from 2 to 5, that's +3 steps
       let diff = newDigit - prevDigit;
-      if (diff < 0) diff += 10; // Always roll forward like a mechanical dial
+      if (diff < 0) diff += 10; 
       
       setDisplayOffset(prev => prev + (diff * height));
       prevDigitRef.current = newDigit;
@@ -32,8 +29,6 @@ const RollingDigit = ({ digit, height = 24 }) => {
     return <span style={{ width: '0.4em', textAlign: 'center', opacity: 0.5 }}>{digit}</span>;
   }
 
-  // We use a repeated strip of numbers to allow for continuous forward rolling
-  // 0-9 repeated 10 times gives us 100 slots, plenty for a long session
   const digits = Array.from({ length: 100 }, (_, i) => i % 10);
 
   return (
@@ -46,11 +41,11 @@ const RollingDigit = ({ digit, height = 24 }) => {
         position: 'relative',
         display: 'inline-block',
         fontVariantNumeric: 'tabular-nums',
-        // Art Deco / Analog Dial Shading
-        background: 'linear-gradient(to bottom, rgba(0,0,0,0.4) 0%, transparent 20%, transparent 80%, rgba(0,0,0,0.4) 100%)',
-        boxShadow: 'inset 0 0 5px rgba(0,0,0,0.5)',
+        background: 'linear-gradient(to bottom, rgba(0,0,0,0.5) 0%, transparent 15%, transparent 85%, rgba(0,0,0,0.5) 100%)',
+        boxShadow: 'inset 0 0 8px rgba(0,0,0,0.7)',
         borderRadius: '2px',
-        margin: '0 0.5px'
+        margin: '0 0.5px',
+        border: '1px solid rgba(255,255,255,0.03)'
       }}
     >
       <div 
@@ -61,7 +56,8 @@ const RollingDigit = ({ digit, height = 24 }) => {
           left: 0,
           right: 0,
           transform: `translateY(-${displayOffset}px)`,
-          transition: 'transform 1.8s cubic-bezier(0.22, 1, 0.36, 1)', // Very slow, premium drift
+          // Speed depends on position (units fast, hundreds slow)
+          transition: `transform ${speed}s linear`, 
           display: 'flex',
           flexDirection: 'column',
           alignItems: 'center'
@@ -74,9 +70,11 @@ const RollingDigit = ({ digit, height = 24 }) => {
             alignItems: 'center', 
             justifyContent: 'center',
             width: '100%',
-            color: 'rgba(255,255,255,0.9)',
-            fontSize: height > 15 ? 'inherit' : '0.7rem',
-            textShadow: '0 1px 2px rgba(0,0,0,0.5)'
+            color: '#fff',
+            fontSize: height > 15 ? 'inherit' : '0.65rem',
+            textShadow: '0 2px 4px rgba(0,0,0,0.8)',
+            fontFamily: "'Courier New', monospace", // Mechanical look
+            fontWeight: 900
           }}>{n}</div>
         ))}
       </div>
@@ -97,11 +95,18 @@ export const RollingNumber = ({ value, prefix = '', suffix = '', height = 24, cl
       display: 'inline-flex', 
       alignItems: 'center', 
       overflow: 'hidden',
-      padding: '2px 0'
+      padding: '4px 0',
+      background: 'rgba(0,0,0,0.1)',
+      borderRadius: '4px'
     }}>
-      {characters.map((char, i) => (
-        <RollingDigit key={i} digit={char} height={height} />
-      ))}
+      {characters.map((char, i) => {
+        // Calculate speed based on position from right
+        const reverseIdx = characters.length - 1 - i;
+        const isNum = !isNaN(parseInt(char));
+        const speed = isNum ? 1.0 + (reverseIdx * 0.4) : 1.5;
+        
+        return <RollingDigit key={i} digit={char} height={height} speed={speed} />;
+      })}
     </div>
   );
 };

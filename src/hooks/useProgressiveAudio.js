@@ -171,5 +171,5 @@ export const useProgressiveAudio = () => {
 
   return useMemo(() => ({ 
     isMuted, toggleMute, initAudio, playBagOpen, playTick, playBill, playDiamond, playCoin, playWarningPing, playWarningTiered, playMetalChest, playCarriageVault, stopAll 
-  }), [isMuted, toggleMute, initAudio, playBagOpen, playTick, playBill, playDiamond, playCoin, playWarningPing, playWarningTiered, stopAll]);
+  }), [isMuted, toggleMute, initAudio, playBagOpen, playTick, playBill, playDiamond, playCoin, playWarningPing, playWarningTiered, playMetalChest, playCarriageVault, stopAll]);
 };
