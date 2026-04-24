@@ -651,36 +651,40 @@ export const DashboardHeader = ({ onStartAudio, onStopAudio, onReconnectStream, 
             )}
           </div>
 
-          {/* ROW 1, COL 3: Right Pills (Rates) */}
-          <div id="right-pills-stack" style={{ gridRow: '1', gridColumn: '3', display: 'flex', flexDirection: 'column', gap: '0.04rem', alignItems: 'center', ...helpStyle }}>
-            <HelpLabel text="Rates" />
-            {callsToday > 0 ? (
-              <div id="pill-call-rate" className="metric-pill compact-pill" title={`CALL METRICS: You've taken ${callsToday} calls today. Your average call duration is ${avgCallMins} minutes per call.`} style={{ background: 'rgba(59,130,246,0.08)', border: '1px solid rgba(59,130,246,0.2)' }}>
-                <span style={{ fontSize: '0.58rem', color: '#93c5fd', fontWeight: 700 }}>📞{callsToday}×{avgCallMins}m</span>
-              </div>
-            ) : (
-              <div id="pill-no-calls" className="metric-pill compact-pill" style={{ opacity: 0.2 }}>
-                <span style={{ fontSize: '0.58rem' }}>📞 –</span>
-              </div>
-            )}
-            {effectiveRateArsHr ? (
-              <div id="pill-eff-rate" className="metric-pill compact-pill" title={`EFFECTIVE RATE: Your actual AR$ earned per hour, including the dead time (Avail) spent waiting for calls. Currently AR$${effectiveRateArsHr.toLocaleString('es-AR')}/hr.`} style={{ background: 'rgba(139,92,246,0.08)', border: '1px solid rgba(139,92,246,0.2)' }}>
-                <span style={{ fontSize: '0.58rem', color: '#c4b5fd', fontWeight: 700 }}>⚡${effectiveRateArsHr.toLocaleString('es-AR')}/h</span>
-              </div>
-            ) : (
-              <div id="pill-no-rate" className="metric-pill compact-pill" style={{ opacity: 0.2 }}>
-                <span style={{ fontSize: '0.58rem' }}>⚡ –</span>
-              </div>
-            )}
-          </div>
+          {/* ROW 1-2, COL 3: Consolidated Right Controls (Vertical Stack) */}
+          <div id="controls-right-col" style={{ gridRow: '1 / span 2', gridColumn: '3', display: 'flex', flexDirection: 'column', gap: '0.2rem', alignItems: 'center', background: 'rgba(255,255,255,0.03)', padding: '4px 2px', borderRadius: '4px', alignSelf: 'stretch', justifyContent: 'center', ...helpStyle }}>
+            <HelpLabel text="Tools & Rates" />
+            
+            {/* Rate Pills */}
+            <div id="right-pills-vertical" style={{ display: 'flex', flexDirection: 'column', gap: '0.04rem', alignItems: 'center' }}>
+              {callsToday > 0 ? (
+                <div id="pill-call-rate" className="metric-pill compact-pill" title={`CALL METRICS: You've taken ${callsToday} calls today. Your average call duration is ${avgCallMins} minutes per call.`} style={{ background: 'rgba(59,130,246,0.08)', border: '1px solid rgba(59,130,246,0.2)', padding: '0.05rem 0.15rem' }}>
+                  <span style={{ fontSize: '0.55rem', color: '#93c5fd', fontWeight: 700 }}>📞{callsToday}×{avgCallMins}m</span>
+                </div>
+              ) : (
+                <div id="pill-no-calls" className="metric-pill compact-pill" style={{ opacity: 0.2, padding: '0.05rem 0.15rem' }}>
+                  <span style={{ fontSize: '0.55rem' }}>📞 –</span>
+                </div>
+              )}
+              {effectiveRateArsHr ? (
+                <div id="pill-eff-rate" className="metric-pill compact-pill" title={`EFFECTIVE RATE: Your actual AR$ earned per hour, including the dead time (Avail) spent waiting for calls. Currently AR$${effectiveRateArsHr.toLocaleString('es-AR')}/hr.`} style={{ background: 'rgba(139,92,246,0.08)', border: '1px solid rgba(139,92,246,0.2)', padding: '0.05rem 0.15rem' }}>
+                  <span style={{ fontSize: '0.55rem', color: '#c4b5fd', fontWeight: 700 }}>⚡${Math.round(effectiveRateArsHr / 1000)}k/h</span>
+                </div>
+              ) : (
+                <div id="pill-no-rate" className="metric-pill compact-pill" style={{ opacity: 0.2, padding: '0.05rem 0.15rem' }}>
+                  <span style={{ fontSize: '0.55rem' }}>⚡ –</span>
+                </div>
+              )}
+            </div>
 
-          {/* ROW 2, COL 3: Right Tool Grid */}
-          <div id="right-tool-grid" style={{ gridRow: '2', gridColumn: '3', display: 'flex', gap: '0.08rem', alignItems: 'center', justifyContent: 'center', background: 'rgba(255,255,255,0.03)', padding: '0.05rem', borderRadius: '4px' }}>
-              <button id="header-notes-btn" className="btn-icon tiny-btn" onClick={() => setIsNotesOpen(!isNotesOpen)} style={{ opacity: isNotesOpen ? 1 : 0.3 }} title="Notes">📝</button>
-              <button id="header-tools-btn" className="btn-icon tiny-btn" onClick={() => setIsToolbarVisible(!isToolbarVisible)} style={{ opacity: isToolbarVisible ? 1 : 0.3 }} title="Tools">🛠️</button>
-              <button id="header-edit-btn" className="btn-icon tiny-btn" onClick={() => { if(isCollapsed) setIsCollapsed(false); setIsEditingScoreboard(!isEditingScoreboard); }} style={{ opacity: isEditingScoreboard ? 1 : 0.3 }} title="Edit Grid">✏️</button>
-              <button id="header-expand-btn" className="btn-icon tiny-btn" onClick={() => setIsCollapsed(!isCollapsed)} title={isCollapsed ? "Expand HUD" : "Collapse HUD"}>{isCollapsed ? '🔼' : '▼'}</button>
-              <button id="header-calldetect-btn" className="btn-icon tiny-btn" onClick={() => setIsCallDetectionEnabled(!isCallDetectionEnabled)} style={{ opacity: isCallDetectionEnabled ? 1 : 0.3, background: isCallDetectionEnabled ? 'rgba(16,185,129,0.1)' : 'transparent' }} title="Call Detection">{isCallDetectionEnabled ? '📡' : '📵'}</button>
+            {/* Utility Tool Buttons */}
+            <div id="right-tool-vertical" style={{ display: 'flex', flexDirection: 'column', gap: '2px', marginTop: 'auto' }}>
+                <button id="header-notes-btn" className="btn-icon tiny-btn" onClick={() => setIsNotesOpen(!isNotesOpen)} style={{ opacity: isNotesOpen ? 1 : 0.3, width: '22px', height: '22px', fontSize: '0.85rem' }} title="Notes">📝</button>
+                <button id="header-tools-btn" className="btn-icon tiny-btn" onClick={() => setIsToolbarVisible(!isToolbarVisible)} style={{ opacity: isToolbarVisible ? 1 : 0.3, width: '22px', height: '22px', fontSize: '0.85rem' }} title="Tools">🛠️</button>
+                <button id="header-edit-btn" className="btn-icon tiny-btn" onClick={() => { if(isCollapsed) setIsCollapsed(false); setIsEditingScoreboard(!isEditingScoreboard); }} style={{ opacity: isEditingScoreboard ? 1 : 0.3, width: '22px', height: '22px', fontSize: '0.85rem' }} title="Edit Grid">✏️</button>
+                <button id="header-expand-btn" className="btn-icon tiny-btn" onClick={() => setIsCollapsed(!isCollapsed)} style={{ width: '22px', height: '22px', fontSize: '0.85rem' }} title={isCollapsed ? "Expand HUD" : "Collapse HUD"}>{isCollapsed ? '🔼' : '▼'}</button>
+                <button id="header-calldetect-btn" className="btn-icon tiny-btn" onClick={() => setIsCallDetectionEnabled(!isCallDetectionEnabled)} style={{ opacity: isCallDetectionEnabled ? 1 : 0.3, background: isCallDetectionEnabled ? 'rgba(16,185,129,0.1)' : 'transparent', width: '22px', height: '22px', fontSize: '0.85rem' }} title="Call Detection">{isCallDetectionEnabled ? '📡' : '📵'}</button>
+            </div>
           </div>
         </div>
       )}
