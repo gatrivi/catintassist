@@ -67,7 +67,7 @@ export const useTranslate = (text, lang, prefetchTTS, shouldPrefetch, mood = 'de
     
     // Log version once on start/mount
     if (lastWordCountRef.current === 0 && lastTranslatedTextRef.current === '') {
-      console.log(`[${t()}] [v4.6.9] Translation Engine Initialized.`);
+      console.log(`[${t()}] [v4.7.4] Translation Engine Initialized.`);
     }
 
     // NORMALIZE TEXT for comparison
@@ -82,7 +82,7 @@ export const useTranslate = (text, lang, prefetchTTS, shouldPrefetch, mood = 'de
 
     if (IS_TOO_LONG || IS_FILLER || IS_TOO_SHORT) {
       setEngineStatus(IS_TOO_LONG ? 'ready' : 'idle');
-      if (IS_TOO_LONG) setTranslation(`(Text too long for direct translation [v4.6.9])`);
+      if (IS_TOO_LONG) setTranslation(`(Text too long for direct translation [v4.7.4])`);
       return;
     }
 
@@ -169,7 +169,7 @@ export const useTranslate = (text, lang, prefetchTTS, shouldPrefetch, mood = 'de
             return d?.[0]?.map(s => s[0]).filter(Boolean).join(' ').replace(/\s+/g, ' ').trim() || '';
           },
           lingva: async (c) => {
-            const r = await fetch(`https://lingva.ml/api/v1/${sourceLang}/${targetLang}/${encodeURIComponent(c)}`, { signal });
+            const r = await fetch(`https://lingva.snopyta.org/api/v1/${sourceLang}/${targetLang}/${encodeURIComponent(c)}`, { signal });
             if (!r.ok) throw new Error(`lingva ${r.status}`);
             const d = await r.json();
             return d.translation;
@@ -203,7 +203,8 @@ export const useTranslate = (text, lang, prefetchTTS, shouldPrefetch, mood = 'de
                 }
               } catch (e) {
                 if (e.name === 'AbortError') return;
-                if (e.toString().includes('429') || e.toString().includes('403')) {
+                const errStr = e.toString();
+                if (errStr.includes('429') || errStr.includes('403') || errStr.includes('ERR_FAILED') || errStr.includes('TypeError')) {
                   BLACKBOX[service.id] = Date.now();
                 }
               }

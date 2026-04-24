@@ -472,64 +472,63 @@ export const DashboardHeader = ({ onStartAudio, onStopAudio, onReconnectStream, 
       {isCollapsed && (
         <div className="condensed-header-card" style={{ gap: '0.15rem' }}>
           
-          {/* Controls & Mini-Stats Column (LEFT) */}
-          <div id="controls-left-col" className={`header-column-side ${isActive ? 'active-working-state' : ''}`} style={{ display: 'flex', flexDirection: 'column', gap: '0.15rem', flexShrink: 0, justifyContent: 'flex-start', alignItems: 'center' }}>
-            <div id="connection-controls-row" style={{ display: 'flex', gap: '0.15rem', alignItems: 'center', background: 'rgba(255,255,255,0.03)', padding: '2px 4px', borderRadius: '4px' }}>
-              <StateIndicators 
-                state={isActive ? 'call' : isBreakActive ? 'break' : 'avail'} 
-                breakMinutes={stats.dailyBreakMinutes || 0} 
-                isZombie={isZombieCall} 
-                silenceCount={silenceCount}
-              />
-              
-              <div style={{ display: 'flex', gap: '2px' }}>
-                {!isActive ? (
-                  <button 
-                    id="header-connect-btn" className="btn-emoji" 
-                    onClick={isZombieCall ? onRecovery : onStartAudio} 
-                    style={{ 
-                      background: isZombieCall ? '#f59e0b' : '#10b981', color: '#fff', width: '22px', height: '22px',
-                      animation: (!isActive && !isBreakActive && (Date.now() - (lastDataTime || 0) < 5000)) ? 'pulseReminder 0.8s infinite' : 'none',
-                    }} 
-                    title={isZombieCall ? "RECONNECT" : "CONNECT"}>
-                    {isZombieCall ? '🟠' : '🟢'}
-                  </button>
-                ) : (
-                  <button id="header-stop-btn" className="btn-emoji" onClick={handleStop} style={{ background: '#ef4444', color: '#fff', width: '22px', height: '22px' }} title="STOP">🛑</button>
-                )}
-
-                {isActive ? (
-                  <>
-                    <button id="header-hold-btn" className="btn btn-condensed" onClick={() => setIsHold(!isHold)} style={{ background: isHold ? '#f59e0b' : 'rgba(255,255,255,0.08)', height: '22px', padding: '0 0.3rem', fontSize: '0.6rem', border: '1px solid rgba(255,255,255,0.1)' }}>{isHold ? `⏸${formatTime(holdSeconds)}` : '⏸'}</button>
-                    <button id="header-zap-btn" className="btn-emoji" onClick={onReconnectStream} style={{ background: '#0ea5e9', width: '22px', height: '22px' }} title="ZAP">⚡</button>
-                  </>
-                ) : (
-                  <>
-                    <button id="header-break-btn" className="btn-emoji" onClick={isBreakActive ? stopBreak : handleStartBreak} style={{ background: '#fb923c', color: '#fff', width: '22px', height: '22px' }} title="BREAK">☕</button>
-                    {stats.dailyMinutes > 0 && !isBreakActive && (
-                      <button id="header-end-day-btn" className="btn-emoji" onClick={handleEndDay} style={{ background: '#8b5cf6', color: '#fff', width: '22px', height: '22px' }} title="END DAY">🌙</button>
-                    )}
-                  </>
-                )}
-                <div id="header-edit-tools" style={{ display: 'flex', gap: '1px', borderLeft: '1px solid rgba(255,255,255,0.1)', paddingLeft: '2px' }}>
-                  <button className="edit-btn-tiny" onClick={() => setTimeEditMode('call')} title="Edit call time">✏️📞</button>
-                  <button className="edit-btn-tiny" onClick={() => setTimeEditMode('break')} title="Edit break time">✏️☕</button>
-                </div>
-              </div>
-            </div>
+          {/* ROW 1, COL 1: Connection Controls */}
+          <div id="connection-controls-row" className={`header-column-side ${isActive ? 'active-working-state' : ''}`} style={{ gridRow: '1', gridColumn: '1', display: 'flex', gap: '0.15rem', alignItems: 'center', background: 'rgba(255,255,255,0.03)', padding: '2px 4px', borderRadius: '4px' }}>
+            <StateIndicators 
+              state={isActive ? 'call' : isBreakActive ? 'break' : 'avail'} 
+              breakMinutes={stats.dailyBreakMinutes || 0} 
+              isZombie={isZombieCall} 
+              silenceCount={silenceCount}
+            />
             
-            <div id="left-pills-row" style={{ display: 'flex', gap: '0.1rem', width: '100%', justifyContent: 'center' }}>
-               <div id="pill-shift" className="metric-pill compact-pill" title="SHIFT">
-                 <span style={{ fontSize: '0.52rem' }}>🏃{formatHoursMins(shiftElapsedMins)}</span>
-               </div>
-               <div id="pill-logoff" className="metric-pill compact-pill" title="LOG OFF" style={{ background: 'rgba(245,158,11,0.08)', border: '1px solid rgba(245,158,11,0.2)' }}>
-                 <span style={{ color: '#fcd34d', fontSize: '0.52rem' }}>🚪{getCompensatedLogOff()}</span>
-               </div>
+            <div style={{ display: 'flex', gap: '2px' }}>
+              {!isActive ? (
+                <button 
+                  id="header-connect-btn" className="btn-emoji" 
+                  onClick={isZombieCall ? onRecovery : onStartAudio} 
+                  style={{ 
+                    background: isZombieCall ? '#f59e0b' : '#10b981', color: '#fff', width: '22px', height: '22px',
+                    animation: (!isActive && !isBreakActive && (Date.now() - (lastDataTime || 0) < 5000)) ? 'pulseReminder 0.8s infinite' : 'none',
+                  }} 
+                  title={isZombieCall ? "RECONNECT" : "CONNECT"}>
+                  {isZombieCall ? '🟠' : '🟢'}
+                </button>
+              ) : (
+                <button id="header-stop-btn" className="btn-emoji" onClick={handleStop} style={{ background: '#ef4444', color: '#fff', width: '22px', height: '22px' }} title="STOP">🛑</button>
+              )}
+
+              {isActive ? (
+                <>
+                  <button id="header-hold-btn" className="btn btn-condensed" onClick={() => setIsHold(!isHold)} style={{ background: isHold ? '#f59e0b' : 'rgba(255,255,255,0.08)', height: '22px', padding: '0 0.3rem', fontSize: '0.6rem', border: '1px solid rgba(255,255,255,0.1)' }}>{isHold ? `⏸${formatTime(holdSeconds)}` : '⏸'}</button>
+                  <button id="header-zap-btn" className="btn-emoji" onClick={onReconnectStream} style={{ background: '#0ea5e9', width: '22px', height: '22px' }} title="ZAP">⚡</button>
+                </>
+              ) : (
+                <>
+                  <button id="header-break-btn" className="btn-emoji" onClick={isBreakActive ? stopBreak : handleStartBreak} style={{ background: '#fb923c', color: '#fff', width: '22px', height: '22px' }} title="BREAK">☕</button>
+                  {stats.dailyMinutes > 0 && !isBreakActive && (
+                    <button id="header-end-day-btn" className="btn-emoji" onClick={handleEndDay} style={{ background: '#8b5cf6', color: '#fff', width: '22px', height: '22px' }} title="END DAY">🌙</button>
+                  )}
+                </>
+              )}
+              <div id="header-edit-tools" style={{ display: 'flex', gap: '1px', borderLeft: '1px solid rgba(255,255,255,0.1)', paddingLeft: '2px' }}>
+                <button className="edit-btn-tiny" onClick={() => setTimeEditMode('call')} title="Edit call time">✏️📞</button>
+                <button className="edit-btn-tiny" onClick={() => setTimeEditMode('break')} title="Edit break time">✏️☕</button>
+              </div>
             </div>
           </div>
 
-          {/* SCOREBOARD: Game view (CENTER) */}
-          <div id="header-scoreboard-center" style={{ flex: '1 1 0', minWidth: 0, margin: '0 0.1rem' }}>
+          {/* ROW 2, COL 1: Left Pills (Shift/Logoff) */}
+          <div id="left-pills-row" style={{ gridRow: '2', gridColumn: '1', display: 'flex', gap: '0.1rem', justifyContent: 'flex-start' }}>
+             <div id="pill-shift" className="metric-pill compact-pill" title="SHIFT">
+               <span style={{ fontSize: '0.52rem' }}>🏃{formatHoursMins(shiftElapsedMins)}</span>
+             </div>
+             <div id="pill-logoff" className="metric-pill compact-pill" title="LOG OFF" style={{ background: 'rgba(245,158,11,0.08)', border: '1px solid rgba(245,158,11,0.2)' }}>
+               <span style={{ color: '#fcd34d', fontSize: '0.52rem' }}>🚪{getCompensatedLogOff()}</span>
+             </div>
+          </div>
+
+          {/* SCOREBOARD (CENTER SPANNING 2 ROWS) */}
+          <div id="header-scoreboard-center" style={{ gridRow: '1 / span 2', gridColumn: '2', flex: '1 1 0', minWidth: 0, margin: '0 0.1rem' }}>
             {scoreView === 'game' ? (
               <GameScoreboard
                 liveDailyArs={liveDailyArs} dailyTargetArs={dailyTargetArs}
@@ -644,41 +643,36 @@ export const DashboardHeader = ({ onStartAudio, onStopAudio, onReconnectStream, 
             )}
           </div>
 
-          {/* Stats Column (RIGHT) - Constrained to prevent workspace waste */}
-          <div id="controls-right-col" className="header-column-side" style={{ display: 'flex', flexDirection: 'column', gap: '0.15rem', flexShrink: 0, justifyContent: 'flex-start', alignItems: 'center', width: '60px' }}>
-             <div id="right-pills-stack" style={{ display: 'flex', flexDirection: 'column', gap: '0.04rem', alignItems: 'center', ...helpStyle }}>
-               <HelpLabel text="Rates" />
-               {/* CALL RATE PILL */}
-               {callsToday > 0 ? (
-                 <div id="pill-call-rate" className="metric-pill compact-pill" title={`CALL METRICS: You've taken ${callsToday} calls today. Your average call duration is ${avgCallMins} minutes per call.`} style={{ background: 'rgba(59,130,246,0.08)', border: '1px solid rgba(59,130,246,0.2)' }}>
-                   <span style={{ fontSize: '0.58rem', color: '#93c5fd', fontWeight: 700 }}>📞{callsToday}×{avgCallMins}m</span>
-                 </div>
-               ) : (
-                 <div id="pill-no-calls" className="metric-pill compact-pill" style={{ opacity: 0.2 }}>
-                   <span style={{ fontSize: '0.58rem' }}>📞 –</span>
-                 </div>
-               )}
-               {/* EFFECTIVE RATE PILL */}
-               {effectiveRateArsHr ? (
-                 <div id="pill-eff-rate" className="metric-pill compact-pill" title={`EFFECTIVE RATE: Your actual AR$ earned per hour, including the dead time (Avail) spent waiting for calls. Currently AR$${effectiveRateArsHr.toLocaleString('es-AR')}/hr.`} style={{ background: 'rgba(139,92,246,0.08)', border: '1px solid rgba(139,92,246,0.2)' }}>
-                   <span style={{ fontSize: '0.58rem', color: '#c4b5fd', fontWeight: 700 }}>⚡${effectiveRateArsHr.toLocaleString('es-AR')}/h</span>
-                 </div>
-               ) : (
-                 <div id="pill-no-rate" className="metric-pill compact-pill" style={{ opacity: 0.2 }}>
-                   <span style={{ fontSize: '0.58rem' }}>⚡ –</span>
-                 </div>
-               )}
-             </div>
-
-             <div id="right-tool-grid" style={{ display: 'flex', gap: '0.1rem', marginTop: '0.1rem', alignItems: 'center', justifyContent: 'center', background: 'rgba(255,255,255,0.03)', padding: '0.1rem', borderRadius: '8px' }}>
-                 <button id="header-notes-btn" className="btn-icon tiny-btn" onClick={() => setIsNotesOpen(!isNotesOpen)} style={{ opacity: isNotesOpen ? 1 : 0.3, fontSize: '0.7rem' }} title="Notes">📝</button>
-                 <button id="header-tools-btn" className="btn-icon tiny-btn" onClick={() => setIsToolbarVisible(!isToolbarVisible)} style={{ opacity: isToolbarVisible ? 1 : 0.3, fontSize: '0.7rem' }} title="Tools">🛠️</button>
-                 <button id="header-edit-btn" className="btn-icon tiny-btn" onClick={() => { if(isCollapsed) setIsCollapsed(false); setIsEditingScoreboard(!isEditingScoreboard); }} style={{ opacity: isEditingScoreboard ? 1 : 0.3, fontSize: '0.7rem' }} title="Edit Grid">✏️</button>
-                 <button id="header-help-btn" className="btn-icon tiny-btn" onClick={() => setIsScoreboardHelpVisible(!isScoreboardHelpVisible)} style={{ opacity: isScoreboardHelpVisible ? 1 : 0.3, background: isScoreboardHelpVisible ? 'rgba(59,130,246,0.3)' : 'transparent', fontSize: '0.7rem' }} title="Toggle Labels">❓</button>
-                 <button id="header-heatmap-btn" className="btn-icon tiny-btn" onClick={() => setIsHeatmapOpen(true)} style={{ fontSize: '0.7rem' }} title="Monthly Heatmap">📅</button>
-                 <button id="header-expand-btn" className="btn-icon tiny-btn" onClick={() => setIsCollapsed(!isCollapsed)} style={{ fontSize: '0.7rem' }} title={isCollapsed ? "Expand HUD" : "Collapse HUD"}>{isCollapsed ? '🔼' : '▼'}</button>
-                 <button id="header-calldetect-btn" className="btn-icon tiny-btn" onClick={() => setIsCallDetectionEnabled(!isCallDetectionEnabled)} style={{ opacity: isCallDetectionEnabled ? 1 : 0.3, background: isCallDetectionEnabled ? 'rgba(16,185,129,0.1)' : 'transparent', fontSize: '0.7rem' }} title="Call Detection">{isCallDetectionEnabled ? '📡' : '📵'}</button>
+          {/* ROW 1, COL 3: Right Pills (Rates) */}
+          <div id="right-pills-stack" style={{ gridRow: '1', gridColumn: '3', display: 'flex', flexDirection: 'column', gap: '0.04rem', alignItems: 'center', ...helpStyle }}>
+            <HelpLabel text="Rates" />
+            {callsToday > 0 ? (
+              <div id="pill-call-rate" className="metric-pill compact-pill" title={`CALL METRICS: You've taken ${callsToday} calls today. Your average call duration is ${avgCallMins} minutes per call.`} style={{ background: 'rgba(59,130,246,0.08)', border: '1px solid rgba(59,130,246,0.2)' }}>
+                <span style={{ fontSize: '0.58rem', color: '#93c5fd', fontWeight: 700 }}>📞{callsToday}×{avgCallMins}m</span>
               </div>
+            ) : (
+              <div id="pill-no-calls" className="metric-pill compact-pill" style={{ opacity: 0.2 }}>
+                <span style={{ fontSize: '0.58rem' }}>📞 –</span>
+              </div>
+            )}
+            {effectiveRateArsHr ? (
+              <div id="pill-eff-rate" className="metric-pill compact-pill" title={`EFFECTIVE RATE: Your actual AR$ earned per hour, including the dead time (Avail) spent waiting for calls. Currently AR$${effectiveRateArsHr.toLocaleString('es-AR')}/hr.`} style={{ background: 'rgba(139,92,246,0.08)', border: '1px solid rgba(139,92,246,0.2)' }}>
+                <span style={{ fontSize: '0.58rem', color: '#c4b5fd', fontWeight: 700 }}>⚡${effectiveRateArsHr.toLocaleString('es-AR')}/h</span>
+              </div>
+            ) : (
+              <div id="pill-no-rate" className="metric-pill compact-pill" style={{ opacity: 0.2 }}>
+                <span style={{ fontSize: '0.58rem' }}>⚡ –</span>
+              </div>
+            )}
+          </div>
+
+          {/* ROW 2, COL 3: Right Tool Grid */}
+          <div id="right-tool-grid" style={{ gridRow: '2', gridColumn: '3', display: 'flex', gap: '0.08rem', alignItems: 'center', justifyContent: 'center', background: 'rgba(255,255,255,0.03)', padding: '0.05rem', borderRadius: '4px' }}>
+              <button id="header-notes-btn" className="btn-icon tiny-btn" onClick={() => setIsNotesOpen(!isNotesOpen)} style={{ opacity: isNotesOpen ? 1 : 0.3 }} title="Notes">📝</button>
+              <button id="header-tools-btn" className="btn-icon tiny-btn" onClick={() => setIsToolbarVisible(!isToolbarVisible)} style={{ opacity: isToolbarVisible ? 1 : 0.3 }} title="Tools">🛠️</button>
+              <button id="header-edit-btn" className="btn-icon tiny-btn" onClick={() => { if(isCollapsed) setIsCollapsed(false); setIsEditingScoreboard(!isEditingScoreboard); }} style={{ opacity: isEditingScoreboard ? 1 : 0.3 }} title="Edit Grid">✏️</button>
+              <button id="header-expand-btn" className="btn-icon tiny-btn" onClick={() => setIsCollapsed(!isCollapsed)} title={isCollapsed ? "Expand HUD" : "Collapse HUD"}>{isCollapsed ? '🔼' : '▼'}</button>
+              <button id="header-calldetect-btn" className="btn-icon tiny-btn" onClick={() => setIsCallDetectionEnabled(!isCallDetectionEnabled)} style={{ opacity: isCallDetectionEnabled ? 1 : 0.3, background: isCallDetectionEnabled ? 'rgba(16,185,129,0.1)' : 'transparent' }} title="Call Detection">{isCallDetectionEnabled ? '📡' : '📵'}</button>
           </div>
         </div>
       )}

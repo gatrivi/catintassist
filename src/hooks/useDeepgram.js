@@ -64,8 +64,8 @@ const removeOverlap = (base, addition) => {
       const anchor = normalize(addWords.slice(i, i + 3).join(''));
       const lastMatch = normBase.lastIndexOf(anchor);
       if (lastMatch !== -1 && lastMatch > normBase.length * 0.4) {
-        // Recurse from anchor point
-        return removeOverlap(base, addWords.slice(i).join(' '));
+        // Recurse with a strictly smaller subset to guarantee termination
+        return removeOverlap(base, addWords.slice(i + 1).join(' '));
       }
     }
   }
