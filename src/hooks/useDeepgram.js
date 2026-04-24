@@ -17,21 +17,14 @@ const hallucinationGuard = (text) => {
     const norm = normalize(word);
     const pair = i > 0 ? normalize(words[i-1] + word) : '';
     
-    // 1. Single word back-to-back stutter
-    if (norm === lastWord && norm.length > 1 && !/^\d+$/.test(norm)) {
-      continue; 
-    }
-    // 2. Phrase/Pair back-to-back stutter (e.g. "I can't I can't")
-    if (pair === lastPair && pair.length > 4) {
-      continue;
-    }
+    if (norm === lastWord && norm.length > 1 && !/^\d+$/.test(norm)) continue; 
+    if (pair === lastPair && pair.length > 4) continue;
 
     cleaned.push(word);
     lastWord = norm;
     lastPair = pair;
   }
 
-  // 3. Global stutter check (too many repetitions in total)
   if (words.length > 15 && cleaned.length < words.length * 0.6) {
      return cleaned.slice(0, 12).join(' ') + "... [Stutter Pruned]";
   }
@@ -41,84 +34,56 @@ const hallucinationGuard = (text) => {
 
 const removeOverlap = (base, addition) => {
   if (!base || !addition) return addition;
-  
   const normBase = normalize(base);
   const normAddition = normalize(addition);
-  
-  // 1. EXACT OR SUBSET MATCH: If addition is already fully contained in base, it's a duplicate
+
+  // 1. GLOBAL DUPLICATE CHECK
   if (normBase.includes(normAddition)) return '';
 
   const baseWords = base.trim().split(/\s+/);
-  const additionWords = addition.trim().split(/\s+/);
-  
-  // 2. CHARACTER-BASED SUFFIX MATCH (Hyper-Robust)
-  // We check if the end of the base matches the start of the addition.
-  // This handles punctuation/whitespace differences perfectly.
-  const minCharOverlap = 12;
-  const maxCheck = Math.min(normBase.length, normAddition.length);
-  for (let i = maxCheck; i >= minCharOverlap; i--) {
-    const baseSuffix = normBase.slice(-i);
-    const addPrefix = normAddition.slice(0, i);
-    
-    if (baseSuffix === addPrefix) {
-      // Find where this character overlap ends in word indices
-      let currentNormLen = 0;
-      let splitIdx = 0;
-      for (let j = 0; j < additionWords.length; j++) {
-        currentNormLen += normalize(additionWords[j]).length;
-        if (currentNormLen >= i) {
-          splitIdx = j + 1;
-          break;
-        }
-      }
-      return additionWords.slice(splitIdx).join(' ');
+  const addWords = addition.trim().split(/\s+/);
+
+  // 2. THE SLIDING PIVOT (Word-based)
+  // Finds the longest sequence of words at the START of addition that is a SUFFIX of the base.
+  let pivotIdx = 0;
+  const maxOverlap = Math.min(addWords.length, baseWords.length, 50);
+
+  for (let i = 1; i <= maxOverlap; i++) {
+    const head = normalize(addWords.slice(0, i).join(''));
+    if (normBase.endsWith(head)) {
+      pivotIdx = i;
     }
   }
 
-  // 3. ANCHOR-BASED LOOKAHEAD: If a 4-word sequence in addition exists anywhere in base, 
-  // everything before it in addition is likely a repeat or a correction of history.
-  if (additionWords.length >= 4) {
-    for (let i = 0; i <= additionWords.length - 4; i++) {
-      const anchor = normalize(additionWords.slice(i, i + 4).join(''));
-      if (normBase.includes(anchor)) {
-        return removeOverlap(base, additionWords.slice(i).join(' '));
+  if (pivotIdx > 0) return addWords.slice(pivotIdx).join(' ');
+
+  // 3. ANCHOR SEARCH (Correction handling)
+  // If no suffix-prefix match found, search for a 3-word anchor anywhere in the recent context.
+  if (addWords.length >= 3) {
+    for (let i = 0; i <= Math.min(addWords.length - 3, 15); i++) {
+      const anchor = normalize(addWords.slice(i, i + 3).join(''));
+      const lastMatch = normBase.lastIndexOf(anchor);
+      if (lastMatch !== -1 && lastMatch > normBase.length * 0.4) {
+        // Recurse from anchor point
+        return removeOverlap(base, addWords.slice(i).join(' '));
       }
     }
   }
 
-  // 4. ROBUST PREFIX-IN-BODY MATCH
-  let maxPrefixIdx = 0;
-  for (let i = 1; i <= additionWords.length; i++) {
-    const prefix = normalize(additionWords.slice(0, i).join(''));
-    if (prefix.length < 12 && i < 3) continue; 
-    
-    if (normBase.includes(prefix)) {
-      maxPrefixIdx = i;
-    } else {
-      break; 
-    }
-  }
-
-  if (maxPrefixIdx > 0) {
-    return additionWords.slice(maxPrefixIdx).join(' ');
-  }
-
-  // 5. CHARACTER-BASED SLIDING WINDOW (Deepgram re-formatting fallback)
-  const minOverlap = 15;
-  const maxCheck = Math.min(normBase.length, normAddition.length);
-  for (let i = maxCheck; i >= minOverlap; i--) {
-    if (normBase.endsWith(normAddition.substring(0, i))) {
-      let currentNormLen = 0;
-      let splitIdx = 0;
-      for (let j = 0; j < additionWords.length; j++) {
-        currentNormLen += normalize(additionWords[j]).length;
-        if (currentNormLen >= i) {
-          splitIdx = j + 1;
-          break;
-        }
-      }
-      return additionWords.slice(splitIdx).join(' ');
-    }
+  // 4. FUZZY CHARACTER MATCH (Last Resort)
+  const baseTailChar = normBase.slice(-15);
+  const addHeadChar = normAddition.slice(0, 15);
+  if (baseTailChar.includes(addHeadChar) || addHeadChar.includes(baseTailChar)) {
+     for (let i = 15; i >= 6; i--) {
+       const sub = normAddition.slice(0, i);
+       if (normBase.endsWith(sub)) {
+         let charLen = 0;
+         for (let w = 0; w < addWords.length; w++) {
+           charLen += normalize(addWords[w]).length;
+           if (charLen >= i) return addWords.slice(w + 1).join(' ');
+         }
+       }
+     }
   }
 
   return addition;
@@ -127,10 +92,13 @@ const removeOverlap = (base, addition) => {
 export const useDeepgram = () => {
   const { updateActivity, isCallDetectionEnabled } = useSession();
   const [captions, setCaptions] = useState([]);
+  const captionsRef = useRef([]); // Critical sync for deduplication
+  
   const [connectionState, setConnectionState] = useState('disconnected');
   const [connectionMessage, setConnectionMessage] = useState('Disconnected');
   const [sttLanguage, setSttLanguage] = useState('auto');
   const [lastDataTime, setLastDataTime] = useState(Date.now());
+  
   const langModeRef = useRef('auto');
   const socketRefEn = useRef(null);
   const socketRefEs = useRef(null);
@@ -141,6 +109,15 @@ export const useDeepgram = () => {
   const turnWordCountRef = useRef(0);
   const bubbleIdCounterRef = useRef(0);
   const overrideTimeoutRef = useRef(null);
+
+  // Sync state and ref
+  const updateCaptionsState = useCallback((newCapsOrFn) => {
+    setCaptions(prev => {
+      const next = typeof newCapsOrFn === 'function' ? newCapsOrFn(prev) : newCapsOrFn;
+      captionsRef.current = next;
+      return next;
+    });
+  }, []);
 
   const closeConnections = useCallback(() => {
     try {
@@ -159,250 +136,122 @@ export const useDeepgram = () => {
   const startDeepgram = (stream) => {
     const API_KEY = localStorage.getItem('DEEPGRAM_API_KEY') || process.env.REACT_APP_DEEPGRAM_API_KEY;
     if (!API_KEY || API_KEY.trim() === '' || API_KEY === 'your_deepgram_api_key_here') {
-      alert("Deepgram API Key is missing! Please set it by clicking the Key icon in the header.");
+      alert("Deepgram API Key Missing");
       setConnectionState('error');
-      setConnectionMessage('Missing API Key');
-      return false;
+      return;
     }
 
     setConnectionState('connecting');
-    setConnectionMessage('Opening Dual WebSockets...');
-
-    let socketsOpened = 0;
+    setConnectionMessage('Initializing Sockets...');
 
     const createSocket = (lang) => {
-      const ws = new WebSocket(`wss://api.deepgram.com/v1/listen?model=nova-2&smart_format=true&language=${lang}&interim_results=true&endpointing=300`, ['token', API_KEY]);
-      
+      const url = `wss://api.deepgram.com/v1/listen?model=nova-2&smart_format=true&filler_words=true&language=${lang}&interim_results=true&endpointing=300`;
+      const ws = new WebSocket(url, ['token', API_KEY]);
+
       ws.onopen = () => {
-        socketsOpened++;
-        if (socketsOpened === 2) {
-          // Initialize recorder strictly when BOTH sockets are ready!
+        if (socketRefEn.current?.readyState === 1 && socketRefEs.current?.readyState === 1) {
           setConnectionState('connected');
-          setConnectionMessage('Dual Stream Ready');
+          setConnectionMessage('Live');
           try {
             mediaRecorderRef.current = new MediaRecorder(stream);
-            mediaRecorderRef.current.addEventListener('dataavailable', (event) => {
-              if (event.data.size > 0) {
-                if (socketRefEn.current?.readyState === 1) socketRefEn.current.send(event.data);
-                if (socketRefEs.current?.readyState === 1) socketRefEs.current.send(event.data);
+            mediaRecorderRef.current.addEventListener('dataavailable', (e) => {
+              if (e.data.size > 0) {
+                if (socketRefEn.current?.readyState === 1) socketRefEn.current.send(e.data);
+                if (socketRefEs.current?.readyState === 1) socketRefEs.current.send(e.data);
               }
             });
             mediaRecorderRef.current.start(250);
-          } catch(e) {
-            console.error("Failed to start MediaRecorder:", e);
-            setConnectionState('error');
-            setConnectionMessage('Recorder Error');
-          }
+          } catch(err) { console.error(err); }
         }
       };
 
       ws.onmessage = (message) => {
         const received = JSON.parse(message.data);
-        if (received.type === 'Error' || received.error) {
-           console.error(`Deepgram ${lang} Error:`, received);
-           return;
-        }
-
         const alt = received.channel?.alternatives?.[0];
-        let transcript = alt?.transcript;
-        let confidence = alt?.confidence || 0;
-        let isFinal = received.is_final;
+        const transcript = alt?.transcript;
+        if (!transcript || transcript.trim().length === 0) return;
 
-        if (transcript && transcript.trim().length > 0) {
-          const words = transcript.trim().split(/\s+/);
-          // Stricter significance to filter out music lyrics/ambient noise
-          const isSignificant = words.length >= 5 || (confidence > 0.9 && words.length >= 2);
+        const confidence = alt?.confidence || 0;
+        const isFinal = received.is_final;
 
-          if (isSignificant && isCallDetectionEnabled) {
-            updateActivity();
-            setLastDataTime(Date.now());
+        if (isCallDetectionEnabled) {
+          updateActivity();
+          setLastDataTime(Date.now());
+        }
+
+        const now = Date.now();
+        const timeSinceLast = now - lastTranscriptTimeRef.current;
+        lastTranscriptTimeRef.current = now;
+        const isSilentBreak = timeSinceLast > 2500;
+
+        updateCaptionsState(prev => {
+          let last = prev[prev.length - 1];
+          const lastText = (lang === 'en' ? last?.enFull : last?.esFull) || '';
+          const lastWordCount = lastText.split(/\s+/).filter(Boolean).length;
+          
+          const hasSentenceEnd = /[.!?]/.test(lastText);
+          const isNewTurn = isSilentBreak || !last || (lastWordCount >= 10 && hasSentenceEnd) || lastWordCount >= 80;
+
+          if (isNewTurn) {
+            if (last) turnWordCountRef.current += lastWordCount;
+            if (isSilentBreak || !last) turnWordCountRef.current = 0;
+            
+            last = {
+              id: `${Date.now()}-${++bubbleIdCounterRef.current}`,
+              enFinalized: '', enInterim: '', esFinalized: '', esInterim: '',
+              turnWordCount: turnWordCountRef.current,
+              isSplit: !isSilentBreak
+            };
+            prev = [...prev, last];
           }
 
-          const now = Date.now();
-          const timeSinceLast = now - lastTranscriptTimeRef.current;
-          lastTranscriptTimeRef.current = now;
-          const isSilentBreak = timeSinceLast > 2000;
-          const isMajorGap = timeSinceLast > 120000;
+          const current = { ...last };
+          // Deduplicate against history PLUS current bubble's finalized text
+          const baseContext = prev.slice(-5, -1).map(c => (lang === 'en' ? c.enFinalized : c.esFinalized)).join(' ') 
+                            + ' ' + (lang === 'en' ? current.enFinalized : current.esFinalized);
 
-          setCaptions(prev => {
-            // If it's a major gap and we already have some captions, clear them
-            if (isMajorGap && prev.length > 0) {
-              console.log("[Deepgram] Major silence gap detected (>120s). Clearing board.");
-              turnWordCountRef.current = 0;
-              return [];
-            }
-            
-            let last = prev[prev.length - 1];
-            const lastWordCount = (last && last.text) ? last.text.split(/\s+/).length : 0;
-            
-            // PRESERVE SENTENCE INTEGRITY: Split after 10 words IF there is a period/question/exclamation
-            // This prevents cutting sentences in half. Hard cutoff remains at 80 for safety.
-            const hasSentenceEnd = /[.!?]/.test(last?.text || '');
-            const hasComma = /[,]/.test(last?.text || '');
-            
-            // Priority 1: 10 words + Sentence End
-            // Priority 2: 25 words + Comma (softer break)
-            // Priority 3: 80 words (Hard limit)
-            const isNewTurn = isSilentBreak || 
-                              (lastWordCount >= 10 && hasSentenceEnd) || 
-                              (lastWordCount >= 25 && hasComma) ||
-                              lastWordCount >= 80;
-
-            if (!last || isNewTurn) {
-              // FINALIZE PREVIOUS BUBBLE: If we are splitting, the previous one MUST be marked final
-              // so the translation engine and UI treat it as a completed block.
-              if (last) {
-                last.isFinal = true;
-                // Force word count update for the final state
-                last.turnWordCount = turnWordCountRef.current + (last.enFinalized ? last.enFinalized.trim().split(/\s+/).length : 0);
-              }
-
-              // If this transcript is a full duplicate of the previous bubble, don't even create a new turn
-              const prevB = prev[prev.length - 1];
-              const prevText = lang === 'en' ? (prevB?.enFinalized || '') : (prevB?.esFinalized || '');
-              if (normalize(prevText).includes(normalize(transcript))) {
-                 return prev; 
-              }
-
-              if (isSilentBreak || !last) turnWordCountRef.current = 0;
-              else {
-                // If we split due to overflow (not silence), preserve the previous turn count
-                const prevBubble = prev[prev.length - 1];
-                if (prevBubble) turnWordCountRef.current = prevBubble.turnWordCount || 0;
-              }
-              
-              last = { 
-                id: `${Date.now()}-${++bubbleIdCounterRef.current}`, 
-                enFinalized: '', enInterim: '', enConf: 0,
-                esFinalized: '', esInterim: '', esConf: 0,
-                turnWordCount: 0,
-                isSplit: !isSilentBreak // Mark as split if not a silence break
-              };
-              prev = [...prev, last];
-            }
-
-            const current = { ...last };
-            
-            // Clean the transcript of any overlap with its own finalized text (internal dedupe)
-            // If it's a new turn, we ALSO check against the PREVIOUS bubble's finalized text
-            // Look back at the last 3 bubbles to catch cross-bubble repetitions
-            const recentBubbles = prev.slice(-4, -1); // Current is at index length-1
-            const baseContext = recentBubbles.map(b => lang === 'en' ? (b.enFinalized || b.enInterim || '') : (b.esFinalized || b.esInterim || '')).join(' ');
-            
-            // Internal Transcript Dedupe: Catch "evolving" fragments within the same incoming string
-            // (e.g. "give you muscle relax Muscle relaxant" -> "give you muscle relaxant")
-            const words = (transcript || "").trim().split(/\s+/);
-            let processedTranscript = transcript;
-            if (words.length > 8) {
-              const mid = Math.floor(words.length / 2);
-              const head = words.slice(0, mid).join(' ');
-              const tail = words.slice(mid).join(' ');
-              const cleanedTail = removeOverlap(head, tail);
-              processedTranscript = (head + ' ' + cleanedTail).trim();
-            }
-            
+          if (isFinal) {
+            const cleaned = removeOverlap(baseContext, transcript);
             if (lang === 'en') {
-              // Check overlap against BOTH current bubble's finalized text AND previous bubble's tail
-              let cleanedTranscript = removeOverlap(baseContext + ' ' + (current.enFinalized || ''), processedTranscript);
-              cleanedTranscript = hallucinationGuard(cleanedTranscript);
-
-              // Group 9-10 single digits back-to-back (phone numbers)
-              cleanedTranscript = cleanedTranscript.replace(/\b(?:\d[\s.,\-:]*){8,11}\d+\b/g, m => m.replace(/[\s.,\-:]+/g, ''));
-              
-              if (!cleanedTranscript.trim()) return prev; // Avoid empty word bubbles
-
-              if (isFinal) { 
-                current.enFinalized = (current.enFinalized + ' ' + cleanedTranscript).trim(); 
-                current.enInterim = ''; 
-              } else { 
-                current.enInterim = cleanedTranscript; 
-              }
-              if (confidence > 0) current.enConf = confidence; 
+              current.enFinalized = hallucinationGuard((current.enFinalized + ' ' + cleaned).trim());
+              current.enInterim = '';
             } else {
-              // Check overlap against BOTH current bubble's finalized text AND previous bubble's tail
-              let cleanedTranscript = removeOverlap(baseContext + ' ' + (current.esFinalized || ''), processedTranscript);
-              cleanedTranscript = hallucinationGuard(cleanedTranscript);
-
-              // Group 9-10 single digits back-to-back (phone numbers)
-              cleanedTranscript = cleanedTranscript.replace(/\b(?:\d[\s.,\-:]*){8,11}\d+\b/g, m => m.replace(/[\s.,\-:]+/g, ''));
-
-              if (!cleanedTranscript.trim()) return prev;
-
-              if (isFinal) { 
-                current.esFinalized = (current.esFinalized + ' ' + cleanedTranscript).trim(); 
-                current.esInterim = ''; 
-              } else { 
-                current.esInterim = cleanedTranscript; 
-              }
-              if (confidence > 0) current.esConf = confidence;
+              current.esFinalized = hallucinationGuard((current.esFinalized + ' ' + cleaned).trim());
+              current.esInterim = '';
             }
-
-            // Derive winner
-            const enFull = (current.enFinalized + ' ' + current.enInterim).trim();
-            const esFull = (current.esFinalized + ' ' + current.esInterim).trim();
-            
-            const enWordCount = enFull.length > 0 ? enFull.split(/\s+/).length : 0;
-            const esWordCount = esFull.length > 0 ? esFull.split(/\s+/).length : 0;
-            
-            let winnerLang = 'en'; // default
-            
-            // If one pipeline has significantly more transcribed words, trust it unconditionally. 
-            // This prevents sparse hallucinations from hijacking the winning language.
-            if (esWordCount >= enWordCount + 2) {
-               winnerLang = 'es';
-            } else if (enWordCount >= esWordCount + 2) {
-               winnerLang = 'en';
-            } else {
-               // If word counts are tied or very close, fall back to the boosted confidence score comparison
-               winnerLang = ((current.esConf * 1.25) > current.enConf && esWordCount > 0) ? 'es' : 'en';
-            }
-            
-            if (langModeRef.current !== 'auto') {
-               winnerLang = langModeRef.current;
-            }
-            
-            current.lang = winnerLang;
-            current.text = winnerLang === 'en' ? enFull : esFull;
-            current.enFull = enFull;
-            current.esFull = esFull;
-            current.isFinal = isFinal; 
-            
-            // Calculate total turn words
-            const currentBubbleWords = current.text.trim().split(/\s+/).filter(Boolean).length;
-            current.turnWordCount = turnWordCountRef.current + currentBubbleWords;
-            
-            let newArr = [...prev];
-            newArr[newArr.length - 1] = current;
-            
-            // Limit to 150 bubbles to prevent intense memory and DOM growth over long sessions
-            if (newArr.length > 150) {
-               newArr = newArr.slice(newArr.length - 150);
-            }
-            return newArr;
-          });
-        }
-      };
-
-      ws.onclose = (event) => {
-        if (event.code === 1006 || event.code === 1001) {
-          console.warn(`[Deepgram] Socket ${lang} closed unexpectedly (${event.code}).`);
-          if (isActiveRef.current) {
-            setConnectionMessage(`Reconnecting ${lang}...`);
-            // Attempt auto-reconnect if still active
-            setTimeout(() => {
-              if (isActiveRef.current && streamRef.current) {
-                console.log(`[Deepgram] Attempting auto-reconnect for ${lang}...`);
-                if (lang === 'en') socketRefEn.current = createSocket('en');
-                else socketRefEs.current = createSocket('es');
-              }
-            }, 2000);
+          } else {
+            if (lang === 'en') current.enInterim = transcript;
+            else current.esInterim = transcript;
           }
-        } else if (event.code === 4000) {
-           setConnectionState('error');
-           setConnectionMessage('Connection Rejected (Check API Key)');
-        }
+
+          // Winner logic
+          const enFull = (current.enFinalized + ' ' + current.enInterim).trim();
+          const esFull = (current.esFinalized + ' ' + current.esInterim).trim();
+          const enW = enFull.split(/\s+/).filter(Boolean).length;
+          const esW = esFull.split(/\s+/).filter(Boolean).length;
+          
+          let winner = 'en';
+          if (esW >= enW + 2) winner = 'es';
+          else if (enW >= esW + 2) winner = 'en';
+          else winner = (confidence > 0.8 && esW > 0) ? 'es' : 'en';
+          
+          if (langModeRef.current !== 'auto') winner = langModeRef.current;
+
+          current.lang = winner;
+          current.text = winner === 'en' ? enFull : esFull;
+          current.enFull = enFull;
+          current.esFull = esFull;
+          current.isFinal = isFinal;
+          current.turnWordCount = turnWordCountRef.current + current.text.split(/\s+/).filter(Boolean).length;
+
+          const newArr = [...prev];
+          newArr[newArr.length - 1] = current;
+          return newArr.slice(-150);
+        });
       };
-      
+
+      ws.onclose = () => console.log(`[Deepgram] ${lang} Close`);
+      ws.onerror = (e) => console.error(e);
       return ws;
     };
 
@@ -410,74 +259,23 @@ export const useDeepgram = () => {
     socketRefEs.current = createSocket('es');
   };
 
-  // WATCHDOG: Check if sockets are still alive when we expect to be transcribing
-  useEffect(() => {
-    if (connectionState !== 'connected' || !isActiveRef.current) return;
-    
-    const watchdog = setInterval(() => {
-      const enOpen = socketRefEn.current?.readyState === 1;
-      const esOpen = socketRefEs.current?.readyState === 1;
-      
-      // If one is down but the other is up, try to fix the broken one
-      if (!enOpen && isActiveRef.current && streamRef.current) {
-        console.warn("[Deepgram] Watchdog: EN socket down. Reconnecting...");
-        socketRefEn.current = startDeepgram(streamRef.current); // This is a bit recursive, better to just createSocket
-      }
-      
-      if (!enOpen && !esOpen) {
-        console.warn("[Deepgram] Watchdog: All sockets lost. Updating state.");
-        setConnectionState('error');
-        setConnectionMessage('Connection Timed Out - Reconnecting...');
-        // Force a full zapping reconnect
-        reconnectStream();
-      }
-    }, 15000); // Check every 15s
-    
-    return () => clearInterval(watchdog);
-  }, [connectionState]);
-
   const startRecording = async () => {
     try {
-      let stream = streamRef.current;
-      
-      // Check if existing stream is still active
-      if (stream && stream.getTracks().some(track => track.readyState === 'ended')) {
-        stream = null;
+      setConnectionState('connecting');
+      setConnectionMessage('Requesting Tab Audio...');
+      const stream = await navigator.mediaDevices.getDisplayMedia({ video: true, audio: true });
+      if (stream.getAudioTracks().length === 0) {
+        setConnectionState('error');
+        setConnectionMessage('No Audio Track');
+        return false;
       }
-
-      if (!stream) {
-        setConnectionState('connecting');
-        setConnectionMessage('Requesting Tab Audio...');
-        stream = await navigator.mediaDevices.getDisplayMedia({
-          video: true,
-          audio: true
-        });
-
-        if (stream.getAudioTracks().length === 0) {
-          alert("No audio track detected! You must check the 'Share tab audio' toggle when selecting the Chrome tab.");
-          setConnectionState('error');
-          setConnectionMessage('No audio track selected');
-          stream.getTracks().forEach(track => track.stop());
-          return false;
-        }
-
-        streamRef.current = stream;
-        
-        // Only attach onended when creating new stream
-        stream.getVideoTracks()[0].onended = () => {
-          stopRecording();
-          if (streamRef.current) {
-            streamRef.current.getTracks().forEach(track => track.stop());
-            streamRef.current = null;
-          }
-        };
-      }
-
+      streamRef.current = stream;
       isActiveRef.current = true;
       startDeepgram(stream);
+      stream.getVideoTracks()[0].onended = () => stopRecording();
       return true;
     } catch (err) {
-      console.error("Error capturing audio: ", err);
+      console.error(err);
       return false;
     }
   };
@@ -485,42 +283,34 @@ export const useDeepgram = () => {
   const stopRecording = useCallback(() => {
     isActiveRef.current = false;
     closeConnections();
-    setCaptions([]); // Clear transcript history after Call Ends
-    // Intentionally NOT stopping tracks here so stream can be reused 
-    // when clicking Connect again. Browser "Stop Sharing" handles actual track stop.
+    setCaptions([]);
+    captionsRef.current = [];
   }, [closeConnections]);
 
   const reconnectStream = useCallback(() => {
     setConnectionState('connecting');
-    setConnectionMessage('Zapping WebSockets...');
     closeConnections();
-    // Safety delay to allow sockets/recorder to fully clear
     setTimeout(() => {
-      if (streamRef.current && isActiveRef.current) {
-        startDeepgram(streamRef.current);
-      } else {
-        setConnectionState('disconnected');
-        setConnectionMessage('Zap failed: No active stream');
-      }
-    }, 300);
+      if (streamRef.current && isActiveRef.current) startDeepgram(streamRef.current);
+    }, 400);
   }, [closeConnections]);
 
-  const clearCaptions = () => setCaptions([]);
+  const clearCaptions = () => {
+    setCaptions([]);
+    captionsRef.current = [];
+  };
 
   const toggleLanguage = () => {
     setSttLanguage(prev => {
       const next = prev === 'auto' ? 'en' : (prev === 'en' ? 'es' : 'auto');
       langModeRef.current = next;
-      
       if (overrideTimeoutRef.current) clearTimeout(overrideTimeoutRef.current);
-      
       if (next !== 'auto') {
         overrideTimeoutRef.current = setTimeout(() => {
           setSttLanguage('auto');
           langModeRef.current = 'auto';
-        }, 30000); // Revert to auto after 30 seconds
+        }, 30000);
       }
-      
       return next;
     });
   };

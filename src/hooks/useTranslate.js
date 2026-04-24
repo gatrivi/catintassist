@@ -67,7 +67,7 @@ export const useTranslate = (text, lang, prefetchTTS, shouldPrefetch, mood = 'de
     
     // Log version once on start/mount
     if (lastWordCountRef.current === 0 && lastTranslatedTextRef.current === '') {
-      console.log(`[${t()}] [v4.6.8] Translation Engine Initialized.`);
+      console.log(`[${t()}] [v4.6.9] Translation Engine Initialized.`);
     }
 
     // NORMALIZE TEXT for comparison
@@ -82,7 +82,7 @@ export const useTranslate = (text, lang, prefetchTTS, shouldPrefetch, mood = 'de
 
     if (IS_TOO_LONG || IS_FILLER || IS_TOO_SHORT) {
       setEngineStatus(IS_TOO_LONG ? 'ready' : 'idle');
-      if (IS_TOO_LONG) setTranslation(`(Text too long for direct translation [v4.6.8])`);
+      if (IS_TOO_LONG) setTranslation(`(Text too long for direct translation [v4.6.9])`);
       return;
     }
 

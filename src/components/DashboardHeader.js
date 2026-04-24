@@ -495,69 +495,57 @@ export const DashboardHeader = ({ onStartAudio, onStopAudio, onReconnectStream, 
         <div className="condensed-header-card" style={{ gap: '0.15rem' }}>
           
           {/* Controls & Mini-Stats Column (LEFT) */}
-          <div id="controls-left-col" className={`header-column-side ${isActive ? 'active-working-state' : ''}`} style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem', flexShrink: 0, justifyContent: 'flex-start', alignItems: 'center' }}>
-            <div id="connection-controls-row" style={{ display: 'flex', flexDirection: 'column', gap: '0.15rem', alignItems: 'center' }}>
+          <div id="controls-left-col" className={`header-column-side ${isActive ? 'active-working-state' : ''}`} style={{ display: 'flex', flexDirection: 'column', gap: '0.15rem', flexShrink: 0, justifyContent: 'flex-start', alignItems: 'center' }}>
+            <div id="connection-controls-row" style={{ display: 'flex', gap: '0.15rem', alignItems: 'center', background: 'rgba(255,255,255,0.03)', padding: '2px 4px', borderRadius: '4px' }}>
               <StateIndicators 
                 state={isActive ? 'call' : isBreakActive ? 'break' : 'avail'} 
                 breakMinutes={stats.dailyBreakMinutes || 0} 
                 isZombie={isZombieCall} 
                 silenceCount={silenceCount}
               />
-              <ConnectionIndicator 
-                state={connectionState} 
-                message={connectionMessage} 
-                lastDataTime={lastDataTime}
-                isActive={isActive}
-                onZap={onReconnectStream}
-              />
-              {!isActive ? (
-                <button 
-                  id="header-connect-btn" 
-                  className="btn-emoji" 
-                  onClick={isZombieCall ? onRecovery : onStartAudio} 
-                  style={{ 
-                    background: isZombieCall ? '#f59e0b' : '#10b981', 
-                    color: '#fff', width: '22px', height: '22px',
-                    animation: (!isActive && !isBreakActive && (Date.now() - (lastDataTime || 0) < 5000)) ? 'pulseReminder 0.8s infinite' : 'none',
-                    boxShadow: (!isActive && !isBreakActive && (Date.now() - (lastDataTime || 0) < 5000)) ? '0 0 12px #10b981' : 'none'
-                  }} 
-                  title={isZombieCall ? "RECONNECT" : "CONNECT"}
-                >
-                  {isZombieCall ? '🟠' : '🟢'}
-                </button>
-              ) : (
-                <button id="header-stop-btn" className="btn-emoji" onClick={handleStop} style={{ background: '#ef4444', color: '#fff', width: '22px', height: '22px' }} title="STOP">🛑</button>
-              )}
-
-              {!isActive ? (
-                <>
-                  <button id="header-break-btn" className="btn-emoji" onClick={isBreakActive ? stopBreak : handleStartBreak} style={{ background: '#fb923c', color: '#fff', width: '22px', height: '22px' }} title="BREAK">☕</button>
-                  {stats.dailyMinutes > 0 && !isBreakActive && (
-                    <button id="header-end-day-btn" className="btn-emoji" onClick={handleEndDay} style={{ background: '#8b5cf6', color: '#fff', width: '22px', height: '22px' }} title="END DAY">🌙</button>
-                  )}
-                </>
-              ) : (
-                <>
-                  <button id="header-hold-btn" className="btn btn-condensed" onClick={() => setIsHold(!isHold)} style={{ background: isHold ? '#f59e0b' : 'rgba(255,255,255,0.08)', height: '22px', padding: '0 0.3rem', fontSize: '0.6rem' }}>{isHold ? `⏸${formatTime(holdSeconds)}` : '⏸'}</button>
-                  <button id="header-zap-btn" className="btn-emoji" onClick={onReconnectStream} style={{ background: '#0ea5e9', width: '22px', height: '22px' }} title="ZAP">⚡</button>
-                </>
-              )}
               
-              <div id="header-edit-tools" style={{ display: 'flex', gap: '0.1rem', marginLeft: '0.1rem', borderLeft: '1px solid rgba(255,255,255,0.1)', paddingLeft: '0.1rem' }}>
-                <button className="edit-btn-tiny" onClick={() => setTimeEditMode('call')} title="Edit call time">✏️📞</button>
-                <button className="edit-btn-tiny" onClick={() => setTimeEditMode('break')} title="Edit break time">✏️☕</button>
+              <div style={{ display: 'flex', gap: '2px' }}>
+                {!isActive ? (
+                  <button 
+                    id="header-connect-btn" className="btn-emoji" 
+                    onClick={isZombieCall ? onRecovery : onStartAudio} 
+                    style={{ 
+                      background: isZombieCall ? '#f59e0b' : '#10b981', color: '#fff', width: '22px', height: '22px',
+                      animation: (!isActive && !isBreakActive && (Date.now() - (lastDataTime || 0) < 5000)) ? 'pulseReminder 0.8s infinite' : 'none',
+                    }} 
+                    title={isZombieCall ? "RECONNECT" : "CONNECT"}>
+                    {isZombieCall ? '🟠' : '🟢'}
+                  </button>
+                ) : (
+                  <button id="header-stop-btn" className="btn-emoji" onClick={handleStop} style={{ background: '#ef4444', color: '#fff', width: '22px', height: '22px' }} title="STOP">🛑</button>
+                )}
+
+                {isActive ? (
+                  <>
+                    <button id="header-hold-btn" className="btn btn-condensed" onClick={() => setIsHold(!isHold)} style={{ background: isHold ? '#f59e0b' : 'rgba(255,255,255,0.08)', height: '22px', padding: '0 0.3rem', fontSize: '0.6rem', border: '1px solid rgba(255,255,255,0.1)' }}>{isHold ? `⏸${formatTime(holdSeconds)}` : '⏸'}</button>
+                    <button id="header-zap-btn" className="btn-emoji" onClick={onReconnectStream} style={{ background: '#0ea5e9', width: '22px', height: '22px' }} title="ZAP">⚡</button>
+                  </>
+                ) : (
+                  <>
+                    <button id="header-break-btn" className="btn-emoji" onClick={isBreakActive ? stopBreak : handleStartBreak} style={{ background: '#fb923c', color: '#fff', width: '22px', height: '22px' }} title="BREAK">☕</button>
+                    {stats.dailyMinutes > 0 && !isBreakActive && (
+                      <button id="header-end-day-btn" className="btn-emoji" onClick={handleEndDay} style={{ background: '#8b5cf6', color: '#fff', width: '22px', height: '22px' }} title="END DAY">🌙</button>
+                    )}
+                  </>
+                )}
+                <div id="header-edit-tools" style={{ display: 'flex', gap: '1px', borderLeft: '1px solid rgba(255,255,255,0.1)', paddingLeft: '2px' }}>
+                  <button className="edit-btn-tiny" onClick={() => setTimeEditMode('call')} title="Edit call time">✏️📞</button>
+                  <button className="edit-btn-tiny" onClick={() => setTimeEditMode('break')} title="Edit break time">✏️☕</button>
+                </div>
               </div>
             </div>
             
-            <div id="left-pills-row" style={{ display: 'flex', gap: '0.1rem' }}>
-               <div id="pill-shift" className="metric-pill compact-pill" title="SHIFT PROGRESS: Total time elapsed since you first connected today. Reset at midnight.">
-                 <span style={{ fontSize: '0.55rem' }}>🏃{formatHoursMins(shiftElapsedMins)}</span>
+            <div id="left-pills-row" style={{ display: 'flex', gap: '0.1rem', width: '100%', justifyContent: 'center' }}>
+               <div id="pill-shift" className="metric-pill compact-pill" title="SHIFT">
+                 <span style={{ fontSize: '0.52rem' }}>🏃{formatHoursMins(shiftElapsedMins)}</span>
                </div>
-               <div id="pill-sprint" className="metric-pill compact-pill" title="SPRINT: Unbroken session time elapsed since your day started or since your last coffee break. Resets when you start a break.">
-                 <span style={{ fontSize: '0.55rem' }}>🔋{Math.floor(workSessionMinutes)}m</span>
-               </div>
-               <div id="pill-logoff" className="metric-pill compact-pill" title="ESTIMATED LOG OFF: Calculated time to end your shift (usually 18:00), adjusted by your late start time and break usage today." style={{ background: 'rgba(245,158,11,0.08)', border: '1px solid rgba(245,158,11,0.2)' }}>
-                 <span style={{ color: '#fcd34d', fontSize: '0.55rem' }}>🚪{getCompensatedLogOff()}</span>
+               <div id="pill-logoff" className="metric-pill compact-pill" title="LOG OFF" style={{ background: 'rgba(245,158,11,0.08)', border: '1px solid rgba(245,158,11,0.2)' }}>
+                 <span style={{ color: '#fcd34d', fontSize: '0.52rem' }}>🚪{getCompensatedLogOff()}</span>
                </div>
             </div>
           </div>

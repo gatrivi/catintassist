@@ -125,7 +125,7 @@ const StatusProgress = ({ status }) => {
   );
 };
 
-const TranslatedBubble = ({ id, text, lang, playTTS, stopTTS, playingUrl, prefetchTTS, reverse = false, ttsMode, wordCount, turnWordCount, shouldPrefetch, emphasisMode, isPinned, onTogglePin }) => {
+const TranslatedBubble = ({ id, text, lang, playTTS, stopTTS, playingUrl, prefetchTTS, reverse = false, ttsMode, wordCount, turnWordCount, shouldPrefetch, emphasisMode, isPinned, onTogglePin, isRedundantCount }) => {
   const { translationMood } = useSession();
   const { translation, audioUrl, isTranslating, engineStatus, targetLang } = useTranslate(text, lang, prefetchTTS, shouldPrefetch, translationMood);
   const hasAutoPlayedRef = useRef(false);
@@ -152,12 +152,14 @@ const TranslatedBubble = ({ id, text, lang, playTTS, stopTTS, playingUrl, prefet
 
       <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', width: '28px', flexShrink: 0, marginTop: '2px' }}>
         <StatusProgress status={engineStatus} />
-        <span 
-          style={{ fontSize: '0.55rem', fontWeight: 700, color: (turnWordCount || wordCount) >= 40 ? 'var(--danger)' : (turnWordCount || wordCount) >= 34 ? '#f59e0b' : 'var(--text-muted)', marginBottom: '1px' }}
-          title={turnWordCount ? `Current Turn: ${turnWordCount} words (Bubble: ${wordCount})` : ""}
-        >
-          {turnWordCount || wordCount}
-        </span>
+        {(!isRedundantCount && (turnWordCount || wordCount) > 0) && (
+          <span 
+            style={{ fontSize: '0.55rem', fontWeight: 700, color: (turnWordCount || wordCount) >= 40 ? 'var(--danger)' : (turnWordCount || wordCount) >= 34 ? '#f59e0b' : 'var(--text-muted)', marginBottom: '1px' }}
+            title={turnWordCount ? `Current Turn: ${turnWordCount} words (Bubble: ${wordCount})` : ""}
+          >
+            {turnWordCount || wordCount}
+          </span>
+        )}
         <button 
           onClick={() => isThisPlaying ? stopTTS() : playTTS(translation, targetLang, audioUrl)} 
           disabled={!isThisPlaying && (!translation || !audioUrl)}
@@ -682,6 +684,14 @@ export const TranscriptionBoard = ({ captions, onClearAll, onReconnect, lastData
               boxShadow: isPinned ? '0 0 15px rgba(59, 130, 246, 0.2)' : 'none',
               ...getBubbleStyle(cap.text, cap.isFinal === false, cap.lang)
             }}>
+              {/* PIN EMOJI - Centered at top */}
+              {isPinned && (
+                <div style={{ 
+                  position: 'absolute', top: '-10px', left: '50%', transform: 'translateX(-50%)', 
+                  fontSize: '0.6rem', filter: 'drop-shadow(0 0 2px #3b82f6)',
+                  zIndex: 5
+                }}>📌</div>
+              )}
               {(!isSameAsPrevious && !cap.isSplit) && (
                 <div style={{ position: 'absolute', top: '2px', left: '4px', zIndex: 5, pointerEvents: 'none' }}>
                   <span style={{ fontSize: '0.45rem', color: 'rgba(255,255,255,0.25)', textTransform: 'uppercase', letterSpacing: '0.05em', fontWeight: 900 }}>
@@ -712,6 +722,7 @@ export const TranscriptionBoard = ({ captions, onClearAll, onReconnect, lastData
                 id={cap.id} text={cap.text} lang={cap.lang} playTTS={playTTS} stopTTS={stopTTS} playingUrl={playingUrl} prefetchTTS={prefetchTTS} 
                 reverse={cap.lang === 'es'} ttsMode={ttsMode} wordCount={wordCount} turnWordCount={cap.turnWordCount} shouldPrefetch={i >= captions.length - 3} 
                 emphasisMode={emphasisMode} isPinned={isPinned} onTogglePin={togglePin} 
+                isRedundantCount={i > 0 && captions[i-1].turnWordCount === cap.turnWordCount}
               />
             </div>
           );
