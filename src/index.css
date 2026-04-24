@@ -600,13 +600,13 @@ body {
   grid-template-columns: auto 1fr auto; 
   grid-template-rows: auto auto;
   align-items: center;
-  padding: 0.1rem 0.15rem; 
-  gap: 0.1rem 0.2rem; 
+  padding: 0.05rem 0.1rem; 
+  gap: 0.05rem 0.1rem; 
   width: 100%;
   overflow: hidden;
   background: rgba(0,0,0,0.6);
   border: 1px solid rgba(255,255,255,0.1);
-  border-radius: 6px;
+  border-radius: 4px;
 }
 
 .metric-pill {
@@ -684,9 +684,9 @@ body {
 /* Metric Grid & Emoji Backgrounds */
 .metric-grid {
   display: grid;
-  grid-template-columns: repeat(3, minmax(65px, 1fr)); 
-  grid-template-rows: repeat(2, 1fr);
-  gap: 0.15rem; /* Slightly more gap for breathing room */
+  grid-template-columns: repeat(4, 1fr); 
+  grid-template-rows: auto;
+  gap: 2px; 
   flex-grow: 1;
   width: 100%;
   margin: 0 auto; 
@@ -701,13 +701,13 @@ body {
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  padding: 0.1rem 0.2rem;
+  padding: 0.05rem 0.15rem;
   background: rgba(255,255,255,0.06);
-  border-radius: 4px;
+  border-radius: 3px;
   border: 1px solid rgba(255,255,255,0.08);
   overflow: hidden;
-  min-width: 60px;
-  min-height: 38px;
+  min-width: 45px;
+  min-height: 32px;
 }
 
 .metric-cell-val {
@@ -856,9 +856,9 @@ body {
     "main-status"
     "timers"
     "actions";
-  gap: 0.25rem;
-  padding: 0.35rem 0.5rem;
-  border-radius: 10px;
+  gap: 0.1rem;
+  padding: 0.2rem 0.3rem;
+  border-radius: 6px;
   transition: all 0.5s cubic-bezier(0.4, 0, 0.2, 1);
   overflow: hidden;
   position: relative;

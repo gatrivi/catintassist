@@ -608,11 +608,11 @@ export const DashboardHeader = ({ onStartAudio, onStopAudio, onReconnectStream, 
                   <div className="metric-cell-label">$ LEFT MONTH</div>
                 </div>
 
-                {/* 9. Breaks used today */}
-                <div className={`metric-cell ${isEditingScoreboard ? 'grid-edit-mode' : ''}`} title="Break minutes used today" style={{ position: 'relative', background: 'rgba(251,146,60,0.06)' }}>
-                  <HelpLabel text="9. BREAK USED" />
-                  <div className="metric-cell-val" style={{ color: '#fdba74' }}>{Math.round(stats.dailyBreakMinutes || 0)}m</div>
-                  <div className="metric-cell-label">BREAK USED</div>
+                {/* 9. Off-call total today */}
+                <div className={`metric-cell ${isEditingScoreboard ? 'grid-edit-mode' : ''}`} title="Total time spent off-call today (Available + Break time)" style={{ position: 'relative', background: 'rgba(251,146,60,0.06)' }}>
+                  <HelpLabel text="9. OFF CALL" />
+                  <div className="metric-cell-val" style={{ color: '#fdba74' }}>{Math.round(totalOffCallMins)}m</div>
+                  <div className="metric-cell-label">OFF CALL</div>
                 </div>
 
                 {/* 10. Avg so far mo */}
@@ -638,7 +638,7 @@ export const DashboardHeader = ({ onStartAudio, onStopAudio, onReconnectStream, 
                   </div>
                   <div className="metric-cell-label">CURR CALL</div>
                 </div>
-                <div id="cell-switch-game" className="metric-cell" style={{ cursor: 'pointer', background: 'rgba(255,255,255,0.04)', gridColumn: 'span 3', flexDirection: 'row', minHeight: '30px' }} onClick={() => setScoreView('game')} title="Switch back to gamified view">
+                <div id="cell-switch-game" className="metric-cell" style={{ cursor: 'pointer', background: 'rgba(255,255,255,0.04)', gridColumn: 'span 4', flexDirection: 'row', minHeight: '30px' }} onClick={() => setScoreView('game')} title="Switch back to gamified view">
                   <span style={{ fontSize: '0.9rem', marginRight: '6px' }}>🎮</span>
                   <div className="metric-cell-label" style={{ opacity: 0.8 }}>RETURN TO GAMIFIED VIEW</div>
                 </div>
