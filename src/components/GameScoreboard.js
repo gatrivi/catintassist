@@ -316,7 +316,14 @@ export const GameScoreboard = ({
             <EmojiRow
               emoji="⏱️" value={totalDailyMins} unitValue={MIN_UNIT}
               maxValue={dayMinMax} isEditing={isEditingScoreboard} helpLabel="MINS_DAY"
-              label={`mins   ${Math.round(totalDailyMins)}m / ${Math.round(dailyGoal)}m`}
+              label={
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.2rem' }}>
+                  <span>mins</span>
+                  <RollingNumber value={totalDailyMins} suffix="m" height={10} />
+                  <span>/</span>
+                  <RollingNumber value={dailyGoal} suffix="m" height={10} />
+                </div>
+              }
               sublabel={`${dayMinPct}%`}
               markers={[
                 { value: milestoneTargets?.m5500Ideal, color: '#3b82f6', label: `5500m Benchmark (${Math.round(milestoneTargets?.m5500Ideal)}m)` },
@@ -328,7 +335,14 @@ export const GameScoreboard = ({
               emoji="☕" emptyEmoji="🍵" className="emoji-break"
               value={breakLeft} unitValue={15} maxValue={breakLimit}
               isEditing={isEditingScoreboard} helpLabel="BREAK_DAY"
-              label={`break   ${Math.round(breakLeft)}m / ${breakLimit}m`}
+              label={
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.2rem' }}>
+                  <span>break</span>
+                  <RollingNumber value={breakLeft} suffix="m" height={10} />
+                  <span>/</span>
+                  <RollingNumber value={breakLimit} suffix="m" height={10} />
+                </div>
+              }
               sublabel={breakLeft > 0 ? 'READY' : 'SPENT'}
               warnThreshold={0.5}
             />
@@ -336,7 +350,12 @@ export const GameScoreboard = ({
             <EmojiRow
               emoji="🔋" value={totalDailyMins} unitValue={Math.max(1, stats.dailyBreakMinutes || 1)} maxValue={totalDailyMins * 1.2}
               isEditing={isEditingScoreboard} helpLabel="STAMINA_RATIO"
-              label={`stamina  ${(totalDailyMins / Math.max(1, stats.dailyBreakMinutes)).toFixed(1)}x ratio`}
+              label={
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.2rem' }}>
+                  <span>stamina</span>
+                  <RollingNumber value={(totalDailyMins / Math.max(1, stats.dailyBreakMinutes)).toFixed(1)} suffix="x ratio" height={10} />
+                </div>
+              }
               sublabel={(totalDailyMins / Math.max(1, stats.dailyBreakMinutes)) >= 5.3 ? 'ELITE' : 'TIRED'}
               color="#fb923c"
             />
@@ -368,7 +387,14 @@ export const GameScoreboard = ({
             <EmojiRow
               emoji="🏗️" value={stats.monthlyMinutes} unitValue={MIN_UNIT * 10}
               maxValue={moMinMax}
-              label={`ladder   ${Math.round(stats.monthlyMinutes)}m / ${Math.round(stats.goalMinutes)}m`}
+              label={
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.2rem' }}>
+                  <span>ladder</span>
+                  <RollingNumber value={stats.monthlyMinutes} suffix="m" height={10} />
+                  <span>/</span>
+                  <RollingNumber value={stats.goalMinutes} suffix="m" height={10} />
+                </div>
+              }
               sublabel={`${moMinPct}%`}
             />
             <div style={{ fontSize: '0.55rem', color: 'rgba(255,255,255,0.4)', textAlign: 'right', marginTop: '0.1rem' }}>

@@ -571,20 +571,20 @@ export const DashboardHeader = ({ onStartAudio, onStopAudio, onReconnectStream, 
                  {/* 1. Mins worked today */}
                 <div className={`metric-cell ${isEditingScoreboard ? 'grid-edit-mode' : ''}`} title="Minutes worked today (Click to toggle H:M)" style={{ position: 'relative', background: 'rgba(59,130,246,0.06)', cursor: 'pointer' }} onClick={() => setShowAsHours(!showAsHours)}>
                   <HelpLabel text="1. MINS TODAY" />
-                  <div className="metric-cell-val" style={{ color: '#60a5fa' }}>{formatValue(totalDailyMins)}</div>
+                  <div className="metric-cell-val" style={{ color: '#60a5fa' }}><RollingNumber value={formatValue(totalDailyMins)} height={24} /></div>
                   <div className="metric-cell-label">MINS TODAY</div>
                 </div>
 
                 <div className={`metric-cell ${isEditingScoreboard ? 'grid-edit-mode' : ''}`} title="Minutes left for daily goal (Click to toggle H:M)" style={{ position: 'relative', background: 'rgba(239,68,68,0.04)', cursor: 'pointer' }} onClick={() => setShowAsHours(!showAsHours)}>
                   <HelpLabel text="2. LEFT TODAY" />
-                  <div className="metric-cell-val" style={{ color: '#fca5a5' }}>{formatValue(Math.max(0, dailyGoal - totalDailyMins))}</div>
+                  <div className="metric-cell-val" style={{ color: '#fca5a5' }}><RollingNumber value={formatValue(Math.max(0, dailyGoal - totalDailyMins))} height={24} /></div>
                   <div className="metric-cell-label">LEFT TODAY</div>
                 </div>
 
                 {/* 3. Goal mins */}
                 <div className={`metric-cell ${isEditingScoreboard ? 'grid-edit-mode' : ''}`} title="Target goal minutes for today (Click to toggle H:M)" style={{ position: 'relative', background: 'rgba(52,211,153,0.04)', cursor: 'pointer' }} onClick={() => setShowAsHours(!showAsHours)}>
                   <HelpLabel text="3. TODAY GOAL" />
-                  <div className="metric-cell-val">{formatValue(dailyGoal)}</div>
+                  <div className="metric-cell-val"><RollingNumber value={formatValue(dailyGoal)} height={24} /></div>
                   <div className="metric-cell-label">TODAY GOAL</div>
                 </div>
 
@@ -628,14 +628,14 @@ export const DashboardHeader = ({ onStartAudio, onStopAudio, onReconnectStream, 
                  {/* 9. Off-call total today */}
                 <div className={`metric-cell ${isEditingScoreboard ? 'grid-edit-mode' : ''}`} title="Total time spent off-call today (Click to toggle H:M)" style={{ position: 'relative', background: 'rgba(251,146,60,0.06)', cursor: 'pointer' }} onClick={() => setShowAsHours(!showAsHours)}>
                   <HelpLabel text="9. OFF CALL" />
-                  <div className="metric-cell-val" style={{ color: '#fdba74' }}>{formatValue(totalOffCallMins)}</div>
+                  <div className="metric-cell-val" style={{ color: '#fdba74' }}><RollingNumber value={formatValue(totalOffCallMins)} height={24} /></div>
                   <div className="metric-cell-label">OFF CALL</div>
                 </div>
 
                 {/* 10. Avg so far mo */}
                 <div className={`metric-cell ${isEditingScoreboard ? 'grid-edit-mode' : ''}`} title="Average minutes per day so far (Click to toggle H:M)" style={{ position: 'relative', background: 'rgba(139,92,246,0.04)', cursor: 'pointer' }} onClick={() => setShowAsHours(!showAsHours)}>
                   <HelpLabel text="10. MO AVG" />
-                  <div className="metric-cell-val">{formatValue(actualDailyAverage)}</div>
+                  <div className="metric-cell-val"><RollingNumber value={formatValue(actualDailyAverage)} height={24} /></div>
                   <div className="metric-cell-label">MO AVG</div>
                 </div>
 
@@ -651,8 +651,8 @@ export const DashboardHeader = ({ onStartAudio, onStopAudio, onReconnectStream, 
                 <div className={`metric-cell ${isEditingScoreboard ? 'grid-edit-mode' : ''}`} title="Current call duration and unbanked cash" style={{ position: 'relative', background: isActive ? 'rgba(16,185,129,0.1)' : 'rgba(255,255,255,0.02)', border: isActive ? '1px solid rgba(16,185,129,0.3)' : 'none' }}>
                   <HelpLabel text="12. CURR CALL" />
                   <div className="metric-cell-val" style={{ display: 'flex', gap: '0.2rem', alignItems: 'center' }}>
-                    <span>{formatTime(sessionSeconds)}</span>
-                    <span style={{ fontSize: '1rem', color: '#34d399' }}>${Math.round(sessionEarnings * arsRate)}</span>
+                    <RollingNumber value={formatTime(sessionSeconds)} height={22} />
+                    <RollingNumber value={Math.round(sessionEarnings * arsRate)} prefix="$" height={22} />
                   </div>
                   <div className="metric-cell-label">CURR CALL</div>
                 </div>
