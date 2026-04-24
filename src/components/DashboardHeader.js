@@ -3,7 +3,7 @@ import { RollingNumber } from './RollingNumber';
 import { useRewardAudio } from '../hooks/useRewardAudio';
 import { useSession } from '../contexts/SessionContext';
 import { useAudioSettings } from '../contexts/AudioSettingsContext';
-import { PlayIcon, StopIcon, KeyIcon, formatTime, GoalEditor, EditableMinutes, ConnectionIndicator } from './HeaderWidgets';
+import { PlayIcon, StopIcon, formatTime } from './HeaderWidgets';
 import { DialGoalSelector } from './DialGoalSelector';
 import { useProgressiveAudio } from '../hooks/useProgressiveAudio';
 import { MonthHeatmap } from './MonthHeatmap';
@@ -29,7 +29,7 @@ const CelebrationParticles = ({ type, label, coins, onDismiss }) => {
     audioEngine.initAudio();
     const iv = setInterval(() => { audioEngine.playCoin(); }, 150);
     return () => clearInterval(iv);
-  }, [isClosing, audioEngine.playCoin, type]);
+  }, [isClosing, audioEngine, type]);
   
   const handleDismiss = () => {
     setIsClosing(true);
@@ -117,7 +117,7 @@ const StateIndicators = ({ state, breakMinutes, isZombie, silenceCount }) => {
 };
 
 export const DashboardHeader = ({ onStartAudio, onStopAudio, onReconnectStream, sttLanguage, onToggleLanguage, onRecovery, connectionState, connectionMessage, lastDataTime }) => {
-  const { isActive, sessionSeconds, setSessionSeconds, sessionEarnings, stats, updateStat, startSession, stopSession, endDay, RATE_PER_MINUTE, arsRate, setArsRate, isBreakActive, breakSeconds, startBreak, stopBreak, availSeconds, isEditingScoreboard, setIsEditingScoreboard, visibleCards, toggleCard, isNotesOpen, setIsNotesOpen, isToolbarVisible, setIsToolbarVisible, workSessionMinutes, isHeatmapOpen, setIsHeatmapOpen, isZombieCall, clearZombieState, translationMood, setTranslationMood, isScoreboardHelpVisible, setIsScoreboardHelpVisible, isHold, setIsHold, holdSeconds, setHoldSeconds, dailyTimeline, historyTimeline, dailyLog, lastActivityTime, isCallDetectionEnabled, setIsCallDetectionEnabled } = useSession();
+  const { isActive, sessionSeconds, sessionEarnings, stats, updateStat, stopSession, endDay, RATE_PER_MINUTE, arsRate, setArsRate, isBreakActive, breakSeconds, startBreak, stopBreak, availSeconds, isEditingScoreboard, setIsEditingScoreboard, visibleCards, isNotesOpen, setIsNotesOpen, isToolbarVisible, setIsToolbarVisible, isHeatmapOpen, setIsHeatmapOpen, isZombieCall, isScoreboardHelpVisible, setIsScoreboardHelpVisible, isHold, setIsHold, holdSeconds, dailyTimeline, historyTimeline, dailyLog, lastActivityTime, isCallDetectionEnabled, setIsCallDetectionEnabled } = useSession();
 
   const helpStyle = isScoreboardHelpVisible ? { outline: '1px dashed #3b82f6', position: 'relative' } : {};
   const HelpLabel = ({ text }) => isScoreboardHelpVisible ? (
@@ -125,12 +125,12 @@ export const DashboardHeader = ({ onStartAudio, onStopAudio, onReconnectStream, 
   ) : null;
   const { outputDevices, inputDevices, selectedSinkId, selectedMicId, changeSinkId, changeMicId, fetchDevices } = useAudioSettings();
   const audioEngine = useProgressiveAudio();
-  const { initAudio, playChaChing, playCoinStack } = useRewardAudio();
+  const { playChaChing } = useRewardAudio();
 
   const [isCollapsed, setIsCollapsed] = useState(true);
-  const [celebration, setCelebration] = useState(null);
+  const [celebration, setCelebration] = useState(null); // Keep celebration for sound logic
   const [isTodayDialOpen, setIsTodayDialOpen] = useState(false);
-  const [displayBounty, setDisplayBounty] = useState(0);
+  const [displayBounty, setDisplayBounty] = useState(() => Math.max(0, Math.round(dailyGoal * RATE_PER_MINUTE * arsRate) - Math.round((stats.dailyMinutes + unbankedMins) * RATE_PER_MINUTE * arsRate)));
   const [isBountyAnimating, setIsBountyAnimating] = useState(false);
   const [timeEditMode, setTimeEditMode] = useState(null); // 'call' | 'break' | null
   const [scoreView, setScoreView] = useState('numbers'); // 'game' | 'numbers'
@@ -269,7 +269,6 @@ export const DashboardHeader = ({ onStartAudio, onStopAudio, onReconnectStream, 
   const year = now.getFullYear(), month = now.getMonth(), currentDay = now.getDate();
   const daysInMonth = new Date(year, month + 1, 0).getDate();
   const remainingDays = daysInMonth - currentDay + 1;
-  const remainingMinutes = Math.max(0, stats.goalMinutes - stats.monthlyMinutes);
   const minutesBeforeToday = Math.max(0, stats.monthlyMinutes - stats.dailyMinutes);
   const remainingMinutesFromStartOfDay = Math.max(0, stats.goalMinutes - minutesBeforeToday);
 
@@ -285,7 +284,7 @@ export const DashboardHeader = ({ onStartAudio, onStopAudio, onReconnectStream, 
   const totalOffCallMins = (stats.dailyAvailMinutes || 0) + (stats.dailyBreakMinutes || 0) + (availSeconds / 60) + (breakSeconds / 60);
 
   // CATCH-UP LOGIC: Dynamic shifts and SUCCESS ZONES
-  const WORKDAY_START = 9, CORE_END = 18, ABSOLUTE_END = 23;
+  const WORKDAY_START = 9, ABSOLUTE_END = 23;
   const currentTime = now.getHours() + (now.getMinutes() / 60);
   const totalWorkdayHours = ABSOLUTE_END - WORKDAY_START; // 14h total
   const timeElapsedRatio = Math.min(1, Math.max(0, (currentTime - WORKDAY_START) / totalWorkdayHours));
@@ -299,7 +298,6 @@ export const DashboardHeader = ({ onStartAudio, onStopAudio, onReconnectStream, 
 
   // Condensed View metrics
   const liveDailyArs = Math.round(totalDailyMins * RATE_PER_MINUTE * arsRate);
-  const dailyArs = Math.round(stats.dailyMinutes * RATE_PER_MINUTE * arsRate);
   const dailyTargetArs = Math.round(dailyGoal * RATE_PER_MINUTE * arsRate);
   const monthlyArs = Math.round(stats.monthlyMinutes * RATE_PER_MINUTE * arsRate);
   const monthlyTargetArs = Math.round(stats.goalMinutes * RATE_PER_MINUTE * arsRate);
@@ -314,39 +312,28 @@ export const DashboardHeader = ({ onStartAudio, onStopAudio, onReconnectStream, 
       }, 500); 
       return () => clearTimeout(timer);
     }
-  }, [currentBounty]);
+  }, [currentBounty, displayBounty]);
 
-  // Initialize bounty on load
-  useEffect(() => {
-    setDisplayBounty(currentBounty);
-  }, []);
+  // Initialize bounty on load removed (now in useState init)
 
-  const morningLeft = Math.max(0, 13 - currentTime);
-  const afternoonLeft = Math.max(0, 17 - Math.max(13, currentTime));
-  const eveningLeft = Math.max(0, 23 - Math.max(17, currentTime));
 
   let hoursLeftToAbsolute = Math.max(0, ABSOLUTE_END - currentTime);
   
   // Estimated workable mins from now
   const workableMinsRemaining = hoursLeftToAbsolute * 35;
-  const workableHoursRemaining = workableMinsRemaining / 60;
   
   const realisticMaxToday = stats.dailyMinutes + workableMinsRemaining;
   
   const remainingWorkdaysThisMonth = Math.max(0, remainingDays - 1);
   const monthlyMaxMins = stats.monthlyMinutes + workableMinsRemaining + (remainingWorkdaysThisMonth * 14 * 35);
   const monthlyRemainingCashVal = Math.round((workableMinsRemaining + remainingWorkdaysThisMonth * 14 * 35) * RATE_PER_MINUTE * arsRate);
-  const monthlyRemainingCash = monthlyRemainingCashVal.toLocaleString('es-AR');
-  const dailyMaxArs = Math.round(realisticMaxToday * RATE_PER_MINUTE * arsRate).toLocaleString('es-AR');
   const monthlyMaxArs = Math.round(monthlyMaxMins * RATE_PER_MINUTE * arsRate).toLocaleString('es-AR');
   const actualDailyAverage = currentDay > 0 ? (stats.monthlyMinutes / currentDay) : 0;
-  const workableArsRemaining = Math.round(workableMinsRemaining * RATE_PER_MINUTE * arsRate);
   
   const monthElapsedRatio = currentDay / daysInMonth;
   const isMonthlyGoalMet = stats.monthlyMinutes >= stats.goalMinutes;
   const monthlyProgressRatio = stats.goalMinutes > 0 ? Math.min(1, stats.monthlyMinutes / stats.goalMinutes) : 0;
   const monthlyPendingRatio = stats.goalMinutes > 0 ? Math.min(1, (stats.monthlyMinutes + unbankedMins) / stats.goalMinutes) : 0;
-  const isDailyGoalMet = stats.dailyMinutes >= dailyGoal;
 
   const getCompensatedLogOff = () => {
     if (!stats.dayStartTime) return '18:00';
@@ -362,7 +349,6 @@ export const DashboardHeader = ({ onStartAudio, onStopAudio, onReconnectStream, 
     return compensatedTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false });
   };
 
-  const shiftStartStr = stats.dayStartTime ? new Date(stats.dayStartTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false }) : '--:--';
   const shiftElapsedMins = stats.dayStartTime ? Math.max(0, (Date.now() - stats.dayStartTime) / 60000) : 0;
   const breakLimit = 90;
   const breakUsed = stats.dailyBreakMinutes || 0;
@@ -376,7 +362,6 @@ export const DashboardHeader = ({ onStartAudio, onStopAudio, onReconnectStream, 
   };
 
   // SIMPLIFIED 12-STEP ENGINE (5500m floor based)
-  const FLOOR = 5500;
   const WEEK_STEP = 1375; // 5500 / 4
   
   const milestones = React.useMemo(() => {
@@ -392,7 +377,6 @@ export const DashboardHeader = ({ onStartAudio, onStopAudio, onReconnectStream, 
   const nextMilestone = milestones.find(m => m > stats.monthlyMinutes) || milestones[milestones.length - 1];
   const currentIdx = milestones.indexOf(nextMilestone);
   const nextGoalLabel = milestoneLabels[currentIdx];
-  const isAllGoalsMet = stats.monthlyMinutes >= milestones[11];
 
   const HARD_CUTOFF_HOUR = 24; 
   const currentHour = new Date().getHours();
@@ -429,18 +413,13 @@ export const DashboardHeader = ({ onStartAudio, onStopAudio, onReconnectStream, 
   const isInDeficit = monthlyDeficitMins > 30;
   // Per-day needed to reach Growth (11k) by month end
   const recoveryDailyTarget = Math.min(600, remainingWorkDays > 0 ? Math.ceil(Math.max(0, GROWTH_TARGET - stats.monthlyMinutes) / remainingWorkDays) : baseYield);
-  const survivalDailyTarget = Math.min(600, remainingWorkDays > 0 ? Math.ceil(Math.max(0, 5500 - stats.monthlyMinutes) / remainingWorkDays) : baseYield);
-
-  // ── SMART METRICS ────────────────────────────────────────────────
-  // Use TOTAL (banked + live) so everything updates tick-by-tick during a call
-  const totalDailyMinsLive = stats.dailyMinutes + unbankedMins;
 
   // PACE ETA: predicts when you'll hit today's goal at current earned rate
   const pacePrediction = (() => {
-    const remaining = Math.max(0, dailyGoal - totalDailyMinsLive);
+    const remaining = Math.max(0, dailyGoal - totalDailyMins);
     if (remaining <= 0) return { label: '✅ Done!', color: '#10b981', detail: null };
-    if (totalDailyMinsLive < 5 || shiftElapsedMins < 10) return { label: '–', color: 'var(--text-muted)', detail: 'Warming up...' };
-    const ratePerShiftMin = totalDailyMinsLive / shiftElapsedMins; // live rate
+    if (totalDailyMins < 5 || shiftElapsedMins < 10) return { label: '–', color: 'var(--text-muted)', detail: 'Warming up...' };
+    const ratePerShiftMin = totalDailyMins / shiftElapsedMins; // live rate
     if (ratePerShiftMin <= 0) return { label: '–', color: 'var(--text-muted)', detail: null };
     const minsToGoal = remaining / ratePerShiftMin;
     const goalTime = new Date(Date.now() + minsToGoal * 60000);
@@ -456,13 +435,13 @@ export const DashboardHeader = ({ onStartAudio, onStopAudio, onReconnectStream, 
   })();
 
   // QUALITY: late-start aware pacing score (uses live mins)
-  const maxEarnableToday = totalDailyMinsLive + (availableWindowMins * 0.58);
+  const maxEarnableToday = totalDailyMins + (availableWindowMins * 0.58);
   const qualityScore = (() => {
     if (shiftElapsedMins < 5 || dailyGoal <= 0) return null;
     const sessionWindowMins = shiftElapsedMins + availableWindowMins;
     const idealNow = Math.min(dailyGoal, dailyGoal * (shiftElapsedMins / Math.max(sessionWindowMins, 30)));
     if (idealNow <= 0) return null;
-    const pct = Math.round((totalDailyMinsLive / idealNow) * 100);
+    const pct = Math.round((totalDailyMins / idealNow) * 100);
     const capped = Math.min(150, pct);
     let color = '#ef4444';
     if (capped >= 100) color = '#10b981';
@@ -476,16 +455,15 @@ export const DashboardHeader = ({ onStartAudio, onStopAudio, onReconnectStream, 
 
   // STREAK: past days + live "today on track" indicator
   const streak = stats.streak || 0;
-  const todayOnTrack = dailyGoal > 0 && totalDailyMinsLive >= dailyGoal;
+  const todayOnTrack = dailyGoal > 0 && totalDailyMins >= dailyGoal;
 
   // CALL RATE, EFFECTIVE RATE
   const callsToday = stats.callsToday || 0;
-  const avgCallMins = callsToday > 0 ? Math.round(totalDailyMinsLive / Math.max(callsToday, 1)) : 0;
+  const avgCallMins = callsToday > 0 ? Math.round(totalDailyMins / Math.max(callsToday, 1)) : 0;
   const effectiveRateArsHr = shiftElapsedMins > 10
     ? Math.round((liveDailyArs / shiftElapsedMins) * 60)
     : null;
 
-  const copyValue = (v) => navigator.clipboard.writeText(String(v).replace(/[^\d]/g, ''));
 
   return (
     <header className="dashboard-header glass-panel" style={{ position: 'relative', zIndex: 100 }}>
@@ -1029,7 +1007,7 @@ ${isInDeficit ? `⚠️ DEFICIT: Behind pace by ${Math.round(monthlyDeficitMins)
                       <MiniDayTimeline 
                         dateStr={dStr} 
                         currentTimeline={isToday ? dailyTimeline : null}
-                        dailyMins={isToday ? totalDailyMinsLive : (dailyLog[dStr] || 0)}
+                        dailyMins={isToday ? totalDailyMins : (dailyLog[dStr] || 0)}
                         goalMins={dailyGoal}
                       />
                     </div>
@@ -1086,7 +1064,7 @@ ${isInDeficit ? `⚠️ DEFICIT: Behind pace by ${Math.round(monthlyDeficitMins)
                         <MiniDayTimeline 
                            dateStr={dStr} 
                            currentTimeline={isToday ? dailyTimeline : null}
-                           dailyMins={isToday ? totalDailyMinsLive : (dailyLog[dStr] || 0)}
+                           dailyMins={isToday ? totalDailyMins : (dailyLog[dStr] || 0)}
                            goalMins={dailyGoal}
                         />
                      </div>
@@ -1283,6 +1261,12 @@ ${isInDeficit ? `⚠️ DEFICIT: Behind pace by ${Math.round(monthlyDeficitMins)
 
       {/* TIME EDIT MODAL */}
       {timeEditMode && <TimeEditModal mode={timeEditMode} onClose={() => setTimeEditMode(null)} />}
+      {celebration && (
+        <CelebrationParticles 
+          {...celebration} 
+          onDismiss={() => setCelebration(null)} 
+        />
+      )}
     </header>
   );
 };

@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useSession } from '../contexts/SessionContext';
 import { useProgressiveAudio } from '../hooks/useProgressiveAudio';
 
@@ -8,10 +8,9 @@ import { useProgressiveAudio } from '../hooks/useProgressiveAudio';
  * for a sustained period while the session is active.
  */
 export const SilenceGuardian = ({ lastDataTime }) => {
-  const { isActive, lastActivityTime, updateActivity, stopSession, startBreak, isHold, holdSeconds } = useSession();
+  const { isActive, lastActivityTime, stopSession, startBreak, isHold, holdSeconds } = useSession();
   const audioEngine = useProgressiveAudio();
   const [showWarning, setShowWarning] = useState(false);
-  const [showHoldWarning, setShowHoldWarning] = useState(false);
   const [lastAlertTime, setLastAlertTime] = useState(0);
   const [alertedLevels, setAlertedLevels] = useState({ 1: false, 2: false, 3: false });
   const [promptCount, setPromptCount] = useState(0);
@@ -19,7 +18,6 @@ export const SilenceGuardian = ({ lastDataTime }) => {
   useEffect(() => {
     if (!isActive) {
       setShowWarning(false);
-      setShowHoldWarning(false);
       setAlertedLevels({ 1: false, 2: false, 3: false });
       setPromptCount(0);
       return;
@@ -29,12 +27,7 @@ export const SilenceGuardian = ({ lastDataTime }) => {
       const now = Date.now();
       const silenceSecs = (now - lastActivityTime) / 1000;
       
-      // HOLD WARNING: Prompt after 15m (900s) on Hold
-      if (isHold && holdSeconds >= 900) {
-        setShowHoldWarning(true);
-      } else {
-        setShowHoldWarning(false);
-      }
+      // HOLD WARNING logic removed (unused showHoldWarning)
 
       // BYPASS: If on hold, do not play intrusive alerts or auto-disconnect
       if (isHold) {
@@ -90,7 +83,7 @@ export const SilenceGuardian = ({ lastDataTime }) => {
 
     const iv = setInterval(checkSilence, 5000);
     return () => clearInterval(iv);
-  }, [isActive, lastActivityTime, lastAlertTime, showWarning, alertedLevels, audioEngine]);
+  }, [isActive, lastActivityTime, lastAlertTime, showWarning, alertedLevels, audioEngine, isHold, holdSeconds, promptCount, startBreak, stopSession]);
 
   return null;
 };

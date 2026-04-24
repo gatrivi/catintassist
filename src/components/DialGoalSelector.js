@@ -61,7 +61,6 @@ export const DialGoalSelector = ({ ratePerMinute, arsRate, setArsRate, initialGo
   
   const dailyHours = Math.floor(dailyMins / 60);
   const dailyMinsRem = dailyMins % 60;
-  const dailyCash = dailyMins * ratePerMinute * arsRate;
   const monthlyCash = monthlyMins * ratePerMinute * arsRate;
 
   const ladderStep = Math.min(12, Math.max(1, Math.floor(monthlyMins / 1375) + (monthlyMins % 1375 > 1300 ? 1 : 0) || 1));
@@ -149,7 +148,6 @@ export const DialGoalSelector = ({ ratePerMinute, arsRate, setArsRate, initialGo
             const rDailyCash = rDailyMins * ratePerMinute * arsRate;
             const rMonthCash = rMonthMins * ratePerMinute * arsRate;
             
-            const rStep = Math.min(12, Math.floor(rMonthMins / 1375) + (rMonthMins % 1375 > 1300 ? 1 : 0) || 1);
             const isFloor = rMonthMins >= 5500 && rMonthMins < 5600; // Close enough to 5500
             const isGrowth = rMonthMins >= 11000 && rMonthMins < 11100;
             const isLegend = rMonthMins >= 16500 && rMonthMins < 16600;

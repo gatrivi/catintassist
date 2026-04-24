@@ -41,7 +41,7 @@ const InteractiveText = ({ text }) => {
   if (!text) return null;
   // GROUP PHONE NUMBERS: If we see 9 or 10 digits read out singly (with spaces), join them.
   // This version is a robust one-liner that matches 9 or 10 digits with optional spaces.
-  const groupedDigits = text.replace(/\b(\d[\s.,\-:]*){9,12}\b/g, (m) => m.replace(/[\s.,\-:]+/g, ''));
+  const groupedDigits = text.replace(/\b(\d[\s.,-:]*){9,12}\b/g, (m) => m.replace(/[\s.,-:]+/g, ''));
   const processedText = convertNumberWords(groupedDigits);
   
   // NYC ZIP REPAIR: In NYC, people often say "one hundred thirty four" for 10034.
@@ -53,7 +53,7 @@ const InteractiveText = ({ text }) => {
 
   // NÚMEROS MÁGICOS: Detectamos números de teléfono, años y códigos.
   // Los resaltamos para que puedas copiarlos rápido si haces clic.
-  const numRegex = /(\+?\(?\d{1,4}?\)?[\s.\-]?\(?\d{2,4}?\)?[\s.\-]?\d{3,4}[\s.\-]?\d{3,4}|\b\d+[\d.,/\\\-]*\b)/g;
+  const numRegex = /(\+?\(?\d{1,4}?\)?[\s.-]?\(?\d{2,4}?\)?[\s.-]?\d{3,4}[\s.-]?\d{3,4}|\b\d+[\d.,/\\-]*\b)/g;
 
   const parts = repairedText.split(numRegex);
 
@@ -127,7 +127,7 @@ const StatusProgress = ({ status }) => {
 
 const TranslatedBubble = ({ id, text, lang, playTTS, stopTTS, playingUrl, prefetchTTS, reverse = false, ttsMode, wordCount, turnWordCount, shouldPrefetch, emphasisMode, isPinned, onTogglePin, isRedundantCount }) => {
   const { translationMood } = useSession();
-  const { translation, audioUrl, isTranslating, engineStatus, targetLang } = useTranslate(text, lang, prefetchTTS, shouldPrefetch, translationMood);
+  const { translation, audioUrl, engineStatus, targetLang } = useTranslate(text, lang, prefetchTTS, shouldPrefetch, translationMood);
   const hasAutoPlayedRef = useRef(false);
 
   useEffect(() => {
@@ -248,7 +248,7 @@ const CoinRain = ({ isActive, onCollect }) => {
         if (cleanupRef.current) clearTimeout(cleanupRef.current);
       };
     }
-  }, [isActive]);
+  }, [isActive, onCollect, playChaChing]);
 
   return (
     <div id="coin-rain-overlay" style={{ position: 'absolute', inset: 0, pointerEvents: 'none', zIndex: 0, overflow: 'hidden' }}>
@@ -443,7 +443,7 @@ export const TranscriptionBoard = ({ captions, onClearAll, onReconnect, lastData
   const { playTTS, stopTTS, isPlaying, playingUrl, prefetchTTS } = useTTS();
   const { playWarningPing } = useProgressiveAudio();
   const { playChaChing } = useRewardAudio();
-  const { isEditingScoreboard, visibleCards, toggleCard, isActive, isBreakActive, isToolbarVisible, stats, dailyGoal, isZombieCall, startSession, clearZombieState } = useSession();
+  const { isEditingScoreboard, visibleCards, toggleCard, isActive, isBreakActive, isToolbarVisible, stats, dailyGoal } = useSession();
   const warnedBubblesRef = useRef(new Set());
   
   const [popover, setPopover] = useState({ show: false, x: 0, y: 0, text: '' });

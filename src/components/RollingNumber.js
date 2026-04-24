@@ -6,7 +6,6 @@ import React, { useEffect, useState, useRef } from 'react';
  * Inspired by mechanical counters and early iPhone aesthetics.
  */
 const RollingDigit = ({ digit, height = 24, speed = 1.5 }) => {
-  const [targetDigit, setTargetDigit] = useState(0);
   const [displayOffset, setDisplayOffset] = useState(0);
   const prevDigitRef = useRef(0);
   const isNumber = !isNaN(parseInt(digit));
@@ -21,7 +20,6 @@ const RollingDigit = ({ digit, height = 24, speed = 1.5 }) => {
       
       setDisplayOffset(prev => prev + (diff * height));
       prevDigitRef.current = newDigit;
-      setTargetDigit(newDigit);
     }
   }, [digit, height, isNumber]);
 
