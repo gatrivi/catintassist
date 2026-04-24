@@ -90,7 +90,7 @@ const removeOverlap = (base, addition) => {
 };
 
 export const useDeepgram = () => {
-  const { updateActivity, isCallDetectionEnabled } = useSession();
+  const { updateActivity, isCallDetectionEnabled, requestHoldIntent } = useSession();
   const [captions, setCaptions] = useState([]);
   const captionsRef = useRef([]); // Critical sync for deduplication
   
@@ -179,6 +179,18 @@ export const useDeepgram = () => {
           setLastDataTime(Date.now());
         }
 
+        // SMART HOLD PHRASE DETECTION
+        const lowTrans = transcript.toLowerCase();
+        if (lowTrans.includes('stay on the line') || 
+            lowTrans.includes('please hold') || 
+            lowTrans.includes('hold please') || 
+            lowTrans.includes('put you on hold') || 
+            lowTrans.includes('one moment') || 
+            lowTrans.includes('one minute') || 
+            (lowTrans.includes('hold') && lowTrans.includes('interpreter'))) {
+          requestHoldIntent();
+        }
+
         const now = Date.now();
         const timeSinceLast = now - lastTranscriptTimeRef.current;
         lastTranscriptTimeRef.current = now;
@@ -258,7 +270,7 @@ export const useDeepgram = () => {
 
     socketRefEn.current = createSocket('en');
     socketRefEs.current = createSocket('es');
-  }, [isCallDetectionEnabled, updateActivity, updateCaptionsState]);
+  }, [isCallDetectionEnabled, updateActivity, updateCaptionsState, requestHoldIntent]);
 
   const startRecording = async () => {
     try {

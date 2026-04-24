@@ -60,7 +60,10 @@ export const SessionProvider = ({ children }) => {
   const [isHold, setIsHold] = useState(() => JSON.parse(localStorage.getItem('catint_hold')) || false);
   const [holdSeconds, setHoldSeconds] = useState(() => Number(localStorage.getItem('catint_hold_sec')) || 0);
 
+  const [holdIntentAt, setHoldIntentAt] = useState(0);
+
   const updateActivity = () => setLastActivityTime(Date.now());
+  const requestHoldIntent = () => setHoldIntentAt(Date.now());
 
   const recordTimelineEvent = useCallback((type) => {
     const now = Date.now();
@@ -408,6 +411,17 @@ export const SessionProvider = ({ children }) => {
     if (isActive) {
       timerRef.current = setInterval(() => {
         setSessionSeconds(prev => prev + 1);
+
+        // SMART HOLD AUTO-TRIGGER
+        // If a hold phrase was recently detected (<30s) and there's silence (>3s), auto-activate hold
+        const silenceSecs = (Date.now() - lastActivityTime) / 1000;
+        const wasHoldRequestedRecently = (Date.now() - holdIntentAt) < 30000;
+        
+        if (!isHold && wasHoldRequestedRecently && silenceSecs >= 3) {
+          setIsHold(true);
+          // Reset intent so it doesn't trigger again immediately if they speak and stop
+          setHoldIntentAt(0); 
+        }
       }, 1000);
     } else {
       if (timerRef.current) clearInterval(timerRef.current);
@@ -415,7 +429,7 @@ export const SessionProvider = ({ children }) => {
     return () => {
       if (timerRef.current) clearInterval(timerRef.current);
     };
-  }, [isActive]);
+  }, [isActive, lastActivityTime, holdIntentAt, isHold]);
 
   const breakTimerRef = useRef(null);
   useEffect(() => {
@@ -547,6 +561,7 @@ export const SessionProvider = ({ children }) => {
     setIsScoreboardHelpVisible,
     isCallDetectionEnabled,
     setIsCallDetectionEnabled,
+    requestHoldIntent,
     getCompensatedLogOff,
     minutesSinceLastBreak,
     historyTimeline,
