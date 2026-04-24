@@ -12,6 +12,13 @@ const normalize = (s) =>
 const hallucinationGuard = (text) => {
   if (!text) return text;
   const words = text.trim().split(/\s+/);
+  
+  // Noise filtering: skip isolated "bueno", "um", etc.
+  if (words.length === 1) {
+    const w = words[0].toLowerCase();
+    if (w === 'bueno' || w === 'um' || w === 'eh' || w === 'uh' || w === 'ah') return '';
+  }
+  
   if (words.length < 2) return text;
 
   let cleaned = [];
@@ -44,17 +51,18 @@ const removeOverlap = (base, addition) => {
   const normBase = normalize(base);
   const normAddition = normalize(addition);
 
-  // 1. EXACT GLOBAL CHECK
+  // 1. EXACT SUBSET CHECK
   if (normBase.includes(normAddition)) return '';
-
+  
+  // 2. WORD-WALK DEDUPLICATION (The "Toddler" logic: check if start of addition matches end of history)
   const bWords = base.trim().split(/\s+/).map(normalize);
   const aWords = addition.trim().split(/\s+/).map(normalize);
   const aWordsRaw = addition.trim().split(/\s+/);
-
-  // 2. WORD-WALK (Find the longest prefix of A that is a suffix of B)
+  
   let bestOverlap = 0;
   const maxCheck = Math.min(aWords.length, bWords.length, 50);
 
+  // We look for the longest possible overlap of words
   for (let i = 1; i <= maxCheck; i++) {
     const aPrefix = aWords.slice(0, i).join('');
     const bSuffix = bWords.slice(-i).join('');
@@ -65,6 +73,7 @@ const removeOverlap = (base, addition) => {
 
   return aWordsRaw.slice(bestOverlap).join(' ');
 };
+
 
 export const useDeepgram = () => {
   const { updateActivity, isCallDetectionEnabled, requestHoldIntent } = useSession();
@@ -178,34 +187,40 @@ export const useDeepgram = () => {
         updateCaptionsState(prev => {
           let last = prev[prev.length - 1];
           const lastText = (lang === 'en' ? last?.enFull : last?.esFull) || '';
-          const lastWordCount = lastText.split(/\s+/).filter(Boolean).length;
+          const lastWords = lastText.trim().split(/\s+/).filter(Boolean);
+          const lastWordCount = lastWords.length;
           
-          const hasSentenceEnd = /[.!?]/.test(lastText);
+          // Only split on punctuation if it's at the very end of the text (prevents splits on "Okay. So...")
+          const hasSentenceEnd = /[.!?]\s*$/.test(lastText); 
           const isNewTurn = isSilentBreak || !last || (lastWordCount >= 10 && hasSentenceEnd) || lastWordCount >= 80;
 
           if (isNewTurn) {
-            if (last) turnWordCountRef.current += lastWordCount;
-            if (isSilentBreak || !last) turnWordCountRef.current = 0;
-            
-            last = {
-              id: `${Date.now()}-${++bubbleIdCounterRef.current}`,
-              enFinalized: '', enInterim: '', esFinalized: '', esInterim: '',
-              turnWordCount: turnWordCountRef.current,
-              isSplit: !isSilentBreak
-            };
-            prev = [...prev, last];
+            // Only finalize if we haven't already created a bubble for this exact moment (debounce)
+            const lastCreationTime = last ? parseInt(last.id.split('-')[0]) : 0;
+            if (now - lastCreationTime < 400 && !isSilentBreak) {
+              // Skip redundant split
+            } else {
+              if (last) turnWordCountRef.current += lastWordCount;
+              if (isSilentBreak || !last) turnWordCountRef.current = 0;
+              
+              last = {
+                id: `${Date.now()}-${++bubbleIdCounterRef.current}`,
+                enFinalized: '', enInterim: '', esFinalized: '', esInterim: '',
+                turnWordCount: turnWordCountRef.current,
+                isSplit: !isSilentBreak
+              };
+              prev = [...prev, last];
+            }
           }
 
           const current = { ...last };
-          // CORRECTED SLICE: prev.slice(-5) includes the most recent bubble. 
-          // prev.slice(-5, -1) was skipping the immediate history!
-          // UNIFIED HISTORY: Deduplicate against what was actually shown to the user (c.text)
-          // instead of isolated language buckets. This prevents cross-socket duplicates.
-          const historyText = prev.slice(-5).map(c => c.text || '').join(' ');
+          // AGGRESSIVE DEDUPLICATION: Look at the last 3 bubbles for any overlap
+          const historyText = prev.slice(-4, -1).map(c => c.text || '').join(' ');
           const currentFinalized = (lang === 'en' ? current.enFinalized : current.esFinalized) || '';
           const baseContext = (historyText + ' ' + currentFinalized).trim();
 
           const cleaned = removeOverlap(baseContext, transcript);
+          if (!cleaned.trim() && !isFinal) return prev; // Ignore empty interim updates
 
           if (isFinal) {
             if (lang === 'en') {
@@ -216,7 +231,6 @@ export const useDeepgram = () => {
               current.esInterim = '';
             }
           } else {
-            // Also clean interim results to prevent UI stutters
             if (lang === 'en') current.enInterim = cleaned;
             else current.esInterim = cleaned;
           }
@@ -239,7 +253,9 @@ export const useDeepgram = () => {
           current.enFull = enFull;
           current.esFull = esFull;
           current.isFinal = isFinal;
-          current.turnWordCount = turnWordCountRef.current + current.text.split(/\s+/).filter(Boolean).length;
+          // Important: Recalculate word count precisely
+          const currentWords = current.text.split(/\s+/).filter(Boolean).length;
+          current.turnWordCount = turnWordCountRef.current + currentWords;
 
           const newArr = [...prev];
           newArr[newArr.length - 1] = current;
