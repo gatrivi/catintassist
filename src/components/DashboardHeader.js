@@ -284,6 +284,7 @@ export const DashboardHeader = ({ onStartAudio, onStopAudio, onReconnectStream, 
   
   const unbankedMins = isActive ? (sessionSeconds / 60) : 0;
   const totalDailyMins = stats.dailyMinutes + unbankedMins;
+  const liveBreakMins = (stats.dailyBreakMinutes || 0) + (breakSeconds / 60);
   const totalOffCallMins = (stats.dailyAvailMinutes || 0) + (stats.dailyBreakMinutes || 0) + (availSeconds / 60) + (breakSeconds / 60);
 
   // CATCH-UP LOGIC: Dynamic shifts and SUCCESS ZONES
@@ -606,8 +607,8 @@ export const DashboardHeader = ({ onStartAudio, onStopAudio, onReconnectStream, 
                 {/* 6. Stamina Ratio (On-Call vs Break) */}
                 <div className={`metric-cell ${isEditingScoreboard ? 'grid-edit-mode' : ''}`} title="STAMINA RATIO: Your on-call minutes divided by break minutes. Target is 5.3x (8h on / 90m off)." style={{ position: 'relative', background: 'rgba(168,85,247,0.04)' }}>
                   <HelpLabel text="6. STAMINA RATIO" />
-                  <div className="metric-cell-val" style={{ color: (totalDailyMins / Math.max(1, stats.dailyBreakMinutes)) >= 5.3 ? '#c084fc' : '#9ca3af' }}>
-                    {(totalDailyMins / Math.max(1, stats.dailyBreakMinutes)).toFixed(1)}x
+                  <div className="metric-cell-val" style={{ color: (totalDailyMins / Math.max(0.1, liveBreakMins)) >= 5.3 ? '#c084fc' : '#9ca3af' }}>
+                    {(totalDailyMins / Math.max(0.1, liveBreakMins)).toFixed(1)}x
                   </div>
                   <div className="metric-cell-label">STAMINA RATIO</div>
                 </div>
