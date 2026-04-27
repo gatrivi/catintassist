@@ -41,27 +41,55 @@ const DataRow = ({ value, maxValue, label, sublabel, isEditing, helpLabel, class
   );
 };
 
-// ─── MomentumDelta ──────────────────────────────────────────────────────────
-const MomentumDelta = ({ totalDailyMins, dailyGoal, shiftElapsedMins }) => {
-  const idealNow = shiftElapsedMins > 0 && dailyGoal > 0
-    ? Math.min(dailyGoal, dailyGoal * (shiftElapsedMins / Math.max(shiftElapsedMins + 60, 60)))
-    : 0;
+// ─── PacingModule ─────────────────────────────────────────────────────────────
+const calculateExpectedMinutes = (dailyGoal) => {
+  const now = new Date();
+  const start = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 9, 0, 0); // 09:00
+  const end = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 18, 0, 0); // 18:00
   
-  const diff = Math.round(totalDailyMins - idealNow);
+  if (now < start) return 0;
+  if (now > end) return dailyGoal;
+  
+  const totalMs = end - start;
+  const elapsedMs = now - start;
+  return (elapsedMs / totalMs) * dailyGoal;
+};
+
+const PacingModule = ({ currentDaily, dailyGoal, currentMonthly, monthlyGoal }) => {
+  const expectedNow = calculateExpectedMinutes(dailyGoal);
+  const diff = Math.round(currentDaily - expectedNow);
   const diffColor = diff >= 0 ? 'var(--success)' : 'var(--danger)';
   const diffSign = diff >= 0 ? '+' : '';
 
+  const monthlyRemaining = monthlyGoal - currentMonthly;
+  const monthlyUrgency = monthlyGoal > 0 && monthlyRemaining < (monthlyGoal * 0.1);
+  const monthlyColor = monthlyUrgency ? '#fb923c' : 'var(--success)';
+
+  const renderMeter9 = (val, max, color) => {
+    const r = max > 0 ? Math.min(1, val / max) : 0;
+    const b = Math.floor(r * 9);
+    return <span style={{ color, letterSpacing: '-1px', opacity: 0.8 }}>{`[${'█'.repeat(b)}${'░'.repeat(9 - b)}]`}</span>;
+  };
+
   return (
     <div style={{ 
-      display: 'flex', justifyContent: 'space-between', alignItems: 'center', 
-      padding: '2px 6px', background: '#111', border: '1px solid #18181b',
+      display: 'flex', flexDirection: 'column', gap: '2px', 
+      padding: '4px', background: '#111', border: '1px solid #18181b',
       fontFamily: 'var(--font-mono)', fontSize: '0.6rem', margin: '2px 0'
     }}>
-      <span style={{ color: 'var(--text-muted)' }}>TARGET: {Math.round(idealNow)}m</span>
-      <span style={{ color: '#fff', fontWeight: 700 }}>
-        CURRENT: <ScrambleText value={Math.round(totalDailyMins)} />m 
-        <span style={{ color: diffColor, marginLeft: '6px' }}>({diffSign}{diff}m)</span>
-      </span>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        {renderMeter9(currentDaily, dailyGoal, 'var(--success)')}
+        <span style={{ color: 'var(--text-muted)' }}>
+          TODAY: <span style={{ color: '#fff', fontWeight: 700 }}><ScrambleText value={Math.round(currentDaily)} /> / {Math.round(dailyGoal)}m</span>
+          <span className="phosphor-glow" style={{ color: diffColor, marginLeft: '4px', fontWeight: 700 }}>({diffSign}{diff}m)</span>
+        </span>
+      </div>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        {renderMeter9(currentMonthly, monthlyGoal, monthlyColor)}
+        <span style={{ color: 'var(--text-muted)' }}>
+          MONTH: <span style={{ color: '#fff', fontWeight: 700 }}><ScrambleText value={Math.round(currentMonthly)} /> / {Math.round(monthlyGoal)}m</span>
+        </span>
+      </div>
     </div>
   );
 };
@@ -127,9 +155,9 @@ export const GameScoreboard = ({
               {isActive ? `> CLIMBING. ETA: ${pacePrediction?.label || '??:??'}` : `> SYSTEM_READY. CONNECT.`}
             </div>
 
-            <MomentumDelta
-              totalDailyMins={totalDailyMins} dailyGoal={dailyGoal}
-              shiftElapsedMins={shiftElapsedMins}
+            <PacingModule
+              currentDaily={totalDailyMins} dailyGoal={dailyGoal}
+              currentMonthly={stats.monthlyMinutes} monthlyGoal={stats.goalMinutes}
             />
 
             <DataRow
