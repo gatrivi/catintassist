@@ -313,7 +313,7 @@ export const useDeepgram = () => {
         startRecording();
       }
     }, 400);
-  }, [closeConnections, startDeepgram]);
+  }, [closeConnections, startDeepgram, startRecording]);
 
   const toggleLanguage = () => {
     setSttLanguage(prev => {

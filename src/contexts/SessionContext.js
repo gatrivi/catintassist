@@ -686,7 +686,8 @@ export const SessionProvider = ({ children }) => {
       const minutesBeforeToday = Math.max(0, stats.monthlyMinutes - stats.dailyMinutes);
       const remainingMinutesFromStartOfDay = Math.max(0, stats.goalMinutes - minutesBeforeToday);
       const requiredDailyAverage = remainingDays > 0 ? (remainingMinutesFromStartOfDay / remainingDays) : 0;
-      // Industry best practice: cap "Catch-up" targets at 600m (10h) to avoid burnout/impossibility
+      // Cap at 480m (8h) for realistic targets
+      return Math.min(480, Math.max(250, requiredDailyAverage));
     })(),
     captions,
     updateCaptions,

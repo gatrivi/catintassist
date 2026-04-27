@@ -1,212 +1,120 @@
 import React, { useState, useEffect } from 'react';
 import { RollingNumber } from './RollingNumber';
 
-// ─── EmojiRow ─────────────────────────────────────────────────────────────────
-// Renders fullCount full emojis + one partially-cropped emoji representing the
-// fractional remainder. Uses CSS clip-path on a wrapper for zero-DOM overhead.
-const EmojiRow = ({ emoji, emptyEmoji, value, unitValue, maxValue, color = '#fff', label, sublabel, warnThreshold = 0.3, title, className = "", markers = [], isEditing, helpLabel }) => {
-  const fullCount  = Math.floor(value / unitValue);
-  const fraction   = (value % unitValue) / unitValue; // 0–1
-  const maxCount   = Math.ceil(maxValue / unitValue);
-  const emptyCount = Math.max(0, maxCount - fullCount - (fraction > 0 ? 1 : 0));
+// ─── UTILITIES ───────────────────────────────────────────────────────────────
+const renderMeter = (value, maxValue, size = 12) => {
+  const ratio = maxValue > 0 ? Math.min(1, value / maxValue) : 0;
+  const blocks = Math.floor(ratio * size);
+  return `[${'█'.repeat(blocks)}${'░'.repeat(size - blocks)}]`;
+};
 
-  // Colour the row based on progress ratio
+// ─── DataRow (formerly EmojiRow) ─────────────────────────────────────────────
+const DataRow = ({ value, maxValue, label, sublabel, color = '#fff', isEditing, helpLabel, className = "" }) => {
   const ratio = maxValue > 0 ? value / maxValue : 0;
-  const rowColor = ratio >= 1 ? '#10b981'           // done – green
-                : ratio >= 0.7 ? '#34d399'          // near – light green
-                : ratio >= 0.4 ? '#fcd34d'          // mid  – amber
-                : ratio >= warnThreshold ? '#f97316'// low  – orange
-                : '#ef4444';                         // danger – red
+  const rowColor = ratio >= 1 ? 'var(--success)' 
+                : ratio >= 0.7 ? '#4ade80' 
+                : ratio >= 0.4 ? '#fbbf24' 
+                : '#ef4444';
 
   return (
-    <div title={title} className={`${className} ${isEditing ? 'grid-edit-mode' : ''}`} style={{ display: 'flex', flexDirection: 'column', gap: '0', position: 'relative', padding: isEditing ? '2px' : '0' }}>
+    <div className={`${className} ${isEditing ? 'grid-edit-mode' : ''}`} style={{ 
+      display: 'flex', flexDirection: 'column', gap: '2px', padding: '2px 0',
+      borderBottom: '1px solid #18181b', position: 'relative'
+    }}>
       {isEditing && <span className="edit-grid-label">{helpLabel}</span>}
-      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '1px', lineHeight: 1, alignItems: 'center', position: 'relative' }}>
-        <span style={{ fontSize: '0.48rem', color: 'rgba(255,255,255,0.25)', textTransform: 'uppercase', marginRight: '0.3rem', whiteSpace: 'nowrap', zIndex: 10 }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '0.7rem' }}>
+        <span style={{ color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
           {typeof label === 'string' ? label.split('   ')[0] : label}
         </span>
-
-        {/* Milestone Markers */}
-        {markers.map((m, i) => (
-          <div key={i} style={{
-            position: 'absolute', top: '-1px', bottom: '-1px',
-            left: `calc(${(m.value / (maxValue || 1)) * 100}% + 1.2rem)`, // Offset by label
-            width: '2px', background: m.color, zIndex: 5, opacity: 0.6,
-            borderRadius: '1px'
-          }} title={m.label} />
-        ))}
-
-        {/* Full emojis */}
-        {Array.from({ length: Math.min(fullCount, maxCount) }).map((_, i) => (
-          <span key={`f${i}`} style={{ fontSize: '1.1rem', filter: `drop-shadow(0 0 4px ${rowColor}88)` }} title={title}>
-            {emoji}
-          </span>
-        ))}
-
-        {/* Partial emoji */}
-        {fraction > 0.04 && fullCount < maxCount && (
-          <span title={title} style={{
-            display: 'inline-block',
-            overflow: 'hidden',
-            width:  `calc(${fraction} * 1.2rem)`, 
-            fontSize: '1.1rem',
-            lineHeight: 1,
-            whiteSpace: 'nowrap',
-            filter: `drop-shadow(0 0 3px ${rowColor}66)`,
-            opacity: 0.85
-          }}>
-            {emoji}
-          </span>
-        )}
-
-        {/* Ghost (empty) emojis */}
-        {Array.from({ length: Math.min(emptyCount, 30) }).map((_, i) => (
-          <span key={`e${i}`} style={{ fontSize: '1.1rem', opacity: 0.08 }} title={title}>
-            {emptyEmoji || emoji}
-          </span>
-        ))}
-
-        <span style={{ marginLeft: 'auto', color: rowColor, fontWeight: 800, fontSize: '0.65rem', animation: ratio >= 1 ? 'pulseWarning 2s infinite' : 'none' }}>{sublabel}</span>
+        <span className="phosphor-glow" style={{ color: rowColor, fontWeight: 800 }}>{sublabel}</span>
       </div>
-      <div style={{ fontSize: '0.45rem', opacity: 0.3, letterSpacing: '0.04em', color: 'gray', marginTop: '-2px' }}>
-        {typeof label === 'string' ? (label.split('   ')[1] || '') : ''}
+      
+      <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontFamily: 'var(--font-mono)' }}>
+        <span style={{ color: rowColor, letterSpacing: '-1px', fontSize: '0.9rem' }}>
+          {renderMeter(value, maxValue)}
+        </span>
+        <div style={{ fontSize: '0.6rem', color: 'rgba(255,255,255,0.2)' }}>
+          {typeof label === 'string' ? (label.split('   ')[1] || '') : ''}
+        </div>
       </div>
     </div>
   );
 };
 
 // ─── DirectionalCue ──────────────────────────────────────────────────────────
-// Coaching-style cue: encouraging on mistakes, not discouraging.
 const COACHING_TIPS = [
-  'Each call is a rep. Stay consistent.',
-  'Pick up the next one. You got this.',
-  'Pace improves with reps. Keep going.',
-  'The log doesn\'t lie — every minute counts.',
-  'You\'re still in the game. Connect again.',
+  'REP CONSISTENCY IS KEY.',
+  'NEXT CALL IS A FRESH START.',
+  'PACE IMPROVES WITH VOLUME.',
+  'LOG DATA NEVER LIES.',
+  'SYSTEM READY. CONNECT.',
 ];
+
 const DirectionalCue = ({ pacePrediction, dailyGoal, totalDailyMins, breakLeft, qualityScore, cutoffWarning, isActive, isBreakActive }) => {
   const tip = COACHING_TIPS[Math.floor(Date.now() / 30000) % COACHING_TIPS.length];
-  if (cutoffWarning?.pulse) return (
-    <div style={{ color: '#ef4444', fontWeight: 900, fontSize: '0.7rem', animation: 'pulseWarning 1s infinite' }}>
-      🚨 DEADLINE NEAR — Work banks at 00:00. Log off soon to save streak!
-    </div>
-  );
-  const h = new Date().getHours();
-  const goalsMet = totalDailyMins >= (dailyGoal || 1);
-
-  if (goalsMet && h >= 18) return (
-    <div style={{ color: '#10b981', fontWeight: 800, fontSize: '0.7rem' }}>
-      🌙 Daily goal reached and it's late. Rest up and win tomorrow? 💎
-    </div>
-  );
-  if (goalsMet) return (
-    <div style={{ color: '#10b981', fontWeight: 800, fontSize: '0.7rem' }}>✅ Bounty secured — anything extra is pure profit 💎</div>
-  );
-  if (isActive) return (
-    <div style={{ color: '#2dd4bf', fontWeight: 700, fontSize: '0.7rem', animation: 'encouragePulse 2s infinite' }}>
-      ⬆️ Climbing — ETA {pacePrediction?.label || '?'}
-    </div>
-  );
-  if (isBreakActive) return (
-    <div style={{ color: '#fb923c', fontWeight: 700, fontSize: '0.7rem' }}>
-      ☕ Break. Return soon to keep the momentum.
-    </div>
-  );
-  if (qualityScore?.goalUnreachable) return (
-    <div style={{ color: '#f97316', fontWeight: 700, fontSize: '0.7rem' }}>🎯 Adapt to {qualityScore.suggestedGoal}m — still winnable. {tip}</div>
-  );
-  if (breakLeft <= 0) return (
-    <div style={{ color: '#f59e0b', fontWeight: 700, fontSize: '0.7rem' }}>⚠️ Break budget spent. Every idle minute costs. {tip}</div>
-  );
   
-  // SUPPORTIVE IDLE: Instead of "gap growing", we are "Standing By"
+  if (cutoffWarning?.pulse) return (
+    <div style={{ color: 'var(--danger)', fontWeight: 800, fontSize: '0.65rem' }}>
+      ! DEADLINE REACHED: LOG OFF SOON.
+    </div>
+  );
+
+  const goalsMet = totalDailyMins >= (dailyGoal || 1);
+  if (goalsMet) return (
+    <div style={{ color: 'var(--success)', fontWeight: 800, fontSize: '0.65rem' }}>
+      > GOAL SECURED. PROFIT MODE ACTIVE.
+    </div>
+  );
+
+  let statusText = `> ${tip}`;
+  let statusColor = 'var(--text-muted)';
+
+  if (isActive) {
+    statusText = `> CLIMBING. ETA: ${pacePrediction?.label || '??:??'}`;
+    statusColor = 'var(--success)';
+  } else if (isBreakActive) {
+    statusText = `> BREAK ACTIVE. REFRESHING...`;
+    statusColor = '#fb923c';
+  }
+
   return (
-    <div style={{ color: '#9dffed', fontWeight: 600, fontSize: '0.7rem' }}>
-      📡 Standing By — Ready for the next one. {tip}
+    <div style={{ color: statusColor, fontWeight: 600, fontSize: '0.65rem', fontFamily: 'var(--font-mono)' }}>
+      {statusText}
     </div>
   );
 };
 
-// ─── MomentumBar ─────────────────────────────────────────────────────────────
-// Shows pace as a horizontal bar: filled = where you are, ghost = where you should be.
-const MomentumBar = ({ totalDailyMins, dailyGoal, shiftElapsedMins, isActive, milestoneTargets }) => {
+// ─── MomentumDelta ──────────────────────────────────────────────────────────
+const MomentumDelta = ({ totalDailyMins, dailyGoal, shiftElapsedMins, isActive }) => {
   const idealNow = shiftElapsedMins > 0 && dailyGoal > 0
     ? Math.min(dailyGoal, dailyGoal * (shiftElapsedMins / Math.max(shiftElapsedMins + 60, 60)))
     : 0;
-  const actualRatio = dailyGoal > 0 ? Math.min(1, totalDailyMins / dailyGoal) : 0;
-  const idealRatio  = dailyGoal > 0 ? Math.min(1, idealNow / dailyGoal) : 0;
-  const deficit = idealRatio - actualRatio; // positive = behind
-  const barColor = isActive ? '#10b981' : deficit > 0.1 ? '#ef4444' : '#f59e0b';
-
-  // Milestone Ratios (where you should be for each benchmark)
-  const m5500Ratio = (dailyGoal > 0 && milestoneTargets) ? (milestoneTargets.m5500Ideal / dailyGoal) : 0;
-  const m480Ratio  = (dailyGoal > 0 && milestoneTargets) ? (milestoneTargets.m480Ideal / dailyGoal) : 0;
+  
+  const diff = Math.round(totalDailyMins - idealNow);
+  const diffColor = diff >= 0 ? 'var(--success)' : 'var(--danger)';
+  const diffSign = diff >= 0 ? '+' : '';
 
   return (
-    <div style={{ position: 'relative', height: '6px', background: 'rgba(0,0,0,0.4)', borderRadius: '3px', overflow: 'visible', margin: '0.1rem 0' }}>
-      {/* Ghost: where you should be for current goal */}
-      {idealRatio > 0 && (
-        <div style={{
-          position: 'absolute', left: 0, top: 0, bottom: 0,
-          width: `${Math.min(100, idealRatio * 100)}%`,
-          background: 'rgba(255,255,255,0.12)',
-          borderRadius: '3px',
-          transition: 'width 2s linear'
-        }} />
-      )}
-
-      {/* Milestone 1: 5500 Marker (Blue) */}
-      {m5500Ratio > 0 && (
-        <div style={{
-          position: 'absolute', top: '-2px', bottom: '-2px',
-          left: `calc(${Math.min(110, m5500Ratio * 100)}% - 1px)`,
-          width: '2px', background: '#3b82f6', borderRadius: '1px', opacity: 0.6,
-          zIndex: 10, transition: 'left 2s linear'
-        }} title={`5500m Benchmark: Where you should be for survival floor (${Math.round(milestoneTargets.m5500Ideal)}m)`} />
-      )}
-
-      {/* Milestone 2: 480 Marker (Gold) */}
-      {m480Ratio > 0 && (
-        <div style={{
-          position: 'absolute', top: '-2px', bottom: '-2px',
-          left: `calc(${Math.min(110, m480Ratio * 100)}% - 1px)`,
-          width: '2px', background: '#f59e0b', borderRadius: '1px', opacity: 0.6,
-          zIndex: 10, transition: 'left 2s linear'
-        }} title={`480m Benchmark: Where you should be for growth target (${Math.round(milestoneTargets.m480Ideal)}m)`} />
-      )}
-
-      {/* Actual progress */}
-      <div style={{
-        position: 'absolute', left: 0, top: 0, bottom: 0,
-        width: `${Math.min(100, actualRatio * 100)}%`,
-        background: barColor,
-        borderRadius: '3px',
-        boxShadow: isActive ? `0 0 8px ${barColor}` : 'none',
-        transition: 'width 1s ease-out, background 0.5s ease'
-      }} />
-      {/* Cursor: where you are */}
-      <div style={{
-        position: 'absolute', top: '-3px', bottom: '-3px',
-        left: `calc(${actualRatio * 100}% - 1px)`,
-        width: '2px',
-        background: '#fff',
-        borderRadius: '1px',
-        boxShadow: isActive ? '0 0 6px white' : 'none',
-        transition: 'left 1s ease-out',
-        zIndex: 20
-      }} />
+    <div style={{ 
+      display: 'flex', justifyContent: 'space-between', alignItems: 'center', 
+      padding: '4px 6px', background: '#18181b', border: '1px solid #27272a',
+      fontFamily: 'var(--font-mono)', fontSize: '0.65rem', margin: '4px 0'
+    }}>
+      <span style={{ color: 'var(--text-muted)' }}>TARGET: {Math.round(idealNow)}m</span>
+      <span style={{ color: '#fff', fontWeight: 700 }}>
+        CURRENT: {Math.round(totalDailyMins)}m 
+        <span style={{ color: diffColor, marginLeft: '6px' }}>({diffSign}{diff}m)</span>
+      </span>
     </div>
   );
 };
 
 // ─── GameScoreboard ───────────────────────────────────────────────────────────
-// Props mirror the computed values already in DashboardHeader.
 export const GameScoreboard = ({ 
-  liveDailyArs, dailyTargetArs, monthlyArs, monthlyTargetArs, stats, dailyGoal, totalDailyMins, totalOffCallMins, shiftElapsedMins,
-  pacePrediction, qualityScore, cutoffWarning, breakLeft, breakLimit, nextGoalLabel, nextMilestone, daysInMonth, currentDay, remainingDays, isActive, isBreakActive, onSwitchToNumbers, milestoneTargets,
+  liveDailyArs, dailyTargetArs, monthlyArs, monthlyTargetArs, stats, dailyGoal, totalDailyMins, shiftElapsedMins,
+  pacePrediction, qualityScore, cutoffWarning, breakLeft, breakLimit, remainingDays, isActive, isBreakActive, onSwitchToNumbers,
   isEditingScoreboard, getCompensatedLogOff
  }) => {
-  // Drift counter: how many seconds since last call ended (affects UI urgency)
   const [idleSecs, setIdleSecs] = useState(0);
   useEffect(() => {
     if (isActive || isBreakActive) { setIdleSecs(0); return; }
@@ -214,189 +122,127 @@ export const GameScoreboard = ({
     return () => clearInterval(iv);
   }, [isActive, isBreakActive]);
 
-  // Drift label: how far behind per minute of idling. Normalized to a standard 9h shift (540m).
-  const minsPerIdleMin = dailyGoal > 0 ? (dailyGoal / 540) : 0;
-  const driftLabel = idleSecs > 15 ? `−${((minsPerIdleMin * idleSecs) / 60).toFixed(1)}m` : null;
-  const [tab, setTab] = useState('day'); // 'day' | 'month'
-
-  // ── UNIT VALUES ─────────────────────────────────────────────────────────────
-  const ARS_UNIT    = 10000;  // 1 💰 = 10k ARS
-  const MIN_UNIT    = 30;     // 1 ⏱️ = 30 productive mins
-
-  // Computed Maxes
-  const dayArsMax   = Math.max(dailyTargetArs, liveDailyArs, ARS_UNIT);
-  const dayMinMax   = Math.max(dailyGoal, totalDailyMins, MIN_UNIT, milestoneTargets?.m5500Ideal || 0, milestoneTargets?.m480Ideal || 0);
-  const moArsMax    = Math.max(monthlyTargetArs, monthlyArs, ARS_UNIT);
-  const moMinMax    = Math.max(stats.goalMinutes, stats.monthlyMinutes, MIN_UNIT);
-
-  const dayArsPct   = dailyTargetArs > 0 ? Math.round((liveDailyArs  / dailyTargetArs)  * 100) : 0;
-  const dayMinPct   = dailyGoal      > 0 ? Math.round((totalDailyMins / dailyGoal)        * 100) : 0;
-  const moArsPct    = monthlyTargetArs > 0 ? Math.round((monthlyArs    / monthlyTargetArs) * 100) : 0;
-  const moMinPct    = stats.goalMinutes  > 0 ? Math.round((stats.monthlyMinutes / stats.goalMinutes) * 100) : 0;
+  const [tab, setTab] = useState('day'); 
+  
+  const dayArsPct = dailyTargetArs > 0 ? Math.round((liveDailyArs / dailyTargetArs) * 100) : 0;
+  const dayMinPct = dailyGoal > 0 ? Math.round((totalDailyMins / dailyGoal) * 100) : 0;
+  const moArsPct = monthlyTargetArs > 0 ? Math.round((monthlyArs / monthlyTargetArs) * 100) : 0;
+  const moMinPct = stats.goalMinutes > 0 ? Math.round((stats.monthlyMinutes / stats.goalMinutes) * 100) : 0;
 
   const hudState = isActive ? 'call' : isBreakActive ? 'break' : 'avail';
 
   return (
-    <div className="scoreboard-grid" data-state={hudState}>
+    <div className="scoreboard-grid" data-state={hudState} style={{ background: '#09090b', padding: '6px', borderRadius: 0, height: '100%', display: 'flex', flexDirection: 'column' }}>
       
-      {/* AREA: top-bar */}
-      <div style={{ gridArea: 'top-bar', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <div style={{ display: 'flex', gap: '0.2rem' }}>
+      {/* Top Navigation */}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid #27272a', paddingBottom: '4px', marginBottom: '4px' }}>
+        <div style={{ display: 'flex', gap: '4px' }}>
           {['day', 'month'].map(t => (
             <button key={t} onClick={() => setTab(t)} style={{
-              fontSize: '0.58rem', padding: '0.15rem 0.45rem', borderRadius: '4px',
-              border: tab === t ? '1px solid rgba(255,255,255,0.3)' : '1px solid rgba(255,255,255,0.08)',
-              background: tab === t ? 'rgba(255,255,255,0.1)' : 'transparent',
-              color: tab === t ? '#fff' : 'rgba(255,255,255,0.35)',
-              cursor: 'pointer', fontWeight: tab === t ? 700 : 400, textTransform: 'uppercase'
-            }}>{t === 'day' ? '☀️ Day' : '🗓️ Month'}</button>
+              fontSize: '0.55rem', padding: '2px 8px', borderRadius: 0,
+              border: tab === t ? '1px solid var(--accent-primary)' : '1px solid #27272a',
+              background: tab === t ? 'rgba(34, 197, 94, 0.1)' : 'transparent',
+              color: tab === t ? 'var(--accent-primary)' : 'var(--text-muted)',
+              cursor: 'pointer', fontWeight: 800, textTransform: 'uppercase', fontFamily: 'var(--font-mono)'
+            }}>{t}</button>
           ))}
         </div>
-        <button onClick={onSwitchToNumbers} style={{
-          fontSize: '0.52rem', padding: '0.1rem 0.35rem', borderRadius: '3px',
-          border: '1px solid rgba(255,255,255,0.1)', background: 'transparent',
-          color: 'rgba(255,255,255,0.25)', cursor: 'pointer'
-        }} title="Switch to number view">123</button>
+        <div style={{
+            fontSize: '0.6rem', fontWeight: 900, fontFamily: 'var(--font-mono)',
+            color: isActive ? 'var(--success)' : isBreakActive ? '#fb923c' : idleSecs > 15 ? 'var(--danger)' : 'var(--text-muted)',
+          }}>
+          {isActive ? '[CALL_LIVE]' : isBreakActive ? '[BREAK_MODE]' : idleSecs > 15 ? `[IDLE_${Math.floor(idleSecs / 60)}m]` : '[STANDBY]'}
+        </div>
       </div>
 
-      {/* AREA: main-status */}
-      <div style={{ gridArea: 'main-status', display: 'flex', flexDirection: 'column' }}>
-        <div style={{
-            display: 'flex', alignItems: 'center', gap: '0.4rem',
-            fontSize: '0.62rem', fontWeight: 900, letterSpacing: '0.06em',
-            color: isActive ? '#10b981' : isBreakActive ? '#fb923c' : idleSecs > 15 ? '#ef4444' : 'rgba(255,255,255,0.4)',
-            marginBottom: '0.1rem'
-          }}>
-          <span style={{ fontSize: '0.75rem' }}>
-            {isActive ? '⬆️' : isBreakActive ? '☕' : (idleSecs > 15 && !isActive) ? '⏳' : '📡'}
-          </span>
-          <span style={{ textShadow: isActive ? '0 0 10px #10b981' : 'none' }}>
-            {isActive ? 'ON CALL' : isBreakActive ? 'BREAK' : idleSecs > 15 ? `IDLE ${Math.floor(idleSecs / 60)}m` : 'STANDBY'}
-          </span>
-          {driftLabel && !isActive && !isBreakActive && (
-            <span style={{ marginLeft: 'auto', color: '#ef4444', fontWeight: 900 }}>{driftLabel}</span>
-          )}
-        </div>
+      {/* Main Status Row */}
+      <div style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column', gap: '4px' }}>
         <DirectionalCue 
           pacePrediction={pacePrediction} dailyGoal={dailyGoal} 
           totalDailyMins={totalDailyMins} breakLeft={breakLeft} 
           qualityScore={qualityScore} cutoffWarning={cutoffWarning}
           isActive={isActive} isBreakActive={isBreakActive}
         />
-      </div>
 
-      {/* AREA: timers */}
-      <div style={{ gridArea: 'timers' }}>
-        <MomentumBar
+        <MomentumDelta
           totalDailyMins={totalDailyMins} dailyGoal={dailyGoal}
           shiftElapsedMins={shiftElapsedMins} isActive={isActive}
-          milestoneTargets={milestoneTargets}
         />
+
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
+          {tab === 'day' ? (
+            <>
+              <DataRow
+                value={liveDailyArs} maxValue={dailyTargetArs}
+                isEditing={isEditingScoreboard} helpLabel="CASH_DAY"
+                label={
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.2rem' }}>
+                    <span>EARNED</span>
+                    <RollingNumber value={liveDailyArs} prefix="AR$" height={10} />
+                  </div>
+                }
+                sublabel={`${dayArsPct}%`}
+              />
+
+              <DataRow
+                value={totalDailyMins} maxValue={dailyGoal} 
+                isEditing={isEditingScoreboard} helpLabel="MINS_DAY"
+                label={
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.2rem' }}>
+                    <span>PRODUCT</span>
+                    <RollingNumber value={totalDailyMins} suffix="m" height={10} />
+                  </div>
+                }
+                sublabel={`${dayMinPct}%`}
+              />
+
+              <DataRow
+                value={breakLeft} maxValue={breakLimit}
+                isEditing={isEditingScoreboard} helpLabel="BREAK_DAY"
+                label={
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.2rem' }}>
+                    <span>BREAK</span>
+                    <RollingNumber value={breakLeft} suffix="m" height={10} />
+                  </div>
+                }
+                sublabel={breakLeft > 0 ? 'READY' : 'EMPTY'}
+              />
+            </>
+          ) : (
+            <>
+              <DataRow
+                value={monthlyArs} maxValue={monthlyTargetArs}
+                label={
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.2rem' }}>
+                    <span>MONTHLY</span>
+                    <RollingNumber value={monthlyArs} prefix="AR$" height={10} />
+                  </div>
+                }
+                sublabel={`${moArsPct}%`}
+              />
+              <DataRow
+                value={stats.monthlyMinutes} maxValue={stats.goalMinutes}
+                label={
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.2rem' }}>
+                    <span>LADDER</span>
+                    <RollingNumber value={stats.monthlyMinutes} suffix="m" height={10} />
+                  </div>
+                }
+                sublabel={`${moMinPct}%`}
+              />
+            </>
+          )}
+        </div>
       </div>
 
-      {/* AREA: actions */}
-      <div style={{ gridArea: 'actions', display: 'flex', flexDirection: 'column', gap: '0.15rem' }}>
-        {tab === 'day' ? (
-          <>
-            <EmojiRow
-              emoji="💰" className="emoji-money" value={liveDailyArs} unitValue={ARS_UNIT}
-              maxValue={dailyTargetArs > 0 ? dayArsMax : ARS_UNIT * 5}
-              isEditing={isEditingScoreboard} helpLabel="MONEY_DAY"
-              label={
-                <div style={{ display: 'flex', alignItems: 'center', gap: '0.2rem' }}>
-                  <span>earned</span>
-                  <RollingNumber value={liveDailyArs} prefix="AR$" height={10} />
-                  <span>/</span>
-                  <RollingNumber value={dailyTargetArs} prefix="AR$" height={10} />
-                </div>
-              }
-              sublabel={`${dayArsPct}%`}
-            />
-
-            <EmojiRow
-              emoji="⏱️" value={totalDailyMins} unitValue={MIN_UNIT}
-              maxValue={dayMinMax} isEditing={isEditingScoreboard} helpLabel="MINS_DAY"
-              label={
-                <div style={{ display: 'flex', alignItems: 'center', gap: '0.2rem' }}>
-                  <span>mins</span>
-                  <RollingNumber value={totalDailyMins} suffix="m" height={10} />
-                  <span>/</span>
-                  <RollingNumber value={dailyGoal} suffix="m" height={10} />
-                </div>
-              }
-              sublabel={`${dayMinPct}%`}
-              markers={[
-                { value: milestoneTargets?.m5500Ideal, color: '#3b82f6', label: `5500m Benchmark (${Math.round(milestoneTargets?.m5500Ideal)}m)` },
-                { value: milestoneTargets?.m480Ideal, color: '#f59e0b', label: `480m Benchmark (${Math.round(milestoneTargets?.m480Ideal)}m)` }
-              ]}
-            />
-
-            <EmojiRow
-              emoji="☕" emptyEmoji="🍵" className="emoji-break"
-              value={breakLeft} unitValue={15} maxValue={breakLimit}
-              isEditing={isEditingScoreboard} helpLabel="BREAK_DAY"
-              label={
-                <div style={{ display: 'flex', alignItems: 'center', gap: '0.2rem' }}>
-                  <span>break</span>
-                  <RollingNumber value={breakLeft} suffix="m" height={10} />
-                  <span>/</span>
-                  <RollingNumber value={breakLimit} suffix="m" height={10} />
-                </div>
-              }
-              sublabel={breakLeft > 0 ? 'READY' : 'SPENT'}
-              warnThreshold={0.5}
-            />
-
-            <EmojiRow
-              emoji="🔋" value={totalDailyMins} unitValue={Math.max(1, stats.dailyBreakMinutes || 1)} maxValue={totalDailyMins * 1.2}
-              isEditing={isEditingScoreboard} helpLabel="STAMINA_RATIO"
-              label={`stamina  ${(totalDailyMins / Math.max(1, stats.dailyBreakMinutes)).toFixed(1)}x ratio`}
-              sublabel={(totalDailyMins / Math.max(1, stats.dailyBreakMinutes)) >= 5.3 ? 'ELITE' : 'TIRED'}
-              color="#fb923c"
-            />
-            
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '0.1rem', borderTop: '1px solid rgba(255,255,255,0.05)', paddingTop: '0.1rem' }}>
-               <div style={{ fontSize: '0.52rem', color: 'rgba(255,255,255,0.4)' }}>
-                 🚪 LOG-OFF ESTIMATE: <strong style={{ color: '#fcd34d' }}>{getCompensatedLogOff ? getCompensatedLogOff() : '18:00'}</strong>
-               </div>
-               <div style={{ fontSize: '0.52rem', color: 'rgba(255,255,255,0.4)' }}>
-                 Ratio Target: <strong>5.3x</strong>
-               </div>
-            </div>
-          </>
-        ) : (
-          <>
-            <EmojiRow
-              emoji="💰" value={monthlyArs} unitValue={ARS_UNIT * 10}
-              maxValue={moArsMax}
-              label={
-                <div style={{ display: 'flex', alignItems: 'center', gap: '0.2rem' }}>
-                  <span>monthly</span>
-                  <RollingNumber value={monthlyArs} prefix="AR$" height={10} />
-                  <span>/</span>
-                  <RollingNumber value={monthlyTargetArs} prefix="AR$" height={10} />
-                </div>
-              }
-              sublabel={`${moArsPct}%`}
-            />
-            <EmojiRow
-              emoji="🏗️" value={stats.monthlyMinutes} unitValue={MIN_UNIT * 10}
-              maxValue={moMinMax}
-              label={
-                <div style={{ display: 'flex', alignItems: 'center', gap: '0.2rem' }}>
-                  <span>ladder</span>
-                  <RollingNumber value={stats.monthlyMinutes} suffix="m" height={10} />
-                  <span>/</span>
-                  <RollingNumber value={stats.goalMinutes} suffix="m" height={10} />
-                </div>
-              }
-              sublabel={`${moMinPct}%`}
-            />
-            <div style={{ fontSize: '0.55rem', color: 'rgba(255,255,255,0.4)', textAlign: 'right', marginTop: '0.1rem' }}>
-               Tier Progress: <strong>{nextGoalLabel}</strong> — {remainingDays} days left
-            </div>
-          </>
-        )}
+      {/* Footer Stats */}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 'auto', paddingTop: '4px', borderTop: '1px dashed #27272a' }}>
+         <div style={{ fontSize: '0.55rem', color: 'var(--text-muted)', fontFamily: 'var(--font-mono)' }}>
+           LOG-OFF: <strong style={{ color: '#fff' }}>{getCompensatedLogOff ? getCompensatedLogOff() : '18:00'}</strong>
+         </div>
+         <div style={{ fontSize: '0.55rem', color: 'var(--text-muted)', fontFamily: 'var(--font-mono)' }}>
+           STAMINA: <strong style={{ color: 'var(--success)' }}>{(totalDailyMins / Math.max(1, stats.dailyBreakMinutes)).toFixed(1)}x</strong>
+         </div>
       </div>
     </div>
   );
