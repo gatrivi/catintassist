@@ -5,7 +5,7 @@ import { useProgressiveAudio } from '../hooks/useProgressiveAudio';
 import { GameScoreboard } from './GameScoreboard';
 
 export const DashboardHeader = ({ onStartAudio, onStopAudio, onReconnectStream, sttLanguage, onToggleLanguage, onRecovery, connectionState, connectionMessage, lastDataTime }) => {
-  const { isActive, sessionSeconds, stats, stopSession, endDay, RATE_PER_MINUTE, arsRate, isBreakActive, startBreak, stopBreak, isEditingScoreboard, setIsEditingScoreboard, isNotesOpen, setIsNotesOpen, isToolbarVisible, setIsToolbarVisible, isZombieCall, lastActivityTime } = useSession();
+  const { isActive, sessionSeconds, stats, stopSession, endDay, RATE_PER_MINUTE, arsRate, isBreakActive, startBreak, stopBreak, isEditingScoreboard, setIsEditingScoreboard, isNotesOpen, setIsNotesOpen, isToolbarVisible, setIsToolbarVisible, isZombieCall, lastActivityTime, dailyLog } = useSession();
 
   const { inputDevices, selectedMicId, changeMicId, fetchDevices } = useAudioSettings();
   const audioEngine = useProgressiveAudio();
@@ -140,6 +140,7 @@ export const DashboardHeader = ({ onStartAudio, onStopAudio, onReconnectStream, 
                 onSwitchToNumbers={() => {}}
                 isEditingScoreboard={isEditingScoreboard}
                 getCompensatedLogOff={getCompensatedLogOff}
+                dailyLog={dailyLog}
             />
         </div>
 
