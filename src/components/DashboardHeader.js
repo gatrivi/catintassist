@@ -656,9 +656,9 @@ export const DashboardHeader = ({ onStartAudio, onStopAudio, onReconnectStream, 
                   </div>
                   <div className="metric-cell-label">CURR CALL</div>
                 </div>
-                <div id="cell-switch-game" className="metric-cell" style={{ cursor: 'pointer', background: 'rgba(255,255,255,0.04)', gridColumn: 'span 4', flexDirection: 'row', minHeight: '30px' }} onClick={() => setScoreView('game')} title="Switch back to gamified view">
-                  <span style={{ fontSize: '0.9rem', marginRight: '6px' }}>🎮</span>
-                  <div className="metric-cell-label" style={{ opacity: 0.8 }}>RETURN TO GAMIFIED VIEW</div>
+                <div id="cell-switch-game" className="metric-cell" style={{ cursor: 'pointer', background: 'rgba(255,255,255,0.04)', gridColumn: 'span 4', flexDirection: 'row', minHeight: '26px' }} onClick={() => setScoreView('game')} title="Switch back to gamified view">
+                  <span style={{ fontSize: '0.8rem', marginRight: '6px' }}>🎮</span>
+                  <div className="metric-cell-label" style={{ opacity: 0.8 }}>BACK TO GAME VIEW</div>
                 </div>
               </div>
             )}
@@ -695,13 +695,13 @@ export const DashboardHeader = ({ onStartAudio, onStopAudio, onReconnectStream, 
               )}
             </div>
 
-            {/* Utility Tool Buttons */}
-            <div id="right-tool-vertical" style={{ display: 'flex', flexDirection: 'column', gap: '2px', marginTop: 'auto' }}>
-                <button id="header-notes-btn" className="btn-icon tiny-btn" onClick={() => setIsNotesOpen(!isNotesOpen)} style={{ opacity: isNotesOpen ? 1 : 0.3, width: '22px', height: '22px', fontSize: '0.85rem' }} title="Notes">📝</button>
-                <button id="header-tools-btn" className="btn-icon tiny-btn" onClick={() => setIsToolbarVisible(!isToolbarVisible)} style={{ opacity: isToolbarVisible ? 1 : 0.3, width: '22px', height: '22px', fontSize: '0.85rem' }} title="Tools">🛠️</button>
-                <button id="header-edit-btn" className="btn-icon tiny-btn" onClick={() => { if(isCollapsed) setIsCollapsed(false); setIsEditingScoreboard(!isEditingScoreboard); }} style={{ opacity: isEditingScoreboard ? 1 : 0.3, width: '22px', height: '22px', fontSize: '0.85rem' }} title="Edit Grid">✏️</button>
-                <button id="header-expand-btn" className="btn-icon tiny-btn" onClick={() => setIsCollapsed(!isCollapsed)} style={{ width: '22px', height: '22px', fontSize: '0.85rem' }} title={isCollapsed ? "Expand HUD" : "Collapse HUD"}>{isCollapsed ? '🔼' : '▼'}</button>
-                <button id="header-calldetect-btn" className="btn-icon tiny-btn" onClick={() => setIsCallDetectionEnabled(!isCallDetectionEnabled)} style={{ opacity: isCallDetectionEnabled ? 1 : 0.3, background: isCallDetectionEnabled ? 'rgba(16,185,129,0.1)' : 'transparent', width: '22px', height: '22px', fontSize: '0.85rem' }} title="Call Detection">{isCallDetectionEnabled ? '📡' : '📵'}</button>
+            {/* Utility Tool Buttons - Consolidated Row */}
+            <div id="right-tool-vertical" style={{ display: 'flex', flexDirection: 'row', flexWrap: 'wrap', gap: '2px', marginTop: 'auto', justifyContent: 'center' }}>
+                <button id="header-notes-btn" className="btn-icon tiny-btn" onClick={() => setIsNotesOpen(!isNotesOpen)} style={{ opacity: isNotesOpen ? 1 : 0.3, width: '22px', height: '22px', fontSize: '0.8rem' }} title="Notes">📝</button>
+                <button id="header-tools-btn" className="btn-icon tiny-btn" onClick={() => setIsToolbarVisible(!isToolbarVisible)} style={{ opacity: isToolbarVisible ? 1 : 0.3, width: '22px', height: '22px', fontSize: '0.8rem' }} title="Tools">🛠️</button>
+                <button id="header-edit-btn" className="btn-icon tiny-btn" onClick={() => { if(isCollapsed) setIsCollapsed(false); setIsEditingScoreboard(!isEditingScoreboard); }} style={{ opacity: isEditingScoreboard ? 1 : 0.3, width: '22px', height: '22px', fontSize: '0.8rem' }} title="Edit Grid">✏️</button>
+                <button id="header-expand-btn" className="btn-icon tiny-btn" onClick={() => setIsCollapsed(!isCollapsed)} style={{ width: '22px', height: '22px', fontSize: '0.8rem' }} title={isCollapsed ? "Expand HUD" : "Collapse HUD"}>{isCollapsed ? '🔼' : '▼'}</button>
+                <button id="header-calldetect-btn" className="btn-icon tiny-btn" onClick={() => setIsCallDetectionEnabled(!isCallDetectionEnabled)} style={{ opacity: isCallDetectionEnabled ? 1 : 0.3, background: isCallDetectionEnabled ? 'rgba(16,185,129,0.1)' : 'transparent', width: '22px', height: '22px', fontSize: '0.8rem' }} title="Call Detection">{isCallDetectionEnabled ? '📡' : '📵'}</button>
             </div>
           </div>
         </div>

@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, useEffect, useRef, useCallback } from 'react';
 import { useRewardAudio } from '../hooks/useRewardAudio';
+import { set as idbSet, get as idbGet } from 'idb-keyval';
 
 const PURGE_KEYS_PREFIX = 'trans_cache:';
 
@@ -30,11 +31,14 @@ const SessionContext = createContext();
 
 export const SessionProvider = ({ children }) => {
   const { playPurseOpen, playCoinStack, initAudio: initRewardAudio } = useRewardAudio();
-  const [isActive, setIsActive] = useState(false); // ALWAYS start false on refresh to avoid zombie states
+  const [isActive, setIsActive] = useState(false); 
   const [isZombieCall, setIsZombieCall] = useState(() => {
     const wasActive = localStorage.getItem('catint_active');
-    return wasActive === 'true'; // If it was saved as true, we have a zombie call on mount
+    return wasActive === 'true'; 
   });
+  
+  const [captions, setCaptions] = useState([]);
+  const [isCaptionsLoaded, setIsCaptionsLoaded] = useState(false);
 
   const clearZombieState = () => {
     setIsZombieCall(false);
@@ -114,6 +118,49 @@ export const SessionProvider = ({ children }) => {
     }
     return initialStats;
   });
+
+  // CAPTIONS PERSISTENCE: Save/Load from IndexedDB to survive refreshes
+  useEffect(() => {
+    const loadCaptions = async () => {
+      try {
+        const saved = await idbGet('catint_captions_v2');
+        if (saved && Array.isArray(saved)) {
+          setCaptions(saved);
+        }
+      } catch (e) {
+        console.warn('[Session] Failed to load captions:', e);
+      } finally {
+        setIsCaptionsLoaded(true);
+      }
+    };
+    loadCaptions();
+  }, []);
+
+  const saveCaptionsTimeoutRef = useRef(null);
+  const updateCaptions = useCallback((newCaptionsOrFn) => {
+    setCaptions(prev => {
+      const next = typeof newCaptionsOrFn === 'function' ? newCaptionsOrFn(prev) : newCaptionsOrFn;
+      
+      // Debounced save to IndexedDB
+      if (saveCaptionsTimeoutRef.current) clearTimeout(saveCaptionsTimeoutRef.current);
+      saveCaptionsTimeoutRef.current = setTimeout(async () => {
+        try {
+          await idbSet('catint_captions_v2', next);
+        } catch (e) {
+          console.error('[Session] Failed to save captions:', e);
+        }
+      }, 1000);
+      
+      return next;
+    });
+  }, []);
+
+  const clearCaptions = useCallback(async () => {
+    setCaptions([]);
+    try {
+      await idbSet('catint_captions_v2', []);
+    } catch (e) {}
+  }, []);
 
   useEffect(() => {
     safeLocalStorageSet('catintassist_stats', JSON.stringify(stats));
@@ -640,8 +687,11 @@ export const SessionProvider = ({ children }) => {
       const remainingMinutesFromStartOfDay = Math.max(0, stats.goalMinutes - minutesBeforeToday);
       const requiredDailyAverage = remainingDays > 0 ? (remainingMinutesFromStartOfDay / remainingDays) : 0;
       // Industry best practice: cap "Catch-up" targets at 600m (10h) to avoid burnout/impossibility
-      return Math.round(Math.min(600, requiredDailyAverage));
-    })()
+    })(),
+    captions,
+    updateCaptions,
+    clearCaptions,
+    isCaptionsLoaded
   };
 
   return (

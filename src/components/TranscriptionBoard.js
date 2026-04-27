@@ -567,6 +567,25 @@ export const TranscriptionBoard = ({ captions, onClearAll, onReconnect, lastData
         </div>
       )}
 
+      {/* ZOMBIE RECOVERY BANNER: Shown when app refreshed during a call */}
+      {(!isActive && isZombieCall) && (
+        <div 
+          onClick={onReconnect}
+          style={{
+            position: 'absolute', top: '10px', left: '10px', right: '10px', zIndex: 1001,
+            background: 'rgba(245, 158, 11, 0.9)', color: '#000', padding: '0.6rem',
+            borderRadius: '8px', display: 'flex', alignItems: 'center', justifyContent: 'center',
+            gap: '0.8rem', cursor: 'pointer', fontWeight: 800, fontSize: '0.85rem',
+            boxShadow: '0 4px 20px rgba(0,0,0,0.4)', border: '2px solid #fcd34d',
+            animation: 'pulseReminder 1.5s infinite alternate'
+          }}
+        >
+          <span style={{ fontSize: '1.2rem' }}>🤖</span>
+          <span>ZOMBIE CALL DETECTED: Click here to RE-ATTACH AUDIO and resume session</span>
+          <span style={{ fontSize: '1.2rem' }}>📡</span>
+        </div>
+      )}
+
       {isToolbarVisible && (isEditingScoreboard || visibleCards.transcription) && (
       <div className="notepad-header transcription-toolbar" style={{ borderBottom: '1px solid var(--panel-border)', paddingBottom: '0.4rem', marginBottom: '0.5rem', display: 'flex', justifyContent: 'space-between', padding: '0.4rem 0.5rem', opacity: (!visibleCards.transcription && isEditingScoreboard) ? 0.3 : 1, position: 'relative' }}>
         {isEditingScoreboard && <input type="checkbox" checked={visibleCards.transcription} onChange={() => toggleCard('transcription')} style={{ position: 'absolute', top: 4, right: 4, transform: 'scale(1.2)', cursor: 'pointer', zIndex: 10 }} />}

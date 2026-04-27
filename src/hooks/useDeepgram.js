@@ -76,14 +76,12 @@ const removeOverlap = (base, addition) => {
 
 
 export const useDeepgram = () => {
-  const { updateActivity, isCallDetectionEnabled, requestHoldIntent } = useSession();
-  const [captions, setCaptions] = useState([]);
-  const captionsRef = useRef([]); // Critical sync for deduplication
+  const { updateActivity, isCallDetectionEnabled, requestHoldIntent, captions, updateCaptions, clearCaptions } = useSession();
   
   const [connectionState, setConnectionState] = useState('disconnected');
   const [connectionMessage, setConnectionMessage] = useState('Disconnected');
   const [sttLanguage, setSttLanguage] = useState('auto');
-  const [lastDataTime, setLastDataTime] = useState(0); // FIXED: Initialize to 0 so it doesn't trigger 'Call Detected' alert on refresh
+  const [lastDataTime, setLastDataTime] = useState(0); 
   
   const langModeRef = useRef('auto');
   const socketRefEn = useRef(null);
@@ -95,15 +93,7 @@ export const useDeepgram = () => {
   const turnWordCountRef = useRef(0);
   const bubbleIdCounterRef = useRef(0);
   const overrideTimeoutRef = useRef(null);
-
-  // Sync state and ref
-  const updateCaptionsState = useCallback((newCapsOrFn) => {
-    setCaptions(prev => {
-      const next = typeof newCapsOrFn === 'function' ? newCapsOrFn(prev) : newCapsOrFn;
-      captionsRef.current = next;
-      return next;
-    });
-  }, []);
+  const reconnectAttemptsRef = useRef(0);
 
   const closeConnections = useCallback(() => {
     try {
@@ -135,18 +125,21 @@ export const useDeepgram = () => {
       const ws = new WebSocket(url, ['token', API_KEY]);
 
       ws.onopen = () => {
+        reconnectAttemptsRef.current = 0; // Reset on successful open
         if (socketRefEn.current?.readyState === 1 && socketRefEs.current?.readyState === 1) {
           setConnectionState('connected');
           setConnectionMessage('Live');
           try {
-            mediaRecorderRef.current = new MediaRecorder(stream);
-            mediaRecorderRef.current.addEventListener('dataavailable', (e) => {
-              if (e.data.size > 0) {
-                if (socketRefEn.current?.readyState === 1) socketRefEn.current.send(e.data);
-                if (socketRefEs.current?.readyState === 1) socketRefEs.current.send(e.data);
-              }
-            });
-            mediaRecorderRef.current.start(250);
+            if (!mediaRecorderRef.current) {
+              mediaRecorderRef.current = new MediaRecorder(stream);
+              mediaRecorderRef.current.addEventListener('dataavailable', (e) => {
+                if (e.data.size > 0) {
+                  if (socketRefEn.current?.readyState === 1) socketRefEn.current.send(e.data);
+                  if (socketRefEs.current?.readyState === 1) socketRefEs.current.send(e.data);
+                }
+              });
+              mediaRecorderRef.current.start(250);
+            }
           } catch(err) { console.error(err); }
         }
       };
@@ -160,14 +153,11 @@ export const useDeepgram = () => {
         const confidence = alt?.confidence || 0;
         const isFinal = received.is_final;
 
-        // Filter out noise/hallucinations (confidence > 0.4) to ensure only real speech 
-        // from the tab updates the activity metrics.
         if (isCallDetectionEnabled && confidence > 0.4) {
           updateActivity();
           setLastDataTime(Date.now());
         }
 
-        // SMART HOLD PHRASE DETECTION
         const lowTrans = transcript.toLowerCase();
         if (lowTrans.includes('stay on the line') || 
             lowTrans.includes('please hold') || 
@@ -184,18 +174,16 @@ export const useDeepgram = () => {
         lastTranscriptTimeRef.current = now;
         const isSilentBreak = timeSinceLast > 2500;
 
-        updateCaptionsState(prev => {
+        updateCaptions(prev => {
           let last = prev[prev.length - 1];
           const lastText = (lang === 'en' ? last?.enFull : last?.esFull) || '';
           const lastWords = lastText.trim().split(/\s+/).filter(Boolean);
           const lastWordCount = lastWords.length;
           
-          // Only split on punctuation if it's at the very end of the text (prevents splits on "Okay. So...")
           const hasSentenceEnd = /[.!?]\s*$/.test(lastText); 
           const isNewTurn = isSilentBreak || !last || (lastWordCount >= 10 && hasSentenceEnd) || lastWordCount >= 80;
 
           if (isNewTurn) {
-            // Only finalize if we haven't already created a bubble for this exact moment (debounce)
             const lastCreationTime = last ? parseInt(last.id.split('-')[0]) : 0;
             if (now - lastCreationTime < 400 && !isSilentBreak) {
               // Skip redundant split
@@ -214,13 +202,12 @@ export const useDeepgram = () => {
           }
 
           const current = { ...last };
-          // AGGRESSIVE DEDUPLICATION: Look at the last 3 bubbles for any overlap
           const historyText = prev.slice(-4, -1).map(c => c.text || '').join(' ');
           const currentFinalized = (lang === 'en' ? current.enFinalized : current.esFinalized) || '';
           const baseContext = (historyText + ' ' + currentFinalized).trim();
 
           const cleaned = removeOverlap(baseContext, transcript);
-          if (!cleaned.trim() && !isFinal) return prev; // Ignore empty interim updates
+          if (!cleaned.trim() && !isFinal) return prev; 
 
           if (isFinal) {
             if (lang === 'en') {
@@ -235,7 +222,6 @@ export const useDeepgram = () => {
             else current.esInterim = cleaned;
           }
 
-          // Winner logic
           const enFull = (current.enFinalized + ' ' + current.enInterim).trim();
           const esFull = (current.esFinalized + ' ' + current.esInterim).trim();
           const enW = enFull.split(/\s+/).filter(Boolean).length;
@@ -253,7 +239,6 @@ export const useDeepgram = () => {
           current.enFull = enFull;
           current.esFull = esFull;
           current.isFinal = isFinal;
-          // Important: Recalculate word count precisely
           const currentWords = current.text.split(/\s+/).filter(Boolean).length;
           current.turnWordCount = turnWordCountRef.current + currentWords;
 
@@ -263,14 +248,28 @@ export const useDeepgram = () => {
         });
       };
 
-      ws.onclose = () => console.log(`[Deepgram] ${lang} Close`);
+      ws.onclose = () => {
+        console.log(`[Deepgram] ${lang} Close`);
+        // AUTO-RECONNECT: Unless "Boom" (intentional stop), attempt to recover sockets if stream is still alive
+        if (isActiveRef.current && reconnectAttemptsRef.current < 5) {
+          reconnectAttemptsRef.current++;
+          const delay = Math.pow(2, reconnectAttemptsRef.current) * 1000;
+          console.log(`[Deepgram] Reconnecting in ${delay}ms...`);
+          setTimeout(() => {
+            if (isActiveRef.current) {
+               if (lang === 'en') socketRefEn.current = createSocket('en');
+               else socketRefEs.current = createSocket('es');
+            }
+          }, delay);
+        }
+      };
       ws.onerror = (e) => console.error(e);
       return ws;
     };
 
     socketRefEn.current = createSocket('en');
     socketRefEs.current = createSocket('es');
-  }, [isCallDetectionEnabled, updateActivity, updateCaptionsState, requestHoldIntent]);
+  }, [isCallDetectionEnabled, updateActivity, updateCaptions, requestHoldIntent]);
 
   const startRecording = async () => {
     try {
@@ -296,27 +295,25 @@ export const useDeepgram = () => {
   const stopRecording = useCallback(() => {
     isActiveRef.current = false;
     if (streamRef.current) {
-      // FIXED: Stop all tracks to release the browser 'Sharing Tab' indicator and stop audio processing
       streamRef.current.getTracks().forEach(track => track.stop());
       streamRef.current = null;
     }
     closeConnections();
-    setCaptions([]);
-    captionsRef.current = [];
-  }, [closeConnections]);
+    clearCaptions();
+  }, [closeConnections, clearCaptions]);
 
   const reconnectStream = useCallback(() => {
     setConnectionState('connecting');
+    reconnectAttemptsRef.current = 0; // Reset manual attempts
     closeConnections();
     setTimeout(() => {
       if (streamRef.current && isActiveRef.current) startDeepgram(streamRef.current);
+      else {
+        // If stream is dead, we need a full restart
+        startRecording();
+      }
     }, 400);
   }, [closeConnections, startDeepgram]);
-
-  const clearCaptions = () => {
-    setCaptions([]);
-    captionsRef.current = [];
-  };
 
   const toggleLanguage = () => {
     setSttLanguage(prev => {
