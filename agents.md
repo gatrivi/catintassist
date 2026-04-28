@@ -53,6 +53,7 @@ TRANSLATION GUIDELINES
 [] a poor translation is better than no translation
 [] dont burn through free tiers. you say you run 54 translation engines at the same time but all i see is "bueno" and that, 54 seconds too late.
 [] if the user speaks a lot, break up message and transalte by parts. i just had a 60 word message, the transcription was split in two and when that happened the transpation for the second part came through but the first part had "bueno". that didnt work.
+[] if you accidentally edit a phone number out while i am reading it i am going to lose my job
 
 
 
