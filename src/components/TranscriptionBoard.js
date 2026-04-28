@@ -32,16 +32,30 @@ const convertNumberWords = (text) => {
     'six': '6', 'seven': '7', 'eight': '8', 'nine': '9', 'ten': '10',
     'eleven': '11', 'twelve': '12', 'thirteen': '13', 'fourteen': '14', 'fifteen': '15',
     'sixteen': '16', 'seventeen': '17', 'eighteen': '18', 'nineteen': '19', 'twenty': '20',
-    'thirty': '30', 'forty': '40', 'fifty': '50', 'sixty': '60', 'seventy': '70', 'eighty': '80', 'ninety': '90'
+    'thirty': '30', 'forty': '40', 'fifty': '50', 'sixty': '60', 'seventy': '70', 'eighty': '80', 'ninety': '90',
+    'cero': '0', 'uno': '1', 'dos': '2', 'tres': '3', 'cuatro': '4', 'cinco': '5',
+    'seis': '6', 'siete': '7', 'ocho': '8', 'nueve': '9', 'diez': '10',
+    'once': '11', 'doce': '12', 'trece': '13', 'catorce': '14', 'quince': '15',
+    'dieciseis': '16', 'diecisiete': '17', 'dieciocho': '18', 'diecinueve': '19', 'veinte': '20',
+    'veintiuno': '21', 'veintidos': '22', 'veintitres': '23', 'veinticuatro': '24', 'veinticinco': '25',
+    'veintiseis': '26', 'veintisiete': '27', 'veintiocho': '28', 'veintinueve': '29',
+    'treinta': '30', 'cuarenta': '40', 'cincuenta': '50', 'sesenta': '60', 'setenta': '70', 'ochenta': '80', 'noventa': '90'
   };
-  return text.replace(/\b(zero|one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve|thirteen|fourteen|fifteen|sixteen|seventeen|eighteen|nineteen|twenty|thirty|forty|fifty|sixty|seventy|eighty|ninety)\b/gi, (matched) => map[matched.toLowerCase()] || matched);
+  const keys = Object.keys(map).join('|');
+  const re = new RegExp(`\\b(${keys})\\b`, 'gi');
+  return text.replace(re, (matched) => map[matched.toLowerCase()] || matched);
 };
 
 const InteractiveText = ({ text, scramble = true }) => {
   if (!text) return null;
-  // GROUP PHONE NUMBERS: If we see 9 or 10 digits read out singly (with spaces), join them.
-  // This version is a robust one-liner that matches 9 or 10 digits with optional spaces.
-  const groupedDigits = text.replace(/\b(\d[\s.,-:]*){9,12}\b/g, (m) => m.replace(/[\s.,-:]+/g, ''));
+  // GROUP PHONE NUMBERS / SSN: If we see 9-12 digits read out singly (with spaces), join and format them.
+  // Phone (10 digits) → XXX-XXX-XXXX | SSN (9 digits) → XXX-XX-XXXX | Other → just clean
+  const groupedDigits = text.replace(/\b(\d[\s.,-:]*){9,12}\b/g, (m) => {
+    const clean = m.replace(/[\s.,-:]+/g, '');
+    if (clean.length === 10) return clean.replace(/(\d{3})(\d{3})(\d{4})/, '$1-$2-$3');
+    if (clean.length === 9) return clean.replace(/(\d{3})(\d{2})(\d{4})/, '$1-$2-$3');
+    return clean;
+  });
   const processedText = convertNumberWords(groupedDigits);
   
   // NYC ZIP REPAIR: In NYC, people often say "one hundred thirty four" for 10034.

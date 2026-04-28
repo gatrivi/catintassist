@@ -8,6 +8,30 @@ const normalize = (s) =>
     .toLowerCase()
     .replace(/[^a-z0-9]/g, ''); // Keep only alphanumeric
 
+// Number-word detection for EN and ES to protect phone/SSN/address data
+const NUMBER_WORDS = new Set([
+  'zero','one','two','three','four','five','six','seven','eight','nine','ten',
+  'eleven','twelve','thirteen','fourteen','fifteen','sixteen','seventeen','eighteen','nineteen',
+  'twenty','thirty','forty','fifty','sixty','seventy','eighty','ninety',
+  'cero','uno','dos','tres','cuatro','cinco','seis','siete','ocho','nueve','diez',
+  'once','doce','trece','catorce','quince','dieciseis','diecisiete','dieciocho','diecinueve',
+  'veinte','veintiuno','veintidos','veintitres','veinticuatro','veinticinco','veintiseis',
+  'veintisiete','veintiocho','veintinueve','treinta','cuarenta','cincuenta','sesenta','setenta',
+  'ochenta','noventa'
+]);
+
+const isNumberLike = (word) => /^\d+$/.test(word) || NUMBER_WORDS.has(word.toLowerCase());
+
+const containsNumberSequence = (text, minLength = 2) => {
+  const words = text.trim().split(/\s+/);
+  let count = 0;
+  for (const w of words) {
+    if (isNumberLike(w)) count++;
+    else count = 0;
+    if (count >= minLength) return true;
+  }
+  return false;
+};
 
 const hallucinationGuard = (text) => {
   if (!text) return text;
@@ -16,6 +40,7 @@ const hallucinationGuard = (text) => {
   // Noise filtering: skip isolated "bueno", "um", etc.
   if (words.length === 1) {
     const w = words[0].toLowerCase();
+    if (/^\d+$/.test(w)) return text; // Never filter single numbers
     if (w === 'bueno' || w === 'um' || w === 'eh' || w === 'uh' || w === 'ah') return '';
   }
   
@@ -47,6 +72,10 @@ const hallucinationGuard = (text) => {
 
 const removeOverlap = (base, addition) => {
   if (!base || !addition) return addition;
+  
+  // GUARD: Never strip overlap from number sequences (phone, SSN, address numbers)
+  // A sequence of 2+ number-words/digits in the addition means data is fragile
+  if (containsNumberSequence(addition)) return addition;
   
   const normBase = normalize(base);
   const normAddition = normalize(addition);
