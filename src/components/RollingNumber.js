@@ -24,7 +24,7 @@ const RollingDigit = ({ digit, height = 24, speed = 1.5 }) => {
   }, [digit, height, isNumber]);
 
   if (!isNumber) {
-    return <span style={{ width: '0.4em', textAlign: 'center', opacity: 0.5 }}>{digit}</span>;
+    return <span style={{ width: '0.4em', textAlign: 'center', opacity: 0.5, fontFamily: 'var(--font-mono)' }}>{digit}</span>;
   }
 
   const digits = Array.from({ length: 100 }, (_, i) => i % 10);
@@ -39,11 +39,10 @@ const RollingDigit = ({ digit, height = 24, speed = 1.5 }) => {
         position: 'relative',
         display: 'inline-block',
         fontVariantNumeric: 'tabular-nums',
-        background: 'linear-gradient(to bottom, rgba(0,0,0,0.5) 0%, transparent 15%, transparent 85%, rgba(0,0,0,0.5) 100%)',
-        boxShadow: 'inset 0 0 8px rgba(0,0,0,0.7)',
-        borderRadius: '2px',
+        background: '#000',
+        borderRadius: 0,
         margin: '0 0.5px',
-        border: '1px solid rgba(255,255,255,0.03)'
+        border: '1px solid #18181b'
       }}
     >
       <div 
@@ -54,8 +53,7 @@ const RollingDigit = ({ digit, height = 24, speed = 1.5 }) => {
           left: 0,
           right: 0,
           transform: `translateY(-${displayOffset}px)`,
-          // Speed depends on position (units fast, hundreds slow)
-          transition: `transform ${speed}s linear`, 
+          transition: `transform ${speed}s cubic-bezier(0.4, 0, 0.2, 1)`, 
           display: 'flex',
           flexDirection: 'column',
           alignItems: 'center'
@@ -68,11 +66,10 @@ const RollingDigit = ({ digit, height = 24, speed = 1.5 }) => {
             alignItems: 'center', 
             justifyContent: 'center',
             width: '100%',
-            color: '#fff',
+            color: 'inherit',
             fontSize: height > 15 ? 'inherit' : '0.65rem',
-            textShadow: '0 2px 4px rgba(0,0,0,0.8)',
-            fontFamily: "'Courier New', monospace", // Mechanical look
-            fontWeight: 900
+            fontFamily: "var(--font-mono)",
+            fontWeight: 800
           }}>{n}</div>
         ))}
       </div>
@@ -93,15 +90,12 @@ export const RollingNumber = ({ value, prefix = '', suffix = '', height = 24, cl
       display: 'inline-flex', 
       alignItems: 'center', 
       overflow: 'hidden',
-      padding: '4px 0',
-      background: 'rgba(0,0,0,0.1)',
-      borderRadius: '4px'
+      background: 'transparent'
     }}>
       {characters.map((char, i) => {
-        // Calculate speed based on position from right
         const reverseIdx = characters.length - 1 - i;
         const isNum = !isNaN(parseInt(char));
-        const speed = isNum ? 1.0 + (reverseIdx * 0.4) : 1.5;
+        const speed = isNum ? 0.8 + (reverseIdx * 0.1) : 1.2;
         
         return <RollingDigit key={i} digit={char} height={height} speed={speed} />;
       })}

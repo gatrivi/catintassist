@@ -282,6 +282,15 @@ export const useDeepgram = () => {
   const startRecording = useCallback(async () => {
     try {
       setConnectionState('connecting');
+
+      // REUSE EXISTING STREAM IF AVAILABLE AND ACTIVE
+      if (streamRef.current && streamRef.current.active && streamRef.current.getAudioTracks().length > 0) {
+        setConnectionMessage('Reusing Tab Audio...');
+        isActiveRef.current = true;
+        startDeepgram(streamRef.current);
+        return true;
+      }
+
       setConnectionMessage('Requesting Tab Audio...');
       const stream = await navigator.mediaDevices.getDisplayMedia({ video: true, audio: true });
       if (stream.getAudioTracks().length === 0) {
@@ -292,7 +301,10 @@ export const useDeepgram = () => {
       streamRef.current = stream;
       isActiveRef.current = true;
       startDeepgram(stream);
-      stream.getVideoTracks()[0].onended = () => stopRecording();
+      stream.getVideoTracks()[0].onended = () => {
+         streamRef.current = null;
+         stopRecording();
+      };
       return true;
     } catch (err) {
       console.error(err);
@@ -311,7 +323,7 @@ export const useDeepgram = () => {
         startRecording();
       }
     }, 400);
-  }, [closeConnections, startDeepgram]);
+  }, [closeConnections, startDeepgram, startRecording]);
 
   const toggleLanguage = useCallback(() => {
     setSttLanguage(prev => {

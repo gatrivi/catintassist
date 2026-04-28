@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import { SessionProvider, useSession } from './contexts/SessionContext';
 import { AudioSettingsProvider } from './contexts/AudioSettingsContext';
 import { DashboardHeader } from './components/DashboardHeader';
@@ -11,20 +11,17 @@ import { useDeepgram } from './hooks/useDeepgram';
 import { loadFile, generateObjectUrl } from './utils/storage';
 import './index.css';
 
-const CloudSyncIndicator = () => {
-  const { syncStatus } = useSession();
-  const colors = { syncing: '#3b82f6', synced: '#10b981', error: '#ef4444', idle: 'transparent' };
-  const label = { syncing: '☁️...', synced: '☁️ ok', error: '☁️ !', idle: '' };
-  return (
-    <span style={{ color: colors[syncStatus], transition: 'color 0.3s' }}>{label[syncStatus]}</span>
-  );
-};
-
 const Dashboard = () => {
   const { startRecording, stopRecording, reconnectStream, captions, clearCaptions, sttLanguage, toggleLanguage, connectionState, connectionMessage, lastDataTime } = useDeepgram();
-  const { isNotesOpen, isToolbarVisible, isActive, isBreakActive, minutesSinceLastBreak, startSession, clearZombieState } = useSession();
+  const { isNotesOpen, isToolbarVisible, isActive, isBreakActive, startSession, clearZombieState } = useSession();
   const [isEditingBg, setIsEditingBg] = useState(false);
   
+  const handleConnection = useCallback((isRecovery = false) => {
+    if (isRecovery) clearZombieState();
+    startSession(isRecovery);
+    startRecording();
+  }, [clearZombieState, startSession, startRecording]);
+
   useEffect(() => {
     const applyBg = async () => {
       const bgApp = await loadFile('bg_app');
@@ -37,17 +34,13 @@ const Dashboard = () => {
       }
     };
     applyBg();
-    
-    // Listen for custom event when background changes in settings
     window.addEventListener('cat_bg_changed', applyBg);
     return () => window.removeEventListener('cat_bg_changed', applyBg);
   }, []);
 
-  // Hotkeys for language switching
   useEffect(() => {
     const handleKeyDown = (e) => {
       const isTyping = e.target.tagName === 'TEXTAREA' || e.target.tagName === 'INPUT';
-      
       if (e.code === 'Escape' || (e.altKey && e.code === 'Space')) {
         e.preventDefault();
         toggleLanguage();
@@ -60,38 +53,15 @@ const Dashboard = () => {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [toggleLanguage]);
 
-  // Track idle time for full app vignette
-  const [idleSecs, setIdleSecs] = useState(0);
-  useEffect(() => {
-    if (isActive || isBreakActive) { setIdleSecs(0); return; }
-    const iv = setInterval(() => setIdleSecs(s => s + 1), 1000);
-    return () => clearInterval(iv);
-  }, [isActive, isBreakActive]);
-
-  const isBurnoutWarning = !isBreakActive && minutesSinceLastBreak > 110;
-  // PRIORITY FIX: isActive (Call) must always block app-idle vignette
-  const stateClass = isActive ? 'app-active' : isBreakActive ? 'app-break' : (isBurnoutWarning ? 'burnout-alert' : (idleSecs > 45 ? 'app-idle' : ''));
-  const appState = isActive ? 'call' : isBreakActive ? 'break' : 'avail';
-
-  // UNIFIED CONNECTION ENGINE: Ensures all start/reconnect buttons follow the exactly same gesture chain
-  const handleConnection = async (isRecovery = false) => {
-    const ok = await startRecording();
-    if (ok) {
-      startSession(isRecovery);
-      clearZombieState();
-    }
-  };
+  const appState = isActive ? 'active' : isBreakActive ? 'break' : 'idle';
 
   return (
-    <div className={`app-container ${stateClass}`} data-state={appState}>
-      {/* Version Tag - Always visible in the upper right */}
+    <div className="app-container" data-state={appState}>
       <div style={{ 
-        position: 'fixed', top: '1px', right: '4px', zIndex: 10000, 
-        fontSize: '0.55rem', fontWeight: 900, color: 'rgba(255,255,255,0.2)', 
-        pointerEvents: 'none', textTransform: 'uppercase', letterSpacing: '0.05em',
-        display: 'flex', alignItems: 'center', gap: '4px'
+        position: 'fixed', top: '2px', right: '4px', zIndex: 10000, 
+        fontSize: '0.5rem', fontWeight: 400, color: 'var(--text-muted)', 
+        pointerEvents: 'none', fontFamily: 'var(--font-mono)'
       }}>
-        <CloudSyncIndicator />
         v4.14.1 (Retro-Decode)
       </div>
 
@@ -113,26 +83,24 @@ const Dashboard = () => {
         lastDataTime={lastDataTime}
       />
 
-      <main className="main-content">
-        <div className="transcription-pane">
+      <main className="main-content" style={{ display: 'flex', flex: 1, overflow: 'hidden', padding: '4px', gap: '4px' }}>
+        <div className="transcription-pane" style={{ flex: 1, minWidth: 0, height: '100%' }}>
             <TranscriptionBoard 
               captions={captions} 
-              isActive={isActive} 
-              isBreakActive={isBreakActive}
               onClearAll={clearCaptions}
               onReconnect={() => handleConnection(true)}
               lastDataTime={lastDataTime}
             />
         </div>
         {(isNotesOpen || isToolbarVisible) && (
-          <div className="tools-column">
+          <div className="tools-column" style={{ width: '300px', display: 'flex', flexDirection: 'column', gap: '4px' }}>
              {isToolbarVisible && (
-               <div className="glass-panel tools-soundboard" style={{ overflow: 'hidden', display: 'flex', flexDirection: 'column', flex: isEditingBg ? '1' : '1.5' }}>
+               <div className="brutalist-panel tools-soundboard" style={{ flex: isEditingBg ? '1' : '1.5', overflow: 'hidden', background: '#09090b', border: '1px solid #18181b' }}>
                  <GreetingsPanel onEditModeChange={setIsEditingBg} />
                </div>
              )}
              {(isNotesOpen && !isEditingBg) && (
-               <div className="glass-panel tools-notes" style={{ overflow: 'hidden', display: 'flex', flexDirection: 'column', flex: 1 }}>
+               <div className="brutalist-panel tools-notes" style={{ flex: 1, overflow: 'hidden', background: '#09090b', border: '1px solid #18181b', display: 'flex', flexDirection: 'column' }}>
                  <DictionaryTool />
                  <NotePad />
                </div>
