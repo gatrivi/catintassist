@@ -5,28 +5,31 @@ import React, { useState, useEffect, useRef } from 'react';
  * RAPIDLY cycles random ASCII characters before settling on the target value.
  * Masks React's instant DOM swaps with an organic "terminal decode" effect.
  */
-export const ScrambleText = ({ value, duration = 600, className = "" }) => {
+export const ScrambleText = ({ value, duration = 450, className = "" }) => {
   const chars = '0123456789#$%&?@';
   const generateRandom = (len) => Array.from({ length: len }, () => chars[Math.floor(Math.random() * chars.length)]).join('');
   
   const [displayValue, setDisplayValue] = useState(() => generateRandom(String(value || "").length)); 
   const targetValueRef = useRef(value); 
   const frameRef = useRef(null);
+  const startTimeRef = useRef(null);
+  const isAnimatingRef = useRef(false);
 
   useEffect(() => {
     if (value === targetValueRef.current) return;
-    
-    // Start Scrambling
     targetValueRef.current = value;
-    const startTime = performance.now();
+
+    if (isAnimatingRef.current) return; // Already animating, just let it settle to new target
+
+    isAnimatingRef.current = true;
+    startTimeRef.current = performance.now();
 
     const update = (now) => {
-      const elapsed = now - startTime;
+      const elapsed = now - startTimeRef.current;
       const progress = elapsed / duration;
 
       if (progress < 1) {
-        // Generate random string of same length as target
-        const targetStr = String(value);
+        const targetStr = String(targetValueRef.current);
         let scrambled = '';
         for (let i = 0; i < targetStr.length; i++) {
           scrambled += chars[Math.floor(Math.random() * chars.length)];
@@ -34,7 +37,9 @@ export const ScrambleText = ({ value, duration = 600, className = "" }) => {
         setDisplayValue(scrambled);
         frameRef.current = requestAnimationFrame(update);
       } else {
-        setDisplayValue(value);
+        setDisplayValue(targetValueRef.current);
+        isAnimatingRef.current = false;
+        startTimeRef.current = null;
       }
     };
 
