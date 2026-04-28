@@ -1,97 +1,21 @@
 import React, { useState, useEffect } from 'react';
 import { RollingNumber } from './RollingNumber';
 import { ScrambleText } from './ScrambleText';
+import { useSession } from '../contexts/SessionContext';
 
 // ─── UTILITIES ───────────────────────────────────────────────────────────────
-const renderMeter = (value, maxValue, size = 12) => {
+const renderMeter = (value, maxValue, size = 8) => {
   const ratio = maxValue > 0 ? Math.min(1, value / maxValue) : 0;
   const blocks = Math.floor(ratio * size);
   return `[${'█'.repeat(blocks)}${'░'.repeat(size - blocks)}]`;
 };
 
-// ─── DataRow ─────────────────────────────────────────────────────────────
-const DataRow = ({ value, maxValue, label, sublabel, isEditing, helpLabel, className = "", useScramble = false }) => {
-  const ratio = maxValue > 0 ? value / maxValue : 0;
-  const rowColor = ratio >= 1 ? 'var(--success)' 
-                : ratio >= 0.7 ? '#4ade80' 
-                : ratio >= 0.4 ? '#fbbf24' 
-                : '#ef4444';
-
-  return (
-    <div className={`${className} ${isEditing ? 'grid-edit-mode' : ''}`} style={{ 
-      display: 'flex', flexDirection: 'column', gap: '1px', padding: '1px 0',
-      borderBottom: '1px solid #18181b', position: 'relative'
-    }}>
-      {isEditing && <span className="edit-grid-label" style={{ fontSize: '0.4rem', color: 'var(--accent-primary)' }}>{helpLabel}</span>}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '0.65rem' }}>
-        <span style={{ color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-          {label}
-        </span>
-        <span className="phosphor-glow" style={{ color: rowColor, fontWeight: 800 }}>
-          {useScramble ? <ScrambleText value={sublabel} duration={300} /> : sublabel}
-        </span>
-      </div>
-      
-      <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontFamily: 'var(--font-mono)' }}>
-        <span style={{ color: rowColor, letterSpacing: '-1px', fontSize: '0.85rem', opacity: 0.8 }}>
-          {renderMeter(value, maxValue)}
-        </span>
-      </div>
-    </div>
-  );
-};
-
-// ─── PacingModule ─────────────────────────────────────────────────────────────
-const calculateExpectedMinutes = (dailyGoal) => {
-  const now = new Date();
-  const start = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 9, 0, 0); // 09:00
-  const end = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 18, 0, 0); // 18:00
-  
-  if (now < start) return 0;
-  if (now > end) return dailyGoal;
-  
-  const totalMs = end - start;
-  const elapsedMs = now - start;
-  return (elapsedMs / totalMs) * dailyGoal;
-};
-
-const PacingModule = ({ currentDaily, dailyGoal, currentMonthly, monthlyGoal }) => {
-  const expectedNow = calculateExpectedMinutes(dailyGoal);
-  const diff = Math.round(currentDaily - expectedNow);
-  const diffColor = diff >= 0 ? 'var(--success)' : 'var(--danger)';
-  const diffSign = diff >= 0 ? '+' : '';
-
-  const monthlyRemaining = monthlyGoal - currentMonthly;
-  const monthlyUrgency = monthlyGoal > 0 && monthlyRemaining < (monthlyGoal * 0.1);
-  const monthlyColor = monthlyUrgency ? '#fb923c' : 'var(--success)';
-
-  const renderMeter9 = (val, max, color) => {
-    const r = max > 0 ? Math.min(1, val / max) : 0;
-    const b = Math.floor(r * 9);
-    return <span style={{ color, letterSpacing: '-1px', opacity: 0.8 }}>{`[${'█'.repeat(b)}${'░'.repeat(9 - b)}]`}</span>;
-  };
-
-  return (
-    <div style={{ 
-      display: 'flex', flexDirection: 'column', gap: '2px', 
-      padding: '4px', background: '#111', border: '1px solid #18181b',
-      fontFamily: 'var(--font-mono)', fontSize: '0.6rem', margin: '2px 0'
-    }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        {renderMeter9(currentDaily, dailyGoal, 'var(--success)')}
-        <span style={{ color: 'var(--text-muted)' }}>
-          TODAY: <span style={{ color: '#fff', fontWeight: 700 }}><ScrambleText value={Math.round(currentDaily)} /> / {Math.round(dailyGoal)}m</span>
-          <span className="phosphor-glow" style={{ color: diffColor, marginLeft: '4px', fontWeight: 700 }}>({diffSign}{diff}m)</span>
-        </span>
-      </div>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        {renderMeter9(currentMonthly, monthlyGoal, monthlyColor)}
-        <span style={{ color: 'var(--text-muted)' }}>
-          MONTH: <span style={{ color: '#fff', fontWeight: 700 }}><ScrambleText value={Math.round(currentMonthly)} /> / {Math.round(monthlyGoal)}m</span>
-        </span>
-      </div>
-    </div>
-  );
+const formatTime = (seconds) => {
+  const h = Math.floor(seconds / 3600);
+  const m = Math.floor((seconds % 3600) / 60);
+  if (h > 0) return `${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}`;
+  const s = seconds % 60;
+  return `${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
 };
 
 // ─── GameScoreboard ───────────────────────────────────────────────────────────
@@ -99,127 +23,127 @@ export const GameScoreboard = ({
   liveDailyArs, dailyTargetArs, monthlyArs, monthlyTargetArs, stats, dailyGoal, totalDailyMins, shiftElapsedMins,
   pacePrediction, cutoffWarning, breakLeft, breakLimit, remainingDays, isActive, isBreakActive,
   isEditingScoreboard, getCompensatedLogOff, dailyLog = {}
- }) => {
-  const [idleSecs, setIdleSecs] = useState(0);
-  const [viewMode, setViewMode] = useState('shift'); // 'shift' | 'ledger'
+}) => {
+  const { availSeconds, RATE_PER_MINUTE, arsRate, breakSeconds } = useSession();
 
+  // Column 1: Financials & Yield
+  const dailyEarnK = liveDailyArs ? (liveDailyArs / 1000).toFixed(1) : 0;
+  const dailyTargetK = dailyTargetArs ? (dailyTargetArs / 1000).toFixed(1) : 0;
+  const monthlyEarnK = monthlyArs ? (monthlyArs / 1000).toFixed(1) : 0;
+  const idleArs = (availSeconds / 60) * RATE_PER_MINUTE * arsRate;
+  const idleArsK = (idleArs / 1000).toFixed(1);
+  
+  // HUD State
+  const [idleSecs, setIdleSecs] = useState(0);
   useEffect(() => {
     if (isActive || isBreakActive) { setIdleSecs(0); return; }
     const iv = setInterval(() => setIdleSecs(s => s + 1), 1000);
     return () => clearInterval(iv);
   }, [isActive, isBreakActive]);
 
-  const dayArsPct = dailyTargetArs > 0 ? Math.round((liveDailyArs / dailyTargetArs) * 100) : 0;
-  const dayMinPct = dailyGoal > 0 ? Math.round((totalDailyMins / dailyGoal) * 100) : 0;
-  const moMinPct = stats.goalMinutes > 0 ? Math.round((stats.monthlyMinutes / stats.goalMinutes) * 100) : 0;
+  const hudState = isActive ? 'ACTIVE' : isBreakActive ? 'BREAK' : 'STANDBY';
+  const isIdleActive = hudState === 'STANDBY';
 
-  // Monthly Metrics
-  const now = new Date();
-  const daysInMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
-  const daysWorked = Object.keys(dailyLog).filter(d => dailyLog[d] > 0).length;
+  // Column 2: Pacing & Time-Box
+  // Calculate expectedNow logic
+  const calculateExpectedMinutes = (dGoal) => {
+    const now = new Date();
+    const start = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 9, 0, 0); // 09:00
+    const end = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 18, 0, 0); // 18:00
+    if (now < start) return 0;
+    if (now > end) return dGoal;
+    const totalMs = end - start;
+    const elapsedMs = now - start;
+    return (elapsedMs / totalMs) * dGoal;
+  };
+  const expectedNow = calculateExpectedMinutes(dailyGoal);
+  const diff = Math.round(totalDailyMins - expectedNow);
+  const diffColor = diff >= 0 ? 'var(--success)' : 'var(--danger)';
+  const diffSign = diff >= 0 ? '+' : '';
+  const monthlyRemainingMins = Math.max(0, stats.goalMinutes - stats.monthlyMinutes);
+  const urgencyShadow = monthlyRemainingMins < 550 ? '0 0 8px #fb923c' : 'none';
 
-  const hudState = isActive ? 'call' : isBreakActive ? 'break' : 'avail';
+  // Column 3: Biological & Stamina
+  const breakUsedMins = stats.dailyBreakMinutes + (isBreakActive ? (breakSeconds / 60) : 0);
+  const breakRemaining = Math.max(0, breakLimit - breakUsedMins);
+  const staminaRatio = (totalDailyMins / Math.max(1, breakUsedMins)).toFixed(1);
+  const staminaShadow = parseFloat(staminaRatio) >= 5.3 ? '0 0 8px #fbbf24' : 'none';
+
+  // Column 4: System & Context
+  const legendTarget = 480; 
+  let coachingStr = "Ready for the next one.";
+  if (isActive) coachingStr = "Climbing.";
+  else if (isBreakActive) coachingStr = "Recharging.";
+  else if (idleSecs > 60) coachingStr = "Idle Decay Active.";
 
   return (
-    <div className="scoreboard-grid" data-state={hudState} style={{ 
-      background: '#09090b', padding: '6px', borderRadius: 0, height: '100%', 
-      display: 'flex', flexDirection: 'column', position: 'relative' 
+    <div style={{
+      display: 'grid',
+      gridTemplateColumns: 'repeat(4, 1fr)',
+      gridTemplateRows: 'repeat(3, 1fr)',
+      gap: '2px',
+      padding: '4px',
+      background: '#09090b',
+      height: '100%',
+      fontFamily: 'monospace',
+      lineHeight: '1.2',
+      fontSize: '0.85rem',
+      whiteSpace: 'nowrap',
+      overflow: 'hidden',
+      color: 'var(--text-muted)'
     }}>
-      
-      {/* Top Navigation / Mode Toggle */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid #18181b', paddingBottom: '3px', marginBottom: '3px' }}>
-        <div style={{ display: 'flex', gap: '4px' }}>
-          {['shift', 'ledger'].map(m => (
-            <button key={m} onClick={() => setViewMode(m)} style={{
-              fontSize: '0.5rem', padding: '1px 6px', borderRadius: 0,
-              border: viewMode === m ? '1px solid var(--accent-primary)' : '1px solid #18181b',
-              background: viewMode === m ? 'rgba(34, 197, 94, 0.1)' : 'transparent',
-              color: viewMode === m ? 'var(--accent-primary)' : 'var(--text-muted)',
-              cursor: 'pointer', fontWeight: 800, textTransform: 'uppercase', fontFamily: 'var(--font-mono)'
-            }}>{m}</button>
-          ))}
-        </div>
-        <div style={{
-            fontSize: '0.6rem', fontWeight: 900, fontFamily: 'var(--font-mono)',
-            color: isActive ? 'var(--success)' : isBreakActive ? '#fb923c' : idleSecs > 15 ? 'var(--danger)' : 'var(--text-muted)',
-          }}>
-          {isActive ? '[CALL_LIVE]' : isBreakActive ? '[BREAK_MODE]' : idleSecs > 15 ? `[IDLE_${Math.floor(idleSecs / 60)}m]` : '[STANDBY]'}
-        </div>
+      {/* ROW 1 */}
+      {/* Col 1 */}
+      <div style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>
+        AR$ <span style={{ color: 'var(--success)' }}>{renderMeter(liveDailyArs, dailyTargetArs, 8)}</span> <RollingNumber value={dailyEarnK} height={12} />k / {dailyTargetK}k
+      </div>
+      {/* Col 2 */}
+      <div style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>
+        MIN <span style={{ color: 'var(--success)' }}>{renderMeter(totalDailyMins, dailyGoal, 8)}</span> <ScrambleText value={Math.round(totalDailyMins)} /> / {Math.round(dailyGoal)}m
+      </div>
+      {/* Col 3 */}
+      <div style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>
+        BRK <span style={{ color: '#fb923c' }}>{renderMeter(breakRemaining, breakLimit, 8)}</span> <ScrambleText value={Math.round(breakRemaining)} />m / {breakLimit}m
+      </div>
+      {/* Col 4 */}
+      <div style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>
+        SYS [{hudState}]
       </div>
 
-      {/* Mode Specific Content */}
-      <div style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column', gap: '2px' }}>
-        {viewMode === 'shift' ? (
-          <>
-            <div style={{ color: 'var(--text-muted)', fontSize: '0.55rem', fontFamily: 'var(--font-mono)' }}>
-              {isActive ? `> CLIMBING. ETA: ${pacePrediction?.label || '??:??'}` : `> SYSTEM_READY. CONNECT.`}
-            </div>
-
-            <PacingModule
-              currentDaily={totalDailyMins} dailyGoal={dailyGoal}
-              currentMonthly={stats.monthlyMinutes} monthlyGoal={stats.goalMinutes}
-            />
-
-            <DataRow
-              value={liveDailyArs} maxValue={dailyTargetArs} useScramble
-              label="EARNED" sublabel={`${dayArsPct}%`}
-            />
-
-            <DataRow
-              value={totalDailyMins} maxValue={dailyGoal} useScramble
-              label="PRODUCT" sublabel={`${dayMinPct}%`}
-            />
-
-            <DataRow
-              value={breakLeft} maxValue={breakLimit} useScramble
-              label="BREAK" sublabel={`${Math.round(breakLeft)}m`}
-            />
-          </>
-        ) : (
-          <>
-            <div style={{ color: 'var(--text-muted)', fontSize: '0.55rem', fontFamily: 'var(--font-mono)' }}>
-              > LEDGER_MTD: {now.toLocaleString('default', { month: 'long' }).toUpperCase()}
-            </div>
-
-            <div style={{ padding: '2px 0', borderBottom: '1px solid #18181b' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.65rem' }}>
-                <span style={{ color: 'var(--text-muted)' }}>TOTAL_AR$</span>
-                <span className="phosphor-glow" style={{ fontWeight: 800 }}>
-                  <RollingNumber value={monthlyArs} prefix="AR$" height={12} />
-                </span>
-              </div>
-            </div>
-
-            <DataRow
-              value={daysWorked} maxValue={daysInMonth}
-              label="ATTENDANCE" sublabel={`${daysWorked}/${daysInMonth}d`}
-            />
-
-            <DataRow
-              value={stats.monthlyMinutes} maxValue={stats.goalMinutes} useScramble
-              label="LADDER" sublabel={`${moMinPct}%`}
-            />
-
-            <div style={{ marginTop: '2px', fontSize: '0.55rem', color: 'var(--text-muted)', fontFamily: 'var(--font-mono)' }}>
-               REMAINING: {remainingDays} DAYS
-            </div>
-          </>
-        )}
+      {/* ROW 2 */}
+      {/* Col 1 */}
+      <div style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>
+        MTD <span style={{ color: 'var(--success)' }}>{renderMeter(monthlyArs, monthlyTargetArs, 8)}</span> <RollingNumber value={monthlyEarnK} height={12} />k
+      </div>
+      {/* Col 2 */}
+      <div style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>
+        TGT [{diff >= 0 ? 'Ahead' : 'Behind'}] <span style={{ color: diffColor }}>{diffSign}<ScrambleText value={Math.abs(diff)} />m</span>
+      </div>
+      {/* Col 3 */}
+      <div style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>
+        STM [<span style={{ color: '#fff', textShadow: staminaShadow }}><ScrambleText value={staminaRatio} />x</span>] (Prod/Break)
+      </div>
+      {/* Col 4 */}
+      <div style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>
+        NXT [Legend Target: {legendTarget}m]
       </div>
 
-      {/* Footer Stats & Ghost Bar */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 'auto', paddingTop: '3px', borderTop: '1px dashed #18181b' }}>
-         <div style={{ fontSize: '0.55rem', color: 'var(--text-muted)', fontFamily: 'var(--font-mono)' }}>
-           LOG-OFF: <strong style={{ color: '#fff' }}>{getCompensatedLogOff ? getCompensatedLogOff() : '18:00'}</strong>
-         </div>
-         <div style={{ fontSize: '0.55rem', color: 'var(--text-muted)', fontFamily: 'var(--font-mono)' }}>
-           STAMINA: <strong style={{ color: 'var(--success)' }}>{(totalDailyMins / Math.max(1, stats.dailyBreakMinutes)).toFixed(1)}x</strong>
-         </div>
+      {/* ROW 3 */}
+      {/* Col 1 */}
+      <div style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>
+        DRF [<span style={{ color: '#fff', textShadow: isIdleActive ? '0 0 8px red' : 'none' }}>-<ScrambleText value={idleArsK} />k</span>] (Idle Decay)
       </div>
-
-      {/* Ghost Monthly Progress Bar */}
-      <div className="ghost-progress-container">
-        <div className="ghost-progress-fill" style={{ width: `${moMinPct}%` }} />
+      {/* Col 2 */}
+      <div style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>
+        MTD <span style={{ color: 'var(--success)' }}>{renderMeter(stats.monthlyMinutes, stats.goalMinutes, 8)}</span> <span style={{ textShadow: urgencyShadow }}><ScrambleText value={Math.round(stats.monthlyMinutes)} /> / {stats.goalMinutes}m</span>
+      </div>
+      {/* Col 3 */}
+      <div style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>
+        IDL [<ScrambleText value={formatTime(availSeconds)} />] Logged
+      </div>
+      {/* Col 4 */}
+      <div style={{ overflow: 'hidden', textOverflow: 'ellipsis', color: 'rgba(255, 255, 255, 0.7)' }}>
+        "{coachingStr}"
       </div>
     </div>
   );

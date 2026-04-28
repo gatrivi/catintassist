@@ -112,4 +112,6 @@ CURRENT INBOX
 - [x] HUD: real-time silence counter that resets on speech (v4.2.4)
 - [x] HUD: universal idle counter that tracks time off-call regardless of state (v4.2.5)
 - [x] HUD: immediate popovers for timeline segments showing start/end times (v4.2.6)
+- [x] media stream: tab connection is preserved across calls to prevent redundant permission requests (v4.12.0)
+- [x] Scoreboard refactor: implemented 12 core metrics in a high-density 4x3 terminal grid layout (v4.13.0)
 </details>

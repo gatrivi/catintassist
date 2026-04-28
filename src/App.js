@@ -62,7 +62,7 @@ const Dashboard = () => {
         fontSize: '0.5rem', fontWeight: 400, color: 'var(--text-muted)', 
         pointerEvents: 'none', fontFamily: 'var(--font-mono)'
       }}>
-        v4.11.0.BRUTALIST
+        v4.13.0.BRUTALIST
       </div>
 
       <SilenceGuardian lastDataTime={lastDataTime} />

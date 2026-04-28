@@ -274,6 +274,15 @@ export const useDeepgram = () => {
   const startRecording = async () => {
     try {
       setConnectionState('connecting');
+
+      // REUSE EXISTING STREAM IF AVAILABLE AND ACTIVE
+      if (streamRef.current && streamRef.current.active && streamRef.current.getAudioTracks().length > 0) {
+        setConnectionMessage('Reusing Tab Audio...');
+        isActiveRef.current = true;
+        startDeepgram(streamRef.current);
+        return true;
+      }
+
       setConnectionMessage('Requesting Tab Audio...');
       const stream = await navigator.mediaDevices.getDisplayMedia({ video: true, audio: true });
       if (stream.getAudioTracks().length === 0) {
@@ -284,7 +293,10 @@ export const useDeepgram = () => {
       streamRef.current = stream;
       isActiveRef.current = true;
       startDeepgram(stream);
-      stream.getVideoTracks()[0].onended = () => stopRecording();
+      stream.getVideoTracks()[0].onended = () => {
+         streamRef.current = null;
+         stopRecording();
+      };
       return true;
     } catch (err) {
       console.error(err);
@@ -294,10 +306,8 @@ export const useDeepgram = () => {
 
   const stopRecording = useCallback(() => {
     isActiveRef.current = false;
-    if (streamRef.current) {
-      streamRef.current.getTracks().forEach(track => track.stop());
-      streamRef.current = null;
-    }
+    // We NO LONGER stop the tracks here to keep the connection to the tab alive across calls.
+    // The user can stop the stream manually via the browser's "Stop sharing" button.
     closeConnections();
     clearCaptions();
   }, [closeConnections, clearCaptions]);
