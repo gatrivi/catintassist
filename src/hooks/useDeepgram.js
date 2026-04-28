@@ -271,7 +271,15 @@ export const useDeepgram = () => {
     socketRefEs.current = createSocket('es');
   }, [isCallDetectionEnabled, updateActivity, updateCaptions, requestHoldIntent]);
 
-  const startRecording = async () => {
+  const stopRecording = useCallback(() => {
+    isActiveRef.current = false;
+    // We NO LONGER stop the tracks here to keep the connection to the tab alive across calls.
+    // The user can stop the stream manually via the browser's "Stop sharing" button.
+    closeConnections();
+    clearCaptions();
+  }, [closeConnections, clearCaptions]);
+
+  const startRecording = useCallback(async () => {
     try {
       setConnectionState('connecting');
 
@@ -302,15 +310,7 @@ export const useDeepgram = () => {
       console.error(err);
       return false;
     }
-  };
-
-  const stopRecording = useCallback(() => {
-    isActiveRef.current = false;
-    // We NO LONGER stop the tracks here to keep the connection to the tab alive across calls.
-    // The user can stop the stream manually via the browser's "Stop sharing" button.
-    closeConnections();
-    clearCaptions();
-  }, [closeConnections, clearCaptions]);
+  }, [startDeepgram, stopRecording]);
 
   const reconnectStream = useCallback(() => {
     setConnectionState('connecting');
@@ -325,7 +325,7 @@ export const useDeepgram = () => {
     }, 400);
   }, [closeConnections, startDeepgram, startRecording]);
 
-  const toggleLanguage = () => {
+  const toggleLanguage = useCallback(() => {
     setSttLanguage(prev => {
       const next = prev === 'auto' ? 'en' : (prev === 'en' ? 'es' : 'auto');
       langModeRef.current = next;
@@ -338,7 +338,7 @@ export const useDeepgram = () => {
       }
       return next;
     });
-  };
+  }, []);
 
   return { startRecording, stopRecording, reconnectStream, captions, clearCaptions, sttLanguage, toggleLanguage, connectionState, connectionMessage, lastDataTime };
 };
