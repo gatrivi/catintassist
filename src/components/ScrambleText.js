@@ -6,11 +6,12 @@ import React, { useState, useEffect, useRef } from 'react';
  * Masks React's instant DOM swaps with an organic "terminal decode" effect.
  */
 export const ScrambleText = ({ value, duration = 600, className = "" }) => {
-  const [displayValue, setDisplayValue] = useState(""); 
-  const targetValueRef = useRef(""); 
-  const frameRef = useRef(null);
-
   const chars = '0123456789#$%&?@';
+  const generateRandom = (len) => Array.from({ length: len }, () => chars[Math.floor(Math.random() * chars.length)]).join('');
+  
+  const [displayValue, setDisplayValue] = useState(() => generateRandom(String(value || "").length)); 
+  const targetValueRef = useRef(value); 
+  const frameRef = useRef(null);
 
   useEffect(() => {
     if (value === targetValueRef.current) return;

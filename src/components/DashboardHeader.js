@@ -89,7 +89,7 @@ export const DashboardHeader = ({ onStartAudio, onStopAudio, onReconnectStream, 
 
   return (
     <header className={`dashboard-header ${stateBorderClass}`} style={{ 
-      background: '#09090b', borderBottom: '1px solid #18181b', borderRadius: 0,
+      background: 'var(--bg-color)', borderBottom: '1px solid #18181b', borderRadius: 0,
       padding: '4px', position: 'relative', zIndex: 100, height: '100px', display: 'flex', alignItems: 'stretch'
     }}>
       <div className={`condensed-header-card ${isFlareActive ? 'flare-trigger' : ''}`} style={{ 
@@ -99,17 +99,24 @@ export const DashboardHeader = ({ onStartAudio, onStopAudio, onReconnectStream, 
         
         {/* LEFT CONTROLS: Connect, Break, End Day */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', alignItems: 'center', borderRight: '1px solid #18181b', padding: '4px' }}>
-           {!isActive ? (
-              <button className="btn-emoji" onClick={isZombieCall ? onRecovery : onStartAudio} style={{ 
-                background: isZombieCall ? 'var(--danger)' : 'var(--success)', 
-                width: '32px', height: '32px', fontSize: '1rem', color: '#000', fontWeight: 900
-              }}>
-                {isZombieCall ? '!' : '>'}
-              </button>
+            {!isActive ? (
+               <div style={{ position: 'relative' }}>
+                <button className="btn-emoji" onClick={isZombieCall ? onRecovery : onStartAudio} style={{ 
+                  background: isZombieCall ? 'var(--danger)' : 'var(--success)', 
+                  width: '32px', height: '32px', fontSize: '1rem', color: '#000', fontWeight: 900,
+                  position: 'relative', zIndex: 2
+                }}>
+                  {isZombieCall ? '!' : '>'}
+                </button>
+               </div>
             ) : (
-              <button className="btn-emoji" onClick={handleStop} style={{ 
-                background: 'var(--danger)', width: '32px', height: '32px', fontSize: '1rem', color: '#000', fontWeight: 900
-              }}>X</button>
+              <div style={{ position: 'relative' }}>
+                <div className="sonar-ring" />
+                <button className="btn-emoji" onClick={handleStop} style={{ 
+                  background: 'var(--danger)', width: '32px', height: '32px', fontSize: '1rem', color: '#000', fontWeight: 900,
+                  position: 'relative', zIndex: 2
+                }}>X</button>
+              </div>
             )}
 
             {!isActive && (

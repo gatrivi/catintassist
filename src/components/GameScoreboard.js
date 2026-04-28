@@ -83,7 +83,7 @@ export const GameScoreboard = ({
       gridTemplateRows: 'repeat(3, 1fr)',
       gap: '2px',
       padding: '4px',
-      background: '#09090b',
+      background: 'transparent',
       height: '100%',
       fontFamily: 'monospace',
       lineHeight: '1.2',
@@ -94,7 +94,7 @@ export const GameScoreboard = ({
     }}>
       {/* ROW 1 */}
       {/* Col 1 */}
-      <div style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>
+      <div style={{ overflow: 'hidden', textOverflow: 'ellipsis' }} className={liveDailyArs >= dailyTargetArs ? 'goal-achieved' : ''}>
         AR$ <span style={{ color: 'var(--success)' }}>{renderMeter(liveDailyArs, dailyTargetArs, 8)}</span> <RollingNumber value={dailyEarnK} height={12} />k / {dailyTargetK}k
       </div>
       {/* Col 2 */}

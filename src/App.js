@@ -39,6 +39,25 @@ const Dashboard = () => {
   }, []);
 
   useEffect(() => {
+    const konamiCode = ['ArrowUp', 'ArrowUp', 'ArrowDown', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'ArrowLeft', 'ArrowRight', 'b', 'a'];
+    let index = 0;
+    const handleKeyDown = (e) => {
+      if (e.key === konamiCode[index]) {
+        index++;
+        if (index === konamiCode.length) {
+          const current = document.body.getAttribute('data-easter-egg');
+          document.body.setAttribute('data-easter-egg', current === 'matrix' ? '' : 'matrix');
+          index = 0;
+        }
+      } else {
+        index = 0;
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, []);
+
+  useEffect(() => {
     const handleKeyDown = (e) => {
       const isTyping = e.target.tagName === 'TEXTAREA' || e.target.tagName === 'INPUT';
       if (e.code === 'Escape' || (e.altKey && e.code === 'Space')) {
@@ -57,10 +76,12 @@ const Dashboard = () => {
 
   return (
     <div className="app-container" data-state={appState}>
-      <div style={{ 
+      <div className="version-tag"
+        style={{ 
         position: 'fixed', top: '2px', right: '4px', zIndex: 10000, 
         fontSize: '0.5rem', fontWeight: 400, color: 'var(--text-muted)', 
-        pointerEvents: 'none', fontFamily: 'var(--font-mono)'
+        pointerEvents: 'auto', fontFamily: 'var(--font-mono)',
+        transition: 'all 0.3s ease'
       }}>
         v4.14.2 (Deep-Sea)
       </div>
@@ -95,12 +116,12 @@ const Dashboard = () => {
         {(isNotesOpen || isToolbarVisible) && (
           <div className="tools-column" style={{ width: '300px', display: 'flex', flexDirection: 'column', gap: '4px' }}>
              {isToolbarVisible && (
-               <div className="brutalist-panel tools-soundboard" style={{ flex: isEditingBg ? '1' : '1.5', overflow: 'hidden', background: '#09090b', border: '1px solid #18181b' }}>
+               <div className="brutalist-panel tools-soundboard" style={{ flex: isEditingBg ? '1' : '1.5', overflow: 'hidden', background: 'var(--panel-bg)', border: '1px solid #18181b' }}>
                  <GreetingsPanel onEditModeChange={setIsEditingBg} />
                </div>
              )}
              {(isNotesOpen && !isEditingBg) && (
-               <div className="brutalist-panel tools-notes" style={{ flex: 1, overflow: 'hidden', background: '#09090b', border: '1px solid #18181b', display: 'flex', flexDirection: 'column' }}>
+               <div className="brutalist-panel tools-notes" style={{ flex: 1, overflow: 'hidden', background: 'var(--panel-bg)', border: '1px solid #18181b', display: 'flex', flexDirection: 'column' }}>
                  <DictionaryTool />
                  <NotePad />
                </div>

@@ -276,7 +276,7 @@ export const TranscriptionBoard = ({ captions, onClearAll, onReconnect, lastData
 
   return (
     <div className="transcription-area" style={{ 
-      position: 'relative', background: '#09090b', border: '1px solid #18181b', borderRadius: 0,
+      position: 'relative', background: 'var(--panel-bg)', border: '1px solid #18181b', borderRadius: 0,
       display: 'flex', flexDirection: 'column', height: '100%'
     }}>
       {popover.show && (
@@ -371,7 +371,7 @@ export const TranscriptionBoard = ({ captions, onClearAll, onReconnect, lastData
       {/* Simplified Footer Toolbar */}
       <div style={{ 
         display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '4px 8px',
-        borderTop: '1px solid #18181b', background: '#09090b', fontFamily: 'var(--font-mono, monospace)', fontSize: '0.65rem'
+        borderTop: '1px solid #18181b', background: 'var(--panel-bg)', fontFamily: 'var(--font-mono, monospace)', fontSize: '0.65rem'
       }}>
         <div style={{ display: 'flex', gap: '8px' }}>
           <button onClick={() => setEmphasisMode(m => m === 'original' ? 'flipped' : 'original')} style={{ background: 'transparent', color: emphasisMode === 'flipped' ? 'var(--accent-primary)' : '#fff', border: 'none', cursor: 'pointer' }}>
