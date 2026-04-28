@@ -162,7 +162,7 @@ export const DashboardHeader = ({ onStartAudio, onStopAudio, onReconnectStream, 
       {/* Connection State Info Overlay (Tiny) */}
       <div style={{ 
         position: 'absolute', bottom: '2px', left: '50%', transform: 'translateX(-50%)',
-        fontSize: '0.5rem', color: 'rgba(255,255,255,0.15)', fontFamily: 'var(--font-mono)',
+        fontSize: '0.5rem', color: 'rgba(255,255,255,0.5)', fontFamily: 'var(--font-mono)',
         whiteSpace: 'nowrap', pointerEvents: 'none'
       }}>
         {connectionMessage || 'SYSTEM_STABLE'} | {sttLanguage.toUpperCase()}

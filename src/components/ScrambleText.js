@@ -5,9 +5,9 @@ import React, { useState, useEffect, useRef } from 'react';
  * RAPIDLY cycles random ASCII characters before settling on the target value.
  * Masks React's instant DOM swaps with an organic "terminal decode" effect.
  */
-export const ScrambleText = ({ value, duration = 400, className = "" }) => {
-  const [displayValue, setDisplayValue] = useState(value);
-  const targetValueRef = useRef(value);
+export const ScrambleText = ({ value, duration = 600, className = "" }) => {
+  const [displayValue, setDisplayValue] = useState(""); 
+  const targetValueRef = useRef(""); 
   const frameRef = useRef(null);
 
   const chars = '0123456789#$%&?@';

@@ -140,7 +140,7 @@ const TranslatedBubble = ({ id, text, lang, playTTS, stopTTS, playingUrl, prefet
 
   const isThisPlaying = playingUrl && audioUrl && playingUrl === audioUrl;
   const transcriptColor = emphasisMode === 'flipped' ? '#93c5fd' : '#ffffff';
-  const translationColor = emphasisMode === 'flipped' ? '#bfdbfe' : 'rgba(255,255,255,0.65)';
+  const translationColor = emphasisMode === 'flipped' ? '#bfdbfe' : 'rgba(255,255,255,0.85)';
 
   return (
     <div style={{ display: 'flex', gap: '0.4rem', marginTop: '0.1rem', flexDirection: reverse ? 'row-reverse' : 'row', alignItems: 'flex-start' }}>

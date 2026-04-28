@@ -90,7 +90,7 @@ export const GameScoreboard = ({
       fontSize: '0.85rem',
       whiteSpace: 'nowrap',
       overflow: 'hidden',
-      color: 'var(--text-muted)'
+      color: '#fff'
     }}>
       {/* ROW 1 */}
       {/* Col 1 */}
@@ -142,7 +142,7 @@ export const GameScoreboard = ({
         IDL [<ScrambleText value={formatTime(availSeconds)} />] Logged
       </div>
       {/* Col 4 */}
-      <div style={{ overflow: 'hidden', textOverflow: 'ellipsis', color: 'rgba(255, 255, 255, 0.7)' }}>
+      <div style={{ overflow: 'hidden', textOverflow: 'ellipsis', color: '#64748b' }}>
         "{coachingStr}"
       </div>
     </div>

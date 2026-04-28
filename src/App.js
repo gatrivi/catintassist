@@ -62,7 +62,7 @@ const Dashboard = () => {
         fontSize: '0.5rem', fontWeight: 400, color: 'var(--text-muted)', 
         pointerEvents: 'none', fontFamily: 'var(--font-mono)'
       }}>
-        v4.14.1 (Retro-Decode)
+        v4.14.2 (Deep-Sea)
       </div>
 
       <div id="top-mic-bar-container" style={{ position: 'fixed', top: 0, left: 0, right: 0, height: '3px', zIndex: 9999, pointerEvents: 'none' }}>
