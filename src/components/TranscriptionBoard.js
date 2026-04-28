@@ -66,10 +66,13 @@ const InteractiveText = ({ text, scramble = true }) => {
   return (
     <>
       {parts.map((p, i) => {
+        // STABLE KEYS: We use the bubble ID + part index + hash of content to ensure 
+        // React doesn't reuse the wrong ScrambleText instance during unshifts.
+        const partKey = `${i}-${p.length}`;
         if (p && p.match(numRegex)) {
           return (
             <span 
-              key={i} 
+              key={partKey} 
               className="phone-number highlight-number" 
               onClick={(e) => { e.stopPropagation(); handleCopy(p); }} 
               title={`Click to copy number: ${p}`}
@@ -79,7 +82,7 @@ const InteractiveText = ({ text, scramble = true }) => {
             </span>
           );
         }
-        return scramble ? <ScrambleText key={i} value={p} duration={300} /> : <span key={i}>{p}</span>;
+        return scramble ? <ScrambleText key={partKey} value={p} duration={300} /> : <span key={partKey}>{p}</span>;
       })}
     </>
   );
