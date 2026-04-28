@@ -5,6 +5,7 @@ import { useTranslate } from '../hooks/useTranslate';
 import { useSession, safeSet } from '../contexts/SessionContext';
 import { useProgressiveAudio } from '../hooks/useProgressiveAudio';
 import { useRewardAudio } from '../hooks/useRewardAudio';
+import { ScrambleText } from './ScrambleText';
 
 // EL TABLERO DE TEXTO: Aquí es donde aparece todo lo que dicen en la llamada.
 // Muestra quién habla, lo traduce y te deja copiar los números con un clic.
@@ -37,7 +38,7 @@ const convertNumberWords = (text) => {
   return text.replace(/\b(zero|one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve|thirteen|fourteen|fifteen|sixteen|seventeen|eighteen|nineteen|twenty|thirty|forty|fifty|sixty|seventy|eighty|ninety)\b/gi, (matched) => map[matched.toLowerCase()] || matched);
 };
 
-const InteractiveText = ({ text }) => {
+const InteractiveText = ({ text, scramble = true }) => {
   if (!text) return null;
   // GROUP PHONE NUMBERS: If we see 9 or 10 digits read out singly (with spaces), join them.
   // This version is a robust one-liner that matches 9 or 10 digits with optional spaces.
@@ -75,11 +76,11 @@ const InteractiveText = ({ text }) => {
               title={`Click to copy number: ${p}`}
               style={{ cursor: 'copy', backgroundColor: 'rgba(252, 211, 77, 0.1)', color: '#fcd34d', padding: '0 2px', borderRadius: '2px', fontWeight: 600 }}
             >
-              {p}
+              {scramble ? <ScrambleText value={p} duration={300} /> : p}
             </span>
           );
         }
-        return <span key={i}>{p}</span>;
+        return scramble ? <ScrambleText key={i} value={p} duration={300} /> : <span key={i}>{p}</span>;
       })}
     </>
   );
@@ -146,7 +147,7 @@ const TranslatedBubble = ({ id, text, lang, playTTS, stopTTS, playingUrl, prefet
     <div style={{ display: 'flex', gap: '0.4rem', marginTop: '0.1rem', flexDirection: reverse ? 'row-reverse' : 'row', alignItems: 'flex-start' }}>
       <div style={{ flex: 1, textAlign: reverse ? 'right' : 'left', minWidth: 0 }}>
         <div style={{ color: transcriptColor, fontWeight: 400, lineHeight: 1.25, fontSize: '0.9rem', wordBreak: 'break-word' }}>
-          <InteractiveText text={text} />
+          <InteractiveText text={text} scramble={true} />
         </div>
       </div>
 
@@ -172,7 +173,7 @@ const TranslatedBubble = ({ id, text, lang, playTTS, stopTTS, playingUrl, prefet
 
       <div style={{ flex: 1, color: translationColor, textAlign: reverse ? 'left' : 'right', minWidth: 0 }}>
         <div style={{ fontWeight: 400, fontStyle: 'italic', lineHeight: 1.25, fontSize: '0.85rem', wordBreak: 'break-word' }}>
-          {translation ? <InteractiveText text={translation} /> : <span style={{ opacity: 0.2 }}>...</span>}
+          {translation ? <InteractiveText text={translation} scramble={true} /> : <span style={{ opacity: 0.2 }}>...</span>}
         </div>
       </div>
     </div>
