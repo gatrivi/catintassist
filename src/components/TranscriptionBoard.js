@@ -82,7 +82,7 @@ const InteractiveText = ({ text, scramble = true }) => {
       {parts.map((p, i) => {
         // STABLE KEYS: We use the bubble ID + part index + hash of content to ensure 
         // React doesn't reuse the wrong ScrambleText instance during unshifts.
-        const partKey = `${i}-${p.length}`;
+        const partKey = `${i}`;
         if (p && p.match(numRegex)) {
           return (
             <span 

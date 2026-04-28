@@ -83,7 +83,7 @@ const Dashboard = () => {
         pointerEvents: 'auto', fontFamily: 'var(--font-mono)',
         transition: 'all 0.3s ease'
       }}>
-        v4.15.0 (Deep-Sea)
+        v4.15.1 (Deep-Sea)
       </div>
 
       <div id="top-mic-bar-container" style={{ position: 'fixed', top: 0, left: 0, right: 0, height: '3px', zIndex: 9999, pointerEvents: 'none' }}>

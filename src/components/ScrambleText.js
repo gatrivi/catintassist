@@ -1,50 +1,63 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useEffect, useRef } from 'react';
 
 /**
  * ScrambleText Component
- * RAPIDLY cycles random ASCII characters before settling on the target value.
- * Masks React's instant DOM swaps with an organic "terminal decode" effect.
+ * Smooth "terminal decode" effect. Only animates new text (suffix) on append,
+ * preventing the jarring full-rescramble when words are added mid-stream.
+ * Uses a soft number-only charset for calmer visuals.
  */
-export const ScrambleText = ({ value, duration = 450, className = "" }) => {
+export const ScrambleText = ({ value, duration = 350, className = "" }) => {
   const spanRef = useRef(null);
-  const targetValueRef = useRef(null); 
+  const targetValueRef = useRef("");
+  const stableTextRef = useRef(""); // Text that has fully settled
   const frameRef = useRef(null);
   const startTimeRef = useRef(null);
   const isAnimatingRef = useRef(false);
-  const chars = '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+  // Softer charset: numbers only (way less jarring than uppercase letters)
+  const chars = '0123456789';
 
   useEffect(() => {
-    const prevValue = targetValueRef.current;
-    targetValueRef.current = value;
+    targetValueRef.current = value || "";
 
-    // Direct DOM sync if not animating
-    if (!isAnimatingRef.current && spanRef.current) {
-      spanRef.current.innerText = value;
+    if (value === stableTextRef.current) return;
+    if (!value) {
+      stableTextRef.current = "";
+      if (spanRef.current) spanRef.current.innerText = "";
+      return;
     }
 
-    // Abort if value hasn't changed or is empty
-    if (value === prevValue) return;
-    if (!value || String(value).trim() === "") return;
-
-    // Deadlock Protection: If already animating, just let the loop continue with the new target
+    // If already animating, the loop will pick up the new targetValueRef
+    // and resolve to it smoothly.
     if (isAnimatingRef.current) return;
 
-    // Start Animation Loop
     isAnimatingRef.current = true;
     startTimeRef.current = performance.now();
 
+    // Append-only updates are faster and calmer
+    const stable = stableTextRef.current;
+    const isAppend = stable && value.startsWith(stable) && stable.length > 0;
+    const animDuration = isAppend ? 150 : duration;
+
     const update = (now) => {
       const elapsed = now - startTimeRef.current;
-      const progress = Math.min(elapsed / duration, 1);
-      const target = String(targetValueRef.current || "");
+      const progress = Math.min(elapsed / animDuration, 1);
+      const target = targetValueRef.current;
+
+      // Recompute prefix dynamically in case value changed mid-animation
+      const settled = stableTextRef.current;
+      let prefix = "";
+      let animateText = target;
+      if (settled && target.startsWith(settled) && settled.length > 0) {
+        prefix = settled;
+        animateText = target.slice(settled.length);
+      }
 
       if (progress < 1) {
-        // Left-to-Right Reveal logic
-        const resolvedCount = Math.floor(target.length * progress);
-        let newDisplay = target.slice(0, resolvedCount);
-        
-        for (let i = resolvedCount; i < target.length; i++) {
-          if (target[i] === ' ') {
+        const resolvedCount = Math.floor(animateText.length * progress);
+        let newDisplay = prefix + animateText.slice(0, resolvedCount);
+
+        for (let i = resolvedCount; i < animateText.length; i++) {
+          if (animateText[i] === ' ') {
             newDisplay += ' ';
           } else {
             newDisplay += chars[Math.floor(Math.random() * chars.length)];
@@ -54,8 +67,8 @@ export const ScrambleText = ({ value, duration = 450, className = "" }) => {
         if (spanRef.current) spanRef.current.innerText = newDisplay;
         frameRef.current = requestAnimationFrame(update);
       } else {
-        // Final settle
         if (spanRef.current) spanRef.current.innerText = target;
+        stableTextRef.current = target; // Mark fully settled
         isAnimatingRef.current = false;
         startTimeRef.current = null;
       }
@@ -64,7 +77,6 @@ export const ScrambleText = ({ value, duration = 450, className = "" }) => {
     frameRef.current = requestAnimationFrame(update);
   }, [value, duration]);
 
-  // Only cancel on actual UNMOUNT to avoid the prop-update deadlock
   useEffect(() => {
     return () => {
       if (frameRef.current) cancelAnimationFrame(frameRef.current);
@@ -72,7 +84,7 @@ export const ScrambleText = ({ value, duration = 450, className = "" }) => {
   }, []);
 
   return (
-    <span ref={spanRef} className={className} style={{ 
+    <span ref={spanRef} className={className} style={{
       display: 'inline-block',
       fontFamily: 'var(--font-mono, monospace)',
       whiteSpace: 'pre-wrap'

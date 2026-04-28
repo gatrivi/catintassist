@@ -116,4 +116,5 @@ CURRENT INBOX
 - [x] media stream: tab connection is preserved across calls to prevent redundant permission requests (v4.12.0)
 - [x] Scoreboard refactor: implemented 12 core metrics in a high-density 4x3 terminal grid layout (v4.13.0)
 - [x] data protection: phone/SSN/address sequences are guarded from overlap removal; EN+ES number words convert to digits; 10-digit→XXX-XXX-XXXX, 9-digit→XXX-XX-XXXX (v4.15.0)
+- [x] scramble text: prefix-aware animation — only new suffix scrambles on append; softer number-only charset; stable keys prevent remounts (v4.15.1)
 </details>
