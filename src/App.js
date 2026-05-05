@@ -11,17 +11,20 @@ import { useDeepgram } from './hooks/useDeepgram';
 import { loadFile, generateObjectUrl } from './utils/storage';
 import './index.css';
 
+const CloudSyncIndicator = () => {
+  const { syncStatus } = useSession();
+  const colors = { syncing: '#3b82f6', synced: '#10b981', error: '#ef4444', idle: 'transparent' };
+  const label = { syncing: '☁️...', synced: '☁️ ok', error: '☁️ !', idle: '' };
+  return (
+    <span style={{ color: colors[syncStatus], transition: 'color 0.3s' }}>{label[syncStatus]}</span>
+  );
+};
+
 const Dashboard = () => {
   const { startRecording, stopRecording, reconnectStream, captions, clearCaptions, sttLanguage, toggleLanguage, connectionState, connectionMessage, lastDataTime } = useDeepgram();
-  const { isNotesOpen, isToolbarVisible, isActive, isBreakActive, startSession, clearZombieState } = useSession();
+  const { isNotesOpen, isToolbarVisible, isActive, isBreakActive, minutesSinceLastBreak, startSession, clearZombieState } = useSession();
   const [isEditingBg, setIsEditingBg] = useState(false);
   
-  const handleConnection = useCallback((isRecovery = false) => {
-    if (isRecovery) clearZombieState();
-    startSession(isRecovery);
-    startRecording();
-  }, [clearZombieState, startSession, startRecording]);
-
   useEffect(() => {
     const applyBg = async () => {
       const bgApp = await loadFile('bg_app');
@@ -34,10 +37,13 @@ const Dashboard = () => {
       }
     };
     applyBg();
+    
+    // Listen for custom event when background changes in settings
     window.addEventListener('cat_bg_changed', applyBg);
     return () => window.removeEventListener('cat_bg_changed', applyBg);
   }, []);
 
+  // Matrix Mode Easter Egg
   useEffect(() => {
     const konamiCode = ['ArrowUp', 'ArrowUp', 'ArrowDown', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'ArrowLeft', 'ArrowRight', 'b', 'a'];
     let index = 0;
@@ -57,9 +63,11 @@ const Dashboard = () => {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, []);
 
+  // Hotkeys for language switching
   useEffect(() => {
     const handleKeyDown = (e) => {
       const isTyping = e.target.tagName === 'TEXTAREA' || e.target.tagName === 'INPUT';
+      
       if (e.code === 'Escape' || (e.altKey && e.code === 'Space')) {
         e.preventDefault();
         toggleLanguage();
@@ -72,18 +80,39 @@ const Dashboard = () => {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [toggleLanguage]);
 
-  const appState = isActive ? 'active' : isBreakActive ? 'break' : 'idle';
+  // Track idle time for full app vignette
+  const [idleSecs, setIdleSecs] = useState(0);
+  useEffect(() => {
+    if (isActive || isBreakActive) { setIdleSecs(0); return; }
+    const iv = setInterval(() => setIdleSecs(s => s + 1), 1000);
+    return () => clearInterval(iv);
+  }, [isActive, isBreakActive]);
+
+  const isBurnoutWarning = !isBreakActive && minutesSinceLastBreak > 110;
+  // PRIORITY FIX: isActive (Call) must always block app-idle vignette
+  const stateClass = isActive ? 'app-active' : isBreakActive ? 'app-break' : (isBurnoutWarning ? 'burnout-alert' : (idleSecs > 45 ? 'app-idle' : ''));
+  const appState = isActive ? 'call' : isBreakActive ? 'break' : 'avail';
+
+  // UNIFIED CONNECTION ENGINE
+  const handleConnection = useCallback(async (isRecovery = false) => {
+    const ok = await startRecording();
+    if (ok) {
+      if (isRecovery) clearZombieState();
+      startSession(isRecovery);
+    }
+  }, [startRecording, startSession, clearZombieState]);
 
   return (
-    <div className="app-container" data-state={appState}>
-      <div className="version-tag"
-        style={{ 
-        position: 'fixed', top: '2px', right: '4px', zIndex: 10000, 
-        fontSize: '0.5rem', fontWeight: 400, color: 'var(--text-muted)', 
-        pointerEvents: 'auto', fontFamily: 'var(--font-mono)',
-        transition: 'all 0.3s ease'
+    <div className={`app-container ${stateClass}`} data-state={appState}>
+      {/* Version Tag - Always visible in the upper right */}
+      <div style={{ 
+        position: 'fixed', top: '1px', right: '4px', zIndex: 10000, 
+        fontSize: '0.55rem', fontWeight: 900, color: 'rgba(255,255,255,0.2)', 
+        pointerEvents: 'none', textTransform: 'uppercase', letterSpacing: '0.05em',
+        display: 'flex', alignItems: 'center', gap: '4px'
       }}>
-        v4.15.1 (Deep-Sea)
+        <CloudSyncIndicator />
+        v4.16.0 (Scoreboard Restore)
       </div>
 
       <div id="top-mic-bar-container" style={{ position: 'fixed', top: 0, left: 0, right: 0, height: '3px', zIndex: 9999, pointerEvents: 'none' }}>
@@ -104,24 +133,26 @@ const Dashboard = () => {
         lastDataTime={lastDataTime}
       />
 
-      <main className="main-content" style={{ display: 'flex', flex: 1, overflow: 'hidden', padding: '4px', gap: '4px' }}>
-        <div className="transcription-pane" style={{ flex: 1, minWidth: 0, height: '100%' }}>
+      <main className="main-content">
+        <div className="transcription-pane">
             <TranscriptionBoard 
               captions={captions} 
+              isActive={isActive} 
+              isBreakActive={isBreakActive}
               onClearAll={clearCaptions}
               onReconnect={() => handleConnection(true)}
               lastDataTime={lastDataTime}
             />
         </div>
         {(isNotesOpen || isToolbarVisible) && (
-          <div className="tools-column" style={{ width: '300px', display: 'flex', flexDirection: 'column', gap: '4px' }}>
+          <div className="tools-column">
              {isToolbarVisible && (
-               <div className="brutalist-panel tools-soundboard" style={{ flex: isEditingBg ? '1' : '1.5', overflow: 'hidden', background: 'var(--panel-bg)', border: '1px solid #18181b' }}>
+               <div className="glass-panel tools-soundboard" style={{ overflow: 'hidden', display: 'flex', flexDirection: 'column', flex: isEditingBg ? '1' : '1.5' }}>
                  <GreetingsPanel onEditModeChange={setIsEditingBg} />
                </div>
              )}
              {(isNotesOpen && !isEditingBg) && (
-               <div className="brutalist-panel tools-notes" style={{ flex: 1, overflow: 'hidden', background: 'var(--panel-bg)', border: '1px solid #18181b', display: 'flex', flexDirection: 'column' }}>
+               <div className="glass-panel tools-notes" style={{ overflow: 'hidden', display: 'flex', flexDirection: 'column', flex: 1 }}>
                  <DictionaryTool />
                  <NotePad />
                </div>
@@ -144,3 +175,4 @@ function App() {
 }
 
 export default App;
+
