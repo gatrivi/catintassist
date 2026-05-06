@@ -139,6 +139,7 @@ export const DashboardHeader = ({ onStartAudio, onStopAudio, onReconnectStream, 
 
   const [showAsHours, setShowAsHours] = useState(false);
   const [rateView, setRateView] = useState('effective'); // 'effective' | 'active'
+  const [overtimeMode, setOvertimeMode] = useState('tail'); // 'tail' | 'under'
 
   useEffect(() => {
     const iv = setInterval(() => {
@@ -156,6 +157,25 @@ export const DashboardHeader = ({ onStartAudio, onStopAudio, onReconnectStream, 
     if (!time) return getTimelinePos(Date.now());
     const t = typeof time === 'number' ? time : new Date(time).getTime();
     return Math.max(0, Math.min(100, ((t - timelineStart) / timelineDuration) * 100));
+  };
+
+  // Daily shift bar: 9am-6pm (9h). Overtime tracked separately.
+  const DAILY_SHIFT_START = 9;
+  const DAILY_SHIFT_END = 18;
+  const dailyShiftStartMs = startOfToday + DAILY_SHIFT_START * 3600000;
+  const dailyShiftEndMs = startOfToday + DAILY_SHIFT_END * 3600000;
+  const dailyShiftDuration = dailyShiftEndMs - dailyShiftStartMs;
+
+  const getDailyTimelinePos = (time) => {
+    if (!time) return getDailyTimelinePos(Date.now());
+    const t = typeof time === 'number' ? time : new Date(time).getTime();
+    return ((t - dailyShiftStartMs) / dailyShiftDuration) * 100; // allow >100 and <0
+  };
+
+  const getOvertimePos = (time) => {
+    const t = typeof time === 'number' ? time : new Date(time).getTime();
+    const maxOvertimeMs = 6 * 3600000; // 18:00-00:00
+    return Math.max(0, Math.min(100, ((t - dailyShiftEndMs) / maxOvertimeMs) * 100));
   };
 
   // Mini-timeline renderer for day notches
@@ -288,10 +308,9 @@ export const DashboardHeader = ({ onStartAudio, onStopAudio, onReconnectStream, 
   const totalOffCallMins = (stats.dailyAvailMinutes || 0) + (stats.dailyBreakMinutes || 0) + (availSeconds / 60) + (breakSeconds / 60);
 
   // CATCH-UP LOGIC: Dynamic shifts and SUCCESS ZONES
-  const WORKDAY_START = 9, ABSOLUTE_END = 23;
+  const ABSOLUTE_END = 23;
   const currentTime = now.getHours() + (now.getMinutes() / 60);
-  const totalWorkdayHours = ABSOLUTE_END - WORKDAY_START; // 14h total
-  const timeElapsedRatio = Math.min(1, Math.max(0, (currentTime - WORKDAY_START) / totalWorkdayHours));
+  const shiftElapsedRatio = Math.min(1, Math.max(0, (currentTime - DAILY_SHIFT_START) / (DAILY_SHIFT_END - DAILY_SHIFT_START)));
   
   const getDayEmoji = () => {
     if (currentTime < 13) return '🌅';
@@ -329,7 +348,7 @@ export const DashboardHeader = ({ onStartAudio, onStopAudio, onReconnectStream, 
   // Estimated workable mins from now
   const workableMinsRemaining = hoursLeftToAbsolute * 35;
   
-  const realisticMaxToday = stats.dailyMinutes + workableMinsRemaining;
+  // realistic max is now computed inline in the daily bar label
   
   const remainingWorkdaysThisMonth = Math.max(0, remainingDays - 1);
   const monthlyMaxMins = stats.monthlyMinutes + workableMinsRemaining + (remainingWorkdaysThisMonth * 14 * 35);
@@ -1101,7 +1120,7 @@ ${isInDeficit ? `⚠️ DEFICIT: Behind pace by ${Math.round(monthlyDeficitMins)
           {/* Daily bar */}
           <div style={{ display: 'flex', flexDirection: 'column', gap: '0.15rem' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.6rem', color: 'var(--text-muted)', alignItems: 'center' }}>
-              <span title="Workday starts at 9:00 AM">☀️ 09:00 (Min: {dailyGoal}m)</span>
+              <span title="Shift starts at 9:00 AM">☀️ 09:00 (Min: {dailyGoal}m)</span>
               <div style={{ display: 'flex', alignItems: 'center', gap: '0.3rem' }}>
                 {stats.dailyMinutes >= 480 ? (
                   <span style={{ color: '#fcd34d', fontWeight: 800 }}>👑 LEGENDARY DAY (480m+)</span>
@@ -1111,18 +1130,23 @@ ${isInDeficit ? `⚠️ DEFICIT: Behind pace by ${Math.round(monthlyDeficitMins)
                   <span style={{ color: '#34d399', fontWeight: 800 }}>🎉 SHIFT MET ({dailyGoal}m)</span>
                 ) : (
                   <>
-                  <>
-                    <span title={`WORKDAY REMAINING: There are ${hoursLeftToAbsolute.toFixed(1)} hours left until the 23:00 hard stop. Use them wisely!`}>⏳ {hoursLeftToAbsolute.toFixed(1)}h left</span>
-                    <span title={`ESTIMATED YIELD: Based on your current rate, you can realistically bank another ${Math.round(workableMinsRemaining)}m today, worth AR$${Math.round(workableMinsRemaining * RATE_PER_MINUTE * arsRate).toLocaleString('es-AR')}.`}>({Math.round(workableMinsRemaining)}m / AR$${Math.round(workableMinsRemaining * RATE_PER_MINUTE * arsRate).toLocaleString('es-AR')})</span>
-                  </>
+                    <span title={`SHIFT REMAINING: ${Math.max(0, DAILY_SHIFT_END - currentTime).toFixed(1)} hours left until 18:00.`}>⏳ {Math.max(0, DAILY_SHIFT_END - currentTime).toFixed(1)}h left</span>
+                    <span title={`ESTIMATED YIELD: Based on your current rate, you can realistically bank another ${Math.round(Math.max(0, DAILY_SHIFT_END - currentTime) * 35)}m today, worth AR$${Math.round(Math.max(0, DAILY_SHIFT_END - currentTime) * 35 * RATE_PER_MINUTE * arsRate).toLocaleString('es-AR')}.`}>({Math.round(Math.max(0, DAILY_SHIFT_END - currentTime) * 35)}m / AR$${Math.round(Math.max(0, DAILY_SHIFT_END - currentTime) * 35 * RATE_PER_MINUTE * arsRate).toLocaleString('es-AR')})</span>
                   </>
                 )}
+                <button
+                  onClick={() => setOvertimeMode(m => m === 'tail' ? 'under' : 'tail')}
+                  title={`Overtime display: ${overtimeMode === 'tail' ? 'Extended tail' : 'Micro under-bar'}. Click to toggle.`}
+                  style={{ fontSize: '0.5rem', padding: '1px 4px', borderRadius: '3px', border: '1px solid rgba(255,255,255,0.2)', background: 'rgba(139,92,246,0.2)', color: '#c4b5fd', cursor: 'pointer', fontWeight: 700 }}
+                >
+                  {overtimeMode === 'tail' ? '➡️ TAIL' : '⬇️ UNDER'}
+                </button>
               </div>
-              <span title="Workday ends at 11:00 PM">🌙 23:00 (Focus: 480m)</span>
+              <span title="Shift ends at 6:00 PM">🌙 18:00 (Focus: 480m)</span>
             </div>
             <div 
               title="Daily Multi-Tier Bar: Blue (Floor), Purple (350m Growth), Gold (480m focus)."
-              style={{ height: '6px', background: 'rgba(251, 146, 60, 0.1)', borderRadius: '3px', position: 'relative', overflow: 'hidden', cursor: 'help' }}>
+              style={{ height: '6px', background: 'rgba(251, 146, 60, 0.1)', borderRadius: '3px', position: 'relative', overflow: overtimeMode === 'tail' ? 'visible' : 'hidden', cursor: 'help' }}>
               
               {/* Target Notches */}
               <div style={{ position: 'absolute', inset: 0, display: 'flex', pointerEvents: 'none', zIndex: 4 }}>
@@ -1133,31 +1157,57 @@ ${isInDeficit ? `⚠️ DEFICIT: Behind pace by ${Math.round(monthlyDeficitMins)
 
               {/* Chronological Timeline Segments */}
               <div style={{ position: 'absolute', inset: 0, zIndex: 6, pointerEvents: 'auto' }}>
-                {dailyTimeline.map((evt, idx) => {
-                  const startPos = getTimelinePos(evt.start);
-                  const endPos = getTimelinePos(evt.end || Date.now());
-                  const isHovered = hoveredTimelineEvent?.idx === idx;
+                {(() => {
+                  const items = [];
+                  const shiftEndMs = dailyShiftEndMs;
                   
-                  return (
-                    <div 
-                      key={idx}
-                      className={`timeline-segment ${evt.type} ${!evt.end ? 'ongoing' : ''}`}
-                      onMouseEnter={(e) => {
-                        const rect = e.currentTarget.getBoundingClientRect();
-                        setHoveredTimelineEvent({ ...evt, idx, left: rect.left + rect.width/2 });
-                      }}
-                      onMouseLeave={() => setHoveredTimelineEvent(null)}
-                      style={{ 
-                        left: `${startPos}%`, 
-                        width: `${Math.max(0.5, endPos - startPos)}%`,
-                        zIndex: evt.type === 'work' ? 10 : (evt.type === 'break' ? 9 : 8),
-                        cursor: 'crosshair',
-                        opacity: hoveredTimelineEvent && !isHovered ? 0.3 : 1,
-                        transition: 'opacity 0.2s ease'
-                      }} 
-                    />
-                  );
-                })}
+                  dailyTimeline.forEach((evt, idx) => {
+                    const start = evt.start;
+                    const end = evt.end || Date.now();
+                    const isHovered = hoveredTimelineEvent?.idx === idx;
+                    
+                    const renderSeg = (key, sPos, ePos, isOvertime) => (
+                      <div 
+                        key={key}
+                        className={`timeline-segment ${evt.type} ${!evt.end ? 'ongoing' : ''} ${isOvertime ? 'overtime' : ''}`}
+                        onMouseEnter={(e) => {
+                          const rect = e.currentTarget.getBoundingClientRect();
+                          setHoveredTimelineEvent({ ...evt, idx, left: rect.left + rect.width/2 });
+                        }}
+                        onMouseLeave={() => setHoveredTimelineEvent(null)}
+                        style={{ 
+                          left: `${Math.max(0, sPos)}%`, 
+                          width: `${Math.max(0.5, ePos - Math.max(0, sPos))}%`,
+                          zIndex: evt.type === 'work' ? 10 : (evt.type === 'break' ? 9 : 8),
+                          cursor: 'crosshair',
+                          opacity: hoveredTimelineEvent && !isHovered ? 0.3 : 1,
+                          transition: 'opacity 0.2s ease'
+                        }} 
+                      />
+                    );
+                    
+                    if (overtimeMode === 'tail') {
+                      if (end <= shiftEndMs || start >= shiftEndMs) {
+                        const startPos = getDailyTimelinePos(start);
+                        const endPos = getDailyTimelinePos(end);
+                        items.push(renderSeg(idx, startPos, endPos, start >= shiftEndMs));
+                      } else {
+                        const startPos1 = getDailyTimelinePos(start);
+                        items.push(renderSeg(idx, startPos1, 100, false));
+                        items.push(renderSeg(`${idx}-ot`, 100, getDailyTimelinePos(end), true));
+                      }
+                    } else {
+                      // under mode: main bar only shows shift time
+                      if (start < shiftEndMs) {
+                        const startPos = getDailyTimelinePos(start);
+                        const endPos = Math.min(100, getDailyTimelinePos(end));
+                        items.push(renderSeg(idx, startPos, endPos, false));
+                      }
+                    }
+                  });
+                  
+                  return items;
+                })()}
 
                 {/* Popover */}
                 {hoveredTimelineEvent && (
@@ -1193,19 +1243,20 @@ ${isInDeficit ? `⚠️ DEFICIT: Behind pace by ${Math.round(monthlyDeficitMins)
                   </div>
                 )}
 
-                {/* Fill Avail gaps proactively - and visualize the "current" unrecorded state if any */}
+                {/* Fill Avail gaps proactively */}
                 {(() => {
                   const items = [];
                   if (dailyTimeline.length === 0 && stats.dayStartTime) {
-                    const startPos = getTimelinePos(stats.dayStartTime);
-                    const endPos = getTimelinePos(Date.now());
-                    items.push(<div key="init-avail" className="timeline-segment avail ongoing" style={{ left: `${startPos}%`, width: `${endPos-startPos}%` }} />);
+                    const startPos = Math.max(0, getDailyTimelinePos(stats.dayStartTime));
+                    const nowPos = getDailyTimelinePos(Date.now());
+                    const endPos = overtimeMode === 'under' ? Math.min(100, nowPos) : nowPos;
+                    items.push(<div key="init-avail" className="timeline-segment avail ongoing" style={{ left: `${startPos}%`, width: `${Math.max(0, endPos - startPos)}%` }} />);
                   }
                   return items;
                 })()}
               </div>
 
-              {/* Progress Fill (Unbanked) - Pulse effect for the active edge */}
+              {/* Progress Fill (Unbanked) */}
               <div 
                 title={`Unbanked Progress: You have ${formatTime(sessionSeconds)} in the current call.`}
                 style={{ 
@@ -1216,7 +1267,7 @@ ${isInDeficit ? `⚠️ DEFICIT: Behind pace by ${Math.round(monthlyDeficitMins)
                   pointerEvents: 'none' 
                 }} />
               
-              {/* Progress Fill (Total Mins Goal Overlay - Background) */}
+              {/* Progress Fill (Total Mins Goal Overlay) */}
               <div 
                 title={`Daily Total: ${Math.round(stats.dailyMinutes)}m`}
                 style={{ 
@@ -1226,12 +1277,12 @@ ${isInDeficit ? `⚠️ DEFICIT: Behind pace by ${Math.round(monthlyDeficitMins)
                   transition: 'width 1s cubic-bezier(0.34, 1.56, 0.64, 1)', zIndex: 2, pointerEvents: 'none' 
                 }} />
               
-              {/* Hour Notches overlay with Financial Overlays */}
+              {/* Hour Notches overlay */}
               <div 
-                title={`Progress: ${liveDailyArs.toLocaleString('es-AR')} / ${dailyTargetArs.toLocaleString('es-AR')} ARS. Each notch represents 1 hour of the workday (9 AM - 11 PM).`}
+                title={`Progress: ${liveDailyArs.toLocaleString('es-AR')} / ${dailyTargetArs.toLocaleString('es-AR')} ARS. Each notch = 1 hour of shift (9 AM - 6 PM).`}
                 style={{ position: 'absolute', inset: 0, display: 'flex', pointerEvents: 'auto', zIndex: 11, cursor: 'help' }}>
                 
-                {/* Banked Money Label (Left) */}
+                {/* Banked Money Label */}
                 <div style={{ 
                   position: 'absolute', left: '0.4rem', top: '-11px', 
                   fontSize: '0.48rem', fontWeight: 900, 
@@ -1243,7 +1294,7 @@ ${isInDeficit ? `⚠️ DEFICIT: Behind pace by ${Math.round(monthlyDeficitMins)
                   BANKED: AR${liveDailyArs.toLocaleString('es-AR')}
                 </div>
                 
-                {/* Est Max Label (Right) */}
+                {/* Est Max Label */}
                 <div style={{ 
                   position: 'absolute', right: '0.4rem', top: '-11px', 
                   fontSize: '0.48rem', fontWeight: 700, 
@@ -1252,18 +1303,51 @@ ${isInDeficit ? `⚠️ DEFICIT: Behind pace by ${Math.round(monthlyDeficitMins)
                   borderRadius: '2px', border: '1px solid rgba(255,255,255,0.1)',
                   pointerEvents: 'none', letterSpacing: '0.02em'
                 }}>
-                  EST. MAX: AR${Math.round(realisticMaxToday * RATE_PER_MINUTE * arsRate).toLocaleString('es-AR')}
+                  EST. MAX: AR${Math.round((stats.dailyMinutes + Math.max(0, DAILY_SHIFT_END - currentTime) * 35) * RATE_PER_MINUTE * arsRate).toLocaleString('es-AR')}
                 </div>
 
-                {Array.from({ length: 14 }).map((_, i) => (
-                  <div key={i} style={{ flex: 1, borderRight: i < 13 ? '1px solid rgba(255,255,255,0.15)' : 'none' }} />
+                {Array.from({ length: 9 }).map((_, i) => (
+                  <div key={i} style={{ flex: 1, borderRight: i < 8 ? '1px solid rgba(255,255,255,0.15)' : 'none' }} />
                 ))}
               </div>
 
               <div 
                 title="Current Time indicator. Keep the daily bar touching or ahead of this line."
-                style={{ position: 'absolute', top: 0, bottom: 0, left: `${timeElapsedRatio * 100}%`, width: '2px', backgroundColor: 'rgba(255,255,255,0.7)', zIndex: 10, cursor: 'help', pointerEvents: 'auto' }} />
+                style={{ position: 'absolute', top: 0, bottom: 0, left: `${shiftElapsedRatio * 100}%`, width: '2px', backgroundColor: 'rgba(255,255,255,0.7)', zIndex: 10, cursor: 'help', pointerEvents: 'auto' }} />
             </div>
+            
+            {/* Overtime under-bar */}
+            {overtimeMode === 'under' && (
+              <div style={{ height: '3px', background: 'rgba(139, 92, 246, 0.15)', borderRadius: '1px', position: 'relative', overflow: 'hidden', marginTop: '1px' }}>
+                {dailyTimeline.map((evt, idx) => {
+                  const start = evt.start;
+                  const end = evt.end || Date.now();
+                  if (end <= dailyShiftEndMs) return null;
+                  const startPos = start < dailyShiftEndMs ? 0 : getOvertimePos(start);
+                  const endPos = getOvertimePos(end);
+                  const isHovered = hoveredTimelineEvent?.idx === idx;
+                  return (
+                    <div 
+                      key={`ot-${idx}`}
+                      className={`timeline-segment ${evt.type} ${!evt.end ? 'ongoing' : ''} overtime`}
+                      onMouseEnter={(e) => {
+                        const rect = e.currentTarget.getBoundingClientRect();
+                        setHoveredTimelineEvent({ ...evt, idx, left: rect.left + rect.width/2 });
+                      }}
+                      onMouseLeave={() => setHoveredTimelineEvent(null)}
+                      style={{ 
+                        left: `${startPos}%`, 
+                        width: `${Math.max(0.5, endPos - startPos)}%`,
+                        zIndex: evt.type === 'work' ? 10 : (evt.type === 'break' ? 9 : 8),
+                        cursor: 'crosshair',
+                        opacity: hoveredTimelineEvent && !isHovered ? 0.3 : 1,
+                        transition: 'opacity 0.2s ease'
+                      }} 
+                    />
+                  );
+                })}
+              </div>
+            )}
           </div>
         </div>
       )}

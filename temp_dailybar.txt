@@ -1,0 +1,168 @@
+          {/* Daily bar */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.15rem' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.6rem', color: 'var(--text-muted)', alignItems: 'center' }}>
+              <span title="Workday starts at 9:00 AM">☀️ 09:00 (Min: {dailyGoal}m)</span>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.3rem' }}>
+                {stats.dailyMinutes >= 480 ? (
+                  <span style={{ color: '#fcd34d', fontWeight: 800 }}>👑 LEGENDARY DAY (480m+)</span>
+                ) : stats.dailyMinutes >= 350 ? (
+                  <span style={{ color: '#c084fc', fontWeight: 800 }}>🚀 GROWTH DAY (350m+)</span>
+                ) : stats.dailyMinutes >= dailyGoal ? (
+                  <span style={{ color: '#34d399', fontWeight: 800 }}>🎉 SHIFT MET ({dailyGoal}m)</span>
+                ) : (
+                  <>
+                  <>
+                    <span title={`WORKDAY REMAINING: There are ${hoursLeftToAbsolute.toFixed(1)} hours left until the 23:00 hard stop. Use them wisely!`}>⏳ {hoursLeftToAbsolute.toFixed(1)}h left</span>
+                    <span title={`ESTIMATED YIELD: Based on your current rate, you can realistically bank another ${Math.round(workableMinsRemaining)}m today, worth AR$${Math.round(workableMinsRemaining * RATE_PER_MINUTE * arsRate).toLocaleString('es-AR')}.`}>({Math.round(workableMinsRemaining)}m / AR$${Math.round(workableMinsRemaining * RATE_PER_MINUTE * arsRate).toLocaleString('es-AR')})</span>
+                  </>
+                  </>
+                )}
+              </div>
+              <span title="Workday ends at 11:00 PM">🌙 23:00 (Focus: 480m)</span>
+            </div>
+            <div 
+              title="Daily Multi-Tier Bar: Blue (Floor), Purple (350m Growth), Gold (480m focus)."
+              style={{ height: '6px', background: 'rgba(251, 146, 60, 0.1)', borderRadius: '3px', position: 'relative', overflow: 'hidden', cursor: 'help' }}>
+              
+              {/* Target Notches */}
+              <div style={{ position: 'absolute', inset: 0, display: 'flex', pointerEvents: 'none', zIndex: 4 }}>
+                {[dailyGoal, 350].map(m => (
+                  <div key={m} style={{ position: 'absolute', left: `${(m / 480) * 100}%`, top: 0, bottom: 0, width: '1px', background: 'rgba(255,255,255,0.3)' }} />
+                ))}
+              </div>
+
+              {/* Chronological Timeline Segments */}
+              <div style={{ position: 'absolute', inset: 0, zIndex: 6, pointerEvents: 'auto' }}>
+                {dailyTimeline.map((evt, idx) => {
+                  const startPos = getTimelinePos(evt.start);
+                  const endPos = getTimelinePos(evt.end || Date.now());
+                  const isHovered = hoveredTimelineEvent?.idx === idx;
+                  
+                  return (
+                    <div 
+                      key={idx}
+                      className={`timeline-segment ${evt.type} ${!evt.end ? 'ongoing' : ''}`}
+                      onMouseEnter={(e) => {
+                        const rect = e.currentTarget.getBoundingClientRect();
+                        setHoveredTimelineEvent({ ...evt, idx, left: rect.left + rect.width/2 });
+                      }}
+                      onMouseLeave={() => setHoveredTimelineEvent(null)}
+                      style={{ 
+                        left: `${startPos}%`, 
+                        width: `${Math.max(0.5, endPos - startPos)}%`,
+                        zIndex: evt.type === 'work' ? 10 : (evt.type === 'break' ? 9 : 8),
+                        cursor: 'crosshair',
+                        opacity: hoveredTimelineEvent && !isHovered ? 0.3 : 1,
+                        transition: 'opacity 0.2s ease'
+                      }} 
+                    />
+                  );
+                })}
+
+                {/* Popover */}
+                {hoveredTimelineEvent && (
+                  <div style={{
+                    position: 'fixed',
+                    left: `${hoveredTimelineEvent.left}px`,
+                    bottom: 'calc(100% - 10px)',
+                    transform: 'translateX(-50%) translateY(-20px)',
+                    background: 'rgba(15, 23, 42, 0.95)',
+                    backdropFilter: 'blur(10px)',
+                    border: `1px solid ${hoveredTimelineEvent.type === 'work' ? '#60a5fa' : '#fb923c'}`,
+                    padding: '0.4rem 0.6rem',
+                    borderRadius: '8px',
+                    boxShadow: '0 10px 25px rgba(0,0,0,0.5)',
+                    zIndex: 1000,
+                    pointerEvents: 'none',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: '2px',
+                    animation: 'slideUpBounce 0.2s cubic-bezier(0.17, 0.88, 0.32, 1.28) forwards'
+                  }}>
+                    <div style={{ fontSize: '0.6rem', textTransform: 'uppercase', fontWeight: 900, color: hoveredTimelineEvent.type === 'work' ? '#60a5fa' : '#fb923c', letterSpacing: '0.05em' }}>
+                      {hoveredTimelineEvent.type} PERIOD
+                    </div>
+                    <div style={{ fontSize: '0.8rem', fontWeight: 700, color: '#fff', whiteSpace: 'nowrap' }}>
+                      {new Date(hoveredTimelineEvent.start).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} 
+                      <span style={{ margin: '0 4px', opacity: 0.5 }}>→</span>
+                      {hoveredTimelineEvent.end ? new Date(hoveredTimelineEvent.end).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'NOW'}
+                    </div>
+                    <div style={{ fontSize: '0.55rem', opacity: 0.6 }}>
+                      Duration: {Math.round(((hoveredTimelineEvent.end || Date.now()) - hoveredTimelineEvent.start) / 60000)}m
+                    </div>
+                  </div>
+                )}
+
+                {/* Fill Avail gaps proactively - and visualize the "current" unrecorded state if any */}
+                {(() => {
+                  const items = [];
+                  if (dailyTimeline.length === 0 && stats.dayStartTime) {
+                    const startPos = getTimelinePos(stats.dayStartTime);
+                    const endPos = getTimelinePos(Date.now());
+                    items.push(<div key="init-avail" className="timeline-segment avail ongoing" style={{ left: `${startPos}%`, width: `${endPos-startPos}%` }} />);
+                  }
+                  return items;
+                })()}
+              </div>
+
+              {/* Progress Fill (Unbanked) - Pulse effect for the active edge */}
+              <div 
+                title={`Unbanked Progress: You have ${formatTime(sessionSeconds)} in the current call.`}
+                style={{ 
+                  position: 'absolute', left: 0, top: 0, bottom: 0, 
+                  width: `${Math.min(1, (stats.dailyMinutes + unbankedMins) / 480) * 100}%`, 
+                  backgroundColor: '#f97316', 
+                  opacity: 0.3, transition: 'width 1s linear', zIndex: 1, 
+                  pointerEvents: 'none' 
+                }} />
+              
+              {/* Progress Fill (Total Mins Goal Overlay - Background) */}
+              <div 
+                title={`Daily Total: ${Math.round(stats.dailyMinutes)}m`}
+                style={{ 
+                  position: 'absolute', left: 0, top: 0, bottom: 0, 
+                  width: `${Math.min(1, stats.dailyMinutes / 480) * 100}%`, 
+                  backgroundColor: 'rgba(255,255,255,0.05)', 
+                  transition: 'width 1s cubic-bezier(0.34, 1.56, 0.64, 1)', zIndex: 2, pointerEvents: 'none' 
+                }} />
+              
+              {/* Hour Notches overlay with Financial Overlays */}
+              <div 
+                title={`Progress: ${liveDailyArs.toLocaleString('es-AR')} / ${dailyTargetArs.toLocaleString('es-AR')} ARS. Each notch represents 1 hour of the workday (9 AM - 11 PM).`}
+                style={{ position: 'absolute', inset: 0, display: 'flex', pointerEvents: 'auto', zIndex: 11, cursor: 'help' }}>
+                
+                {/* Banked Money Label (Left) */}
+                <div style={{ 
+                  position: 'absolute', left: '0.4rem', top: '-11px', 
+                  fontSize: '0.48rem', fontWeight: 900, 
+                  color: '#fff', textShadow: '0 0 8px rgba(16,185,129,0.8)',
+                  background: 'rgba(16,185,129,0.3)', padding: '0 0.3rem', 
+                  borderRadius: '2px', border: '1px solid rgba(16,185,129,0.4)',
+                  pointerEvents: 'none', letterSpacing: '0.04em'
+                }}>
+                  BANKED: AR${liveDailyArs.toLocaleString('es-AR')}
+                </div>
+                
+                {/* Est Max Label (Right) */}
+                <div style={{ 
+                  position: 'absolute', right: '0.4rem', top: '-11px', 
+                  fontSize: '0.48rem', fontWeight: 700, 
+                  color: 'rgba(255,255,255,0.6)', 
+                  background: 'rgba(0,0,0,0.4)', padding: '0 0.3rem', 
+                  borderRadius: '2px', border: '1px solid rgba(255,255,255,0.1)',
+                  pointerEvents: 'none', letterSpacing: '0.02em'
+                }}>
+                  EST. MAX: AR${Math.round(realisticMaxToday * RATE_PER_MINUTE * arsRate).toLocaleString('es-AR')}
+                </div>
+
+                {Array.from({ length: 14 }).map((_, i) => (
+                  <div key={i} style={{ flex: 1, borderRight: i < 13 ? '1px solid rgba(255,255,255,0.15)' : 'none' }} />
+                ))}
+              </div>
+
+              <div 
+                title="Current Time indicator. Keep the daily bar touching or ahead of this line."
+                style={{ position: 'absolute', top: 0, bottom: 0, left: `${shiftElapsedRatio * 100}%`, width: '2px', backgroundColor: 'rgba(255,255,255,0.7)', zIndex: 10, cursor: 'help', pointerEvents: 'auto' }} />
+            </div>
+          </div>
+        </div>
