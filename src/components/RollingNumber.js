@@ -1,126 +1,147 @@
 import React, { useEffect, useState, useRef } from 'react';
 
 /**
- * RollingNumber Component
- * A digit-by-digit rolling animator for currency and numbers.
- * Fixed: stable keys for numeric values, unbounded offset growth prevented.
+ * RollingDigit Component
+ * Individual digit animator using CSS classes for theme consistency.
+ * Animates from 0-9 with forward-only rolling.
  */
-const RollingDigit = ({ digit, height = 24, speed = 1.5 }) => {
-  const [offset, setOffset] = useState(() => digit * height);
-  const prevDigitRef = useRef(digit);
-  const cycleRef = useRef(digit);
+const RollingDigit = ({ digit, height = 24, speed = 0.8 }) => {
+  const numericDigit = parseInt(digit, 10);
+  const isInvalid = isNaN(numericDigit);
+  
+  const [offset, setOffset] = useState(() => (isInvalid ? 0 : numericDigit * height));
+  const prevDigitRef = useRef(numericDigit);
+  const cycleRef = useRef(isInvalid ? 0 : numericDigit);
   const [noAnim, setNoAnim] = useState(false);
 
   useEffect(() => {
-    if (digit === prevDigitRef.current) return;
+    if (isInvalid || numericDigit === prevDigitRef.current) return;
 
     setNoAnim(false);
     const prev = prevDigitRef.current;
-    let diff = digit - prev;
+    let diff = numericDigit - prev;
+    
+    // Always roll forward (mechanical counter style)
     if (diff < 0) diff += 10;
-    if (diff === 0) diff = 10; // spin full cycle if same digit
+    if (diff === 0) diff = 10; 
 
     cycleRef.current += diff;
     setOffset(cycleRef.current * height);
-    prevDigitRef.current = digit;
+    prevDigitRef.current = numericDigit;
 
-    // After animation, snap back to single-cycle range to prevent unbounded growth
+    // Normalize to prevent unbounded offset growth (keep cycle within 0-29 range)
     const timer = setTimeout(() => {
-      setNoAnim(true);
-      const normalized = digit * height;
-      cycleRef.current = digit;
-      setOffset(normalized);
-      requestAnimationFrame(() => {
-        requestAnimationFrame(() => setNoAnim(false));
-      });
+      // If we've reached the end of our strip, we MUST normalize
+      // We use 3 cycles (30 digits), so if cycleRef > 20, we snap back
+      if (cycleRef.current >= 20) {
+        setNoAnim(true);
+        const normalized = numericDigit * height;
+        cycleRef.current = numericDigit;
+        setOffset(normalized);
+        requestAnimationFrame(() => {
+          requestAnimationFrame(() => setNoAnim(false));
+        });
+      }
     }, speed * 1000 + 50);
 
     return () => clearTimeout(timer);
-  }, [digit, height, speed]);
+  }, [numericDigit, height, speed, isInvalid]);
 
-  // 2 cycles (20 digits) is plenty since we normalize after every transition
-  const strip = Array.from({ length: 20 }, (_, i) => i % 10);
+  if (isInvalid) {
+    return (
+      <span style={{ 
+        height, width: '0.4em', display: 'inline-flex', alignItems: 'center', 
+        justifyContent: 'center', fontFamily: 'var(--font-mono)', opacity: 0.8 
+      }}>
+        {digit}
+      </span>
+    );
+  }
+
+  // 3 cycles (30 digits) provides headroom for multiple updates before normalization
+  const strip = Array.from({ length: 30 }, (_, i) => i % 10);
 
   return (
-    <div style={{
-      height, width: '0.68em', overflow: 'hidden', position: 'relative',
-      display: 'inline-block', fontVariantNumeric: 'tabular-nums',
-      background: '#000', margin: '0 0.5px', border: '1px solid #18181b'
-    }}>
-      <div style={{
-        position: 'absolute', top: 0, left: 0, right: 0,
-        transform: `translateY(-${offset}px)`,
-        transition: noAnim ? 'none' : `transform ${speed}s cubic-bezier(0.4, 0, 0.2, 1)`,
-        display: 'flex', flexDirection: 'column', alignItems: 'center'
-      }}>
+    <div className="digit-container" style={{ height, width: '0.65em', overflow: 'hidden' }}>
+      <div 
+        className="digit-strip"
+        style={{
+          transform: `translateY(-${offset}px)`,
+          transition: noAnim ? 'none' : `transform ${speed}s cubic-bezier(0.34, 1.56, 0.64, 1)`,
+        }}
+      >
         {strip.map((n, i) => (
-          <div key={i} style={{
-            height, display: 'flex', alignItems: 'center', justifyContent: 'center',
-            width: '100%', color: 'inherit',
-            fontSize: height > 15 ? 'inherit' : '0.65rem',
-            fontFamily: 'var(--font-mono)', fontWeight: 800
-          }}>{n}</div>
+          <div key={i} className="digit-value" style={{ height, fontSize: height * 0.75, fontWeight: 800 }}>
+            {n}
+          </div>
         ))}
       </div>
     </div>
   );
 };
 
-export const RollingNumber = ({ value, prefix = '', suffix = '', height = 24, className = '' }) => {
-  const num = typeof value === 'number' ? value : NaN;
-  const isNumeric = !isNaN(num);
-
-  if (isNumeric) {
-    const absNum = Math.abs(Math.round(num));
-    const isNegative = num < 0;
-    const digits = String(absNum).split('');
-    const len = digits.length;
-
-    const elements = [];
-    prefix.split('').forEach((c, i) => elements.push({ type: 'static', char: c, key: `p-${i}` }));
-    if (isNegative) elements.push({ type: 'static', char: '-', key: 'neg' });
-
-    digits.forEach((d, i) => {
-      const fromRight = len - 1 - i;
-      elements.push({ type: 'digit', digit: parseInt(d), key: `d-${fromRight}`, fromRight });
-      if (fromRight > 0 && fromRight % 3 === 0) {
-        elements.push({ type: 'static', char: '.', key: `sep-${fromRight}` });
-      }
-    });
-
-    suffix.split('').forEach((c, i) => elements.push({ type: 'static', char: c, key: `s-${i}` }));
-
-    return (
-      <div className={`rolling-number-wrapper ${className}`} style={{
-        height, display: 'inline-flex', alignItems: 'center', overflow: 'hidden', background: 'transparent'
-      }}>
-        {elements.map(el => {
-          if (el.type === 'static') {
-            return <span key={el.key} style={{
-              width: el.char === '.' ? '0.3em' : '0.4em',
-              textAlign: 'center', opacity: 0.5, fontFamily: 'var(--font-mono)'
-            }}>{el.char}</span>;
-          }
-          const speed = 0.8 + (el.fromRight * 0.1);
-          return <RollingDigit key={el.key} digit={el.digit} height={height} speed={speed} />;
-        })}
-      </div>
-    );
+/**
+ * RollingNumber Component
+ * Handles numbers, currency, and time strings.
+ * Automatically formats pure numbers with thousands separators for standard dashboard look.
+ */
+export const RollingNumber = ({ value, prefix = '', suffix = '', height = 24, className = '', format = true }) => {
+  let displayValue = String(value);
+  
+  // If it's a pure number and format is enabled, add thousands separators
+  const isPureNumber = typeof value === 'number' || (!isNaN(parseFloat(value)) && isFinite(value) && !String(value).includes(':'));
+  if (isPureNumber && format) {
+    const num = Math.round(parseFloat(value));
+    displayValue = Math.abs(num).toLocaleString('es-AR');
+    if (num < 0 && !prefix.includes('-')) prefix = '-' + prefix;
   }
 
-  // Fallback for non-numeric strings: old behavior with index keys
-  const displayValue = String(value);
-  const chars = (prefix + displayValue + suffix).split('');
+  const fullString = prefix + displayValue + suffix;
+  const chars = fullString.split('');
+  
+  // To keep animations stable, we count digits from the right
+  const digitsOnly = chars.filter(c => !isNaN(parseInt(c, 10)) && c !== ' ');
+  const totalDigits = digitsOnly.length;
+  let digitsFound = 0;
+
   return (
-    <div className={`rolling-number-wrapper ${className}`} style={{
-      height, display: 'inline-flex', alignItems: 'center', overflow: 'hidden', background: 'transparent'
-    }}>
+    <div 
+      className={`rolling-number-wrapper ${className}`} 
+      style={{ height, display: 'inline-flex', alignItems: 'center' }}
+    >
       {chars.map((char, i) => {
-        const reverseIdx = chars.length - 1 - i;
-        const isNum = !isNaN(parseInt(char));
-        const speed = isNum ? 0.8 + (reverseIdx * 0.1) : 1.2;
-        return <RollingDigit key={i} digit={char} height={height} speed={speed} />;
+        const isDigit = !isNaN(parseInt(char, 10)) && char !== ' ';
+        
+        if (!isDigit) {
+          return (
+            <span 
+              key={`s-${i}`} 
+              style={{ 
+                width: char === '.' || char === ':' ? '0.25em' : '0.4em',
+                textAlign: 'center', opacity: 0.6, fontFamily: 'var(--font-mono)',
+                fontSize: height * 0.7
+              }}
+            >
+              {char}
+            </span>
+          );
+        }
+
+        // It's a digit - use its position from right for a stable key and staggered delay
+        const fromRight = totalDigits - 1 - digitsFound;
+        digitsFound++;
+        
+        return (
+          <RollingDigit 
+            key={`d-${fromRight}`} 
+            digit={char} 
+            height={height} 
+            speed={0.5 + (fromRight * 0.08)} 
+          />
+        );
       })}
     </div>
   );
 };
+
+
