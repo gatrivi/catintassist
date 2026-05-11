@@ -13,14 +13,21 @@ const NUMBER_WORDS = new Set([
   'zero','one','two','three','four','five','six','seven','eight','nine','ten',
   'eleven','twelve','thirteen','fourteen','fifteen','sixteen','seventeen','eighteen','nineteen',
   'twenty','thirty','forty','fifty','sixty','seventy','eighty','ninety',
+  'hundred', 'thousand',
   'cero','uno','dos','tres','cuatro','cinco','seis','siete','ocho','nueve','diez',
   'once','doce','trece','catorce','quince','dieciseis','diecisiete','dieciocho','diecinueve',
   'veinte','veintiuno','veintidos','veintitres','veinticuatro','veinticinco','veintiseis',
   'veintisiete','veintiocho','veintinueve','treinta','cuarenta','cincuenta','sesenta','setenta',
-  'ochenta','noventa'
+  'ochenta','noventa',
+  'cien', 'ciento', 'mil'
 ]);
 
-const isNumberLike = (word) => /^\d+$/.test(word) || NUMBER_WORDS.has(word.toLowerCase());
+const isNumberLike = (word) => {
+  if (!word) return false;
+  // Use normalized alphanumeric for the check to catch "1.", "one," etc.
+  const norm = word.toLowerCase().replace(/[^a-z0-9]/g, '');
+  return /^\d+$/.test(norm) || NUMBER_WORDS.has(norm);
+};
 
 const containsNumberSequence = (text, minLength = 2) => {
   const words = text.trim().split(/\s+/);
@@ -40,7 +47,7 @@ const hallucinationGuard = (text) => {
   // Noise filtering: skip isolated "bueno", "um", etc.
   if (words.length === 1) {
     const w = words[0].toLowerCase();
-    if (/^\d+$/.test(w)) return text; // Never filter single numbers
+    if (isNumberLike(w)) return text; // Never filter single numbers
     if (w === 'bueno' || w === 'um' || w === 'eh' || w === 'uh' || w === 'ah') return '';
   }
   
@@ -55,15 +62,17 @@ const hallucinationGuard = (text) => {
     const norm = normalize(word);
     const pair = i > 0 ? normalize(words[i-1] + word) : '';
     
-    if (norm === lastWord && norm.length > 1 && !/^\d+$/.test(norm)) continue; 
-    if (pair === lastPair && pair.length > 4) continue;
+    // Protection: allow repeated numbers ("one one one", "2 2 2")
+    if (norm === lastWord && norm.length > 1 && !isNumberLike(word)) continue; 
+    if (pair === lastPair && pair.length > 4 && !containsNumberSequence(words.slice(i-1, i+1).join(' '))) continue;
 
     cleaned.push(word);
     lastWord = norm;
     lastPair = pair;
   }
 
-  if (words.length > 15 && cleaned.length < words.length * 0.6) {
+  // Adaptive pruning: Only prune if it doesn't look like a valid list of data (numbers)
+  if (words.length > 15 && cleaned.length < words.length * 0.6 && !containsNumberSequence(text, 3)) {
      return cleaned.slice(0, 12).join(' ') + "... [Stutter Pruned]";
   }
 
@@ -73,17 +82,11 @@ const hallucinationGuard = (text) => {
 const removeOverlap = (base, addition) => {
   if (!base || !addition) return addition;
   
-  // GUARD: Never strip overlap from number sequences (phone, SSN, address numbers)
-  // A sequence of 2+ number-words/digits in the addition means data is fragile
-  if (containsNumberSequence(addition)) return addition;
-  
   const normBase = normalize(base);
   const normAddition = normalize(addition);
 
-  // 1. EXACT SUBSET CHECK
-  if (normBase.includes(normAddition)) return '';
-  
-  // 2. WORD-WALK DEDUPLICATION (The "Toddler" logic: check if start of addition matches end of history)
+  // 1. WORD-WALK DEDUPLICATION (The "Toddler" logic: check if start of addition matches end of history)
+  // This is position-aware and much safer than a global subset check.
   const bWords = base.trim().split(/\s+/).map(normalize);
   const aWords = addition.trim().split(/\s+/).map(normalize);
   const aWordsRaw = addition.trim().split(/\s+/);
@@ -91,7 +94,7 @@ const removeOverlap = (base, addition) => {
   let bestOverlap = 0;
   const maxCheck = Math.min(aWords.length, bWords.length, 50);
 
-  // We look for the longest possible overlap of words
+  // We look for the longest possible overlap of words at the boundary
   for (let i = 1; i <= maxCheck; i++) {
     const aPrefix = aWords.slice(0, i).join('');
     const bSuffix = bWords.slice(-i).join('');

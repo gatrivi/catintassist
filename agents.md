@@ -119,4 +119,5 @@ CURRENT INBOX
 - [x] scramble text: prefix-aware animation — only new suffix scrambles on append; softer number-only charset; stable keys prevent remounts (v4.15.1)
 - [x] daily bar: shifted timeline to 9am-18hs focus; overtime shown as extended tail or micro under-bar with toggle (v4.17.0)
 - [x] rolling numbers: fixed unbounded offset growth and added stable place-value keys for numeric values (v4.17.0)
+- [x] data protection: fixed critical bug where numbers disappeared during live calls; hardened number sequences against deduplication and hallucination pruning (v4.18.0)
 </details>

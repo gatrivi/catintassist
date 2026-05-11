@@ -48,19 +48,22 @@ const convertNumberWords = (text) => {
 
 const InteractiveText = ({ text, scramble = true }) => {
   if (!text) return null;
-  // GROUP PHONE NUMBERS / SSN: If we see 9-12 digits read out singly (with spaces), join and format them.
+  
+  // 1. Convert words ("one") to digits ("1") FIRST
+  const processedText = convertNumberWords(text);
+
+  // 2. GROUP PHONE NUMBERS / SSN: If we see 9-12 digits read out singly (with spaces), join and format them.
   // Phone (10 digits) → XXX-XXX-XXXX | SSN (9 digits) → XXX-XX-XXXX | Other → just clean
-  const groupedDigits = text.replace(/\b(\d[\s.,-:]*){9,12}\b/g, (m) => {
+  const groupedDigits = processedText.replace(/\b(\d[\s.,-:]*){9,12}\b/g, (m) => {
     const clean = m.replace(/[\s.,-:]+/g, '');
     if (clean.length === 10) return clean.replace(/(\d{3})(\d{3})(\d{4})/, '$1-$2-$3');
     if (clean.length === 9) return clean.replace(/(\d{3})(\d{2})(\d{4})/, '$1-$2-$3');
     return clean;
   });
-  const processedText = convertNumberWords(groupedDigits);
   
   // NYC ZIP REPAIR: In NYC, people often say "one hundred thirty four" for 10034.
   // Deepgram might transcribe "New York 134". We fix it to "New York 10034".
-  const repairedText = processedText.replace(/\b(New York|NY|N\.Y\.)\s*,?\s*(\d{3})\b/gi, (m, city, zip) => {
+  const repairedText = groupedDigits.replace(/\b(New York|NY|N\.Y\.)\s*,?\s*(\d{3})\b/gi, (m, city, zip) => {
     const suffix = zip.slice(-2);
     return `${city} 100${suffix}`;
   });
