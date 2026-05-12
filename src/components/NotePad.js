@@ -40,9 +40,8 @@ export const NotePad = () => {
         <div style={{ display: 'flex', gap: '0.4rem', alignItems: 'center' }}>
           {notes.trim().length > 0 && (
             <>
-              <button onClick={() => playTTS(notes, 'en')} disabled={isPlaying} className="btn" style={{ background: 'rgba(59, 130, 246, 0.2)', color: '#60a5fa', padding: '0.1rem 0.4rem', fontSize: '0.65rem' }}>🔊 Play ENG</button>
-              <button onClick={() => playTTS(notes, 'es')} disabled={isPlaying} className="btn" style={{ background: 'rgba(16, 185, 129, 0.2)', color: '#34d399', padding: '0.1rem 0.4rem', fontSize: '0.65rem' }}>🔊 Play SPA</button>
-            </>
+              <button onClick={() => playTTS(notes, 'en')} disabled={isPlaying} className="btn" style={{ background: 'rgba(59, 130, 246, 0.2)', color: '#60a5fa', padding: '0.1rem 0.4rem', fontSize: '0.65rem' }}>🔊 EN</button>
+              <button onClick={() => playTTS(notes, 'es')} disabled={isPlaying} className="btn" style={{ background: 'rgba(16, 185, 129, 0.2)', color: '#34d399', padding: '0.1rem 0.4rem', fontSize: '0.65rem' }}>🔊 ES</button>            </>
           )}
           <button onClick={stopTTS} disabled={!isPlaying} className="btn" style={{ background: 'rgba(239, 68, 68, 0.2)', color: '#f87171', padding: '0.1rem 0.4rem', fontSize: '0.65rem' }}>🛑</button>
           <button

@@ -5,18 +5,18 @@ import { useAudioSettings } from '../contexts/AudioSettingsContext';
 const TIME_SLOTS = ['morning', 'afternoon', 'evening'];
 
 export const ACTIONS = [
-  { id: 'greeting_en', label: 'Greeting (EN)', dynamic: true },
-  { id: 'greeting_es', label: 'Greeting (ES)', dynamic: true },
+  { id: 'greeting_en', label: 'Greeting', lang: 'en', dynamic: true },
+  { id: 'greeting_es', label: 'Greeting', lang: 'es', dynamic: true },
   { id: 'intake', label: 'Intake Qs', dynamic: false },
   { id: 'hold_policy', label: 'Hold Policy', dynamic: false },
-  { id: 'hold_exc_en', label: 'Hold Exc (EN)', dynamic: false },
-  { id: 'hold_exc_es', label: 'Hold Exc (ES)', dynamic: false },
+  { id: 'hold_exc_en', label: 'Hold Exc', lang: 'en', dynamic: false },
+  { id: 'hold_exc_es', label: 'Hold Exc', lang: 'es', dynamic: false },
   { id: 'sign_off', label: 'Sign Off', dynamic: false },
-  { id: 'anyone', label: 'Anyone There?', dynamic: false },
+  { id: 'anyone', label: 'Anyone?', dynamic: false },
   { id: 'callout', label: 'Callout', dynamic: false },
-  { id: 'closer_louder', label: 'Closer/Louder', dynamic: false },
-  { id: 'limit_40_en', label: '40 Word Limit (EN)', dynamic: false },
-  { id: 'limit_40_es', label: '40 Word Limit (ES)', dynamic: false },
+  { id: 'closer_louder', label: 'Louder', dynamic: false },
+  { id: 'limit_40_en', label: '40 Word Limit', lang: 'en', dynamic: false },
+  { id: 'limit_40_es', label: '40 Word Limit', lang: 'es', dynamic: false },
 ];
 
 export const GreetingsPanel = ({ onEditModeChange }) => {
@@ -502,10 +502,10 @@ export const GreetingsPanel = ({ onEditModeChange }) => {
                style={{
                  height: '55px',
                  borderRadius: '6px',
-                 border: isItPlaying ? '2px solid #10b981' : '1px solid var(--panel-border)',
+                 border: isItPlaying ? '2px solid #10b981' : (action.lang === 'es' ? '1px solid rgba(16, 185, 129, 0.3)' : (action.lang === 'en' ? '1px solid rgba(59, 130, 246, 0.3)' : '1px solid var(--panel-border)')),
                  boxShadow: isItPlaying ? '0 0 15px rgba(16, 185, 129, 0.8)' : 'none',
                  animation: isItPlaying ? 'pulseGlow 1.5s infinite' : 'none',
-                 background: bgImage !== 'none' ? bgImage : 'rgba(255,255,255,0.05)',
+                 background: bgImage !== 'none' ? bgImage : (action.lang === 'es' ? 'rgba(16, 185, 129, 0.05)' : (action.lang === 'en' ? 'rgba(59, 130, 246, 0.05)' : 'rgba(255,255,255,0.05)')),
                  backgroundSize: 'cover',
                  backgroundPosition: 'center',
                  color: 'white',
@@ -524,6 +524,11 @@ export const GreetingsPanel = ({ onEditModeChange }) => {
                title={hasAudio ? "Play Audio" : "Empty Audio - Click to add"}
              >
                 <div style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.5)', transition: 'background 0.2s' }} />
+                {action.lang && (
+                  <div style={{ position: 'absolute', top: '2px', left: '4px', fontSize: '0.4rem', fontWeight: 900, color: action.lang === 'es' ? '#10b981' : '#3b82f6', opacity: 0.8, zIndex: 2 }}>
+                    {action.lang.toUpperCase()}
+                  </div>
+                )}
                 {isItPlaying && (
                   <div style={{ 
                     position: 'absolute', 

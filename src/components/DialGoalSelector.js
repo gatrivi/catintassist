@@ -49,6 +49,7 @@ export const DialGoalSelector = ({ ratePerMinute, arsRate, setArsRate, initialGo
     const index = Math.min(targets.length - 1, Math.max(0, Math.round(top / itemHeight)));
     if (index !== activeIndex) {
       setActiveIndex(index);
+      audioEngine.playTick(1); // Provide haptic feedback
     }
   };
 

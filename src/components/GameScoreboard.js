@@ -1,10 +1,44 @@
 import React, { useState, useEffect } from 'react';
 import { RollingNumber } from './RollingNumber';
 
+// ─── ScoreboardTooltip ────────────────────────────────────────────────────────
+// A lightweight 'toastie' popover for dynamic info on hover.
+const ScoreboardTooltip = ({ show, x, y, title, content, color = '#3b82f6' }) => {
+  if (!show) return null;
+  return (
+    <div style={{
+      position: 'fixed',
+      left: x,
+      top: y,
+      transform: 'translate(-50%, -110%)',
+      zIndex: 10000,
+      background: 'rgba(15, 23, 42, 0.95)',
+      backdropFilter: 'blur(8px)',
+      border: `1px solid ${color}`,
+      padding: '0.5rem 0.7rem',
+      borderRadius: '6px',
+      boxShadow: '0 8px 30px rgba(0,0,0,0.6)',
+      pointerEvents: 'none',
+      width: 'max-content',
+      maxWidth: '220px',
+      animation: 'slideUpBounce 0.2s cubic-bezier(0.17, 0.88, 0.32, 1.28) forwards'
+    }}>
+      <div style={{ fontSize: '0.65rem', fontWeight: 900, color: color, textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '2px' }}>
+        {title}
+      </div>
+      <div style={{ fontSize: '0.75rem', color: '#fff', lineHeight: 1.4, fontWeight: 500 }}>
+        {content}
+      </div>
+    </div>
+  );
+};
+
 // ─── EmojiRow ─────────────────────────────────────────────────────────────────
 // Renders fullCount full emojis + one partially-cropped emoji representing the
 // fractional remainder. Uses CSS clip-path on a wrapper for zero-DOM overhead.
-const EmojiRow = ({ emoji, emptyEmoji, value, unitValue, maxValue, color = '#fff', label, sublabel, warnThreshold = 0.3, title, className = "", markers = [], isEditing, helpLabel }) => {
+const EmojiRow = ({ emoji, emptyEmoji, value, unitValue, maxValue, color = '#fff', label, sublabel, warnThreshold = 0.3, title, className = "", markers = [], isEditing, helpLabel, tooltipContent }) => {
+  const [hover, setHover] = useState({ show: false, x: 0, y: 0 });
+  
   const fullCount  = Math.floor(value / unitValue);
   const fraction   = (value % unitValue) / unitValue; // 0–1
   const maxCount   = Math.ceil(maxValue / unitValue);
@@ -18,11 +52,29 @@ const EmojiRow = ({ emoji, emptyEmoji, value, unitValue, maxValue, color = '#fff
                 : ratio >= warnThreshold ? '#f97316'// low  – orange
                 : '#ef4444';                         // danger – red
 
+  const handleMouseEnter = (e) => {
+    const rect = e.currentTarget.getBoundingClientRect();
+    setHover({ show: true, x: rect.left + rect.width / 2, y: rect.top });
+  };
+
   return (
-    <div title={title} className={`${className} ${isEditing ? 'grid-edit-mode' : ''}`} style={{ display: 'flex', flexDirection: 'column', gap: '0', position: 'relative', padding: isEditing ? '2px' : '0' }}>
+    <div 
+      className={`${className} ${isEditing ? 'grid-edit-mode' : ''}`} 
+      onMouseEnter={handleMouseEnter}
+      onMouseLeave={() => setHover({ ...hover, show: false })}
+      style={{ display: 'flex', flexDirection: 'column', gap: '0', position: 'relative', padding: isEditing ? '2px' : '0', cursor: 'help' }}
+    >
+      <ScoreboardTooltip 
+        show={hover.show && !!tooltipContent} 
+        x={hover.x} y={hover.y} 
+        title={helpLabel || "Metric Info"} 
+        content={tooltipContent} 
+        color={rowColor} 
+      />
+      
       {isEditing && <span className="edit-grid-label">{helpLabel}</span>}
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: '1px', lineHeight: 1, alignItems: 'center', position: 'relative' }}>
-        <span style={{ fontSize: '0.48rem', color: 'rgba(255,255,255,0.25)', textTransform: 'uppercase', marginRight: '0.3rem', whiteSpace: 'nowrap', zIndex: 10 }}>
+        <span style={{ fontSize: '0.55rem', color: 'rgba(255,255,255,0.6)', fontWeight: 800, textTransform: 'uppercase', marginRight: '0.3rem', whiteSpace: 'nowrap', zIndex: 10 }}>
           {typeof label === 'string' ? label.split('   ')[0] : label}
         </span>
 
@@ -66,9 +118,9 @@ const EmojiRow = ({ emoji, emptyEmoji, value, unitValue, maxValue, color = '#fff
           </span>
         ))}
 
-        <span style={{ marginLeft: 'auto', color: rowColor, fontWeight: 800, fontSize: '0.65rem', animation: ratio >= 1 ? 'pulseWarning 2s infinite' : 'none' }}>{sublabel}</span>
+        <span style={{ marginLeft: 'auto', color: rowColor, fontWeight: 900, fontSize: '0.7rem', animation: ratio >= 1 ? 'pulseWarning 2s infinite' : 'none', textShadow: '0 0 5px rgba(0,0,0,0.5)' }}>{sublabel}</span>
       </div>
-      <div style={{ fontSize: '0.45rem', opacity: 0.3, letterSpacing: '0.04em', color: 'gray', marginTop: '-2px' }}>
+      <div style={{ fontSize: '0.45rem', opacity: 0.5, letterSpacing: '0.04em', color: '#fff', marginTop: '-2px', fontWeight: 600 }}>
         {typeof label === 'string' ? (label.split('   ')[1] || '') : ''}
       </div>
     </div>
@@ -302,6 +354,7 @@ export const GameScoreboard = ({
               emoji="💰" className="emoji-money" value={liveDailyArs} unitValue={ARS_UNIT}
               maxValue={dailyTargetArs > 0 ? dayArsMax : ARS_UNIT * 5}
               isEditing={isEditingScoreboard} helpLabel="MONEY_DAY"
+              tooltipContent={`Banked: AR$${liveDailyArs.toLocaleString('es-AR')}. Target: AR$${dailyTargetArs.toLocaleString('es-AR')}. ${dailyTargetArs > liveDailyArs ? `AR$${(dailyTargetArs - liveDailyArs).toLocaleString('es-AR')} to bounty.` : 'Bounty secured!'}`}
               label={
                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.2rem' }}>
                   <span>earned</span>
@@ -316,6 +369,7 @@ export const GameScoreboard = ({
             <EmojiRow
               emoji="⏱️" value={totalDailyMins} unitValue={MIN_UNIT}
               maxValue={dayMinMax} isEditing={isEditingScoreboard} helpLabel="MINS_DAY"
+              tooltipContent={`Worked: ${Math.round(totalDailyMins)}m. Goal: ${Math.round(dailyGoal)}m. ETA for goal: ${pacePrediction?.label || 'Calculating...'}.`}
               label={
                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.2rem' }}>
                   <span>mins</span>
@@ -335,6 +389,7 @@ export const GameScoreboard = ({
               emoji="☕" emptyEmoji="🍵" className="emoji-break"
               value={breakLeft} unitValue={15} maxValue={breakLimit}
               isEditing={isEditingScoreboard} helpLabel="BREAK_DAY"
+              tooltipContent={`Remaining: ${Math.round(breakLeft)}m of ${breakLimit}m budget. ${breakLeft < 15 ? '⚠️ Budget low!' : 'Healthy reserve.'}`}
               label={
                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.2rem' }}>
                   <span>break</span>
@@ -350,8 +405,9 @@ export const GameScoreboard = ({
             <EmojiRow
               emoji="🔋" value={totalDailyMins} unitValue={Math.max(1, stats.dailyBreakMinutes || 1)} maxValue={totalDailyMins * 1.2}
               isEditing={isEditingScoreboard} helpLabel="STAMINA_RATIO"
-              label={`stamina  ${(totalDailyMins / Math.max(1, stats.dailyBreakMinutes)).toFixed(1)}x ratio`}
-              sublabel={(totalDailyMins / Math.max(1, stats.dailyBreakMinutes)) >= 5.3 ? 'ELITE' : 'TIRED'}
+              tooltipContent={`Work-to-Break Ratio: ${(totalDailyMins / Math.max(1, stats.dailyBreakMinutes || 1)).toFixed(1)}x. (Goal: 5.3x). This measures how many minutes of work you produce for every 1 minute of break. Higher is better.`}
+              label={`stamina  ${(totalDailyMins / Math.max(1, stats.dailyBreakMinutes || 1)).toFixed(1)}x pace`}
+              sublabel={(totalDailyMins / Math.max(1, stats.dailyBreakMinutes || 1)) >= 5.3 ? 'ELITE' : 'REST NEEDED'}
               color="#fb923c"
             />
             
@@ -369,6 +425,8 @@ export const GameScoreboard = ({
             <EmojiRow
               emoji="💰" value={monthlyArs} unitValue={ARS_UNIT * 10}
               maxValue={moArsMax}
+              helpLabel="MONEY_MONTH"
+              tooltipContent={`Banked this month: AR$${monthlyArs.toLocaleString('es-AR')}. Target: AR$${monthlyTargetArs.toLocaleString('es-AR')}.`}
               label={
                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.2rem' }}>
                   <span>monthly</span>
@@ -382,6 +440,8 @@ export const GameScoreboard = ({
             <EmojiRow
               emoji="🏗️" value={stats.monthlyMinutes} unitValue={MIN_UNIT * 10}
               maxValue={moMinMax}
+              helpLabel="LADDER_MONTH"
+              tooltipContent={`Current: ${Math.round(stats.monthlyMinutes)}m. Next milestone: ${nextMilestone}m (${nextGoalLabel}).`}
               label={
                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.2rem' }}>
                   <span>ladder</span>
@@ -392,8 +452,8 @@ export const GameScoreboard = ({
               }
               sublabel={`${moMinPct}%`}
             />
-            <div style={{ fontSize: '0.55rem', color: 'rgba(255,255,255,0.4)', textAlign: 'right', marginTop: '0.1rem' }}>
-               Tier Progress: <strong>{nextGoalLabel}</strong> — {remainingDays} days left
+            <div style={{ fontSize: '0.55rem', color: 'rgba(255,255,255,0.7)', fontWeight: 600, textAlign: 'right', marginTop: '0.1rem' }}>
+               Tier Progress: <strong style={{ color: '#fff' }}>{nextGoalLabel}</strong> — {remainingDays} days left
             </div>
           </>
         )}

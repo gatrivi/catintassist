@@ -23,30 +23,26 @@ CORE VALUES
 [] maximising workspace and minimizing things that eat workspace is the rule. that is, translation and transcription should take 80% of screen, scoreboard 20%, 
 
 CURRENT ISSUES
-[] when speakers speeaks too long, message is split, this is good as it makes for easier reading, but has two problems
-[] sometimes it seems that on message split the translation is garbled, an existing tranlsation destroyed. in general do not destroy transaltions
 [x] Word count is now cumulative per turn: if user speaks more than 40 words and bubble splits, the count continues (v4.1.0)
-[] when app window is refreshed during active call, although we are in call app is not connecte, so icon shouldn be red as in connected, but rather yellow or sth, and main view should remind user to click and get app connected to other tab again. otherwise i have to press disconnect recojnnect, and that meesses the call timer and i lose all translations. double jeopardy.
 [x] 1. Digit grouping for phone numbers: automatic back-to-back digit grouping for better legibility (v4.1.0)
+[x] 2. keep track of how long ive been working wo breaks (v4.19.0)
+[x] 3. collapse view, show tools, show toolbar and edit scoreboard items in same row (v4.19.0)
+[x] 4. pinned reference: color coded, no banner, subtle icon (v4.19.0)
 
-2. keep trackof how long ive been working wo breaks. 
-
-3. collapse view, show tools, show toolbar and edit scoreboard items show up with their one rows in expanded view. thris throws away 30# of the total screen space. big nono. all 4 buttons should be in the same row, if they even have a row at all
-
-4. pinned reference doesnt need a spaced announced banner wasting screentime at all time. simply color code a pinned message when there is one pinned, and thats it, in fact, move the pin emoji to the middle so it doesnt mesage space
-
+[ ] when speakers speaks too long, message is split, this is good as it makes for easier reading, but has two problems
+[] sometimes it seems that on message split the translation is garbled, an existing tranlsation destroyed. in general do not destroy transaltions
+[] when app window is refreshed during active call, although we are in call app is not connecte, so icon shouldn be red as in connected, but rather yellow or sth, and main view should remind user to click and get app connected to other tab again. otherwise i have to press disconnect recojnnect, and that meesses the call timer and i lose all translations. double jeopardy.
 
 MAINVIEW (where transcription and translation happens)
 [] space should be used as effectively as possible
   [] do not waste v space w things like spa and eng. use color coding to do that.
-1. any time 9 or 10 digits are said back to back, group them. phone numbers are read out as separate numbers, 3 3 2 3 2 3 8 2 76 is clearly a phone number 
-that should be solved by a simple one liner
+[x] any time 9 or 10 digits are said back to back, group them (v4.15.0/v4.19.0)
 
 SCOREBOARD GUIDELINES
-2. keep trackof how long ive been working wo breaks. 
-[] Subsctract break time from total of 90 per day.
-[] keep track of how late i logged in compared to log in time of 9am
-[] tell me how late i should stay after my shift end of 18hs to compensate. that is, at what time i should log off.
+[x] keep track of how long ive been working wo breaks. 
+[x] Subtract break time from total of 90 per day.
+[x] keep track of how late i logged in compared to log in time of 9am
+[x] tell me how late i should stay after my shift end of 18hs to compensate (v4.19.0)
 [] Add little outlines and toggleable labels to every element in the scoreboard, so its easy to understand how they are organized and can be moved into a better manner. if you think a grid with a toggle to rearrange elements can be done, im ggame. specially see if such configurations can be saved in a way that you can read them so we can make them the default in the future.
 
 TRANSLATION GUIDELINES
@@ -120,4 +116,7 @@ CURRENT INBOX
 - [x] daily bar: shifted timeline to 9am-18hs focus; overtime shown as extended tail or micro under-bar with toggle (v4.17.0)
 - [x] rolling numbers: fixed unbounded offset growth and added stable place-value keys for numeric values (v4.17.0)
 - [x] data protection: fixed critical bug where numbers disappeared during live calls; hardened number sequences against deduplication and hallucination pruning (v4.18.0)
+- [x] UI optimization: condensed header buttons moved to single row; added 'minutes since last break' counter; refined pinned message UI; improved money rain burst (v4.19.0)
+- [x] Zombie Call Recovery: added yellow 'Re-attach' indicator and prominent warning banner to prevent session loss on refresh (v4.20.0)
+- [x] Translation Stability: implemented 'sticky' language pairs and fixed feedback loops to prevent translations from being destroyed during splits (v4.20.0)
 </details>

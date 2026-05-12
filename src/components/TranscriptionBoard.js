@@ -314,13 +314,16 @@ export const TranscriptionBoard = ({ captions, onClearAll, onReconnect, lastData
           onClick={onReconnect}
           style={{
             position: 'absolute', top: '10px', left: '10px', right: '10px', zIndex: 1001,
-            background: 'var(--danger)', color: '#fff', padding: '0.6rem',
-            borderRadius: 0, display: 'flex', alignItems: 'center', justifyContent: 'center',
-            gap: '0.8rem', cursor: 'pointer', fontWeight: 900, fontSize: '0.85rem',
-            border: '1px solid #fff'
+            background: '#f59e0b', color: '#000', padding: '0.8rem',
+            borderRadius: '4px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+            gap: '0.2rem', cursor: 'pointer', fontWeight: 900, fontSize: '0.9rem',
+            border: '2px solid #000', boxShadow: '0 4px 20px rgba(0,0,0,0.5)',
+            animation: 'pulseGlow 2s infinite'
           }}
         >
-          [!] ZOMBIE CALL: CLICK TO RE-ATTACH
+          <div style={{ fontSize: '1.2rem' }}>⚠️ SESSION DISCONNECTED</div>
+          <div style={{ fontSize: '0.75rem', opacity: 0.9 }}>App was refreshed. Click here to re-attach to the call and resume transcription.</div>
+          <div style={{ fontSize: '0.7rem', marginTop: '4px', textDecoration: 'underline' }}>[CLICK TO RE-ATTACH]</div>
         </div>
       )}
 
@@ -355,16 +358,9 @@ export const TranscriptionBoard = ({ captions, onClearAll, onReconnect, lastData
               padding: '0.4rem',
               position: 'relative',
               border: isPinned ? '1px solid var(--accent-primary)' : '1px solid transparent',
-              background: isPinned ? 'rgba(34, 197, 94, 0.05)' : (getBubbleStyle(cap.text, cap.isFinal === false, cap.lang).backgroundColor),
+              background: isPinned ? 'rgba(34, 197, 94, 0.08)' : (getBubbleStyle(cap.text, cap.isFinal === false, cap.lang).backgroundColor),
               ...getBubbleStyle(cap.text, cap.isFinal === false, cap.lang)
             }}>
-              {isPinned && (
-                <div style={{ 
-                  position: 'absolute', top: '-8px', left: '50%', transform: 'translateX(-50%)', 
-                  fontSize: '0.5rem', background: 'var(--accent-primary)', color: '#000',
-                  padding: '0 4px', fontWeight: 900, zIndex: 5
-                }}>PINNED</div>
-              )}
               
               <TranslatedBubble 
                 id={cap.id} text={cap.text} lang={cap.lang} playTTS={playTTS} stopTTS={stopTTS} playingUrl={playingUrl} prefetchTTS={prefetchTTS} 
@@ -376,11 +372,14 @@ export const TranscriptionBoard = ({ captions, onClearAll, onReconnect, lastData
               <button 
                 onClick={() => togglePin(cap.id)} 
                 style={{ 
-                  position: 'absolute', top: '2px', right: '2px', background: 'transparent', border: 'none',
-                  fontSize: '0.6rem', cursor: 'pointer', opacity: isPinned ? 1 : 0.1, color: isPinned ? 'var(--accent-primary)' : '#fff'
+                  position: 'absolute', top: '0', right: '0', background: 'transparent', border: 'none',
+                  fontSize: '0.65rem', cursor: 'pointer', opacity: isPinned ? 0.8 : 0.05, 
+                  color: isPinned ? 'var(--accent-primary)' : '#fff',
+                  padding: '4px', zIndex: 10
                 }}
+                title={isPinned ? "Unpin message" : "Pin message"}
               >
-                [PIN]
+                {isPinned ? '📌' : '📍'}
               </button>
             </div>
           );

@@ -40,20 +40,24 @@ const CelebrationParticles = ({ type, label, coins, onDismiss }) => {
     <div style={{ position: 'absolute', inset: -50, pointerEvents: 'auto', cursor: 'pointer', zIndex: 100, animation: isClosing ? 'fadeOutFast 0.25s forwards' : 'none' }} onClick={handleDismiss}>
       {Array.from({ length: safeCoinCount }).map((_, i) => (
         <span key={i} style={{
-          position: 'absolute', left: '50%', top: '50%', fontSize: `${0.9 + Math.random() * 0.8}rem`,
-          animation: `coinVacuum 1.6s cubic-bezier(0.25, 0.46, 0.45, 0.94) forwards`,
+          position: 'absolute', left: '50%', top: '50%', fontSize: `${0.8 + Math.random() * 1.2}rem`,
+          animation: `coinVacuum 1.8s cubic-bezier(0.25, 1, 0.5, 1) forwards`,
+          animationDelay: `${Math.random() * 0.4}s`,
           '--origin-x': originX, '--origin-y': '0px',
-          '--start-x': `calc(${originX} + ${(Math.random() - 0.5) * spread}px)`, 
-          '--start-y': `${Math.random() * -(spread * 0.8)}px` 
+          '--start-x': `calc(${originX} + ${(Math.random() - 0.5) * spread * 1.5}px)`, 
+          '--start-y': `${-Math.random() * (spread * 1.2)}px`,
+          filter: `drop-shadow(0 0 ${2 + Math.random() * 8}px gold)`,
+          zIndex: Math.floor(Math.random() * 10)
         }}>{emojis[Math.floor(Math.random() * emojis.length)]}</span>
       ))}
       <div style={{
           position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)',
-          fontSize: '1.2rem', fontWeight: 900,
+          fontSize: '1.4rem', fontWeight: 900,
           color: type === 'day' || type === 'month' ? '#fcd34d' : '#6ee7b7',
-          textShadow: `0 0 20px ${type === 'day' ? '#f59e0b' : '#10b981'}`,
-          whiteSpace: 'nowrap', animation: `textFloatTarget 2s ease-out forwards`,
-          display: 'flex', flexDirection: 'column', alignItems: 'center'
+          textShadow: `0 0 30px ${type === 'day' ? '#f59e0b' : '#10b981'}`,
+          whiteSpace: 'nowrap', animation: `textFloatTarget 2.5s ease-out forwards`,
+          display: 'flex', flexDirection: 'column', alignItems: 'center',
+          zIndex: 100
       }}>
         {label.includes('AR$') ? (
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.2rem' }}>
@@ -136,6 +140,7 @@ export const DashboardHeader = ({ onStartAudio, onStopAudio, onReconnectStream, 
   const [scoreView, setScoreView] = useState('numbers'); // 'game' | 'numbers'
   const [silenceCount, setSilenceCount] = useState(0);
   const [hoveredTimelineEvent, setHoveredTimelineEvent] = useState(null);
+  const [isZapping, setIsZapping] = useState(false);
 
   const [showAsHours, setShowAsHours] = useState(false);
   const [rateView, setRateView] = useState('effective'); // 'effective' | 'active'
@@ -506,62 +511,78 @@ export const DashboardHeader = ({ onStartAudio, onStopAudio, onReconnectStream, 
       {isCollapsed && (
         <div className="condensed-header-card" style={{ gap: '0.15rem' }}>
           
-          {/* ROW 1-2, COL 1: Consolidated Left Controls (Vertical Stack) */}
-          <div id="controls-left-col" style={{ gridRow: '1 / span 2', gridColumn: '1', display: 'flex', flexDirection: 'column', gap: '0.2rem', alignItems: 'center', background: 'rgba(255,255,255,0.03)', padding: '4px 2px', borderRadius: '4px', alignSelf: 'stretch', justifyContent: 'center' }}>
+          {/* ROW 1-2, COL 1: Consolidated Left Controls (Horizontal Stack) */}
+          <div id="controls-left-col" style={{ gridRow: '1 / span 2', gridColumn: '1', display: 'flex', flexDirection: 'column', gap: '0.2rem', alignItems: 'center', background: 'rgba(255,255,255,0.03)', padding: '4px 6px', borderRadius: '4px', alignSelf: 'stretch', justifyContent: 'center' }}>
             
-            {/* Status & Core Buttons */}
-            <div id="connection-controls-vertical" className={`${isActive ? 'active-working-state' : ''}`} style={{ display: 'flex', flexDirection: 'column', gap: '0.2rem', alignItems: 'center' }}>
-              <StateIndicators 
-                state={isActive ? 'call' : isBreakActive ? 'break' : 'avail'} 
-                breakMinutes={stats.dailyBreakMinutes || 0} 
-                isZombie={isZombieCall} 
-                silenceCount={silenceCount}
-              />
+            {/* Status & Core Buttons - NOW HORIZONTAL */}
+            <div id="connection-controls-horizontal" className={`${isActive ? 'active-working-state' : ''}`} style={{ display: 'flex', flexDirection: 'column', gap: '0.3rem', alignItems: 'center' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                <StateIndicators 
+                  state={isActive ? 'call' : isBreakActive ? 'break' : 'avail'} 
+                  breakMinutes={stats.dailyBreakMinutes || 0} 
+                  isZombie={isZombieCall} 
+                  silenceCount={silenceCount}
+                />
+                <div style={{ fontSize: '0.6rem', fontWeight: 900, color: 'rgba(255,255,255,0.4)', background: 'rgba(255,255,255,0.05)', padding: '2px 4px', borderRadius: '3px' }}>
+                  ⏳{Math.floor(minutesSinceLastBreak)}m
+                </div>
+              </div>
               
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
+              <div style={{ display: 'flex', gap: '3px', alignItems: 'center' }}>
                 {!isActive ? (
                   <button 
                     id="header-connect-btn" className="btn-emoji" 
                     onClick={isZombieCall ? onRecovery : onStartAudio} 
                     style={{ 
-                      background: isZombieCall ? '#f59e0b' : '#10b981', color: '#fff', width: '22px', height: '22px',
+                      background: isZombieCall ? '#f59e0b' : '#10b981', color: '#fff', width: '26px', height: '26px',
                       animation: (!isActive && !isBreakActive && (Date.now() - (lastDataTime || 0) < 5000)) ? 'pulseReminder 0.8s infinite' : 'none',
                     }} 
-                    title={isZombieCall ? "RECONNECT" : "CONNECT"}>
-                    {isZombieCall ? '🟢' : '🟢'}
+                    title={isZombieCall ? "RE-ATTACH TO CALL" : "CONNECT"}>
+                    {isZombieCall ? '🟡' : '🟢'}
                   </button>
                 ) : (
-                  <button id="header-stop-btn" className="btn-emoji" onClick={handleStop} style={{ background: '#ef4444', color: '#fff', width: '22px', height: '22px' }} title="STOP">🛑</button>
+                  <button id="header-stop-btn" className="btn-emoji" onClick={handleStop} style={{ background: '#ef4444', color: '#fff', width: '26px', height: '26px' }} title="STOP">🛑</button>
                 )}
                 
-                {isActive ? (
+                {isActive && (
                   <>
-                    <button id="header-hold-btn" className="btn btn-condensed" onClick={() => setIsHold(!isHold)} style={{ background: isHold ? '#f59e0b' : 'rgba(255,255,255,0.08)', height: '22px', padding: '0', width: '22px', fontSize: '0.6rem', border: '1px solid rgba(255,255,255,0.1)' }}>{isHold ? `H` : '⏸'}</button>
-                    <button id="header-zap-btn" className="btn-emoji" onClick={onReconnectStream} style={{ background: '#0ea5e9', width: '22px', height: '22px' }} title="ZAP">⚡</button>
-                  </>
-                ) : (
-                  <>
-                    <button id="header-break-btn" className="btn-emoji" onClick={isBreakActive ? stopBreak : handleStartBreak} style={{ background: '#fb923c', color: '#fff', width: '22px', height: '22px' }} title="BREAK">☕</button>
-                    {stats.dailyMinutes > 0 && !isBreakActive && (
-                      <button id="header-end-day-btn" className="btn-emoji" onClick={handleEndDay} style={{ background: '#8b5cf6', color: '#fff', width: '22px', height: '22px' }} title="END DAY">🌙</button>
-                    )}
+                    <button id="header-hold-btn" className="btn btn-condensed" onClick={() => setIsHold(!isHold)} style={{ background: isHold ? '#f59e0b' : 'rgba(255,255,255,0.08)', height: '26px', padding: '0', width: '26px', fontSize: '0.65rem', border: '1px solid rgba(255,255,255,0.1)' }}>{isHold ? `H` : '⏸'}</button>
+                    <button 
+                      id="header-zap-btn" 
+                      className={`btn-emoji ${isZapping ? 'zap-active' : ''}`} 
+                      onClick={() => {
+                        setIsZapping(true);
+                        onReconnectStream();
+                        setTimeout(() => setIsZapping(false), 450);
+                      }} 
+                      style={{ background: '#0ea5e9', width: '26px', height: '26px', transition: 'all 0.2s' }} 
+                      title="ZAP - Reconnect Audio Stream"
+                    >
+                      ⚡
+                    </button>
                   </>
                 )}
 
-                <div id="header-edit-tools-vertical" style={{ display: 'flex', flexDirection: 'column', gap: '1px', borderTop: '1px solid rgba(255,255,255,0.1)', paddingTop: '2px' }}>
-                  <button className="edit-btn-tiny" onClick={() => setTimeEditMode('call')} title="Edit call time" style={{ width: '22px', height: '18px' }}>✏️📞</button>
-                  <button className="edit-btn-tiny" onClick={() => setTimeEditMode('break')} title="Edit break time" style={{ width: '22px', height: '18px' }}>✏️☕</button>
+                <button id="header-break-btn" className="btn-emoji" onClick={isBreakActive ? stopBreak : handleStartBreak} style={{ background: '#fb923c', color: '#fff', width: '26px', height: '26px', opacity: isActive ? 0.3 : 1 }} disabled={isActive} title="BREAK">☕</button>
+                
+                {!isActive && stats.dailyMinutes > 0 && !isBreakActive && (
+                  <button id="header-end-day-btn" className="btn-emoji" onClick={handleEndDay} style={{ background: '#8b5cf6', color: '#fff', width: '26px', height: '26px' }} title="END DAY">🌙</button>
+                )}
+
+                <div id="header-edit-tools-mini" style={{ display: 'flex', gap: '2px', borderLeft: '1px solid rgba(255,255,255,0.1)', paddingLeft: '3px', marginLeft: '2px' }}>
+                  <button className="edit-btn-tiny" onClick={() => setTimeEditMode('call')} title="Edit call time" style={{ width: '20px', height: '26px', fontSize: '0.5rem' }}>📞</button>
+                  <button className="edit-btn-tiny" onClick={() => setTimeEditMode('break')} title="Edit break time" style={{ width: '20px', height: '26px', fontSize: '0.5rem' }}>☕</button>
                 </div>
               </div>
             </div>
 
             {/* Time Pills */}
-            <div id="left-pills-vertical" style={{ display: 'flex', flexDirection: 'column', gap: '0.05rem', alignItems: 'center', marginTop: 'auto' }}>
-               <div id="pill-shift" className="metric-pill compact-pill" title="SHIFT" style={{ padding: '0.05rem 0.15rem' }}>
-                 <span style={{ fontSize: '0.5rem' }}>🏃{formatHoursMins(shiftElapsedMins)}</span>
+            <div id="left-pills-row" style={{ display: 'flex', gap: '0.3rem', alignItems: 'center', marginTop: '0.1rem' }}>
+               <div id="pill-shift" className="metric-pill compact-pill" title="SHIFT" style={{ padding: '0.1rem 0.3rem' }}>
+                 <span style={{ fontSize: '0.55rem' }}>🏃{formatHoursMins(shiftElapsedMins)}</span>
                </div>
-               <div id="pill-logoff" className="metric-pill compact-pill" title="LOG OFF" style={{ background: 'rgba(245,158,11,0.08)', border: '1px solid rgba(245,158,11,0.2)', padding: '0.05rem 0.15rem' }}>
-                 <span style={{ color: '#fcd34d', fontSize: '0.5rem' }}>🚪{getCompensatedLogOff()}</span>
+               <div id="pill-logoff" className="metric-pill compact-pill" title="LOG OFF" style={{ background: 'rgba(245,158,11,0.08)', border: '1px solid rgba(245,158,11,0.2)', padding: '0.1rem 0.3rem' }}>
+                 <span style={{ color: '#fcd34d', fontSize: '0.55rem' }}>🚪{getCompensatedLogOff()}</span>
                </div>
             </div>
           </div>
