@@ -121,7 +121,7 @@ const StateIndicators = ({ state, breakMinutes, isZombie, silenceCount }) => {
 };
 
 export const DashboardHeader = ({ onStartAudio, onStopAudio, onReconnectStream, sttLanguage, onToggleLanguage, onRecovery, connectionState, connectionMessage, lastDataTime }) => {
-  const { isActive, sessionSeconds, sessionEarnings, stats, updateStat, stopSession, endDay, RATE_PER_MINUTE, arsRate, setArsRate, isBreakActive, breakSeconds, startBreak, stopBreak, availSeconds, isEditingScoreboard, setIsEditingScoreboard, visibleCards, isNotesOpen, setIsNotesOpen, isToolbarVisible, setIsToolbarVisible, isHeatmapOpen, setIsHeatmapOpen, isZombieCall, isScoreboardHelpVisible, setIsScoreboardHelpVisible, isHold, setIsHold, holdSeconds, dailyTimeline, historyTimeline, dailyLog, lastActivityTime, isCallDetectionEnabled, setIsCallDetectionEnabled } = useSession();
+  const { isActive, sessionSeconds, sessionEarnings, stats, updateStat, stopSession, endDay, RATE_PER_MINUTE, arsRate, setArsRate, isBreakActive, breakSeconds, startBreak, stopBreak, availSeconds, isEditingScoreboard, setIsEditingScoreboard, visibleCards, isNotesOpen, setIsNotesOpen, isToolbarVisible, setIsToolbarVisible, isHeatmapOpen, setIsHeatmapOpen, isZombieCall, isScoreboardHelpVisible, setIsScoreboardHelpVisible, isHold, setIsHold, holdSeconds, dailyTimeline, historyTimeline, dailyLog, lastActivityTime, isCallDetectionEnabled, setIsCallDetectionEnabled, minutesSinceLastBreak } = useSession();
 
   const helpStyle = isScoreboardHelpVisible ? { outline: '1px dashed #3b82f6', position: 'relative' } : {};
   const HelpLabel = ({ text }) => isScoreboardHelpVisible ? (
