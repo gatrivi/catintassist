@@ -8,6 +8,8 @@ import { NotePad } from './components/NotePad';
 import { DictionaryTool } from './components/DictionaryTool';
 import { SilenceGuardian } from './components/SilenceGuardian';
 import { DeskExerciseWidget } from './components/DeskExerciseWidget';
+import { RosaryWidget } from './components/RosaryWidget';
+import { MealTrackerWidget } from './components/MealTrackerWidget';
 import { useDeepgram } from './hooks/useDeepgram';
 import { loadFile, generateObjectUrl } from './utils/storage';
 import './index.css';
@@ -119,7 +121,7 @@ const Dashboard = () => {
         display: 'flex', alignItems: 'center', gap: '4px'
       }}>
         <CloudSyncIndicator />
-        v4.23.0 (Desk Fit)
+        v4.24.0 (Body & Soul)
       </div>
 
       <div id="top-mic-bar-container" style={{ position: 'fixed', top: 0, left: 0, right: 0, height: '3px', zIndex: 9999, pointerEvents: 'none' }}>
@@ -169,6 +171,8 @@ const Dashboard = () => {
       </main>
 
       <DeskExerciseWidget />
+      <RosaryWidget />
+      <MealTrackerWidget />
     </div>
   );
 };

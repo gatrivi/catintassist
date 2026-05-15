@@ -106,6 +106,7 @@ export const DeskExerciseWidget = () => {
   }, [isActive, allDone, minsSinceLastSet, playWarningPing]);
 
   const shouldNudge = !allDone && minsSinceLastSet >= REMINDER_THRESHOLD_MIN;
+  const pillBottom = '6px';
 
   return (
     <>
@@ -115,7 +116,7 @@ export const DeskExerciseWidget = () => {
         title="Desk Exercise Tracker"
         style={{
           position: 'fixed',
-          bottom: '6px',
+          bottom: pillBottom,
           left: '6px',
           zIndex: 9999,
           width: '40px',
@@ -153,8 +154,8 @@ export const DeskExerciseWidget = () => {
           className="glass-panel"
           style={{
             position: 'fixed',
-            bottom: '52px',
-            left: '6px',
+            bottom: pillBottom,
+            left: '52px',
             zIndex: 9999,
             width: '200px',
             padding: '0.6rem',
@@ -242,8 +243,8 @@ export const DeskExerciseWidget = () => {
         <div
           style={{
             position: 'fixed',
-            bottom: '52px',
-            left: '6px',
+            bottom: pillBottom,
+            left: '52px',
             zIndex: 10000,
             background: 'rgba(245, 158, 11, 0.2)',
             backdropFilter: 'blur(8px)',
