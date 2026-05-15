@@ -34,7 +34,7 @@ CURRENT ISSUES
 [] when app window is refreshed during active call, although we are in call app is not connecte, so icon shouldn be red as in connected, but rather yellow or sth, and main view should remind user to click and get app connected to other tab again. otherwise i have to press disconnect recojnnect, and that meesses the call timer and i lose all translations. double jeopardy.
 
 MAINVIEW (where transcription and translation happens)
-[x] space should be used as effectively as possible (v4.21.0: Call Mode auto-minimizes header to ~32px during calls)
+[x] space should be used as effectively as possible (v4.21.0: Call Mode auto-minimizes header to ~32px during calls; v4.22.0: Call Focus Mode auto-hides sidebars during calls for 100% transcription width)
   [] do not waste v space w things like spa and eng. use color coding to do that.
 [x] any time 9 or 10 digits are said back to back, group them (v4.15.0/v4.19.0)
 
@@ -122,4 +122,7 @@ CURRENT INBOX
 - [x] Call Mode: auto-minimizes header to a 32px micro-bar during active calls, giving transcription ~95% of viewport (v4.21.0)
 - [x] Micro-Break Nudge: top mic-bar turns orange at 90m without break, red at 110m — visual cue where your eyes already are (v4.21.0)
 - [x] Smart Bubble Compression: transcript bubbles >50 words auto-collapse to ~5 lines with one-click expand, reducing reading fatigue (v4.21.0)
+- [x] Call Focus Mode: auto-hides notes/tools sidebars during calls; toggle via 🎯 button in header (v4.22.0)
+- [x] Post-Call Summary: on call end, extracts numbers and dollar amounts from the transcript, shows dismissible toast (v4.22.0)
+- [x] Enhanced Filler Filter: strips um/uh/like/you know/bueno/pues from sentence starts, reducing reading fatigue (v4.22.0)
 </details>
