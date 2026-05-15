@@ -38,6 +38,8 @@ export const SessionProvider = ({ children }) => {
   });
   
   const [captions, setCaptions] = useState([]);
+  const captionsRef = useRef(captions);
+  useEffect(() => { captionsRef.current = captions; }, [captions]);
   const [isCaptionsLoaded, setIsCaptionsLoaded] = useState(false);
 
   const clearZombieState = () => {
@@ -279,10 +281,38 @@ export const SessionProvider = ({ children }) => {
     const saved = localStorage.getItem('catint_call_detect');
     return saved === null ? true : saved === 'true';
   });
+  const [callFocusMode, setCallFocusMode] = useState(() => {
+    const saved = localStorage.getItem('catint_call_focus');
+    return saved === null ? true : saved === 'true';
+  });
 
   useEffect(() => { localStorage.setItem('catint_notes_open', JSON.stringify(isNotesOpen)); }, [isNotesOpen]);
   useEffect(() => { localStorage.setItem('catint_toolbar_visible', JSON.stringify(isToolbarVisible)); }, [isToolbarVisible]);
   useEffect(() => { localStorage.setItem('catint_call_detect', JSON.stringify(isCallDetectionEnabled)); }, [isCallDetectionEnabled]);
+  useEffect(() => { localStorage.setItem('catint_call_focus', JSON.stringify(callFocusMode)); }, [callFocusMode]);
+
+  // Post-Call Summary: extract key data when a call ends
+  const [lastCallSummary, setLastCallSummary] = useState(null);
+
+  const extractCallSummary = (callCaptions) => {
+    if (!callCaptions || callCaptions.length === 0) return null;
+    const allText = callCaptions.map(c => c.text).filter(Boolean).join(' ');
+    const numbers = [];
+    const numRegex = /(\+?\(?\d{1,4}?\)?[\s.-]?\(?\d{2,4}?\)?[\s.-]?\d{3,4}[\s.-]?\d{3,4}|\b\d+[\d.,/\\-]*\b)/g;
+    let m;
+    while ((m = numRegex.exec(allText)) !== null) {
+      if (m[0].length >= 2) numbers.push(m[0]);
+    }
+    const uniqueNumbers = [...new Set(numbers)].slice(0, 8);
+    const dollarMatches = allText.match(/\$\d[\d,]*/g) || [];
+    const uniqueDollars = [...new Set(dollarMatches)].slice(0, 4);
+    return {
+      duration: callCaptions[callCaptions.length - 1]?.turnWordCount || 0,
+      numbers: uniqueNumbers,
+      dollars: uniqueDollars,
+      timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false })
+    };
+  };
 
   const [visibleCards, setVisibleCards] = useState(() => {
     const saved = localStorage.getItem('catintassist_visible_cards');
@@ -423,6 +453,11 @@ export const SessionProvider = ({ children }) => {
   // TERMINAR LLAMADA: Guardamos los minutos que trabajamos para no perderlos.
   const stopSession = (onCallEnded) => {
     setIsActive(false);
+    // Post-call summary: extract key data before captions are cleared
+    const summary = extractCallSummary(captionsRef.current);
+    if (summary && (summary.numbers.length > 0 || summary.dollars.length > 0)) {
+      setLastCallSummary(summary);
+    }
     const minutesToAdd = sessionSeconds / 60;
     if (minutesToAdd > 0) {
       setStats(prev => {
@@ -672,6 +707,10 @@ export const SessionProvider = ({ children }) => {
     setIsScoreboardHelpVisible,
     isCallDetectionEnabled,
     setIsCallDetectionEnabled,
+    callFocusMode,
+    setCallFocusMode,
+    lastCallSummary,
+    setLastCallSummary,
     requestHoldIntent,
     getCompensatedLogOff,
     minutesSinceLastBreak,

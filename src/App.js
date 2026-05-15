@@ -22,7 +22,7 @@ const CloudSyncIndicator = () => {
 
 const Dashboard = () => {
   const { startRecording, stopRecording, reconnectStream, captions, clearCaptions, sttLanguage, toggleLanguage, connectionState, connectionMessage, lastDataTime } = useDeepgram();
-  const { isNotesOpen, isToolbarVisible, isActive, isBreakActive, minutesSinceLastBreak, startSession, clearZombieState } = useSession();
+  const { isNotesOpen, isToolbarVisible, isActive, isBreakActive, minutesSinceLastBreak, startSession, clearZombieState, callFocusMode } = useSession();
   const [isEditingBg, setIsEditingBg] = useState(false);
   
   useEffect(() => {
@@ -118,7 +118,7 @@ const Dashboard = () => {
         display: 'flex', alignItems: 'center', gap: '4px'
       }}>
         <CloudSyncIndicator />
-        v4.21.0 (Focus & Recovery)
+        v4.22.0 (Deep Focus)
       </div>
 
       <div id="top-mic-bar-container" style={{ position: 'fixed', top: 0, left: 0, right: 0, height: '3px', zIndex: 9999, pointerEvents: 'none' }}>
@@ -150,7 +150,7 @@ const Dashboard = () => {
               lastDataTime={lastDataTime}
             />
         </div>
-        {(isNotesOpen || isToolbarVisible) && (
+        {(!isActive || !callFocusMode) && (isNotesOpen || isToolbarVisible) && (
           <div className="tools-column">
              {isToolbarVisible && (
                <div className="glass-panel tools-soundboard" style={{ overflow: 'hidden', display: 'flex', flexDirection: 'column', flex: isEditingBg ? '1' : '1.5' }}>

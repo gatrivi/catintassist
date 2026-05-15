@@ -209,7 +209,7 @@ export const TranscriptionBoard = ({ captions, onClearAll, onReconnect, lastData
   const [pinnedIds, setPinnedIds] = useState(() => JSON.parse(localStorage.getItem('catint_pinned')) || []);
   const { playTTS, stopTTS, isPlaying, playingUrl, prefetchTTS } = useTTS();
   const { playWarningPing } = useProgressiveAudio();
-  const { isActive, isZombieCall } = useSession();
+  const { isActive, isZombieCall, lastCallSummary, setLastCallSummary } = useSession();
   const warnedBubblesRef = useRef(new Set());
   
   const [popover, setPopover] = useState({ show: false, x: 0, y: 0, text: '' });
@@ -335,6 +335,35 @@ export const TranscriptionBoard = ({ captions, onClearAll, onReconnect, lastData
           <div style={{ fontSize: '1.2rem' }}>⚠️ SESSION DISCONNECTED</div>
           <div style={{ fontSize: '0.75rem', opacity: 0.9 }}>App was refreshed. Click here to re-attach to the call and resume transcription.</div>
           <div style={{ fontSize: '0.7rem', marginTop: '4px', textDecoration: 'underline' }}>[CLICK TO RE-ATTACH]</div>
+        </div>
+      )}
+
+      {/* Post-Call Summary Toast */}
+      {(!isActive && lastCallSummary) && (
+        <div style={{
+          position: 'absolute', top: '8px', left: '8px', right: '8px', zIndex: 1000,
+          background: 'rgba(15, 23, 42, 0.95)', border: '1px solid rgba(59, 130, 246, 0.4)',
+          borderRadius: '6px', padding: '0.5rem 0.7rem',
+          boxShadow: '0 8px 30px rgba(0,0,0,0.5)',
+          display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.5rem'
+        }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '2px', minWidth: 0 }}>
+            <div style={{ fontSize: '0.65rem', fontWeight: 900, color: '#60a5fa', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+              📋 LAST CALL SUMMARY · {lastCallSummary.timestamp}
+            </div>
+            <div style={{ fontSize: '0.75rem', color: '#fff', display: 'flex', flexWrap: 'wrap', gap: '0.4rem', alignItems: 'center' }}>
+              {lastCallSummary.numbers.length > 0 && (
+                <span>🔢 {lastCallSummary.numbers.join(', ')}</span>
+              )}
+              {lastCallSummary.dollars.length > 0 && (
+                <span style={{ color: '#fcd34d' }}>💰 {lastCallSummary.dollars.join(', ')}</span>
+              )}
+              {lastCallSummary.numbers.length === 0 && lastCallSummary.dollars.length === 0 && (
+                <span style={{ opacity: 0.5 }}>No key data extracted</span>
+              )}
+            </div>
+          </div>
+          <button onClick={() => setLastCallSummary(null)} style={{ background: 'transparent', border: 'none', color: 'rgba(255,255,255,0.5)', cursor: 'pointer', fontSize: '1rem', padding: '0 4px' }} title="Dismiss">✕</button>
         </div>
       )}
 

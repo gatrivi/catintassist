@@ -121,7 +121,7 @@ const StateIndicators = ({ state, breakMinutes, isZombie, silenceCount }) => {
 };
 
 export const DashboardHeader = ({ onStartAudio, onStopAudio, onReconnectStream, sttLanguage, onToggleLanguage, onRecovery, connectionState, connectionMessage, lastDataTime }) => {
-  const { isActive, sessionSeconds, sessionEarnings, stats, updateStat, stopSession, endDay, RATE_PER_MINUTE, arsRate, setArsRate, isBreakActive, breakSeconds, startBreak, stopBreak, availSeconds, isEditingScoreboard, setIsEditingScoreboard, visibleCards, isNotesOpen, setIsNotesOpen, isToolbarVisible, setIsToolbarVisible, isHeatmapOpen, setIsHeatmapOpen, isZombieCall, isScoreboardHelpVisible, setIsScoreboardHelpVisible, isHold, setIsHold, holdSeconds, dailyTimeline, historyTimeline, dailyLog, lastActivityTime, isCallDetectionEnabled, setIsCallDetectionEnabled, minutesSinceLastBreak } = useSession();
+  const { isActive, sessionSeconds, sessionEarnings, stats, updateStat, stopSession, endDay, RATE_PER_MINUTE, arsRate, setArsRate, isBreakActive, breakSeconds, startBreak, stopBreak, availSeconds, isEditingScoreboard, setIsEditingScoreboard, visibleCards, isNotesOpen, setIsNotesOpen, isToolbarVisible, setIsToolbarVisible, isHeatmapOpen, setIsHeatmapOpen, isZombieCall, isScoreboardHelpVisible, setIsScoreboardHelpVisible, isHold, setIsHold, holdSeconds, dailyTimeline, historyTimeline, dailyLog, lastActivityTime, isCallDetectionEnabled, setIsCallDetectionEnabled, callFocusMode, setCallFocusMode, minutesSinceLastBreak } = useSession();
 
   const helpStyle = isScoreboardHelpVisible ? { outline: '1px dashed #3b82f6', position: 'relative' } : {};
   const HelpLabel = ({ text }) => isScoreboardHelpVisible ? (
@@ -777,6 +777,7 @@ export const DashboardHeader = ({ onStartAudio, onStopAudio, onReconnectStream, 
                 <button id="header-edit-btn" className="btn-icon tiny-btn" onClick={() => { if(isCollapsed) setIsCollapsed(false); setIsEditingScoreboard(!isEditingScoreboard); }} style={{ opacity: isEditingScoreboard ? 1 : 0.3, width: '22px', height: '22px', fontSize: '0.8rem' }} title="Edit Grid">✏️</button>
                 <button id="header-expand-btn" className="btn-icon tiny-btn" onClick={() => setIsCollapsed(!isCollapsed)} style={{ width: '22px', height: '22px', fontSize: '0.8rem' }} title={isCollapsed ? "Expand HUD" : "Collapse HUD"}>{isCollapsed ? '🔼' : '▼'}</button>
                 <button id="header-calldetect-btn" className="btn-icon tiny-btn" onClick={() => setIsCallDetectionEnabled(!isCallDetectionEnabled)} style={{ opacity: isCallDetectionEnabled ? 1 : 0.3, background: isCallDetectionEnabled ? 'rgba(16,185,129,0.1)' : 'transparent', width: '22px', height: '22px', fontSize: '0.8rem' }} title="Call Detection">{isCallDetectionEnabled ? '📡' : '📵'}</button>
+                <button id="header-focus-btn" className="btn-icon tiny-btn" onClick={() => setCallFocusMode(!callFocusMode)} style={{ opacity: callFocusMode ? 1 : 0.3, background: callFocusMode ? 'rgba(16,185,129,0.1)' : 'transparent', width: '22px', height: '22px', fontSize: '0.8rem' }} title="Call Focus: auto-hide sidebars during calls">{callFocusMode ? '🎯' : '🔲'}</button>
             </div>
           </div>
         </div>

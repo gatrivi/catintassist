@@ -40,6 +40,29 @@ const containsNumberSequence = (text, minLength = 2) => {
   return false;
 };
 
+const FILLER_WORDS = new Set(['um','uh','eh','ah','like','well','so','okay','ok','yeah','yep','nope','hmm','hm','bueno','pues','este','ees','ehm']);
+const PHRASE_FILLERS = ['you know', 'i mean', 'sort of', 'kind of'];
+
+const cleanFillerWords = (text) => {
+  if (!text) return text;
+  let t = text;
+  // Strip common phrase fillers (case insensitive)
+  PHRASE_FILLERS.forEach(phrase => {
+    const re = new RegExp(`\\b${phrase}\\b`, 'gi');
+    t = t.replace(re, '');
+  });
+  // Strip standalone filler words from the start of the string
+  const words = t.trim().split(/\s+/);
+  let startIdx = 0;
+  while (startIdx < words.length && FILLER_WORDS.has(words[startIdx].toLowerCase().replace(/[^a-z]/g, ''))) {
+    startIdx++;
+  }
+  if (startIdx > 0) {
+    t = words.slice(startIdx).join(' ');
+  }
+  return t.replace(/\s+/g, ' ').trim();
+};
+
 const hallucinationGuard = (text) => {
   if (!text) return text;
   const words = text.trim().split(/\s+/);
@@ -76,7 +99,7 @@ const hallucinationGuard = (text) => {
      return cleaned.slice(0, 12).join(' ') + "... [Stutter Pruned]";
   }
 
-  return cleaned.join(' ');
+  return cleanFillerWords(cleaned.join(' '));
 };
 
 const removeOverlap = (base, addition) => {
