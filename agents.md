@@ -20,7 +20,7 @@ CORE VALUES
 - dont push version that explode. hahaha.
 - if features and ap works, then commit push.
 - proposed changes should show precisely what changes, from what to whay. for example, a moment ago i requested adding percentages on the scoreboard, cited one metric as an example, and only the cited metric had a porcentage added, when it was clear it was all of them. so if i request a change i have to see what is actually going to be done before having to stop production to test something that should never have got so far.
-[] maximising workspace and minimizing things that eat workspace is the rule. that is, translation and transcription should take 80% of screen, scoreboard 20%, 
+[x] maximising workspace and minimizing things that eat workspace is the rule. translation and transcription should take 80% of screen, scoreboard 20%. (v4.21.0) 
 
 CURRENT ISSUES
 [x] Word count is now cumulative per turn: if user speaks more than 40 words and bubble splits, the count continues (v4.1.0)
@@ -34,7 +34,7 @@ CURRENT ISSUES
 [] when app window is refreshed during active call, although we are in call app is not connecte, so icon shouldn be red as in connected, but rather yellow or sth, and main view should remind user to click and get app connected to other tab again. otherwise i have to press disconnect recojnnect, and that meesses the call timer and i lose all translations. double jeopardy.
 
 MAINVIEW (where transcription and translation happens)
-[] space should be used as effectively as possible
+[x] space should be used as effectively as possible (v4.21.0: Call Mode auto-minimizes header to ~32px during calls)
   [] do not waste v space w things like spa and eng. use color coding to do that.
 [x] any time 9 or 10 digits are said back to back, group them (v4.15.0/v4.19.0)
 
@@ -82,7 +82,7 @@ good friday
 
 CURRENT INBOX
 
-[ ] maximizing workspace and minimizing things that eat workspace is the rule. translation and transcription 80%, scoreboard 20%.
+
 
 <details>
 <summary><b>Completed Tasks</b></summary>
@@ -119,4 +119,7 @@ CURRENT INBOX
 - [x] UI optimization: condensed header buttons moved to single row; added 'minutes since last break' counter; refined pinned message UI; improved money rain burst (v4.19.0)
 - [x] Zombie Call Recovery: added yellow 'Re-attach' indicator and prominent warning banner to prevent session loss on refresh (v4.20.0)
 - [x] Translation Stability: implemented 'sticky' language pairs and fixed feedback loops to prevent translations from being destroyed during splits (v4.20.0)
+- [x] Call Mode: auto-minimizes header to a 32px micro-bar during active calls, giving transcription ~95% of viewport (v4.21.0)
+- [x] Micro-Break Nudge: top mic-bar turns orange at 90m without break, red at 110m — visual cue where your eyes already are (v4.21.0)
+- [x] Smart Bubble Compression: transcript bubbles >50 words auto-collapse to ~5 lines with one-click expand, reducing reading fatigue (v4.21.0)
 </details>

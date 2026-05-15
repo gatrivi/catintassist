@@ -102,8 +102,14 @@ const Dashboard = () => {
     }
   }, [startRecording, startSession, clearZombieState]);
 
+  // Micro-break nudge: top bar color shifts when working too long without a break
+  const micBarColor = isActive && minutesSinceLastBreak > 110 ? '#ef4444'
+    : isActive && minutesSinceLastBreak > 90 ? '#f59e0b'
+    : '#10b981';
+  const micBarShadow = isActive && minutesSinceLastBreak > 90 ? '0 0 8px #f59e0b' : '0 0 8px #10b981';
+
   return (
-    <div className={`app-container ${stateClass}`} data-state={appState}>
+    <div className={`app-container ${stateClass}`} data-state={appState} data-call-mode={isActive}>
       {/* Version Tag - Always visible in the upper right */}
       <div style={{ 
         position: 'fixed', top: '1px', right: '4px', zIndex: 10000, 
@@ -112,11 +118,11 @@ const Dashboard = () => {
         display: 'flex', alignItems: 'center', gap: '4px'
       }}>
         <CloudSyncIndicator />
-        v4.20.0 (Stability & Recovery)
+        v4.21.0 (Focus & Recovery)
       </div>
 
       <div id="top-mic-bar-container" style={{ position: 'fixed', top: 0, left: 0, right: 0, height: '3px', zIndex: 9999, pointerEvents: 'none' }}>
-        <div id="top-mic-bar" style={{ height: '100%', width: '0%', background: '#10b981', transition: 'width 0.05s ease-out', opacity: 0, boxShadow: '0 0 8px #10b981' }} />
+        <div id="top-mic-bar" style={{ height: '100%', width: '0%', background: micBarColor, transition: 'width 0.05s ease-out, background 0.5s ease', opacity: 0, boxShadow: micBarShadow }} />
       </div>
 
       <SilenceGuardian lastDataTime={lastDataTime} />

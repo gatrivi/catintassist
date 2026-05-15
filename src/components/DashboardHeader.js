@@ -145,6 +145,7 @@ export const DashboardHeader = ({ onStartAudio, onStopAudio, onReconnectStream, 
   const [showAsHours, setShowAsHours] = useState(false);
   const [rateView, setRateView] = useState('effective'); // 'effective' | 'active'
   const [overtimeMode, setOvertimeMode] = useState('tail'); // 'tail' | 'under'
+  const [callModeExpanded, setCallModeExpanded] = useState(false); // User can pin full header during calls
 
   useEffect(() => {
     const iv = setInterval(() => {
@@ -152,6 +153,11 @@ export const DashboardHeader = ({ onStartAudio, onStopAudio, onReconnectStream, 
     }, 1000);
     return () => clearInterval(iv);
   }, [lastActivityTime]);
+
+  // Auto-reset expanded header when call ends
+  useEffect(() => {
+    if (!isActive) setCallModeExpanded(false);
+  }, [isActive]);
 
   const startOfToday = new Date().setHours(0,0,0,0);
   const timelineStart = startOfToday + 9 * 3600000;
@@ -241,6 +247,7 @@ export const DashboardHeader = ({ onStartAudio, onStopAudio, onReconnectStream, 
   // handleStart and local starting logic REMOVED to favor unified App-level handlers passed via props
 
   const handleStop = () => {
+    setCallModeExpanded(false);
     stopSession((mins) => {
       // DENOMINATION PAYOUT LOGIC
       // Diamonds = 20m, Bills = 5m, Coins = 1m
@@ -260,6 +267,7 @@ export const DashboardHeader = ({ onStartAudio, onStopAudio, onReconnectStream, 
     onStopAudio();
   };
   const handleEndDay = () => {
+    setCallModeExpanded(false);
     endDay((mins) => {
       audioEngine.playMetalChest();
       const dynamicItems = Math.min(200, Math.max(20, Math.floor(mins * 0.4)));
@@ -504,11 +512,38 @@ export const DashboardHeader = ({ onStartAudio, onStopAudio, onReconnectStream, 
 
   const rateOf = (view) => view === 'effective' ? effectiveRateArsHr : activeRateArsHr;
 
+  // Call Micro Bar: ultra-compact header when actively interpreting
+  // Gives transcription ~95% of viewport. User can expand via 🔼 button.
+  const CallMicroBar = () => (
+    <div className="call-micro-bar">
+      <div style={{ display: 'flex', gap: '3px', alignItems: 'center' }}>
+        <button className="btn-emoji" onClick={handleStop} style={{ background: '#ef4444', color: '#fff', width: '26px', height: '26px' }} title="STOP">🛑</button>
+        <button className="btn btn-condensed" onClick={() => setIsHold(!isHold)} style={{ background: isHold ? '#f59e0b' : 'rgba(255,255,255,0.08)', height: '26px', padding: '0', width: '26px', fontSize: '0.65rem', border: '1px solid rgba(255,255,255,0.1)' }}>{isHold ? `H` : '⏸'}</button>
+        <button className={`btn-emoji ${isZapping ? 'zap-active' : ''}`} onClick={() => { setIsZapping(true); onReconnectStream(); setTimeout(() => setIsZapping(false), 450); }} style={{ background: '#0ea5e9', width: '26px', height: '26px', transition: 'all 0.2s' }} title="ZAP">⚡</button>
+      </div>
+      
+      <div className="call-micro-bar-center">
+        <span className="call-micro-bar-timer">{formatTime(sessionSeconds)}</span>
+        <span className="call-micro-bar-earnings">AR${Math.round(sessionEarnings * arsRate).toLocaleString('es-AR')}</span>
+        {minutesSinceLastBreak > 90 && (
+          <span className="call-micro-bar-nudge" title="You have been working for over 90 minutes without a break">🍕 {Math.floor(minutesSinceLastBreak)}m</span>
+        )}
+      </div>
+      
+      <div style={{ display: 'flex', gap: '3px', alignItems: 'center' }}>
+        <button className="btn-icon tiny-btn" onClick={() => setCallModeExpanded(true)} style={{ width: '22px', height: '22px', fontSize: '0.7rem' }} title="Expand Header">🔼</button>
+      </div>
+    </div>
+  );
+
   return (
     <header className="dashboard-header glass-panel" style={{ position: 'relative', zIndex: 100 }}>
 
-      {/* COLLAPSED VIEW */}
-      {isCollapsed && (
+      {/* CALL MODE: Ultra-compact micro bar (auto-shrinks header during calls) */}
+      {isActive && !callModeExpanded && <CallMicroBar />}
+
+      {/* COLLAPSED VIEW (hidden when in compact call mode) */}
+      {(!isActive || callModeExpanded) && isCollapsed && (
         <div className="condensed-header-card" style={{ gap: '0.15rem' }}>
           
           {/* ROW 1-2, COL 1: Consolidated Left Controls (Horizontal Stack) */}
@@ -748,7 +783,7 @@ export const DashboardHeader = ({ onStartAudio, onStopAudio, onReconnectStream, 
       )}
 
       {/* ── EXPANDED TWO-ROW DASHBOARD ── */}
-      {!isCollapsed && (
+      {(!isActive || callModeExpanded) && !isCollapsed && (
         <div className="income-dashboard">
           
           {/* UPPER ROW: High-Level Progress & The Bounty */}

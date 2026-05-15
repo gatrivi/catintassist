@@ -214,6 +214,17 @@ export const TranscriptionBoard = ({ captions, onClearAll, onReconnect, lastData
   
   const [popover, setPopover] = useState({ show: false, x: 0, y: 0, text: '' });
   const popoverTimerRef = useRef(null);
+  
+  // Smart Bubble Compression: auto-collapse long bubbles to reduce reading fatigue
+  const [expandedIds, setExpandedIds] = useState(new Set());
+  const toggleExpand = (id) => {
+    setExpandedIds(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
 
   useEffect(() => {
     safeSet('catint_pinned', JSON.stringify(pinnedIds));
@@ -350,6 +361,8 @@ export const TranscriptionBoard = ({ captions, onClearAll, onReconnect, lastData
           const wordCount = cap.text.trim().split(/\s+/).length;
           const isPinned = pinnedIds.includes(cap.id);
           const isSplitContinuation = isSameAsPrevious && wordCount < 50;
+          const isLongBubble = wordCount > 50 && cap.isFinal !== false;
+          const isExpanded = expandedIds.has(cap.id);
           
           return (
             <div key={cap.id || i} className="transcript-bubble" style={{ 
@@ -362,12 +375,20 @@ export const TranscriptionBoard = ({ captions, onClearAll, onReconnect, lastData
               ...getBubbleStyle(cap.text, cap.isFinal === false, cap.lang)
             }}>
               
-              <TranslatedBubble 
-                id={cap.id} text={cap.text} lang={cap.lang} playTTS={playTTS} stopTTS={stopTTS} playingUrl={playingUrl} prefetchTTS={prefetchTTS} 
-                reverse={cap.lang === 'es'} ttsMode={ttsMode} wordCount={wordCount} turnWordCount={cap.turnWordCount} shouldPrefetch={i >= captions.length - 3} 
-                emphasisMode={emphasisMode} isPinned={isPinned} onTogglePin={togglePin} 
-                isRedundantCount={i > 0 && captions[i-1].turnWordCount === cap.turnWordCount}
-              />
+              <div style={{ maxHeight: isLongBubble && !isExpanded ? '5.5rem' : 'none', overflow: 'hidden', transition: 'max-height 0.3s ease' }}>
+                <TranslatedBubble 
+                  id={cap.id} text={cap.text} lang={cap.lang} playTTS={playTTS} stopTTS={stopTTS} playingUrl={playingUrl} prefetchTTS={prefetchTTS} 
+                  reverse={cap.lang === 'es'} ttsMode={ttsMode} wordCount={wordCount} turnWordCount={cap.turnWordCount} shouldPrefetch={i >= captions.length - 3} 
+                  emphasisMode={emphasisMode} isPinned={isPinned} onTogglePin={togglePin} 
+                  isRedundantCount={i > 0 && captions[i-1].turnWordCount === cap.turnWordCount}
+                />
+              </div>
+              
+              {isLongBubble && (
+                <button className="bubble-expand-btn" onClick={() => toggleExpand(cap.id)}>
+                  {isExpanded ? '▲ collapse' : `··· ${wordCount} words ···`}
+                </button>
+              )}
               
               <button 
                 onClick={() => togglePin(cap.id)} 
