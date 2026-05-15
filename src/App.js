@@ -7,6 +7,7 @@ import { GreetingsPanel } from './components/GreetingsPanel';
 import { NotePad } from './components/NotePad';
 import { DictionaryTool } from './components/DictionaryTool';
 import { SilenceGuardian } from './components/SilenceGuardian';
+import { DeskExerciseWidget } from './components/DeskExerciseWidget';
 import { useDeepgram } from './hooks/useDeepgram';
 import { loadFile, generateObjectUrl } from './utils/storage';
 import './index.css';
@@ -118,7 +119,7 @@ const Dashboard = () => {
         display: 'flex', alignItems: 'center', gap: '4px'
       }}>
         <CloudSyncIndicator />
-        v4.22.0 (Deep Focus)
+        v4.23.0 (Desk Fit)
       </div>
 
       <div id="top-mic-bar-container" style={{ position: 'fixed', top: 0, left: 0, right: 0, height: '3px', zIndex: 9999, pointerEvents: 'none' }}>
@@ -166,6 +167,8 @@ const Dashboard = () => {
           </div>
         )}
       </main>
+
+      <DeskExerciseWidget />
     </div>
   );
 };

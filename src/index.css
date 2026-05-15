@@ -1293,6 +1293,15 @@ body {
 }
 
 
+/* ── Desk Exercise Widget ── */
+.rep-box:hover {
+  border-color: rgba(255,255,255,0.4) !important;
+  background: rgba(255,255,255,0.1) !important;
+}
+.rep-box:active {
+  transform: scale(0.9);
+}
+
 /* ── MODERN UTILITIES (RESTORED FROM v4.15.1) ── */
 .phone-number {
   background: rgba(254, 240, 138, 0.15);
