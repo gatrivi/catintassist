@@ -10,6 +10,7 @@ import { SilenceGuardian } from './components/SilenceGuardian';
 import { DeskExerciseWidget } from './components/DeskExerciseWidget';
 import { RosaryWidget } from './components/RosaryWidget';
 import { MealTrackerWidget } from './components/MealTrackerWidget';
+import { ChoreTrackerWidget } from './components/ChoreTrackerWidget';
 import { useDeepgram } from './hooks/useDeepgram';
 import { loadFile, generateObjectUrl } from './utils/storage';
 import './index.css';
@@ -121,7 +122,7 @@ const Dashboard = () => {
         display: 'flex', alignItems: 'center', gap: '4px'
       }}>
         <CloudSyncIndicator />
-        v4.24.0 (Body & Soul)
+        v4.25.0 (Full Stack)
       </div>
 
       <div id="top-mic-bar-container" style={{ position: 'fixed', top: 0, left: 0, right: 0, height: '3px', zIndex: 9999, pointerEvents: 'none' }}>
@@ -173,6 +174,7 @@ const Dashboard = () => {
       <DeskExerciseWidget />
       <RosaryWidget />
       <MealTrackerWidget />
+      <ChoreTrackerWidget />
     </div>
   );
 };
