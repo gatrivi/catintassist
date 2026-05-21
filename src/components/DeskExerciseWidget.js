@@ -1,6 +1,7 @@
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { useSession } from '../contexts/SessionContext';
 import { useProgressiveAudio } from '../hooks/useProgressiveAudio';
+import { useClickOutside } from '../hooks/useClickOutside';
 
 const STORAGE_KEY = 'catint_exercises_v1';
 const REMINDER_INTERVAL_MS = 10 * 60 * 1000; // 10 min check
@@ -47,6 +48,9 @@ export const DeskExerciseWidget = () => {
   const [isOpen, setIsOpen] = useState(false);
   const [data, setData] = useState(loadState);
   const [toast, setToast] = useState(null);
+  
+  const containerRef = useRef(null);
+  useClickOutside(containerRef, () => setIsOpen(false));
 
   // Persist on change + midnight guard
   useEffect(() => {
@@ -109,16 +113,13 @@ export const DeskExerciseWidget = () => {
   const pillBottom = '6px';
 
   return (
-    <>
+    <div ref={containerRef} style={{ position: 'relative' }}>
       {/* Collapsed Pill */}
       <button
         onClick={() => setIsOpen(o => !o)}
         title="Desk Exercise Tracker"
         style={{
-          position: 'fixed',
-          bottom: pillBottom,
-          left: '6px',
-          zIndex: 9999,
+          position: 'relative',
           width: '40px',
           height: '40px',
           borderRadius: '20px',
@@ -151,11 +152,12 @@ export const DeskExerciseWidget = () => {
       {/* Expanded Panel */}
       {isOpen && (
         <div
-          className="glass-panel"
+          className="glass-panel tracker-expanded-panel"
           style={{
-            position: 'fixed',
-            bottom: pillBottom,
-            left: '52px',
+            position: 'absolute',
+            bottom: 'calc(100% + 8px)',
+            left: '50%',
+            transform: 'translateX(-50%)',
             zIndex: 9999,
             width: '200px',
             padding: '0.6rem',
@@ -242,9 +244,10 @@ export const DeskExerciseWidget = () => {
       {toast && (
         <div
           style={{
-            position: 'fixed',
-            bottom: pillBottom,
-            left: '52px',
+            position: 'absolute',
+            bottom: 'calc(100% + 8px)',
+            left: '50%',
+            transform: 'translateX(-50%)',
             zIndex: 10000,
             background: 'rgba(245, 158, 11, 0.2)',
             backdropFilter: 'blur(8px)',
@@ -261,6 +264,6 @@ export const DeskExerciseWidget = () => {
           {toast}
         </div>
       )}
-    </>
+    </div>
   );
 };

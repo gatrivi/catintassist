@@ -112,6 +112,25 @@ const Dashboard = () => {
     : '#10b981';
   const micBarShadow = isActive && minutesSinceLastBreak > 90 ? '0 0 8px #f59e0b' : '0 0 8px #10b981';
 
+  // Demo Scenario Trigger (Shift + D)
+  useEffect(() => {
+    const scenarios = ['call', 'goal_hit', 'break', 'reset'];
+    let scenarioIdx = 0;
+    
+    const handleKeyDown = (e) => {
+      if (e.shiftKey && e.code === 'KeyD') {
+        const scenario = scenarios[scenarioIdx];
+        scenarioIdx = (scenarioIdx + 1) % scenarios.length;
+        
+        // Trigger global demo event
+        const event = new CustomEvent('cat_demo_scenario', { detail: scenario });
+        window.dispatchEvent(event);
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, []);
+
   return (
     <div className={`app-container ${stateClass}`} data-state={appState} data-call-mode={isActive}>
       {/* Version Tag - Always visible in the upper right */}
@@ -122,7 +141,7 @@ const Dashboard = () => {
         display: 'flex', alignItems: 'center', gap: '4px'
       }}>
         <CloudSyncIndicator />
-        v4.25.0 (Full Stack)
+        v4.25.1 (Full Stack)
       </div>
 
       <div id="top-mic-bar-container" style={{ position: 'fixed', top: 0, left: 0, right: 0, height: '3px', zIndex: 9999, pointerEvents: 'none' }}>
@@ -171,10 +190,12 @@ const Dashboard = () => {
         )}
       </main>
 
-      <DeskExerciseWidget />
-      <RosaryWidget />
-      <MealTrackerWidget />
-      <ChoreTrackerWidget />
+      <div className="habit-dock">
+        <DeskExerciseWidget />
+        <RosaryWidget />
+        <MealTrackerWidget />
+        <ChoreTrackerWidget />
+      </div>
     </div>
   );
 };

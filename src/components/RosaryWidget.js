@@ -1,6 +1,7 @@
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { useSession } from '../contexts/SessionContext';
 import { useProgressiveAudio } from '../hooks/useProgressiveAudio';
+import { useClickOutside } from '../hooks/useClickOutside';
 
 const STORAGE_KEY = 'catint_rosary_v1';
 const REMINDER_INTERVAL_MS = 10 * 60 * 1000;
@@ -46,6 +47,9 @@ export const RosaryWidget = () => {
   const [isOpen, setIsOpen] = useState(false);
   const [data, setData] = useState(loadState);
   const [toast, setToast] = useState(null);
+
+  const containerRef = useRef(null);
+  useClickOutside(containerRef, () => setIsOpen(false));
 
   useEffect(() => { saveState(data); }, [data]);
 
@@ -103,16 +107,13 @@ export const RosaryWidget = () => {
   const pillBottom = '52px';
 
   return (
-    <>
+    <div ref={containerRef} style={{ position: 'relative' }}>
       {/* Collapsed Pill */}
       <button
         onClick={() => setIsOpen(o => !o)}
         title="Rosary Tracker"
         style={{
-          position: 'fixed',
-          bottom: pillBottom,
-          left: '6px',
-          zIndex: 9999,
+          position: 'relative',
           width: '40px',
           height: '40px',
           borderRadius: '20px',
@@ -145,11 +146,12 @@ export const RosaryWidget = () => {
       {/* Expanded Panel */}
       {isOpen && (
         <div
-          className="glass-panel"
+          className="glass-panel tracker-expanded-panel"
           style={{
-            position: 'fixed',
-            bottom: pillBottom,
-            left: '52px',
+            position: 'absolute',
+            bottom: 'calc(100% + 8px)',
+            left: '50%',
+            transform: 'translateX(-50%)',
             zIndex: 9999,
             width: '210px',
             padding: '0.5rem',
@@ -240,7 +242,7 @@ export const RosaryWidget = () => {
       {toast && (
         <div
           style={{
-            position: 'fixed',
+            position: 'absolute',
             bottom: pillBottom,
             left: '52px',
             zIndex: 10000,
@@ -259,6 +261,6 @@ export const RosaryWidget = () => {
           {toast}
         </div>
       )}
-    </>
+    </div>
   );
 };

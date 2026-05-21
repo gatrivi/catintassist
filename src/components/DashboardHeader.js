@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { RollingNumber } from './RollingNumber';
 import { useRewardAudio } from '../hooks/useRewardAudio';
 import { useSession } from '../contexts/SessionContext';
@@ -246,7 +246,7 @@ export const DashboardHeader = ({ onStartAudio, onStopAudio, onReconnectStream, 
 
   // handleStart and local starting logic REMOVED to favor unified App-level handlers passed via props
 
-  const handleStop = () => {
+  const handleStop = useCallback(() => {
     setCallModeExpanded(false);
     stopSession((mins) => {
       // DENOMINATION PAYOUT LOGIC
@@ -265,7 +265,8 @@ export const DashboardHeader = ({ onStartAudio, onStopAudio, onReconnectStream, 
       setTimeout(() => setCelebration(null), 4000);
     });
     onStopAudio();
-  };
+  }, [stopSession, RATE_PER_MINUTE, arsRate, audioEngine, onStopAudio]);
+
   const handleEndDay = () => {
     setCallModeExpanded(false);
     endDay((mins) => {
@@ -276,9 +277,9 @@ export const DashboardHeader = ({ onStartAudio, onStopAudio, onReconnectStream, 
     });
   };
 
-  const handleStartBreak = () => {
+  const handleStartBreak = useCallback(() => {
     startBreak();
-  };
+  }, [startBreak]);
 
   const getWorkingDays = (y, m) => {
     let count = 0;
@@ -536,6 +537,35 @@ export const DashboardHeader = ({ onStartAudio, onStopAudio, onReconnectStream, 
     </div>
   );
 
+  // Listen for Demo Scenarios
+  useEffect(() => {
+    const handleScenario = (e) => {
+      const scenario = e.detail;
+      if (scenario === 'call') {
+        onStartAudio();
+      } else if (scenario === 'goal_hit') {
+        handleStop();
+        setTimeout(() => {
+          setCelebration({ 
+            type: 'day', 
+            label: 'DAILY GOAL SECURED! 🏆', 
+            coins: 100 
+          });
+          audioEngine.playJackpot?.() || audioEngine.playMetalChest();
+        }, 1000);
+      } else if (scenario === 'break') {
+        handleStartBreak();
+      } else if (scenario === 'reset') {
+        stopBreak();
+        stopSession();
+        onStopAudio();
+        setCelebration(null);
+      }
+    };
+    window.addEventListener('cat_demo_scenario', handleScenario);
+    return () => window.removeEventListener('cat_demo_scenario', handleScenario);
+  }, [onStartAudio, onStopAudio, handleStop, handleStartBreak, stopBreak, stopSession, audioEngine]);
+
   return (
     <header className="dashboard-header glass-panel" style={{ position: 'relative', zIndex: 100 }}>
 
@@ -624,119 +654,129 @@ export const DashboardHeader = ({ onStartAudio, onStopAudio, onReconnectStream, 
 
           {/* SCOREBOARD (CENTER SPANNING 2 ROWS) */}
           <div id="header-scoreboard-center" style={{ gridRow: '1 / span 2', gridColumn: '2', flex: '1 1 0', minWidth: 0, margin: '0 0.1rem' }}>
-            {scoreView === 'game' ? (
-              <GameScoreboard
-                liveDailyArs={liveDailyArs} dailyTargetArs={dailyTargetArs}
-                monthlyArs={monthlyArs} monthlyTargetArs={monthlyTargetArs}
-                stats={stats} dailyGoal={dailyGoal} totalDailyMins={totalDailyMins}
-                totalOffCallMins={totalOffCallMins}
-                shiftElapsedMins={shiftElapsedMins}
-                pacePrediction={pacePrediction} qualityScore={qualityScore} cutoffWarning={cutoffWarning}
-                breakLeft={breakLeft} breakLimit={breakLimit}
-                nextGoalLabel={nextGoalLabel} nextMilestone={nextMilestone}
-                daysInMonth={daysInMonth} currentDay={currentDay} remainingDays={remainingDays}
-                isActive={isActive} isBreakActive={isBreakActive}
-                onSwitchToNumbers={() => setScoreView('numbers')}
-                milestoneTargets={milestoneTargets}
-                isEditingScoreboard={isEditingScoreboard}
-                getCompensatedLogOff={getCompensatedLogOff}
-              />
-            ) : (
-              <div id="numeric-metric-grid" className="metric-grid">
-                 {/* 1. Mins worked today */}
-                <div className={`metric-cell ${isEditingScoreboard ? 'grid-edit-mode' : ''}`} title="Minutes worked today (Click to toggle H:M)" style={{ position: 'relative', background: 'rgba(59,130,246,0.06)', cursor: 'pointer' }} onClick={() => setShowAsHours(!showAsHours)}>
-                  <HelpLabel text="1. MINS TODAY" />
-                  <div className="metric-cell-val" style={{ color: '#60a5fa' }}><RollingNumber value={formatValue(totalDailyMins)} height={24} /></div>
-                  <div className="metric-cell-label">MINS TODAY</div>
+            <div className="flip-container" style={{ height: '140px' }}> {/* Fixed height to prevent layout jump during flip */}
+              <div className={`flip-card ${scoreView === 'numbers' ? 'is-flipped' : ''}`}>
+                
+                {/* FRONT: GAME VIEW */}
+                <div className="flip-front">
+                  <GameScoreboard
+                    liveDailyArs={liveDailyArs} dailyTargetArs={dailyTargetArs}
+                    monthlyArs={monthlyArs} monthlyTargetArs={monthlyTargetArs}
+                    stats={stats} dailyGoal={dailyGoal} totalDailyMins={totalDailyMins}
+                    totalOffCallMins={totalOffCallMins}
+                    shiftElapsedMins={shiftElapsedMins}
+                    pacePrediction={pacePrediction} qualityScore={qualityScore} cutoffWarning={cutoffWarning}
+                    breakLeft={breakLeft} breakLimit={breakLimit}
+                    nextGoalLabel={nextGoalLabel} nextMilestone={nextMilestone}
+                    daysInMonth={daysInMonth} currentDay={currentDay} remainingDays={remainingDays}
+                    isActive={isActive} isBreakActive={isBreakActive}
+                    onSwitchToNumbers={() => setScoreView('numbers')}
+                    milestoneTargets={milestoneTargets}
+                    isEditingScoreboard={isEditingScoreboard}
+                    getCompensatedLogOff={getCompensatedLogOff}
+                  />
                 </div>
 
-                <div className={`metric-cell ${isEditingScoreboard ? 'grid-edit-mode' : ''}`} title="Minutes left for daily goal (Click to toggle H:M)" style={{ position: 'relative', background: 'rgba(239,68,68,0.04)', cursor: 'pointer' }} onClick={() => setShowAsHours(!showAsHours)}>
-                  <HelpLabel text="2. LEFT TODAY" />
-                  <div className="metric-cell-val" style={{ color: '#fca5a5' }}><RollingNumber value={formatValue(Math.max(0, dailyGoal - totalDailyMins))} height={24} /></div>
-                  <div className="metric-cell-label">LEFT TODAY</div>
-                </div>
+                {/* BACK: NUMBERS VIEW */}
+                <div className="flip-back">
+                  <div id="numeric-metric-grid" className="metric-grid">
+                    {/* 1. Mins worked today */}
+                    <div className={`metric-cell ${isEditingScoreboard ? 'grid-edit-mode' : ''}`} title="Minutes worked today (Click to toggle H:M)" style={{ position: 'relative', background: 'rgba(59,130,246,0.06)', cursor: 'pointer' }} onClick={() => setShowAsHours(!showAsHours)}>
+                      <HelpLabel text="1. MINS TODAY" />
+                      <div className="metric-cell-val" style={{ color: '#60a5fa' }}><RollingNumber value={formatValue(totalDailyMins)} height={24} /></div>
+                      <div className="metric-cell-label">MINS TODAY</div>
+                    </div>
 
-                {/* 3. Goal mins */}
-                <div className={`metric-cell ${isEditingScoreboard ? 'grid-edit-mode' : ''}`} title="Target goal minutes for today (Click to toggle H:M)" style={{ position: 'relative', background: 'rgba(52,211,153,0.04)', cursor: 'pointer' }} onClick={() => setShowAsHours(!showAsHours)}>
-                  <HelpLabel text="3. TODAY GOAL" />
-                  <div className="metric-cell-val"><RollingNumber value={formatValue(dailyGoal)} height={24} /></div>
-                  <div className="metric-cell-label">TODAY GOAL</div>
-                </div>
+                    <div className={`metric-cell ${isEditingScoreboard ? 'grid-edit-mode' : ''}`} title="Minutes left for daily goal (Click to toggle H:M)" style={{ position: 'relative', background: 'rgba(239,68,68,0.04)', cursor: 'pointer' }} onClick={() => setShowAsHours(!showAsHours)}>
+                      <HelpLabel text="2. LEFT TODAY" />
+                      <div className="metric-cell-val" style={{ color: '#fca5a5' }}><RollingNumber value={formatValue(Math.max(0, dailyGoal - totalDailyMins))} height={24} /></div>
+                      <div className="metric-cell-label">LEFT TODAY</div>
+                    </div>
 
-                {/* 4. Money today */}
-                <div className={`metric-cell ${isEditingScoreboard ? 'grid-edit-mode' : ''}`} title="Money earned today" style={{ position: 'relative', background: 'rgba(16,185,129,0.06)' }}>
-                  <HelpLabel text="4. $ TODAY" />
-                  <div className="metric-cell-val" style={{ color: '#34d399' }}><RollingNumber value={liveDailyArs} prefix="$" height={24} /></div>
-                  <div className="metric-cell-label">$ TODAY</div>
-                </div>
+                    {/* 3. Goal mins */}
+                    <div className={`metric-cell ${isEditingScoreboard ? 'grid-edit-mode' : ''}`} title="Target goal minutes for today (Click to toggle H:M)" style={{ position: 'relative', background: 'rgba(52,211,153,0.04)', cursor: 'pointer' }} onClick={() => setShowAsHours(!showAsHours)}>
+                      <HelpLabel text="3. TODAY GOAL" />
+                      <div className="metric-cell-val"><RollingNumber value={formatValue(dailyGoal)} height={24} /></div>
+                      <div className="metric-cell-label">TODAY GOAL</div>
+                    </div>
 
-                {/* 5. Money to be made today */}
-                <div className={`metric-cell ${isEditingScoreboard ? 'grid-edit-mode' : ''}`} title="Money remaining for today's goal" style={{ position: 'relative', background: 'rgba(245,158,11,0.04)' }}>
-                  <HelpLabel text="5. $ LEFT TODAY" />
-                  <div className="metric-cell-val" style={{ color: '#fcd34d' }}><RollingNumber value={cashToTodayGoal} prefix="$" height={24} /></div>
-                  <div className="metric-cell-label">$ LEFT TODAY</div>
-                </div>
+                    {/* 4. Money today */}
+                    <div className={`metric-cell ${isEditingScoreboard ? 'grid-edit-mode' : ''}`} title="Money earned today" style={{ position: 'relative', background: 'rgba(16,185,129,0.06)' }}>
+                      <HelpLabel text="4. $ TODAY" />
+                      <div className="metric-cell-val" style={{ color: '#34d399' }}><RollingNumber value={liveDailyArs} prefix="$" height={24} /></div>
+                      <div className="metric-cell-label">$ TODAY</div>
+                    </div>
 
-                {/* 6. Stamina Ratio (On-Call vs Break) */}
-                <div className={`metric-cell ${isEditingScoreboard ? 'grid-edit-mode' : ''}`} title="STAMINA RATIO: Your on-call minutes divided by break minutes. Target is 5.3x (8h on / 90m off)." style={{ position: 'relative', background: 'rgba(168,85,247,0.04)' }}>
-                  <HelpLabel text="6. STAMINA RATIO" />
-                  <div className="metric-cell-val" style={{ color: (totalDailyMins / Math.max(0.1, liveBreakMins)) >= 5.3 ? '#c084fc' : '#9ca3af' }}>
-                    {(totalDailyMins / Math.max(0.1, liveBreakMins)).toFixed(1)}x
+                    {/* 5. Money to be made today */}
+                    <div className={`metric-cell ${isEditingScoreboard ? 'grid-edit-mode' : ''}`} title="Money remaining for today's goal" style={{ position: 'relative', background: 'rgba(245,158,11,0.04)' }}>
+                      <HelpLabel text="5. $ LEFT TODAY" />
+                      <div className="metric-cell-val" style={{ color: '#fcd34d' }}><RollingNumber value={cashToTodayGoal} prefix="$" height={24} /></div>
+                      <div className="metric-cell-label">$ LEFT TODAY</div>
+                    </div>
+
+                    {/* 6. Stamina Ratio (On-Call vs Break) */}
+                    <div className={`metric-cell ${isEditingScoreboard ? 'grid-edit-mode' : ''}`} title="STAMINA RATIO: Your on-call minutes divided by break minutes. Target is 5.3x (8h on / 90m off)." style={{ position: 'relative', background: 'rgba(168,85,247,0.04)' }}>
+                      <HelpLabel text="6. STAMINA RATIO" />
+                      <div className="metric-cell-val" style={{ color: (totalDailyMins / Math.max(0.1, liveBreakMins)) >= 5.3 ? '#c084fc' : '#9ca3af' }}>
+                        {(totalDailyMins / Math.max(0.1, liveBreakMins)).toFixed(1)}x
+                      </div>
+                      <div className="metric-cell-label">STAMINA RATIO</div>
+                    </div>
+
+                    {/* 7. Money month */}
+                    <div className={`metric-cell ${isEditingScoreboard ? 'grid-edit-mode' : ''}`} title="Money earned this month" style={{ position: 'relative' }}>
+                      <HelpLabel text="7. $ MONTH" />
+                      <div className="metric-cell-val"><RollingNumber value={monthlyArs} prefix="$" height={24} /></div>
+                      <div className="metric-cell-label">$ MONTH</div>
+                    </div>
+
+                    {/* 8. Money left month */}
+                    <div className={`metric-cell ${isEditingScoreboard ? 'grid-edit-mode' : ''}`} title="Money remaining for monthly goal" style={{ position: 'relative' }}>
+                      <HelpLabel text="8. $ LEFT MONTH" />
+                      <div className="metric-cell-val"><RollingNumber value={Math.max(0, monthlyTargetArs - monthlyArs)} prefix="$" height={24} /></div>
+                      <div className="metric-cell-label">$ LEFT MONTH</div>
+                    </div>
+
+                    {/* 9. Off-call total today */}
+                    <div className={`metric-cell ${isEditingScoreboard ? 'grid-edit-mode' : ''}`} title="Total time spent off-call today (Click to toggle H:M)" style={{ position: 'relative', background: 'rgba(251,146,60,0.06)', cursor: 'pointer' }} onClick={() => setShowAsHours(!showAsHours)}>
+                      <HelpLabel text="9. OFF CALL" />
+                      <div className="metric-cell-val" style={{ color: '#fdba74' }}><RollingNumber value={formatValue(totalOffCallMins)} height={24} /></div>
+                      <div className="metric-cell-label">OFF CALL</div>
+                    </div>
+
+                    {/* 10. Avg so far mo */}
+                    <div className={`metric-cell ${isEditingScoreboard ? 'grid-edit-mode' : ''}`} title="Average minutes per day so far (Click to toggle H:M)" style={{ position: 'relative', background: 'rgba(139,92,246,0.04)', cursor: 'pointer' }} onClick={() => setShowAsHours(!showAsHours)}>
+                      <HelpLabel text="10. MO AVG" />
+                      <div className="metric-cell-val"><RollingNumber value={formatValue(actualDailyAverage)} height={24} /></div>
+                      <div className="metric-cell-label">MO AVG</div>
+                    </div>
+
+                    {/* 11. Silence/Idle Timer */}
+                    <div className={`metric-cell ${isEditingScoreboard ? 'grid-edit-mode' : ''}`} title="Time since last audio activity (Reset by speech). In call, this tracks patient/user silence." style={{ position: 'relative', background: isActive ? 'rgba(239,68,68,0.06)' : 'rgba(255,255,255,0.04)' }}>
+                      <HelpLabel text="11. SILENCE" />
+                      <div className="metric-watermark">{isActive ? '🔇' : '⏳'}</div>
+                      <div className="metric-cell-val" style={{ color: silenceCount > 600 ? '#f87171' : 'white' }}>{formatTime(silenceCount)}</div>
+                      <div className="metric-cell-label">{isActive ? 'CALL SILENCE' : 'APP IDLE'}</div>
+                    </div>
+
+                    {/* 12. Current call min and cash */}
+                    <div className={`metric-cell ${isEditingScoreboard ? 'grid-edit-mode' : ''}`} title="Current call duration and unbanked cash" style={{ position: 'relative', background: isActive ? 'rgba(16,185,129,0.1)' : 'rgba(255,255,255,0.02)', border: isActive ? '1px solid rgba(16,185,129,0.3)' : 'none' }}>
+                      <HelpLabel text="12. CURR CALL" />
+                      <div className="metric-cell-val" style={{ display: 'flex', gap: '0.2rem', alignItems: 'center' }}>
+                        <RollingNumber value={formatTime(sessionSeconds)} height={22} />
+                        <RollingNumber value={Math.round(sessionEarnings * arsRate)} prefix="$" height={22} />
+                      </div>
+                      <div className="metric-cell-label">CURR CALL</div>
+                    </div>
+                    <div id="cell-switch-game" className="metric-cell" style={{ cursor: 'pointer', background: 'rgba(255,255,255,0.04)', gridColumn: 'span 4', flexDirection: 'row', minHeight: '26px' }} onClick={() => setScoreView('game')} title="Switch back to gamified view">
+                      <span style={{ fontSize: '0.8rem', marginRight: '6px' }}>🎮</span>
+                      <div className="metric-cell-label" style={{ opacity: 0.8 }}>BACK TO GAME VIEW</div>
+                    </div>
                   </div>
-                  <div className="metric-cell-label">STAMINA RATIO</div>
                 </div>
 
-                {/* 7. Money month */}
-                <div className={`metric-cell ${isEditingScoreboard ? 'grid-edit-mode' : ''}`} title="Money earned this month" style={{ position: 'relative' }}>
-                  <HelpLabel text="7. $ MONTH" />
-                  <div className="metric-cell-val"><RollingNumber value={monthlyArs} prefix="$" height={24} /></div>
-                  <div className="metric-cell-label">$ MONTH</div>
-                </div>
-
-                {/* 8. Money left month */}
-                <div className={`metric-cell ${isEditingScoreboard ? 'grid-edit-mode' : ''}`} title="Money remaining for monthly goal" style={{ position: 'relative' }}>
-                  <HelpLabel text="8. $ LEFT MONTH" />
-                  <div className="metric-cell-val"><RollingNumber value={Math.max(0, monthlyTargetArs - monthlyArs)} prefix="$" height={24} /></div>
-                  <div className="metric-cell-label">$ LEFT MONTH</div>
-                </div>
-
-                 {/* 9. Off-call total today */}
-                <div className={`metric-cell ${isEditingScoreboard ? 'grid-edit-mode' : ''}`} title="Total time spent off-call today (Click to toggle H:M)" style={{ position: 'relative', background: 'rgba(251,146,60,0.06)', cursor: 'pointer' }} onClick={() => setShowAsHours(!showAsHours)}>
-                  <HelpLabel text="9. OFF CALL" />
-                  <div className="metric-cell-val" style={{ color: '#fdba74' }}><RollingNumber value={formatValue(totalOffCallMins)} height={24} /></div>
-                  <div className="metric-cell-label">OFF CALL</div>
-                </div>
-
-                {/* 10. Avg so far mo */}
-                <div className={`metric-cell ${isEditingScoreboard ? 'grid-edit-mode' : ''}`} title="Average minutes per day so far (Click to toggle H:M)" style={{ position: 'relative', background: 'rgba(139,92,246,0.04)', cursor: 'pointer' }} onClick={() => setShowAsHours(!showAsHours)}>
-                  <HelpLabel text="10. MO AVG" />
-                  <div className="metric-cell-val"><RollingNumber value={formatValue(actualDailyAverage)} height={24} /></div>
-                  <div className="metric-cell-label">MO AVG</div>
-                </div>
-
-                {/* 11. Silence/Idle Timer */}
-                <div className={`metric-cell ${isEditingScoreboard ? 'grid-edit-mode' : ''}`} title="Time since last audio activity (Reset by speech). In call, this tracks patient/user silence." style={{ position: 'relative', background: isActive ? 'rgba(239,68,68,0.06)' : 'rgba(255,255,255,0.04)' }}>
-                  <HelpLabel text="11. SILENCE" />
-                  <div className="metric-watermark">{isActive ? '🔇' : '⏳'}</div>
-                  <div className="metric-cell-val" style={{ color: silenceCount > 600 ? '#f87171' : 'white' }}>{formatTime(silenceCount)}</div>
-                  <div className="metric-cell-label">{isActive ? 'CALL SILENCE' : 'APP IDLE'}</div>
-                </div>
-
-                {/* 12. Current call min and cash */}
-                <div className={`metric-cell ${isEditingScoreboard ? 'grid-edit-mode' : ''}`} title="Current call duration and unbanked cash" style={{ position: 'relative', background: isActive ? 'rgba(16,185,129,0.1)' : 'rgba(255,255,255,0.02)', border: isActive ? '1px solid rgba(16,185,129,0.3)' : 'none' }}>
-                  <HelpLabel text="12. CURR CALL" />
-                  <div className="metric-cell-val" style={{ display: 'flex', gap: '0.2rem', alignItems: 'center' }}>
-                    <RollingNumber value={formatTime(sessionSeconds)} height={22} />
-                    <RollingNumber value={Math.round(sessionEarnings * arsRate)} prefix="$" height={22} />
-                  </div>
-                  <div className="metric-cell-label">CURR CALL</div>
-                </div>
-                <div id="cell-switch-game" className="metric-cell" style={{ cursor: 'pointer', background: 'rgba(255,255,255,0.04)', gridColumn: 'span 4', flexDirection: 'row', minHeight: '26px' }} onClick={() => setScoreView('game')} title="Switch back to gamified view">
-                  <span style={{ fontSize: '0.8rem', marginRight: '6px' }}>🎮</span>
-                  <div className="metric-cell-label" style={{ opacity: 0.8 }}>BACK TO GAME VIEW</div>
-                </div>
               </div>
-            )}
+            </div>
           </div>
 
           {/* ROW 1-2, COL 3: Consolidated Right Controls (Vertical Stack) */}

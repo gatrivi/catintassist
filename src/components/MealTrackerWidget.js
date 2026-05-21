@@ -1,6 +1,7 @@
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { useSession } from '../contexts/SessionContext';
 import { useProgressiveAudio } from '../hooks/useProgressiveAudio';
+import { useClickOutside } from '../hooks/useClickOutside';
 
 const STORAGE_KEY = 'catint_meals_v1';
 const REMINDER_INTERVAL_MS = 10 * 60 * 1000;
@@ -48,6 +49,9 @@ export const MealTrackerWidget = () => {
   const [data, setData] = useState(loadState);
   const [toast, setToast] = useState(null);
 
+  const containerRef = useRef(null);
+  useClickOutside(containerRef, () => setIsOpen(false));
+
   useEffect(() => { saveState(data); }, [data]);
 
   useEffect(() => {
@@ -78,7 +82,6 @@ export const MealTrackerWidget = () => {
 
   const completedMeals = useMemo(() => MEALS.reduce((sum, m) => sum + (data[m.key] ? 1 : 0), 0), [data]);
   const completedWater = useMemo(() => data.water.filter(Boolean).length, [data]);
-  const totalMealItems = MEALS.length + 1; // +1 for water as a category
   const allDone = completedMeals === MEALS.length && completedWater === WATER_GLASSES;
 
   const minsSinceLastMeal = useMemo(() => {
@@ -104,16 +107,13 @@ export const MealTrackerWidget = () => {
   const pillBottom = '98px';
 
   return (
-    <>
+    <div ref={containerRef} style={{ position: 'relative' }}>
       {/* Collapsed Pill */}
       <button
         onClick={() => setIsOpen(o => !o)}
         title="Meal Tracker"
         style={{
-          position: 'fixed',
-          bottom: pillBottom,
-          left: '6px',
-          zIndex: 9999,
+          position: 'relative',
           width: '40px',
           height: '40px',
           borderRadius: '20px',
@@ -146,11 +146,12 @@ export const MealTrackerWidget = () => {
       {/* Expanded Panel */}
       {isOpen && (
         <div
-          className="glass-panel"
+          className="glass-panel tracker-expanded-panel"
           style={{
-            position: 'fixed',
-            bottom: pillBottom,
-            left: '52px',
+            position: 'absolute',
+            bottom: 'calc(100% + 8px)',
+            left: '50%',
+            transform: 'translateX(-50%)',
             zIndex: 9999,
             width: '200px',
             padding: '0.6rem',
@@ -257,7 +258,7 @@ export const MealTrackerWidget = () => {
       {toast && (
         <div
           style={{
-            position: 'fixed',
+            position: 'absolute',
             bottom: pillBottom,
             left: '52px',
             zIndex: 10000,
@@ -276,6 +277,6 @@ export const MealTrackerWidget = () => {
           {toast}
         </div>
       )}
-    </>
+    </div>
   );
 };

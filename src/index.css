@@ -13,6 +13,23 @@
   --warning: #f59e0b;
   --success: #10b981;
   --font-mono: 'JetBrains Mono', 'Fira Code', monospace;
+
+  /* Ambient Glow Variables */
+  --glow-1: rgba(59, 130, 246, 0.15);
+  --glow-2: rgba(16, 185, 129, 0.1);
+  --glow-speed: 8s;
+}
+
+[data-state="call"] {
+  --glow-1: rgba(16, 185, 129, 0.25);
+  --glow-2: rgba(52, 211, 153, 0.15);
+  --glow-speed: 4s;
+}
+
+[data-state="break"] {
+  --glow-1: rgba(249, 115, 22, 0.25);
+  --glow-2: rgba(251, 146, 60, 0.15);
+  --glow-speed: 10s;
 }
 
 * {
@@ -27,10 +44,48 @@ body {
   color: var(--text-main);
   line-height: 1.5;
   background-image: 
-    radial-gradient(circle at 15% 50%, rgba(59, 130, 246, 0.15), transparent 25%),
-    radial-gradient(circle at 85% 30%, rgba(16, 185, 129, 0.1), transparent 25%);
+    radial-gradient(circle at 15% 50%, var(--glow-1), transparent 35%),
+    radial-gradient(circle at 85% 30%, var(--glow-2), transparent 35%);
   background-attachment: fixed;
   min-height: 100vh;
+  transition: background-image 1.5s ease-in-out;
+  animation: ambientMove var(--glow-speed) infinite alternate ease-in-out;
+}
+
+@keyframes ambientMove {
+  0% { background-position: 0% 0%; }
+  100% { background-position: 5% 5%; }
+}
+
+/* 3D Flip Scoreboard */
+.flip-container {
+  perspective: 1000px;
+  width: 100%;
+  height: 100%;
+}
+
+.flip-card {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  transition: transform 0.8s cubic-bezier(0.4, 0, 0.2, 1);
+  transform-style: preserve-3d;
+}
+
+.flip-card.is-flipped {
+  transform: rotateX(180deg);
+}
+
+.flip-front, .flip-back {
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+}
+
+.flip-back {
+  transform: rotateX(180deg);
 }
 
 /* Glassmorphism Utilities */
@@ -41,6 +96,15 @@ body {
   border: 1px solid var(--panel-border);
   border-radius: 8px;
   box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2);
+}
+
+.tracker-expanded-panel {
+  opacity: 0.6;
+  transition: opacity 0.3s ease, transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+.tracker-expanded-panel:hover {
+  opacity: 1;
 }
 
 /* Animations */
@@ -1292,6 +1356,17 @@ body {
   padding-left: 0.2rem !important;
 }
 
+
+/* ── Habit Dock ── */
+.habit-dock {
+  position: fixed;
+  bottom: 6px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  gap: 8px;
+  z-index: 9999;
+}
 
 /* ── Desk Exercise Widget ── */
 .rep-box:hover {

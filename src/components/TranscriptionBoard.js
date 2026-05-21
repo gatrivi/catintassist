@@ -434,7 +434,7 @@ export const TranscriptionBoard = ({ captions, onClearAll, onReconnect, lastData
             </div>
           );
         })}
-        <div id="scroll-bottom-anchor" ref={bottomRef} style={{ height: '24px', flexShrink: 0, pointerEvents: 'none' }} />
+        <div id="scroll-bottom-anchor" ref={bottomRef} style={{ height: '48px', flexShrink: 0, pointerEvents: 'none' }} />
       </div>
 
       {/* Simplified Footer Toolbar */}

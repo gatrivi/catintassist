@@ -105,9 +105,6 @@ const hallucinationGuard = (text) => {
 const removeOverlap = (base, addition) => {
   if (!base || !addition) return addition;
   
-  const normBase = normalize(base);
-  const normAddition = normalize(addition);
-
   // 1. WORD-WALK DEDUPLICATION (The "Toddler" logic: check if start of addition matches end of history)
   // This is position-aware and much safer than a global subset check.
   const bWords = base.trim().split(/\s+/).map(normalize);
