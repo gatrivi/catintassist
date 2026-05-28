@@ -83,7 +83,7 @@ export const useTranslate = (text, lang, prefetchTTS, shouldPrefetch, mood = 'de
 
     if (IS_TOO_LONG || IS_FILLER || IS_TOO_SHORT) {
       setEngineStatus(IS_TOO_LONG ? 'ready' : 'idle');
-      if (IS_TOO_LONG) setTranslation(`(Text too long for direct translation [v4.19.0])`);
+      if (IS_TOO_LONG) setTranslation(`(Text too long for direct translation [v4.26.0])`);
       return;
     }
 
@@ -116,13 +116,15 @@ export const useTranslate = (text, lang, prefetchTTS, shouldPrefetch, mood = 'de
       const langPair = langPairRef.current || currentLangPair;
       const [sLang, tLang] = langPair.split('-');
 
-      console.log(`[${t()}] [v4.19.0] Translating ${langPair} (${wordCount}w): "${normText.substring(0, 30)}..."`);
+      console.log(`[${t()}] [v4.26.0] Translating ${langPair} (${wordCount}w): "${normText.substring(0, 30)}..."`);
 
       setIsTranslating(true);
       setEngineStatus('translating');
 
       const segmentRegex = /([^.,!?]+[.,!?]+\s*)/g;
       const stableMatches = normText.match(segmentRegex) || [];
+      const validSegments = stableMatches.filter(s => s.trim().length > 1);
+      const segmentsToTranslate = validSegments.length > 0 ? validSegments : [normText];
       const activeText = normText.replace(segmentRegex, '').trim();
       
       const results = [];
@@ -175,7 +177,7 @@ export const useTranslate = (text, lang, prefetchTTS, shouldPrefetch, mood = 'de
         if (keys.OPENAI) pool.push({ id: 'openai', fn: fetchers.openai, delay: 100 });
         if (!isBlocked('google_gtx')) pool.push({ id: 'google_gtx', fn: fetchers.google_gtx, delay: 0 });
 
-        if (pool.length === 0) return norm;
+        if (pool.length === 0) return '';
 
         let resolved = false;
         return new Promise((resolve) => {
@@ -199,17 +201,19 @@ export const useTranslate = (text, lang, prefetchTTS, shouldPrefetch, mood = 'de
             }, service.delay);
             timeouts.push(tout);
           });
-          setTimeout(() => { if (!resolved && !signal.aborted) { resolved = true; resolve(norm); } }, 2500); 
+          setTimeout(() => { if (!resolved && !signal.aborted) { resolved = true; resolve(''); } }, 2500); 
         });
       };
 
       try {
-        for (const segment of stableMatches) {
+        for (const segment of segmentsToTranslate) {
           if (signal.aborted) return;
-          results.push(await raceChunk(segment));
+          const res = await raceChunk(segment);
+          if (res) results.push(res);
         }
-        if (activeText && !signal.aborted) {
-          results.push(await raceChunk(activeText));
+        if (activeText && activeText.length > 1 && !signal.aborted) {
+          const res = await raceChunk(activeText);
+          if (res) results.push(res);
         }
 
         if (signal.aborted) return;
@@ -228,6 +232,11 @@ export const useTranslate = (text, lang, prefetchTTS, shouldPrefetch, mood = 'de
             setAudioUrl(url);
             lastPrefetchedTextRef.current = final;
           }
+        } else {
+          // Fallback: show source text in brackets so user sees *something*
+          setTranslation(`[${normText}]`);
+          lastTranslatedTextRef.current = normText;
+          lastWordCountRef.current = wordCount;
         }
       } catch (e) {
         if (e.name !== 'AbortError') console.error('[Trans] Catch:', e);

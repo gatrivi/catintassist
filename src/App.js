@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useEffect, useState, useCallback, useRef } from 'react';
 import { SessionProvider, useSession } from './contexts/SessionContext';
 import { AudioSettingsProvider } from './contexts/AudioSettingsContext';
 import { DashboardHeader } from './components/DashboardHeader';
@@ -12,6 +12,7 @@ import { RosaryWidget } from './components/RosaryWidget';
 import { MealTrackerWidget } from './components/MealTrackerWidget';
 import { ChoreTrackerWidget } from './components/ChoreTrackerWidget';
 import { useDeepgram } from './hooks/useDeepgram';
+import { useProgressiveAudio } from './hooks/useProgressiveAudio';
 import { loadFile, generateObjectUrl } from './utils/storage';
 import './index.css';
 
@@ -26,7 +27,8 @@ const CloudSyncIndicator = () => {
 
 const Dashboard = () => {
   const { startRecording, stopRecording, reconnectStream, captions, clearCaptions, sttLanguage, toggleLanguage, connectionState, connectionMessage, lastDataTime } = useDeepgram();
-  const { isNotesOpen, isToolbarVisible, isActive, isBreakActive, minutesSinceLastBreak, startSession, clearZombieState, callFocusMode } = useSession();
+  const { isNotesOpen, setIsNotesOpen, isToolbarVisible, isActive, isBreakActive, minutesSinceLastBreak, startSession, clearZombieState, callFocusMode } = useSession();
+  const { playCoin } = useProgressiveAudio();
   const [isEditingBg, setIsEditingBg] = useState(false);
   
   useEffect(() => {
@@ -112,6 +114,20 @@ const Dashboard = () => {
     : '#10b981';
   const micBarShadow = isActive && minutesSinceLastBreak > 90 ? '0 0 8px #f59e0b' : '0 0 8px #10b981';
 
+  // Off-call minute chime: progressively deeper each minute
+  const idleMinuteCountRef = useRef(0);
+  useEffect(() => {
+    if (isActive || isBreakActive) {
+      idleMinuteCountRef.current = 0;
+      return;
+    }
+    const iv = setInterval(() => {
+      idleMinuteCountRef.current += 1;
+      playCoin(idleMinuteCountRef.current);
+    }, 60000);
+    return () => clearInterval(iv);
+  }, [isActive, isBreakActive, playCoin]);
+
   // Demo Scenario Trigger (Shift + D)
   useEffect(() => {
     const scenarios = ['call', 'goal_hit', 'break', 'reset'];
@@ -141,7 +157,7 @@ const Dashboard = () => {
         display: 'flex', alignItems: 'center', gap: '4px'
       }}>
         <CloudSyncIndicator />
-        v4.25.1 (Full Stack)
+        v4.26.0 (Full Stack)
       </div>
 
       <div id="top-mic-bar-container" style={{ position: 'fixed', top: 0, left: 0, right: 0, height: '3px', zIndex: 9999, pointerEvents: 'none' }}>
@@ -195,6 +211,32 @@ const Dashboard = () => {
         <RosaryWidget />
         <MealTrackerWidget />
         <ChoreTrackerWidget />
+        <button
+          onClick={() => setIsNotesOpen(o => !o)}
+          title="Quick Notes"
+          style={{
+            width: '40px',
+            height: '40px',
+            borderRadius: '20px',
+            border: '1px solid rgba(255,255,255,0.1)',
+            background: isNotesOpen ? 'rgba(14, 165, 233, 0.25)' : 'rgba(7, 14, 35, 0.7)',
+            backdropFilter: 'blur(8px)',
+            WebkitBackdropFilter: 'blur(8px)',
+            color: isNotesOpen ? '#38bdf8' : 'rgba(255,255,255,0.6)',
+            fontSize: '0.85rem',
+            fontWeight: 800,
+            cursor: 'pointer',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            boxShadow: isNotesOpen ? '0 0 12px rgba(14, 165, 233, 0.3)' : '0 2px 8px rgba(0,0,0,0.3)',
+            transition: 'all 0.3s ease',
+            padding: 0,
+            flexShrink: 0,
+          }}
+        >
+          📝
+        </button>
       </div>
     </div>
   );

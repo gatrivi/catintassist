@@ -26,6 +26,8 @@ const getBubbleStyle = (text, isCurrent, lang) => {
   return { borderLeft: `3px solid ${baseBorder}`, backgroundColor: baseBg };
 };
 
+const normalizeAccents = (str) => str.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+
 const convertNumberWords = (text) => {
   const map = {
     'zero': '0', 'one': '1', 'two': '2', 'three': '3', 'four': '4', 'five': '5',
@@ -43,7 +45,7 @@ const convertNumberWords = (text) => {
   };
   const keys = Object.keys(map).join('|');
   const re = new RegExp(`\\b(${keys})\\b`, 'gi');
-  return text.replace(re, (matched) => map[matched.toLowerCase()] || matched);
+  return text.replace(re, (matched) => map[normalizeAccents(matched)] || matched);
 };
 
 const InteractiveText = ({ text, scramble = true }) => {
@@ -52,14 +54,20 @@ const InteractiveText = ({ text, scramble = true }) => {
   // 1. Convert words ("one") to digits ("1") FIRST
   const processedText = convertNumberWords(text);
 
-  // 2. GROUP PHONE NUMBERS / SSN: If we see 9-12 digits read out singly (with spaces), join and format them.
-  // Phone (10 digits) → XXX-XXX-XXXX | SSN (9 digits) → XXX-XX-XXXX | Other → just clean
-  const groupedDigits = processedText.replace(/\b(\d[\s.,-:]*){9,12}\b/g, (m) => {
-    const clean = m.replace(/[\s.,-:]+/g, '');
-    if (clean.length === 10) return clean.replace(/(\d{3})(\d{3})(\d{4})/, '$1-$2-$3');
-    if (clean.length === 9) return clean.replace(/(\d{3})(\d{2})(\d{4})/, '$1-$2-$3');
-    return clean;
-  });
+  // 2. GROUP PHONE NUMBERS / SSN: If we see 8-16 digits read out singly (with spaces), join and format them.
+  const groupedDigits = processedText.replace(
+    /\b(?:\d[\s.,-:]*){7,15}\d\b/g,
+    (m) => {
+      const digitsOnly = m.replace(/\D/g, '');
+      if (digitsOnly.length === 10) {
+        return `${digitsOnly.slice(0,3)}-${digitsOnly.slice(3,6)}-${digitsOnly.slice(6)}`;
+      }
+      if (digitsOnly.length === 11 && digitsOnly.startsWith('1')) {
+        return `+1 ${digitsOnly.slice(1,4)}-${digitsOnly.slice(4,7)}-${digitsOnly.slice(7)}`;
+      }
+      return digitsOnly.replace(/(\d{3})(?=\d)/g, '$1-');
+    }
+  );
   
   // NYC ZIP REPAIR: In NYC, people often say "one hundred thirty four" for 10034.
   // Deepgram might transcribe "New York 134". We fix it to "New York 10034".
@@ -192,7 +200,13 @@ const TranslatedBubble = ({ id, text, lang, playTTS, stopTTS, playingUrl, prefet
 
       <div style={{ flex: 1, color: translationColor, textAlign: reverse ? 'left' : 'right', minWidth: 0 }}>
         <div style={{ fontWeight: 400, fontStyle: 'italic', lineHeight: 1.25, fontSize: '0.85rem', wordBreak: 'break-word' }}>
-          {translation ? <InteractiveText text={translation} scramble={true} /> : <span style={{ opacity: 0.2 }}>...</span>}
+          {translation ? (
+            <InteractiveText text={translation} scramble={true} />
+          ) : engineStatus === 'ready' ? (
+            <span style={{ opacity: 0.3, fontSize: '0.7rem' }}>⚠️ translation failed</span>
+          ) : (
+            <span style={{ opacity: 0.2 }}>...</span>
+          )}
         </div>
       </div>
     </div>
@@ -423,11 +437,11 @@ export const TranscriptionBoard = ({ captions, onClearAll, onReconnect, lastData
                 onClick={() => togglePin(cap.id)} 
                 style={{ 
                   position: 'absolute', top: '0', right: '0', background: 'transparent', border: 'none',
-                  fontSize: '0.65rem', cursor: 'pointer', opacity: isPinned ? 0.8 : 0.05, 
+                  fontSize: '0.65rem', cursor: 'pointer', opacity: isPinned ? 1 : 0.5, 
                   color: isPinned ? 'var(--accent-primary)' : '#fff',
                   padding: '4px', zIndex: 10
                 }}
-                title={isPinned ? "Unpin message" : "Pin message"}
+                title={isPinned ? "Unpin message (click to unpin)" : "Pin message for recording machine"}
               >
                 {isPinned ? '📌' : '📍'}
               </button>
@@ -449,6 +463,21 @@ export const TranscriptionBoard = ({ captions, onClearAll, onReconnect, lastData
           <button onClick={() => setTtsMode(m => m === 'manual' ? 'auto' : 'manual')} style={{ background: 'transparent', color: ttsMode === 'auto' ? 'var(--accent-primary)' : '#fff', border: 'none', cursor: 'pointer' }}>
             TTS:{ttsMode === 'auto' ? 'AUTO' : 'OFF'}
           </button>
+          {pinnedIds.length > 0 && (
+            <button 
+              onClick={() => {
+                const pinnedText = captions
+                  .filter(c => pinnedIds.includes(c.id) && c.text)
+                  .map(c => `[${c.lang.toUpperCase()}] ${c.text}`)
+                  .join('\n---\n');
+                navigator.clipboard.writeText(pinnedText);
+              }} 
+              style={{ background: 'transparent', color: '#34d399', border: 'none', cursor: 'pointer' }}
+              title={`Copy ${pinnedIds.length} pinned message(s) for recording machine`}
+            >
+              📋 COPY_PINNED({pinnedIds.length})
+            </button>
+          )}
         </div>
         <div style={{ display: 'flex', gap: '8px' }}>
           <button onClick={onClearAll} style={{ background: 'transparent', color: '#fff', border: 'none', cursor: 'pointer' }}>[CLEAR_LOG]</button>

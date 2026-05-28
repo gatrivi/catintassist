@@ -58,8 +58,11 @@ export const useProgressiveAudio = () => {
 
     // Warm Bronze Synthesis (Lower frequencies, Triangle waves for harmonics)
     // 800Hz - 1100Hz range is "heavy", 2000Hz+ is "beepy"
-    const frequencies = [820, 1150, 1420]; 
+    // As minuteCount grows, frequencies drop for a progressively deeper chime.
+    const baseFreqs = [820, 1150, 1420];
     const fullness = Math.min(1, minuteCount / 60);
+    const depthShift = Math.min(1, Math.max(0, (minuteCount - 1) / 30));
+    const frequencies = baseFreqs.map(f => f * (1 - depthShift * 0.35));
 
     const filter = ctx.createBiquadFilter();
     filter.type = 'lowpass';

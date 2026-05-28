@@ -22,21 +22,31 @@ const NUMBER_WORDS = new Set([
   'cien', 'ciento', 'mil'
 ]);
 
+const normalizeWord = (w) =>
+  w.toLowerCase().replace(/[^a-z0-9]/g, '').normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+
 const isNumberLike = (word) => {
   if (!word) return false;
-  // Use normalized alphanumeric for the check to catch "1.", "one," etc.
-  const norm = word.toLowerCase().replace(/[^a-z0-9]/g, '');
+  const norm = normalizeWord(word);
   return /^\d+$/.test(norm) || NUMBER_WORDS.has(norm);
 };
 
 const containsNumberSequence = (text, minLength = 2) => {
-  const words = text.trim().split(/\s+/);
+  const words = text.trim().split(/\s+/).filter(Boolean);
+  if (words.length === 0) return false;
   let count = 0;
+  let numberWords = 0;
   for (const w of words) {
-    if (isNumberLike(w)) count++;
-    else count = 0;
-    if (count >= minLength) return true;
+    if (isNumberLike(w)) {
+      count++;
+      numberWords++;
+      if (count >= minLength) return true;
+    } else {
+      count = 0;
+    }
   }
+  // Protect number-dense text (>30% number-like words)
+  if (numberWords / words.length > 0.30) return true;
   return false;
 };
 
@@ -95,7 +105,9 @@ const hallucinationGuard = (text) => {
   }
 
   // Adaptive pruning: Only prune if it doesn't look like a valid list of data (numbers)
-  if (words.length > 15 && cleaned.length < words.length * 0.6 && !containsNumberSequence(text, 3)) {
+  // Lowered threshold to 2 consecutive number-words to protect phone numbers like "five five five"
+  if (words.length > 15 && cleaned.length < words.length * 0.5 && !containsNumberSequence(text, 2)) {
+     console.log('[PRUNED]', text, '→', cleaned.slice(0, 12).join(' '));
      return cleaned.slice(0, 12).join(' ') + "... [Stutter Pruned]";
   }
 
@@ -120,6 +132,17 @@ const removeOverlap = (base, addition) => {
     const bSuffix = bWords.slice(-i).join('');
     if (aPrefix === bSuffix) {
       bestOverlap = i;
+    }
+  }
+
+  // CRITICAL: Never strip digit sequences at chunk boundaries.
+  // Phone numbers and SSNs straddling a boundary must not be lost.
+  if (bestOverlap > 0) {
+    const overlapSlice = aWordsRaw.slice(0, bestOverlap);
+    const overlapText = overlapSlice.join(' ');
+    console.log('[OVERLAP]', bestOverlap, 'words:', overlapText);
+    if (/\d/.test(overlapText) || overlapSlice.some(isNumberLike)) {
+      bestOverlap = 0;
     }
   }
 
