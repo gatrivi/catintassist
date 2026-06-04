@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { AppGuideButton } from './AppGuide';
 import { RollingNumber } from './RollingNumber';
 
 // ─── ScoreboardTooltip ────────────────────────────────────────────────────────
@@ -304,11 +305,14 @@ export const GameScoreboard = ({
             }}>{t === 'day' ? '☀️ Day' : '🗓️ Month'}</button>
           ))}
         </div>
-        <button onClick={onSwitchToNumbers} style={{
-          fontSize: '0.52rem', padding: '0.1rem 0.35rem', borderRadius: '3px',
-          border: '1px solid rgba(255,255,255,0.1)', background: 'transparent',
-          color: 'rgba(255,255,255,0.25)', cursor: 'pointer'
-        }} title="Switch to number view">123</button>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
+          <AppGuideButton />
+          <button onClick={onSwitchToNumbers} style={{
+            fontSize: '0.52rem', padding: '0.1rem 0.35rem', borderRadius: '3px',
+            border: '1px solid rgba(255,255,255,0.1)', background: 'transparent',
+            color: 'rgba(255,255,255,0.25)', cursor: 'pointer'
+          }} title="Switch to number view">123</button>
+        </div>
       </div>
 
       {/* AREA: main-status */}

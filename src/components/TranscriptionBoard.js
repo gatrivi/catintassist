@@ -198,14 +198,14 @@ const TranslatedBubble = ({ id, text, lang, playTTS, stopTTS, playingUrl, prefet
   const targetUsesNumberWords = (targetLang || 'en').toLowerCase().startsWith('en');
 
   return (
-    <div style={{ display: 'flex', gap: '0.35rem', marginTop: '0.05rem', flexDirection: reverse ? 'row-reverse' : 'row', alignItems: 'center' }}>
-      <div style={{ flex: 1, textAlign: reverse ? 'right' : 'left', minWidth: 0 }}>
-        <div style={{ color: transcriptColor, fontWeight: 400, lineHeight: 1.2, fontSize: '0.9rem', wordBreak: 'break-word' }}>
+    <div className={`translated-bubble-row${reverse ? ' is-reverse' : ''}`}>
+      <div className="bubble-col bubble-col-source" style={{ textAlign: reverse ? 'right' : 'left' }}>
+        <div className="bubble-line" style={{ color: transcriptColor }}>
           <InteractiveText text={text} scramble={true} applyNumberWords={sourceUsesNumberWords} />
         </div>
       </div>
 
-      <div data-guide="bubble-rail">
+      <div data-guide="bubble-rail" className="bubble-col bubble-col-rail">
       <BubbleRail
         engineStatus={engineStatus}
         wordCount={wordCount}
@@ -217,8 +217,8 @@ const TranslatedBubble = ({ id, text, lang, playTTS, stopTTS, playingUrl, prefet
       />
       </div>
 
-      <div style={{ flex: 1, color: translationColor, textAlign: reverse ? 'left' : 'right', minWidth: 0 }}>
-        <div style={{ fontWeight: 400, fontStyle: 'italic', lineHeight: 1.2, fontSize: '0.85rem', wordBreak: 'break-word' }}>
+      <div className="bubble-col bubble-col-translation" style={{ color: translationColor, textAlign: reverse ? 'left' : 'right' }}>
+        <div className="bubble-line bubble-line-translation">
           {translation ? (
             <InteractiveText text={translation} scramble={true} applyNumberWords={targetUsesNumberWords} />
           ) : engineStatus === 'ready' ? (
@@ -414,8 +414,8 @@ export const TranscriptionBoard = ({ captions, onClearAll, onReconnect, lastData
       )}
 
       <div 
-        className="scroll-area" 
-        style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', padding: '1rem', paddingRight: 'calc(1rem + var(--chrome-split-inset, 52px))' }} 
+        className="scroll-area"
+        style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column' }} 
         onScroll={handleScroll}
         onWheel={handleWheel}
         ref={scrollAreaRef}

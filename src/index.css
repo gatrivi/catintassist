@@ -307,16 +307,8 @@ body {
 .main-content.tools-open,
 .main-content.notes-open {
   display: grid;
-  grid-template-columns: 1fr 260px; /* Sidebar narrowed to leave more room for header-spanning content */
+  grid-template-columns: 1fr var(--tools-sidebar-width, 240px);
   grid-template-rows: 1fr;
-}
-
-/* On ultra-wide screens, let the transcript breathe but keep tools manageable */
-@media (min-width: 1200px) {
-  .main-content.tools-open,
-  .main-content.notes-open {
-    grid-template-columns: 1fr 340px;
-  }
 }
 
 .transcription-pane {
@@ -1514,7 +1506,8 @@ body {
   min-width: 6ch;
   padding: 0;
   line-height: 1;
-  align-self: center;
+  align-self: start;
+  margin-top: 0.1rem;
   font-family: var(--font-mono);
   font-size: 0.55rem;
 }
@@ -1558,30 +1551,90 @@ body {
 }
 
 /* ── App guide (spotlight tour) ─────────────────────────────────────────── */
-.app-guide-fab {
-  position: fixed;
-  left: 10px;
-  bottom: 56px;
-  z-index: 9997;
-  width: 28px;
-  height: 28px;
-  border-radius: 50%;
-  border: 1px solid rgba(56, 189, 248, 0.45);
-  background: rgba(7, 14, 35, 0.85);
-  color: rgba(56, 189, 248, 0.9);
-  font-size: 0.85rem;
+.app-guide-scoreboard-btn {
+  width: 22px;
+  height: 22px;
+  border-radius: 4px;
+  border: 1px solid rgba(56, 189, 248, 0.5);
+  background: rgba(14, 165, 233, 0.15);
+  color: #7dd3fc;
+  font-size: 0.72rem;
   font-weight: 800;
+  line-height: 1;
   cursor: pointer;
-  backdrop-filter: blur(8px);
-  -webkit-backdrop-filter: blur(8px);
-  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.4);
-  transition: border-color 0.2s, color 0.2s, box-shadow 0.2s;
+  flex-shrink: 0;
+  transition: border-color 0.2s, background 0.2s, box-shadow 0.2s;
 }
 
-.app-guide-fab:hover {
+.app-guide-scoreboard-btn:hover {
   border-color: #38bdf8;
-  color: #7dd3fc;
-  box-shadow: 0 0 14px rgba(56, 189, 248, 0.35);
+  background: rgba(14, 165, 233, 0.3);
+  box-shadow: 0 0 10px rgba(56, 189, 248, 0.35);
+}
+
+/* Transcript rows: source + rail + translation share top baseline */
+.translated-bubble-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+  align-items: start;
+  gap: 0.3rem;
+  margin-top: 0.05rem;
+}
+
+.translated-bubble-row.is-reverse .bubble-col-source {
+  grid-column: 3;
+  grid-row: 1;
+}
+
+.translated-bubble-row.is-reverse .bubble-col-rail {
+  grid-column: 2;
+  grid-row: 1;
+}
+
+.translated-bubble-row.is-reverse .bubble-col-translation {
+  grid-column: 1;
+  grid-row: 1;
+}
+
+.bubble-col {
+  min-width: 0;
+}
+
+.bubble-line {
+  font-weight: 400;
+  line-height: 1.25;
+  font-size: 0.875rem;
+  word-break: break-word;
+}
+
+.bubble-line-translation {
+  font-style: italic;
+  color: #a1a1aa;
+}
+
+.transcription-area .scroll-area {
+  padding: 0.4rem 0.45rem 0.4rem 0.55rem;
+  padding-right: var(--chrome-split-inset, 52px);
+}
+
+.main-content.tools-open .transcription-area .scroll-area,
+.main-content.notes-open .transcription-area .scroll-area {
+  padding-right: 0.35rem;
+}
+
+.main-content {
+  --tools-sidebar-width: 240px;
+}
+
+@media (min-width: 1200px) {
+  .main-content {
+    --tools-sidebar-width: 280px;
+  }
+}
+
+.main-content.tools-open,
+.main-content.notes-open {
+  grid-template-columns: 1fr var(--tools-sidebar-width);
 }
 
 .app-guide-root {

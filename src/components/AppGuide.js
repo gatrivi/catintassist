@@ -148,14 +148,15 @@ const AppGuideOverlay = ({ onClose }) => {
   );
 };
 
-export const AppGuideLauncher = () => {
+/** Help control for scoreboard / header (not the transcript footer). */
+export const AppGuideButton = () => {
   const [open, setOpen] = useState(false);
 
   return (
     <>
       <button
         type="button"
-        className="app-guide-fab"
+        className="app-guide-scoreboard-btn"
         onClick={() => setOpen(true)}
         title="How to use & test CatIntAssist"
         aria-label="Open app guide"

@@ -9,6 +9,7 @@ import { useProgressiveAudio } from '../hooks/useProgressiveAudio';
 import { MonthHeatmap } from './MonthHeatmap';
 import { TimeEditModal } from './TimeEditModal';
 import { GameScoreboard } from './GameScoreboard';
+import { AppGuideButton } from './AppGuide';
 
 const CelebrationParticles = ({ type, label, coins, onDismiss }) => {
   const [isClosing, setIsClosing] = useState(false);
@@ -577,6 +578,7 @@ export const DashboardHeader = ({ onStartAudio, onStopAudio, onReconnectStream, 
           <button className="btn-icon tiny-btn" onClick={() => setCallModeExpanded(false)} style={{ width: '24px', height: '24px', fontSize: '0.7rem' }} title="Compact Header">🔽</button>
         )}
         <button className="btn-icon tiny-btn" onClick={() => setIsNotesOpen(!isNotesOpen)} style={{ opacity: isNotesOpen ? 1 : 0.45, width: '24px', height: '24px', fontSize: '0.75rem' }} title="Quick Notes">📝</button>
+        <AppGuideButton />
         {(!isActive || !callFocusMode) && (
           <button
             type="button"
@@ -781,9 +783,12 @@ export const DashboardHeader = ({ onStartAudio, onStopAudio, onReconnectStream, 
                       </div>
                       <div className="metric-cell-label">CURR CALL</div>
                     </div>
-                    <div id="cell-switch-game" className="metric-cell" style={{ cursor: 'pointer', background: 'rgba(255,255,255,0.04)', gridColumn: 'span 4', flexDirection: 'row', minHeight: '26px' }} onClick={() => setScoreView('game')} title="Switch back to gamified view">
+                    <div id="cell-switch-game" className="metric-cell" style={{ cursor: 'pointer', background: 'rgba(255,255,255,0.04)', gridColumn: 'span 3', flexDirection: 'row', minHeight: '26px' }} onClick={() => setScoreView('game')} title="Switch back to gamified view">
                       <span style={{ fontSize: '0.8rem', marginRight: '6px' }}>🎮</span>
                       <div className="metric-cell-label" style={{ opacity: 0.8 }}>BACK TO GAME VIEW</div>
+                    </div>
+                    <div className="metric-cell" style={{ gridColumn: 'span 1', minHeight: '26px', display: 'flex', alignItems: 'center', justifyContent: 'center' }} title="App guide">
+                      <AppGuideButton />
                     </div>
                   </div>
                 </div>
