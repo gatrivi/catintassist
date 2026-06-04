@@ -60,7 +60,7 @@ export const useTranslate = (text, lang, prefetchTTS, shouldPrefetch, mood = 'de
   const sanitizeTranslation = (input) => {
     if (!input || typeof input !== 'string') return '';
     const upper = input.toUpperCase();
-    const isError = upper.includes('MYMEMORY') || upper.includes('LIMIT') || upper.includes('THROTTLED') || upper.includes('FORBIDDEN') || upper.includes('QUOTA') || input.includes('<html>');
+    const isError = upper.includes('MYMEMORY') || upper.includes('LIMIT') || upper.includes('THROTTLED') || upper.includes('FORBIDDEN') || upper.includes('QUOTA') || upper.includes('ABORT') || input.includes('<html>');
     return isError ? '' : input.trim();
   };
 
@@ -83,7 +83,7 @@ export const useTranslate = (text, lang, prefetchTTS, shouldPrefetch, mood = 'de
 
     if (IS_TOO_LONG || IS_FILLER || IS_TOO_SHORT) {
       setEngineStatus(IS_TOO_LONG ? 'ready' : 'idle');
-      if (IS_TOO_LONG) setTranslation(`(Text too long for direct translation [v4.31.0])`);
+      if (IS_TOO_LONG) setTranslation(`(Text too long for direct translation [v4.32.0])`);
       return;
     }
 
@@ -116,7 +116,7 @@ export const useTranslate = (text, lang, prefetchTTS, shouldPrefetch, mood = 'de
       const langPair = langPairRef.current || currentLangPair;
       const [sLang, tLang] = langPair.split('-');
 
-      console.log(`[${t()}] [v4.31.0] Translating ${langPair} (${wordCount}w): "${normText.substring(0, 30)}..."`);
+      console.log(`[${t()}] [v4.32.0] Translating ${langPair} (${wordCount}w): "${normText.substring(0, 30)}..."`);
 
       setIsTranslating(true);
       setEngineStatus('translating');
@@ -232,8 +232,7 @@ export const useTranslate = (text, lang, prefetchTTS, shouldPrefetch, mood = 'de
             setAudioUrl(url);
             lastPrefetchedTextRef.current = final;
           }
-        } else {
-          // Fallback: show source text in brackets so user sees *something*
+        } else if (!signal.aborted) {
           setTranslation(`[${normText}]`);
           lastTranslatedTextRef.current = normText;
           lastWordCountRef.current = wordCount;

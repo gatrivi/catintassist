@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { RollingNumber } from './RollingNumber';
+import { StatNumber } from './StatNumber';
 import { useRewardAudio } from '../hooks/useRewardAudio';
 import { useSession } from '../contexts/SessionContext';
 import { useAudioSettings } from '../contexts/AudioSettingsContext';
@@ -63,7 +63,7 @@ const CelebrationParticles = ({ type, label, coins, onDismiss }) => {
         {label.includes('AR$') ? (
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.2rem' }}>
             <span>{label.split('AR$')[0]}</span>
-            <RollingNumber value={label.split('AR$')[1].replace(/[^\d]/g, '')} prefix="AR$" height={24} />
+            <StatNumber value={label.split('AR$')[1].replace(/[^\d]/g, '')} prefix="AR$" size="lg" format={false} />
           </div>
         ) : label}
         <div style={{ fontSize: '0.5rem', fontWeight: 400, color: 'rgba(255,255,255,0.7)', textShadow: 'none', marginTop: '0.2rem' }}>[Click to Skip]</div>
@@ -698,34 +698,34 @@ export const DashboardHeader = ({ onStartAudio, onStopAudio, onReconnectStream, 
                     {/* 1. Mins worked today */}
                     <div className={`metric-cell ${isEditingScoreboard ? 'grid-edit-mode' : ''}`} title="Minutes worked today (Click to toggle H:M)" style={{ position: 'relative', background: 'rgba(59,130,246,0.06)', cursor: 'pointer' }} onClick={() => setShowAsHours(!showAsHours)}>
                       <HelpLabel text="1. MINS TODAY" />
-                      <div className="metric-cell-val" style={{ color: '#60a5fa' }}><RollingNumber value={formatValue(totalDailyMins)} height={24} /></div>
+                      <div className="metric-cell-val" style={{ color: '#60a5fa' }}><StatNumber value={formatValue(totalDailyMins)} size="lg" format={false} /></div>
                       <div className="metric-cell-label">MINS TODAY</div>
                     </div>
 
                     <div className={`metric-cell ${isEditingScoreboard ? 'grid-edit-mode' : ''}`} title="Minutes left for daily goal (Click to toggle H:M)" style={{ position: 'relative', background: 'rgba(239,68,68,0.04)', cursor: 'pointer' }} onClick={() => setShowAsHours(!showAsHours)}>
                       <HelpLabel text="2. LEFT TODAY" />
-                      <div className="metric-cell-val" style={{ color: '#fca5a5' }}><RollingNumber value={formatValue(Math.max(0, dailyGoal - totalDailyMins))} height={24} /></div>
+                      <div className="metric-cell-val" style={{ color: '#fca5a5' }}><StatNumber value={formatValue(Math.max(0, dailyGoal - totalDailyMins))} size="lg" format={false} /></div>
                       <div className="metric-cell-label">LEFT TODAY</div>
                     </div>
 
                     {/* 3. Goal mins */}
                     <div className={`metric-cell ${isEditingScoreboard ? 'grid-edit-mode' : ''}`} title="Target goal minutes for today (Click to toggle H:M)" style={{ position: 'relative', background: 'rgba(52,211,153,0.04)', cursor: 'pointer' }} onClick={() => setShowAsHours(!showAsHours)}>
                       <HelpLabel text="3. TODAY GOAL" />
-                      <div className="metric-cell-val"><RollingNumber value={formatValue(dailyGoal)} height={24} /></div>
+                      <div className="metric-cell-val"><StatNumber value={formatValue(dailyGoal)} size="lg" format={false} /></div>
                       <div className="metric-cell-label">TODAY GOAL</div>
                     </div>
 
                     {/* 4. Money today */}
                     <div className={`metric-cell ${isEditingScoreboard ? 'grid-edit-mode' : ''}`} title="Money earned today" style={{ position: 'relative', background: 'rgba(16,185,129,0.06)' }}>
                       <HelpLabel text="4. $ TODAY" />
-                      <div className="metric-cell-val" style={{ color: '#34d399' }}><RollingNumber value={liveDailyArs} prefix="$" height={24} /></div>
+                      <div className="metric-cell-val" style={{ color: '#34d399' }}><StatNumber value={liveDailyArs} prefix="$" size="lg" /></div>
                       <div className="metric-cell-label">$ TODAY</div>
                     </div>
 
                     {/* 5. Money to be made today */}
                     <div className={`metric-cell ${isEditingScoreboard ? 'grid-edit-mode' : ''}`} title="Money remaining for today's goal" style={{ position: 'relative', background: 'rgba(245,158,11,0.04)' }}>
                       <HelpLabel text="5. $ LEFT TODAY" />
-                      <div className="metric-cell-val" style={{ color: '#fcd34d' }}><RollingNumber value={cashToTodayGoal} prefix="$" height={24} /></div>
+                      <div className="metric-cell-val" style={{ color: '#fcd34d' }}><StatNumber value={cashToTodayGoal} prefix="$" size="lg" /></div>
                       <div className="metric-cell-label">$ LEFT TODAY</div>
                     </div>
 
@@ -741,28 +741,28 @@ export const DashboardHeader = ({ onStartAudio, onStopAudio, onReconnectStream, 
                     {/* 7. Money month */}
                     <div className={`metric-cell ${isEditingScoreboard ? 'grid-edit-mode' : ''}`} title="Money earned this month" style={{ position: 'relative' }}>
                       <HelpLabel text="7. $ MONTH" />
-                      <div className="metric-cell-val"><RollingNumber value={monthlyArs} prefix="$" height={24} /></div>
+                      <div className="metric-cell-val"><StatNumber value={monthlyArs} prefix="$" size="lg" /></div>
                       <div className="metric-cell-label">$ MONTH</div>
                     </div>
 
                     {/* 8. Money left month */}
                     <div className={`metric-cell ${isEditingScoreboard ? 'grid-edit-mode' : ''}`} title="Money remaining for monthly goal" style={{ position: 'relative' }}>
                       <HelpLabel text="8. $ LEFT MONTH" />
-                      <div className="metric-cell-val"><RollingNumber value={Math.max(0, monthlyTargetArs - monthlyArs)} prefix="$" height={24} /></div>
+                      <div className="metric-cell-val"><StatNumber value={Math.max(0, monthlyTargetArs - monthlyArs)} prefix="$" size="lg" /></div>
                       <div className="metric-cell-label">$ LEFT MONTH</div>
                     </div>
 
                     {/* 9. Off-call total today */}
                     <div className={`metric-cell ${isEditingScoreboard ? 'grid-edit-mode' : ''}`} title="Total time spent off-call today (Click to toggle H:M)" style={{ position: 'relative', background: 'rgba(251,146,60,0.06)', cursor: 'pointer' }} onClick={() => setShowAsHours(!showAsHours)}>
                       <HelpLabel text="9. OFF CALL" />
-                      <div className="metric-cell-val" style={{ color: '#fdba74' }}><RollingNumber value={formatValue(totalOffCallMins)} height={24} /></div>
+                      <div className="metric-cell-val" style={{ color: '#fdba74' }}><StatNumber value={formatValue(totalOffCallMins)} size="lg" format={false} /></div>
                       <div className="metric-cell-label">OFF CALL</div>
                     </div>
 
                     {/* 10. Avg so far mo */}
                     <div className={`metric-cell ${isEditingScoreboard ? 'grid-edit-mode' : ''}`} title="Average minutes per day so far (Click to toggle H:M)" style={{ position: 'relative', background: 'rgba(139,92,246,0.04)', cursor: 'pointer' }} onClick={() => setShowAsHours(!showAsHours)}>
                       <HelpLabel text="10. MO AVG" />
-                      <div className="metric-cell-val"><RollingNumber value={formatValue(actualDailyAverage)} height={24} /></div>
+                      <div className="metric-cell-val"><StatNumber value={formatValue(actualDailyAverage)} size="lg" format={false} /></div>
                       <div className="metric-cell-label">MO AVG</div>
                     </div>
 
@@ -770,7 +770,9 @@ export const DashboardHeader = ({ onStartAudio, onStopAudio, onReconnectStream, 
                     <div className={`metric-cell ${isEditingScoreboard ? 'grid-edit-mode' : ''}`} title="Time since last audio activity (Reset by speech). In call, this tracks patient/user silence." style={{ position: 'relative', background: isActive ? 'rgba(239,68,68,0.06)' : 'rgba(255,255,255,0.04)' }}>
                       <HelpLabel text="11. SILENCE" />
                       <div className="metric-watermark">{isActive ? '🔇' : '⏳'}</div>
-                      <div className="metric-cell-val" style={{ color: silenceCount > 600 ? '#f87171' : 'white' }}>{formatTime(silenceCount)}</div>
+                      <div className="metric-cell-val" style={{ color: silenceCount > 600 ? '#f87171' : 'white' }}>
+                        <StatNumber value={formatTime(silenceCount)} size="md" format={false} />
+                      </div>
                       <div className="metric-cell-label">{isActive ? 'CALL SILENCE' : 'APP IDLE'}</div>
                     </div>
 
@@ -778,8 +780,8 @@ export const DashboardHeader = ({ onStartAudio, onStopAudio, onReconnectStream, 
                     <div className={`metric-cell ${isEditingScoreboard ? 'grid-edit-mode' : ''}`} title="Current call duration and unbanked cash" style={{ position: 'relative', background: isActive ? 'rgba(16,185,129,0.1)' : 'rgba(255,255,255,0.02)', border: isActive ? '1px solid rgba(16,185,129,0.3)' : 'none' }}>
                       <HelpLabel text="12. CURR CALL" />
                       <div className="metric-cell-val" style={{ display: 'flex', gap: '0.2rem', alignItems: 'center' }}>
-                        <RollingNumber value={formatTime(sessionSeconds)} height={22} />
-                        <RollingNumber value={Math.round(sessionEarnings * arsRate)} prefix="$" height={22} />
+                        <StatNumber value={formatTime(sessionSeconds)} size="md" format={false} />
+                        <StatNumber value={Math.round(sessionEarnings * arsRate)} prefix="$" size="md" />
                       </div>
                       <div className="metric-cell-label">CURR CALL</div>
                     </div>
@@ -861,7 +863,7 @@ export const DashboardHeader = ({ onStartAudio, onStopAudio, onReconnectStream, 
                   textShadow: isBountyAnimating ? '0 0 15px rgba(252, 211, 77, 0.5)' : 'none',
                   whiteSpace: 'nowrap'
                 }}>
-                  <RollingNumber value={displayBounty} prefix="AR$" height={26} />
+                  <StatNumber value={displayBounty} prefix="AR$" size="xl" />
                 </div>
                 {isBountyAnimating && <span style={{ fontSize: '0.7rem', color: '#6ee7b7', animation: 'slideUpBounce 0.5s' }}>-tick</span>}
               </div>
@@ -874,11 +876,11 @@ export const DashboardHeader = ({ onStartAudio, onStopAudio, onReconnectStream, 
                 <span className="income-label">🗓️ MO.PROFIT</span>
                 <span className="income-ars" style={{ whiteSpace: 'nowrap', display: 'flex', alignItems: 'center', gap: '0.2rem' }}>
                   <span>🌊</span>
-                  <RollingNumber value={monthlyArs} prefix="$" height={24} />
+                  <StatNumber value={monthlyArs} prefix="$" size="lg" />
                 </span>
                 <span style={{ fontSize: '0.55rem', opacity: 0.5, whiteSpace: 'nowrap', display: 'flex', gap: '0.1rem' }}>
                   <span>/</span>
-                  <RollingNumber value={monthlyTargetArs} prefix="$" height={10} />
+                  <StatNumber value={monthlyTargetArs} prefix="$" size="xs" />
                 </span>
               </div>
             )}
@@ -1011,7 +1013,7 @@ export const DashboardHeader = ({ onStartAudio, onStopAudio, onReconnectStream, 
                   <span>CALL ({formatTime(sessionSeconds)})</span>
                 </span>
                 <span className="income-ars" style={{ fontSize: '0.85rem', whiteSpace: 'nowrap' }}>
-                  <RollingNumber value={Math.round(sessionEarnings * arsRate)} prefix="AR$" height={18} />
+                  <StatNumber value={Math.round(sessionEarnings * arsRate)} prefix="AR$" size="sm" />
                 </span>
               </div>
             )}
@@ -1070,7 +1072,7 @@ ${isInDeficit ? `⚠️ DEFICIT: Behind pace by ${Math.round(monthlyDeficitMins)
                       title={`PACED MAX: If you keep working ${Math.round(dailyGoal)}m every day for the rest of the month, you are on track to bank AR$${monthlyMaxArs} total. Target is AR$${monthlyTargetArs.toLocaleString('es-AR')}.`}
                       style={{ background: 'rgba(139,92,246,0.15)', padding: '0.1rem 0.4rem', borderRadius: '4px', border: '1px solid rgba(139,92,246,0.3)', cursor: 'help' }}>
                       Paced Max: <strong style={{ color: '#d8b4fe', textShadow: '0 0 8px rgba(139,92,246,0.5)', display: 'inline-flex', alignItems: 'center' }}>
-                        <RollingNumber value={monthlyRemainingCashVal + monthlyArs} prefix="AR$" height={12} />
+                        <StatNumber value={monthlyRemainingCashVal + monthlyArs} prefix="AR$" size="xs" />
                       </strong>
                     </span>
                   </>
