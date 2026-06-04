@@ -178,7 +178,7 @@ const Dashboard = () => {
         lastDataTime={lastDataTime}
       />
 
-      <main className="main-content">
+      <main className={`main-content ${isNotesOpen ? 'notes-open' : ''} ${isToolbarVisible && (!isActive || !callFocusMode) ? 'tools-open' : ''}`}>
         <div className="transcription-pane">
             <TranscriptionBoard 
               captions={captions} 
@@ -189,16 +189,16 @@ const Dashboard = () => {
               lastDataTime={lastDataTime}
             />
         </div>
-        {(!isActive || !callFocusMode) && (isNotesOpen || isToolbarVisible) && (
-          <div className="tools-column">
-             {isToolbarVisible && (
+        {(isNotesOpen || ((!isActive || !callFocusMode) && isToolbarVisible)) && (
+          <div className={`tools-column ${isNotesOpen ? 'notes-open' : ''}`}>
+             {(!isActive || !callFocusMode) && isToolbarVisible && (
                <div className="glass-panel tools-soundboard" style={{ overflow: 'hidden', display: 'flex', flexDirection: 'column', flex: isEditingBg ? '1' : '1.5' }}>
                  <GreetingsPanel onEditModeChange={setIsEditingBg} />
                </div>
              )}
-             {(isNotesOpen && !isEditingBg) && (
-               <div className="glass-panel tools-notes" style={{ overflow: 'hidden', display: 'flex', flexDirection: 'column', flex: 1 }}>
-                 <DictionaryTool />
+             {isNotesOpen && !isEditingBg && (
+               <div className="glass-panel tools-notes" style={{ overflow: 'hidden', display: 'flex', flexDirection: 'column', flex: 1, minHeight: isActive && callFocusMode ? '200px' : undefined }}>
+                 {(!isActive || !callFocusMode) && <DictionaryTool />}
                  <NotePad />
                </div>
              )}

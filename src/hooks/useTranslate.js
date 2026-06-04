@@ -211,7 +211,7 @@ export const useTranslate = (text, lang, prefetchTTS, shouldPrefetch, mood = 'de
           const res = await raceChunk(segment);
           if (res) results.push(res);
         }
-        if (activeText && activeText.length > 1 && !signal.aborted) {
+        if (activeText && activeText.length > 1 && !signal.aborted && validSegments.length > 0) {
           const res = await raceChunk(activeText);
           if (res) results.push(res);
         }

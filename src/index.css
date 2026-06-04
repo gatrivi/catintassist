@@ -369,6 +369,35 @@ body {
   padding: 0.25rem;
   min-width: 0;
   flex-shrink: 0;  /* Header takes its natural height; main-content gets the rest */
+  max-height: min(42vh, 320px);
+  overflow-y: auto;
+  overflow-x: hidden;
+}
+
+/* Connect / stop — always visible while scrolling the header */
+.session-controls-sticky {
+  position: sticky;
+  top: 0;
+  z-index: 250;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  padding: 4px 6px;
+  margin: -0.25rem -0.25rem 0.15rem;
+  background: rgba(12, 12, 18, 0.96);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  flex-shrink: 0;
+}
+
+.pinned-transcript-section {
+  position: sticky;
+  top: 0;
+  z-index: 5;
+  background: rgba(12, 12, 18, 0.92);
+  backdrop-filter: blur(6px);
 }
 
 .dashboard-title-row {

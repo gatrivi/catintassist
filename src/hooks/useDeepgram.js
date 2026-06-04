@@ -114,6 +114,34 @@ const hallucinationGuard = (text) => {
   return cleanFillerWords(cleaned.join(' '));
 };
 
+/** Split leading complete sentences (ends with . ! ?) from trailing fragment. */
+const peelCompleteSentences = (text) => {
+  const sentences = [];
+  let rest = (text || '').trim();
+  while (rest) {
+    const m = rest.match(/^(.+?[.!?…]+)(?:\s+)([\s\S]+)$/);
+    if (!m) break;
+    const sent = m[1].trim();
+    if (!sent) break;
+    sentences.push(sent);
+    rest = m[2].trim();
+  }
+  return { sentences, remainder: rest };
+};
+
+const buildSealedBubble = (sentence, template, bubbleIdCounterRef) => ({
+  ...template,
+  id: `${Date.now()}-${++bubbleIdCounterRef.current}-s`,
+  text: sentence,
+  enFinalized: template.lang === 'en' ? sentence : '',
+  esFinalized: template.lang === 'es' ? sentence : '',
+  enInterim: '',
+  esInterim: '',
+  enFull: template.lang === 'en' ? sentence : template.enFull,
+  esFull: template.lang === 'es' ? sentence : template.esFull,
+  isFinal: true,
+});
+
 const removeOverlap = (base, addition) => {
   if (!base || !addition) return addition;
   
@@ -255,8 +283,8 @@ export const useDeepgram = () => {
           const lastWords = lastText.trim().split(/\s+/).filter(Boolean);
           const lastWordCount = lastWords.length;
           
-          const hasSentenceEnd = /[.!?]\s*$/.test(lastText); 
-          const isNewTurn = isSilentBreak || !last || (lastWordCount >= 10 && hasSentenceEnd) || lastWordCount >= 80;
+          // New bubble only after silence or at stream start — sentence splits handled below
+          const isNewTurn = isSilentBreak || !last;
 
           if (isNewTurn) {
             const lastCreationTime = last ? parseInt(last.id.split('-')[0]) : 0;
@@ -317,8 +345,33 @@ export const useDeepgram = () => {
           const currentWords = current.text.split(/\s+/).filter(Boolean).length;
           current.turnWordCount = turnWordCountRef.current + currentWords;
 
-          const newArr = [...prev];
+          let newArr = [...prev];
           newArr[newArr.length - 1] = current;
+
+          // Finalize complete sentences into their own bubbles (period / ! / ?)
+          if (isFinal && current.text?.trim()) {
+            const { sentences, remainder } = peelCompleteSentences(current.text);
+            if (sentences.length > 0) {
+              const sealed = sentences.map((sent) => buildSealedBubble(sent, current, bubbleIdCounterRef));
+              newArr = [...prev.slice(0, -1), ...sealed];
+              if (remainder) {
+                const tail = {
+                  ...current,
+                  id: `${Date.now()}-${++bubbleIdCounterRef.current}`,
+                  text: remainder,
+                  enFinalized: current.lang === 'en' ? remainder : '',
+                  esFinalized: current.lang === 'es' ? remainder : '',
+                  enInterim: current.lang === 'en' ? current.enInterim : '',
+                  esInterim: current.lang === 'es' ? current.esInterim : '',
+                  enFull: current.lang === 'en' ? `${remainder} ${current.enInterim || ''}`.trim() : current.enFull,
+                  esFull: current.lang === 'es' ? `${remainder} ${current.esInterim || ''}`.trim() : current.esFull,
+                  isFinal: false,
+                };
+                newArr.push(tail);
+              }
+            }
+          }
+
           return newArr.slice(-150);
         });
       };

@@ -513,26 +513,69 @@ export const DashboardHeader = ({ onStartAudio, onStopAudio, onReconnectStream, 
 
   const rateOf = (view) => view === 'effective' ? effectiveRateArsHr : activeRateArsHr;
 
-  // Call Micro Bar: ultra-compact header when actively interpreting
-  // Gives transcription ~95% of viewport. User can expand via 🔼 button.
-  const CallMicroBar = () => (
-    <div className="call-micro-bar">
-      <div style={{ display: 'flex', gap: '3px', alignItems: 'center' }}>
-        <button className="btn-emoji" onClick={handleStop} style={{ background: '#ef4444', color: '#fff', width: '26px', height: '26px' }} title="STOP">🛑</button>
-        <button className="btn btn-condensed" onClick={() => setIsHold(!isHold)} style={{ background: isHold ? '#f59e0b' : 'rgba(255,255,255,0.08)', height: '26px', padding: '0', width: '26px', fontSize: '0.65rem', border: '1px solid rgba(255,255,255,0.1)' }}>{isHold ? `H` : '⏸'}</button>
-        <button className={`btn-emoji ${isZapping ? 'zap-active' : ''}`} onClick={() => { setIsZapping(true); onReconnectStream(); setTimeout(() => setIsZapping(false), 450); }} style={{ background: '#0ea5e9', width: '26px', height: '26px', transition: 'all 0.2s' }} title="ZAP">⚡</button>
-      </div>
-      
-      <div className="call-micro-bar-center">
-        <span className="call-micro-bar-timer">{formatTime(sessionSeconds)}</span>
-        <span className="call-micro-bar-earnings">AR${Math.round(sessionEarnings * arsRate).toLocaleString('es-AR')}</span>
-        {minutesSinceLastBreak > 90 && (
-          <span className="call-micro-bar-nudge" title="You have been working for over 90 minutes without a break">🍕 {Math.floor(minutesSinceLastBreak)}m</span>
+  // Sticky connect/stop bar — always visible while scrolling the header
+  const SessionControlsSticky = () => (
+    <div className="session-controls-sticky">
+      <div style={{ display: 'flex', gap: '3px', alignItems: 'center', flexShrink: 0 }}>
+        {!isActive ? (
+          <button
+            id="header-connect-btn"
+            className="btn-emoji"
+            onClick={isZombieCall ? onRecovery : onStartAudio}
+            style={{
+              background: isZombieCall ? '#f59e0b' : '#10b981',
+              color: '#fff',
+              width: '30px',
+              height: '30px',
+              animation: (!isActive && !isBreakActive && (Date.now() - (lastDataTime || 0) < 5000)) ? 'pulseReminder 0.8s infinite' : 'none',
+            }}
+            title={isZombieCall ? 'RE-ATTACH TO CALL' : 'CONNECT'}
+          >
+            {isZombieCall ? '🟡' : '🟢'}
+          </button>
+        ) : (
+          <>
+            <button id="header-stop-btn" className="btn-emoji" onClick={handleStop} style={{ background: '#ef4444', color: '#fff', width: '30px', height: '30px' }} title="STOP / DISCONNECT">🛑</button>
+            <button id="header-hold-btn" className="btn btn-condensed" onClick={() => setIsHold(!isHold)} style={{ background: isHold ? '#f59e0b' : 'rgba(255,255,255,0.08)', height: '30px', padding: '0', width: '30px', fontSize: '0.65rem', border: '1px solid rgba(255,255,255,0.1)' }}>{isHold ? 'H' : '⏸'}</button>
+            <button
+              id="header-zap-btn"
+              className={`btn-emoji ${isZapping ? 'zap-active' : ''}`}
+              onClick={() => {
+                setIsZapping(true);
+                onReconnectStream();
+                setTimeout(() => setIsZapping(false), 450);
+              }}
+              style={{ background: '#0ea5e9', width: '30px', height: '30px' }}
+              title="ZAP - Reconnect Audio Stream"
+            >
+              ⚡
+            </button>
+          </>
+        )}
+        <button id="header-break-btn" className="btn-emoji" onClick={isBreakActive ? stopBreak : handleStartBreak} style={{ background: '#fb923c', color: '#fff', width: '30px', height: '30px', opacity: isActive ? 0.35 : 1 }} disabled={isActive} title="BREAK">☕</button>
+        {!isActive && stats.dailyMinutes > 0 && !isBreakActive && (
+          <button id="header-end-day-btn" className="btn-emoji" onClick={handleEndDay} style={{ background: '#8b5cf6', color: '#fff', width: '30px', height: '30px' }} title="END DAY">🌙</button>
         )}
       </div>
-      
-      <div style={{ display: 'flex', gap: '3px', alignItems: 'center' }}>
-        <button className="btn-icon tiny-btn" onClick={() => setCallModeExpanded(true)} style={{ width: '22px', height: '22px', fontSize: '0.7rem' }} title="Expand Header">🔼</button>
+
+      {isActive && (
+        <div className="call-micro-bar-center" style={{ flex: 1, minWidth: 0 }}>
+          <span className="call-micro-bar-timer">{formatTime(sessionSeconds)}</span>
+          <span className="call-micro-bar-earnings">AR${Math.round(sessionEarnings * arsRate).toLocaleString('es-AR')}</span>
+          {minutesSinceLastBreak > 90 && (
+            <span className="call-micro-bar-nudge" title="Working 90+ minutes without a break">🍕 {Math.floor(minutesSinceLastBreak)}m</span>
+          )}
+        </div>
+      )}
+
+      <div style={{ display: 'flex', gap: '3px', alignItems: 'center', flexShrink: 0 }}>
+        {isActive && !callModeExpanded && (
+          <button className="btn-icon tiny-btn" onClick={() => setCallModeExpanded(true)} style={{ width: '24px', height: '24px', fontSize: '0.7rem' }} title="Expand Header">🔼</button>
+        )}
+        {isActive && callModeExpanded && (
+          <button className="btn-icon tiny-btn" onClick={() => setCallModeExpanded(false)} style={{ width: '24px', height: '24px', fontSize: '0.7rem' }} title="Compact Header">🔽</button>
+        )}
+        <button className="btn-icon tiny-btn" onClick={() => setIsNotesOpen(!isNotesOpen)} style={{ opacity: isNotesOpen ? 1 : 0.45, width: '24px', height: '24px', fontSize: '0.75rem' }} title="Quick Notes">📝</button>
       </div>
     </div>
   );
@@ -569,8 +612,7 @@ export const DashboardHeader = ({ onStartAudio, onStopAudio, onReconnectStream, 
   return (
     <header className="dashboard-header glass-panel" style={{ position: 'relative', zIndex: 100 }}>
 
-      {/* CALL MODE: Ultra-compact micro bar (auto-shrinks header during calls) */}
-      {isActive && !callModeExpanded && <CallMicroBar />}
+      <SessionControlsSticky />
 
       {/* COLLAPSED VIEW (hidden when in compact call mode) */}
       {(!isActive || callModeExpanded) && isCollapsed && (
@@ -594,46 +636,6 @@ export const DashboardHeader = ({ onStartAudio, onStopAudio, onReconnectStream, 
               </div>
               
               <div style={{ display: 'flex', gap: '3px', alignItems: 'center' }}>
-                {!isActive ? (
-                  <button 
-                    id="header-connect-btn" className="btn-emoji" 
-                    onClick={isZombieCall ? onRecovery : onStartAudio} 
-                    style={{ 
-                      background: isZombieCall ? '#f59e0b' : '#10b981', color: '#fff', width: '26px', height: '26px',
-                      animation: (!isActive && !isBreakActive && (Date.now() - (lastDataTime || 0) < 5000)) ? 'pulseReminder 0.8s infinite' : 'none',
-                    }} 
-                    title={isZombieCall ? "RE-ATTACH TO CALL" : "CONNECT"}>
-                    {isZombieCall ? '🟡' : '🟢'}
-                  </button>
-                ) : (
-                  <button id="header-stop-btn" className="btn-emoji" onClick={handleStop} style={{ background: '#ef4444', color: '#fff', width: '26px', height: '26px' }} title="STOP">🛑</button>
-                )}
-                
-                {isActive && (
-                  <>
-                    <button id="header-hold-btn" className="btn btn-condensed" onClick={() => setIsHold(!isHold)} style={{ background: isHold ? '#f59e0b' : 'rgba(255,255,255,0.08)', height: '26px', padding: '0', width: '26px', fontSize: '0.65rem', border: '1px solid rgba(255,255,255,0.1)' }}>{isHold ? `H` : '⏸'}</button>
-                    <button 
-                      id="header-zap-btn" 
-                      className={`btn-emoji ${isZapping ? 'zap-active' : ''}`} 
-                      onClick={() => {
-                        setIsZapping(true);
-                        onReconnectStream();
-                        setTimeout(() => setIsZapping(false), 450);
-                      }} 
-                      style={{ background: '#0ea5e9', width: '26px', height: '26px', transition: 'all 0.2s' }} 
-                      title="ZAP - Reconnect Audio Stream"
-                    >
-                      ⚡
-                    </button>
-                  </>
-                )}
-
-                <button id="header-break-btn" className="btn-emoji" onClick={isBreakActive ? stopBreak : handleStartBreak} style={{ background: '#fb923c', color: '#fff', width: '26px', height: '26px', opacity: isActive ? 0.3 : 1 }} disabled={isActive} title="BREAK">☕</button>
-                
-                {!isActive && stats.dailyMinutes > 0 && !isBreakActive && (
-                  <button id="header-end-day-btn" className="btn-emoji" onClick={handleEndDay} style={{ background: '#8b5cf6', color: '#fff', width: '26px', height: '26px' }} title="END DAY">🌙</button>
-                )}
-
                 <div id="header-edit-tools-mini" style={{ display: 'flex', gap: '2px', borderLeft: '1px solid rgba(255,255,255,0.1)', paddingLeft: '3px', marginLeft: '2px' }}>
                   <button className="edit-btn-tiny" onClick={() => setTimeEditMode('call')} title="Edit call time" style={{ width: '20px', height: '26px', fontSize: '0.5rem' }}>📞</button>
                   <button className="edit-btn-tiny" onClick={() => setTimeEditMode('break')} title="Edit break time" style={{ width: '20px', height: '26px', fontSize: '0.5rem' }}>☕</button>

@@ -28,7 +28,8 @@ const getBubbleStyle = (text, isCurrent, lang) => {
 
 const normalizeAccents = (str) => str.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
 
-const convertNumberWords = (text) => {
+// English STT only — avoids "ten" → "10" inside Spanish words like "tenía"
+const convertEnglishNumberWords = (text) => {
   const map = {
     'zero': '0', 'one': '1', 'two': '2', 'three': '3', 'four': '4', 'five': '5',
     'six': '6', 'seven': '7', 'eight': '8', 'nine': '9', 'ten': '10',
@@ -48,11 +49,10 @@ const convertNumberWords = (text) => {
   return text.replace(re, (matched) => map[normalizeAccents(matched)] || matched);
 };
 
-const InteractiveText = ({ text, scramble = true }) => {
+const InteractiveText = ({ text, scramble = true, applyNumberWords = false }) => {
   if (!text) return null;
   
-  // 1. Convert words ("one") to digits ("1") FIRST
-  const processedText = convertNumberWords(text);
+  const processedText = applyNumberWords ? convertEnglishNumberWords(text) : text;
 
   // 2. GROUP PHONE NUMBERS / SSN: If we see 8-16 digits read out singly (with spaces), join and format them.
   const groupedDigits = processedText.replace(
@@ -101,7 +101,7 @@ const InteractiveText = ({ text, scramble = true }) => {
               className="phone-number highlight-number" 
               onClick={(e) => { e.stopPropagation(); handleCopy(p); }} 
               title={`Click to copy number: ${p}`}
-              style={{ cursor: 'copy', backgroundColor: 'rgba(252, 211, 77, 0.1)', color: '#fcd34d', padding: '0 2px', borderRadius: '2px', fontWeight: 600 }}
+              style={{ cursor: 'copy', backgroundColor: 'rgba(252, 211, 77, 0.1)', color: '#fcd34d', padding: '0 2px', borderRadius: '2px', fontWeight: 600, display: 'inline' }}
             >
               {scramble ? <ScrambleText value={p} duration={300} /> : p}
             </span>
@@ -153,7 +153,7 @@ const StatusProgress = ({ status }) => {
   );
 };
 
-const TranslatedBubble = ({ id, text, lang, playTTS, stopTTS, playingUrl, prefetchTTS, reverse = false, ttsMode, wordCount, turnWordCount, shouldPrefetch, emphasisMode, isPinned, onTogglePin, isRedundantCount }) => {
+const TranslatedBubble = ({ id, text, lang, playTTS, stopTTS, playingUrl, prefetchTTS, reverse = false, ttsMode, wordCount, turnWordCount, shouldPrefetch, isPinned, onTogglePin, isRedundantCount }) => {
   const { translationMood } = useSession();
   const { translation, audioUrl, engineStatus, targetLang } = useTranslate(text, lang, prefetchTTS, shouldPrefetch, translationMood);
   const hasAutoPlayedRef = useRef(false);
@@ -167,14 +167,16 @@ const TranslatedBubble = ({ id, text, lang, playTTS, stopTTS, playingUrl, prefet
   }, [translation, ttsMode, playTTS, targetLang, audioUrl]);
 
   const isThisPlaying = playingUrl && audioUrl && playingUrl === audioUrl;
-  const transcriptColor = emphasisMode === 'flipped' ? '#93c5fd' : '#ffffff';
-  const translationColor = emphasisMode === 'flipped' ? '#bfdbfe' : 'rgba(255,255,255,0.85)';
+  const transcriptColor = '#ffffff';
+  const translationColor = '#a1a1aa';
+  const sourceUsesNumberWords = (lang || 'en').toLowerCase().startsWith('en');
+  const targetUsesNumberWords = (targetLang || 'en').toLowerCase().startsWith('en');
 
   return (
     <div style={{ display: 'flex', gap: '0.4rem', marginTop: '0.1rem', flexDirection: reverse ? 'row-reverse' : 'row', alignItems: 'flex-start' }}>
       <div style={{ flex: 1, textAlign: reverse ? 'right' : 'left', minWidth: 0 }}>
         <div style={{ color: transcriptColor, fontWeight: 400, lineHeight: 1.25, fontSize: '0.9rem', wordBreak: 'break-word' }}>
-          <InteractiveText text={text} scramble={true} />
+          <InteractiveText text={text} scramble={true} applyNumberWords={sourceUsesNumberWords} />
         </div>
       </div>
 
@@ -201,7 +203,7 @@ const TranslatedBubble = ({ id, text, lang, playTTS, stopTTS, playingUrl, prefet
       <div style={{ flex: 1, color: translationColor, textAlign: reverse ? 'left' : 'right', minWidth: 0 }}>
         <div style={{ fontWeight: 400, fontStyle: 'italic', lineHeight: 1.25, fontSize: '0.85rem', wordBreak: 'break-word' }}>
           {translation ? (
-            <InteractiveText text={translation} scramble={true} />
+            <InteractiveText text={translation} scramble={true} applyNumberWords={targetUsesNumberWords} />
           ) : engineStatus === 'ready' ? (
             <span style={{ opacity: 0.3, fontSize: '0.7rem' }}>⚠️ translation failed</span>
           ) : (
@@ -219,8 +221,13 @@ export const TranscriptionBoard = ({ captions, onClearAll, onReconnect, lastData
   const isScrolledUpRef = useRef(false);
   const scrollTimeoutRef = useRef(null);
   const [ttsMode, setTtsMode] = useState('manual');
-  const [emphasisMode, setEmphasisMode] = useState('original'); 
-  const [pinnedIds, setPinnedIds] = useState(() => JSON.parse(localStorage.getItem('catint_pinned')) || []);
+  const [pinnedCaptions, setPinnedCaptions] = useState(() => {
+    try {
+      return JSON.parse(localStorage.getItem('catint_pinned_msgs')) || [];
+    } catch {
+      return [];
+    }
+  });
   const { playTTS, stopTTS, isPlaying, playingUrl, prefetchTTS } = useTTS();
   const { playWarningPing } = useProgressiveAudio();
   const { isActive, isZombieCall, lastCallSummary, setLastCallSummary } = useSession();
@@ -241,11 +248,19 @@ export const TranscriptionBoard = ({ captions, onClearAll, onReconnect, lastData
   };
 
   useEffect(() => {
-    safeSet('catint_pinned', JSON.stringify(pinnedIds));
-  }, [pinnedIds]);
+    safeSet('catint_pinned_msgs', JSON.stringify(pinnedCaptions));
+  }, [pinnedCaptions]);
 
-  const togglePin = (id) => {
-    setPinnedIds(prev => prev.includes(id) ? prev.filter(p => p !== id) : [...prev, id]);
+  const pinnedIds = pinnedCaptions.map((p) => p.id);
+
+  const togglePin = (cap) => {
+    if (!cap?.id || !cap.text?.trim()) return;
+    setPinnedCaptions((prev) => {
+      if (prev.some((p) => p.id === cap.id)) {
+        return prev.filter((p) => p.id !== cap.id);
+      }
+      return [...prev, { id: cap.id, text: cap.text, lang: cap.lang || 'en' }];
+    });
   };
 
   useEffect(() => {
@@ -388,9 +403,58 @@ export const TranscriptionBoard = ({ captions, onClearAll, onReconnect, lastData
         onWheel={handleWheel}
         ref={scrollAreaRef}
       >
+        {pinnedCaptions.length > 0 && (
+          <div className="pinned-transcript-section" style={{
+            flexShrink: 0,
+            marginBottom: '0.5rem',
+            paddingBottom: '0.4rem',
+            borderBottom: '1px solid rgba(34, 197, 94, 0.35)',
+          }}>
+            <div style={{ fontSize: '0.6rem', fontWeight: 900, color: 'var(--accent-primary)', marginBottom: '0.35rem', letterSpacing: '0.06em' }}>
+              📌 PINNED ({pinnedCaptions.length})
+            </div>
+            {pinnedCaptions.map((cap) => (
+              <div key={`pin-${cap.id}`} className="transcript-bubble pinned-transcript-bubble" style={{
+                position: 'relative',
+                marginTop: '0.35rem',
+                padding: '0.4rem',
+                border: '1px solid var(--accent-primary)',
+                background: 'rgba(34, 197, 94, 0.1)',
+                ...getBubbleStyle(cap.text, true, cap.lang),
+              }}>
+                <TranslatedBubble
+                  id={cap.id}
+                  text={cap.text}
+                  lang={cap.lang}
+                  playTTS={playTTS}
+                  stopTTS={stopTTS}
+                  playingUrl={playingUrl}
+                  prefetchTTS={prefetchTTS}
+                  reverse={cap.lang === 'es'}
+                  ttsMode={ttsMode}
+                  wordCount={cap.text.trim().split(/\s+/).length}
+                  shouldPrefetch={false}
+                  isPinned={true}
+                  onTogglePin={() => togglePin(cap)}
+                />
+                <button
+                  onClick={() => togglePin(cap)}
+                  style={{
+                    position: 'absolute', top: '0', right: '0', background: 'transparent', border: 'none',
+                    fontSize: '0.65rem', cursor: 'pointer', color: 'var(--accent-primary)', padding: '4px', zIndex: 10,
+                  }}
+                  title="Unpin message"
+                >
+                  📌
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
+
         <div style={{ flex: '1 1 auto' }} />
         
-        {captions.length === 0 && (
+        {captions.length === 0 && pinnedCaptions.length === 0 && (
           <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', opacity: 0.2 }}>
             <div style={{ fontFamily: 'var(--font-mono)', fontSize: '0.8rem' }}>
               {isActive ? '> STANDBY_FOR_AUDIO...' : '> SYSTEM_IDLE'}
@@ -403,18 +467,19 @@ export const TranscriptionBoard = ({ captions, onClearAll, onReconnect, lastData
           const isSameAsPrevious = i > 0 && captions[i-1].lang === cap.lang;
           const wordCount = cap.text.trim().split(/\s+/).length;
           const isPinned = pinnedIds.includes(cap.id);
+          if (isPinned) return null;
           const isSplitContinuation = isSameAsPrevious && wordCount < 50;
           const isLongBubble = wordCount > 50 && cap.isFinal !== false;
           const isExpanded = expandedIds.has(cap.id);
           
           return (
-            <div key={cap.id || i} className="transcript-bubble" style={{ 
+            <div key={cap.id || i} className="transcript-bubble" style={{
+              position: 'relative',
               opacity: cap.isFinal === false ? 0.6 : 1,
               marginTop: isSplitContinuation ? '0rem' : '0.4rem',
               padding: '0.4rem',
-              position: 'relative',
-              border: isPinned ? '1px solid var(--accent-primary)' : '1px solid transparent',
-              background: isPinned ? 'rgba(34, 197, 94, 0.08)' : (getBubbleStyle(cap.text, cap.isFinal === false, cap.lang).backgroundColor),
+              border: '1px solid transparent',
+              background: getBubbleStyle(cap.text, cap.isFinal === false, cap.lang).backgroundColor,
               ...getBubbleStyle(cap.text, cap.isFinal === false, cap.lang)
             }}>
               
@@ -422,7 +487,7 @@ export const TranscriptionBoard = ({ captions, onClearAll, onReconnect, lastData
                 <TranslatedBubble 
                   id={cap.id} text={cap.text} lang={cap.lang} playTTS={playTTS} stopTTS={stopTTS} playingUrl={playingUrl} prefetchTTS={prefetchTTS} 
                   reverse={cap.lang === 'es'} ttsMode={ttsMode} wordCount={wordCount} turnWordCount={cap.turnWordCount} shouldPrefetch={i >= captions.length - 3} 
-                  emphasisMode={emphasisMode} isPinned={isPinned} onTogglePin={togglePin} 
+                  isPinned={false} onTogglePin={() => togglePin(cap)}
                   isRedundantCount={i > 0 && captions[i-1].turnWordCount === cap.turnWordCount}
                 />
               </div>
@@ -433,17 +498,16 @@ export const TranscriptionBoard = ({ captions, onClearAll, onReconnect, lastData
                 </button>
               )}
               
-              <button 
-                onClick={() => togglePin(cap.id)} 
-                style={{ 
+              <button
+                onClick={() => togglePin(cap)}
+                style={{
                   position: 'absolute', top: '0', right: '0', background: 'transparent', border: 'none',
-                  fontSize: '0.65rem', cursor: 'pointer', opacity: isPinned ? 1 : 0.5, 
-                  color: isPinned ? 'var(--accent-primary)' : '#fff',
-                  padding: '4px', zIndex: 10
+                  fontSize: '0.65rem', cursor: 'pointer', opacity: 0.55,
+                  color: '#fff', padding: '4px', zIndex: 10,
                 }}
-                title={isPinned ? "Unpin message (click to unpin)" : "Pin message for recording machine"}
+                title="Pin message (keeps it visible at top for voicemail / callouts)"
               >
-                {isPinned ? '📌' : '📍'}
+                📍
               </button>
             </div>
           );
@@ -457,25 +521,21 @@ export const TranscriptionBoard = ({ captions, onClearAll, onReconnect, lastData
         borderTop: '1px solid #18181b', background: 'var(--panel-bg)', fontFamily: 'var(--font-mono, monospace)', fontSize: '0.65rem'
       }}>
         <div style={{ display: 'flex', gap: '8px' }}>
-          <button onClick={() => setEmphasisMode(m => m === 'original' ? 'flipped' : 'original')} style={{ background: 'transparent', color: emphasisMode === 'flipped' ? 'var(--accent-primary)' : '#fff', border: 'none', cursor: 'pointer' }}>
-            MODE:{emphasisMode === 'flipped' ? 'TRSL' : 'SRC'}
-          </button>
           <button onClick={() => setTtsMode(m => m === 'manual' ? 'auto' : 'manual')} style={{ background: 'transparent', color: ttsMode === 'auto' ? 'var(--accent-primary)' : '#fff', border: 'none', cursor: 'pointer' }}>
             TTS:{ttsMode === 'auto' ? 'AUTO' : 'OFF'}
           </button>
-          {pinnedIds.length > 0 && (
-            <button 
+          {pinnedCaptions.length > 0 && (
+            <button
               onClick={() => {
-                const pinnedText = captions
-                  .filter(c => pinnedIds.includes(c.id) && c.text)
-                  .map(c => `[${c.lang.toUpperCase()}] ${c.text}`)
+                const pinnedText = pinnedCaptions
+                  .map((c) => `[${(c.lang || 'en').toUpperCase()}] ${c.text}`)
                   .join('\n---\n');
                 navigator.clipboard.writeText(pinnedText);
-              }} 
+              }}
               style={{ background: 'transparent', color: '#34d399', border: 'none', cursor: 'pointer' }}
-              title={`Copy ${pinnedIds.length} pinned message(s) for recording machine`}
+              title={`Copy ${pinnedCaptions.length} pinned message(s)`}
             >
-              📋 COPY_PINNED({pinnedIds.length})
+              📋 COPY_PINNED({pinnedCaptions.length})
             </button>
           )}
         </div>
