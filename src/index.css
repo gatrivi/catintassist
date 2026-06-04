@@ -1552,10 +1552,30 @@ body {
 }
 
 .bubble-rail-wc {
-  flex: 0 0 2ch;
-  width: 2ch;
+  flex: 0 0 3ch;
+  min-width: 3ch;
+  width: 3ch;
   text-align: center;
+  font-family: var(--font-mono);
   font-weight: 800;
+  font-size: 0.55rem;
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+  overflow: visible;
+}
+
+.live-rolling-wrap {
+  display: inline-flex;
+  align-items: center;
+  max-width: 100%;
+  overflow: visible;
+}
+
+.rolling-char {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--font-mono);
   font-variant-numeric: tabular-nums;
 }
 

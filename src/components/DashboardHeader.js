@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { StatNumber } from './StatNumber';
+import { LiveRollingNumber } from './LiveRollingNumber';
 import { useRewardAudio } from '../hooks/useRewardAudio';
 import { useSession } from '../contexts/SessionContext';
 import { useAudioSettings } from '../contexts/AudioSettingsContext';
@@ -340,6 +341,15 @@ export const DashboardHeader = ({ onStartAudio, onStopAudio, onReconnectStream, 
   const monthlyArs = Math.round(stats.monthlyMinutes * RATE_PER_MINUTE * arsRate);
   const monthlyTargetArs = Math.round(stats.goalMinutes * RATE_PER_MINUTE * arsRate);
   const currentBounty = Math.max(0, dailyTargetArs - liveDailyArs);
+  const arsPerSecond = (RATE_PER_MINUTE / 60) * arsRate;
+  const sessionArsLive = Math.round(sessionEarnings * arsRate);
+
+  const renderSessionArs = (size = 'sm', prefix = 'AR$') =>
+    isActive ? (
+      <LiveRollingNumber value={sessionArsLive} ratePerSecond={arsPerSecond} prefix={prefix} size={size} />
+    ) : (
+      <StatNumber value={sessionArsLive} prefix={prefix} size={size} />
+    );
 
   useEffect(() => {
     if (Math.abs(displayBounty - currentBounty) > 1) {
@@ -563,7 +573,7 @@ export const DashboardHeader = ({ onStartAudio, onStopAudio, onReconnectStream, 
       {isActive && (
         <div className="call-micro-bar-center" style={{ flex: 1, minWidth: 0 }}>
           <span className="call-micro-bar-timer">{formatTime(sessionSeconds)}</span>
-          <span className="call-micro-bar-earnings">AR${Math.round(sessionEarnings * arsRate).toLocaleString('es-AR')}</span>
+          <span className="call-micro-bar-earnings">{renderSessionArs('xs')}</span>
           {minutesSinceLastBreak > 90 && (
             <span className="call-micro-bar-nudge" title="Working 90+ minutes without a break">🍕 {Math.floor(minutesSinceLastBreak)}m</span>
           )}
@@ -781,7 +791,7 @@ export const DashboardHeader = ({ onStartAudio, onStopAudio, onReconnectStream, 
                       <HelpLabel text="12. CURR CALL" />
                       <div className="metric-cell-val" style={{ display: 'flex', gap: '0.2rem', alignItems: 'center' }}>
                         <StatNumber value={formatTime(sessionSeconds)} size="md" format={false} />
-                        <StatNumber value={Math.round(sessionEarnings * arsRate)} prefix="$" size="md" />
+                        {renderSessionArs('md', '$')}
                       </div>
                       <div className="metric-cell-label">CURR CALL</div>
                     </div>
@@ -1013,7 +1023,7 @@ export const DashboardHeader = ({ onStartAudio, onStopAudio, onReconnectStream, 
                   <span>CALL ({formatTime(sessionSeconds)})</span>
                 </span>
                 <span className="income-ars" style={{ fontSize: '0.85rem', whiteSpace: 'nowrap' }}>
-                  <StatNumber value={Math.round(sessionEarnings * arsRate)} prefix="AR$" size="sm" />
+                  {renderSessionArs('sm')}
                 </span>
               </div>
             )}

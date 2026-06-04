@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 
 import { useTTS } from '../hooks/useTTS';
 import { useTranslate } from '../hooks/useTranslate';
@@ -116,19 +116,18 @@ const InteractiveText = ({ text, scramble = true, applyNumberWords = false }) =>
 /** Compact T/P/R + word count + play — one line, ~6ch wide (split-pane friendly). */
 const BubbleRail = ({
   engineStatus,
-  wordCount,
   turnWordCount,
-  isRedundantCount,
+  showTurnWordCount,
   isThisPlaying,
   canPlay,
   onPlayClick,
 }) => {
   const steps = ['translating', 'processing', 'ready'];
   const currentIndex = steps.indexOf(engineStatus === 'buffering' ? 'processing' : engineStatus);
-  const wc = turnWordCount || wordCount;
-  const showWc = !isRedundantCount && wc > 0;
+  const wc = turnWordCount || 0;
+  const showWc = showTurnWordCount && wc > 0;
   const wcColor = wc >= 40 ? 'var(--danger)' : wc >= 34 ? '#f59e0b' : 'var(--text-muted)';
-  const tprTitle = 'T=transcribe · P=process · R=ready';
+  const tprTitle = 'T=transcribe · P=process · R=ready · Word count = whole turn (resets after ~2.5s silence)';
 
   return (
     <div className="bubble-rail" title={tprTitle}>
@@ -178,7 +177,7 @@ const BubbleRail = ({
   );
 };
 
-const TranslatedBubble = ({ id, text, lang, playTTS, stopTTS, playingUrl, prefetchTTS, reverse = false, ttsMode, wordCount, turnWordCount, shouldPrefetch, isPinned, onTogglePin, isRedundantCount }) => {
+const TranslatedBubble = ({ id, text, lang, playTTS, stopTTS, playingUrl, prefetchTTS, reverse = false, ttsMode, turnWordCount, showTurnWordCount, shouldPrefetch, isPinned, onTogglePin }) => {
   const { translationMood } = useSession();
   const { translation, audioUrl, engineStatus, targetLang } = useTranslate(text, lang, prefetchTTS, shouldPrefetch, translationMood);
   const hasAutoPlayedRef = useRef(false);
@@ -208,9 +207,8 @@ const TranslatedBubble = ({ id, text, lang, playTTS, stopTTS, playingUrl, prefet
       <div data-guide="bubble-rail" className="bubble-col bubble-col-rail">
       <BubbleRail
         engineStatus={engineStatus}
-        wordCount={wordCount}
         turnWordCount={turnWordCount}
-        isRedundantCount={isRedundantCount}
+        showTurnWordCount={showTurnWordCount}
         isThisPlaying={isThisPlaying}
         canPlay={Boolean(translation && audioUrl)}
         onPlayClick={() => (isThisPlaying ? stopTTS() : playTTS(translation, targetLang, audioUrl))}
@@ -269,6 +267,19 @@ export const TranscriptionBoard = ({ captions, onClearAll, onReconnect, lastData
   }, [pinnedCaptions]);
 
   const pinnedIds = pinnedCaptions.map((p) => p.id);
+
+  /** One word count per silence-to-silence turn — show only on the last bubble of that turn. */
+  const turnDisplayMeta = useMemo(() => {
+    const lastIndexByTurn = {};
+    const maxCountByTurn = {};
+    captions.forEach((cap, i) => {
+      const tid = cap.turnId || `solo-${cap.id}`;
+      lastIndexByTurn[tid] = i;
+      const tc = cap.turnWordCount ?? 0;
+      if (tc > (maxCountByTurn[tid] ?? 0)) maxCountByTurn[tid] = tc;
+    });
+    return { lastIndexByTurn, maxCountByTurn };
+  }, [captions]);
 
   const togglePin = (cap) => {
     if (!cap?.id || !cap.text?.trim()) return;
@@ -483,6 +494,9 @@ export const TranscriptionBoard = ({ captions, onClearAll, onReconnect, lastData
           if (!cap.text || !cap.text.trim()) return null;
           const isSameAsPrevious = i > 0 && captions[i-1].lang === cap.lang;
           const wordCount = cap.text.trim().split(/\s+/).length;
+          const tid = cap.turnId || `solo-${cap.id}`;
+          const turnWordCount = turnDisplayMeta.maxCountByTurn[tid] ?? cap.turnWordCount ?? 0;
+          const showTurnWordCount = i === turnDisplayMeta.lastIndexByTurn[tid];
           const isPinned = pinnedIds.includes(cap.id);
           if (isPinned) return null;
           const isSplitContinuation = isSameAsPrevious && wordCount < 50;
@@ -503,9 +517,8 @@ export const TranscriptionBoard = ({ captions, onClearAll, onReconnect, lastData
               <div style={{ maxHeight: isLongBubble && !isExpanded ? '5.5rem' : 'none', overflow: 'hidden', transition: 'max-height 0.3s ease' }}>
                 <TranslatedBubble 
                   id={cap.id} text={cap.text} lang={cap.lang} playTTS={playTTS} stopTTS={stopTTS} playingUrl={playingUrl} prefetchTTS={prefetchTTS} 
-                  reverse={cap.lang === 'es'} ttsMode={ttsMode} wordCount={wordCount} turnWordCount={cap.turnWordCount} shouldPrefetch={i >= captions.length - 3} 
+                  reverse={cap.lang === 'es'} ttsMode={ttsMode} turnWordCount={turnWordCount} showTurnWordCount={showTurnWordCount} shouldPrefetch={i >= captions.length - 3} 
                   isPinned={false} onTogglePin={() => togglePin(cap)}
-                  isRedundantCount={i > 0 && captions[i-1].turnWordCount === cap.turnWordCount}
                 />
               </div>
               
