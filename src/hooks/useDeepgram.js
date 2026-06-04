@@ -129,10 +129,12 @@ const peelCompleteSentences = (text) => {
   return { sentences, remainder: rest };
 };
 
-const buildSealedBubble = (sentence, template, bubbleIdCounterRef) => ({
+const buildSealedBubble = (sentence, template, bubbleIdCounterRef, turnWordCount) => ({
   ...template,
   id: `${Date.now()}-${++bubbleIdCounterRef.current}-s`,
   text: sentence,
+  turnId: template.turnId,
+  turnWordCount,
   enFinalized: template.lang === 'en' ? sentence : '',
   esFinalized: template.lang === 'es' ? sentence : '',
   enInterim: '',
@@ -193,7 +195,8 @@ export const useDeepgram = () => {
   const streamRef = useRef(null);
   const isActiveRef = useRef(false);
   const lastTranscriptTimeRef = useRef(Date.now());
-  const turnWordCountRef = useRef(0);
+  const turnWordsBaseRef = useRef(0); // words already sealed in the current silence-to-silence turn
+  const currentTurnIdRef = useRef(null);
   const bubbleIdCounterRef = useRef(0);
   const overrideTimeoutRef = useRef(null);
   const reconnectAttemptsRef = useRef(0);
@@ -280,9 +283,6 @@ export const useDeepgram = () => {
         updateCaptions(prev => {
           let last = prev[prev.length - 1];
           const lastText = (lang === 'en' ? last?.enFull : last?.esFull) || '';
-          const lastWords = lastText.trim().split(/\s+/).filter(Boolean);
-          const lastWordCount = lastWords.length;
-          
           // New bubble only after silence or at stream start — sentence splits handled below
           const isNewTurn = isSilentBreak || !last;
 
@@ -291,13 +291,18 @@ export const useDeepgram = () => {
             if (now - lastCreationTime < 400 && !isSilentBreak) {
               // Skip redundant split
             } else {
-              if (last) turnWordCountRef.current += lastWordCount;
-              if (isSilentBreak || !last) turnWordCountRef.current = 0;
-              
+              if (isSilentBreak || !last) {
+                turnWordsBaseRef.current = 0;
+                currentTurnIdRef.current = `turn-${now}`;
+              } else if (!currentTurnIdRef.current) {
+                currentTurnIdRef.current = last.turnId || `turn-${now}`;
+              }
+
               last = {
                 id: `${Date.now()}-${++bubbleIdCounterRef.current}`,
                 enFinalized: '', enInterim: '', esFinalized: '', esInterim: '',
-                turnWordCount: turnWordCountRef.current,
+                turnId: currentTurnIdRef.current,
+                turnWordCount: turnWordsBaseRef.current,
                 isSplit: !isSilentBreak
               };
               prev = [...prev, last];
@@ -343,7 +348,8 @@ export const useDeepgram = () => {
           current.esFull = esFull;
           current.isFinal = isFinal;
           const currentWords = current.text.split(/\s+/).filter(Boolean).length;
-          current.turnWordCount = turnWordCountRef.current + currentWords;
+          current.turnId = current.turnId || currentTurnIdRef.current || `turn-${now}`;
+          current.turnWordCount = turnWordsBaseRef.current + currentWords;
 
           let newArr = [...prev];
           newArr[newArr.length - 1] = current;
@@ -352,12 +358,20 @@ export const useDeepgram = () => {
           if (isFinal && current.text?.trim()) {
             const { sentences, remainder } = peelCompleteSentences(current.text);
             if (sentences.length > 0) {
-              const sealed = sentences.map((sent) => buildSealedBubble(sent, current, bubbleIdCounterRef));
+              let acc = turnWordsBaseRef.current;
+              const sealed = sentences.map((sent) => {
+                const w = sent.trim().split(/\s+/).filter(Boolean).length;
+                acc += w;
+                return buildSealedBubble(sent, current, bubbleIdCounterRef, acc);
+              });
+              turnWordsBaseRef.current = acc;
               newArr = [...prev.slice(0, -1), ...sealed];
               if (remainder) {
                 const tail = {
                   ...current,
                   id: `${Date.now()}-${++bubbleIdCounterRef.current}`,
+                  turnId: current.turnId,
+                  turnWordCount: turnWordsBaseRef.current,
                   text: remainder,
                   enFinalized: current.lang === 'en' ? remainder : '',
                   esFinalized: current.lang === 'es' ? remainder : '',
@@ -401,8 +415,8 @@ export const useDeepgram = () => {
 
   const stopRecording = useCallback(() => {
     isActiveRef.current = false;
-    // We NO LONGER stop the tracks here to keep the connection to the tab alive across calls.
-    // The user can stop the stream manually via the browser's "Stop sharing" button.
+    turnWordsBaseRef.current = 0;
+    currentTurnIdRef.current = null;
     closeConnections();
     clearCaptions();
   }, [closeConnections, clearCaptions]);

@@ -19,7 +19,7 @@ const GUIDE_STEPS = [
   {
     target: '[data-guide="bubble-rail"]',
     title: '3 · Bubble rail (center)',
-    body: 'Three bars = translate → process → ready. Number = word count (turns orange at 34, red at 40). Triangle = play translation audio.',
+    body: 'Three bars = translate → process → ready. Number = words in this speaking turn (one count per pause; orange at 34, red at 40). Triangle = play translation audio.',
   },
   {
     target: '[data-guide="stop"]',
