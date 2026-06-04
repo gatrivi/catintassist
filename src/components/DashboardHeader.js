@@ -520,6 +520,7 @@ export const DashboardHeader = ({ onStartAudio, onStopAudio, onReconnectStream, 
         {!isActive ? (
           <button
             id="header-connect-btn"
+            data-guide="connect"
             className="btn-emoji"
             onClick={isZombieCall ? onRecovery : onStartAudio}
             style={{
@@ -535,7 +536,7 @@ export const DashboardHeader = ({ onStartAudio, onStopAudio, onReconnectStream, 
           </button>
         ) : (
           <>
-            <button id="header-stop-btn" className="btn-emoji" onClick={handleStop} style={{ background: '#ef4444', color: '#fff', width: '30px', height: '30px' }} title="STOP / DISCONNECT">🛑</button>
+            <button id="header-stop-btn" data-guide="stop" className="btn-emoji" onClick={handleStop} style={{ background: '#ef4444', color: '#fff', width: '30px', height: '30px' }} title="STOP / DISCONNECT">🛑</button>
             <button id="header-hold-btn" className="btn btn-condensed" onClick={() => setIsHold(!isHold)} style={{ background: isHold ? '#f59e0b' : 'rgba(255,255,255,0.08)', height: '30px', padding: '0', width: '30px', fontSize: '0.65rem', border: '1px solid rgba(255,255,255,0.1)' }}>{isHold ? 'H' : '⏸'}</button>
             <button
               id="header-zap-btn"
@@ -665,7 +666,7 @@ export const DashboardHeader = ({ onStartAudio, onStopAudio, onReconnectStream, 
           </div>
 
           {/* SCOREBOARD (CENTER SPANNING 2 ROWS) */}
-          <div id="header-scoreboard-center" style={{ gridRow: '1 / span 2', gridColumn: '2', flex: '1 1 0', minWidth: 0, margin: '0 0.1rem' }}>
+          <div id="header-scoreboard-center" data-guide="scoreboard" style={{ gridRow: '1 / span 2', gridColumn: '2', flex: '1 1 0', minWidth: 0, margin: '0 0.1rem' }}>
             <div className="flip-container" style={{ height: '140px' }}> {/* Fixed height to prevent layout jump during flip */}
               <div className={`flip-card ${scoreView === 'numbers' ? 'is-flipped' : ''}`}>
                 

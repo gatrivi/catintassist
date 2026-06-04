@@ -11,6 +11,7 @@ import { DeskExerciseWidget } from './components/DeskExerciseWidget';
 import { RosaryWidget } from './components/RosaryWidget';
 import { MealTrackerWidget } from './components/MealTrackerWidget';
 import { ChoreTrackerWidget } from './components/ChoreTrackerWidget';
+import { AppGuideLauncher } from './components/AppGuide';
 import { useDeepgram } from './hooks/useDeepgram';
 import { useProgressiveAudio } from './hooks/useProgressiveAudio';
 import { loadFile, generateObjectUrl } from './utils/storage';
@@ -158,7 +159,7 @@ const Dashboard = () => {
         display: 'flex', alignItems: 'center', gap: '4px'
       }}>
         <CloudSyncIndicator />
-        v4.29.0 (Full Stack)
+        v4.30.0 (Full Stack)
       </div>
 
       <div id="top-mic-bar-container" style={{ position: 'fixed', top: 0, left: 0, right: 0, height: '3px', zIndex: 9999, pointerEvents: 'none' }}>
@@ -180,7 +181,7 @@ const Dashboard = () => {
       />
 
       <main className={`main-content ${isNotesOpen ? 'notes-open' : ''} ${isToolbarVisible && (!isActive || !callFocusMode) ? 'tools-open' : ''}`}>
-        <div className="transcription-pane">
+        <div className="transcription-pane" data-guide="transcript">
             <TranscriptionBoard 
               captions={captions} 
               isActive={isActive} 
@@ -232,12 +233,15 @@ const Dashboard = () => {
         </button>
       )}
 
+      <AppGuideLauncher />
+
       <div className="habit-dock">
         <DeskExerciseWidget />
         <RosaryWidget />
         <MealTrackerWidget />
         <ChoreTrackerWidget />
         <button
+          data-guide="notes"
           onClick={() => setIsNotesOpen(o => !o)}
           title="Quick Notes"
           style={{

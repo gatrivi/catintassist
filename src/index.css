@@ -1557,6 +1557,142 @@ body {
   color: #38bdf8;
 }
 
+/* ── App guide (spotlight tour) ─────────────────────────────────────────── */
+.app-guide-fab {
+  position: fixed;
+  left: 10px;
+  bottom: 56px;
+  z-index: 9997;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  border: 1px solid rgba(56, 189, 248, 0.45);
+  background: rgba(7, 14, 35, 0.85);
+  color: rgba(56, 189, 248, 0.9);
+  font-size: 0.85rem;
+  font-weight: 800;
+  cursor: pointer;
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.4);
+  transition: border-color 0.2s, color 0.2s, box-shadow 0.2s;
+}
+
+.app-guide-fab:hover {
+  border-color: #38bdf8;
+  color: #7dd3fc;
+  box-shadow: 0 0 14px rgba(56, 189, 248, 0.35);
+}
+
+.app-guide-root {
+  position: fixed;
+  inset: 0;
+  z-index: 25000;
+  pointer-events: none;
+}
+
+.app-guide-backdrop {
+  position: absolute;
+  inset: 0;
+  border: none;
+  background: rgba(2, 6, 23, 0.72);
+  cursor: pointer;
+  pointer-events: auto;
+}
+
+.app-guide-spotlight {
+  position: fixed;
+  border-radius: 8px;
+  border: 2px solid #38bdf8;
+  box-shadow:
+    0 0 0 9999px rgba(2, 6, 23, 0.72),
+    0 0 24px rgba(56, 189, 248, 0.55);
+  pointer-events: none;
+  z-index: 25001;
+  animation: guidePulse 1.8s ease-in-out infinite;
+}
+
+@keyframes guidePulse {
+  0%, 100% { border-color: #38bdf8; }
+  50% { border-color: #6ee7b7; }
+}
+
+.app-guide-card {
+  position: fixed;
+  z-index: 25002;
+  pointer-events: auto;
+  padding: 0.85rem 1rem;
+  border-radius: 10px;
+  background: rgba(15, 23, 42, 0.98);
+  border: 1px solid rgba(56, 189, 248, 0.35);
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.6);
+}
+
+.app-guide-progress {
+  display: flex;
+  gap: 4px;
+  margin-bottom: 0.5rem;
+}
+
+.app-guide-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.15);
+}
+
+.app-guide-dot.active {
+  background: #38bdf8;
+  box-shadow: 0 0 6px #38bdf8;
+}
+
+.app-guide-dot.done {
+  background: #10b981;
+}
+
+.app-guide-title {
+  font-size: 0.85rem;
+  font-weight: 800;
+  color: #e2e8f0;
+  margin: 0 0 0.35rem;
+  letter-spacing: 0.02em;
+}
+
+.app-guide-body {
+  font-size: 0.72rem;
+  line-height: 1.45;
+  color: #94a3b8;
+  margin: 0 0 0.65rem;
+}
+
+.app-guide-actions {
+  display: flex;
+  gap: 0.35rem;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+}
+
+.app-guide-btn {
+  font-size: 0.68rem;
+  font-weight: 700;
+  padding: 0.35rem 0.65rem;
+  border-radius: 6px;
+  cursor: pointer;
+  border: 1px solid transparent;
+}
+
+.app-guide-btn.ghost {
+  background: transparent;
+  border-color: rgba(255, 255, 255, 0.12);
+  color: #94a3b8;
+}
+
+.app-guide-btn.primary {
+  background: #0ea5e9;
+  color: #000;
+  border-color: #38bdf8;
+}
+
 /* ── Desk Exercise Widget ── */
 .rep-box:hover {
   border-color: rgba(255,255,255,0.4) !important;

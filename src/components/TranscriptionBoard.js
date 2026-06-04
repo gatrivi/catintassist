@@ -205,6 +205,7 @@ const TranslatedBubble = ({ id, text, lang, playTTS, stopTTS, playingUrl, prefet
         </div>
       </div>
 
+      <div data-guide="bubble-rail">
       <BubbleRail
         engineStatus={engineStatus}
         wordCount={wordCount}
@@ -214,6 +215,7 @@ const TranslatedBubble = ({ id, text, lang, playTTS, stopTTS, playingUrl, prefet
         canPlay={Boolean(translation && audioUrl)}
         onPlayClick={() => (isThisPlaying ? stopTTS() : playTTS(translation, targetLang, audioUrl))}
       />
+      </div>
 
       <div style={{ flex: 1, color: translationColor, textAlign: reverse ? 'left' : 'right', minWidth: 0 }}>
         <div style={{ fontWeight: 400, fontStyle: 'italic', lineHeight: 1.2, fontSize: '0.85rem', wordBreak: 'break-word' }}>
@@ -531,7 +533,7 @@ export const TranscriptionBoard = ({ captions, onClearAll, onReconnect, lastData
       </div>
 
       {/* Simplified Footer Toolbar */}
-      <div className="transcription-footer" style={{ 
+      <div className="transcription-footer" data-guide="pin" style={{ 
         display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '4px 8px',
         borderTop: '1px solid #18181b', background: 'var(--panel-bg)', fontFamily: 'var(--font-mono, monospace)', fontSize: '0.65rem'
       }}>
