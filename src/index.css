@@ -876,16 +876,40 @@ body {
 .condensed-header-card {
   display: grid;
   height: fit-content;
-  grid-template-columns: auto 1fr auto; 
+  grid-template-columns: 1fr;
   grid-template-rows: auto auto;
-  align-items: center;
-  padding: 0.05rem 0.1rem; 
-  gap: 0.05rem 0.1rem; 
+  align-items: stretch;
+  padding: 0.15rem 0.2rem;
+  gap: 0.25rem;
   width: 100%;
   overflow: visible;
   background: rgba(0,0,0,0.6);
   border: 1px solid rgba(255,255,255,0.1);
   border-radius: 4px;
+}
+
+.condensed-scoreboard-panel {
+  grid-row: 1;
+  width: 100%;
+  min-width: 0;
+}
+
+.condensed-header-toolbar {
+  grid-row: 2;
+  display: flex;
+  flex-direction: row;
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.2rem 0.25rem;
+  background: rgba(255, 255, 255, 0.03);
+  border-radius: 4px;
+  border: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.scoreboard-flip-container {
+  min-height: 168px;
+  height: auto;
 }
 
 .metric-pill {
@@ -963,12 +987,16 @@ body {
 /* Metric Grid & Emoji Backgrounds */
 .metric-grid {
   display: grid;
-  grid-template-columns: repeat(4, 1fr); 
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   grid-template-rows: auto;
-  gap: 2px; 
+  gap: 4px;
   flex-grow: 1;
   width: 100%;
-  margin: 0 auto; 
+  margin: 0;
+}
+
+.metric-grid--scoreboard {
+  gap: 5px;
 }
 /* Sub-grid tinting for easy recognition */
 .metric-grid > div:nth-child(-n+3) { background: rgba(52, 211, 153, 0.05); } /* Cash Row */
@@ -980,13 +1008,18 @@ body {
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  padding: 0.15rem 0.2rem;
+  padding: 0.28rem 0.35rem;
   background: rgba(255,255,255,0.06);
-  border-radius: 3px;
+  border-radius: 4px;
   border: 1px solid rgba(255,255,255,0.08);
   overflow: visible;
-  min-width: 52px;
-  min-height: 38px;
+  min-width: 0;
+  min-height: 52px;
+}
+
+.metric-grid--scoreboard .metric-cell {
+  min-height: 56px;
+  padding: 0.32rem 0.4rem;
 }
 
 .metric-cell-val {
@@ -997,23 +1030,29 @@ body {
   justify-content: center;
   width: 100%;
   max-width: 100%;
-  min-height: 1.1em;
+  min-height: 1.35em;
   font-family: var(--font-mono);
   font-variant-numeric: tabular-nums;
-  font-weight: 700;
-  font-size: 0.72rem;
-  line-height: 1.15;
+  font-weight: 800;
+  font-size: clamp(0.8rem, 1.35vw, 1.05rem);
+  line-height: 1.2;
   letter-spacing: 0;
   white-space: nowrap;
-  color: rgba(255, 255, 255, 0.92);
+  color: rgba(255, 255, 255, 0.95);
+}
+
+.metric-grid--scoreboard .metric-cell-val {
+  font-size: clamp(0.85rem, 1.5vw, 1.12rem);
 }
 
 .metric-cell-label {
-  font-size: 0.5rem;
-  opacity: 0.5;
-  letter-spacing: 0.02em;
+  font-size: clamp(0.48rem, 0.85vw, 0.58rem);
+  opacity: 0.55;
+  letter-spacing: 0.03em;
   text-transform: uppercase;
-  margin-top: 0.05rem;
+  margin-top: 0.12rem;
+  text-align: center;
+  line-height: 1.1;
 }
 
 .metric-watermark {
@@ -1306,11 +1345,24 @@ body {
   text-overflow: clip;
 }
 
-.stat-number--xs { font-size: 0.58rem; }
-.stat-number--sm { font-size: 0.65rem; }
-.stat-number--md { font-size: 0.72rem; }
-.stat-number--lg { font-size: 0.78rem; }
-.stat-number--xl { font-size: 0.95rem; }
+.stat-number--xs { font-size: 0.62rem; }
+.stat-number--sm { font-size: 0.72rem; }
+.stat-number--md { font-size: 0.85rem; }
+.stat-number--lg { font-size: clamp(0.85rem, 1.5vw, 1.12rem); }
+.stat-number--xl { font-size: 1.05rem; }
+
+.metric-grid--scoreboard .rolling-number-wrapper {
+  max-width: 100%;
+  overflow: visible;
+}
+
+.metric-grid--scoreboard .digit-container {
+  box-shadow: inset 0 1px 2px rgba(0,0,0,0.4);
+}
+
+.metric-grid--scoreboard .digit-strip {
+  transition-duration: 0.12s;
+}
 
 .income-card .stat-number--xl {
   font-size: 1rem;

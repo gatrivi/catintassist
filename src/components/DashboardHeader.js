@@ -343,13 +343,16 @@ export const DashboardHeader = ({ onStartAudio, onStopAudio, onReconnectStream, 
   const currentBounty = Math.max(0, dailyTargetArs - liveDailyArs);
   const arsPerSecond = (RATE_PER_MINUTE / 60) * arsRate;
   const sessionArsLive = Math.round(sessionEarnings * arsRate);
+  const todayArsLive = liveDailyArs + (isActive ? sessionArsLive : 0);
 
-  const renderSessionArs = (size = 'sm', prefix = 'AR$') =>
+  const renderLiveArs = (discreteValue, size = 'lg', prefix = '$') =>
     isActive ? (
-      <LiveRollingNumber value={sessionArsLive} ratePerSecond={arsPerSecond} prefix={prefix} size={size} />
+      <LiveRollingNumber value={discreteValue} ratePerSecond={arsPerSecond} prefix={prefix} size={size} />
     ) : (
-      <StatNumber value={sessionArsLive} prefix={prefix} size={size} />
+      <StatNumber value={discreteValue} prefix={prefix} size={size} />
     );
+
+  const renderSessionArs = (size = 'sm', prefix = 'AR$') => renderLiveArs(sessionArsLive, size, prefix);
 
   useEffect(() => {
     if (Math.abs(displayBounty - currentBounty) > 1) {
@@ -639,50 +642,13 @@ export const DashboardHeader = ({ onStartAudio, onStopAudio, onReconnectStream, 
 
       {/* COLLAPSED VIEW (hidden when in compact call mode) */}
       {(!isActive || callModeExpanded) && isCollapsed && (
-        <div className="condensed-header-card" style={{ gap: '0.15rem' }}>
+        <div className="condensed-header-card">
           
-          {/* ROW 1-2, COL 1: Consolidated Left Controls (Horizontal Stack) */}
-          <div id="controls-left-col" style={{ gridRow: '1 / span 2', gridColumn: '1', display: 'flex', flexDirection: 'column', gap: '0.2rem', alignItems: 'center', background: 'rgba(255,255,255,0.03)', padding: '4px 6px', borderRadius: '4px', alignSelf: 'stretch', justifyContent: 'center' }}>
-            
-            {/* Status & Core Buttons - NOW HORIZONTAL */}
-            <div id="connection-controls-horizontal" className={`${isActive ? 'active-working-state' : ''}`} style={{ display: 'flex', flexDirection: 'column', gap: '0.3rem', alignItems: 'center' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
-                <StateIndicators 
-                  state={isActive ? 'call' : isBreakActive ? 'break' : 'avail'} 
-                  breakMinutes={stats.dailyBreakMinutes || 0} 
-                  isZombie={isZombieCall} 
-                  silenceCount={silenceCount}
-                />
-                <div style={{ fontSize: '0.6rem', fontWeight: 900, color: 'rgba(255,255,255,0.4)', background: 'rgba(255,255,255,0.05)', padding: '2px 4px', borderRadius: '3px' }}>
-                  ⏳{Math.floor(minutesSinceLastBreak)}m
-                </div>
-              </div>
-              
-              <div style={{ display: 'flex', gap: '3px', alignItems: 'center' }}>
-                <div id="header-edit-tools-mini" style={{ display: 'flex', gap: '2px', borderLeft: '1px solid rgba(255,255,255,0.1)', paddingLeft: '3px', marginLeft: '2px' }}>
-                  <button className="edit-btn-tiny" onClick={() => setTimeEditMode('call')} title="Edit call time" style={{ width: '20px', height: '26px', fontSize: '0.5rem' }}>📞</button>
-                  <button className="edit-btn-tiny" onClick={() => setTimeEditMode('break')} title="Edit break time" style={{ width: '20px', height: '26px', fontSize: '0.5rem' }}>☕</button>
-                </div>
-              </div>
-            </div>
-
-            {/* Time Pills */}
-            <div id="left-pills-row" style={{ display: 'flex', gap: '0.3rem', alignItems: 'center', marginTop: '0.1rem' }}>
-               <div id="pill-shift" className="metric-pill compact-pill" title="SHIFT" style={{ padding: '0.1rem 0.3rem' }}>
-                 <span style={{ fontSize: '0.55rem' }}>🏃{formatHoursMins(shiftElapsedMins)}</span>
-               </div>
-               <div id="pill-logoff" className="metric-pill compact-pill" title="LOG OFF" style={{ background: 'rgba(245,158,11,0.08)', border: '1px solid rgba(245,158,11,0.2)', padding: '0.1rem 0.3rem' }}>
-                 <span style={{ color: '#fcd34d', fontSize: '0.55rem' }}>🚪{getCompensatedLogOff()}</span>
-               </div>
-            </div>
-          </div>
-
-          {/* SCOREBOARD (CENTER SPANNING 2 ROWS) */}
-          <div id="header-scoreboard-center" data-guide="scoreboard" style={{ gridRow: '1 / span 2', gridColumn: '2', flex: '1 1 0', minWidth: 0, margin: '0 0.1rem' }}>
-            <div className="flip-container" style={{ height: '140px' }}> {/* Fixed height to prevent layout jump during flip */}
+          {/* Full-width scoreboard (numbers / game flip) */}
+          <div id="header-scoreboard-center" data-guide="scoreboard" className="condensed-scoreboard-panel">
+            <div className="flip-container scoreboard-flip-container">
               <div className={`flip-card ${scoreView === 'numbers' ? 'is-flipped' : ''}`}>
                 
-                {/* FRONT: GAME VIEW */}
                 <div className="flip-front">
                   <GameScoreboard
                     liveDailyArs={liveDailyArs} dailyTargetArs={dailyTargetArs}
@@ -702,9 +668,8 @@ export const DashboardHeader = ({ onStartAudio, onStopAudio, onReconnectStream, 
                   />
                 </div>
 
-                {/* BACK: NUMBERS VIEW */}
                 <div className="flip-back">
-                  <div id="numeric-metric-grid" className="metric-grid">
+                  <div id="numeric-metric-grid" className="metric-grid metric-grid--scoreboard">
                     {/* 1. Mins worked today */}
                     <div className={`metric-cell ${isEditingScoreboard ? 'grid-edit-mode' : ''}`} title="Minutes worked today (Click to toggle H:M)" style={{ position: 'relative', background: 'rgba(59,130,246,0.06)', cursor: 'pointer' }} onClick={() => setShowAsHours(!showAsHours)}>
                       <HelpLabel text="1. MINS TODAY" />
@@ -728,7 +693,7 @@ export const DashboardHeader = ({ onStartAudio, onStopAudio, onReconnectStream, 
                     {/* 4. Money today */}
                     <div className={`metric-cell ${isEditingScoreboard ? 'grid-edit-mode' : ''}`} title="Money earned today" style={{ position: 'relative', background: 'rgba(16,185,129,0.06)' }}>
                       <HelpLabel text="4. $ TODAY" />
-                      <div className="metric-cell-val" style={{ color: '#34d399' }}><StatNumber value={liveDailyArs} prefix="$" size="lg" /></div>
+                      <div className="metric-cell-val" style={{ color: '#34d399' }}>{renderLiveArs(todayArsLive, 'lg', '$')}</div>
                       <div className="metric-cell-label">$ TODAY</div>
                     </div>
 
@@ -791,7 +756,7 @@ export const DashboardHeader = ({ onStartAudio, onStopAudio, onReconnectStream, 
                       <HelpLabel text="12. CURR CALL" />
                       <div className="metric-cell-val" style={{ display: 'flex', gap: '0.2rem', alignItems: 'center' }}>
                         <StatNumber value={formatTime(sessionSeconds)} size="md" format={false} />
-                        {renderSessionArs('md', '$')}
+                        {renderSessionArs('lg', '$')}
                       </div>
                       <div className="metric-cell-label">CURR CALL</div>
                     </div>
@@ -809,12 +774,39 @@ export const DashboardHeader = ({ onStartAudio, onStopAudio, onReconnectStream, 
             </div>
           </div>
 
-          {/* ROW 1-2, COL 3: Consolidated Right Controls (Vertical Stack) */}
-          <div id="controls-right-col" style={{ gridRow: '1 / span 2', gridColumn: '3', display: 'flex', flexDirection: 'column', gap: '0.2rem', alignItems: 'center', background: 'rgba(255,255,255,0.03)', padding: '4px 2px', borderRadius: '4px', alignSelf: 'stretch', justifyContent: 'center', ...helpStyle }}>
+          {/* Slim toolbar under scoreboard (was left/right columns stealing width) */}
+          <div className="condensed-header-toolbar">
+          <div id="controls-left-col" style={{ display: 'flex', flexDirection: 'row', flexWrap: 'wrap', gap: '0.35rem', alignItems: 'center' }}>
+            <div id="connection-controls-horizontal" className={`${isActive ? 'active-working-state' : ''}`} style={{ display: 'flex', flexDirection: 'row', gap: '0.35rem', alignItems: 'center' }}>
+              <StateIndicators 
+                state={isActive ? 'call' : isBreakActive ? 'break' : 'avail'} 
+                breakMinutes={stats.dailyBreakMinutes || 0} 
+                isZombie={isZombieCall} 
+                silenceCount={silenceCount}
+              />
+              <div style={{ fontSize: '0.6rem', fontWeight: 900, color: 'rgba(255,255,255,0.4)', background: 'rgba(255,255,255,0.05)', padding: '2px 4px', borderRadius: '3px' }}>
+                ⏳{Math.floor(minutesSinceLastBreak)}m
+              </div>
+              <div id="header-edit-tools-mini" style={{ display: 'flex', gap: '2px' }}>
+                <button className="edit-btn-tiny" onClick={() => setTimeEditMode('call')} title="Edit call time" style={{ width: '20px', height: '26px', fontSize: '0.5rem' }}>📞</button>
+                <button className="edit-btn-tiny" onClick={() => setTimeEditMode('break')} title="Edit break time" style={{ width: '20px', height: '26px', fontSize: '0.5rem' }}>☕</button>
+              </div>
+            </div>
+            <div id="left-pills-row" style={{ display: 'flex', gap: '0.3rem', alignItems: 'center' }}>
+               <div id="pill-shift" className="metric-pill compact-pill" title="SHIFT" style={{ padding: '0.1rem 0.3rem' }}>
+                 <span style={{ fontSize: '0.55rem' }}>🏃{formatHoursMins(shiftElapsedMins)}</span>
+               </div>
+               <div id="pill-logoff" className="metric-pill compact-pill" title="LOG OFF" style={{ background: 'rgba(245,158,11,0.08)', border: '1px solid rgba(245,158,11,0.2)', padding: '0.1rem 0.3rem' }}>
+                 <span style={{ color: '#fcd34d', fontSize: '0.55rem' }}>🚪{getCompensatedLogOff()}</span>
+               </div>
+            </div>
+          </div>
+
+          <div id="controls-right-col" style={{ display: 'flex', flexDirection: 'row', flexWrap: 'wrap', gap: '0.25rem', alignItems: 'center', justifyContent: 'flex-end', ...helpStyle }}>
             <HelpLabel text="Tools & Rates" />
             
             {/* Rate Pills */}
-            <div id="right-pills-vertical" style={{ display: 'flex', flexDirection: 'column', gap: '0.04rem', alignItems: 'center' }}>
+            <div id="right-pills-vertical" style={{ display: 'flex', flexDirection: 'row', flexWrap: 'wrap', gap: '0.2rem', alignItems: 'center' }}>
               {callsToday > 0 ? (
                 <div id="pill-call-rate" className="metric-pill compact-pill" title={`CALL METRICS: You've taken ${callsToday} calls today. Your average call duration is ${avgCallMins} minutes per call.`} style={{ background: 'rgba(59,130,246,0.08)', border: '1px solid rgba(59,130,246,0.2)', padding: '0.05rem 0.15rem' }}>
                   <span style={{ fontSize: '0.55rem', color: '#93c5fd', fontWeight: 700 }}>📞{callsToday}×{avgCallMins}m</span>
@@ -849,6 +841,7 @@ export const DashboardHeader = ({ onStartAudio, onStopAudio, onReconnectStream, 
                 <button id="header-calldetect-btn" className="btn-icon tiny-btn" onClick={() => setIsCallDetectionEnabled(!isCallDetectionEnabled)} style={{ opacity: isCallDetectionEnabled ? 1 : 0.3, background: isCallDetectionEnabled ? 'rgba(16,185,129,0.1)' : 'transparent', width: '22px', height: '22px', fontSize: '0.8rem' }} title="Call Detection">{isCallDetectionEnabled ? '📡' : '📵'}</button>
                 <button id="header-focus-btn" className="btn-icon tiny-btn" onClick={() => setCallFocusMode(!callFocusMode)} style={{ opacity: callFocusMode ? 1 : 0.3, background: callFocusMode ? 'rgba(16,185,129,0.1)' : 'transparent', width: '22px', height: '22px', fontSize: '0.8rem' }} title="Call Focus: auto-hide sidebars during calls">{callFocusMode ? '🎯' : '🔲'}</button>
             </div>
+          </div>
           </div>
         </div>
       )}
@@ -1057,7 +1050,7 @@ export const DashboardHeader = ({ onStartAudio, onStopAudio, onReconnectStream, 
 
       {/* Progress bars (Always Visible) */}
       {dailyGoal > 0 && (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem', padding: '0.3rem 0.4rem 0.1rem' }}>
+        <div className="header-progress-stack" style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem', padding: '0.25rem 0.15rem 0.1rem' }}>
           {/* Monthly bar */}
           <div style={{ display: 'flex', flexDirection: 'column', gap: '0.15rem' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.6rem', color: 'var(--text-muted)', alignItems: 'center' }}>

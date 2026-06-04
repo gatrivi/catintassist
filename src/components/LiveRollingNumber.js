@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { RollingNumber } from './RollingNumber';
 
-const HEIGHT_BY_SIZE = { xs: 10, sm: 12, md: 14, lg: 16, xl: 20 };
+const HEIGHT_BY_SIZE = { xs: 14, sm: 16, md: 20, lg: 24, xl: 30 };
 
 /**
  * Smoothly increases displayed value between parent ticks (e.g. once per second),

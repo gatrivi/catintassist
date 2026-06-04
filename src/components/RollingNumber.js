@@ -58,7 +58,7 @@ const RollingDigit = ({ digit, height = 14, speed = 0.35, liveMode = false }) =>
         className="digit-strip"
         style={{
           transform: `translateY(-${offset}px)`,
-          transition: noAnim ? 'none' : `transform ${speed}s cubic-bezier(0.34, 1.2, 0.64, 1)`,
+          transition: noAnim ? 'none' : `transform ${liveMode ? Math.min(speed, 0.14) : speed}s cubic-bezier(0.34, 1.2, 0.64, 1)`,
         }}
       >
         {strip.map((n, i) => (
