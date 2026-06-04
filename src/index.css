@@ -1,4 +1,6 @@
 :root {
+  /* Chrome split-pane tab (~1 dock button) — keep right-edge controls clickable */
+  --chrome-split-inset: 52px;
   --bg-color: rgba(2, 6, 23, 0.85);
   --panel-bg: rgba(7, 14, 35, 0.6);
   --panel-border: rgba(30, 41, 59, 0.5);
@@ -460,7 +462,7 @@ body {
 
 .soundboard-show-fab {
   position: fixed;
-  right: 12px;
+  right: calc(12px + var(--chrome-split-inset));
   bottom: 56px;
   z-index: 9998;
   padding: 0.55rem 1rem;
@@ -1490,10 +1492,69 @@ body {
   position: fixed;
   bottom: 6px;
   left: 50%;
-  transform: translateX(-50%);
+  transform: translateX(calc(-50% - var(--chrome-split-inset)));
   display: flex;
   gap: 8px;
   z-index: 9999;
+}
+
+.transcription-footer {
+  padding-right: calc(8px + var(--chrome-split-inset)) !important;
+}
+
+/* Bubble center rail: T/P/R + count + play on one line (~6ch) */
+.bubble-rail {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 1px;
+  width: 6ch;
+  max-width: 6ch;
+  min-width: 6ch;
+  padding: 0;
+  line-height: 1;
+  align-self: center;
+  font-family: var(--font-mono);
+  font-size: 0.55rem;
+}
+
+.bubble-rail-tpr {
+  flex-shrink: 0;
+  display: block;
+}
+
+.bubble-rail-wc {
+  flex: 0 0 2ch;
+  width: 2ch;
+  text-align: center;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+}
+
+.bubble-rail-play {
+  flex: 0 0 1ch;
+  width: 1ch;
+  min-width: 12px;
+  height: 12px;
+  padding: 0;
+  margin: 0;
+  border: none;
+  background: transparent;
+  color: #94a3b8;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.bubble-rail-play:disabled {
+  opacity: 0.25;
+  cursor: not-allowed;
+}
+
+.bubble-rail-play:not(:disabled):hover {
+  color: #38bdf8;
 }
 
 /* ── Desk Exercise Widget ── */

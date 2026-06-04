@@ -83,7 +83,7 @@ export const useTranslate = (text, lang, prefetchTTS, shouldPrefetch, mood = 'de
 
     if (IS_TOO_LONG || IS_FILLER || IS_TOO_SHORT) {
       setEngineStatus(IS_TOO_LONG ? 'ready' : 'idle');
-      if (IS_TOO_LONG) setTranslation(`(Text too long for direct translation [v4.28.0])`);
+      if (IS_TOO_LONG) setTranslation(`(Text too long for direct translation [v4.29.0])`);
       return;
     }
 
@@ -116,7 +116,7 @@ export const useTranslate = (text, lang, prefetchTTS, shouldPrefetch, mood = 'de
       const langPair = langPairRef.current || currentLangPair;
       const [sLang, tLang] = langPair.split('-');
 
-      console.log(`[${t()}] [v4.28.0] Translating ${langPair} (${wordCount}w): "${normText.substring(0, 30)}..."`);
+      console.log(`[${t()}] [v4.29.0] Translating ${langPair} (${wordCount}w): "${normText.substring(0, 30)}..."`);
 
       setIsTranslating(true);
       setEngineStatus('translating');

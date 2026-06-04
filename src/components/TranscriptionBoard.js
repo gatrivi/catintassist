@@ -113,42 +113,67 @@ const InteractiveText = ({ text, scramble = true, applyNumberWords = false }) =>
   );
 };
 
-const StatusProgress = ({ status }) => {
+/** Compact T/P/R + word count + play — one line, ~6ch wide (split-pane friendly). */
+const BubbleRail = ({
+  engineStatus,
+  wordCount,
+  turnWordCount,
+  isRedundantCount,
+  isThisPlaying,
+  canPlay,
+  onPlayClick,
+}) => {
   const steps = ['translating', 'processing', 'ready'];
-  const currentIndex = steps.indexOf(status === 'buffering' ? 'processing' : status);
-  const labels = ['T', 'P', 'R'];
-  const tooltips = [
-    'Transcribing: Converting audio to text...',
-    'Processing: Routing through translation engines...',
-    'Ready: Translation delivered and ready for playback'
-  ];
-  
+  const currentIndex = steps.indexOf(engineStatus === 'buffering' ? 'processing' : engineStatus);
+  const wc = turnWordCount || wordCount;
+  const showWc = !isRedundantCount && wc > 0;
+  const wcColor = wc >= 40 ? 'var(--danger)' : wc >= 34 ? '#f59e0b' : 'var(--text-muted)';
+  const tprTitle = 'T=transcribe · P=process · R=ready';
+
   return (
-    <div style={{ display: 'flex', gap: '2px', alignItems: 'center', height: '6px', width: '100%', marginBottom: '4px' }}>
-      {steps.map((step, i) => (
-        <div 
-          key={step} 
-          title={tooltips[i]}
-          className="status-bar-segment"
-          style={{ 
-            flex: 1, 
-            height: '100%', 
-            borderRadius: '1px',
-            background: i <= currentIndex ? (step === 'ready' ? '#10b981' : '#3b82f6') : 'rgba(255,255,255,0.1)',
-            boxShadow: (i === currentIndex && step !== 'ready') ? '0 0 4px #3b82f6' : 'none',
-            transition: 'all 0.3s',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            fontSize: '0.4rem',
-            color: 'rgba(255,255,255,0.8)',
-            fontWeight: 900,
-            cursor: 'help'
-          }}
-        >
-          {labels[i]}
-        </div>
-      ))}
+    <div className="bubble-rail" title={tprTitle}>
+      <svg className="bubble-rail-tpr" width="11" height="8" viewBox="0 0 11 8" aria-hidden>
+        {[0, 1, 2].map((i) => (
+          <rect
+            key={i}
+            x={i * 4}
+            y="0"
+            width="2.5"
+            height="8"
+            rx="0.5"
+            fill={
+              i <= currentIndex
+                ? i === 2
+                  ? '#10b981'
+                  : '#3b82f6'
+                : 'rgba(255,255,255,0.12)'
+            }
+          />
+        ))}
+      </svg>
+      {showWc && (
+        <span className="bubble-rail-wc" style={{ color: wcColor }} title={`${wc} words`}>
+          {wc > 99 ? '99' : wc}
+        </span>
+      )}
+      <button
+        type="button"
+        className="bubble-rail-play"
+        onClick={onPlayClick}
+        disabled={!isThisPlaying && !canPlay}
+        title={isThisPlaying ? 'Stop' : canPlay ? 'Play translation' : 'Waiting for audio'}
+      >
+        <svg width="10" height="10" viewBox="0 0 12 12" aria-hidden>
+          {isThisPlaying ? (
+            <>
+              <rect x="2" y="2" width="3" height="8" fill="currentColor" />
+              <rect x="7" y="2" width="3" height="8" fill="currentColor" />
+            </>
+          ) : (
+            <path d="M2 1.5 L9 6 L2 10.5 Z" fill="currentColor" />
+          )}
+        </svg>
+      </button>
     </div>
   );
 };
@@ -173,35 +198,25 @@ const TranslatedBubble = ({ id, text, lang, playTTS, stopTTS, playingUrl, prefet
   const targetUsesNumberWords = (targetLang || 'en').toLowerCase().startsWith('en');
 
   return (
-    <div style={{ display: 'flex', gap: '0.4rem', marginTop: '0.1rem', flexDirection: reverse ? 'row-reverse' : 'row', alignItems: 'flex-start' }}>
+    <div style={{ display: 'flex', gap: '0.35rem', marginTop: '0.05rem', flexDirection: reverse ? 'row-reverse' : 'row', alignItems: 'center' }}>
       <div style={{ flex: 1, textAlign: reverse ? 'right' : 'left', minWidth: 0 }}>
-        <div style={{ color: transcriptColor, fontWeight: 400, lineHeight: 1.25, fontSize: '0.9rem', wordBreak: 'break-word' }}>
+        <div style={{ color: transcriptColor, fontWeight: 400, lineHeight: 1.2, fontSize: '0.9rem', wordBreak: 'break-word' }}>
           <InteractiveText text={text} scramble={true} applyNumberWords={sourceUsesNumberWords} />
         </div>
       </div>
 
-      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', width: '28px', flexShrink: 0, marginTop: '2px' }}>
-        <StatusProgress status={engineStatus} />
-        {(!isRedundantCount && (turnWordCount || wordCount) > 0) && (
-          <span 
-            style={{ fontSize: '0.55rem', fontWeight: 700, color: (turnWordCount || wordCount) >= 40 ? 'var(--danger)' : (turnWordCount || wordCount) >= 34 ? '#f59e0b' : 'var(--text-muted)', marginBottom: '1px' }}
-            title={turnWordCount ? `Current Turn: ${turnWordCount} words (Bubble: ${wordCount})` : ""}
-          >
-            {turnWordCount || wordCount}
-          </span>
-        )}
-        <button 
-          onClick={() => isThisPlaying ? stopTTS() : playTTS(translation, targetLang, audioUrl)} 
-          disabled={!isThisPlaying && (!translation || !audioUrl)}
-          style={{ background: 'transparent', border: 'none', cursor: (!isThisPlaying && (!translation || !audioUrl)) ? 'not-allowed' : 'pointer', fontSize: '1.1rem', padding: 0, opacity: (!isThisPlaying && (!translation || !audioUrl)) ? 0.3 : 1 }}
-          title={isThisPlaying ? "Stop" : (!audioUrl ? "Engine working..." : "Play")}
-        >
-          🔊
-        </button>
-      </div>
+      <BubbleRail
+        engineStatus={engineStatus}
+        wordCount={wordCount}
+        turnWordCount={turnWordCount}
+        isRedundantCount={isRedundantCount}
+        isThisPlaying={isThisPlaying}
+        canPlay={Boolean(translation && audioUrl)}
+        onPlayClick={() => (isThisPlaying ? stopTTS() : playTTS(translation, targetLang, audioUrl))}
+      />
 
       <div style={{ flex: 1, color: translationColor, textAlign: reverse ? 'left' : 'right', minWidth: 0 }}>
-        <div style={{ fontWeight: 400, fontStyle: 'italic', lineHeight: 1.25, fontSize: '0.85rem', wordBreak: 'break-word' }}>
+        <div style={{ fontWeight: 400, fontStyle: 'italic', lineHeight: 1.2, fontSize: '0.85rem', wordBreak: 'break-word' }}>
           {translation ? (
             <InteractiveText text={translation} scramble={true} applyNumberWords={targetUsesNumberWords} />
           ) : engineStatus === 'ready' ? (
@@ -398,7 +413,7 @@ export const TranscriptionBoard = ({ captions, onClearAll, onReconnect, lastData
 
       <div 
         className="scroll-area" 
-        style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', padding: '1rem' }} 
+        style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', padding: '1rem', paddingRight: 'calc(1rem + var(--chrome-split-inset, 52px))' }} 
         onScroll={handleScroll}
         onWheel={handleWheel}
         ref={scrollAreaRef}
@@ -476,8 +491,8 @@ export const TranscriptionBoard = ({ captions, onClearAll, onReconnect, lastData
             <div key={cap.id || i} className="transcript-bubble" style={{
               position: 'relative',
               opacity: cap.isFinal === false ? 0.6 : 1,
-              marginTop: isSplitContinuation ? '0rem' : '0.4rem',
-              padding: '0.4rem',
+              marginTop: isSplitContinuation ? '0rem' : '0.25rem',
+              padding: '0.25rem 0.35rem',
               border: '1px solid transparent',
               background: getBubbleStyle(cap.text, cap.isFinal === false, cap.lang).backgroundColor,
               ...getBubbleStyle(cap.text, cap.isFinal === false, cap.lang)
@@ -516,7 +531,7 @@ export const TranscriptionBoard = ({ captions, onClearAll, onReconnect, lastData
       </div>
 
       {/* Simplified Footer Toolbar */}
-      <div style={{ 
+      <div className="transcription-footer" style={{ 
         display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '4px 8px',
         borderTop: '1px solid #18181b', background: 'var(--panel-bg)', fontFamily: 'var(--font-mono, monospace)', fontSize: '0.65rem'
       }}>
