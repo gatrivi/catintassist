@@ -27,7 +27,8 @@ const CloudSyncIndicator = () => {
 
 const Dashboard = () => {
   const { startRecording, stopRecording, reconnectStream, captions, clearCaptions, sttLanguage, toggleLanguage, connectionState, connectionMessage, lastDataTime } = useDeepgram();
-  const { isNotesOpen, setIsNotesOpen, isToolbarVisible, isActive, isBreakActive, minutesSinceLastBreak, startSession, clearZombieState, callFocusMode } = useSession();
+  const { isNotesOpen, setIsNotesOpen, isToolbarVisible, setIsToolbarVisible, isActive, isBreakActive, minutesSinceLastBreak, startSession, clearZombieState, callFocusMode } = useSession();
+  const canShowSoundboard = !isActive || !callFocusMode;
   const { playCoin } = useProgressiveAudio();
   const [isEditingBg, setIsEditingBg] = useState(false);
   
@@ -157,7 +158,7 @@ const Dashboard = () => {
         display: 'flex', alignItems: 'center', gap: '4px'
       }}>
         <CloudSyncIndicator />
-        v4.27.0 (Full Stack)
+        v4.28.0 (Full Stack)
       </div>
 
       <div id="top-mic-bar-container" style={{ position: 'fixed', top: 0, left: 0, right: 0, height: '3px', zIndex: 9999, pointerEvents: 'none' }}>
@@ -191,8 +192,22 @@ const Dashboard = () => {
         </div>
         {(isNotesOpen || ((!isActive || !callFocusMode) && isToolbarVisible)) && (
           <div className={`tools-column ${isNotesOpen ? 'notes-open' : ''}`}>
-             {(!isActive || !callFocusMode) && isToolbarVisible && (
+             {canShowSoundboard && isToolbarVisible && (
                <div className="glass-panel tools-soundboard" style={{ overflow: 'hidden', display: 'flex', flexDirection: 'column', flex: isEditingBg ? '1' : '1.5' }}>
+                 <div className="soundboard-chrome">
+                   <div className="soundboard-chrome-label">
+                     <span className="soundboard-chrome-title">🔊 SOUNDBOARD</span>
+                     <span className="soundboard-chrome-hint">Audio routing WIP — hide while on calls</span>
+                   </div>
+                   <button
+                     type="button"
+                     className="soundboard-hide-btn"
+                     onClick={() => setIsToolbarVisible(false)}
+                     title="Hide soundboard panel"
+                   >
+                     ✕ HIDE SOUNDBOARD
+                   </button>
+                 </div>
                  <GreetingsPanel onEditModeChange={setIsEditingBg} />
                </div>
              )}
@@ -205,6 +220,17 @@ const Dashboard = () => {
           </div>
         )}
       </main>
+
+      {canShowSoundboard && !isToolbarVisible && (
+        <button
+          type="button"
+          className="soundboard-show-fab"
+          onClick={() => setIsToolbarVisible(true)}
+          title="Show soundboard panel"
+        >
+          🔊 SHOW SOUNDBOARD
+        </button>
+      )}
 
       <div className="habit-dock">
         <DeskExerciseWidget />

@@ -576,6 +576,16 @@ export const DashboardHeader = ({ onStartAudio, onStopAudio, onReconnectStream, 
           <button className="btn-icon tiny-btn" onClick={() => setCallModeExpanded(false)} style={{ width: '24px', height: '24px', fontSize: '0.7rem' }} title="Compact Header">🔽</button>
         )}
         <button className="btn-icon tiny-btn" onClick={() => setIsNotesOpen(!isNotesOpen)} style={{ opacity: isNotesOpen ? 1 : 0.45, width: '24px', height: '24px', fontSize: '0.75rem' }} title="Quick Notes">📝</button>
+        {(!isActive || !callFocusMode) && (
+          <button
+            type="button"
+            className={`soundboard-header-toggle ${isToolbarVisible ? 'is-open' : ''}`}
+            onClick={() => setIsToolbarVisible(!isToolbarVisible)}
+            title={isToolbarVisible ? 'Hide soundboard' : 'Show soundboard'}
+          >
+            {isToolbarVisible ? '🔊 HIDE' : '🔊 SHOW'}
+          </button>
+        )}
       </div>
     </div>
   );

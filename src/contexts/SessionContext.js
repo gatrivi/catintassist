@@ -273,7 +273,7 @@ export const SessionProvider = ({ children }) => {
   const [isNotesOpen, setIsNotesOpen] = useState(() => JSON.parse(localStorage.getItem('catint_notes_open')) || false);
   const [isToolbarVisible, setIsToolbarVisible] = useState(() => {
     const saved = localStorage.getItem('catint_toolbar_visible');
-    return saved !== null ? JSON.parse(saved) : true;
+    return saved !== null ? JSON.parse(saved) : false;
   });
   const [isHeatmapOpen, setIsHeatmapOpen] = useState(false);
   const [isScoreboardHelpVisible, setIsScoreboardHelpVisible] = useState(false);

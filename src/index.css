@@ -400,6 +400,105 @@ body {
   backdrop-filter: blur(6px);
 }
 
+/* ── Soundboard hide / show (high visibility) ───────────────────────────── */
+.soundboard-chrome {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  flex-shrink: 0;
+  padding: 0.45rem 0.5rem;
+  background: linear-gradient(90deg, rgba(239, 68, 68, 0.25), rgba(245, 158, 11, 0.2));
+  border-bottom: 2px solid #ef4444;
+}
+
+.soundboard-chrome-label {
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+  min-width: 0;
+}
+
+.soundboard-chrome-title {
+  font-size: 0.75rem;
+  font-weight: 900;
+  letter-spacing: 0.08em;
+  color: #fecaca;
+}
+
+.soundboard-chrome-hint {
+  font-size: 0.55rem;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.55);
+}
+
+.soundboard-hide-btn {
+  flex-shrink: 0;
+  padding: 0.45rem 0.65rem;
+  border: 2px solid #ef4444;
+  border-radius: 6px;
+  background: #ef4444;
+  color: #000;
+  font-size: 0.7rem;
+  font-weight: 900;
+  letter-spacing: 0.04em;
+  cursor: pointer;
+  box-shadow: 0 0 16px rgba(239, 68, 68, 0.55);
+  animation: soundboardHidePulse 2s ease-in-out infinite;
+}
+
+.soundboard-hide-btn:hover {
+  background: #dc2626;
+  border-color: #fff;
+  color: #fff;
+}
+
+@keyframes soundboardHidePulse {
+  0%, 100% { box-shadow: 0 0 10px rgba(239, 68, 68, 0.4); }
+  50% { box-shadow: 0 0 22px rgba(239, 68, 68, 0.85); }
+}
+
+.soundboard-show-fab {
+  position: fixed;
+  right: 12px;
+  bottom: 56px;
+  z-index: 9998;
+  padding: 0.55rem 1rem;
+  border: 2px solid #f59e0b;
+  border-radius: 8px;
+  background: rgba(245, 158, 11, 0.95);
+  color: #000;
+  font-size: 0.8rem;
+  font-weight: 900;
+  letter-spacing: 0.05em;
+  cursor: pointer;
+  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.5), 0 0 12px rgba(245, 158, 11, 0.5);
+}
+
+.soundboard-show-fab:hover {
+  background: #fbbf24;
+  border-color: #fff;
+}
+
+.soundboard-header-toggle {
+  padding: 0.2rem 0.45rem;
+  border-radius: 4px;
+  border: 2px solid #f59e0b;
+  background: rgba(245, 158, 11, 0.2);
+  color: #fbbf24;
+  font-size: 0.58rem;
+  font-weight: 900;
+  letter-spacing: 0.03em;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.soundboard-header-toggle.is-open {
+  border-color: #ef4444;
+  background: rgba(239, 68, 68, 0.25);
+  color: #fecaca;
+}
+
 .dashboard-title-row {
   display: flex;
   justify-content: space-between;
