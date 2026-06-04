@@ -272,6 +272,13 @@ export const SessionProvider = ({ children }) => {
   const [isEditingScoreboard, setIsEditingScoreboard] = useState(false);
   const [isNotesOpen, setIsNotesOpen] = useState(() => JSON.parse(localStorage.getItem('catint_notes_open')) || false);
   const [isToolbarVisible, setIsToolbarVisible] = useState(() => {
+    // v4.32: soundboard hidden by default (one-time reset for existing users)
+    const migrateKey = 'catint_soundboard_default_hidden_v432';
+    if (!localStorage.getItem(migrateKey)) {
+      localStorage.setItem('catint_toolbar_visible', 'false');
+      localStorage.setItem(migrateKey, '1');
+      return false;
+    }
     const saved = localStorage.getItem('catint_toolbar_visible');
     return saved !== null ? JSON.parse(saved) : false;
   });

@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { AppGuideButton } from './AppGuide';
-import { RollingNumber } from './RollingNumber';
+import { StatNumber } from './StatNumber';
 
 // ─── ScoreboardTooltip ────────────────────────────────────────────────────────
 // A lightweight 'toastie' popover for dynamic info on hover.
@@ -362,9 +362,9 @@ export const GameScoreboard = ({
               label={
                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.2rem' }}>
                   <span>earned</span>
-                  <RollingNumber value={liveDailyArs} prefix="AR$" height={10} />
+                  <StatNumber value={liveDailyArs} prefix="AR$" size="xs" />
                   <span>/</span>
-                  <RollingNumber value={dailyTargetArs} prefix="AR$" height={10} />
+                  <StatNumber value={dailyTargetArs} prefix="AR$" size="xs" />
                 </div>
               }
               sublabel={`${dayArsPct}%`}
@@ -377,9 +377,9 @@ export const GameScoreboard = ({
               label={
                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.2rem' }}>
                   <span>mins</span>
-                  <RollingNumber value={totalDailyMins} suffix="m" height={10} />
+                  <StatNumber value={totalDailyMins} suffix="m" size="xs" />
                   <span>/</span>
-                  <RollingNumber value={dailyGoal} suffix="m" height={10} />
+                  <StatNumber value={dailyGoal} suffix="m" size="xs" />
                 </div>
               }
               sublabel={`${dayMinPct}%`}
@@ -397,9 +397,9 @@ export const GameScoreboard = ({
               label={
                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.2rem' }}>
                   <span>break</span>
-                  <RollingNumber value={breakLeft} suffix="m" height={10} />
+                  <StatNumber value={breakLeft} suffix="m" size="xs" />
                   <span>/</span>
-                  <RollingNumber value={breakLimit} suffix="m" height={10} />
+                  <StatNumber value={breakLimit} suffix="m" size="xs" />
                 </div>
               }
               sublabel={breakLeft > 0 ? 'READY' : 'SPENT'}
@@ -434,9 +434,9 @@ export const GameScoreboard = ({
               label={
                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.2rem' }}>
                   <span>monthly</span>
-                  <RollingNumber value={monthlyArs} prefix="AR$" height={10} />
+                  <StatNumber value={monthlyArs} prefix="AR$" size="xs" />
                   <span>/</span>
-                  <RollingNumber value={monthlyTargetArs} prefix="AR$" height={10} />
+                  <StatNumber value={monthlyTargetArs} prefix="AR$" size="xs" />
                 </div>
               }
               sublabel={`${moArsPct}%`}
@@ -449,9 +449,9 @@ export const GameScoreboard = ({
               label={
                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.2rem' }}>
                   <span>ladder</span>
-                  <RollingNumber value={stats.monthlyMinutes} suffix="m" height={10} />
+                  <StatNumber value={stats.monthlyMinutes} suffix="m" size="xs" />
                   <span>/</span>
-                  <RollingNumber value={stats.goalMinutes} suffix="m" height={10} />
+                  <StatNumber value={stats.goalMinutes} suffix="m" size="xs" />
                 </div>
               }
               sublabel={`${moMinPct}%`}

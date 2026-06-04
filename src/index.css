@@ -980,23 +980,32 @@ body {
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  padding: 0.05rem 0.15rem;
+  padding: 0.15rem 0.2rem;
   background: rgba(255,255,255,0.06);
   border-radius: 3px;
   border: 1px solid rgba(255,255,255,0.08);
-  overflow: hidden;
-  min-width: 45px;
-  min-height: 32px;
+  overflow: visible;
+  min-width: 52px;
+  min-height: 38px;
 }
 
 .metric-cell-val {
   position: relative;
   z-index: 5;
-  font-weight: 800;
-  font-size: 1.15rem;
-  letter-spacing: -0.01em;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  max-width: 100%;
+  min-height: 1.1em;
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+  font-weight: 700;
+  font-size: 0.72rem;
+  line-height: 1.15;
+  letter-spacing: 0;
   white-space: nowrap;
-  color: rgba(255, 255, 255, 0.9);
+  color: rgba(255, 255, 255, 0.92);
 }
 
 .metric-cell-label {
@@ -1280,15 +1289,40 @@ body {
   30% { transform: translate(20px, -40px) scale(1.2); opacity: 0.8; }
   100% { transform: translate(50vw, -100vh) scale(0.3); opacity: 0; }
 }
-/* ── ROLLING NUMBERS (Mechanical Counter Vibes) ── */
+/* ── Stat numbers (stable monospace, no rolling strip) ── */
+.stat-number {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+  font-weight: 700;
+  line-height: 1.15;
+  white-space: nowrap;
+  display: inline-block;
+  max-width: 100%;
+  overflow: visible;
+}
+
+.metric-cell-val .stat-number {
+  overflow: visible;
+  text-overflow: clip;
+}
+
+.stat-number--xs { font-size: 0.58rem; }
+.stat-number--sm { font-size: 0.65rem; }
+.stat-number--md { font-size: 0.72rem; }
+.stat-number--lg { font-size: 0.78rem; }
+.stat-number--xl { font-size: 0.95rem; }
+
+.income-card .stat-number--xl {
+  font-size: 1rem;
+}
+
+/* Legacy rolling-number (unused in scoreboard; kept for reference) */
 .rolling-number-wrapper {
   overflow: hidden;
-  font-family: 'JetBrains Mono', 'Roboto Mono', monospace; /* Monospace is better for steady alignment */
+  font-family: var(--font-mono);
   font-variant-numeric: tabular-nums;
   display: inline-flex;
   align-items: center;
-  mask-image: linear-gradient(to bottom, transparent, black 15%, black 85%, transparent);
-  -webkit-mask-image: linear-gradient(to bottom, transparent, black 15%, black 85%, transparent);
 }
 
 .digit-container {
