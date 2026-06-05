@@ -13,6 +13,7 @@ import { TimeEditModal } from './TimeEditModal';
 import { GameScoreboard } from './GameScoreboard';
 import { AppGuideButton } from './AppGuide';
 import { WorkspaceViewSwitcher } from './WorkspaceViewSwitcher';
+import { HoverTooltip } from './HoverTooltip';
 
 const CelebrationParticles = ({ type, label, coins, onDismiss }) => {
   const [isClosing, setIsClosing] = useState(false);
@@ -131,13 +132,35 @@ export const DashboardHeader = ({
   onCycleWorkspace,
   showStudioHint = false,
 }) => {
-  const { isActive, sessionSeconds, sessionEarnings, stats, updateStat, stopSession, endDay, RATE_PER_MINUTE, arsRate, setArsRate, isBreakActive, breakSeconds, startBreak, stopBreak, availSeconds, isEditingScoreboard, setIsEditingScoreboard, visibleCards, isNotesOpen, setIsNotesOpen, isToolbarVisible, setIsToolbarVisible, isHeatmapOpen, setIsHeatmapOpen, isZombieCall, isScoreboardHelpVisible, setIsScoreboardHelpVisible, isHold, setIsHold, holdSeconds, dailyTimeline, historyTimeline, dailyLog, lastActivityTime, isCallDetectionEnabled, setIsCallDetectionEnabled, callFocusMode, setCallFocusMode, minutesSinceLastBreak } = useSession();
+  const { isActive, sessionSeconds, sessionEarnings, stats, updateStat, stopSession, endDay, RATE_PER_MINUTE, arsRate, setArsRate, isBreakActive, breakSeconds, startBreak, stopBreak, availSeconds, isEditingScoreboard, setIsEditingScoreboard, visibleCards, isNotesOpen, setIsNotesOpen, isToolbarVisible, setIsToolbarVisible, isHeatmapOpen, setIsHeatmapOpen, isZombieCall, isScoreboardHelpVisible, setIsScoreboardHelpVisible, hideScoreboardLabels, setHideScoreboardLabels, isHold, setIsHold, holdSeconds, dailyTimeline, historyTimeline, dailyLog, lastActivityTime, isCallDetectionEnabled, setIsCallDetectionEnabled, callFocusMode, setCallFocusMode, minutesSinceLastBreak } = useSession();
 
   const headerMinimal = !isActive && offCallWorkspace === 'soundboard';
   const scoreboardFill = !isActive && offCallWorkspace === 'scoreboard';
   const studioView = offCallWorkspace === 'soundboard' ? 'soundboard' : 'scoreboard';
 
   const helpStyle = isScoreboardHelpVisible ? { outline: '1px dashed #3b82f6', position: 'relative' } : {};
+  const hideLabels = hideScoreboardLabels;
+  const hideLabelsClass = hideLabels ? ' hide-sb-labels' : '';
+  const MetricTip = ({ tip, className, style, onClick, children }) => hideLabels ? (
+    <HoverTooltip tip={tip} className={className} style={style} onClick={onClick} block>
+      {children}
+    </HoverTooltip>
+  ) : (
+    <div className={className} style={style} onClick={onClick} title={tip}>
+      {children}
+    </div>
+  );
+  const LabelsToggleBtn = ({ className = 'btn-icon tiny-btn', style }) => (
+    <button
+      id="header-labels-btn"
+      className={`${className}${hideLabels ? ' active' : ''}`}
+      onClick={() => setHideScoreboardLabels(!hideLabels)}
+      style={{ opacity: hideLabels ? 1 : 0.45, ...style }}
+      title={hideLabels ? 'Show text labels' : 'Hide text labels (hover for details)'}
+    >
+      {hideLabels ? '🔢' : '🏷️'}
+    </button>
+  );
   const HelpLabel = ({ text }) => isScoreboardHelpVisible ? (
     <div style={{ position: 'absolute', top: '-8px', left: '4px', fontSize: '0.45rem', background: '#3b82f6', color: 'white', padding: '0 3px', borderRadius: '2px', zIndex: 100, pointerEvents: 'none', fontWeight: 'bold', textTransform: 'uppercase', boxShadow: '0 1px 3px rgba(0,0,0,0.3)' }}>{text}</div>
   ) : null;
@@ -612,6 +635,7 @@ export const DashboardHeader = ({
           <button className="btn-icon tiny-btn" onClick={() => setCallModeExpanded(false)} style={{ width: '24px', height: '24px', fontSize: '0.7rem' }} title="Compact Header">🔽</button>
         )}
         <button className="btn-icon tiny-btn" onClick={() => setIsNotesOpen(!isNotesOpen)} style={{ opacity: isNotesOpen ? 1 : 0.45, width: '24px', height: '24px', fontSize: '0.75rem' }} title="Quick Notes">📝</button>
+        <LabelsToggleBtn style={{ width: '24px', height: '24px', fontSize: '0.75rem' }} />
         <AppGuideButton />
       </div>
     </div>
@@ -678,97 +702,87 @@ export const DashboardHeader = ({
                 </div>
 
                 <div className="flip-back">
-                  <div id="numeric-metric-grid" className="metric-grid metric-grid--scoreboard">
+                  <div id="numeric-metric-grid" className={`metric-grid metric-grid--scoreboard${hideLabelsClass}`}>
                     {/* 1. Mins worked today */}
-                    <div className={`metric-cell ${isEditingScoreboard ? 'grid-edit-mode' : ''}`} title="Minutes worked today (Click to toggle H:M)" style={{ position: 'relative', background: 'rgba(59,130,246,0.06)', cursor: 'pointer' }} onClick={() => setShowAsHours(!showAsHours)}>
+                    <MetricTip tip="Minutes worked today (click to toggle H:M)" className={`metric-cell ${isEditingScoreboard ? 'grid-edit-mode' : ''}`} style={{ position: 'relative', background: 'rgba(59,130,246,0.06)', cursor: 'pointer' }} onClick={() => setShowAsHours(!showAsHours)}>
                       <HelpLabel text="1. MINS TODAY" />
                       <div className="metric-cell-val" style={{ color: '#60a5fa' }}><StatNumber value={formatValue(totalDailyMins)} size="lg" format={false} /></div>
-                      <div className="metric-cell-label">MINS TODAY</div>
-                    </div>
+                      <div className="metric-cell-label sb-text-label">MINS TODAY</div>
+                    </MetricTip>
 
-                    <div className={`metric-cell ${isEditingScoreboard ? 'grid-edit-mode' : ''}`} title="Minutes left for daily goal (Click to toggle H:M)" style={{ position: 'relative', background: 'rgba(239,68,68,0.04)', cursor: 'pointer' }} onClick={() => setShowAsHours(!showAsHours)}>
+                    <MetricTip tip="Minutes left for daily goal (click to toggle H:M)" className={`metric-cell ${isEditingScoreboard ? 'grid-edit-mode' : ''}`} style={{ position: 'relative', background: 'rgba(239,68,68,0.04)', cursor: 'pointer' }} onClick={() => setShowAsHours(!showAsHours)}>
                       <HelpLabel text="2. LEFT TODAY" />
                       <div className="metric-cell-val" style={{ color: '#fca5a5' }}><StatNumber value={formatValue(Math.max(0, dailyGoal - totalDailyMins))} size="lg" format={false} /></div>
-                      <div className="metric-cell-label">LEFT TODAY</div>
-                    </div>
+                      <div className="metric-cell-label sb-text-label">LEFT TODAY</div>
+                    </MetricTip>
 
-                    {/* 3. Goal mins */}
-                    <div className={`metric-cell ${isEditingScoreboard ? 'grid-edit-mode' : ''}`} title="Target goal minutes for today (Click to toggle H:M)" style={{ position: 'relative', background: 'rgba(52,211,153,0.04)', cursor: 'pointer' }} onClick={() => setShowAsHours(!showAsHours)}>
+                    <MetricTip tip="Target goal minutes for today (click to toggle H:M)" className={`metric-cell ${isEditingScoreboard ? 'grid-edit-mode' : ''}`} style={{ position: 'relative', background: 'rgba(52,211,153,0.04)', cursor: 'pointer' }} onClick={() => setShowAsHours(!showAsHours)}>
                       <HelpLabel text="3. TODAY GOAL" />
                       <div className="metric-cell-val"><StatNumber value={formatValue(dailyGoal)} size="lg" format={false} /></div>
-                      <div className="metric-cell-label">TODAY GOAL</div>
-                    </div>
+                      <div className="metric-cell-label sb-text-label">TODAY GOAL</div>
+                    </MetricTip>
 
-                    {/* 4. Money today */}
-                    <div className={`metric-cell ${isEditingScoreboard ? 'grid-edit-mode' : ''}`} title="Money earned today" style={{ position: 'relative', background: 'rgba(16,185,129,0.06)' }}>
+                    <MetricTip tip="Money earned today" className={`metric-cell ${isEditingScoreboard ? 'grid-edit-mode' : ''}`} style={{ position: 'relative', background: 'rgba(16,185,129,0.06)' }}>
                       <HelpLabel text="4. $ TODAY" />
                       <div className="metric-cell-val" style={{ color: '#34d399' }}>{renderLiveArs(todayArsLive, 'lg', '$')}</div>
-                      <div className="metric-cell-label">$ TODAY</div>
-                    </div>
+                      <div className="metric-cell-label sb-text-label">$ TODAY</div>
+                    </MetricTip>
 
-                    {/* 5. Money to be made today */}
-                    <div className={`metric-cell ${isEditingScoreboard ? 'grid-edit-mode' : ''}`} title="Money remaining for today's goal" style={{ position: 'relative', background: 'rgba(245,158,11,0.04)' }}>
+                    <MetricTip tip="Money remaining for today's goal" className={`metric-cell ${isEditingScoreboard ? 'grid-edit-mode' : ''}`} style={{ position: 'relative', background: 'rgba(245,158,11,0.04)' }}>
                       <HelpLabel text="5. $ LEFT TODAY" />
                       <div className="metric-cell-val" style={{ color: '#fcd34d' }}><StatNumber value={cashToTodayGoal} prefix="$" size="lg" /></div>
-                      <div className="metric-cell-label">$ LEFT TODAY</div>
-                    </div>
+                      <div className="metric-cell-label sb-text-label">$ LEFT TODAY</div>
+                    </MetricTip>
 
-                    {/* 6. Stamina Ratio (On-Call vs Break) */}
-                    <div className={`metric-cell ${isEditingScoreboard ? 'grid-edit-mode' : ''}`} title="STAMINA RATIO: Your on-call minutes divided by break minutes. Target is 5.3x (8h on / 90m off)." style={{ position: 'relative', background: 'rgba(168,85,247,0.04)' }}>
+                    <MetricTip tip="Stamina ratio: on-call minutes ÷ break minutes. Target 5.3×" className={`metric-cell ${isEditingScoreboard ? 'grid-edit-mode' : ''}`} style={{ position: 'relative', background: 'rgba(168,85,247,0.04)' }}>
                       <HelpLabel text="6. STAMINA RATIO" />
                       <div className="metric-cell-val" style={{ color: (totalDailyMins / Math.max(0.1, liveBreakMins)) >= 5.3 ? '#c084fc' : '#9ca3af' }}>
                         {(totalDailyMins / Math.max(0.1, liveBreakMins)).toFixed(1)}x
                       </div>
-                      <div className="metric-cell-label">STAMINA RATIO</div>
-                    </div>
+                      <div className="metric-cell-label sb-text-label">STAMINA RATIO</div>
+                    </MetricTip>
 
-                    {/* 7. Money month */}
-                    <div className={`metric-cell ${isEditingScoreboard ? 'grid-edit-mode' : ''}`} title="Money earned this month" style={{ position: 'relative' }}>
+                    <MetricTip tip="Money earned this month" className={`metric-cell ${isEditingScoreboard ? 'grid-edit-mode' : ''}`} style={{ position: 'relative' }}>
                       <HelpLabel text="7. $ MONTH" />
                       <div className="metric-cell-val"><StatNumber value={monthlyArs} prefix="$" size="lg" /></div>
-                      <div className="metric-cell-label">$ MONTH</div>
-                    </div>
+                      <div className="metric-cell-label sb-text-label">$ MONTH</div>
+                    </MetricTip>
 
-                    {/* 8. Money left month */}
-                    <div className={`metric-cell ${isEditingScoreboard ? 'grid-edit-mode' : ''}`} title="Money remaining for monthly goal" style={{ position: 'relative' }}>
+                    <MetricTip tip="Money remaining for monthly goal" className={`metric-cell ${isEditingScoreboard ? 'grid-edit-mode' : ''}`} style={{ position: 'relative' }}>
                       <HelpLabel text="8. $ LEFT MONTH" />
                       <div className="metric-cell-val"><StatNumber value={Math.max(0, monthlyTargetArs - monthlyArs)} prefix="$" size="lg" /></div>
-                      <div className="metric-cell-label">$ LEFT MONTH</div>
-                    </div>
+                      <div className="metric-cell-label sb-text-label">$ LEFT MONTH</div>
+                    </MetricTip>
 
-                    {/* 9. Off-call total today */}
-                    <div className={`metric-cell ${isEditingScoreboard ? 'grid-edit-mode' : ''}`} title="Total time spent off-call today (Click to toggle H:M)" style={{ position: 'relative', background: 'rgba(251,146,60,0.06)', cursor: 'pointer' }} onClick={() => setShowAsHours(!showAsHours)}>
+                    <MetricTip tip="Total time spent off-call today (click to toggle H:M)" className={`metric-cell ${isEditingScoreboard ? 'grid-edit-mode' : ''}`} style={{ position: 'relative', background: 'rgba(251,146,60,0.06)', cursor: 'pointer' }} onClick={() => setShowAsHours(!showAsHours)}>
                       <HelpLabel text="9. OFF CALL" />
                       <div className="metric-cell-val" style={{ color: '#fdba74' }}><StatNumber value={formatValue(totalOffCallMins)} size="lg" format={false} /></div>
-                      <div className="metric-cell-label">OFF CALL</div>
-                    </div>
+                      <div className="metric-cell-label sb-text-label">OFF CALL</div>
+                    </MetricTip>
 
-                    {/* 10. Avg so far mo */}
-                    <div className={`metric-cell ${isEditingScoreboard ? 'grid-edit-mode' : ''}`} title="Average minutes per day so far (Click to toggle H:M)" style={{ position: 'relative', background: 'rgba(139,92,246,0.04)', cursor: 'pointer' }} onClick={() => setShowAsHours(!showAsHours)}>
+                    <MetricTip tip="Average minutes per day so far (click to toggle H:M)" className={`metric-cell ${isEditingScoreboard ? 'grid-edit-mode' : ''}`} style={{ position: 'relative', background: 'rgba(139,92,246,0.04)', cursor: 'pointer' }} onClick={() => setShowAsHours(!showAsHours)}>
                       <HelpLabel text="10. MO AVG" />
                       <div className="metric-cell-val"><StatNumber value={formatValue(actualDailyAverage)} size="lg" format={false} /></div>
-                      <div className="metric-cell-label">MO AVG</div>
-                    </div>
+                      <div className="metric-cell-label sb-text-label">MO AVG</div>
+                    </MetricTip>
 
-                    {/* 11. Silence/Idle Timer */}
-                    <div className={`metric-cell ${isEditingScoreboard ? 'grid-edit-mode' : ''}`} title="Time since last audio activity (Reset by speech). In call, this tracks patient/user silence." style={{ position: 'relative', background: isActive ? 'rgba(239,68,68,0.06)' : 'rgba(255,255,255,0.04)' }}>
+                    <MetricTip tip={isActive ? 'Time since last speech on this call' : 'Time since last app activity'} className={`metric-cell ${isEditingScoreboard ? 'grid-edit-mode' : ''}`} style={{ position: 'relative', background: isActive ? 'rgba(239,68,68,0.06)' : 'rgba(255,255,255,0.04)' }}>
                       <HelpLabel text="11. SILENCE" />
                       <div className="metric-watermark">{isActive ? '🔇' : '⏳'}</div>
                       <div className="metric-cell-val" style={{ color: silenceCount > 600 ? '#f87171' : 'white' }}>
                         <StatNumber value={formatTime(silenceCount)} size="md" format={false} />
                       </div>
-                      <div className="metric-cell-label">{isActive ? 'CALL SILENCE' : 'APP IDLE'}</div>
-                    </div>
+                      <div className="metric-cell-label sb-text-label">{isActive ? 'CALL SILENCE' : 'APP IDLE'}</div>
+                    </MetricTip>
 
-                    {/* 12. Current call min and cash */}
-                    <div className={`metric-cell ${isEditingScoreboard ? 'grid-edit-mode' : ''}`} title="Current call duration and unbanked cash" style={{ position: 'relative', background: isActive ? 'rgba(16,185,129,0.1)' : 'rgba(255,255,255,0.02)', border: isActive ? '1px solid rgba(16,185,129,0.3)' : 'none' }}>
+                    <MetricTip tip="Current call duration and unbanked cash" className={`metric-cell ${isEditingScoreboard ? 'grid-edit-mode' : ''}`} style={{ position: 'relative', background: isActive ? 'rgba(16,185,129,0.1)' : 'rgba(255,255,255,0.02)', border: isActive ? '1px solid rgba(16,185,129,0.3)' : 'none' }}>
                       <HelpLabel text="12. CURR CALL" />
                       <div className="metric-cell-val" style={{ display: 'flex', gap: '0.2rem', alignItems: 'center' }}>
                         <StatNumber value={formatTime(sessionSeconds)} size="md" format={false} />
                         {renderSessionArs('lg', '$')}
                       </div>
-                      <div className="metric-cell-label">CURR CALL</div>
-                    </div>
+                      <div className="metric-cell-label sb-text-label">CURR CALL</div>
+                    </MetricTip>
                     <div id="cell-switch-game" className="metric-cell" style={{ cursor: 'pointer', background: 'rgba(255,255,255,0.04)', gridColumn: 'span 3', flexDirection: 'row', minHeight: '26px' }} onClick={() => setScoreView('game')} title="Switch back to gamified view">
                       <span style={{ fontSize: '0.8rem', marginRight: '6px' }}>🎮</span>
                       <div className="metric-cell-label" style={{ opacity: 0.8 }}>BACK TO GAME VIEW</div>
@@ -856,6 +870,7 @@ export const DashboardHeader = ({
                 <button id="header-expand-btn" className="btn-icon tiny-btn" onClick={() => setIsCollapsed(!isCollapsed)} style={{ width: '22px', height: '22px', fontSize: '0.8rem' }} title={isCollapsed ? "Expand HUD" : "Collapse HUD"}>{isCollapsed ? '🔼' : '▼'}</button>
                 <button id="header-calldetect-btn" className="btn-icon tiny-btn" onClick={() => setIsCallDetectionEnabled(!isCallDetectionEnabled)} style={{ opacity: isCallDetectionEnabled ? 1 : 0.3, background: isCallDetectionEnabled ? 'rgba(16,185,129,0.1)' : 'transparent', width: '22px', height: '22px', fontSize: '0.8rem' }} title="Call Detection">{isCallDetectionEnabled ? '📡' : '📵'}</button>
                 <button id="header-focus-btn" className="btn-icon tiny-btn" onClick={() => setCallFocusMode(!callFocusMode)} style={{ opacity: callFocusMode ? 1 : 0.3, background: callFocusMode ? 'rgba(16,185,129,0.1)' : 'transparent', width: '22px', height: '22px', fontSize: '0.8rem' }} title="Call Focus: auto-hide sidebars during calls">{callFocusMode ? '🎯' : '🔲'}</button>
+                <LabelsToggleBtn style={{ width: '22px', height: '22px', fontSize: '0.8rem' }} />
             </div>
           </div>
           </div>
@@ -1019,6 +1034,7 @@ export const DashboardHeader = ({
                 <button className={`btn-icon-tiny ${isToolbarVisible ? 'active' : ''}`} onClick={() => setIsToolbarVisible(!isToolbarVisible)} title="Tools">🛠️</button>
                 <button className={`btn-icon-tiny ${isEditingScoreboard ? 'active' : ''}`} onClick={() => setIsEditingScoreboard(!isEditingScoreboard)} title="Edit Grid">{isEditingScoreboard ? '💾' : '✏️'}</button>
                 <button className={`btn-icon-tiny ${isScoreboardHelpVisible ? 'active' : ''}`} onClick={() => setIsScoreboardHelpVisible(!isScoreboardHelpVisible)} title="Help">❓</button>
+                <LabelsToggleBtn className={`btn-icon-tiny${hideLabels ? ' active' : ''}`} style={{ opacity: hideLabels ? 1 : 0.45 }} />
                 <button className="btn-icon-tiny" onClick={() => setIsHeatmapOpen(true)} title="Heatmap">📅</button>
                 <button className="btn-icon-tiny danger" onClick={() => setIsCollapsed(true)} title="Collapse">▲</button>
               </div>
@@ -1066,53 +1082,70 @@ export const DashboardHeader = ({
 
       {/* Progress bars (Always Visible) */}
       {dailyGoal > 0 && (
-        <div className="header-progress-stack" style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem', padding: '0.25rem 0.15rem 0.1rem' }}>
+        <div className={`header-progress-stack${hideLabelsClass}`} style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem', padding: '0.25rem 0.15rem 0.1rem' }}>
           {/* Monthly bar */}
           <div style={{ display: 'flex', flexDirection: 'column', gap: '0.15rem' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.6rem', color: 'var(--text-muted)', alignItems: 'center' }}>
-              <span style={{ fontWeight: 600 }}>🗓️ Day {currentDay}/{daysInMonth}</span>
+              <HoverTooltip tip={`Day ${currentDay} of ${daysInMonth} in the current month`}>
+                <span style={{ fontWeight: 600 }}>{hideLabels ? `🗓️ ${currentDay}/${daysInMonth}` : `🗓️ Day ${currentDay}/${daysInMonth}`}</span>
+              </HoverTooltip>
               <div style={{ display: 'flex', alignItems: 'center', gap: '0.3rem' }}>
                 {!isMonthlyGoalMet ? (
                   <>
-                    <span 
-                      title={`PRO LADDER: Step ${currentIdx+1} of 12. Next target is ${nextMilestone}m. Reaching this unlocks richer sounds and levels up your status!`}
-                      style={{ color: '#fff', background: 'rgba(59,130,246,0.3)', padding: '0.1rem 0.4rem', borderRadius: '4px', border: '1px solid rgba(59,130,246,0.4)', fontWeight: 800, cursor: 'help' }}>
-                       🪜 {nextGoalLabel} ({nextMilestone}m)
-                    </span>
-                    <span 
-                      title={`MONTHLY PROGRESS: ${Math.round(stats.monthlyMinutes)}m banked out of ${stats.goalMinutes}m target. 
-You are ${((stats.monthlyMinutes / stats.goalMinutes) * 100).toFixed(1)}% through your goal.
-${isInDeficit ? `⚠️ DEFICIT: Behind pace by ${Math.round(monthlyDeficitMins)}m.` : `✅ ON PACE: Ahead of projected daily average.`}`}
-                      style={{ margin: '0 0.4rem', fontSize: '0.75rem', color: isMonthlyGoalMet ? '#10b981' : (isInDeficit ? '#f59e0b' : '#a855f7'), fontWeight: 800, cursor: 'help' }}>
-                      {((stats.monthlyMinutes / (stats.goalMinutes || 1)) * 100).toFixed(1)}%
-                    </span>
-                    <span style={{ opacity: 0.4 }}>|</span>
-                    <span 
-                      title={`PACED MAX: If you keep working ${Math.round(dailyGoal)}m every day for the rest of the month, you are on track to bank AR$${monthlyMaxArs} total. Target is AR$${monthlyTargetArs.toLocaleString('es-AR')}.`}
-                      style={{ background: 'rgba(139,92,246,0.15)', padding: '0.1rem 0.4rem', borderRadius: '4px', border: '1px solid rgba(139,92,246,0.3)', cursor: 'help' }}>
-                      Paced Max: <strong style={{ color: '#d8b4fe', textShadow: '0 0 8px rgba(139,92,246,0.5)', display: 'inline-flex', alignItems: 'center' }}>
-                        <StatNumber value={monthlyRemainingCashVal + monthlyArs} prefix="AR$" size="xs" />
-                      </strong>
-                    </span>
+                    <HoverTooltip tip={`PRO LADDER: Step ${currentIdx + 1} of 12. Next target is ${nextMilestone}m.`}>
+                      <span
+                        style={{ color: '#fff', background: 'rgba(59,130,246,0.3)', padding: '0.1rem 0.4rem', borderRadius: '4px', border: '1px solid rgba(59,130,246,0.4)', fontWeight: 800, cursor: 'help' }}>
+                        {hideLabels ? `🪜 S${currentIdx + 1} (${nextMilestone}m)` : `🪜 ${nextGoalLabel} (${nextMilestone}m)`}
+                      </span>
+                    </HoverTooltip>
+                    <HoverTooltip tip={`MONTHLY PROGRESS: ${Math.round(stats.monthlyMinutes)}m of ${stats.goalMinutes}m (${((stats.monthlyMinutes / stats.goalMinutes) * 100).toFixed(1)}%). ${isInDeficit ? `Behind pace by ${Math.round(monthlyDeficitMins)}m.` : 'On pace.'}`}>
+                      <span
+                        style={{ margin: '0 0.4rem', fontSize: '0.75rem', color: isMonthlyGoalMet ? '#10b981' : (isInDeficit ? '#f59e0b' : '#a855f7'), fontWeight: 800, cursor: 'help' }}>
+                        {((stats.monthlyMinutes / (stats.goalMinutes || 1)) * 100).toFixed(1)}%
+                      </span>
+                    </HoverTooltip>
+                    {!hideLabels && <span style={{ opacity: 0.4 }}>|</span>}
+                    <HoverTooltip tip={`PACED MAX: On track for AR$${monthlyMaxArs.toLocaleString('es-AR')} if you keep ${Math.round(dailyGoal)}m/day. Target AR$${monthlyTargetArs.toLocaleString('es-AR')}.`}>
+                      <span
+                        style={{ background: 'rgba(139,92,246,0.15)', padding: '0.1rem 0.4rem', borderRadius: '4px', border: '1px solid rgba(139,92,246,0.3)', cursor: 'help' }}>
+                        {hideLabels ? (
+                          <strong style={{ color: '#d8b4fe', textShadow: '0 0 8px rgba(139,92,246,0.5)', display: 'inline-flex', alignItems: 'center' }}>
+                            <StatNumber value={monthlyRemainingCashVal + monthlyArs} prefix="AR$" size="xs" />
+                          </strong>
+                        ) : (
+                          <>Paced Max: <strong style={{ color: '#d8b4fe', textShadow: '0 0 8px rgba(139,92,246,0.5)', display: 'inline-flex', alignItems: 'center' }}>
+                            <StatNumber value={monthlyRemainingCashVal + monthlyArs} prefix="AR$" size="xs" />
+                          </strong></>
+                        )}
+                      </span>
+                    </HoverTooltip>
                   </>
                 ) : (
-                  <span style={{ color: stats.monthlyMinutes > stats.goalMinutes * 1.2 ? '#fcd34d' : '#34d399', fontWeight: 800 }}>
-                    {stats.monthlyMinutes > milestones[11] ? '👑 LEGENDARY STATUS REACHED!' : stats.monthlyMinutes > stats.goalMinutes * 1.2 ? '🔥 UNSTOPPABLE!' : stats.monthlyMinutes > stats.goalMinutes * 1.1 ? '🚀 ORBIT (110%!)' : '🎉 Goal Met!'}
-                  </span>
+                  <HoverTooltip tip="Monthly goal achieved">
+                    <span style={{ color: stats.monthlyMinutes > stats.goalMinutes * 1.2 ? '#fcd34d' : '#34d399', fontWeight: 800 }}>
+                      {hideLabels ? '🎉' : (stats.monthlyMinutes > milestones[11] ? '👑 LEGENDARY STATUS REACHED!' : stats.monthlyMinutes > stats.goalMinutes * 1.2 ? '🔥 UNSTOPPABLE!' : stats.monthlyMinutes > stats.goalMinutes * 1.1 ? '🚀 ORBIT (110%!)' : '🎉 Goal Met!')}
+                    </span>
+                  </HoverTooltip>
                 )}
               </div>
-              <span style={{ opacity: 0.5 }}>Goal: {stats.goalMinutes}m</span>
+              <HoverTooltip tip={`Monthly minute goal: ${stats.goalMinutes}m`}>
+                <span style={{ opacity: 0.5 }}>{hideLabels ? `${stats.goalMinutes}m` : `Goal: ${stats.goalMinutes}m`}</span>
+              </HoverTooltip>
             </div>
             <div style={{ position: 'relative', marginTop: '0.3rem' }}>
               <div style={{ position: 'absolute', inset: 0, pointerEvents: 'none', zIndex: 11 }}>
                 {[5500, 11000, 16500].map((m, i) => {
                   const ratio = m / 16500;
                   const labels = ['MIN GOAL', 'GOOD', 'EXCELLENT'];
+                  const shortLabels = ['MIN', 'GOOD', 'EXC'];
+                  const tips = ['Minimum goal checkpoint (5,500m)', 'Good performance checkpoint (11,000m)', 'Excellent performance checkpoint (16,500m)'];
                   return (
-                    <div key={`lbl-${m}`} style={{ position: 'absolute', left: `${ratio * 100}%`, top: '-11px' }}>
-                      <span style={{ position: 'absolute', left: '-50%', transform: 'translateX(-50%)', background: 'rgba(0,0,0,0.6)', padding: '1px 4px', borderRadius: '4px', fontSize: '0.45rem', fontWeight: 800, color: 'rgba(255,255,255,0.9)', whiteSpace: 'nowrap' }}>
-                        {labels[i]}
-                      </span>
+                    <div key={`lbl-${m}`} style={{ position: 'absolute', left: `${ratio * 100}%`, top: hideLabels ? '-8px' : '-11px' }}>
+                      <HoverTooltip tip={tips[i]}>
+                        <span style={{ position: 'absolute', left: '-50%', transform: 'translateX(-50%)', background: hideLabels ? 'rgba(0,0,0,0.45)' : 'rgba(0,0,0,0.6)', padding: hideLabels ? '1px 3px' : '1px 4px', borderRadius: '4px', fontSize: hideLabels ? '0.55rem' : '0.45rem', fontWeight: 800, color: 'rgba(255,255,255,0.9)', whiteSpace: 'nowrap' }}>
+                          {hideLabels ? shortLabels[i] : labels[i]}
+                        </span>
+                      </HoverTooltip>
                     </div>
                   );
                 })}
@@ -1205,16 +1238,26 @@ ${isInDeficit ? `⚠️ DEFICIT: Behind pace by ${Math.round(monthlyDeficitMins)
           <div style={{ display: 'flex', flexDirection: 'column', gap: '0.15rem' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.6rem', color: 'var(--text-muted)', alignItems: 'center' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
-                <span style={{ fontWeight: 600 }}>🪜 STEP {currentIdx + 1}/12 (1 WEEK OF MINIMUM WORK)</span>
-                <span style={{ background: 'rgba(255,255,255,0.1)', padding: '0.1rem 0.3rem', borderRadius: '4px', color: '#fff', fontSize: '0.55rem', fontWeight: 800 }}>
-                  🗓️ Day {currentDay} (Week {Math.ceil(currentDay / 7)})
-                </span>
+                <HoverTooltip tip={`Ladder step ${currentIdx + 1} of 12 — one week of minimum work per step`}>
+                  <span style={{ fontWeight: 600 }}>{hideLabels ? `🪜 ${currentIdx + 1}/12` : `🪜 STEP ${currentIdx + 1}/12 (1 WEEK OF MINIMUM WORK)`}</span>
+                </HoverTooltip>
+                <HoverTooltip tip={`Day ${currentDay}, week ${Math.ceil(currentDay / 7)} of the month`}>
+                  <span style={{ background: 'rgba(255,255,255,0.1)', padding: '0.1rem 0.3rem', borderRadius: '4px', color: '#fff', fontSize: '0.55rem', fontWeight: 800 }}>
+                    {hideLabels ? `🗓️ D${currentDay} W${Math.ceil(currentDay / 7)}` : `🗓️ Day ${currentDay} (Week ${Math.ceil(currentDay / 7)})`}
+                  </span>
+                </HoverTooltip>
               </div>
-              <span title={`Each step on the Ladder is 1,375m. 4 steps = Min Goal (5.5k). 8 steps = Growth (11k). 12 steps = Legend (16.5k).`}>
-                <strong style={{ color: stats.monthlyMinutes >= 11000 ? '#FCD34D' : (stats.monthlyMinutes >= 5500 ? '#C084FC' : '#60A5FA') }}>
-                  {milestoneLabels[currentIdx]}
-                </strong> ({Math.round(stats.monthlyMinutes % 1375)}m / 1375m)
-              </span>
+              <HoverTooltip tip={`${milestoneLabels[currentIdx]} — ${Math.round(stats.monthlyMinutes % 1375)}m of 1,375m in this step`}>
+                <span>
+                  {!hideLabels && (
+                    <strong style={{ color: stats.monthlyMinutes >= 11000 ? '#FCD34D' : (stats.monthlyMinutes >= 5500 ? '#C084FC' : '#60A5FA') }}>
+                      {milestoneLabels[currentIdx]}
+                    </strong>
+                  )}
+                  {hideLabels ? '' : ' '}
+                  ({Math.round(stats.monthlyMinutes % 1375)}m / 1375m)
+                </span>
+              </HoverTooltip>
             </div>
             <div 
               title="Weekly Ladder: This bar fills up every 1375m. It's your current sprint target."
@@ -1256,18 +1299,30 @@ ${isInDeficit ? `⚠️ DEFICIT: Behind pace by ${Math.round(monthlyDeficitMins)
           {/* Daily bar */}
           <div style={{ display: 'flex', flexDirection: 'column', gap: '0.15rem' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.6rem', color: 'var(--text-muted)', alignItems: 'center' }}>
-              <span title="Shift starts at 9:00 AM">☀️ 09:00 (Min: {dailyGoal}m)</span>
+              <HoverTooltip tip={`Shift starts 9:00 AM. Daily minimum goal: ${dailyGoal}m`}>
+                <span>{hideLabels ? '☀️ 09:00' : `☀️ 09:00 (Min: ${dailyGoal}m)`}</span>
+              </HoverTooltip>
               <div style={{ display: 'flex', alignItems: 'center', gap: '0.3rem' }}>
                 {stats.dailyMinutes >= 480 ? (
-                  <span style={{ color: '#fcd34d', fontWeight: 800 }}>👑 LEGENDARY DAY (480m+)</span>
+                  <HoverTooltip tip="Legendary day — 480+ minutes banked">
+                    <span style={{ color: '#fcd34d', fontWeight: 800 }}>{hideLabels ? '👑' : '👑 LEGENDARY DAY (480m+)'}</span>
+                  </HoverTooltip>
                 ) : stats.dailyMinutes >= 350 ? (
-                  <span style={{ color: '#c084fc', fontWeight: 800 }}>🚀 GROWTH DAY (350m+)</span>
+                  <HoverTooltip tip="Growth day — 350+ minutes banked">
+                    <span style={{ color: '#c084fc', fontWeight: 800 }}>{hideLabels ? '🚀' : '🚀 GROWTH DAY (350m+)'}</span>
+                  </HoverTooltip>
                 ) : stats.dailyMinutes >= dailyGoal ? (
-                  <span style={{ color: '#34d399', fontWeight: 800 }}>🎉 SHIFT MET ({dailyGoal}m)</span>
+                  <HoverTooltip tip={`Shift goal met — ${dailyGoal}m banked`}>
+                    <span style={{ color: '#34d399', fontWeight: 800 }}>{hideLabels ? '🎉' : `🎉 SHIFT MET (${dailyGoal}m)`}</span>
+                  </HoverTooltip>
                 ) : (
                   <>
-                    <span title={`SHIFT REMAINING: ${Math.max(0, DAILY_SHIFT_END - currentTime).toFixed(1)} hours left until 18:00.`}>⏳ {Math.max(0, DAILY_SHIFT_END - currentTime).toFixed(1)}h left</span>
-                    <span title={`ESTIMATED YIELD: Based on your current rate, you can realistically bank another ${Math.round(Math.max(0, DAILY_SHIFT_END - currentTime) * 35)}m today, worth AR$${Math.round(Math.max(0, DAILY_SHIFT_END - currentTime) * 35 * RATE_PER_MINUTE * arsRate).toLocaleString('es-AR')}.`}>({Math.round(Math.max(0, DAILY_SHIFT_END - currentTime) * 35)}m / AR$${Math.round(Math.max(0, DAILY_SHIFT_END - currentTime) * 35 * RATE_PER_MINUTE * arsRate).toLocaleString('es-AR')})</span>
+                    <HoverTooltip tip={`${Math.max(0, DAILY_SHIFT_END - currentTime).toFixed(1)} hours left until 18:00`}>
+                      <span>⏳ {Math.max(0, DAILY_SHIFT_END - currentTime).toFixed(1)}h</span>
+                    </HoverTooltip>
+                    <HoverTooltip tip={`Estimated yield: ${Math.round(Math.max(0, DAILY_SHIFT_END - currentTime) * 35)}m / AR$${Math.round(Math.max(0, DAILY_SHIFT_END - currentTime) * 35 * RATE_PER_MINUTE * arsRate).toLocaleString('es-AR')}`}>
+                      <span>({Math.round(Math.max(0, DAILY_SHIFT_END - currentTime) * 35)}m / AR$${Math.round(Math.max(0, DAILY_SHIFT_END - currentTime) * 35 * RATE_PER_MINUTE * arsRate).toLocaleString('es-AR')})</span>
+                    </HoverTooltip>
                   </>
                 )}
                 <button
@@ -1275,10 +1330,12 @@ ${isInDeficit ? `⚠️ DEFICIT: Behind pace by ${Math.round(monthlyDeficitMins)
                   title={`Overtime display: ${overtimeMode === 'tail' ? 'Extended tail' : 'Micro under-bar'}. Click to toggle.`}
                   style={{ fontSize: '0.5rem', padding: '1px 4px', borderRadius: '3px', border: '1px solid rgba(255,255,255,0.2)', background: 'rgba(139,92,246,0.2)', color: '#c4b5fd', cursor: 'pointer', fontWeight: 700 }}
                 >
-                  {overtimeMode === 'tail' ? '➡️ TAIL' : '⬇️ UNDER'}
+                  {overtimeMode === 'tail' ? (hideLabels ? '➡️' : '➡️ TAIL') : (hideLabels ? '⬇️' : '⬇️ UNDER')}
                 </button>
               </div>
-              <span title="Shift ends at 6:00 PM">🌙 18:00 (Focus: 480m)</span>
+              <HoverTooltip tip="Shift ends 6:00 PM. Focus target: 480m">
+                <span>{hideLabels ? '🌙 18:00' : '🌙 18:00 (Focus: 480m)'}</span>
+              </HoverTooltip>
             </div>
             <div 
               title="Daily Multi-Tier Bar: Blue (Floor), Purple (350m Growth), Gold (480m focus)."
@@ -1419,28 +1476,31 @@ ${isInDeficit ? `⚠️ DEFICIT: Behind pace by ${Math.round(monthlyDeficitMins)
                 style={{ position: 'absolute', inset: 0, display: 'flex', pointerEvents: 'auto', zIndex: 11, cursor: 'help' }}>
                 
                 {/* Banked Money Label */}
-                <div style={{ 
-                  position: 'absolute', left: '0.4rem', top: '-11px', 
-                  fontSize: '0.48rem', fontWeight: 900, 
-                  color: '#fff', textShadow: '0 0 8px rgba(16,185,129,0.8)',
-                  background: 'rgba(16,185,129,0.3)', padding: '0 0.3rem', 
-                  borderRadius: '2px', border: '1px solid rgba(16,185,129,0.4)',
-                  pointerEvents: 'none', letterSpacing: '0.04em'
-                }}>
-                  BANKED: AR${liveDailyArs.toLocaleString('es-AR')}
-                </div>
+                <HoverTooltip tip={`Banked today: AR$${liveDailyArs.toLocaleString('es-AR')}`} block style={{ position: 'absolute', left: '0.4rem', top: hideLabels ? '-9px' : '-11px', zIndex: 12 }}>
+                  <div style={{ 
+                    fontSize: hideLabels ? '0.58rem' : '0.48rem', fontWeight: 900, 
+                    color: '#fff', textShadow: '0 0 8px rgba(16,185,129,0.8)',
+                    background: 'rgba(16,185,129,0.3)', padding: '0 0.3rem', 
+                    borderRadius: '2px', border: '1px solid rgba(16,185,129,0.4)',
+                    letterSpacing: '0.04em'
+                  }}>
+                    {hideLabels ? `AR$${liveDailyArs.toLocaleString('es-AR')}` : `BANKED: AR$${liveDailyArs.toLocaleString('es-AR')}`}
+                  </div>
+                </HoverTooltip>
                 
-                {/* Est Max Label */}
-                <div style={{ 
-                  position: 'absolute', right: '0.4rem', top: '-11px', 
-                  fontSize: '0.48rem', fontWeight: 700, 
-                  color: 'rgba(255,255,255,0.6)', 
-                  background: 'rgba(0,0,0,0.4)', padding: '0 0.3rem', 
-                  borderRadius: '2px', border: '1px solid rgba(255,255,255,0.1)',
-                  pointerEvents: 'none', letterSpacing: '0.02em'
-                }}>
-                  EST. MAX: AR${Math.round((stats.dailyMinutes + Math.max(0, DAILY_SHIFT_END - currentTime) * 35) * RATE_PER_MINUTE * arsRate).toLocaleString('es-AR')}
-                </div>
+                <HoverTooltip tip={`Estimated max today: AR$${Math.round((stats.dailyMinutes + Math.max(0, DAILY_SHIFT_END - currentTime) * 35) * RATE_PER_MINUTE * arsRate).toLocaleString('es-AR')}`} block style={{ position: 'absolute', right: '0.4rem', top: hideLabels ? '-9px' : '-11px', zIndex: 12 }}>
+                  <div style={{ 
+                    fontSize: hideLabels ? '0.58rem' : '0.48rem', fontWeight: 700, 
+                    color: 'rgba(255,255,255,0.6)', 
+                    background: 'rgba(0,0,0,0.4)', padding: '0 0.3rem', 
+                    borderRadius: '2px', border: '1px solid rgba(255,255,255,0.1)',
+                    letterSpacing: '0.02em'
+                  }}>
+                    {hideLabels
+                      ? `AR$${Math.round((stats.dailyMinutes + Math.max(0, DAILY_SHIFT_END - currentTime) * 35) * RATE_PER_MINUTE * arsRate).toLocaleString('es-AR')}`
+                      : `EST. MAX: AR$${Math.round((stats.dailyMinutes + Math.max(0, DAILY_SHIFT_END - currentTime) * 35) * RATE_PER_MINUTE * arsRate).toLocaleString('es-AR')}`}
+                  </div>
+                </HoverTooltip>
 
                 {Array.from({ length: 9 }).map((_, i) => (
                   <div key={i} style={{ flex: 1, borderRight: i < 8 ? '1px solid rgba(255,255,255,0.15)' : 'none' }} />
