@@ -1230,6 +1230,13 @@ body {
   background: rgba(30, 27, 75, 0.2);
 }
 
+[data-state="zombie"] {
+  --accent-primary: #f59e0b;
+  --accent-glow: rgba(245, 158, 11, 0.35);
+  border: 1px solid rgba(245, 158, 11, 0.45);
+  background: rgba(69, 45, 10, 0.15);
+}
+
 @keyframes availHold {
   from { border-color: rgba(148, 163, 184, 0.1); filter: grayscale(0.5); }
   to   { border-color: rgba(251, 191, 36, 0.3); filter: grayscale(0.2); }
