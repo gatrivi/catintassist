@@ -11,6 +11,12 @@ import { DeskExerciseWidget } from './components/DeskExerciseWidget';
 import { RosaryWidget } from './components/RosaryWidget';
 import { MealTrackerWidget } from './components/MealTrackerWidget';
 import { ChoreTrackerWidget } from './components/ChoreTrackerWidget';
+import {
+  WorkspaceViewSwitcher,
+  WORKSPACE_VIEWS,
+  loadWorkspaceView,
+  saveWorkspaceView,
+} from './components/WorkspaceViewSwitcher';
 import { useDeepgram } from './hooks/useDeepgram';
 import { useProgressiveAudio } from './hooks/useProgressiveAudio';
 import { loadFile, generateObjectUrl } from './utils/storage';
@@ -31,7 +37,27 @@ const Dashboard = () => {
   const canShowSoundboard = !isActive || !callFocusMode;
   const { playCoin } = useProgressiveAudio();
   const [isEditingBg, setIsEditingBg] = useState(false);
-  
+  const [workspaceView, setWorkspaceView] = useState(loadWorkspaceView);
+
+  const cycleWorkspaceView = useCallback(() => {
+    if (isActive) return;
+    setWorkspaceView((prev) => {
+      const i = WORKSPACE_VIEWS.indexOf(prev);
+      const next = WORKSPACE_VIEWS[(i + 1) % WORKSPACE_VIEWS.length];
+      saveWorkspaceView(next);
+      return next;
+    });
+  }, [isActive]);
+
+  useEffect(() => {
+    if (isActive && workspaceView !== 'transcript') {
+      setWorkspaceView('transcript');
+      saveWorkspaceView('transcript');
+    }
+  }, [isActive, workspaceView]);
+
+  const isSoundboardLab = workspaceView === 'soundboard' && !isActive;
+
   useEffect(() => {
     const applyBg = async () => {
       const bgApp = await loadFile('bg_app');
@@ -162,7 +188,7 @@ const Dashboard = () => {
         display: 'flex', alignItems: 'center', gap: '4px'
       }}>
         <CloudSyncIndicator />
-        v4.35.0 (Full Stack)
+        v4.36.0 (Full Stack)
       </div>
 
       <div id="top-mic-bar-container" style={{ position: 'fixed', top: 0, left: 0, right: 0, height: '3px', zIndex: 9999, pointerEvents: 'none' }}>
@@ -183,6 +209,23 @@ const Dashboard = () => {
         lastDataTime={lastDataTime}
       />
 
+      <WorkspaceViewSwitcher
+        view={isSoundboardLab ? 'soundboard' : 'transcript'}
+        onCycle={cycleWorkspaceView}
+        disabled={isActive}
+      />
+
+      {isSoundboardLab ? (
+        <main className="main-content view-soundboard">
+          <div className="workspace-soundboard-pane glass-panel" data-guide="soundboard-lab">
+            <div className="workspace-soundboard-head">
+              <span className="workspace-soundboard-title">🔊 Soundboard Lab</span>
+              <span className="workspace-soundboard-hint">Off-call setup · record, preview, health-check</span>
+            </div>
+            <GreetingsPanel onEditModeChange={setIsEditingBg} />
+          </div>
+        </main>
+      ) : (
       <main className={`main-content ${isNotesOpen ? 'notes-open' : ''} ${isToolbarVisible && (!isActive || !callFocusMode) ? 'tools-open' : ''}`}>
         <div className="transcription-pane" data-guide="transcript">
             <TranscriptionBoard 
@@ -225,8 +268,9 @@ const Dashboard = () => {
           </div>
         )}
       </main>
+      )}
 
-      {canShowSoundboard && !isToolbarVisible && (
+      {canShowSoundboard && !isToolbarVisible && !isSoundboardLab && (
         <button
           type="button"
           className="soundboard-show-fab"
