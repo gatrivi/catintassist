@@ -178,7 +178,7 @@ const Dashboard = () => {
 
   return (
     <div
-      className={`app-container ${stateClass}${!isActive && workspaceView === 'scoreboard' ? ' is-off-call-scoreboard' : ''}`}
+      className={`app-container ${stateClass}`}
       data-state={appState}
       data-call-mode={isActive ? 'true' : 'false'}
       data-off-call-view={isActive ? 'call' : workspaceView}
@@ -191,7 +191,7 @@ const Dashboard = () => {
         display: 'flex', alignItems: 'center', gap: '4px'
       }}>
         <CloudSyncIndicator />
-        v4.41.0 (Full Stack)
+        v4.42.0 (Full Stack)
       </div>
 
       <div id="top-mic-bar-container" style={{ position: 'fixed', top: 0, left: 0, right: 0, height: '3px', zIndex: 9999, pointerEvents: 'none' }}>
@@ -199,6 +199,10 @@ const Dashboard = () => {
       </div>
 
       <SilenceGuardian lastDataTime={lastDataTime} />
+
+      {!isActive && workspaceView === 'scoreboard' && (
+        <main id="scoreboard-root" className="main-content view-scoreboard" />
+      )}
 
       <DashboardHeader 
         onStartAudio={() => handleConnection(false)} 

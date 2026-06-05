@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
+import { createPortal } from 'react-dom';
 import { StatNumber } from './StatNumber';
 import { LiveRollingNumber } from './LiveRollingNumber';
 import { useRewardAudio } from '../hooks/useRewardAudio';
@@ -12,15 +13,6 @@ import { TimeEditModal } from './TimeEditModal';
 import { GameScoreboard } from './GameScoreboard';
 import { AppGuideButton } from './AppGuide';
 import { WorkspaceViewSwitcher } from './WorkspaceViewSwitcher';
-import {
-  ConnectIcon,
-  ReattachIcon,
-  StopIcon as SessionStopIcon,
-  HoldIcon,
-  ZapIcon,
-  BreakIcon,
-  EndDayIcon,
-} from './SessionControlIcons';
 
 const CelebrationParticles = ({ type, label, coins, onDismiss }) => {
   const [isClosing, setIsClosing] = useState(false);
@@ -163,6 +155,15 @@ export const DashboardHeader = ({
   const [silenceCount, setSilenceCount] = useState(0);
   const [hoveredTimelineEvent, setHoveredTimelineEvent] = useState(null);
   const [isZapping, setIsZapping] = useState(false);
+  const [scoreboardRoot, setScoreboardRoot] = useState(null);
+
+  useEffect(() => {
+    if (!scoreboardFill) {
+      setScoreboardRoot(null);
+      return;
+    }
+    setScoreboardRoot(document.getElementById('scoreboard-root'));
+  }, [scoreboardFill]);
 
   const [showAsHours, setShowAsHours] = useState(false);
   const [rateView, setRateView] = useState('effective'); // 'effective' | 'active'
@@ -555,48 +556,41 @@ export const DashboardHeader = ({
           <button
             id="header-connect-btn"
             data-guide="connect"
-            type="button"
-            className={`session-control-btn ${isZombieCall ? 'session-control-btn--reattach' : 'session-control-btn--connect'}`}
+            className="btn-emoji"
             onClick={isZombieCall ? onRecovery : onStartAudio}
             style={{
+              background: isZombieCall ? '#f59e0b' : '#10b981',
+              color: '#fff',
+              width: '30px',
+              height: '30px',
               animation: (!isActive && !isBreakActive && (Date.now() - (lastDataTime || 0) < 5000)) ? 'pulseReminder 0.8s infinite' : 'none',
             }}
             title={isZombieCall ? 'RE-ATTACH TO CALL' : 'CONNECT'}
-            aria-label={isZombieCall ? 'Re-attach to call' : 'Connect'}
           >
-            {isZombieCall ? <ReattachIcon /> : <ConnectIcon />}
+            {isZombieCall ? '🟡' : '🟢'}
           </button>
         ) : (
           <>
-            <button id="header-stop-btn" data-guide="stop" type="button" className="session-control-btn session-control-btn--stop" onClick={handleStop} title="STOP / DISCONNECT" aria-label="Stop call">
-              <SessionStopIcon />
-            </button>
-            <button id="header-hold-btn" type="button" className={`session-control-btn session-control-btn--hold${isHold ? ' is-active' : ''}`} onClick={() => setIsHold(!isHold)} title="HOLD" aria-label="Hold">
-              <HoldIcon active={isHold} />
-            </button>
+            <button id="header-stop-btn" data-guide="stop" className="btn-emoji" onClick={handleStop} style={{ background: '#ef4444', color: '#fff', width: '30px', height: '30px' }} title="STOP / DISCONNECT">🛑</button>
+            <button id="header-hold-btn" className="btn btn-condensed" onClick={() => setIsHold(!isHold)} style={{ background: isHold ? '#f59e0b' : 'rgba(255,255,255,0.08)', height: '30px', padding: '0', width: '30px', fontSize: '0.65rem', border: '1px solid rgba(255,255,255,0.1)' }}>{isHold ? 'H' : '⏸'}</button>
             <button
               id="header-zap-btn"
-              type="button"
-              className={`session-control-btn session-control-btn--zap${isZapping ? ' zap-active' : ''}`}
+              className={`btn-emoji ${isZapping ? 'zap-active' : ''}`}
               onClick={() => {
                 setIsZapping(true);
                 onReconnectStream();
                 setTimeout(() => setIsZapping(false), 450);
               }}
+              style={{ background: '#0ea5e9', width: '30px', height: '30px' }}
               title="ZAP - Reconnect Audio Stream"
-              aria-label="Zap reconnect"
             >
-              <ZapIcon />
+              ⚡
             </button>
           </>
         )}
-        <button id="header-break-btn" type="button" className="session-control-btn session-control-btn--break" onClick={isBreakActive ? stopBreak : handleStartBreak} disabled={isActive} title="BREAK" aria-label="Break">
-          <BreakIcon />
-        </button>
+        <button id="header-break-btn" className="btn-emoji" onClick={isBreakActive ? stopBreak : handleStartBreak} style={{ background: '#fb923c', color: '#fff', width: '30px', height: '30px', opacity: isActive ? 0.35 : 1 }} disabled={isActive} title="BREAK">☕</button>
         {!isActive && stats.dailyMinutes > 0 && !isBreakActive && (
-          <button id="header-end-day-btn" type="button" className="session-control-btn session-control-btn--endday" onClick={handleEndDay} title="END DAY" aria-label="End day">
-            <EndDayIcon />
-          </button>
+          <button id="header-end-day-btn" className="btn-emoji" onClick={handleEndDay} style={{ background: '#8b5cf6', color: '#fff', width: '30px', height: '30px' }} title="END DAY">🌙</button>
         )}
       </div>
 
@@ -652,13 +646,8 @@ export const DashboardHeader = ({
     return () => window.removeEventListener('cat_demo_scenario', handleScenario);
   }, [onStartAudio, onStopAudio, handleStop, handleStartBreak, stopBreak, stopSession, audioEngine]);
 
-  return (
-    <header className={`dashboard-header glass-panel${headerMinimal ? ' dashboard-header--minimal' : ''}${scoreboardFill ? ' dashboard-header--scoreboard-fill' : ''}`} style={{ position: 'relative', zIndex: 100 }}>
-
-      <SessionControlsSticky />
-
-      {!headerMinimal && (
-      <div className="dashboard-header-fill">
+  const renderWorkspaceBody = () => (
+      <div className={`dashboard-header-fill${scoreboardFill ? ' scoreboard-workspace' : ''}`}>
       <>
       {/* COLLAPSED VIEW (hidden when in compact call mode) */}
       {(!isActive || callModeExpanded) && isCollapsed && (
@@ -1501,7 +1490,15 @@ ${isInDeficit ? `⚠️ DEFICIT: Behind pace by ${Math.round(monthlyDeficitMins)
 
       </>
       </div>
-      )}
+  );
+
+  return (
+    <>
+    <header className={`dashboard-header glass-panel${headerMinimal || scoreboardFill ? ' dashboard-header--controls-only' : ''}${headerMinimal ? ' dashboard-header--minimal' : ''}`} style={{ position: 'relative', zIndex: 100 }}>
+
+      <SessionControlsSticky />
+
+      {!headerMinimal && !scoreboardFill && renderWorkspaceBody()}
 
       {isTodayDialOpen && (
         <DialGoalSelector
@@ -1525,5 +1522,8 @@ ${isInDeficit ? `⚠️ DEFICIT: Behind pace by ${Math.round(monthlyDeficitMins)
         />
       )}
     </header>
+
+    {scoreboardFill && scoreboardRoot && createPortal(renderWorkspaceBody(), scoreboardRoot)}
+    </>
   );
 };
