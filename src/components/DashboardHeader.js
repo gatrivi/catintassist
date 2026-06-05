@@ -11,6 +11,7 @@ import { MonthHeatmap } from './MonthHeatmap';
 import { TimeEditModal } from './TimeEditModal';
 import { GameScoreboard } from './GameScoreboard';
 import { AppGuideButton } from './AppGuide';
+import { WorkspaceViewSwitcher } from './WorkspaceViewSwitcher';
 
 const CelebrationParticles = ({ type, label, coins, onDismiss }) => {
   const [isClosing, setIsClosing] = useState(false);
@@ -122,8 +123,17 @@ const StateIndicators = ({ state, breakMinutes, isZombie, silenceCount }) => {
   );
 };
 
-export const DashboardHeader = ({ onStartAudio, onStopAudio, onReconnectStream, sttLanguage, onToggleLanguage, onRecovery, connectionState, connectionMessage, lastDataTime }) => {
+export const DashboardHeader = ({
+  onStartAudio, onStopAudio, onReconnectStream, sttLanguage, onToggleLanguage, onRecovery,
+  connectionState, connectionMessage, lastDataTime,
+  offCallWorkspace = null,
+  onCycleWorkspace,
+  showStudioHint = false,
+}) => {
   const { isActive, sessionSeconds, sessionEarnings, stats, updateStat, stopSession, endDay, RATE_PER_MINUTE, arsRate, setArsRate, isBreakActive, breakSeconds, startBreak, stopBreak, availSeconds, isEditingScoreboard, setIsEditingScoreboard, visibleCards, isNotesOpen, setIsNotesOpen, isToolbarVisible, setIsToolbarVisible, isHeatmapOpen, setIsHeatmapOpen, isZombieCall, isScoreboardHelpVisible, setIsScoreboardHelpVisible, isHold, setIsHold, holdSeconds, dailyTimeline, historyTimeline, dailyLog, lastActivityTime, isCallDetectionEnabled, setIsCallDetectionEnabled, callFocusMode, setCallFocusMode, minutesSinceLastBreak } = useSession();
+
+  const headerMinimal = !isActive && offCallWorkspace === 'soundboard';
+  const studioView = offCallWorkspace === 'soundboard' ? 'soundboard' : 'scoreboard';
 
   const helpStyle = isScoreboardHelpVisible ? { outline: '1px dashed #3b82f6', position: 'relative' } : {};
   const HelpLabel = ({ text }) => isScoreboardHelpVisible ? (
@@ -592,16 +602,6 @@ export const DashboardHeader = ({ onStartAudio, onStopAudio, onReconnectStream, 
         )}
         <button className="btn-icon tiny-btn" onClick={() => setIsNotesOpen(!isNotesOpen)} style={{ opacity: isNotesOpen ? 1 : 0.45, width: '24px', height: '24px', fontSize: '0.75rem' }} title="Quick Notes">📝</button>
         <AppGuideButton />
-        {(!isActive || !callFocusMode) && (
-          <button
-            type="button"
-            className={`soundboard-header-toggle ${isToolbarVisible ? 'is-open' : ''}`}
-            onClick={() => setIsToolbarVisible(!isToolbarVisible)}
-            title={isToolbarVisible ? 'Hide soundboard' : 'Show soundboard'}
-          >
-            {isToolbarVisible ? '🔊 HIDE' : '🔊 SHOW'}
-          </button>
-        )}
       </div>
     </div>
   );
@@ -636,10 +636,12 @@ export const DashboardHeader = ({ onStartAudio, onStopAudio, onReconnectStream, 
   }, [onStartAudio, onStopAudio, handleStop, handleStartBreak, stopBreak, stopSession, audioEngine]);
 
   return (
-    <header className="dashboard-header glass-panel" style={{ position: 'relative', zIndex: 100 }}>
+    <header className={`dashboard-header glass-panel${headerMinimal ? ' dashboard-header--minimal' : ''}`} style={{ position: 'relative', zIndex: 100 }}>
 
       <SessionControlsSticky />
 
+      {!headerMinimal && (
+      <>
       {/* COLLAPSED VIEW (hidden when in compact call mode) */}
       {(!isActive || callModeExpanded) && isCollapsed && (
         <div className="condensed-header-card">
@@ -764,7 +766,15 @@ export const DashboardHeader = ({ onStartAudio, onStopAudio, onReconnectStream, 
                       <span style={{ fontSize: '0.8rem', marginRight: '6px' }}>🎮</span>
                       <div className="metric-cell-label" style={{ opacity: 0.8 }}>BACK TO GAME VIEW</div>
                     </div>
-                    <div className="metric-cell" style={{ gridColumn: 'span 1', minHeight: '26px', display: 'flex', alignItems: 'center', justifyContent: 'center' }} title="App guide">
+                    <div className="metric-cell metric-cell-studio" style={{ gridColumn: 'span 1', minHeight: '26px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '4px' }} title="Studio view switch">
+                      {!isActive && onCycleWorkspace && (
+                        <WorkspaceViewSwitcher
+                          view={studioView}
+                          onCycle={onCycleWorkspace}
+                          variant="inline"
+                          showHint={showStudioHint}
+                        />
+                      )}
                       <AppGuideButton />
                     </div>
                   </div>
@@ -835,7 +845,6 @@ export const DashboardHeader = ({ onStartAudio, onStopAudio, onReconnectStream, 
             {/* Utility Tool Buttons - Consolidated Row */}
             <div id="right-tool-vertical" style={{ display: 'flex', flexDirection: 'row', flexWrap: 'wrap', gap: '2px', marginTop: 'auto', justifyContent: 'center' }}>
                 <button id="header-notes-btn" className="btn-icon tiny-btn" onClick={() => setIsNotesOpen(!isNotesOpen)} style={{ opacity: isNotesOpen ? 1 : 0.3, width: '22px', height: '22px', fontSize: '0.8rem' }} title="Notes">📝</button>
-                <button id="header-tools-btn" className="btn-icon tiny-btn" onClick={() => setIsToolbarVisible(!isToolbarVisible)} style={{ opacity: isToolbarVisible ? 1 : 0.3, width: '22px', height: '22px', fontSize: '0.8rem' }} title="Tools">🛠️</button>
                 <button id="header-edit-btn" className="btn-icon tiny-btn" onClick={() => { if(isCollapsed) setIsCollapsed(false); setIsEditingScoreboard(!isEditingScoreboard); }} style={{ opacity: isEditingScoreboard ? 1 : 0.3, width: '22px', height: '22px', fontSize: '0.8rem' }} title="Edit Grid">✏️</button>
                 <button id="header-expand-btn" className="btn-icon tiny-btn" onClick={() => setIsCollapsed(!isCollapsed)} style={{ width: '22px', height: '22px', fontSize: '0.8rem' }} title={isCollapsed ? "Expand HUD" : "Collapse HUD"}>{isCollapsed ? '🔼' : '▼'}</button>
                 <button id="header-calldetect-btn" className="btn-icon tiny-btn" onClick={() => setIsCallDetectionEnabled(!isCallDetectionEnabled)} style={{ opacity: isCallDetectionEnabled ? 1 : 0.3, background: isCallDetectionEnabled ? 'rgba(16,185,129,0.1)' : 'transparent', width: '22px', height: '22px', fontSize: '0.8rem' }} title="Call Detection">{isCallDetectionEnabled ? '📡' : '📵'}</button>
@@ -1472,7 +1481,9 @@ ${isInDeficit ? `⚠️ DEFICIT: Behind pace by ${Math.round(monthlyDeficitMins)
         </div>
       )}
 
-      {/* GLOBAL DIAL SELECTOR TRIGGER */}
+      </>
+      )}
+
       {isTodayDialOpen && (
         <DialGoalSelector
           ratePerMinute={RATE_PER_MINUTE}
@@ -1484,15 +1495,14 @@ ${isInDeficit ? `⚠️ DEFICIT: Behind pace by ${Math.round(monthlyDeficitMins)
         />
       )}
 
-      {/* MONTH HEATMAP */}
       {isHeatmapOpen && <MonthHeatmap />}
 
-      {/* TIME EDIT MODAL */}
       {timeEditMode && <TimeEditModal mode={timeEditMode} onClose={() => setTimeEditMode(null)} />}
+
       {celebration && (
-        <CelebrationParticles 
-          {...celebration} 
-          onDismiss={() => setCelebration(null)} 
+        <CelebrationParticles
+          {...celebration}
+          onDismiss={() => setCelebration(null)}
         />
       )}
     </header>

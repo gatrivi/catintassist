@@ -13,9 +13,11 @@ import { MealTrackerWidget } from './components/MealTrackerWidget';
 import { ChoreTrackerWidget } from './components/ChoreTrackerWidget';
 import {
   WorkspaceViewSwitcher,
-  WORKSPACE_VIEWS,
+  OFF_CALL_VIEWS,
   loadWorkspaceView,
   saveWorkspaceView,
+  hasSeenStudioHint,
+  markStudioHintSeen,
 } from './components/WorkspaceViewSwitcher';
 import { useDeepgram } from './hooks/useDeepgram';
 import { useProgressiveAudio } from './hooks/useProgressiveAudio';
@@ -33,30 +35,26 @@ const CloudSyncIndicator = () => {
 
 const Dashboard = () => {
   const { startRecording, stopRecording, reconnectStream, captions, clearCaptions, sttLanguage, toggleLanguage, connectionState, connectionMessage, lastDataTime } = useDeepgram();
-  const { isNotesOpen, setIsNotesOpen, isToolbarVisible, setIsToolbarVisible, isActive, isBreakActive, isZombieCall, minutesSinceLastBreak, startSession, clearZombieState, callFocusMode } = useSession();
-  const canShowSoundboard = !isActive || !callFocusMode;
+  const { isNotesOpen, setIsNotesOpen, isActive, isBreakActive, isZombieCall, minutesSinceLastBreak, startSession, clearZombieState, callFocusMode } = useSession();
   const { playCoin } = useProgressiveAudio();
   const [isEditingBg, setIsEditingBg] = useState(false);
   const [workspaceView, setWorkspaceView] = useState(loadWorkspaceView);
+  const [showStudioHint, setShowStudioHint] = useState(() => !hasSeenStudioHint());
+
+  const offCallWorkspace = isActive ? null : workspaceView;
+  const isSoundboardStudio = offCallWorkspace === 'soundboard';
 
   const cycleWorkspaceView = useCallback(() => {
     if (isActive) return;
+    markStudioHintSeen();
+    setShowStudioHint(false);
     setWorkspaceView((prev) => {
-      const i = WORKSPACE_VIEWS.indexOf(prev);
-      const next = WORKSPACE_VIEWS[(i + 1) % WORKSPACE_VIEWS.length];
+      const i = OFF_CALL_VIEWS.indexOf(prev);
+      const next = OFF_CALL_VIEWS[(i + 1) % OFF_CALL_VIEWS.length];
       saveWorkspaceView(next);
       return next;
     });
   }, [isActive]);
-
-  useEffect(() => {
-    if (isActive && workspaceView !== 'transcript') {
-      setWorkspaceView('transcript');
-      saveWorkspaceView('transcript');
-    }
-  }, [isActive, workspaceView]);
-
-  const isSoundboardLab = workspaceView === 'soundboard' && !isActive;
 
   useEffect(() => {
     const applyBg = async () => {
@@ -179,7 +177,12 @@ const Dashboard = () => {
   }, []);
 
   return (
-    <div className={`app-container ${stateClass}`} data-state={appState} data-call-mode={isActive}>
+    <div
+      className={`app-container ${stateClass}`}
+      data-state={appState}
+      data-call-mode={isActive}
+      data-off-call-view={isActive ? 'call' : workspaceView}
+    >
       {/* Version Tag - Always visible in the upper right */}
       <div style={{ 
         position: 'fixed', top: '1px', right: '4px', zIndex: 10000, 
@@ -188,7 +191,7 @@ const Dashboard = () => {
         display: 'flex', alignItems: 'center', gap: '4px'
       }}>
         <CloudSyncIndicator />
-        v4.36.0 (Full Stack)
+        v4.37.0 (Full Stack)
       </div>
 
       <div id="top-mic-bar-container" style={{ position: 'fixed', top: 0, left: 0, right: 0, height: '3px', zIndex: 9999, pointerEvents: 'none' }}>
@@ -207,27 +210,26 @@ const Dashboard = () => {
         connectionState={connectionState}
         connectionMessage={connectionMessage}
         lastDataTime={lastDataTime}
+        offCallWorkspace={offCallWorkspace}
+        onCycleWorkspace={cycleWorkspaceView}
+        showStudioHint={showStudioHint}
       />
 
-      <WorkspaceViewSwitcher
-        view={isSoundboardLab ? 'soundboard' : 'transcript'}
-        onCycle={cycleWorkspaceView}
-        disabled={isActive}
-      />
-
-      {isSoundboardLab ? (
+      {isSoundboardStudio && (
         <main className="main-content view-soundboard">
           <div className="workspace-soundboard-pane glass-panel" data-guide="soundboard-lab">
             <div className="workspace-soundboard-head">
-              <span className="workspace-soundboard-title">🔊 Soundboard Lab</span>
-              <span className="workspace-soundboard-hint">Off-call setup · record, preview, health-check</span>
+              <span className="workspace-soundboard-title">Soundboard Studio</span>
+              <span className="workspace-soundboard-hint">Record · preview · health-check — off-call only</span>
             </div>
             <GreetingsPanel onEditModeChange={setIsEditingBg} />
           </div>
         </main>
-      ) : (
-      <main className={`main-content ${isNotesOpen ? 'notes-open' : ''} ${isToolbarVisible && (!isActive || !callFocusMode) ? 'tools-open' : ''}`}>
-        <div className="transcription-pane" data-guide="transcript">
+      )}
+
+      {isActive && (
+        <main className={`main-content ${isNotesOpen ? 'notes-open' : ''}`}>
+          <div className="transcription-pane" data-guide="transcript">
             <TranscriptionBoard 
               captions={captions} 
               isActive={isActive} 
@@ -237,48 +239,16 @@ const Dashboard = () => {
               onReconnect={() => handleConnection(true)}
               lastDataTime={lastDataTime}
             />
-        </div>
-        {(isNotesOpen || ((!isActive || !callFocusMode) && isToolbarVisible)) && (
-          <div className={`tools-column ${isNotesOpen ? 'notes-open' : ''}`}>
-             {canShowSoundboard && isToolbarVisible && (
-               <div className="glass-panel tools-soundboard" style={{ overflow: 'hidden', display: 'flex', flexDirection: 'column', flex: isEditingBg ? '1' : '1.5' }}>
-                 <div className="soundboard-chrome">
-                   <div className="soundboard-chrome-label">
-                     <span className="soundboard-chrome-title">🔊 SOUNDBOARD</span>
-                     <span className="soundboard-chrome-hint">Audio routing WIP — hide while on calls</span>
-                   </div>
-                   <button
-                     type="button"
-                     className="soundboard-hide-btn"
-                     onClick={() => setIsToolbarVisible(false)}
-                     title="Hide soundboard panel"
-                   >
-                     ✕ HIDE SOUNDBOARD
-                   </button>
-                 </div>
-                 <GreetingsPanel onEditModeChange={setIsEditingBg} />
-               </div>
-             )}
-             {isNotesOpen && !isEditingBg && (
-               <div className="glass-panel tools-notes" style={{ overflow: 'hidden', display: 'flex', flexDirection: 'column', flex: 1, minHeight: isActive && callFocusMode ? '200px' : undefined }}>
-                 {(!isActive || !callFocusMode) && <DictionaryTool />}
-                 <NotePad />
-               </div>
-             )}
           </div>
-        )}
-      </main>
-      )}
-
-      {canShowSoundboard && !isToolbarVisible && !isSoundboardLab && (
-        <button
-          type="button"
-          className="soundboard-show-fab"
-          onClick={() => setIsToolbarVisible(true)}
-          title="Show soundboard panel"
-        >
-          🔊 SHOW SOUNDBOARD
-        </button>
+          {isNotesOpen && !isEditingBg && (
+            <div className="tools-column notes-open">
+              <div className="glass-panel tools-notes" style={{ overflow: 'hidden', display: 'flex', flexDirection: 'column', flex: 1, minHeight: isActive && callFocusMode ? '200px' : undefined }}>
+                {(!isActive || !callFocusMode) && <DictionaryTool />}
+                <NotePad />
+              </div>
+            </div>
+          )}
+        </main>
       )}
 
       <div className="habit-dock">
@@ -286,6 +256,14 @@ const Dashboard = () => {
         <RosaryWidget />
         <MealTrackerWidget />
         <ChoreTrackerWidget />
+        {!isActive && (
+          <WorkspaceViewSwitcher
+            view={workspaceView}
+            onCycle={cycleWorkspaceView}
+            variant="dock"
+            showHint={showStudioHint}
+          />
+        )}
         <button
           data-guide="notes"
           onClick={() => setIsNotesOpen(o => !o)}

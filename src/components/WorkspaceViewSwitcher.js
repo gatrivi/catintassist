@@ -1,14 +1,14 @@
 import React from 'react';
 
-export const WORKSPACE_VIEWS = ['transcript', 'soundboard'];
+export const OFF_CALL_VIEWS = ['scoreboard', 'soundboard'];
 
 const VIEW_META = {
-  transcript: { label: 'Transcript', next: 'Soundboard Lab' },
-  soundboard: { label: 'Soundboard Lab', next: 'Transcript' },
+  scoreboard: { label: 'Scoreboard', next: 'Soundboard Studio' },
+  soundboard: { label: 'Soundboard Studio', next: 'Scoreboard' },
 };
 
-/** Art-deco stepped fan — current view lights the center tier. */
-const ViewIcon = ({ view }) => (
+/** Art-deco studio icon — pyramid + tier lines; center gem marks soundboard mode. */
+const StudioIcon = ({ view }) => (
   <svg width="22" height="22" viewBox="0 0 24 24" aria-hidden>
     <path
       d="M12 2 L20 8 L17 22 H7 L4 8 Z"
@@ -22,7 +22,7 @@ const ViewIcon = ({ view }) => (
       stroke="currentColor"
       strokeWidth="1"
       strokeLinecap="square"
-      opacity={view === 'transcript' ? 1 : 0.35}
+      opacity={view === 'scoreboard' ? 1 : 0.35}
     />
     <circle
       cx="12"
@@ -37,32 +37,65 @@ const ViewIcon = ({ view }) => (
   </svg>
 );
 
-export const WorkspaceViewSwitcher = ({ view, onCycle, disabled = false }) => {
-  const meta = VIEW_META[view] || VIEW_META.transcript;
+export const WorkspaceViewSwitcher = ({
+  view = 'scoreboard',
+  onCycle,
+  disabled = false,
+  variant = 'inline',
+  showHint = false,
+}) => {
+  const meta = VIEW_META[view] || VIEW_META.scoreboard;
+  const hintActive = showHint && view === 'scoreboard' && !disabled;
 
   return (
     <button
       type="button"
-      className={`workspace-view-btn${disabled ? ' is-disabled' : ''}`}
+      className={[
+        'workspace-view-btn',
+        `workspace-view-btn--${variant}`,
+        disabled ? 'is-disabled' : '',
+        hintActive ? 'workspace-view-btn--hint' : '',
+      ].filter(Boolean).join(' ')}
       onClick={onCycle}
       disabled={disabled}
       title={
         disabled
-          ? 'Soundboard Lab — available off-call only'
-          : `${meta.label} · click → ${meta.next}`
+          ? 'Studio switch — off-call only'
+          : hintActive
+            ? `Try Soundboard Studio · ${meta.next}`
+            : `${meta.label} · click → ${meta.next}`
       }
-      aria-label={`Workspace view: ${meta.label}. Click for ${meta.next}.`}
+      aria-label={`Workspace: ${meta.label}. Switch to ${meta.next}.`}
     >
-      <ViewIcon view={view} />
+      <StudioIcon view={view} />
     </button>
   );
 };
 
+const STORAGE_VIEW = 'catint_workspace_view';
+const STORAGE_HINT = 'catint_studio_hint_seen';
+const STORAGE_INIT = 'catint_workspace_initialized';
+
 export const loadWorkspaceView = () => {
-  const saved = localStorage.getItem('catint_workspace_view');
-  return WORKSPACE_VIEWS.includes(saved) ? saved : 'transcript';
+  const saved = localStorage.getItem(STORAGE_VIEW);
+  if (OFF_CALL_VIEWS.includes(saved)) return saved;
+  if (saved === 'transcript') return 'scoreboard';
+  if (!localStorage.getItem(STORAGE_INIT)) {
+    localStorage.setItem(STORAGE_INIT, '1');
+    localStorage.setItem(STORAGE_VIEW, 'scoreboard');
+    return 'scoreboard';
+  }
+  return 'scoreboard';
 };
 
 export const saveWorkspaceView = (view) => {
-  localStorage.setItem('catint_workspace_view', view);
+  if (OFF_CALL_VIEWS.includes(view)) {
+    localStorage.setItem(STORAGE_VIEW, view);
+  }
+};
+
+export const hasSeenStudioHint = () => localStorage.getItem(STORAGE_HINT) === '1';
+
+export const markStudioHintSeen = () => {
+  localStorage.setItem(STORAGE_HINT, '1');
 };
