@@ -2,7 +2,7 @@
 
 Status enum: `NOT_STARTED` · `PARTIAL` · `DONE` · `BROKEN`
 
-Updated: v4.38.0
+Updated: v4.39.0
 
 ## Pass A — Safety & verification (current focus)
 
@@ -16,8 +16,8 @@ Updated: v4.38.0
 | `PLAY_GATE` — Block virtual mic for untested / unacceptable clips | `DONE` | v4.38, play mode only; local preview still works |
 | `CALL_PATH_TEST` — Explicit “hear what patient hears” button | `DONE` | v4.38, Setup → 📡 Call Test (sink only) |
 | `LOCAL_PREVIEW_ISOLATION` — Preview does not hit default sink | `DONE` | v4.38, local element only |
-| `CLIP_WAVEFORM` — Static waveform on saved clips | `NOT_STARTED` | Next baby step |
-| `CALL_PATH_AUTO_VERIFY` — Auto pass/fail after call test | `NOT_STARTED` | |
+| `CLIP_WAVEFORM` — Static waveform on saved clips | `DONE` | v4.39, Setup rows + play progress tint |
+| `CALL_PATH_AUTO_VERIFY` — Auto pass/fail after call test | `NOT_STARTED` | Next baby step |
 
 ## Pass B — Daily use polish
 
@@ -45,10 +45,11 @@ Updated: v4.38.0
 
 ---
 
-## How to verify today (v4.38)
+## How to verify today (v4.39)
 
 1. Off-call → studio icon → **Soundboard Studio**
-2. **Setup** → record/upload → wait for health bar (needs Deepgram API key)
-3. **▶ Preview** — you only, no virtual mic
-4. **📡 Call Test** — routes to header speaker/output; hear patient path
-5. **Play mode** — untested or ⛔ clips preview locally; passing clips go to mic when Test Mode off
+2. **Setup** → record/upload → waveform appears under clip name
+3. Wait for health bar (needs Deepgram API key)
+4. **▶ Preview** — you only; waveform fills green as it plays
+5. **📡 Call Test** — routes to header speaker/output; hear patient path
+6. **Play mode** — untested or ⛔ clips preview locally; passing clips go to mic when Test Mode off

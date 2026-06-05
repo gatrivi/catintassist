@@ -7,6 +7,55 @@ const CALL_ROUTE_MIN_SCORE = 0.5;
 
 const isCallerReady = (score) => score !== undefined && score >= CALL_ROUTE_MIN_SCORE;
 
+const buildWaveformPeaks = async (blob, bars = 56) => {
+  const arrayBuffer = await blob.arrayBuffer();
+  const ctx = new (window.AudioContext || window.webkitAudioContext)();
+  try {
+    const audioBuffer = await ctx.decodeAudioData(arrayBuffer.slice(0));
+    const channel = audioBuffer.getChannelData(0);
+    const blockSize = Math.max(1, Math.floor(channel.length / bars));
+    const peaks = [];
+    for (let i = 0; i < bars; i += 1) {
+      const start = i * blockSize;
+      const end = Math.min(start + blockSize, channel.length);
+      let sum = 0;
+      for (let j = start; j < end; j += 1) sum += Math.abs(channel[j]);
+      peaks.push(sum / (end - start || 1));
+    }
+    const max = Math.max(...peaks, 0.001);
+    return peaks.map((p) => p / max);
+  } finally {
+    ctx.close().catch(() => {});
+  }
+};
+
+const ClipWaveform = ({ peaks, progress = 0, height = 28 }) => {
+  if (!peaks?.length) {
+    return <div className="clip-waveform clip-waveform--loading" style={{ height }} aria-hidden />;
+  }
+  const barW = 100 / peaks.length;
+  return (
+    <svg className="clip-waveform" viewBox="0 0 100 100" preserveAspectRatio="none" style={{ height }} aria-hidden>
+      {peaks.map((peak, i) => {
+        const h = Math.max(6, peak * 90);
+        const played = (i + 1) / peaks.length <= progress;
+        return (
+          <rect
+            key={i}
+            x={i * barW}
+            y={(100 - h) / 2}
+            width={barW * 0.7}
+            height={h}
+            fill={played ? '#34d399' : '#64748b'}
+            opacity={played ? 0.95 : 0.5}
+            rx="0.5"
+          />
+        );
+      })}
+    </svg>
+  );
+};
+
 export const ACTIONS = [
   { id: 'greeting_en', label: 'Greeting', lang: 'en', dynamic: true },
   { id: 'greeting_es', label: 'Greeting', lang: 'es', dynamic: true },
@@ -34,6 +83,7 @@ export const GreetingsPanel = ({ onEditModeChange }) => {
   const [recordingKey, setRecordingKey] = useState(null);
   const [testMode, setTestMode] = useState(false);
   const [safetyNotice, setSafetyNotice] = useState('');
+  const [waveforms, setWaveforms] = useState({});
 
   const audioRefSink = useRef(new Audio());
   const audioRefLocal = useRef(new Audio());
@@ -95,6 +145,28 @@ export const GreetingsPanel = ({ onEditModeChange }) => {
   useEffect(() => {
     reloadData();
   }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+    const keys = Object.keys(blobs).filter(
+      (k) => !k.startsWith('url_') && !k.startsWith('thumb_') && k !== 'bg_app' && blobs[k] instanceof Blob
+    );
+
+    (async () => {
+      const next = {};
+      for (const key of keys) {
+        if (cancelled) return;
+        try {
+          next[key] = await buildWaveformPeaks(blobs[key]);
+        } catch (e) {
+          console.warn('Waveform decode failed:', key, e);
+        }
+      }
+      if (!cancelled) setWaveforms(next);
+    })();
+
+    return () => { cancelled = true; };
+  }, [blobs]);
 
   // Sync volumes when sliders change
   useEffect(() => {
@@ -166,6 +238,11 @@ export const GreetingsPanel = ({ onEditModeChange }) => {
 
   const handleClear = async (key) => {
     await deleteFile(key);
+    setWaveforms((prev) => {
+      const next = { ...prev };
+      delete next[key];
+      return next;
+    });
     reloadData();
   };
 
@@ -380,6 +457,13 @@ export const GreetingsPanel = ({ onEditModeChange }) => {
           <span style={{ color: blobs[key] ? '#10b981' : '#ef4444', fontSize: '0.75rem', fontWeight: 600 }}>{blobs[key] ? '✅ SAVED' : '❌ MISSING'}</span>
         </div>
       </div>
+
+      {blobs[key] && (
+        <ClipWaveform
+          peaks={waveforms[key]}
+          progress={playingKey === key ? playbackProgress : 0}
+        />
+      )}
       
       <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
         <div style={{ display: 'flex', gap: '0.5rem' }}>
