@@ -446,9 +446,7 @@ export const TranscriptionBoard = ({ captions, onClearAll, onReconnect, lastData
             </div>
             {pinnedCaptions.map((cap) => (
               <div key={`pin-${cap.id}`} className="transcript-bubble pinned-transcript-bubble" style={{
-                position: 'relative',
                 marginTop: '0.35rem',
-                padding: '0.4rem',
                 border: '1px solid var(--accent-primary)',
                 background: 'rgba(34, 197, 94, 0.1)',
                 ...getBubbleStyle(cap.text, true, cap.lang),
@@ -469,12 +467,11 @@ export const TranscriptionBoard = ({ captions, onClearAll, onReconnect, lastData
                   onTogglePin={() => togglePin(cap)}
                 />
                 <button
+                  type="button"
+                  className="bubble-pin-btn is-pinned"
                   onClick={() => togglePin(cap)}
-                  style={{
-                    position: 'absolute', top: '0', right: '0', background: 'transparent', border: 'none',
-                    fontSize: '0.65rem', cursor: 'pointer', color: 'var(--accent-primary)', padding: '4px', zIndex: 10,
-                  }}
                   title="Unpin message"
+                  aria-label="Unpin message"
                 >
                   📌
                 </button>
@@ -510,10 +507,8 @@ export const TranscriptionBoard = ({ captions, onClearAll, onReconnect, lastData
           
           return (
             <div key={cap.id || i} className="transcript-bubble" style={{
-              position: 'relative',
               opacity: cap.isFinal === false ? 0.6 : 1,
               marginTop: isSplitContinuation ? '0rem' : '0.25rem',
-              padding: '0.25rem 0.35rem',
               border: '1px solid transparent',
               background: getBubbleStyle(cap.text, cap.isFinal === false, cap.lang).backgroundColor,
               ...getBubbleStyle(cap.text, cap.isFinal === false, cap.lang)
@@ -534,13 +529,11 @@ export const TranscriptionBoard = ({ captions, onClearAll, onReconnect, lastData
               )}
               
               <button
+                type="button"
+                className="bubble-pin-btn"
                 onClick={() => togglePin(cap)}
-                style={{
-                  position: 'absolute', top: '0', right: '0', background: 'transparent', border: 'none',
-                  fontSize: '0.65rem', cursor: 'pointer', opacity: 0.55,
-                  color: '#fff', padding: '4px', zIndex: 10,
-                }}
                 title="Pin message (keeps it visible at top for voicemail / callouts)"
+                aria-label="Pin message"
               >
                 📍
               </button>
