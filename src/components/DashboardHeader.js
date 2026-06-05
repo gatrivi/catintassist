@@ -13,6 +13,9 @@ import { TimeEditModal } from './TimeEditModal';
 import { GameScoreboard } from './GameScoreboard';
 import { AppGuideButton } from './AppGuide';
 import { WorkspaceViewSwitcher } from './WorkspaceViewSwitcher';
+import { isDemoSafeMode } from '../config/demoSafe';
+
+const demoSafe = isDemoSafeMode();
 
 const CelebrationParticles = ({ type, label, coins, onDismiss }) => {
   const [isClosing, setIsClosing] = useState(false);
@@ -145,13 +148,13 @@ export const DashboardHeader = ({
   const audioEngine = useProgressiveAudio();
   const { playChaChing } = useRewardAudio();
 
-  const [isCollapsed, setIsCollapsed] = useState(true);
+  const [isCollapsed, setIsCollapsed] = useState(true); // demo-safe: always collapsed
   const [celebration, setCelebration] = useState(null); // Keep celebration for sound logic
   const [isTodayDialOpen, setIsTodayDialOpen] = useState(false);
   const [displayBounty, setDisplayBounty] = useState(0);
   const [isBountyAnimating, setIsBountyAnimating] = useState(false);
   const [timeEditMode, setTimeEditMode] = useState(null); // 'call' | 'break' | null
-  const [scoreView, setScoreView] = useState('numbers'); // 'game' | 'numbers'
+  const [scoreView, setScoreView] = useState(demoSafe ? 'numbers' : 'numbers'); // demo-safe: numbers grid only
   const [silenceCount, setSilenceCount] = useState(0);
   const [hoveredTimelineEvent, setHoveredTimelineEvent] = useState(null);
   const [isZapping, setIsZapping] = useState(false);
@@ -180,6 +183,14 @@ export const DashboardHeader = ({
   // Auto-reset expanded header when call ends
   useEffect(() => {
     if (!isActive) setCallModeExpanded(false);
+  }, [isActive]);
+
+  // Demo-safe: lock collapsed numbers grid — no expand HUD / game flip accidents
+  useEffect(() => {
+    if (!demoSafe) return;
+    setIsCollapsed(true);
+    setCallModeExpanded(false);
+    setScoreView('numbers');
   }, [isActive]);
 
   const startOfToday = new Date().setHours(0,0,0,0);
@@ -573,19 +584,21 @@ export const DashboardHeader = ({
           <>
             <button id="header-stop-btn" data-guide="stop" className="btn-emoji" onClick={handleStop} style={{ background: '#ef4444', color: '#fff', width: '30px', height: '30px' }} title="STOP / DISCONNECT">🛑</button>
             <button id="header-hold-btn" className="btn btn-condensed" onClick={() => setIsHold(!isHold)} style={{ background: isHold ? '#f59e0b' : 'rgba(255,255,255,0.08)', height: '30px', padding: '0', width: '30px', fontSize: '0.65rem', border: '1px solid rgba(255,255,255,0.1)' }}>{isHold ? 'H' : '⏸'}</button>
-            <button
-              id="header-zap-btn"
-              className={`btn-emoji ${isZapping ? 'zap-active' : ''}`}
-              onClick={() => {
-                setIsZapping(true);
-                onReconnectStream();
-                setTimeout(() => setIsZapping(false), 450);
-              }}
-              style={{ background: '#0ea5e9', width: '30px', height: '30px' }}
-              title="ZAP - Reconnect Audio Stream"
-            >
-              ⚡
-            </button>
+            {!demoSafe && (
+              <button
+                id="header-zap-btn"
+                className={`btn-emoji ${isZapping ? 'zap-active' : ''}`}
+                onClick={() => {
+                  setIsZapping(true);
+                  onReconnectStream();
+                  setTimeout(() => setIsZapping(false), 450);
+                }}
+                style={{ background: '#0ea5e9', width: '30px', height: '30px' }}
+                title="ZAP - Reconnect Audio Stream"
+              >
+                ⚡
+              </button>
+            )}
           </>
         )}
         <button id="header-break-btn" className="btn-emoji" onClick={isBreakActive ? stopBreak : handleStartBreak} style={{ background: '#fb923c', color: '#fff', width: '30px', height: '30px', opacity: isActive ? 0.35 : 1 }} disabled={isActive} title="BREAK">☕</button>
@@ -605,10 +618,10 @@ export const DashboardHeader = ({
       )}
 
       <div style={{ display: 'flex', gap: '3px', alignItems: 'center', flexShrink: 0 }}>
-        {isActive && !callModeExpanded && (
+        {isActive && !demoSafe && !callModeExpanded && (
           <button className="btn-icon tiny-btn" onClick={() => setCallModeExpanded(true)} style={{ width: '24px', height: '24px', fontSize: '0.7rem' }} title="Expand Header">🔼</button>
         )}
-        {isActive && callModeExpanded && (
+        {isActive && !demoSafe && callModeExpanded && (
           <button className="btn-icon tiny-btn" onClick={() => setCallModeExpanded(false)} style={{ width: '24px', height: '24px', fontSize: '0.7rem' }} title="Compact Header">🔽</button>
         )}
         <button className="btn-icon tiny-btn" onClick={() => setIsNotesOpen(!isNotesOpen)} style={{ opacity: isNotesOpen ? 1 : 0.45, width: '24px', height: '24px', fontSize: '0.75rem' }} title="Quick Notes">📝</button>
@@ -769,12 +782,14 @@ export const DashboardHeader = ({
                       </div>
                       <div className="metric-cell-label">CURR CALL</div>
                     </div>
-                    <div id="cell-switch-game" className="metric-cell" style={{ cursor: 'pointer', background: 'rgba(255,255,255,0.04)', gridColumn: 'span 3', flexDirection: 'row', minHeight: '26px' }} onClick={() => setScoreView('game')} title="Switch back to gamified view">
-                      <span style={{ fontSize: '0.8rem', marginRight: '6px' }}>🎮</span>
-                      <div className="metric-cell-label" style={{ opacity: 0.8 }}>BACK TO GAME VIEW</div>
-                    </div>
-                    <div className="metric-cell metric-cell-studio" style={{ gridColumn: 'span 1', minHeight: '26px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '4px' }} title="Studio view switch">
-                      {!isActive && onCycleWorkspace && (
+                    {!demoSafe && (
+                      <div id="cell-switch-game" className="metric-cell" style={{ cursor: 'pointer', background: 'rgba(255,255,255,0.04)', gridColumn: 'span 3', flexDirection: 'row', minHeight: '26px' }} onClick={() => setScoreView('game')} title="Switch back to gamified view">
+                        <span style={{ fontSize: '0.8rem', marginRight: '6px' }}>🎮</span>
+                        <div className="metric-cell-label" style={{ opacity: 0.8 }}>BACK TO GAME VIEW</div>
+                      </div>
+                    )}
+                    <div className="metric-cell metric-cell-studio" style={{ gridColumn: demoSafe ? 'span 4' : 'span 1', minHeight: '26px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '4px' }} title="Studio view switch">
+                      {!demoSafe && !isActive && onCycleWorkspace && (
                         <WorkspaceViewSwitcher
                           view={studioView}
                           onCycle={onCycleWorkspace}
@@ -852,8 +867,10 @@ export const DashboardHeader = ({
             {/* Utility Tool Buttons - Consolidated Row */}
             <div id="right-tool-vertical" style={{ display: 'flex', flexDirection: 'row', flexWrap: 'wrap', gap: '2px', marginTop: 'auto', justifyContent: 'center' }}>
                 <button id="header-notes-btn" className="btn-icon tiny-btn" onClick={() => setIsNotesOpen(!isNotesOpen)} style={{ opacity: isNotesOpen ? 1 : 0.3, width: '22px', height: '22px', fontSize: '0.8rem' }} title="Notes">📝</button>
-                <button id="header-edit-btn" className="btn-icon tiny-btn" onClick={() => { if(isCollapsed) setIsCollapsed(false); setIsEditingScoreboard(!isEditingScoreboard); }} style={{ opacity: isEditingScoreboard ? 1 : 0.3, width: '22px', height: '22px', fontSize: '0.8rem' }} title="Edit Grid">✏️</button>
-                <button id="header-expand-btn" className="btn-icon tiny-btn" onClick={() => setIsCollapsed(!isCollapsed)} style={{ width: '22px', height: '22px', fontSize: '0.8rem' }} title={isCollapsed ? "Expand HUD" : "Collapse HUD"}>{isCollapsed ? '🔼' : '▼'}</button>
+                <button id="header-edit-btn" className="btn-icon tiny-btn" onClick={() => { if (!demoSafe && isCollapsed) setIsCollapsed(false); setIsEditingScoreboard(!isEditingScoreboard); }} style={{ opacity: isEditingScoreboard ? 1 : 0.3, width: '22px', height: '22px', fontSize: '0.8rem' }} title="Edit Grid">✏️</button>
+                {!demoSafe && (
+                  <button id="header-expand-btn" className="btn-icon tiny-btn" onClick={() => setIsCollapsed(!isCollapsed)} style={{ width: '22px', height: '22px', fontSize: '0.8rem' }} title={isCollapsed ? "Expand HUD" : "Collapse HUD"}>{isCollapsed ? '🔼' : '▼'}</button>
+                )}
                 <button id="header-calldetect-btn" className="btn-icon tiny-btn" onClick={() => setIsCallDetectionEnabled(!isCallDetectionEnabled)} style={{ opacity: isCallDetectionEnabled ? 1 : 0.3, background: isCallDetectionEnabled ? 'rgba(16,185,129,0.1)' : 'transparent', width: '22px', height: '22px', fontSize: '0.8rem' }} title="Call Detection">{isCallDetectionEnabled ? '📡' : '📵'}</button>
                 <button id="header-focus-btn" className="btn-icon tiny-btn" onClick={() => setCallFocusMode(!callFocusMode)} style={{ opacity: callFocusMode ? 1 : 0.3, background: callFocusMode ? 'rgba(16,185,129,0.1)' : 'transparent', width: '22px', height: '22px', fontSize: '0.8rem' }} title="Call Focus: auto-hide sidebars during calls">{callFocusMode ? '🎯' : '🔲'}</button>
             </div>

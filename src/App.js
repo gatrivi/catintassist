@@ -22,7 +22,10 @@ import {
 import { useDeepgram } from './hooks/useDeepgram';
 import { useProgressiveAudio } from './hooks/useProgressiveAudio';
 import { loadFile, generateObjectUrl } from './utils/storage';
+import { isDemoSafeMode } from './config/demoSafe';
 import './index.css';
+
+const demoSafe = isDemoSafeMode();
 
 const CloudSyncIndicator = () => {
   const { syncStatus } = useSession();
@@ -38,14 +41,16 @@ const Dashboard = () => {
   const { isNotesOpen, setIsNotesOpen, isActive, isBreakActive, isZombieCall, minutesSinceLastBreak, startSession, clearZombieState, callFocusMode } = useSession();
   const { playCoin } = useProgressiveAudio();
   const [isEditingBg, setIsEditingBg] = useState(false);
-  const [workspaceView, setWorkspaceView] = useState(loadWorkspaceView);
+  const [workspaceView, setWorkspaceView] = useState(() =>
+    demoSafe ? 'scoreboard' : loadWorkspaceView()
+  );
   const [showStudioHint, setShowStudioHint] = useState(() => !hasSeenStudioHint());
 
   const offCallWorkspace = isActive ? null : workspaceView;
   const isSoundboardStudio = offCallWorkspace === 'soundboard';
 
   const cycleWorkspaceView = useCallback(() => {
-    if (isActive) return;
+    if (demoSafe || isActive) return;
     markStudioHintSeen();
     setShowStudioHint(false);
     setWorkspaceView((prev) => {
@@ -146,7 +151,7 @@ const Dashboard = () => {
   // Off-call minute chime: progressively deeper each minute
   const idleMinuteCountRef = useRef(0);
   useEffect(() => {
-    if (isActive || isBreakActive) {
+    if (demoSafe || isActive || isBreakActive) {
       idleMinuteCountRef.current = 0;
       return;
     }
@@ -157,8 +162,9 @@ const Dashboard = () => {
     return () => clearInterval(iv);
   }, [isActive, isBreakActive, playCoin]);
 
-  // Demo Scenario Trigger (Shift + D)
+  // Demo Scenario Trigger (Shift + D) — disabled in demo-safe to avoid accidental triggers while recording
   useEffect(() => {
+    if (demoSafe) return;
     const scenarios = ['call', 'goal_hit', 'break', 'reset'];
     let scenarioIdx = 0;
     
@@ -178,10 +184,11 @@ const Dashboard = () => {
 
   return (
     <div
-      className={`app-container ${stateClass}`}
+      className={`app-container ${stateClass}${demoSafe ? ' demo-safe' : ''}`}
       data-state={appState}
       data-call-mode={isActive ? 'true' : 'false'}
       data-off-call-view={isActive ? 'call' : workspaceView}
+      data-demo-safe={demoSafe ? 'true' : 'false'}
     >
       {/* Version Tag - Always visible in the upper right */}
       <div style={{ 
@@ -191,7 +198,7 @@ const Dashboard = () => {
         display: 'flex', alignItems: 'center', gap: '4px'
       }}>
         <CloudSyncIndicator />
-        v4.46.2 (Full Stack)
+        v4.47.0{demoSafe ? ' · DEMO' : ''} (Full Stack)
       </div>
 
       <div id="top-mic-bar-container" style={{ position: 'fixed', top: 0, left: 0, right: 0, height: '3px', zIndex: 9999, pointerEvents: 'none' }}>
@@ -219,7 +226,7 @@ const Dashboard = () => {
         showStudioHint={showStudioHint}
       />
 
-      {isSoundboardStudio && (
+      {isSoundboardStudio && !demoSafe && (
         <main className="main-content view-soundboard">
           <div className="workspace-soundboard-pane glass-panel" data-guide="soundboard-lab">
             <div className="workspace-soundboard-head">
@@ -260,7 +267,7 @@ const Dashboard = () => {
         <RosaryWidget />
         <MealTrackerWidget />
         <ChoreTrackerWidget />
-        {!isActive && (
+        {!isActive && !demoSafe && (
           <WorkspaceViewSwitcher
             view={workspaceView}
             onCycle={cycleWorkspaceView}
