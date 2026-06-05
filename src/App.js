@@ -178,9 +178,9 @@ const Dashboard = () => {
 
   return (
     <div
-      className={`app-container ${stateClass}`}
+      className={`app-container ${stateClass}${!isActive && workspaceView === 'scoreboard' ? ' is-off-call-scoreboard' : ''}`}
       data-state={appState}
-      data-call-mode={isActive}
+      data-call-mode={isActive ? 'true' : 'false'}
       data-off-call-view={isActive ? 'call' : workspaceView}
     >
       {/* Version Tag - Always visible in the upper right */}
@@ -191,7 +191,7 @@ const Dashboard = () => {
         display: 'flex', alignItems: 'center', gap: '4px'
       }}>
         <CloudSyncIndicator />
-        v4.40.0 (Full Stack)
+        v4.41.0 (Full Stack)
       </div>
 
       <div id="top-mic-bar-container" style={{ position: 'fixed', top: 0, left: 0, right: 0, height: '3px', zIndex: 9999, pointerEvents: 'none' }}>

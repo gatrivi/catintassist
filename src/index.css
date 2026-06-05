@@ -420,30 +420,90 @@ body {
 }
 
 /* Off-call scoreboard fills the workspace; soundboard uses minimal header + main pane */
-.app-container[data-off-call-view="scoreboard"][data-call-mode="false"] .dashboard-header {
-  flex: 1;
+.app-container.is-off-call-scoreboard {
+  min-height: 100vh;
+}
+
+.app-container.is-off-call-scoreboard .dashboard-header,
+.app-container.is-off-call-scoreboard .dashboard-header--scoreboard-fill {
+  flex: 1 1 auto;
   min-height: 0;
   max-height: none;
 }
 
-.app-container[data-off-call-view="scoreboard"][data-call-mode="false"] .condensed-header-card {
-  flex: 1;
+.app-container.is-off-call-scoreboard .dashboard-header-fill {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.app-container.is-off-call-scoreboard .condensed-header-card {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  grid-template-rows: minmax(0, 1fr) auto;
+}
+
+.app-container.is-off-call-scoreboard .condensed-scoreboard-panel {
+  flex: 1 1 auto;
   min-height: 0;
   display: flex;
   flex-direction: column;
 }
 
-.app-container[data-off-call-view="scoreboard"][data-call-mode="false"] .condensed-scoreboard-panel {
-  flex: 1;
-  min-height: 0;
-  display: flex;
-  flex-direction: column;
+.app-container.is-off-call-scoreboard .scoreboard-flip-container {
+  flex: 1 1 auto;
+  min-height: 180px;
+  height: auto;
 }
 
-.app-container[data-off-call-view="scoreboard"][data-call-mode="false"] .scoreboard-flip-container {
-  flex: 1;
-  min-height: 168px;
+.app-container.is-off-call-scoreboard .flip-container {
+  min-height: 0;
 }
+
+.app-container.is-off-call-scoreboard .header-progress-stack {
+  flex-shrink: 0;
+}
+
+/* Art-deco session control buttons (connect / stop / break / hold) */
+.session-control-btn {
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  border: 1px solid rgba(212, 175, 55, 0.35);
+  border-radius: 4px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  cursor: pointer;
+  color: #fff;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.1);
+  transition: border-color 0.15s, box-shadow 0.15s, transform 0.1s;
+}
+
+.session-control-btn:hover:not(:disabled) {
+  border-color: rgba(252, 211, 77, 0.75);
+  box-shadow: 0 0 10px rgba(212, 175, 55, 0.25);
+}
+
+.session-control-btn:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+
+.session-control-btn--connect { background: linear-gradient(145deg, #059669, #10b981); }
+.session-control-btn--reattach { background: linear-gradient(145deg, #d97706, #f59e0b); }
+.session-control-btn--stop { background: linear-gradient(145deg, #dc2626, #ef4444); }
+.session-control-btn--hold { background: rgba(255, 255, 255, 0.08); color: #e2e8f0; }
+.session-control-btn--hold.is-active { background: linear-gradient(145deg, #d97706, #f59e0b); color: #fff; }
+.session-control-btn--zap { background: linear-gradient(145deg, #0284c7, #0ea5e9); }
+.session-control-btn--zap.zap-active { animation: pulseGlow 0.45s ease-out; }
+.session-control-btn--break { background: linear-gradient(145deg, #ea580c, #fb923c); }
+.session-control-btn--endday { background: linear-gradient(145deg, #7c3aed, #8b5cf6); }
 
 .dashboard-header--minimal {
   flex-shrink: 0;
