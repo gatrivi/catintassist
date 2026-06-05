@@ -2,7 +2,7 @@
 
 Status enum: `NOT_STARTED` · `PARTIAL` · `DONE` · `BROKEN`
 
-Updated: v4.39.0
+Updated: v4.44.0 · See `00_PORTFOLIO.md` for interview priorities.
 
 ## Pass A — Safety & verification (current focus)
 
