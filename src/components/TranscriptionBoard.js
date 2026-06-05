@@ -230,7 +230,7 @@ const TranslatedBubble = ({ id, text, lang, playTTS, stopTTS, playingUrl, prefet
   );
 };
 
-export const TranscriptionBoard = ({ captions, onClearAll, onReconnect, lastDataTime }) => {
+export const TranscriptionBoard = ({ captions, onClearAll, onReconnect, lastDataTime, connectionState = 'disconnected' }) => {
   const bottomRef = useRef(null);
   const scrollAreaRef = useRef(null);
   const isScrolledUpRef = useRef(false);
@@ -377,9 +377,10 @@ export const TranscriptionBoard = ({ captions, onClearAll, onReconnect, lastData
         </div>
       )}
 
-      {(!isActive && isZombieCall) && (
+      {isZombieCall && connectionState !== 'connected' && (
         <div 
           onClick={onReconnect}
+          className="zombie-reattach-banner"
           style={{
             position: 'absolute', top: '10px', left: '10px', right: '10px', zIndex: 1001,
             background: '#f59e0b', color: '#000', padding: '0.8rem',
@@ -389,9 +390,11 @@ export const TranscriptionBoard = ({ captions, onClearAll, onReconnect, lastData
             animation: 'pulseGlow 2s infinite'
           }}
         >
-          <div style={{ fontSize: '1.2rem' }}>⚠️ SESSION DISCONNECTED</div>
-          <div style={{ fontSize: '0.75rem', opacity: 0.9 }}>App was refreshed. Click here to re-attach to the call and resume transcription.</div>
-          <div style={{ fontSize: '0.7rem', marginTop: '4px', textDecoration: 'underline' }}>[CLICK TO RE-ATTACH]</div>
+          <div style={{ fontSize: '1.2rem' }}>🟡 AUDIO DISCONNECTED — CALL STILL ACTIVE</div>
+          <div style={{ fontSize: '0.75rem', opacity: 0.9, textAlign: 'center', maxWidth: '36rem' }}>
+            Click here or press the yellow 🟡 button above. Transcript and call timer are preserved — no need to Stop.
+          </div>
+          <div style={{ fontSize: '0.7rem', marginTop: '4px', textDecoration: 'underline' }}>[RE-ATTACH AUDIO]</div>
         </div>
       )}
 
@@ -483,9 +486,11 @@ export const TranscriptionBoard = ({ captions, onClearAll, onReconnect, lastData
         <div style={{ flex: '1 1 auto' }} />
         
         {captions.length === 0 && pinnedCaptions.length === 0 && (
-          <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', opacity: 0.2 }}>
-            <div style={{ fontFamily: 'var(--font-mono)', fontSize: '0.8rem' }}>
-              {isActive ? '> STANDBY_FOR_AUDIO...' : '> SYSTEM_IDLE'}
+          <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', opacity: isZombieCall ? 0.55 : 0.2 }}>
+            <div style={{ fontFamily: 'var(--font-mono)', fontSize: '0.8rem', textAlign: 'center', padding: '0 1rem', color: isZombieCall ? '#fbbf24' : undefined }}>
+              {isZombieCall && connectionState !== 'connected'
+                ? '> RE-ATTACH_AUDIO — timer & transcript saved'
+                : isActive ? '> STANDBY_FOR_AUDIO...' : '> SYSTEM_IDLE'}
             </div>
           </div>
         )}

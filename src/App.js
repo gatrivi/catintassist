@@ -27,7 +27,7 @@ const CloudSyncIndicator = () => {
 
 const Dashboard = () => {
   const { startRecording, stopRecording, reconnectStream, captions, clearCaptions, sttLanguage, toggleLanguage, connectionState, connectionMessage, lastDataTime } = useDeepgram();
-  const { isNotesOpen, setIsNotesOpen, isToolbarVisible, setIsToolbarVisible, isActive, isBreakActive, minutesSinceLastBreak, startSession, clearZombieState, callFocusMode } = useSession();
+  const { isNotesOpen, setIsNotesOpen, isToolbarVisible, setIsToolbarVisible, isActive, isBreakActive, isZombieCall, minutesSinceLastBreak, startSession, clearZombieState, callFocusMode } = useSession();
   const canShowSoundboard = !isActive || !callFocusMode;
   const { playCoin } = useProgressiveAudio();
   const [isEditingBg, setIsEditingBg] = useState(false);
@@ -98,7 +98,9 @@ const Dashboard = () => {
   const isBurnoutWarning = !isBreakActive && minutesSinceLastBreak > 110;
   // PRIORITY FIX: isActive (Call) must always block app-idle vignette
   const stateClass = isActive ? 'app-active' : isBreakActive ? 'app-break' : (isBurnoutWarning ? 'burnout-alert' : (idleSecs > 45 ? 'app-idle' : ''));
-  const appState = isActive ? 'call' : isBreakActive ? 'break' : 'avail';
+  const appState = isZombieCall && connectionState !== 'connected'
+    ? 'zombie'
+    : isActive ? 'call' : isBreakActive ? 'break' : 'avail';
 
   // UNIFIED CONNECTION ENGINE
   const handleConnection = useCallback(async (isRecovery = false) => {
@@ -110,10 +112,12 @@ const Dashboard = () => {
   }, [startRecording, startSession, clearZombieState]);
 
   // Micro-break nudge: top bar color shifts when working too long without a break
-  const micBarColor = isActive && minutesSinceLastBreak > 110 ? '#ef4444'
+  const micBarColor = isZombieCall && connectionState !== 'connected' ? '#f59e0b'
+    : isActive && minutesSinceLastBreak > 110 ? '#ef4444'
     : isActive && minutesSinceLastBreak > 90 ? '#f59e0b'
     : '#10b981';
-  const micBarShadow = isActive && minutesSinceLastBreak > 90 ? '0 0 8px #f59e0b' : '0 0 8px #10b981';
+  const micBarShadow = isZombieCall && connectionState !== 'connected' ? '0 0 8px #f59e0b'
+    : isActive && minutesSinceLastBreak > 90 ? '0 0 8px #f59e0b' : '0 0 8px #10b981';
 
   // Off-call minute chime: progressively deeper each minute
   const idleMinuteCountRef = useRef(0);
@@ -158,7 +162,7 @@ const Dashboard = () => {
         display: 'flex', alignItems: 'center', gap: '4px'
       }}>
         <CloudSyncIndicator />
-        v4.34.0 (Full Stack)
+        v4.35.0 (Full Stack)
       </div>
 
       <div id="top-mic-bar-container" style={{ position: 'fixed', top: 0, left: 0, right: 0, height: '3px', zIndex: 9999, pointerEvents: 'none' }}>
@@ -185,6 +189,7 @@ const Dashboard = () => {
               captions={captions} 
               isActive={isActive} 
               isBreakActive={isBreakActive}
+              connectionState={connectionState}
               onClearAll={clearCaptions}
               onReconnect={() => handleConnection(true)}
               lastDataTime={lastDataTime}
