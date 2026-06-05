@@ -49,6 +49,7 @@ export const useTranslate = (text, lang, prefetchTTS, shouldPrefetch, mood = 'de
   
   const lastPrefetchedTextRef = useRef('');
   const lastTranslatedTextRef = useRef('');
+  const lastGoodTranslationRef = useRef('');
   const lastWordCountRef = useRef(0);
   const debounceTimerRef = useRef(null);
   const abortControllerRef = useRef(null);
@@ -64,8 +65,16 @@ export const useTranslate = (text, lang, prefetchTTS, shouldPrefetch, mood = 'de
     return isError ? '' : input.trim();
   };
 
+  const isIncrementalUpdate = (prev, next) => {
+    if (!prev || !next) return false;
+    const p = prev.trim().replace(/\s+/g, ' ');
+    const n = next.trim().replace(/\s+/g, ' ');
+    return n.startsWith(p) || p.startsWith(n);
+  };
+
   useEffect(() => {
     if (!text || !text.trim()) {
+      lastGoodTranslationRef.current = '';
       setTranslation(''); setAudioUrl(null); setEngineStatus('idle'); return;
     }
 
@@ -80,10 +89,13 @@ export const useTranslate = (text, lang, prefetchTTS, shouldPrefetch, mood = 'de
     const IS_FILLER = /^bueno[.,!?]*$/i.test(normText) && wordDelta < 2 && lastTranslatedTextRef.current;
     const IS_TOO_LONG = wordCount > 80; 
     const IS_TOO_SHORT = normText.length < 2 && !/\d/.test(normText);
+    const isStickyCandidate = IS_FILLER || isIncrementalUpdate(lastTranslatedTextRef.current, normText);
 
     if (IS_TOO_LONG || IS_FILLER || IS_TOO_SHORT) {
       setEngineStatus(IS_TOO_LONG ? 'ready' : 'idle');
       if (IS_TOO_LONG) setTranslation(`(Text too long for direct translation [v4.32.0])`);
+      // v4.47: keep last good translation on filler/noise during bubble splits
+      else if (lastGoodTranslationRef.current && (IS_FILLER || IS_TOO_SHORT)) return;
       return;
     }
 
@@ -99,7 +111,11 @@ export const useTranslate = (text, lang, prefetchTTS, shouldPrefetch, mood = 'de
                                  !forceTrigger && 
                                  lastTranslatedTextRef.current;
     
-    if (shouldSkipDueToDelta) return;
+    if (shouldSkipDueToDelta) {
+      // v4.47: sticky — show prior translation while tail grows after a split
+      if (lastGoodTranslationRef.current && isStickyCandidate) return;
+      return;
+    }
 
     // DEBOUNCE based on MOOD
     const debounceTimes = { fast: 300, default: 600, chill: 1000 };
@@ -223,6 +239,7 @@ export const useTranslate = (text, lang, prefetchTTS, shouldPrefetch, mood = 'de
           // Successful translation: Lock the lang pair
           if (!langPairRef.current) langPairRef.current = langPair;
           
+          lastGoodTranslationRef.current = final;
           setTranslation(final);
           lastTranslatedTextRef.current = normText;
           lastWordCountRef.current = wordCount;
@@ -233,9 +250,14 @@ export const useTranslate = (text, lang, prefetchTTS, shouldPrefetch, mood = 'de
             lastPrefetchedTextRef.current = final;
           }
         } else if (!signal.aborted) {
-          setTranslation(`[${normText}]`);
-          lastTranslatedTextRef.current = normText;
-          lastWordCountRef.current = wordCount;
+          // v4.47: never flash [bueno] or blank on split — keep last good translation
+          if (lastGoodTranslationRef.current && (IS_FILLER || isStickyCandidate || wordDelta < 4)) {
+            setEngineStatus('ready');
+          } else {
+            setTranslation(`[${normText}]`);
+            lastTranslatedTextRef.current = normText;
+            lastWordCountRef.current = wordCount;
+          }
         }
       } catch (e) {
         if (e.name !== 'AbortError') console.error('[Trans] Catch:', e);

@@ -2919,3 +2919,18 @@ body {
   transition: all 0.2s ease;
 }
 
+
+/* Demo-safe mode: numbers grid only, no game flip or studio chrome */
+.demo-safe .scoreboard-flip-container .flip-card {
+  transform: rotateX(180deg);
+  pointer-events: none;
+}
+.demo-safe .scoreboard-flip-container .flip-card .flip-back {
+  pointer-events: auto;
+}
+.demo-safe #cell-switch-game,
+.demo-safe #header-zap-btn,
+.demo-safe #header-expand-btn,
+.demo-safe .workspace-view-btn {
+  display: none !important;
+}
