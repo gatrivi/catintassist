@@ -8,7 +8,10 @@ import {
   exportStorageBackup,
   importStorageBackup,
 } from '../utils/storage';
+import { bindAudioToSink, primePlaybackElements, rampVolume } from '../utils/audioRoute';
 import { useAudioSettings } from '../contexts/AudioSettingsContext';
+
+const CALL_PATH_STORAGE = 'catint_call_path_verified';
 
 const TIME_SLOTS = ['morning', 'afternoon', 'evening'];
 const TIME_SLOT_META = {
@@ -38,6 +41,8 @@ const getActionCompletion = (action, blobs) => {
 };
 
 const isCallerReady = (score) => score !== undefined && score >= CALL_ROUTE_MIN_SCORE;
+
+const isCallPathReady = (verified, key) => !!verified[key];
 
 const buildWaveformPeaks = async (blob, bars = 56) => {
   const arrayBuffer = await blob.arrayBuffer();
@@ -115,11 +120,12 @@ const getSetupStats = (blobs) => {
 };
 
 export const GreetingsPanel = ({ onEditModeChange }) => {
-  const { selectedSinkId, localVolume, sinkVolume, changeLocalVolume, changeSinkVolume, monitorMic, setMonitorMic, monitorVolume, setMonitorVolume } = useAudioSettings();
+  const { selectedSinkId, localVolume, sinkVolume, changeLocalVolume, changeSinkVolume, monitorMic, setMonitorMic, monitorVolume, setMonitorVolume, setSinkPlaybackActive } = useAudioSettings();
   const [mode, setMode] = useState('play'); // 'play' | 'settings'
   const [timeOfDay, setTimeOfDay] = useState('morning');
   const [blobs, setBlobs] = useState({});
   const [healthScores, setHealthScores] = useState(() => JSON.parse(localStorage.getItem('catint_audio_health')) || {});
+  const [callPathVerified, setCallPathVerified] = useState(() => JSON.parse(localStorage.getItem(CALL_PATH_STORAGE)) || {});
   const [isAnalyzing, setIsAnalyzing] = useState(null); // key of item being analyzed
   const [playingKey, setPlayingKey] = useState(null);
   const [playbackProgress, setPlaybackProgress] = useState(0);
@@ -134,6 +140,7 @@ export const GreetingsPanel = ({ onEditModeChange }) => {
 
   const audioRefSink = useRef(new Audio());
   const audioRefLocal = useRef(new Audio());
+  const rampCancelRef = useRef(null);
   const mediaRecorderRef = useRef(null);
   const audioCtxRef = useRef(null);
   const audioChunksRef = useRef([]);
@@ -246,6 +253,19 @@ export const GreetingsPanel = ({ onEditModeChange }) => {
   useEffect(() => {
     reloadData();
   }, []);
+
+  useEffect(() => {
+    primePlaybackElements(audioRefLocal.current, audioRefSink.current);
+    if (selectedSinkId) bindAudioToSink(audioRefSink.current, selectedSinkId);
+  }, [selectedSinkId]);
+
+  const markCallPathVerified = (key) => {
+    setCallPathVerified((prev) => {
+      const next = { ...prev, [key]: Date.now() };
+      localStorage.setItem(CALL_PATH_STORAGE, JSON.stringify(next));
+      return next;
+    });
+  };
 
   useEffect(() => {
     let cancelled = false;
@@ -422,11 +442,16 @@ export const GreetingsPanel = ({ onEditModeChange }) => {
     animationRef.current = requestAnimationFrame(trackProgress);
   };
 
-  const clearPlaybackState = () => {
+  const clearPlaybackState = (opts = {}) => {
+    const { verifiedKey = null } = opts;
     setPlayingKey(null);
     setPlaybackProgress(0);
     window.__CAT_AUDIO_VOL = 0;
+    setSinkPlaybackActive(false);
+    if (rampCancelRef.current) rampCancelRef.current();
+    rampCancelRef.current = null;
     if (animationRef.current) cancelAnimationFrame(animationRef.current);
+    if (verifiedKey) markCallPathVerified(verifiedKey);
   };
 
   const openSettings = (focusKey = null) => {
@@ -495,15 +520,21 @@ export const GreetingsPanel = ({ onEditModeChange }) => {
     }
 
     let sendToCaller = routeToVirtualMic && !testMode;
-    if (sendToCaller && !bypassGate && !isCallerReady(healthScores[key])) {
+    if (sendToCaller && !bypassGate) {
       const score = healthScores[key];
-      setSafetyNotice(
-        score === undefined
-          ? '⛔ Untested clip — run health check in Setup, or use 🧪 Test Mode'
-          : '⛔ Health gate — clip blocked from virtual mic; previewing locally'
-      );
-      window.setTimeout(() => setSafetyNotice(''), 4500);
-      sendToCaller = false;
+      const healthOk = isCallerReady(score);
+      const callOk = isCallPathReady(callPathVerified, key);
+      if (!healthOk || !callOk) {
+        setSafetyNotice(
+          !healthOk
+            ? (score === undefined
+              ? '⛔ Untested clip — health check in Setup first'
+              : '⛔ Health gate — virtual mic blocked; local preview only')
+            : '📡 Run Call Test in Setup before firing to patient path'
+        );
+        window.setTimeout(() => setSafetyNotice(''), 4500);
+        sendToCaller = false;
+      }
     }
 
     let playLocal = !callerOnly;
@@ -511,64 +542,60 @@ export const GreetingsPanel = ({ onEditModeChange }) => {
     callerRouteRef.current = playSink;
 
     const url = blobs[`url_${key}`] || generateObjectUrl(blob);
-    audioRefSink.current.src = url;
-    audioRefLocal.current.src = url;
-    audioRefLocal.current.volume = 0;
-    audioRefSink.current.volume = 0;
+    primePlaybackElements(audioRefLocal.current, audioRefSink.current);
 
-    const onEnd = clearPlaybackState;
-    audioRefLocal.current.onended = onEnd;
-    audioRefLocal.current.onpause = onEnd;
-    audioRefSink.current.onended = onEnd;
-    audioRefSink.current.onpause = onEnd;
-
-    if (animationRef.current) cancelAnimationFrame(animationRef.current);
-    animationRef.current = requestAnimationFrame(trackProgress);
-
-    const startPlayback = async () => {
-      setPlayingKey(key);
-      try {
-        const plays = [];
-        if (playLocal) plays.push(audioRefLocal.current.play());
-        if (playSink) plays.push(audioRefSink.current.play());
-        if (!plays.length) plays.push(audioRefLocal.current.play());
-        await Promise.all(plays);
-
-        let vol = 0;
-        const rampIntv = setInterval(() => {
-          vol += 0.1;
-          if (vol >= 1) {
-            if (playLocal) audioRefLocal.current.volume = localVolume;
-            if (playSink) audioRefSink.current.volume = sinkVolume;
-            clearInterval(rampIntv);
-          } else {
-            if (playLocal) audioRefLocal.current.volume = vol * localVolume;
-            if (playSink) audioRefSink.current.volume = vol * sinkVolume;
-          }
-        }, 10);
-      } catch (e) {
-        console.error('Playback error:', e);
-        clearPlaybackState();
-      }
-    };
-
-    if (playSink && selectedSinkId && audioRefSink.current.setSinkId) {
-      try {
-        await audioRefSink.current.setSinkId(selectedSinkId);
-      } catch (e) {
-        console.error('setSinkId failed', e);
+    if (playSink && selectedSinkId) {
+      const bound = await bindAudioToSink(audioRefSink.current, selectedSinkId);
+      if (!bound) {
         if (callerOnly) {
-          setSafetyNotice('⚠️ Virtual mic route failed — check speaker/output in header');
+          setSafetyNotice('⚠️ Virtual mic route failed — pick VB-Cable in header Speaker');
           window.setTimeout(() => setSafetyNotice(''), 4500);
           return;
         }
         playSink = false;
         callerRouteRef.current = false;
-        setSafetyNotice('⚠️ Virtual mic route failed — playing on local speakers only');
+        setSafetyNotice('⚠️ Virtual mic route failed — local only');
         window.setTimeout(() => setSafetyNotice(''), 4500);
       }
     }
-    await startPlayback();
+
+    audioRefLocal.current.src = url;
+    audioRefSink.current.src = url;
+
+    const wasCallTest = callerOnly;
+    let ended = false;
+    const onEnd = () => {
+      if (ended) return;
+      ended = true;
+      clearPlaybackState(wasCallTest && playSink ? { verifiedKey: key } : {});
+    };
+    audioRefLocal.current.onended = onEnd;
+    audioRefSink.current.onended = onEnd;
+
+    if (animationRef.current) cancelAnimationFrame(animationRef.current);
+    animationRef.current = requestAnimationFrame(trackProgress);
+
+    if (playSink) setSinkPlaybackActive(true);
+    setPlayingKey(key);
+
+    try {
+      const plays = [];
+      if (playLocal) plays.push(audioRefLocal.current.play());
+      if (playSink) plays.push(audioRefSink.current.play());
+      if (!plays.length) plays.push(audioRefLocal.current.play());
+      await Promise.all(plays);
+
+      if (rampCancelRef.current) rampCancelRef.current();
+      rampCancelRef.current = rampVolume(
+        playLocal ? audioRefLocal.current : null,
+        playSink ? audioRefSink.current : null,
+        playLocal ? localVolume : 0,
+        playSink ? sinkVolume : 0
+      );
+    } catch (e) {
+      console.error('Playback error:', e);
+      clearPlaybackState();
+    }
   };
 
   const renderClipCard = (key, label, compact = false) => {
@@ -596,6 +623,9 @@ export const GreetingsPanel = ({ onEditModeChange }) => {
             <span className={`sb-clip-status ${hasBlob ? 'sb-clip-status--saved' : 'sb-clip-status--missing'}`}>
               {hasBlob ? 'SAVED' : 'MISSING'}
             </span>
+            {hasBlob && isCallPathReady(callPathVerified, key) && (
+              <span className="sb-call-ok">CALL OK</span>
+            )}
           </div>
         </div>
 
@@ -619,7 +649,7 @@ export const GreetingsPanel = ({ onEditModeChange }) => {
                 className="sb-btn sb-btn--call"
                 onClick={() => playAudioBlock(key, true, { bypassGate: true, callerOnly: true })}
                 disabled={!selectedSinkId}
-                title={selectedSinkId ? 'Route to virtual mic — hear patient path' : 'Pick speaker/output in header first'}
+                title={selectedSinkId ? 'Route to VB-Cable — verify via WhatsApp voice note, then marks CALL OK' : 'Pick VB-Cable in header Speaker first'}
               >
                 📡
               </button>
@@ -883,7 +913,9 @@ export const GreetingsPanel = ({ onEditModeChange }) => {
         {ACTIONS.map((action) => {
           const activeKey = action.dynamic ? `${action.id}_${timeOfDay}` : action.id;
           const hasAudio = !!blobs[activeKey];
-          const callerBlocked = hasAudio && !testMode && !isCallerReady(healthScores[activeKey]);
+          const callerBlocked = hasAudio && !testMode && (
+            !isCallerReady(healthScores[activeKey]) || !isCallPathReady(callPathVerified, activeKey)
+          );
           const bgImage = blobs[`url_thumb_${action.id}`] ? `url(${blobs[`url_thumb_${action.id}`]})` : 'none';
           const isItPlaying = playingKey === activeKey;
           const otherSlotsSaved = action.dynamic

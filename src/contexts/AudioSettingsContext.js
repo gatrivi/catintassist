@@ -19,8 +19,18 @@ export const AudioSettingsProvider = ({ children }) => {
   const changeLocalVolume = (vol) => { setLocalVolume(vol); localStorage.setItem('CATINTASSIST_LOCAL_VOL', vol); };
   const changeSinkVolume = (vol) => { setSinkVolume(vol); localStorage.setItem('CATINTASSIST_SINK_VOL', vol); };
   
-  // We use a hidden audio element as a pipeline to push Mic data into the Sink
+  // Hidden element: physical mic → virtual output (when mic is selected)
   const passthroughAudioRef = useRef(new Audio());
+  const sinkPlaybackActiveRef = useRef(false);
+
+  /** Mute mic passthrough while soundboard/TTS plays to the same sink (avoids garbled mix). */
+  const setSinkPlaybackActive = useCallback((active) => {
+    sinkPlaybackActiveRef.current = active;
+    const el = passthroughAudioRef.current;
+    if (!el) return;
+    el.volume = active ? 0 : 1;
+    el.muted = active;
+  }, []);
 
   // Fetch available devices
   const fetchDevices = useCallback(async () => {
@@ -74,6 +84,8 @@ export const AudioSettingsProvider = ({ children }) => {
           });
           if (isMounted) {
             passthroughAudioRef.current.srcObject = stream;
+            passthroughAudioRef.current.volume = sinkPlaybackActiveRef.current ? 0 : 1;
+            passthroughAudioRef.current.muted = sinkPlaybackActiveRef.current;
             passthroughAudioRef.current.play().catch(e => console.error(e));
             
             // Attach visualizer without React state to avoid massive re-renders
@@ -185,7 +197,7 @@ export const AudioSettingsProvider = ({ children }) => {
   };
 
   return (
-    <AudioSettingsContext.Provider value={{ outputDevices, inputDevices, selectedSinkId, selectedMicId, changeSinkId, changeMicId, fetchDevices, localVolume, sinkVolume, changeLocalVolume, changeSinkVolume, monitorMic, setMonitorMic, monitorVolume, setMonitorVolume }}>
+    <AudioSettingsContext.Provider value={{ outputDevices, inputDevices, selectedSinkId, selectedMicId, changeSinkId, changeMicId, fetchDevices, localVolume, sinkVolume, changeLocalVolume, changeSinkVolume, monitorMic, setMonitorMic, monitorVolume, setMonitorVolume, setSinkPlaybackActive }}>
       {children}
     </AudioSettingsContext.Provider>
   );

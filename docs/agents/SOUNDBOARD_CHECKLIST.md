@@ -17,7 +17,8 @@ Updated: v4.45.0 · See `00_PORTFOLIO.md` for interview priorities.
 | `CALL_PATH_TEST` — Explicit “hear what patient hears” button | `DONE` | v4.38, Setup → 📡 Call Test (sink only) |
 | `LOCAL_PREVIEW_ISOLATION` — Preview does not hit default sink | `DONE` | v4.38, local element only |
 | `CLIP_WAVEFORM` — Static waveform on saved clips | `DONE` | v4.39, Setup rows + play progress tint |
-| `CALL_PATH_AUTO_VERIFY` — Auto pass/fail after call test | `NOT_STARTED` | Next baby step |
+| `CALL_PATH_AUTO_VERIFY` — Call Test marks CALL OK; play blocks mic without it | `DONE` | v4.47 |
+| `PASSTHROUGH_MUTE_ON_CLIP` — Mic passthrough muted during sink playback | `DONE` | v4.47, fixes garbled mix |
 
 ## Pass B — Daily use polish
 
@@ -32,7 +33,7 @@ Updated: v4.45.0 · See `00_PORTFOLIO.md` for interview priorities.
 
 | Item | Status | Notes |
 |------|--------|-------|
-| `VIRTUAL_MIC_ROUTE` — Reliable audio to patient path | `BROKEN` | Local sounds fine; patients report garbled/none |
+| `VIRTUAL_MIC_ROUTE` — Reliable audio to patient path | `PARTIAL` | v4.47 passthrough mute + setSinkId order; verify via WSP voice note |
 | `DUAL_AUDIO_ELEMENT` — setSinkId + parallel local monitor | `PARTIAL` | Works in dev; fails in production path |
 | `CRACKLE_UNDER_STT_LOAD` — Buffer/gain during live transcription | `NOT_STARTED` | Suspected browser overhead |
 

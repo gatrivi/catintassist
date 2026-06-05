@@ -876,6 +876,13 @@ body {
 .sb-clip-status--missing { color: #f87171; }
 .sb-clip-status--test { color: #94a3b8; }
 
+.sb-call-ok {
+  font-size: 0.55rem;
+  font-weight: 800;
+  color: #38bdf8;
+  letter-spacing: 0.03em;
+}
+
 .sb-health-pill {
   cursor: pointer;
   display: flex;

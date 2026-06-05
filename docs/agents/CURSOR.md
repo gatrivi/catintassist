@@ -16,8 +16,8 @@ Do **not** re-read the whole repo for a one-file fix.
 
 ## Soundboard safety backlog (priority order)
 
-1. `CALL_PATH_AUTO_VERIFY` — Call Test sets `callPathVerified[key]`; play blocks mic without it
-2. `VIRTUAL_MIC_ROUTE` — patient path garbled (see `SOUNDBOARD_CHECKLIST.md`)
+1. `VIRTUAL_MIC_ROUTE` — verify with WhatsApp Desktop voice note → VB-Cable input
+2. Done: `CALL_PATH_AUTO_VERIFY`, passthrough mute during clips (`v4.47`)
 
 ## User prefs
 

@@ -1,12 +1,13 @@
 import { useState, useRef } from 'react';
 import { useAudioSettings } from '../contexts/AudioSettingsContext';
+import { bindAudioToSink, primePlaybackElements } from '../utils/audioRoute';
 
 export const useTTS = () => {
   const [isPlaying, setIsPlaying] = useState(false);
   const [playingUrl, setPlayingUrl] = useState(null);
   const activeAudioLocalRef = useRef(null);
   const activeAudioSinkRef = useRef(null);
-  const { selectedSinkId, localVolume, sinkVolume } = useAudioSettings();
+  const { selectedSinkId, localVolume, sinkVolume, setSinkPlaybackActive } = useAudioSettings();
 
   const stopTTS = () => {
     if (activeAudioLocalRef.current) {
@@ -18,6 +19,7 @@ export const useTTS = () => {
       activeAudioSinkRef.current = null;
     }
     window.__CAT_AUDIO_VOL = 0;
+    setSinkPlaybackActive(false);
     setIsPlaying(false);
     setPlayingUrl(null);
   };
@@ -60,21 +62,14 @@ export const useTTS = () => {
       // Uno para tus OÍDOS (auriculares) y otro para el CABLE VIRTUAL (la llamada).
       const audioLocal = new Audio(audioUrl);
       const audioSink = new Audio(audioUrl);
-      
-      audioLocal.volume = localVolume;
-      audioSink.volume = sinkVolume;
-
+      primePlaybackElements(audioLocal, audioSink);
       activeAudioLocalRef.current = audioLocal;
       activeAudioSinkRef.current = audioSink;
-      
-      // Auto-route it directly into the Virtual Cable!
-      if (audioSink.setSinkId && selectedSinkId) {
-        try {
-          await audioSink.setSinkId(selectedSinkId);
-        } catch (e) {
-          console.error("setSinkId failed, falling back to default:", e);
-        }
-      }
+
+      if (selectedSinkId) await bindAudioToSink(audioSink, selectedSinkId);
+      audioLocal.src = audioUrl;
+      audioSink.src = audioUrl;
+      if (selectedSinkId) setSinkPlaybackActive(true);
       
       const ttsTimer = setInterval(() => {
         if (!activeAudioLocalRef.current) {
