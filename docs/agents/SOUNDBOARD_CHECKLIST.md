@@ -2,7 +2,7 @@
 
 Status enum: `NOT_STARTED` · `PARTIAL` · `DONE` · `BROKEN`
 
-Updated: v4.44.0 · See `00_PORTFOLIO.md` for interview priorities.
+Updated: v4.45.0 · See `00_PORTFOLIO.md` for interview priorities.
 
 ## Pass A — Safety & verification (current focus)
 
@@ -23,6 +23,7 @@ Updated: v4.44.0 · See `00_PORTFOLIO.md` for interview priorities.
 
 | Item | Status | Notes |
 |------|--------|-------|
+| `STUDIO_SETUP_UX` — Setup progress, EN/ES badges, accordion, time grid | `DONE` | v4.45, missing-only filter + jump-to-gap |
 | `CLIP_RENAME` — User labels per greeting | `NOT_STARTED` | |
 | `HOTKEYS_1_9` — Keyboard fire slots | `NOT_STARTED` | |
 | `ON_CALL_QUICK_FIRE` — Soundboard usable during call | `PARTIAL` | Studio off-call only; on-call = transcript |

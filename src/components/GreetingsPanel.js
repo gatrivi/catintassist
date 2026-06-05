@@ -3,7 +3,21 @@ import { saveFile, loadFile, deleteFile, generateObjectUrl } from '../utils/stor
 import { useAudioSettings } from '../contexts/AudioSettingsContext';
 
 const TIME_SLOTS = ['morning', 'afternoon', 'evening'];
+const TIME_SLOT_META = {
+  morning: { icon: '☀️', short: 'AM' },
+  afternoon: { icon: '🌤', short: 'PM' },
+  evening: { icon: '🌙', short: 'Eve' },
+};
 const CALL_ROUTE_MIN_SCORE = 0.5;
+
+const getActionClipKeys = (action) =>
+  action.dynamic ? TIME_SLOTS.map((t) => `${action.id}_${t}`) : [action.id];
+
+const getActionCompletion = (action, blobs) => {
+  const keys = getActionClipKeys(action);
+  const saved = keys.filter((k) => blobs[k]).length;
+  return { saved, total: keys.length, keys };
+};
 
 const isCallerReady = (score) => score !== undefined && score >= CALL_ROUTE_MIN_SCORE;
 
@@ -71,6 +85,17 @@ export const ACTIONS = [
   { id: 'limit_40_es', label: '40 Word Limit', lang: 'es', dynamic: false },
 ];
 
+const getSetupStats = (blobs) => {
+  let saved = 0;
+  let total = 0;
+  ACTIONS.forEach((action) => {
+    const c = getActionCompletion(action, blobs);
+    saved += c.saved;
+    total += c.total;
+  });
+  return { saved, total, missing: total - saved };
+};
+
 export const GreetingsPanel = ({ onEditModeChange }) => {
   const { selectedSinkId, localVolume, sinkVolume, changeLocalVolume, changeSinkVolume, monitorMic, setMonitorMic, monitorVolume, setMonitorVolume } = useAudioSettings();
   const [mode, setMode] = useState('play'); // 'play' | 'settings'
@@ -84,6 +109,8 @@ export const GreetingsPanel = ({ onEditModeChange }) => {
   const [testMode, setTestMode] = useState(false);
   const [safetyNotice, setSafetyNotice] = useState('');
   const [waveforms, setWaveforms] = useState({});
+  const [collapsedActions, setCollapsedActions] = useState(() => new Set());
+  const [missingOnly, setMissingOnly] = useState(false);
 
   const audioRefSink = useRef(new Audio());
   const audioRefLocal = useRef(new Audio());
@@ -328,6 +355,46 @@ export const GreetingsPanel = ({ onEditModeChange }) => {
     if (animationRef.current) cancelAnimationFrame(animationRef.current);
   };
 
+  const openSettings = (focusKey = null) => {
+    const collapsed = new Set();
+    ACTIONS.forEach((action) => {
+      const { saved, total } = getActionCompletion(action, blobs);
+      if (saved === total) collapsed.add(action.id);
+    });
+    if (focusKey) {
+      const action = ACTIONS.find((a) => getActionClipKeys(a).includes(focusKey));
+      if (action) collapsed.delete(action.id);
+    }
+    setCollapsedActions(collapsed);
+    setMissingOnly(false);
+    setMode('settings');
+    if (focusKey) {
+      setTimeout(() => {
+        document.getElementById(`settings-row-${focusKey}`)?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }, 100);
+    }
+  };
+
+  const toggleActionCollapsed = (actionId) => {
+    setCollapsedActions((prev) => {
+      const next = new Set(prev);
+      if (next.has(actionId)) next.delete(actionId);
+      else next.add(actionId);
+      return next;
+    });
+  };
+
+  const jumpToFirstMissing = () => {
+    for (const action of ACTIONS) {
+      const { keys } = getActionCompletion(action, blobs);
+      const missingKey = keys.find((k) => !blobs[k]);
+      if (missingKey) {
+        openSettings(missingKey);
+        return;
+      }
+    }
+  };
+
   const playAudioBlock = async (key, routeToVirtualMic, opts = {}) => {
     const { bypassGate = false, callerOnly = false } = opts;
 
@@ -346,11 +413,7 @@ export const GreetingsPanel = ({ onEditModeChange }) => {
 
     const blob = blobs[key];
     if (!blob) {
-      setMode('settings');
-      setTimeout(() => {
-        const el = document.getElementById(`settings-row-${key}`);
-        if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
-      }, 100);
+      openSettings(key);
       return;
     }
 
@@ -431,148 +494,214 @@ export const GreetingsPanel = ({ onEditModeChange }) => {
     await startPlayback();
   };
 
-  const renderRecordingRow = (key, label) => (
-    <div key={key} id={`settings-row-${key}`} style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem', marginTop: '0.5rem', padding: '0.75rem', background: 'rgba(0,0,0,0.3)', borderRadius: '6px', border: '1px solid rgba(255,255,255,0.05)' }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <span style={{ textTransform: 'capitalize', fontWeight: 600, fontSize: '0.85rem' }}>🔈 {label}</span>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
-          {isAnalyzing === key ? (
-            <span style={{ fontSize: '0.7rem', color: '#3b82f6', animation: 'pulseGlow 2s infinite' }}>Analyzing...</span>
-          ) : (
-            blobs[key] && (
-              <div 
-                onClick={() => analyzeHealth(key)}
-                style={{ cursor: 'pointer', display: 'flex', flexDirection: 'column', alignItems: 'flex-end' }} 
-                title="Audio Health: Click to re-analyze"
-              >
-                <span style={{ fontSize: '0.65rem', fontWeight: 800, color: getHealthMeta(healthScores[key])?.color || '#94a3b8' }}>
-                  {getHealthMeta(healthScores[key])?.label || 'UNTESTED'}
-                </span>
-                <div style={{ width: '40px', height: '3px', background: 'rgba(255,255,255,0.1)', borderRadius: '2px', overflow: 'hidden', marginTop: '1px' }}>
-                   <div style={{ height: '100%', width: getHealthMeta(healthScores[key])?.width || '0%', backgroundColor: getHealthMeta(healthScores[key])?.color || '#94a3b8' }} />
+  const renderClipCard = (key, label, compact = false) => {
+    const hasBlob = !!blobs[key];
+    const health = getHealthMeta(healthScores[key]);
+    return (
+      <div
+        key={key}
+        id={`settings-row-${key}`}
+        className={`sb-clip-card ${hasBlob ? 'is-saved' : 'is-missing'}`}
+      >
+        <div className="sb-clip-top">
+          <span className="sb-clip-label">{label}</span>
+          <div style={{ display: 'flex', alignItems: 'flex-start', gap: '0.25rem' }}>
+            {isAnalyzing === key ? (
+              <span className="sb-clip-status sb-clip-status--test" style={{ animation: 'pulseGlow 2s infinite' }}>…</span>
+            ) : hasBlob ? (
+              <div className="sb-health-pill" onClick={() => analyzeHealth(key)} title="Click to re-run health check">
+                <span style={{ color: health?.color || '#94a3b8' }}>{health?.label || 'UNTESTED'}</span>
+                <div className="sb-health-pill-bar">
+                  <div className="sb-health-pill-fill" style={{ width: health?.width || '0%', backgroundColor: health?.color || '#94a3b8' }} />
                 </div>
               </div>
-            )
-          )}
-          <span style={{ color: blobs[key] ? '#10b981' : '#ef4444', fontSize: '0.75rem', fontWeight: 600 }}>{blobs[key] ? '✅ SAVED' : '❌ MISSING'}</span>
+            ) : null}
+            <span className={`sb-clip-status ${hasBlob ? 'sb-clip-status--saved' : 'sb-clip-status--missing'}`}>
+              {hasBlob ? 'SAVED' : 'MISSING'}
+            </span>
+          </div>
         </div>
-      </div>
 
-      {blobs[key] && (
-        <ClipWaveform
-          peaks={waveforms[key]}
-          progress={playingKey === key ? playbackProgress : 0}
-        />
-      )}
-      
-      <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
-        <div style={{ display: 'flex', gap: '0.5rem' }}>
+        {hasBlob && (
+          <ClipWaveform peaks={waveforms[key]} progress={playingKey === key ? playbackProgress : 0} height={compact ? 22 : 28} />
+        )}
+
+        <div className="sb-clip-actions">
           {recordingKey === key ? (
-            <button onClick={stopRecording} style={{ flex: 1, padding: '0.4rem', background: 'rgba(239, 68, 68, 0.2)', color: '#f87171', border: '1px solid rgba(239, 68, 68, 0.4)', borderRadius: '4px', cursor: 'pointer', fontWeight: 600, animation: 'pulseGlow 2s infinite' }}>⏹ Stop</button>
+            <button type="button" className="sb-btn sb-btn--stop" onClick={stopRecording}>⏹ Stop</button>
           ) : (
-            <button onClick={() => startRecording(key)} disabled={recordingKey !== null} style={{ flex: 1, padding: '0.4rem', background: 'rgba(59, 130, 246, 0.2)', color: '#60a5fa', border: '1px solid rgba(59, 130, 246, 0.4)', borderRadius: '4px', cursor: recordingKey ? 'not-allowed' : 'pointer' }}>🎙️ Record</button>
+            <button type="button" className="sb-btn sb-btn--record" onClick={() => startRecording(key)} disabled={recordingKey !== null}>🎙 Record</button>
           )}
-          
-          {blobs[key] && (
+          {hasBlob && (
             <>
-              <button onClick={() => playAudioBlock(key, false)} style={{ flex: 1, padding: '0.4rem', background: 'rgba(16, 185, 129, 0.2)', color: '#34d399', border: '1px solid rgba(16, 185, 129, 0.4)', borderRadius: '4px', cursor: 'pointer' }}>{playingKey === key ? '⏹ Stop' : '▶ Preview'}</button>
+              <button type="button" className="sb-btn sb-btn--preview" onClick={() => playAudioBlock(key, false)}>
+                {playingKey === key ? '⏹' : '▶'}
+              </button>
               <button
+                type="button"
+                className="sb-btn sb-btn--call"
                 onClick={() => playAudioBlock(key, true, { bypassGate: true, callerOnly: true })}
                 disabled={!selectedSinkId}
-                style={{ flex: 1, padding: '0.4rem', background: 'rgba(245, 158, 11, 0.15)', color: '#fbbf24', border: '1px solid rgba(245, 158, 11, 0.35)', borderRadius: '4px', cursor: selectedSinkId ? 'pointer' : 'not-allowed', opacity: selectedSinkId ? 1 : 0.45 }}
-                title={selectedSinkId ? 'Route once to your virtual mic output — hear what the patient path sounds like' : 'Pick a speaker/output in the header first'}
+                title={selectedSinkId ? 'Route to virtual mic — hear patient path' : 'Pick speaker/output in header first'}
               >
-                {playingKey === key ? '⏹ Stop' : '📡 Call Test'}
+                📡
               </button>
             </>
           )}
         </div>
+
         {recordingKey === key && (
-          <div style={{ width: '100%', height: '4px', background: 'rgba(0,0,0,0.5)', borderRadius: '2px', overflow: 'hidden' }}>
-             <div id="record-vol-bar" style={{ height: '100%', width: '0%', backgroundColor: '#6ee7b7', transition: 'width 0.05s ease' }} />
+          <div className="sb-record-meter">
+            <div id="record-vol-bar" className="sb-record-meter-fill" style={{ width: '0%' }} />
           </div>
         )}
+
+        <div className="sb-clip-footer">
+          <label className="sb-file-btn">
+            Upload
+            <input type="file" accept="audio/*" hidden onChange={(e) => { handleFileUpload(key, e.target.files[0]); e.target.value = ''; }} />
+          </label>
+          {hasBlob && (
+            <button type="button" className="sb-delete-btn" onClick={() => handleClear(key)}>Delete</button>
+          )}
+        </div>
       </div>
-      
-      <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.25rem', fontSize: '0.75rem', color: 'var(--text-muted)', alignItems: 'center' }}>
-        <input type="file" accept="audio/*" onChange={(e) => handleFileUpload(key, e.target.files[0])} style={{ maxWidth: '160px', fontSize: '0.7rem' }} />
-        {blobs[key] && <button onClick={() => handleClear(key)} style={{ color: '#ef4444', background: 'rgba(239, 68, 68, 0.1)', border: '1px solid rgba(239, 68, 68, 0.3)', borderRadius: '4px', padding: '0.1rem 0.5rem', cursor: 'pointer', marginLeft: 'auto' }}>Delete</button>}
-      </div>
-    </div>
-  );
+    );
+  };
 
   if (mode === 'settings') {
-    return (
-      <div className="glass-panel" style={{ padding: '0.75rem', display: 'flex', flexDirection: 'column', gap: '0.75rem', overflowY: 'auto', flex: 1, border: 'none' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid rgba(255,255,255,0.1)', paddingBottom: '0.5rem', position: 'sticky', top: 0, zIndex: 10, background: 'var(--panel-bg)'}}>
-          <span style={{ fontWeight: 600, fontSize: '1.1rem' }}>⚙️ Setup Soundboard</span>
-          <button className="btn" onClick={() => setMode('play')} style={{ padding: '0.3rem 0.8rem', background: '#3b82f6', borderRadius: '20px', fontSize: '0.8rem' }}>Save & Back</button>
-        </div>
-        
-        <div style={{ fontSize: '0.85rem', padding: '0.75rem', background: 'rgba(255,255,255,0.05)', borderRadius: '8px', border: '1px solid rgba(255,255,255,0.1)' }}>
-          <strong style={{ color: 'var(--accent-primary)', display: 'block', marginBottom: '0.5rem' }}>🖼️ Global App Background Image</strong>
-          <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
-            <input type="file" accept="image/*" onChange={(e) => handleFileUpload('bg_app', e.target.files[0])} style={{ fontSize: '0.75rem', flex: 1 }} />
-            {blobs['bg_app'] && <button onClick={() => handleClear('bg_app')} className="btn btn-danger" style={{ padding: '0.2rem 0.5rem', fontSize: '0.7rem' }}>Clear Image</button>}
-          </div>
-        </div>
+    const stats = getSetupStats(blobs);
+    const pct = stats.total ? Math.round((stats.saved / stats.total) * 100) : 0;
 
-        {ACTIONS.map(action => (
-          <div key={action.id} style={{ padding: '0.75rem', background: 'rgba(30, 41, 59, 0.5)', borderRadius: '8px', border: '1px solid rgba(255,255,255,0.05)' }}>
-            <div style={{ fontWeight: 700, color: '#6ee7b7', marginBottom: '0.75rem', fontSize: '1rem', borderBottom: '1px solid rgba(255,255,255,0.1)', paddingBottom: '0.4rem' }}>{action.label}</div>
-            
-            <div style={{ fontSize: '0.8rem', marginBottom: '0.5rem', display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
-              <span style={{ color: 'var(--text-main)', opacity: 0.9 }}>🖼️ Button Thumbnail Cover</span>
-              <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
-                <input type="file" accept="image/*" onChange={(e) => handleFileUpload(`thumb_${action.id}`, e.target.files[0])} style={{ fontSize: '0.75rem' }} />
-                {blobs[`thumb_${action.id}`] && <button onClick={() => handleClear(`thumb_${action.id}`)} style={{ color: '#ef4444', background: 'rgba(239, 68, 68, 0.1)', border: '1px solid rgba(239, 68, 68, 0.3)', borderRadius: '4px', padding: '0.1rem 0.5rem', cursor: 'pointer' }}>Clear</button>}
+    return (
+      <div className="sb-setup glass-panel" style={{ border: 'none' }}>
+        <div className="sb-setup-head">
+          <span className="sb-setup-title">⚙️ Setup Soundboard</span>
+          <div className="sb-setup-actions">
+            <div className="sb-setup-progress" title={`${stats.saved} of ${stats.total} clips saved`}>
+              <span>{stats.saved}/{stats.total} clips</span>
+              <div className="sb-setup-progress-bar">
+                <div className="sb-setup-progress-fill" style={{ width: `${pct}%` }} />
               </div>
             </div>
-
-            <div style={{ marginTop: '0.5rem' }}>
-              {action.dynamic ? TIME_SLOTS.map(t => renderRecordingRow(`${action.id}_${t}`, `${t} Audio`)) : renderRecordingRow(action.id, 'Audio Clip')}
-            </div>
+            {stats.missing > 0 && (
+              <button type="button" className="sb-filter-chip" onClick={jumpToFirstMissing}>
+                ↓ Next missing
+              </button>
+            )}
+            <button
+              type="button"
+              className={`sb-filter-chip ${missingOnly ? 'is-on' : ''}`}
+              onClick={() => setMissingOnly((v) => !v)}
+            >
+              {missingOnly ? 'Showing gaps' : 'Missing only'}
+            </button>
+            <button type="button" className="btn btn-primary" onClick={() => setMode('play')} style={{ padding: '0.3rem 0.75rem', borderRadius: '20px', fontSize: '0.78rem' }}>
+              Save & Back
+            </button>
           </div>
-        ))}
+        </div>
+
+        <div className="sb-global-card">
+          <strong>🖼️ Global App Background</strong>
+          <div className="sb-thumb-row">
+            <label className="sb-file-btn">
+              Choose image
+              <input type="file" accept="image/*" hidden onChange={(e) => { handleFileUpload('bg_app', e.target.files[0]); e.target.value = ''; }} />
+            </label>
+            {blobs.bg_app && <button type="button" className="sb-delete-btn" style={{ marginLeft: 0 }} onClick={() => handleClear('bg_app')}>Clear</button>}
+          </div>
+        </div>
+
+        {ACTIONS.map((action) => {
+          const completion = getActionCompletion(action, blobs);
+          const isComplete = completion.saved === completion.total;
+          if (missingOnly && isComplete) return null;
+
+          const isCollapsed = collapsedActions.has(action.id);
+          const clipSlots = action.dynamic
+            ? TIME_SLOTS.map((t) => ({ key: `${action.id}_${t}`, label: `${TIME_SLOT_META[t].icon} ${TIME_SLOT_META[t].short}` }))
+            : [{ key: action.id, label: '🔈 Clip' }];
+
+          const visibleSlots = missingOnly
+            ? clipSlots.filter((s) => !blobs[s.key])
+            : clipSlots;
+          if (missingOnly && !visibleSlots.length) return null;
+
+          return (
+            <div key={action.id} className={`sb-action-card ${isComplete ? 'is-complete' : 'is-incomplete'}`}>
+              <button type="button" className="sb-action-head" onClick={() => toggleActionCollapsed(action.id)}>
+                <span className="sb-action-chevron">{isCollapsed ? '▸' : '▾'}</span>
+                <span className="sb-action-name">{action.label}</span>
+                {action.lang && (
+                  <span className={`sb-lang-badge sb-lang-badge--${action.lang}`}>{action.lang.toUpperCase()}</span>
+                )}
+                <span className={`sb-action-count ${isComplete ? 'sb-action-count--ok' : 'sb-action-count--warn'}`}>
+                  {completion.saved}/{completion.total}
+                </span>
+              </button>
+
+              {!isCollapsed && (
+                <div className="sb-action-body">
+                  <div className="sb-thumb-row">
+                    <span>Thumbnail</span>
+                    <label className="sb-file-btn">
+                      {blobs[`thumb_${action.id}`] ? 'Replace' : 'Add cover'}
+                      <input type="file" accept="image/*" hidden onChange={(e) => { handleFileUpload(`thumb_${action.id}`, e.target.files[0]); e.target.value = ''; }} />
+                    </label>
+                    {blobs[`thumb_${action.id}`] && (
+                      <button type="button" className="sb-delete-btn" style={{ marginLeft: 0 }} onClick={() => handleClear(`thumb_${action.id}`)}>Clear</button>
+                    )}
+                  </div>
+
+                  {action.dynamic ? (
+                    <div className="sb-time-grid">
+                      {visibleSlots.map((slot) => renderClipCard(slot.key, slot.label, true))}
+                    </div>
+                  ) : (
+                    visibleSlots.map((slot) => renderClipCard(slot.key, slot.label))
+                  )}
+                </div>
+              )}
+            </div>
+          );
+        })}
       </div>
     );
   }
 
-  // Play Mode
+  const playStats = getSetupStats(blobs);
+
   return (
-    <div style={{ padding: '0.5rem', display: 'flex', flexDirection: 'column', gap: '0.5rem', flex: 1, overflowY: 'auto' }}>
+    <div className="sb-play-wrap">
       {safetyNotice && (
         <div style={{ fontSize: '0.7rem', fontWeight: 700, color: '#fbbf24', background: 'rgba(245, 158, 11, 0.12)', border: '1px solid rgba(245, 158, 11, 0.35)', borderRadius: '6px', padding: '0.35rem 0.5rem' }}>
           {safetyNotice}
         </div>
       )}
 
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid var(--panel-border)', paddingBottom: '0.4rem' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-          <span style={{ fontWeight: 600, textTransform: 'capitalize', fontSize: '1rem', color: testMode ? '#f59e0b' : 'inherit' }}>
-            Soundboard ({timeOfDay})
-          </span>
+      <div className="sb-play-head">
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.1rem' }}>
+          <span className={`sb-play-title ${testMode ? 'is-test' : ''}`}>Soundboard · {timeOfDay}</span>
+          {playStats.missing > 0 && (
+            <span style={{ fontSize: '0.62rem', color: '#f87171', fontWeight: 600 }}>{playStats.missing} clip{playStats.missing !== 1 ? 's' : ''} missing — tap ⚙️</span>
+          )}
         </div>
-        
+
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-          <label style={{ display: 'flex', alignItems: 'center', gap: '0.25rem', fontSize: '0.7rem', color: testMode ? '#f59e0b' : 'var(--text-muted)', cursor: 'pointer', background: testMode ? 'rgba(245, 158, 11, 0.1)' : 'transparent', padding: '0.2rem 0.4rem', borderRadius: '4px', border: testMode ? '1px solid rgba(245, 158, 11, 0.3)' : '1px solid transparent', transition: 'all 0.2s' }} title="When Test Mode is ON, audio plays ONLY to your local speakers and is NOT sent to the Virtual Mic / Caller.">
-            <input type="checkbox" checked={testMode} onChange={e => setTestMode(e.target.checked)} style={{ cursor: 'pointer' }} />
-            🧪 Test Mode
+          <label style={{ display: 'flex', alignItems: 'center', gap: '0.25rem', fontSize: '0.7rem', color: testMode ? '#f59e0b' : 'var(--text-muted)', cursor: 'pointer', background: testMode ? 'rgba(245, 158, 11, 0.1)' : 'transparent', padding: '0.2rem 0.4rem', borderRadius: '4px', border: testMode ? '1px solid rgba(245, 158, 11, 0.3)' : '1px solid transparent', transition: 'all 0.2s' }} title="Test Mode: local speakers only — nothing to virtual mic">
+            <input type="checkbox" checked={testMode} onChange={(e) => setTestMode(e.target.checked)} style={{ cursor: 'pointer' }} />
+            🧪 Test
           </label>
-        
-          <button 
-            className="btn" 
-            onClick={() => setMode('settings')} 
-            style={{ padding: '0.2rem', background: 'transparent', color: 'var(--text-muted)', fontSize: '1rem', border: 'none' }}
-            title="Soundboard Settings"
-          >
+
+          <button type="button" className="btn" onClick={openSettings} style={{ padding: '0.2rem 0.45rem', background: 'transparent', color: 'var(--text-muted)', fontSize: '1rem', border: 'none' }} title="Setup Soundboard">
             ⚙️
           </button>
         </div>
       </div>
 
-      <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', padding: '0.2rem 0', borderBottom: '1px solid rgba(255,255,255,0.05)', marginBottom: '0.2rem' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '0.75rem' }}>
+      <div className="sb-vol-strip">
+        <div className="sb-vol-row">
           <span style={{ color: testMode ? '#f59e0b' : 'var(--text-muted)' }}>🔊 You (Local)</span>
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
             <input type="range" min="0" max="1" step="0.05" value={localVolume} onChange={(e) => changeLocalVolume(parseFloat(e.target.value))} style={{ width: '60px', accentColor: '#3b82f6' }} title="Your Speakers Volume" />
@@ -581,7 +710,7 @@ export const GreetingsPanel = ({ onEditModeChange }) => {
             </div>
           </div>
         </div>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '0.75rem' }}>
+        <div className="sb-vol-row">
           <span style={{ color: testMode ? 'rgba(255,255,255,0.2)' : 'var(--text-muted)' }}>🎤 Call (Virtual Mic)</span>
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', opacity: testMode ? 0.3 : 1 }}>
             <input type="range" disabled={testMode} min="0" max="1" step="0.05" value={sinkVolume} onChange={(e) => changeSinkVolume(parseFloat(e.target.value))} style={{ width: '60px', accentColor: '#10b981' }} title="Interpreter Call Volume" />
@@ -590,7 +719,7 @@ export const GreetingsPanel = ({ onEditModeChange }) => {
             </div>
           </div>
         </div>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '0.75rem' }}>
+        <div className="sb-vol-row">
           <button
             onClick={() => setMonitorMic(m => !m)}
             style={{
@@ -613,12 +742,7 @@ export const GreetingsPanel = ({ onEditModeChange }) => {
         </div>
       </div>
       
-      <div style={{ 
-        display: 'grid', 
-        gridTemplateColumns: '1fr 1fr', 
-        gap: '0.5rem',
-        paddingTop: '0.25rem'
-      }}>
+      <div className="sb-grid">
         {ACTIONS.map(action => {
            const activeKey = action.dynamic ? `${action.id}_${timeOfDay}` : action.id;
            const hasAudio = !!blobs[activeKey];
