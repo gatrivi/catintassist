@@ -12,9 +12,19 @@ import { useAudioSettings } from '../contexts/AudioSettingsContext';
 
 const TIME_SLOTS = ['morning', 'afternoon', 'evening'];
 const TIME_SLOT_META = {
-  morning: { icon: '☀️', short: 'AM' },
-  afternoon: { icon: '🌤', short: 'PM' },
-  evening: { icon: '🌙', short: 'Eve' },
+  morning: { icon: '☀️', short: 'AM', name: 'Morning' },
+  afternoon: { icon: '🌤', short: 'PM', name: 'Afternoon' },
+  evening: { icon: '🌙', short: 'Eve', name: 'Evening' },
+};
+
+const getActionSlotPills = (action, blobs) => {
+  if (!action.dynamic) return null;
+  return TIME_SLOTS.map((t) => ({
+    t,
+    key: `${action.id}_${t}`,
+    has: !!blobs[`${action.id}_${t}`],
+    ...TIME_SLOT_META[t],
+  }));
 };
 const CALL_ROUTE_MIN_SCORE = 0.5;
 
@@ -420,18 +430,14 @@ export const GreetingsPanel = ({ onEditModeChange }) => {
   };
 
   const openSettings = (focusKey = null) => {
-    const collapsed = new Set();
-    ACTIONS.forEach((action) => {
-      const { saved, total } = getActionCompletion(action, blobs);
-      if (saved === total) collapsed.add(action.id);
-    });
-    if (focusKey) {
-      if (focusKey === 'bg_app') {
-        collapsed.clear();
-      } else {
-        const action = ACTIONS.find((a) => getActionClipKeys(a).includes(focusKey));
-        if (action) collapsed.delete(action.id);
-      }
+    // Default: everything collapsed — expanding 15 sections at once was illegible
+    const collapsed = new Set(ACTIONS.map((a) => a.id));
+    if (focusKey && focusKey !== 'bg_app') {
+      const action = ACTIONS.find((a) => getActionClipKeys(a).includes(focusKey));
+      if (action) collapsed.delete(action.id);
+    } else if (!focusKey) {
+      const firstGap = ACTIONS.find((a) => getActionCompletion(a, blobs).saved < getActionCompletion(a, blobs).total);
+      if (firstGap) collapsed.delete(firstGap.id);
     }
     setCollapsedActions(collapsed);
     setMissingOnly(false);
@@ -691,8 +697,9 @@ export const GreetingsPanel = ({ onEditModeChange }) => {
           if (missingOnly && isComplete) return null;
 
           const isCollapsed = collapsedActions.has(action.id);
+          const slotPills = getActionSlotPills(action, blobs);
           const clipSlots = action.dynamic
-            ? TIME_SLOTS.map((t) => ({ key: `${action.id}_${t}`, label: `${TIME_SLOT_META[t].icon} ${TIME_SLOT_META[t].short}` }))
+            ? TIME_SLOTS.map((t) => ({ key: `${action.id}_${t}`, label: `${TIME_SLOT_META[t].icon} ${TIME_SLOT_META[t].name}` }))
             : [{ key: action.id, label: '🔈 Clip' }];
 
           const visibleSlots = missingOnly
@@ -704,7 +711,18 @@ export const GreetingsPanel = ({ onEditModeChange }) => {
             <div key={action.id} className={`sb-action-card ${isComplete ? 'is-complete' : 'is-incomplete'}`}>
               <button type="button" className="sb-action-head" onClick={() => toggleActionCollapsed(action.id)}>
                 <span className="sb-action-chevron">{isCollapsed ? '▸' : '▾'}</span>
-                <span className="sb-action-name">{action.label}</span>
+                <div className="sb-action-head-main">
+                  <span className="sb-action-name">{action.label}</span>
+                  {slotPills && (
+                    <span className="sb-slot-pills">
+                      {slotPills.map((p) => (
+                        <span key={p.key} className={`sb-slot-pill ${p.has ? 'is-saved' : 'is-missing'}`}>
+                          {p.icon} {p.name}
+                        </span>
+                      ))}
+                    </span>
+                  )}
+                </div>
                 {action.lang && (
                   <span className={`sb-lang-badge sb-lang-badge--${action.lang}`}>{action.lang.toUpperCase()}</span>
                 )}
