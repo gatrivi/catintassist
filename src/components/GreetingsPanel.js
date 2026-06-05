@@ -3,6 +3,9 @@ import { saveFile, loadFile, deleteFile, generateObjectUrl } from '../utils/stor
 import { useAudioSettings } from '../contexts/AudioSettingsContext';
 
 const TIME_SLOTS = ['morning', 'afternoon', 'evening'];
+const CALL_ROUTE_MIN_SCORE = 0.5;
+
+const isCallerReady = (score) => score !== undefined && score >= CALL_ROUTE_MIN_SCORE;
 
 export const ACTIONS = [
   { id: 'greeting_en', label: 'Greeting', lang: 'en', dynamic: true },
@@ -30,6 +33,7 @@ export const GreetingsPanel = ({ onEditModeChange }) => {
   const [playbackProgress, setPlaybackProgress] = useState(0);
   const [recordingKey, setRecordingKey] = useState(null);
   const [testMode, setTestMode] = useState(false);
+  const [safetyNotice, setSafetyNotice] = useState('');
 
   const audioRefSink = useRef(new Audio());
   const audioRefLocal = useRef(new Audio());
@@ -37,6 +41,7 @@ export const GreetingsPanel = ({ onEditModeChange }) => {
   const audioCtxRef = useRef(null);
   const audioChunksRef = useRef([]);
   const animationRef = useRef(null);
+  const callerRouteRef = useRef(false);
 
   useEffect(() => {
     const updateTime = () => {
@@ -228,7 +233,7 @@ export const GreetingsPanel = ({ onEditModeChange }) => {
   const trackProgress = () => {
     if (audioRefLocal.current && audioRefLocal.current.duration) {
       setPlaybackProgress(audioRefLocal.current.currentTime / audioRefLocal.current.duration);
-      if (!testMode && playingKey) {
+      if (!testMode && playingKey && callerRouteRef.current) {
         window.__CAT_AUDIO_VOL = (40 + Math.random() * 60) * sinkVolume;
       } else {
         window.__CAT_AUDIO_VOL = 0;
@@ -246,43 +251,59 @@ export const GreetingsPanel = ({ onEditModeChange }) => {
     if (animationRef.current) cancelAnimationFrame(animationRef.current);
   };
 
-  const playAudioBlock = async (key, routeToVirtualMic) => {
-    // If clicking the same button twice, it stops.
+  const playAudioBlock = async (key, routeToVirtualMic, opts = {}) => {
+    const { bypassGate = false, callerOnly = false } = opts;
+
     if (playingKey === key) {
       audioRefSink.current.pause();
       audioRefLocal.current.pause();
       clearPlaybackState();
-      return; 
+      return;
     }
-    
-    // Stop any current audio
+
     if (playingKey) {
       audioRefSink.current.pause();
       audioRefLocal.current.pause();
       clearPlaybackState();
     }
-    
+
     const blob = blobs[key];
     if (!blob) {
       setMode('settings');
       setTimeout(() => {
         const el = document.getElementById(`settings-row-${key}`);
-        if(el) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
       }, 100);
       return;
     }
-    
+
+    let sendToCaller = routeToVirtualMic && !testMode;
+    if (sendToCaller && !bypassGate && !isCallerReady(healthScores[key])) {
+      const score = healthScores[key];
+      setSafetyNotice(
+        score === undefined
+          ? '⛔ Untested clip — run health check in Setup, or use 🧪 Test Mode'
+          : '⛔ Health gate — clip blocked from virtual mic; previewing locally'
+      );
+      window.setTimeout(() => setSafetyNotice(''), 4500);
+      sendToCaller = false;
+    }
+
+    let playLocal = !callerOnly;
+    let playSink = sendToCaller;
+    callerRouteRef.current = playSink;
+
     const url = blobs[`url_${key}`] || generateObjectUrl(blob);
     audioRefSink.current.src = url;
     audioRefLocal.current.src = url;
-    
-    // Anti-Scream: Fade-in slightly using HTML5 volume if WebAudio is too complex for this direct routing,
-    // or just set a safe initial volume and ramp it.
     audioRefLocal.current.volume = 0;
     audioRefSink.current.volume = 0;
-    
-    audioRefLocal.current.onended = clearPlaybackState;
-    audioRefLocal.current.onpause = clearPlaybackState;
+
+    const onEnd = clearPlaybackState;
+    audioRefLocal.current.onended = onEnd;
+    audioRefLocal.current.onpause = onEnd;
+    audioRefSink.current.onended = onEnd;
+    audioRefSink.current.onpause = onEnd;
 
     if (animationRef.current) cancelAnimationFrame(animationRef.current);
     animationRef.current = requestAnimationFrame(trackProgress);
@@ -290,38 +311,47 @@ export const GreetingsPanel = ({ onEditModeChange }) => {
     const startPlayback = async () => {
       setPlayingKey(key);
       try {
-        await Promise.all([audioRefSink.current.play(), audioRefLocal.current.play()]);
-        
-        // Rapid ramp up to safe volume (50ms) to avoid pops/screams
+        const plays = [];
+        if (playLocal) plays.push(audioRefLocal.current.play());
+        if (playSink) plays.push(audioRefSink.current.play());
+        if (!plays.length) plays.push(audioRefLocal.current.play());
+        await Promise.all(plays);
+
         let vol = 0;
         const rampIntv = setInterval(() => {
-           vol += 0.1;
-           if (vol >= 1) {
-             audioRefLocal.current.volume = localVolume;
-             audioRefSink.current.volume = sinkVolume;
-             clearInterval(rampIntv);
-           } else {
-             audioRefLocal.current.volume = vol * localVolume;
-             audioRefSink.current.volume = vol * sinkVolume;
-           }
+          vol += 0.1;
+          if (vol >= 1) {
+            if (playLocal) audioRefLocal.current.volume = localVolume;
+            if (playSink) audioRefSink.current.volume = sinkVolume;
+            clearInterval(rampIntv);
+          } else {
+            if (playLocal) audioRefLocal.current.volume = vol * localVolume;
+            if (playSink) audioRefSink.current.volume = vol * sinkVolume;
+          }
         }, 10);
       } catch (e) {
-        console.error("Playback error:", e);
+        console.error('Playback error:', e);
         clearPlaybackState();
       }
     };
 
-    if (routeToVirtualMic && selectedSinkId && audioRefSink.current.setSinkId) {
-      try { 
-        await audioRefSink.current.setSinkId(selectedSinkId); 
-        await startPlayback();
-      } catch (e) { 
-        console.error("setSinkId failed, falling back to local only", e); 
-        await startPlayback();
+    if (playSink && selectedSinkId && audioRefSink.current.setSinkId) {
+      try {
+        await audioRefSink.current.setSinkId(selectedSinkId);
+      } catch (e) {
+        console.error('setSinkId failed', e);
+        if (callerOnly) {
+          setSafetyNotice('⚠️ Virtual mic route failed — check speaker/output in header');
+          window.setTimeout(() => setSafetyNotice(''), 4500);
+          return;
+        }
+        playSink = false;
+        callerRouteRef.current = false;
+        setSafetyNotice('⚠️ Virtual mic route failed — playing on local speakers only');
+        window.setTimeout(() => setSafetyNotice(''), 4500);
       }
-    } else {
-      await startPlayback();
     }
+    await startPlayback();
   };
 
   const renderRecordingRow = (key, label) => (
@@ -360,7 +390,17 @@ export const GreetingsPanel = ({ onEditModeChange }) => {
           )}
           
           {blobs[key] && (
-            <button onClick={() => playAudioBlock(key, false)} style={{ flex: 1, padding: '0.4rem', background: 'rgba(16, 185, 129, 0.2)', color: '#34d399', border: '1px solid rgba(16, 185, 129, 0.4)', borderRadius: '4px', cursor: 'pointer' }}>{playingKey === key ? '⏹ Stop' : '▶ Preview'}</button>
+            <>
+              <button onClick={() => playAudioBlock(key, false)} style={{ flex: 1, padding: '0.4rem', background: 'rgba(16, 185, 129, 0.2)', color: '#34d399', border: '1px solid rgba(16, 185, 129, 0.4)', borderRadius: '4px', cursor: 'pointer' }}>{playingKey === key ? '⏹ Stop' : '▶ Preview'}</button>
+              <button
+                onClick={() => playAudioBlock(key, true, { bypassGate: true, callerOnly: true })}
+                disabled={!selectedSinkId}
+                style={{ flex: 1, padding: '0.4rem', background: 'rgba(245, 158, 11, 0.15)', color: '#fbbf24', border: '1px solid rgba(245, 158, 11, 0.35)', borderRadius: '4px', cursor: selectedSinkId ? 'pointer' : 'not-allowed', opacity: selectedSinkId ? 1 : 0.45 }}
+                title={selectedSinkId ? 'Route once to your virtual mic output — hear what the patient path sounds like' : 'Pick a speaker/output in the header first'}
+              >
+                {playingKey === key ? '⏹ Stop' : '📡 Call Test'}
+              </button>
+            </>
           )}
         </div>
         {recordingKey === key && (
@@ -417,6 +457,12 @@ export const GreetingsPanel = ({ onEditModeChange }) => {
   // Play Mode
   return (
     <div style={{ padding: '0.5rem', display: 'flex', flexDirection: 'column', gap: '0.5rem', flex: 1, overflowY: 'auto' }}>
+      {safetyNotice && (
+        <div style={{ fontSize: '0.7rem', fontWeight: 700, color: '#fbbf24', background: 'rgba(245, 158, 11, 0.12)', border: '1px solid rgba(245, 158, 11, 0.35)', borderRadius: '6px', padding: '0.35rem 0.5rem' }}>
+          {safetyNotice}
+        </div>
+      )}
+
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid var(--panel-border)', paddingBottom: '0.4rem' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
           <span style={{ fontWeight: 600, textTransform: 'capitalize', fontSize: '1rem', color: testMode ? '#f59e0b' : 'inherit' }}>
@@ -492,17 +538,19 @@ export const GreetingsPanel = ({ onEditModeChange }) => {
         {ACTIONS.map(action => {
            const activeKey = action.dynamic ? `${action.id}_${timeOfDay}` : action.id;
            const hasAudio = !!blobs[activeKey];
+           const callerReady = isCallerReady(healthScores[activeKey]);
+           const callerBlocked = hasAudio && !testMode && !callerReady;
            const bgImage = blobs[`url_thumb_${action.id}`] ? `url(${blobs[`url_thumb_${action.id}`]})` : 'none';
            const isItPlaying = playingKey === activeKey;
            
            return (
              <button
                key={action.id}
-               onClick={() => playAudioBlock(activeKey, !testMode)}
+               onClick={() => playAudioBlock(activeKey, !testMode, { bypassGate: false })}
                style={{
                  height: '55px',
                  borderRadius: '6px',
-                 border: isItPlaying ? '2px solid #10b981' : (action.lang === 'es' ? '1px solid rgba(16, 185, 129, 0.3)' : (action.lang === 'en' ? '1px solid rgba(59, 130, 246, 0.3)' : '1px solid var(--panel-border)')),
+                 border: isItPlaying ? '2px solid #10b981' : callerBlocked ? '1px solid rgba(239, 68, 68, 0.45)' : (action.lang === 'es' ? '1px solid rgba(16, 185, 129, 0.3)' : (action.lang === 'en' ? '1px solid rgba(59, 130, 246, 0.3)' : '1px solid var(--panel-border)')),
                  boxShadow: isItPlaying ? '0 0 15px rgba(16, 185, 129, 0.8)' : 'none',
                  animation: isItPlaying ? 'pulseGlow 1.5s infinite' : 'none',
                  background: bgImage !== 'none' ? bgImage : (action.lang === 'es' ? 'rgba(16, 185, 129, 0.05)' : (action.lang === 'en' ? 'rgba(59, 130, 246, 0.05)' : 'rgba(255,255,255,0.05)')),
@@ -521,7 +569,13 @@ export const GreetingsPanel = ({ onEditModeChange }) => {
                  fontSize: '0.8rem',
                  lineHeight: 1.2
                }}
-               title={hasAudio ? "Play Audio" : "Empty Audio - Click to add"}
+               title={
+                 !hasAudio
+                   ? 'Empty Audio - Click to add'
+                   : callerBlocked
+                     ? 'Blocked from virtual mic — local preview only (use Setup → Call Test or 🧪 Test Mode)'
+                     : 'Play Audio'
+               }
              >
                 <div style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.5)', transition: 'background 0.2s' }} />
                 {action.lang && (
