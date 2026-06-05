@@ -5,6 +5,7 @@ import { useTranslate } from '../hooks/useTranslate';
 import { useSession, safeSet } from '../contexts/SessionContext';
 import { useProgressiveAudio } from '../hooks/useProgressiveAudio';
 import { ScrambleText } from './ScrambleText';
+import { formatTranscriptForDisplay, isSpellingBlock } from '../utils/transcriptFormat';
 
 // EL TABLERO DE TEXTO: Aquí es donde aparece todo lo que dicen en la llamada.
 // Muestra quién habla, lo traduce y te deja copiar los números con un clic.
@@ -49,10 +50,12 @@ const convertEnglishNumberWords = (text) => {
   return text.replace(re, (matched) => map[normalizeAccents(matched)] || matched);
 };
 
-const InteractiveText = ({ text, scramble = true, applyNumberWords = false }) => {
+const InteractiveText = ({ text, scramble = true, applyNumberWords = false, lang = 'en' }) => {
   if (!text) return null;
-  
-  const processedText = applyNumberWords ? convertEnglishNumberWords(text) : text;
+
+  const spelled = formatTranscriptForDisplay(text, lang);
+  const processedText = applyNumberWords ? convertEnglishNumberWords(spelled) : spelled;
+  const spellingLayout = isSpellingBlock(text);
 
   // 2. GROUP PHONE NUMBERS / SSN: If we see 8-16 digits read out singly (with spaces), join and format them.
   const groupedDigits = processedText.replace(
@@ -88,27 +91,39 @@ const InteractiveText = ({ text, scramble = true, applyNumberWords = false }) =>
     navigator.clipboard.writeText(clean);
   };
 
+  const renderPart = (p, i) => {
+    const partKey = `${i}`;
+    if (p && p.match(numRegex)) {
+      return (
+        <span
+          key={partKey}
+          className="phone-number highlight-number"
+          onClick={(e) => { e.stopPropagation(); handleCopy(p); }}
+          title={`Click to copy number: ${p}`}
+          style={{ cursor: 'copy', backgroundColor: 'rgba(252, 211, 77, 0.1)', color: '#fcd34d', padding: '0 2px', borderRadius: '2px', fontWeight: 600, display: 'inline' }}
+        >
+          {scramble ? <ScrambleText value={p} duration={300} /> : p}
+        </span>
+      );
+    }
+    return scramble ? <ScrambleText key={partKey} value={p} duration={300} /> : <span key={partKey}>{p}</span>;
+  };
+
+  if (spellingLayout && processedText.includes('\n')) {
+    return (
+      <span className="bubble-spelling-lines" style={{ whiteSpace: 'pre-line', lineHeight: 1.35 }}>
+        {processedText.split('\n').map((line, li) => (
+          <span key={li} style={{ display: 'block', fontFamily: 'var(--font-mono)', fontWeight: 700 }}>
+            {scramble ? <ScrambleText value={line} duration={300} /> : line}
+          </span>
+        ))}
+      </span>
+    );
+  }
+
   return (
     <>
-      {parts.map((p, i) => {
-        // STABLE KEYS: We use the bubble ID + part index + hash of content to ensure 
-        // React doesn't reuse the wrong ScrambleText instance during unshifts.
-        const partKey = `${i}`;
-        if (p && p.match(numRegex)) {
-          return (
-            <span 
-              key={partKey} 
-              className="phone-number highlight-number" 
-              onClick={(e) => { e.stopPropagation(); handleCopy(p); }} 
-              title={`Click to copy number: ${p}`}
-              style={{ cursor: 'copy', backgroundColor: 'rgba(252, 211, 77, 0.1)', color: '#fcd34d', padding: '0 2px', borderRadius: '2px', fontWeight: 600, display: 'inline' }}
-            >
-              {scramble ? <ScrambleText value={p} duration={300} /> : p}
-            </span>
-          );
-        }
-        return scramble ? <ScrambleText key={partKey} value={p} duration={300} /> : <span key={partKey}>{p}</span>;
-      })}
+      {parts.map((p, i) => renderPart(p, i))}
     </>
   );
 };
@@ -200,7 +215,7 @@ const TranslatedBubble = ({ id, text, lang, playTTS, stopTTS, playingUrl, prefet
     <div className={`translated-bubble-row${reverse ? ' is-reverse' : ''}`}>
       <div className="bubble-col bubble-col-source" style={{ textAlign: reverse ? 'right' : 'left' }}>
         <div className="bubble-line" style={{ color: transcriptColor }}>
-          <InteractiveText text={text} scramble={true} applyNumberWords={sourceUsesNumberWords} />
+          <InteractiveText text={text} scramble={true} applyNumberWords={sourceUsesNumberWords} lang={lang} />
         </div>
       </div>
 
@@ -218,7 +233,7 @@ const TranslatedBubble = ({ id, text, lang, playTTS, stopTTS, playingUrl, prefet
       <div className="bubble-col bubble-col-translation" style={{ color: translationColor, textAlign: reverse ? 'left' : 'right' }}>
         <div className="bubble-line bubble-line-translation">
           {translation ? (
-            <InteractiveText text={translation} scramble={true} applyNumberWords={targetUsesNumberWords} />
+            <InteractiveText text={translation} scramble={true} applyNumberWords={targetUsesNumberWords} lang={targetLang} />
           ) : engineStatus === 'ready' ? (
             <span style={{ opacity: 0.3, fontSize: '0.7rem' }}>⚠️ translation failed</span>
           ) : (

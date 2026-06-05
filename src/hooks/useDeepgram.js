@@ -1,5 +1,6 @@
 import { useState, useRef, useCallback } from 'react';
 import { useSession } from '../contexts/SessionContext';
+import { applyTranscriptFormatting, splitLongTextAtCommas } from '../utils/transcriptFormat';
 
 const normalize = (s) => 
   (s || '')
@@ -129,20 +130,40 @@ const peelCompleteSentences = (text) => {
   return { sentences, remainder: rest };
 };
 
-const buildSealedBubble = (sentence, template, bubbleIdCounterRef, turnWordCount) => ({
-  ...template,
-  id: `${Date.now()}-${++bubbleIdCounterRef.current}-s`,
-  text: sentence,
-  turnId: template.turnId,
-  turnWordCount,
-  enFinalized: template.lang === 'en' ? sentence : '',
-  esFinalized: template.lang === 'es' ? sentence : '',
-  enInterim: '',
-  esInterim: '',
-  enFull: template.lang === 'en' ? sentence : template.enFull,
-  esFull: template.lang === 'es' ? sentence : template.esFull,
-  isFinal: true,
-});
+const sealText = (raw, lang) => applyTranscriptFormatting(raw.trim(), lang);
+
+const buildSealedBubble = (sentence, template, bubbleIdCounterRef, turnWordCount) => {
+  const lang = template.lang || 'en';
+  const text = sealText(sentence, lang);
+  return {
+    ...template,
+    id: `${Date.now()}-${++bubbleIdCounterRef.current}-s`,
+    text,
+    turnId: template.turnId,
+    turnWordCount,
+    enFinalized: lang === 'en' ? text : '',
+    esFinalized: lang === 'es' ? text : '',
+    enInterim: '',
+    esInterim: '',
+    enFull: lang === 'en' ? text : template.enFull,
+    esFull: lang === 'es' ? text : template.esFull,
+    isFinal: true,
+  };
+};
+
+/** Seal comma chunks when a fragment exceeds word limit without sentence end */
+const peelCommaChunks = (text, template, bubbleIdCounterRef, turnWordsBase) => {
+  const chunks = splitLongTextAtCommas(text, 40);
+  if (!chunks.length) return { sealed: [], remainder: text };
+
+  let acc = turnWordsBase;
+  const sealed = chunks.map((chunk) => {
+    const w = chunk.trim().split(/\s+/).filter(Boolean).length;
+    acc += w;
+    return buildSealedBubble(chunk, template, bubbleIdCounterRef, acc);
+  });
+  return { sealed, remainder: '' };
+};
 
 const removeOverlap = (base, addition) => {
   if (!base || !addition) return addition;
@@ -354,34 +375,69 @@ export const useDeepgram = () => {
           let newArr = [...prev];
           newArr[newArr.length - 1] = current;
 
-          // Finalize complete sentences into their own bubbles (period / ! / ?)
+          // Finalize complete sentences, then comma-chunk long breathless runs
           if (isFinal && current.text?.trim()) {
-            const { sentences, remainder } = peelCompleteSentences(current.text);
+            const { sentences, remainder: sentRemainder } = peelCompleteSentences(current.text);
+            let sealedAll = [];
+            let tailText = sentRemainder;
+
             if (sentences.length > 0) {
               let acc = turnWordsBaseRef.current;
-              const sealed = sentences.map((sent) => {
+              sealedAll = sentences.map((sent) => {
                 const w = sent.trim().split(/\s+/).filter(Boolean).length;
                 acc += w;
                 return buildSealedBubble(sent, current, bubbleIdCounterRef, acc);
               });
               turnWordsBaseRef.current = acc;
-              newArr = [...prev.slice(0, -1), ...sealed];
-              if (remainder) {
-                const tail = {
+            }
+
+            if (tailText?.trim()) {
+              const { sealed: commaSealed, remainder: commaRemainder } = peelCommaChunks(
+                tailText,
+                current,
+                bubbleIdCounterRef,
+                turnWordsBaseRef.current
+              );
+              if (commaSealed.length) {
+                sealedAll = [...sealedAll, ...commaSealed];
+                turnWordsBaseRef.current = commaSealed[commaSealed.length - 1].turnWordCount;
+                tailText = commaRemainder;
+              }
+            }
+
+            if (!sentences.length && !sealedAll.length && current.text?.trim()) {
+              const { sealed: commaOnly, remainder: commaRemainder } = peelCommaChunks(
+                current.text,
+                current,
+                bubbleIdCounterRef,
+                turnWordsBaseRef.current
+              );
+              if (commaOnly.length) {
+                sealedAll = commaOnly;
+                turnWordsBaseRef.current = commaOnly[commaOnly.length - 1].turnWordCount;
+                tailText = commaRemainder;
+              }
+            }
+
+            if (sealedAll.length > 0) {
+              newArr = [...prev.slice(0, -1), ...sealedAll];
+              if (tailText?.trim()) {
+                const lang = current.lang || 'en';
+                const formatted = sealText(tailText, lang);
+                newArr.push({
                   ...current,
                   id: `${Date.now()}-${++bubbleIdCounterRef.current}`,
                   turnId: current.turnId,
                   turnWordCount: turnWordsBaseRef.current,
-                  text: remainder,
-                  enFinalized: current.lang === 'en' ? remainder : '',
-                  esFinalized: current.lang === 'es' ? remainder : '',
-                  enInterim: current.lang === 'en' ? current.enInterim : '',
-                  esInterim: current.lang === 'es' ? current.esInterim : '',
-                  enFull: current.lang === 'en' ? `${remainder} ${current.enInterim || ''}`.trim() : current.enFull,
-                  esFull: current.lang === 'es' ? `${remainder} ${current.esInterim || ''}`.trim() : current.esFull,
+                  text: formatted,
+                  enFinalized: lang === 'en' ? formatted : '',
+                  esFinalized: lang === 'es' ? formatted : '',
+                  enInterim: lang === 'en' ? current.enInterim : '',
+                  esInterim: lang === 'es' ? current.esInterim : '',
+                  enFull: lang === 'en' ? `${formatted} ${current.enInterim || ''}`.trim() : current.enFull,
+                  esFull: lang === 'es' ? `${formatted} ${current.esInterim || ''}`.trim() : current.esFull,
                   isFinal: false,
-                };
-                newArr.push(tail);
+                });
               }
             }
           }
