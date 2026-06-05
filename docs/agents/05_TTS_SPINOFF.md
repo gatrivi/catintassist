@@ -42,15 +42,41 @@ Env: `REACT_APP_TTS_URL=http://127.0.0.1:59125`
 
 ---
 
-## Suggested spin-off stack
+## Already have OmniVoice Studio? Use it.
+
+**Repo:** `github.com/debpalash/OmniVoice-Studio` (desktop + FastAPI backend)
+
+**Find it (WSL):**
+```bash
+find ~ /mnt/c/Users -maxdepth 5 -type d -iname 'OmniVoice-Studio' 2>/dev/null
+ls ~/OmniVoice-Studio ~/projects/OmniVoice-Studio 2>/dev/null
+```
+
+**Find it (Windows PowerShell):**
+```powershell
+Get-ChildItem -Path $env:USERPROFILE -Recurse -Directory -Filter "OmniVoice-Studio" -ErrorAction SilentlyContinue | Select -First 3 FullName
+```
+
+**Run:**
+```bash
+cd OmniVoice-Studio
+bun install
+bun run desktop-prod    # or: bun run dev
+```
+API usually on **`:8000`** when app is running. TTS: `POST /generate` (multipart: `text`, `language`, optional ref audio).
+
+**CatIntAssist wire:** point `useTTS.js` at `http://127.0.0.1:8000/generate` → blob → existing `setSinkId` play path. No new TTS project needed if OmniVoice works.
+
+**Also has MCP server** — usable from Cursor when `bun dev` is running.
+
+---
+
+## Fallback stack (if OmniVoice lost / too heavy)
 
 | Option | Pros |
 |--------|------|
-| **Piper** + small Python FastAPI | Fast, offline, easy Docker |
-| **Kokoro** | Quality; slightly more setup |
-| **Coqui XTTS** | Flexible; heavier GPU/RAM |
-
-Start Piper. Swap later if quality insufficient.
+| **Piper** + tiny FastAPI | Lightweight |
+| **OmniVoice Studio** | Already cloned — use this first |
 
 ---
 
