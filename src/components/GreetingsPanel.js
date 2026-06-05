@@ -1,5 +1,13 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { saveFile, loadFile, deleteFile, generateObjectUrl } from '../utils/storage';
+import {
+  saveFile,
+  loadFile,
+  deleteFile,
+  generateObjectUrl,
+  getStorageSummary,
+  exportStorageBackup,
+  importStorageBackup,
+} from '../utils/storage';
 import { useAudioSettings } from '../contexts/AudioSettingsContext';
 
 const TIME_SLOTS = ['morning', 'afternoon', 'evening'];
@@ -111,6 +119,8 @@ export const GreetingsPanel = ({ onEditModeChange }) => {
   const [waveforms, setWaveforms] = useState({});
   const [collapsedActions, setCollapsedActions] = useState(() => new Set());
   const [missingOnly, setMissingOnly] = useState(false);
+  const [storageSummary, setStorageSummary] = useState(null);
+  const [storageBusy, setStorageBusy] = useState(false);
 
   const audioRefSink = useRef(new Audio());
   const audioRefLocal = useRef(new Audio());
@@ -137,6 +147,14 @@ export const GreetingsPanel = ({ onEditModeChange }) => {
       onEditModeChange(mode === 'settings');
     }
   }, [mode, onEditModeChange]);
+
+  const refreshStorageSummary = async () => {
+    try {
+      setStorageSummary(await getStorageSummary());
+    } catch (e) {
+      console.warn('Storage summary failed:', e);
+    }
+  };
 
   const reloadData = async () => {
     const state = {};
@@ -167,6 +185,52 @@ export const GreetingsPanel = ({ onEditModeChange }) => {
         state.bg_app = bgApp;
     }
     setBlobs(state);
+    refreshStorageSummary();
+  };
+
+  const getExpectedStorageKeys = () => {
+    const expected = new Set(['bg_app']);
+    ACTIONS.forEach((action) => {
+      expected.add(`thumb_${action.id}`);
+      getActionClipKeys(action).forEach((k) => expected.add(k));
+    });
+    return expected;
+  };
+
+  const handleExportBackup = async () => {
+    setStorageBusy(true);
+    try {
+      const payload = await exportStorageBackup();
+      const blob = new Blob([JSON.stringify(payload)], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `catintassist-soundboard-${new Date().toISOString().slice(0, 10)}.json`;
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch (e) {
+      alert('Export failed — see console');
+      console.error(e);
+    } finally {
+      setStorageBusy(false);
+    }
+  };
+
+  const handleImportBackup = async (file) => {
+    if (!file) return;
+    setStorageBusy(true);
+    try {
+      const text = await file.text();
+      const payload = JSON.parse(text);
+      const count = await importStorageBackup(payload);
+      await reloadData();
+      alert(`Restored ${count} item(s) from backup.`);
+    } catch (e) {
+      alert('Import failed — invalid or corrupt backup file');
+      console.error(e);
+    } finally {
+      setStorageBusy(false);
+    }
   };
 
   useEffect(() => {
@@ -176,7 +240,7 @@ export const GreetingsPanel = ({ onEditModeChange }) => {
   useEffect(() => {
     let cancelled = false;
     const keys = Object.keys(blobs).filter(
-      (k) => !k.startsWith('url_') && !k.startsWith('thumb_') && k !== 'bg_app' && blobs[k] instanceof Blob
+      (k) => !k.startsWith('url_') && !k.startsWith('thumb_') && k !== 'bg_app' && blobs[k]?.size > 0
     );
 
     (async () => {
@@ -557,8 +621,8 @@ export const GreetingsPanel = ({ onEditModeChange }) => {
         )}
 
         <div className="sb-clip-footer">
-          <label className="sb-file-btn">
-            Upload
+          <label className="sb-audio-btn">
+            Upload audio
             <input type="file" accept="audio/*" hidden onChange={(e) => { handleFileUpload(key, e.target.files[0]); e.target.value = ''; }} />
           </label>
           {hasBlob && (
@@ -602,10 +666,11 @@ export const GreetingsPanel = ({ onEditModeChange }) => {
           </div>
         </div>
 
-        <div className="sb-global-card">
-          <strong>🖼️ Global App Background</strong>
+        <div className="sb-global-card sb-thumb-zone">
+          <strong className="sb-zone-label">🖼️ Image only — app background</strong>
+          <p className="sb-zone-hint">Not a soundboard clip. Does not play on calls.</p>
           <div className="sb-thumb-row">
-            <label className="sb-file-btn">
+            <label className="sb-img-btn">
               Choose image
               <input type="file" accept="image/*" hidden onChange={(e) => { handleFileUpload('bg_app', e.target.files[0]); e.target.value = ''; }} />
             </label>
@@ -643,29 +708,73 @@ export const GreetingsPanel = ({ onEditModeChange }) => {
 
               {!isCollapsed && (
                 <div className="sb-action-body">
-                  <div className="sb-thumb-row">
-                    <span>Thumbnail</span>
-                    <label className="sb-file-btn">
-                      {blobs[`thumb_${action.id}`] ? 'Replace' : 'Add cover'}
-                      <input type="file" accept="image/*" hidden onChange={(e) => { handleFileUpload(`thumb_${action.id}`, e.target.files[0]); e.target.value = ''; }} />
-                    </label>
-                    {blobs[`thumb_${action.id}`] && (
-                      <button type="button" className="sb-delete-btn" style={{ marginLeft: 0 }} onClick={() => handleClear(`thumb_${action.id}`)}>Clear</button>
-                    )}
+                  <div className="sb-thumb-zone">
+                    <strong className="sb-zone-label">🖼️ Button cover image</strong>
+                    <p className="sb-zone-hint">Visual only — never plays audio.</p>
+                    <div className="sb-thumb-row">
+                      {blobs[`url_thumb_${action.id}`] && (
+                        <div className="sb-thumb-preview" style={{ backgroundImage: `url(${blobs[`url_thumb_${action.id}`]})` }} aria-hidden />
+                      )}
+                      <label className="sb-img-btn">
+                        {blobs[`thumb_${action.id}`] ? 'Replace image' : 'Add cover image'}
+                        <input type="file" accept="image/*" hidden onChange={(e) => { handleFileUpload(`thumb_${action.id}`, e.target.files[0]); e.target.value = ''; }} />
+                      </label>
+                      {blobs[`thumb_${action.id}`] && (
+                        <button type="button" className="sb-delete-btn" style={{ marginLeft: 0 }} onClick={() => handleClear(`thumb_${action.id}`)}>Remove image</button>
+                      )}
+                    </div>
                   </div>
 
-                  {action.dynamic ? (
-                    <div className="sb-time-grid">
-                      {visibleSlots.map((slot) => renderClipCard(slot.key, slot.label, true))}
-                    </div>
-                  ) : (
-                    visibleSlots.map((slot) => renderClipCard(slot.key, slot.label))
-                  )}
+                  <div className="sb-audio-zone">
+                    <strong className="sb-zone-label">🎙️ Audio clips</strong>
+                    <p className="sb-zone-hint">Record or upload — these fire on the soundboard.</p>
+                    {action.dynamic ? (
+                      <div className="sb-time-grid">
+                        {visibleSlots.map((slot) => renderClipCard(slot.key, slot.label, true))}
+                      </div>
+                    ) : (
+                      visibleSlots.map((slot) => renderClipCard(slot.key, slot.label))
+                    )}
+                  </div>
                 </div>
               )}
             </div>
           );
         })}
+
+        <div className="sb-storage-panel">
+          <strong className="sb-zone-label">💾 Clip storage (IndexedDB)</strong>
+          <p className="sb-zone-hint">
+            Clips live in <em>this browser</em> at <code>{storageSummary?.origin || window.location.origin}</code>.
+            {' '}Changing URL (localhost vs 127.0.0.1) or clearing site data looks like &quot;everything gone&quot; — check backup below.
+          </p>
+          {storageSummary && (
+            <p className="sb-storage-stat">
+              {storageSummary.keyCount} key(s) in DB · {Math.round(storageSummary.bytes / 1024)} KB
+              {storageSummary.keyCount > 0 && getSetupStats(blobs).saved === 0 && (
+                <span className="sb-storage-warn"> — keys exist but app did not map them; try Import or check orphan list</span>
+              )}
+            </p>
+          )}
+          {storageSummary?.keys?.length > 0 && (() => {
+            const expected = getExpectedStorageKeys();
+            const orphans = storageSummary.keys.filter((k) => !expected.has(k));
+            if (!orphans.length) return null;
+            return (
+              <p className="sb-storage-orphans">
+                Orphan keys in DB: {orphans.join(', ')}
+              </p>
+            );
+          })()}
+          <div className="sb-thumb-row">
+            <button type="button" className="sb-audio-btn" disabled={storageBusy} onClick={handleExportBackup}>Export backup</button>
+            <label className="sb-audio-btn">
+              Import backup
+              <input type="file" accept="application/json,.json" hidden disabled={storageBusy} onChange={(e) => { handleImportBackup(e.target.files[0]); e.target.value = ''; }} />
+            </label>
+            <button type="button" className="sb-filter-chip" disabled={storageBusy} onClick={refreshStorageSummary}>Refresh scan</button>
+          </div>
+        </div>
       </div>
     );
   }
@@ -694,8 +803,8 @@ export const GreetingsPanel = ({ onEditModeChange }) => {
             🧪 Test
           </label>
 
-          <button type="button" className="btn" onClick={openSettings} style={{ padding: '0.2rem 0.45rem', background: 'transparent', color: 'var(--text-muted)', fontSize: '1rem', border: 'none' }} title="Setup Soundboard">
-            ⚙️
+          <button type="button" className="sb-open-setup-btn" onClick={openSettings} title="Record clips, upload audio, button cover images">
+            ⚙️ Setup
           </button>
         </div>
       </div>
@@ -743,80 +852,58 @@ export const GreetingsPanel = ({ onEditModeChange }) => {
       </div>
       
       <div className="sb-grid">
-        {ACTIONS.map(action => {
-           const activeKey = action.dynamic ? `${action.id}_${timeOfDay}` : action.id;
-           const hasAudio = !!blobs[activeKey];
-           const callerReady = isCallerReady(healthScores[activeKey]);
-           const callerBlocked = hasAudio && !testMode && !callerReady;
-           const bgImage = blobs[`url_thumb_${action.id}`] ? `url(${blobs[`url_thumb_${action.id}`]})` : 'none';
-           const isItPlaying = playingKey === activeKey;
-           
-           return (
-             <button
-               key={action.id}
-               onClick={() => playAudioBlock(activeKey, !testMode, { bypassGate: false })}
-               style={{
-                 height: '55px',
-                 borderRadius: '6px',
-                 border: isItPlaying ? '2px solid #10b981' : callerBlocked ? '1px solid rgba(239, 68, 68, 0.45)' : (action.lang === 'es' ? '1px solid rgba(16, 185, 129, 0.3)' : (action.lang === 'en' ? '1px solid rgba(59, 130, 246, 0.3)' : '1px solid var(--panel-border)')),
-                 boxShadow: isItPlaying ? '0 0 15px rgba(16, 185, 129, 0.8)' : 'none',
-                 animation: isItPlaying ? 'pulseGlow 1.5s infinite' : 'none',
-                 background: bgImage !== 'none' ? bgImage : (action.lang === 'es' ? 'rgba(16, 185, 129, 0.05)' : (action.lang === 'en' ? 'rgba(59, 130, 246, 0.05)' : 'rgba(255,255,255,0.05)')),
-                 backgroundSize: 'cover',
-                 backgroundPosition: 'center',
-                 color: 'white',
-                 fontWeight: 600,
-                 textShadow: '0 2px 4px rgba(0,0,0,1)',
-                 cursor: 'pointer',
-                 opacity: hasAudio ? 1 : 0.4,
-                 display: 'flex',
-                 alignItems: 'center',
-                 justifyContent: 'center',
-                 position: 'relative',
-                 overflow: 'hidden',
-                 fontSize: '0.8rem',
-                 lineHeight: 1.2
-               }}
-               title={
-                 !hasAudio
-                   ? 'Empty Audio - Click to add'
-                   : callerBlocked
-                     ? 'Blocked from virtual mic — local preview only (use Setup → Call Test or 🧪 Test Mode)'
-                     : 'Play Audio'
-               }
-             >
-                <div style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.5)', transition: 'background 0.2s' }} />
-                {action.lang && (
-                  <div style={{ position: 'absolute', top: '2px', left: '4px', fontSize: '0.4rem', fontWeight: 900, color: action.lang === 'es' ? '#10b981' : '#3b82f6', opacity: 0.8, zIndex: 2 }}>
-                    {action.lang.toUpperCase()}
-                  </div>
+        {ACTIONS.map((action) => {
+          const activeKey = action.dynamic ? `${action.id}_${timeOfDay}` : action.id;
+          const hasAudio = !!blobs[activeKey];
+          const callerBlocked = hasAudio && !testMode && !isCallerReady(healthScores[activeKey]);
+          const bgImage = blobs[`url_thumb_${action.id}`] ? `url(${blobs[`url_thumb_${action.id}`]})` : 'none';
+          const isItPlaying = playingKey === activeKey;
+          const otherSlotsSaved = action.dynamic
+            ? TIME_SLOTS.filter((t) => t !== timeOfDay && blobs[`${action.id}_${t}`]).map((t) => TIME_SLOT_META[t].short)
+            : [];
+
+          if (!hasAudio) {
+            return (
+              <div key={action.id} className={`sb-slot sb-slot--empty ${action.lang ? `sb-slot--${action.lang}` : ''}`}>
+                {action.lang && <span className={`sb-lang-badge sb-lang-badge--${action.lang}`}>{action.lang.toUpperCase()}</span>}
+                <span className="sb-slot-name">{action.label}</span>
+                <span className="sb-slot-empty-label">No {timeOfDay} clip</span>
+                {otherSlotsSaved.length > 0 && (
+                  <span className="sb-slot-other-hint">Saved: {otherSlotsSaved.join(', ')} — add {timeOfDay} in Setup</span>
                 )}
-                {isItPlaying && (
-                  <div style={{ 
-                    position: 'absolute', 
-                    top: 0, left: 0, bottom: 0, 
-                    width: `${playbackProgress * 100}%`,
-                    background: 'rgba(16, 185, 129, 0.4)',
-                    transition: 'width 0.1s linear',
-                    zIndex: 0
-                  }} />
+                <button type="button" className="sb-slot-setup-btn" onClick={() => openSettings(activeKey)}>
+                  🎙 Add audio in Setup
+                </button>
+              </div>
+            );
+          }
+
+          return (
+            <button
+              key={action.id}
+              type="button"
+              className={`sb-slot sb-slot--ready ${isItPlaying ? 'is-playing' : ''} ${callerBlocked ? 'is-blocked' : ''} ${action.lang ? `sb-slot--${action.lang}` : ''}`}
+              onClick={() => playAudioBlock(activeKey, !testMode, { bypassGate: false })}
+              style={{ backgroundImage: bgImage !== 'none' ? bgImage : undefined }}
+              title={
+                callerBlocked
+                  ? 'Blocked from virtual mic — local preview only (Setup → Call Test or 🧪 Test Mode)'
+                  : 'Play clip'
+              }
+            >
+              <div className="sb-slot-overlay" />
+              {action.lang && <span className={`sb-lang-badge sb-lang-badge--${action.lang}`}>{action.lang.toUpperCase()}</span>}
+              {isItPlaying && <div className="sb-slot-progress" style={{ width: `${playbackProgress * 100}%` }} />}
+              <span className="sb-slot-label">
+                {isItPlaying ? '⏹ STOP' : action.label}
+                {healthScores[activeKey] !== undefined && (
+                  <span className="sb-slot-health" style={{ color: getHealthMeta(healthScores[activeKey])?.color }}>
+                    {getHealthMeta(healthScores[activeKey])?.label}
+                  </span>
                 )}
-                
-                <span style={{ position: 'relative', zIndex: 1, textAlign: 'center', padding: '0.2rem', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-                  {!hasAudio ? `➕ Add ${action.label}` : (isItPlaying ? '⏹ STOP' : action.label)}
-                  {hasAudio && healthScores[activeKey] !== undefined && (
-                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', marginTop: '4px' }}>
-                      <div style={{ width: '40px', height: '4px', background: 'rgba(255,255,255,0.2)', borderRadius: '2px', overflow: 'hidden', border: '1px solid rgba(0,0,0,0.3)' }}>
-                         <div style={{ height: '100%', width: getHealthMeta(healthScores[activeKey])?.width || '0%', backgroundColor: getHealthMeta(healthScores[activeKey])?.color || '#94a3b8' }} />
-                      </div>
-                      <span style={{ fontSize: '0.45rem', fontWeight: 900, color: getHealthMeta(healthScores[activeKey])?.color || '#94a3b8', marginTop: '1px', textShadow: '0 1px 2px rgba(0,0,0,0.8)' }}>
-                        {getHealthMeta(healthScores[activeKey])?.label}
-                      </span>
-                    </div>
-                  )}
-                </span>
-             </button>
-           )
+              </span>
+            </button>
+          );
         })}
       </div>
     </div>
