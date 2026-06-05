@@ -285,7 +285,7 @@ export const GreetingsPanel = ({ onEditModeChange }) => {
     const blob = await loadFile(key);
     if (!blob) return;
     
-    const API_KEY = localStorage.getItem('DEEPGRAM_API_KEY');
+    const API_KEY = localStorage.getItem('DEEPGRAM_API_KEY') || process.env.REACT_APP_DEEPGRAM_API_KEY;
     if (!API_KEY) return;
 
     setIsAnalyzing(key);
@@ -426,15 +426,22 @@ export const GreetingsPanel = ({ onEditModeChange }) => {
       if (saved === total) collapsed.add(action.id);
     });
     if (focusKey) {
-      const action = ACTIONS.find((a) => getActionClipKeys(a).includes(focusKey));
-      if (action) collapsed.delete(action.id);
+      if (focusKey === 'bg_app') {
+        collapsed.clear();
+      } else {
+        const action = ACTIONS.find((a) => getActionClipKeys(a).includes(focusKey));
+        if (action) collapsed.delete(action.id);
+      }
     }
     setCollapsedActions(collapsed);
     setMissingOnly(false);
     setMode('settings');
     if (focusKey) {
       setTimeout(() => {
-        document.getElementById(`settings-row-${focusKey}`)?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        const el = focusKey === 'bg_app'
+          ? document.getElementById('settings-bg-app')
+          : document.getElementById(`settings-row-${focusKey}`);
+        el?.scrollIntoView({ behavior: 'smooth', block: 'center' });
       }, 100);
     }
   };
@@ -666,7 +673,7 @@ export const GreetingsPanel = ({ onEditModeChange }) => {
           </div>
         </div>
 
-        <div className="sb-global-card sb-thumb-zone">
+        <div id="settings-bg-app" className="sb-global-card sb-thumb-zone">
           <strong className="sb-zone-label">🖼️ Image only — app background</strong>
           <p className="sb-zone-hint">Not a soundboard clip. Does not play on calls.</p>
           <div className="sb-thumb-row">
@@ -803,6 +810,9 @@ export const GreetingsPanel = ({ onEditModeChange }) => {
             🧪 Test
           </label>
 
+          <button type="button" className="sb-open-setup-btn" onClick={() => openSettings('bg_app')} title="App-wide background image">
+            🖼️ Fondo
+          </button>
           <button type="button" className="sb-open-setup-btn" onClick={openSettings} title="Record clips, upload audio, button cover images">
             ⚙️ Setup
           </button>
