@@ -109,6 +109,7 @@ State:    SessionContext (timers, stats, pins)
 | `02_MAINVIEW.MD` | Transcript / translation UX |
 | `03_SOUNDBOARD.MD` | Greetings lab + health audit |
 | `04_SOUNDSCAPE.MD` | Chimes / coin sounds |
+| `05_TTS_SPINOFF.md` | Local TTS side project + merge contract |
 | `SOUNDBOARD_CHECKLIST.md` | Enum checklist for soundboard passes |
 | `/agents.md` | Living backlog (user instructions) |
 
