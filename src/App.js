@@ -2,6 +2,11 @@ import React, { useEffect, useState, useCallback, useRef } from 'react';
 import { SessionProvider, useSession } from './contexts/SessionContext';
 import { AudioSettingsProvider, useAudioSettings } from './contexts/AudioSettingsContext';
 import { LanguageProvider, useLanguage } from './contexts/LanguageContext';
+import { AppGuideProvider } from './contexts/AppGuideContext';
+import { WelcomeBar } from './components/WelcomeBar';
+import { FirstVisitCoach } from './components/FirstVisitCoach';
+import { ConnectHint } from './components/ConnectHint';
+import { IdleDiscoveryHint } from './components/IdleDiscoveryHint';
 import { hapticConnect, flashConnectMode } from './utils/connectFeedback';
 import { DashboardHeader } from './components/DashboardHeader';
 import { TranscriptionBoard } from './components/TranscriptionBoard';
@@ -176,6 +181,8 @@ const Dashboard = () => {
     const iv = setInterval(() => {
       idleMinuteCountRef.current += 1;
       playCoin(idleMinuteCountRef.current);
+      document.documentElement.setAttribute('data-habit-minute-flash', 'true');
+      setTimeout(() => document.documentElement.removeAttribute('data-habit-minute-flash'), 800);
     }, 60000);
     return () => clearInterval(iv);
   }, [isActive, isBreakActive, playCoin]);
@@ -220,6 +227,11 @@ const Dashboard = () => {
       <div id="top-mic-bar-container" style={{ position: 'fixed', top: 0, left: 0, right: 0, height: '3px', zIndex: 9999, pointerEvents: 'none' }}>
         <div id="top-mic-bar" style={{ height: '100%', width: '0%', background: micBarColor, transition: 'width 0.05s ease-out, background 0.5s ease', opacity: 0, boxShadow: micBarShadow }} />
       </div>
+
+      <WelcomeBar />
+      <ConnectHint />
+      <FirstVisitCoach />
+      <IdleDiscoveryHint isActive={isActive} isBreakActive={isBreakActive} />
 
       <SilenceGuardian lastDataTime={lastDataTime} />
 
@@ -295,28 +307,10 @@ const Dashboard = () => {
         )}
         <button
           data-guide="notes"
+          className={`habit-dock-btn${isNotesOpen ? ' is-active' : ''}`}
           onClick={() => setIsNotesOpen(o => !o)}
           title="Quick Notes"
-          style={{
-            width: '40px',
-            height: '40px',
-            borderRadius: '20px',
-            border: '1px solid rgba(255,255,255,0.1)',
-            background: isNotesOpen ? 'rgba(14, 165, 233, 0.25)' : 'rgba(7, 14, 35, 0.7)',
-            backdropFilter: 'blur(8px)',
-            WebkitBackdropFilter: 'blur(8px)',
-            color: isNotesOpen ? '#38bdf8' : 'rgba(255,255,255,0.6)',
-            fontSize: '0.85rem',
-            fontWeight: 800,
-            cursor: 'pointer',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            boxShadow: isNotesOpen ? '0 0 12px rgba(14, 165, 233, 0.3)' : '0 2px 8px rgba(0,0,0,0.3)',
-            transition: 'all 0.3s ease',
-            padding: 0,
-            flexShrink: 0,
-          }}
+          style={{ color: isNotesOpen ? '#38bdf8' : 'rgba(255,255,255,0.65)', fontSize: '0.85rem' }}
         >
           📝
         </button>
@@ -330,7 +324,9 @@ function App() {
     <AudioSettingsProvider>
       <LanguageProvider>
         <SessionProvider>
-          <Dashboard />
+          <AppGuideProvider>
+            <Dashboard />
+          </AppGuideProvider>
         </SessionProvider>
       </LanguageProvider>
     </AudioSettingsProvider>

@@ -286,6 +286,7 @@ export const SessionProvider = ({ children }) => {
   const [isScoreboardHelpVisible, setIsScoreboardHelpVisible] = useState(false);
   const [hideScoreboardLabels, setHideScoreboardLabels] = useState(() => {
     const saved = localStorage.getItem('catint_hide_sb_labels');
+    if (saved === null) return true;
     return saved === 'true';
   });
   const [isCallDetectionEnabled, setIsCallDetectionEnabled] = useState(() => {
