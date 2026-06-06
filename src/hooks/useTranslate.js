@@ -1,4 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
+import { useLanguage } from '../contexts/LanguageContext';
+import { DEFAULT_LANG_PAIR } from '../config/languages';
 
 // Persistent Cache and Blacklist to save quota and skip broken services
 let TRANS_CACHE = {}; 
@@ -38,13 +40,12 @@ const setCached = (text, langPair, result) => {
 };
 
 export const useTranslate = (text, lang, prefetchTTS, shouldPrefetch, mood = 'default') => {
+  const { displayPair, captureMode } = useLanguage();
   const [translation, setTranslation] = useState('');
   const [audioUrl, setAudioUrl] = useState(null);
   const [isTranslating, setIsTranslating] = useState(false);
   const [engineStatus, setEngineStatus] = useState('idle');
   
-  // STICKY LANGUAGE PAIR: Once a bubble has a translation, we lock the source/target 
-  // to prevent Deepgram flip-flops from destroying the work.
   const langPairRef = useRef(null);
   
   const lastPrefetchedTextRef = useRef('');
@@ -53,8 +54,11 @@ export const useTranslate = (text, lang, prefetchTTS, shouldPrefetch, mood = 'de
   const debounceTimerRef = useRef(null);
   const abortControllerRef = useRef(null);
 
-  const sourceLang = (lang || 'en').toLowerCase().startsWith('es') ? 'es' : 'en';
-  const targetLang = sourceLang === 'en' ? 'es' : 'en';
+  const bubbleLang = (lang || displayPair.source || 'en').toLowerCase();
+  const sourceLang = bubbleLang;
+  const targetLang = captureMode === 'tab'
+    ? (sourceLang === 'en' ? 'es' : sourceLang === 'es' ? 'en' : DEFAULT_LANG_PAIR.target)
+    : displayPair.target;
   const currentLangPair = `${sourceLang}-${targetLang}`;
 
   const sanitizeTranslation = (input) => {
@@ -251,7 +255,7 @@ export const useTranslate = (text, lang, prefetchTTS, shouldPrefetch, mood = 'de
       if (debounceTimerRef.current) clearTimeout(debounceTimerRef.current);
       if (abortControllerRef.current) abortControllerRef.current.abort();
     };
-  }, [text, lang, shouldPrefetch, prefetchTTS, currentLangPair, mood]);
+  }, [text, lang, shouldPrefetch, prefetchTTS, currentLangPair, mood, captureMode, displayPair]);
 
   return { translation, audioUrl, isTranslating, engineStatus, targetLang: (langPairRef.current || currentLangPair).split('-')[1] };
 };

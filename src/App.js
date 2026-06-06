@@ -1,6 +1,8 @@
 import React, { useEffect, useState, useCallback, useRef } from 'react';
 import { SessionProvider, useSession } from './contexts/SessionContext';
-import { AudioSettingsProvider } from './contexts/AudioSettingsContext';
+import { AudioSettingsProvider, useAudioSettings } from './contexts/AudioSettingsContext';
+import { LanguageProvider, useLanguage } from './contexts/LanguageContext';
+import { hapticConnect, flashConnectMode } from './utils/connectFeedback';
 import { DashboardHeader } from './components/DashboardHeader';
 import { TranscriptionBoard } from './components/TranscriptionBoard';
 import { GreetingsPanel } from './components/GreetingsPanel';
@@ -34,9 +36,11 @@ const CloudSyncIndicator = () => {
 };
 
 const Dashboard = () => {
-  const { startRecording, stopRecording, reconnectStream, captions, clearCaptions, sttLanguage, toggleLanguage, connectionState, connectionMessage, lastDataTime } = useDeepgram();
+  const { startRecording, stopRecording, reconnectStream, captions, clearCaptions, sttLanguage, toggleLanguage, connectionState, connectionMessage, lastDataTime, captureMode } = useDeepgram();
   const { isNotesOpen, setIsNotesOpen, isActive, isBreakActive, isZombieCall, minutesSinceLastBreak, startSession, clearZombieState, callFocusMode } = useSession();
-  const { playCoin } = useProgressiveAudio();
+  const { sourceLang, isDefaultPair, setCaptureMode: setLangCaptureMode } = useLanguage();
+  const { selectedMicId } = useAudioSettings();
+  const { playCoin, playMicConnect, playTabConnect } = useProgressiveAudio();
   const [isEditingBg, setIsEditingBg] = useState(false);
   const [workspaceView, setWorkspaceView] = useState(loadWorkspaceView);
   const [showStudioHint, setShowStudioHint] = useState(() => !hasSeenStudioHint());
@@ -126,14 +130,33 @@ const Dashboard = () => {
     ? 'zombie'
     : isActive ? 'call' : isBreakActive ? 'break' : 'avail';
 
-  // UNIFIED CONNECTION ENGINE
-  const handleConnection = useCallback(async (isRecovery = false) => {
-    const ok = await startRecording();
+  const runConnect = useCallback(async (mode, isRecovery = false) => {
+    const interpreterSockets = mode === 'tab' || isDefaultPair;
+    if (mode === 'tab') {
+      playTabConnect();
+      hapticConnect('tab');
+      flashConnectMode('tab');
+    } else {
+      playMicConnect();
+      hapticConnect('mic');
+      flashConnectMode('mic');
+    }
+    const ok = await startRecording({
+      mode,
+      sourceLang,
+      interpreterSockets,
+      micDeviceId: selectedMicId || undefined,
+    });
     if (ok) {
+      setLangCaptureMode(mode);
       if (isRecovery) clearZombieState();
       startSession(isRecovery);
     }
-  }, [startRecording, startSession, clearZombieState]);
+  }, [startRecording, startSession, clearZombieState, sourceLang, isDefaultPair, selectedMicId, setLangCaptureMode, playMicConnect, playTabConnect]);
+
+  const handleMicConnect = useCallback(() => runConnect('mic', false), [runConnect]);
+  const handleTabConnect = useCallback(() => runConnect('tab', false), [runConnect]);
+  const handleRecovery = useCallback(() => runConnect(captureMode || 'tab', true), [runConnect, captureMode]);
 
   // Micro-break nudge: top bar color shifts when working too long without a break
   const micBarColor = isZombieCall && connectionState !== 'connected' ? '#f59e0b'
@@ -205,10 +228,12 @@ const Dashboard = () => {
       )}
 
       <DashboardHeader 
-        onStartAudio={() => handleConnection(false)} 
+        onStartMicConnect={handleMicConnect}
+        onStartTabConnect={handleTabConnect}
         onStopAudio={stopRecording} 
         onReconnectStream={reconnectStream}
-        onRecovery={() => handleConnection(true)}
+        onRecovery={handleRecovery}
+        captureMode={captureMode}
         sttLanguage={sttLanguage}
         onToggleLanguage={toggleLanguage}
         connectionState={connectionState}
@@ -240,7 +265,7 @@ const Dashboard = () => {
               isBreakActive={isBreakActive}
               connectionState={connectionState}
               onClearAll={clearCaptions}
-              onReconnect={() => handleConnection(true)}
+              onReconnect={handleRecovery}
               lastDataTime={lastDataTime}
             />
           </div>
@@ -303,9 +328,11 @@ const Dashboard = () => {
 function App() {
   return (
     <AudioSettingsProvider>
-      <SessionProvider>
-        <Dashboard />
-      </SessionProvider>
+      <LanguageProvider>
+        <SessionProvider>
+          <Dashboard />
+        </SessionProvider>
+      </LanguageProvider>
     </AudioSettingsProvider>
   );
 }

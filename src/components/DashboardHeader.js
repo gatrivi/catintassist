@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { StatNumber } from './StatNumber';
 import { LiveRollingNumber } from './LiveRollingNumber';
@@ -126,8 +126,8 @@ const StateIndicators = ({ state, breakMinutes, isZombie, silenceCount }) => {
 };
 
 export const DashboardHeader = ({
-  onStartAudio, onStopAudio, onReconnectStream, sttLanguage, onToggleLanguage, onRecovery,
-  connectionState, connectionMessage, lastDataTime,
+  onStartMicConnect, onStartTabConnect, onStopAudio, onReconnectStream, sttLanguage, onToggleLanguage, onRecovery,
+  connectionState, connectionMessage, lastDataTime, captureMode = null,
   offCallWorkspace = null,
   onCycleWorkspace,
   showStudioHint = false,
@@ -192,6 +192,29 @@ export const DashboardHeader = ({
   const [rateView, setRateView] = useState('effective'); // 'effective' | 'active'
   const [overtimeMode, setOvertimeMode] = useState('tail'); // 'tail' | 'under'
   const [callModeExpanded, setCallModeExpanded] = useState(false); // User can pin full header during calls
+  const connectClickTimer = useRef(null);
+
+  const handleConnectClick = useCallback(() => {
+    if (isZombieCall) {
+      onRecovery();
+      return;
+    }
+    if (connectClickTimer.current) clearTimeout(connectClickTimer.current);
+    connectClickTimer.current = setTimeout(() => {
+      connectClickTimer.current = null;
+      onStartMicConnect();
+    }, 280);
+  }, [isZombieCall, onRecovery, onStartMicConnect]);
+
+  const handleConnectDoubleClick = useCallback((e) => {
+    e.preventDefault();
+    if (isZombieCall) return;
+    if (connectClickTimer.current) {
+      clearTimeout(connectClickTimer.current);
+      connectClickTimer.current = null;
+    }
+    onStartTabConnect();
+  }, [isZombieCall, onStartTabConnect]);
 
   useEffect(() => {
     const iv = setInterval(() => {
@@ -579,8 +602,9 @@ export const DashboardHeader = ({
           <button
             id="header-connect-btn"
             data-guide="connect"
-            className="btn-emoji"
-            onClick={isZombieCall ? onRecovery : onStartAudio}
+            className={`btn-emoji connect-btn${captureMode === 'tab' ? ' connect-btn--tab' : captureMode === 'mic' ? ' connect-btn--mic' : ''}`}
+            onClick={handleConnectClick}
+            onDoubleClick={handleConnectDoubleClick}
             style={{
               background: isZombieCall ? '#f59e0b' : '#10b981',
               color: '#fff',
@@ -588,9 +612,9 @@ export const DashboardHeader = ({
               height: '30px',
               animation: (!isActive && !isBreakActive && (Date.now() - (lastDataTime || 0) < 5000)) ? 'pulseReminder 0.8s infinite' : 'none',
             }}
-            title={isZombieCall ? 'RE-ATTACH TO CALL' : 'CONNECT'}
+            title={isZombieCall ? 'RE-ATTACH TO CALL' : 'Tap: mic · Double-tap: tab audio'}
           >
-            {isZombieCall ? '🟡' : '🟢'}
+            {isZombieCall ? '🟡' : (captureMode === 'tab' ? '📺' : '🎤')}
           </button>
         ) : (
           <>
@@ -646,7 +670,7 @@ export const DashboardHeader = ({
     const handleScenario = (e) => {
       const scenario = e.detail;
       if (scenario === 'call') {
-        onStartAudio();
+        onStartMicConnect();
       } else if (scenario === 'goal_hit') {
         handleStop();
         setTimeout(() => {
@@ -668,7 +692,7 @@ export const DashboardHeader = ({
     };
     window.addEventListener('cat_demo_scenario', handleScenario);
     return () => window.removeEventListener('cat_demo_scenario', handleScenario);
-  }, [onStartAudio, onStopAudio, handleStop, handleStartBreak, stopBreak, stopSession, audioEngine]);
+  }, [onStartMicConnect, onStopAudio, handleStop, handleStartBreak, stopBreak, stopSession, audioEngine]);
 
   const renderWorkspaceBody = () => (
       <div className={`dashboard-header-fill${scoreboardFill ? ' scoreboard-workspace' : ''}`}>
@@ -1012,7 +1036,7 @@ export const DashboardHeader = ({
             <div style={{ display: 'flex', gap: '0.3rem', alignItems: 'center' }}>
               <StateIndicators state={isActive ? 'call' : isBreakActive ? 'break' : 'avail'} breakMinutes={stats.dailyBreakMinutes || 0} />
               {!isActive ? (
-                 <button id="connect-btn" className="btn btn-primary" onClick={onStartAudio} style={{ padding: '0.4rem 0.8rem' }}><PlayIcon /> Connect</button>
+                 <button id="connect-btn" className="btn btn-primary connect-btn" onClick={handleConnectClick} onDoubleClick={handleConnectDoubleClick} style={{ padding: '0.4rem 0.8rem' }} title="Tap: mic · Double-tap: tab audio"><PlayIcon /> Connect</button>
               ) : (
                 <div style={{ display: 'flex', gap: '0.3rem' }}>
                   <button id="stop-btn" className="btn btn-danger" onClick={handleStop}><StopIcon /> STOP</button>

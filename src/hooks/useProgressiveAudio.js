@@ -163,6 +163,44 @@ export const useProgressiveAudio = () => {
     }
   }, [initAudio, isMuted]);
 
+  /** Soft rising tone — device microphone connect */
+  const playMicConnect = useCallback(() => {
+    if (isMuted) return;
+    initAudio();
+    if (!audioCtxRef.current) return;
+    const ctx = audioCtxRef.current;
+    const t = ctx.currentTime;
+    [520, 780, 1040].forEach((f, i) => {
+      const osc = ctx.createOscillator();
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(f, t + i * 0.07);
+      const g = createGain(ctx, 0.07, 0.18, t + i * 0.07);
+      osc.connect(g);
+      g.connect(ctx.destination);
+      osc.start(t + i * 0.07);
+      osc.stop(t + i * 0.07 + 0.2);
+    });
+  }, [initAudio, isMuted]);
+
+  /** Lower double-chime — tab / interpreter connect */
+  const playTabConnect = useCallback(() => {
+    if (isMuted) return;
+    initAudio();
+    if (!audioCtxRef.current) return;
+    const ctx = audioCtxRef.current;
+    const t = ctx.currentTime;
+    [340, 480].forEach((f, i) => {
+      const osc = ctx.createOscillator();
+      osc.type = 'triangle';
+      osc.frequency.setValueAtTime(f, t + i * 0.14);
+      const g = createGain(ctx, 0.09, 0.22, t + i * 0.14);
+      osc.connect(g);
+      g.connect(ctx.destination);
+      osc.start(t + i * 0.14);
+      osc.stop(t + i * 0.14 + 0.25);
+    });
+  }, [initAudio, isMuted]);
+
   const playMetalChest = useCallback(() => { /* Legacy */ }, []);
   const playCarriageVault = useCallback(() => { /* Legacy */ }, []);
 
@@ -173,6 +211,6 @@ export const useProgressiveAudio = () => {
   }, []);
 
   return useMemo(() => ({ 
-    isMuted, toggleMute, initAudio, playBagOpen, playTick, playBill, playDiamond, playCoin, playWarningPing, playWarningTiered, playMetalChest, playCarriageVault, stopAll 
-  }), [isMuted, toggleMute, initAudio, playBagOpen, playTick, playBill, playDiamond, playCoin, playWarningPing, playWarningTiered, playMetalChest, playCarriageVault, stopAll]);
+    isMuted, toggleMute, initAudio, playBagOpen, playTick, playBill, playDiamond, playCoin, playWarningPing, playWarningTiered, playMicConnect, playTabConnect, playMetalChest, playCarriageVault, stopAll 
+  }), [isMuted, toggleMute, initAudio, playBagOpen, playTick, playBill, playDiamond, playCoin, playWarningPing, playWarningTiered, playMicConnect, playTabConnect, playMetalChest, playCarriageVault, stopAll]);
 };
