@@ -7,6 +7,7 @@ import { WelcomeBar } from './components/WelcomeBar';
 import { FirstVisitCoach } from './components/FirstVisitCoach';
 import { ConnectHint } from './components/ConnectHint';
 import { IdleDiscoveryHint } from './components/IdleDiscoveryHint';
+import { AppUpdateBanner } from './components/AppUpdateBanner';
 import { hapticConnect, flashConnectMode } from './utils/connectFeedback';
 import { DashboardHeader } from './components/DashboardHeader';
 import { TranscriptionBoard } from './components/TranscriptionBoard';
@@ -228,6 +229,7 @@ const Dashboard = () => {
         <div id="top-mic-bar" style={{ height: '100%', width: '0%', background: micBarColor, transition: 'width 0.05s ease-out, background 0.5s ease', opacity: 0, boxShadow: micBarShadow }} />
       </div>
 
+      <AppUpdateBanner />
       <WelcomeBar />
       <ConnectHint />
       <FirstVisitCoach />

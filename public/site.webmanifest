@@ -4,7 +4,7 @@
   "description": "Real-time interpreter cockpit: live transcription, translation, and earnings HUD.",
   "icons": [
     {
-      "src": "/app-icon.svg",
+      "src": "/dog-icon.svg",
       "sizes": "any",
       "type": "image/svg+xml",
       "purpose": "any"

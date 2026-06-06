@@ -1,5 +1,8 @@
 # Scoreboard UX Master Specification (v4.10.0)
 
+> TLDR / agent context: [docs/context/scoreboard.md](docs/context/scoreboard.md)
+
+
 This document provides a comprehensive breakdown of the Cat Interpreter Assistant Scoreboard—covering its layout, logic, gamification, and aesthetics.
 
 ---
