@@ -5,6 +5,8 @@ import { useTranslate } from '../hooks/useTranslate';
 import { useSession, safeSet } from '../contexts/SessionContext';
 import { useProgressiveAudio } from '../hooks/useProgressiveAudio';
 import { ScrambleText } from './ScrambleText';
+import { LanguageBar } from './LanguageBar';
+import { useLanguage } from '../contexts/LanguageContext';
 import { formatTranscriptForDisplay, isSpellingBlock } from '../utils/transcriptFormat';
 
 // EL TABLERO DE TEXTO: Aquí es donde aparece todo lo que dicen en la llamada.
@@ -192,8 +194,10 @@ const BubbleRail = ({
   );
 };
 
-const TranslatedBubble = ({ id, text, lang, playTTS, stopTTS, playingUrl, prefetchTTS, reverse = false, ttsMode, turnWordCount, showTurnWordCount, shouldPrefetch, isPinned, onTogglePin }) => {
+const TranslatedBubble = ({ id, text, lang, playTTS, stopTTS, playingUrl, prefetchTTS, reverse: reverseProp, ttsMode, turnWordCount, showTurnWordCount, shouldPrefetch, isPinned, onTogglePin }) => {
   const { translationMood } = useSession();
+  const { captureMode } = useLanguage();
+  const reverse = reverseProp ?? (captureMode === 'tab' && lang === 'es');
   const { translation, audioUrl, engineStatus, targetLang } = useTranslate(text, lang, prefetchTTS, shouldPrefetch, translationMood);
   const hasAutoPlayedRef = useRef(false);
 
@@ -382,6 +386,8 @@ export const TranscriptionBoard = ({ captions, onClearAll, onReconnect, lastData
       position: 'relative', background: 'var(--panel-bg)', border: '1px solid #18181b', borderRadius: 0,
       display: 'flex', flexDirection: 'column', height: '100%'
     }}>
+      <LanguageBar />
+
       {popover.show && (
         <div style={{
           position: 'fixed', top: popover.y, left: popover.x, zIndex: 10000,

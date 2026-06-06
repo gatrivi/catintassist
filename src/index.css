@@ -158,6 +158,49 @@ body {
   100% { transform: translate(-50%, -110%) scale(1); opacity: 1; }
 }
 
+.hover-tip-anchor {
+  cursor: help;
+}
+
+.hover-tip-popup {
+  position: fixed;
+  transform: translate(-50%, calc(-100% - 8px));
+  max-width: min(280px, 90vw);
+  padding: 0.35rem 0.55rem;
+  background: rgba(15, 23, 42, 0.96);
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(96, 165, 250, 0.35);
+  border-radius: 8px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.45);
+  color: #e2e8f0;
+  font-size: 0.68rem;
+  font-weight: 600;
+  line-height: 1.35;
+  z-index: 10000;
+  pointer-events: none;
+  white-space: normal;
+  text-align: center;
+  animation: slideUpBounce 0.15s cubic-bezier(0.17, 0.88, 0.32, 1.28) forwards;
+}
+
+.hide-sb-labels .metric-cell-label,
+.hide-sb-labels .sb-text-label {
+  display: none !important;
+}
+
+.hide-sb-labels .metric-grid--scoreboard .metric-cell {
+  min-height: 44px;
+}
+
+.hide-sb-labels .header-progress-stack {
+  gap: 0.25rem !important;
+}
+
+.hide-sb-labels .header-progress-stack [style*="fontSize: '0.6rem'"],
+.hide-sb-labels .header-progress-stack [style*="font-size: 0.6rem"] {
+  font-size: 0.72rem !important;
+}
+
 @keyframes zapElectric {
   0% { filter: brightness(1) drop-shadow(0 0 0px #fff); transform: scale(1); }
   20% { filter: brightness(2) drop-shadow(0 0 15px #0ea5e9); transform: scale(1.3) rotate(5deg); }
@@ -2465,6 +2508,242 @@ body {
   z-index: 1000;
   animation: slideInDown 0.4s ease-out, zombiePulse 2s infinite;
   transition: all 0.2s ease;
+}
+
+/* ── Language bar (transcript title panes) ── */
+.language-bar {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.35rem 0.5rem;
+  border-bottom: 1px solid #18181b;
+  background: rgba(0, 0, 0, 0.25);
+  flex-shrink: 0;
+  position: relative;
+}
+
+.language-bar-panes {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  flex: 1;
+  justify-content: center;
+  cursor: pointer;
+  user-select: none;
+  touch-action: manipulation;
+}
+
+.language-pane {
+  font-size: 0.72rem;
+  font-weight: 900;
+  letter-spacing: 0.08em;
+  padding: 0.2rem 0.55rem;
+  border-radius: 4px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.language-pane-source {
+  color: #60a5fa;
+}
+
+.language-pane-target {
+  color: #34d399;
+}
+
+.language-pane-arrow {
+  font-size: 0.65rem;
+  opacity: 0.45;
+}
+
+.language-bar-help-btn {
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  background: rgba(255, 255, 255, 0.05);
+  color: rgba(255, 255, 255, 0.55);
+  font-size: 0.65rem;
+  font-weight: 900;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.language-hold-hint {
+  position: absolute;
+  left: 50%;
+  bottom: -1.6rem;
+  transform: translateX(-50%);
+  background: rgba(15, 23, 42, 0.95);
+  border: 1px solid rgba(96, 165, 250, 0.35);
+  padding: 0.25rem 0.5rem;
+  border-radius: 6px;
+  font-size: 0.62rem;
+  font-weight: 700;
+  white-space: nowrap;
+  z-index: 20;
+  animation: slideUpBounce 0.2s ease-out;
+}
+
+.language-help-popover {
+  position: absolute;
+  top: calc(100% + 4px);
+  right: 0.5rem;
+  z-index: 50;
+  background: rgba(15, 23, 42, 0.98);
+  border: 1px solid rgba(96, 165, 250, 0.3);
+  border-radius: 8px;
+  padding: 0.5rem;
+  max-width: min(320px, 92vw);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.45);
+}
+
+.language-help-title {
+  font-size: 0.68rem;
+  font-weight: 900;
+  margin-bottom: 0.35rem;
+  color: #93c5fd;
+}
+
+.language-support-table {
+  width: 100%;
+  font-size: 0.58rem;
+  border-collapse: collapse;
+}
+
+.language-support-table th,
+.language-support-table td {
+  padding: 0.15rem 0.3rem;
+  text-align: left;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.language-support-table th {
+  opacity: 0.5;
+  font-weight: 700;
+}
+
+.lang-row-full td {
+  color: #86efac;
+}
+
+.language-help-note {
+  margin: 0.35rem 0 0;
+  font-size: 0.55rem;
+  opacity: 0.55;
+  line-height: 1.35;
+}
+
+.language-picker-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 10001;
+  background: rgba(0, 0, 0, 0.55);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+}
+
+.language-picker-dialog {
+  background: rgba(15, 23, 42, 0.98);
+  border: 1px solid rgba(96, 165, 250, 0.35);
+  border-radius: 12px;
+  padding: 1rem;
+  max-width: 360px;
+  width: 100%;
+}
+
+.language-picker-title {
+  font-size: 0.85rem;
+  font-weight: 900;
+}
+
+.language-picker-sub {
+  font-size: 0.65rem;
+  opacity: 0.55;
+  margin: 0.2rem 0 0.6rem;
+}
+
+.language-picker-row {
+  display: flex;
+  align-items: flex-end;
+  gap: 0.4rem;
+  flex-wrap: wrap;
+}
+
+.language-picker-row label {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  font-size: 0.6rem;
+  flex: 1;
+  min-width: 120px;
+}
+
+.language-picker-row select {
+  font-size: 0.72rem;
+  padding: 0.35rem;
+  border-radius: 6px;
+  background: rgba(0, 0, 0, 0.4);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  color: #fff;
+}
+
+.language-picker-arrow {
+  opacity: 0.4;
+  padding-bottom: 0.35rem;
+}
+
+.language-picker-actions {
+  display: flex;
+  gap: 0.4rem;
+  justify-content: flex-end;
+  margin-top: 0.75rem;
+}
+
+/* ── Connect mode feedback ── */
+@keyframes connectMicPulse {
+  0% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.7); }
+  70% { box-shadow: 0 0 0 12px rgba(16, 185, 129, 0); }
+  100% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0); }
+}
+
+@keyframes connectTabPulse {
+  0% { box-shadow: 0 0 0 0 rgba(14, 165, 233, 0.7); }
+  70% { box-shadow: 0 0 0 14px rgba(14, 165, 233, 0); }
+  100% { box-shadow: 0 0 0 0 rgba(14, 165, 233, 0); }
+}
+
+html[data-connect-flash="mic"] #header-connect-btn,
+html[data-connect-flash="mic"] #connect-btn {
+  animation: connectMicPulse 0.55s ease-out;
+}
+
+html[data-connect-flash="tab"] #header-connect-btn,
+html[data-connect-flash="tab"] #connect-btn {
+  animation: connectTabPulse 0.55s ease-out;
+}
+
+.connect-btn--mic {
+  outline: 1px solid rgba(16, 185, 129, 0.45);
+}
+
+.connect-btn--tab {
+  outline: 1px solid rgba(14, 165, 233, 0.45);
+}
+
+@media (max-width: 600px) {
+  .language-pane {
+    font-size: 0.8rem;
+    padding: 0.3rem 0.65rem;
+  }
+
+  #header-connect-btn,
+  .connect-btn {
+    min-width: 44px;
+    min-height: 44px;
+  }
 }
 
 .zombie-banner-premium:hover {
