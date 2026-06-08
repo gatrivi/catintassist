@@ -603,19 +603,21 @@ export const DashboardHeader = ({
           <button
             id="header-connect-btn"
             data-guide="connect"
-            className={`btn-emoji connect-btn${captureMode === 'tab' ? ' connect-btn--tab' : captureMode === 'mic' ? ' connect-btn--mic' : ''}`}
+            className={`btn btn-primary connect-btn${captureMode === 'tab' ? ' connect-btn--tab' : captureMode === 'mic' ? ' connect-btn--mic' : ''}`}
             onClick={handleConnectClick}
             onDoubleClick={handleConnectDoubleClick}
             style={{
               background: isZombieCall ? '#f59e0b' : '#10b981',
               color: '#fff',
-              width: '30px',
               height: '30px',
+              minWidth: '92px',
+              padding: '0.15rem 0.45rem',
+              borderRadius: '8px',
               animation: (!isActive && !isBreakActive && (Date.now() - (lastDataTime || 0) < 5000)) ? 'pulseReminder 0.8s infinite' : 'none',
             }}
             title={isZombieCall ? 'RE-ATTACH TO CALL' : 'Tap: mic · Double-tap: tab audio'}
           >
-            {isZombieCall ? '🟡' : (captureMode === 'tab' ? '📺' : '🎤')}
+            <PlayIcon /> Connect
           </button>
         ) : (
           <>
@@ -1036,9 +1038,7 @@ export const DashboardHeader = ({
             {/* Main Controls Group */}
             <div style={{ display: 'flex', gap: '0.3rem', alignItems: 'center' }}>
               <StateIndicators state={isActive ? 'call' : isBreakActive ? 'break' : 'avail'} breakMinutes={stats.dailyBreakMinutes || 0} />
-              {!isActive ? (
-                 <button id="connect-btn" className="btn btn-primary connect-btn" onClick={handleConnectClick} onDoubleClick={handleConnectDoubleClick} style={{ padding: '0.4rem 0.8rem' }} title="Tap: mic · Double-tap: tab audio"><PlayIcon /> Connect</button>
-              ) : (
+              {!isActive ? null : (
                 <div style={{ display: 'flex', gap: '0.3rem' }}>
                   <button id="stop-btn" className="btn btn-danger" onClick={handleStop}><StopIcon /> STOP</button>
                   <button id="header-hold-btn" className="btn" onClick={() => setIsHold(!isHold)} style={{ background: isHold ? '#f59e0b' : 'rgba(255,255,255,0.08)', border: isHold ? '1px solid #d97706' : '1px solid rgba(255,255,255,0.1)', color: isHold ? 'white' : 'inherit' }}>
