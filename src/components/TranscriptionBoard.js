@@ -70,6 +70,10 @@ const InteractiveText = ({ text, scramble = true, applyNumberWords = false, lang
       if (digitsOnly.length === 11 && digitsOnly.startsWith('1')) {
         return `+1 ${digitsOnly.slice(1,4)}-${digitsOnly.slice(4,7)}-${digitsOnly.slice(7)}`;
       }
+      if (digitsOnly.length === 9) {
+        // Likely SSN spoken digit-by-digit (or with light separators).
+        return `${digitsOnly.slice(0,3)}-${digitsOnly.slice(3,5)}-${digitsOnly.slice(5)}`;
+      }
       return digitsOnly.replace(/(\d{3})(?=\d)/g, '$1-');
     }
   );
@@ -81,34 +85,154 @@ const InteractiveText = ({ text, scramble = true, applyNumberWords = false, lang
     return `${city} 100${suffix}`;
   });
 
-  // NÚMEROS MÁGICOS: Detectamos números de teléfono, años y códigos.
-  // Los resaltamos para que puedas copiarlos rápido si haces clic.
-  const numRegex = /(\+?\(?\d{1,4}?\)?[\s.-]?\(?\d{2,4}?\)?[\s.-]?\d{3,4}[\s.-]?\d{3,4}|\b\d+[\d.,/\\-]*\b)/g;
-
-  const parts = repairedText.split(numRegex);
-
-  const handleCopy = (num) => {
-    const clean = num.trim();
+  const handleCopy = (value) => {
+    const clean = value?.toString().trim();
     if (!clean) return;
     navigator.clipboard.writeText(clean);
   };
 
-  const renderPart = (p, i) => {
-    const partKey = `${i}`;
-    if (p && p.match(numRegex)) {
-      return (
+  // Phrase-level guard: "last four of your social/ssn" should treat the next digits as PII.
+  const guardSocialLast4 =
+    /\blast\s+four\b[\s\S]{0,40}\b(social\s*security|social|ssn)\b/i.test(repairedText);
+
+  const monthNames =
+    '(Jan(?:uary)?|Feb(?:ruary)?|Mar(?:ch)?|Apr(?:il)?|May|Jun(?:e)?|Jul(?:y)?|Aug(?:ust)?|Sep(?:t(?:ember)?)?|Oct(?:ober)?|Nov(?:ember)?|Dec(?:ember)?|Ene(?:ro)?|Feb(?:rero)?|Mar(?:zo)?|Abr(?:il)?|May(?:o)?|Jun(?:io)?|Jul(?:io)?|Ago(?:sto)?|Sep(?:tiembre)?|Oct(?:ubre)?|Nov(?:iembre)?|Dic(?:iembre)?)';
+
+  // Tokenizer: collect non-overlapping PII matches (click-to-copy + highlighted).
+  // Heuristics are intentionally conservative for names/clinics.
+  const piiSpecs = [
+    { type: 'email', priority: 90, group: 0, regex: /\b[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}\b/gi },
+    { type: 'ssn', priority: 95, group: 0, regex: /\b\d{3}[-\s]?\d{2}[-\s]?\d{4}\b/g },
+    { type: 'ssn-last4', priority: 98, group: 1, regex: guardSocialLast4 ? /\blast\s+four(?:\s+of)?\s+(?:your\s+)?(?:social|ssn|social\s+security)[\s\S]{0,40}\b(\d{1,4})\b/gi : /a^/ },
+    { type: 'phone', priority: 80, group: 0, regex: /\b(?:\+?1[\s.-]?)?(?:\(?\d{3}\)?[\s.-]?)\d{3}[\s.-]?\d{4}\b/g },
+    {
+      type: 'date',
+      priority: 70,
+      group: 0,
+      regex: new RegExp(
+        String.raw`(?:\b\d{1,2}[\/.-]\d{1,2}[\/.-]\d{2,4}\b|\b\d{4}[\/.-]\d{1,2}[\/.-]\d{1,2}\b|\b${monthNames}\s+\d{1,2}(?:st|nd|rd|th)?(?:,?\s+\d{2,4})?\b)`,
+        'gi'
+      )
+    },
+    {
+      type: 'address',
+      priority: 75,
+      group: 0,
+      regex: /\b\d{1,6}\s+(?:[A-Za-z0-9]+\s+){0,4}(?:St(?:reet)?|Ave(?:nue)?|Blvd|Boulevard|Rd|Road|Ln|Lane|Dr|Drive|Ct|Court|Way|Pl|Place|Terrace|Hwy|Highway)(?:\s+(?:Apt|Unit|Ste|#)\s*\w+)?(?:\s*,?\s*\b\d{5}(?:-\d{4})?\b)?/gi
+    },
+    {
+      type: 'clinic-name',
+      priority: 60,
+      group: 1,
+      regex: /\b(?:Dr\.|Doctor|Clinic|Hospital|Medical Center|Care Center|Center)\b\s*[:-]?\s*([A-Z][a-z]+(?:\s+[A-Z][a-z]+){0,3})/g
+    },
+    {
+      type: 'full-name',
+      priority: 50,
+      group: 1,
+      regex: /\b(?:my\s+name\s+is|name\s+is|patient\s+name\s+is|this\s+is|i am|i'm|I'm)\b\s+([A-Z][a-z]+(?:\s+[A-Z][a-z]+){1,3})/gi
+    }
+  ];
+
+  const tokenizePii = (s) => {
+    if (!s) return [];
+    const matches = [];
+
+    for (const spec of piiSpecs) {
+      const re = spec.regex;
+      re.lastIndex = 0;
+      let m;
+      // eslint-disable-next-line no-cond-assign
+      while ((m = re.exec(s)) !== null) {
+        const matchText = m[0] || '';
+        const copyText = spec.group === 0 ? matchText : (m[spec.group] || matchText);
+        if (!copyText) continue;
+        const rel = matchText.indexOf(copyText);
+        const start = m.index + (rel >= 0 ? rel : 0);
+        const end = start + copyText.length;
+        matches.push({ start, end, type: spec.type, copyText });
+        // Avoid infinite loops for zero-length matches
+        if (m.index === re.lastIndex) re.lastIndex++;
+      }
+    }
+
+    // Sort by earlier start, then longer range.
+    matches.sort((a, b) => {
+      if (a.start !== b.start) return a.start - b.start;
+      const la = a.end - a.start;
+      const lb = b.end - b.start;
+      if (la !== lb) return lb - la;
+      return 0;
+    });
+
+    // Drop overlaps (keep longer).
+    const accepted = [];
+    for (const m of matches) {
+      const last = accepted[accepted.length - 1];
+      if (!last || m.start >= last.end) {
+        accepted.push(m);
+      } else {
+        const lastLen = last.end - last.start;
+        const mLen = m.end - m.start;
+        if (mLen > lastLen) accepted[accepted.length - 1] = m;
+      }
+    }
+    return accepted;
+  };
+
+  const renderPiiSegments = (s) => {
+    const tokens = tokenizePii(s);
+    if (!tokens.length) {
+      return scramble ? <ScrambleText value={s} duration={300} /> : <span>{s}</span>;
+    }
+
+    const out = [];
+    let cursor = 0;
+    tokens.forEach((t, idx) => {
+      const before = s.slice(cursor, t.start);
+      if (before) {
+        out.push(
+          <React.Fragment key={`n-${idx}-${cursor}`}>
+            {scramble ? <ScrambleText value={before} duration={300} /> : before}
+          </React.Fragment>
+        );
+      }
+
+      out.push(
         <span
-          key={partKey}
-          className="phone-number highlight-number"
-          onClick={(e) => { e.stopPropagation(); handleCopy(p); }}
-          title={`Click to copy number: ${p}`}
-          style={{ cursor: 'copy', backgroundColor: 'rgba(252, 211, 77, 0.1)', color: '#fcd34d', padding: '0 2px', borderRadius: '2px', fontWeight: 600, display: 'inline' }}
+          key={`pii-${t.type}-${idx}-${t.start}`}
+          className={`pii-entity pii-entity--${t.type}`}
+          onClick={(e) => {
+            e.stopPropagation();
+            handleCopy(t.copyText);
+          }}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter' || e.key === ' ') {
+              e.preventDefault();
+              e.stopPropagation();
+              handleCopy(t.copyText);
+            }
+          }}
+          role="button"
+          tabIndex={0}
+          title={`Click to copy ${t.type}`}
         >
-          {scramble ? <ScrambleText value={p} duration={300} /> : p}
+          {t.copyText}
         </span>
       );
+      cursor = t.end;
+    });
+
+    const after = s.slice(cursor);
+    if (after) {
+      out.push(
+        <React.Fragment key={`n-a-${cursor}`}>
+          {scramble ? <ScrambleText value={after} duration={300} /> : after}
+        </React.Fragment>
+      );
     }
-    return scramble ? <ScrambleText key={partKey} value={p} duration={300} /> : <span key={partKey}>{p}</span>;
+
+    return out;
   };
 
   if (spellingLayout && processedText.includes('\n')) {
@@ -116,7 +240,7 @@ const InteractiveText = ({ text, scramble = true, applyNumberWords = false, lang
       <span className="bubble-spelling-lines" style={{ whiteSpace: 'pre-line', lineHeight: 1.35 }}>
         {processedText.split('\n').map((line, li) => (
           <span key={li} style={{ display: 'block', fontFamily: 'var(--font-mono)', fontWeight: 700 }}>
-            {scramble ? <ScrambleText value={line} duration={300} /> : line}
+            {renderPiiSegments(line)}
           </span>
         ))}
       </span>
@@ -125,7 +249,7 @@ const InteractiveText = ({ text, scramble = true, applyNumberWords = false, lang
 
   return (
     <>
-      {parts.map((p, i) => renderPart(p, i))}
+      {renderPiiSegments(repairedText)}
     </>
   );
 };

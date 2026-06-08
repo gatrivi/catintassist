@@ -18,6 +18,7 @@
 | [connect.md](./connect.md) | Audio capture & languages |
 | [storage.md](./storage.md) | Persistence & sync |
 | [scoreboard.md](./scoreboard.md) | HUD metrics & UX |
+| [pii-guard.md](./pii-guard.md) | Click-to-copy highlights for sensitive info |
 | [onboarding.md](./onboarding.md) | PWA install, first visit, updates |
 
 ## App icon

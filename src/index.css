@@ -1666,6 +1666,76 @@ body {
   margin: 0 1px;
 }
 
+/* ── PII guard (click-to-copy) ─────────────────────────────────────────── */
+.pii-entity {
+  cursor: pointer;
+  font-weight: 800;
+  padding: 0 4px;
+  border-radius: 4px;
+  display: inline-block;
+  margin: 0 1px;
+  border-bottom: 2px solid rgba(255, 255, 255, 0.18);
+  transition: transform 0.15s, background 0.15s, border-bottom-color 0.15s;
+  user-select: text;
+}
+
+.pii-entity:hover {
+  transform: scale(1.05);
+  border-bottom-color: rgba(255, 255, 255, 0.35);
+}
+
+.pii-entity:active {
+  transform: scale(0.98);
+}
+
+.pii-entity:focus-visible {
+  outline: 2px solid rgba(56, 189, 248, 0.7);
+  outline-offset: 2px;
+}
+
+.pii-entity--phone {
+  background: rgba(254, 240, 138, 0.15);
+  color: #fde047;
+  border-bottom-color: rgba(254, 240, 138, 0.45);
+}
+
+.pii-entity--ssn {
+  background: rgba(251, 191, 36, 0.14);
+  color: #fbbf24;
+  border-bottom-color: rgba(251, 191, 36, 0.45);
+}
+
+.pii-entity--ssn-last4 {
+  background: rgba(245, 158, 11, 0.16);
+  color: #f59e0b;
+  border-bottom-color: rgba(245, 158, 11, 0.5);
+}
+
+.pii-entity--email {
+  background: rgba(34, 211, 238, 0.14);
+  color: #22d3ee;
+  border-bottom-color: rgba(34, 211, 238, 0.45);
+}
+
+.pii-entity--date {
+  background: rgba(168, 85, 247, 0.12);
+  color: #c4b5fd;
+  border-bottom-color: rgba(168, 85, 247, 0.45);
+}
+
+.pii-entity--address {
+  background: rgba(251, 146, 60, 0.14);
+  color: #fdba74;
+  border-bottom-color: rgba(251, 146, 60, 0.5);
+}
+
+.pii-entity--clinic-name,
+.pii-entity--full-name {
+  background: rgba(59, 130, 246, 0.12);
+  color: #93c5fd;
+  border-bottom-color: rgba(59, 130, 246, 0.45);
+}
+
 .phone-number:hover {
   background: rgba(254, 240, 138, 0.3);
   transform: scale(1.05);

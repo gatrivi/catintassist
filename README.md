@@ -40,6 +40,12 @@ When a new build is deployed, installed users see **New app version available �
 
 ---
 
+## PII guard (click-to-copy)
+
+Transcriptions and translations highlight common sensitive data and make it **click-to-copy**:
+phone numbers, **SSN** (incl. spoken digit-by-digit), **“last four of your social/SSN”** guard, **dates**, **full names / clinic names** (heuristic), **addresses**, and best-effort **emails**.
+---
+
 ## Docs (humans & agents)
 
 **Start here:** [docs/README.md](./docs/README.md) → [docs/context/README.md](./docs/context/README.md)
