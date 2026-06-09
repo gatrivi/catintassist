@@ -21,6 +21,8 @@ import {
 } from './components/WorkspaceViewSwitcher';
 import { useDeepgram } from './hooks/useDeepgram';
 import { useProgressiveAudio } from './hooks/useProgressiveAudio';
+import { useAppUpdateCheck } from './hooks/useAppUpdateCheck';
+import { UpdateAppBanner } from './components/UpdateAppBanner';
 import { loadFile, generateObjectUrl } from './utils/storage';
 import './index.css';
 
@@ -37,15 +39,16 @@ const Dashboard = () => {
   const { startRecording, stopRecording, reconnectStream, captions, clearCaptions, sttLanguage, toggleLanguage, connectionState, connectionMessage, lastDataTime } = useDeepgram();
   const { isNotesOpen, setIsNotesOpen, isActive, isBreakActive, isZombieCall, minutesSinceLastBreak, startSession, clearZombieState, callFocusMode } = useSession();
   const { playCoin } = useProgressiveAudio();
+  const { updateAvailable, latestVersionToken, dismissUpdate, reloadToUpdate } = useAppUpdateCheck();
   const [isEditingBg, setIsEditingBg] = useState(false);
   const [workspaceView, setWorkspaceView] = useState(loadWorkspaceView);
   const [showStudioHint, setShowStudioHint] = useState(() => !hasSeenStudioHint());
 
-  const offCallWorkspace = isActive ? null : workspaceView;
+  const offCallWorkspace = (isActive || isZombieCall) ? null : workspaceView;
   const isSoundboardStudio = offCallWorkspace === 'soundboard';
 
   const cycleWorkspaceView = useCallback(() => {
-    if (isActive) return;
+    if (isActive || isZombieCall) return;
     markStudioHintSeen();
     setShowStudioHint(false);
     setWorkspaceView((prev) => {
@@ -54,7 +57,7 @@ const Dashboard = () => {
       saveWorkspaceView(next);
       return next;
     });
-  }, [isActive]);
+  }, [isActive, isZombieCall]);
 
   useEffect(() => {
     const applyBg = async () => {
@@ -180,8 +183,8 @@ const Dashboard = () => {
     <div
       className={`app-container ${stateClass}`}
       data-state={appState}
-      data-call-mode={isActive ? 'true' : 'false'}
-      data-off-call-view={isActive ? 'call' : workspaceView}
+      data-call-mode={(isActive || isZombieCall) ? 'true' : 'false'}
+      data-off-call-view={(isActive || isZombieCall) ? 'call' : workspaceView}
     >
       {/* Version Tag - Always visible in the upper right */}
       <div style={{ 
@@ -200,7 +203,7 @@ const Dashboard = () => {
 
       <SilenceGuardian lastDataTime={lastDataTime} />
 
-      {!isActive && workspaceView === 'scoreboard' && (
+      {!(isActive || isZombieCall) && workspaceView === 'scoreboard' && (
         <main id="scoreboard-root" className="main-content view-scoreboard" />
       )}
 
@@ -231,7 +234,7 @@ const Dashboard = () => {
         </main>
       )}
 
-      {isActive && (
+      {(isActive || isZombieCall) && (
         <main className={`main-content ${isNotesOpen ? 'notes-open' : ''}`}>
           <div className="transcription-pane" data-guide="transcript">
             <TranscriptionBoard 
@@ -255,12 +258,19 @@ const Dashboard = () => {
         </main>
       )}
 
+      <UpdateAppBanner
+        show={updateAvailable}
+        latestVersionToken={latestVersionToken}
+        onDismiss={dismissUpdate}
+        onUpdate={reloadToUpdate}
+      />
+
       <div className="habit-dock">
         <DeskExerciseWidget />
         <RosaryWidget />
         <MealTrackerWidget />
         <ChoreTrackerWidget />
-        {!isActive && (
+        {!(isActive || isZombieCall) && (
           <WorkspaceViewSwitcher
             view={workspaceView}
             onCycle={cycleWorkspaceView}

@@ -281,6 +281,16 @@ export const TranscriptionBoard = ({ captions, onClearAll, onReconnect, lastData
     safeSet('catint_pinned_msgs', JSON.stringify(pinnedCaptions));
   }, [pinnedCaptions]);
 
+  // UX: new call start should clear pinned messages (without affecting transcript history).
+  useEffect(() => {
+    const onPinnedCleared = () => {
+      setPinnedCaptions([]);
+      safeSet('catint_pinned_msgs', JSON.stringify([]));
+    };
+    window.addEventListener('catint_pinned_cleared', onPinnedCleared);
+    return () => window.removeEventListener('catint_pinned_cleared', onPinnedCleared);
+  }, [safeSet]);
+
   const pinnedIds = pinnedCaptions.map((p) => p.id);
 
   /** One word count per silence-to-silence turn — show only on the last bubble of that turn. */
