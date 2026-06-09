@@ -1,72 +1,75 @@
-# 🐾 CatIntAssist: The Powerful Interpreter Workspace
+# CatIntAssist — The Cat's Interpreter Assistant
 
-**CatIntAssist** is a premium, high-density transcription and interpretation assistant designed specifically for medical interpreters. It combines real-time AI transcription, multi-service translation fallbacks, and comprehensive goal-tracking into a single, aesthetic dashboard.
+Real-time transcription, side-by-side translation, and a gamified earnings HUD for medical interpreters.
 
-![Premium Dashboard Interface](https://img.shields.io/badge/Aesthetics-Premium-blueviolet?style=for-the-badge)
-![React Version](https://img.shields.io/badge/React-19-61dafb?style=for-the-badge&logo=react)
-![Transcription](https://img.shields.io/badge/Transcription-Deepgram_Nova--2-10b981?style=for-the-badge)
+![React](https://img.shields.io/badge/React-19-61dafb?style=flat-square)
+![Deepgram](https://img.shields.io/badge/STT-Deepgram_Nova--2-10b981?style=flat-square)
 
----
-
-## 🚀 Key Features and Valuation
-
-CatIntAssist brings immense functional value to medical interpretation, maximizing earnings and eliminating friction. 
-
-### 🎙️ High-Fidelity Transcription & Translation (Estimated Feature Value: $4,000)
-- **80% Focus Area**: The primary viewport is dedicated strictly to the **Livestream**, ensuring high readability under pressure.
-- **Bi-Directional Support**: Seamlessly handles English (Blue) and Spanish (Green) audio.
-- **Deepgram Nova-2 Integration**: Industry-leading speed/accuracy for medical terminology.
-- **Multi-Service Translation**: Intelligent fallback logic (Google Translate -> Lingva -> MyMemory). Never lose a translation.
-- **Smart Text Modes**: Toggle between **Source Focus** and **Translation Focus**.
-
-### 💰 Real-Time Goal & Income Tracking (Estimated Feature Value: $2,500)
-- **20% Sidebar Dashboard**: Tracks productivity without distracting from transcription.
-- **Smart Target Metrics**: Track Today's Progress (Worked/Target Mins), Today's Earnings (Current $$ / Total $$ goal), and Monthly Outlooks.
-- **Pace Calculator**: Know when to log off, exactly how much time is left relative to the 9am baseline, and what the adjusted end time is.
-- **Dial Goal Selector**: Tactile rolling dial animations to set commitments and track scaling earnings.
-
-### 🎵 Immersive Soundscape Interpreter (Estimated Feature Value: $1,500)
-Non-visual auditory feedback system to track efficiency:
-- **Call Start**: "Purse opening" sound on connection.
-- **Income Ticks**: Every minute generates a silver "coin" drop.
-- **Progressive Wealth**: Coins become richer sounding to indicate compounded earnings.
-- **Call End**: "Crash of coins" into the purse on session completion.
-
-### 🛠️ Intelligent UI Utilities & Mechanics (Estimated Feature Value: $2,000)
-- **Smart Numbers**: Phone numbers / large digits are highlighted and auto-copyable.
-- **Instant Dictionary**: Highlight or double-click any word for instant Linguee popovers.
-- **Sticky Scroll**: Smart auto-scroll with manual override options.
-- **Long Bubble Warnings**: Visual/Auditory warnings when a speaker crosses the 40-word mark to avoid memory overload.
-- **Data Persistence**: `idb-keyval` implementation to never lose session states.
+**App icon:** photo of the cat's dog (`public/20180305_210729.jpg`).
 
 ---
 
-## 💸 Valuation & Deployment Pricing Models
+## Quick start
 
-CatIntAssist has a realistic IP value ranging from **$10,000 to $12,000** given the custom gamification logic, unique medical interpreter focus, deep AI API integrations, and robust real-time UX/UI. 
+```bash
+npm install
+npm start          # dev — http://localhost:3000
+npm run build      # production (writes version.json + service worker)
+```
 
-### Recommended SaaS Pricing (B2C & B2B)
-- **Hobby / Student ($9.99/month)**: Limited hours of interpretation, basic Deepgram transcription, single translation fallback.
-- **Professional ($24.99/month)**: Unlimited transcription, all translation engine fallbacks, gamification, and full scoreboard analytics.
-- **Enterprise / Agency ($49.99/user/month)**: API key pooling, customized glossary integrations, and priority translation bandwidth.
-
-### White-Label / Turnkey Sale
-- **One-time Purchase ($9,500 - $12,000)**: Full source code rights, UI configuration, API backend connection guides, and soundscape asset rights.
+API keys: Deepgram in `.env` as `REACT_APP_DEEPGRAM_API_KEY` or `localStorage` `DEEPGRAM_API_KEY`.
 
 ---
 
-## 📱 Optimized Layouts & Aesthetics
-CatIntAssist utilizes a "glass-panel" aesthetic with vibrant accents and micro-animations. 
-- **Desktop**: 80/20 viewport optimization on 900x600px bases.
-- **Mobile/Compact**: Vertical flow. Dashboard collapses to pure text tracking. Maximizes screen space at all window constraints.
+## Connect
+
+| Gesture | Mode |
+|---------|------|
+| **Tap** Connect | 🎤 Device microphone (demos, tablet) |
+| **Double-tap** Connect | 📺 Tab audio (interpreter EN↔ES) |
+
+Hold **ENG → SPA** language bar to pick other pairs (e.g. Portuguese → Chinese).
 
 ---
 
-## 📦 Installation & Setup
-1. Clone the repository.
-2. Install dependencies: `npm install`
-3. Configure your API keys in `.env` (Deepgram, etc.)
-4. Start the engine: `npm run dev`
+## Install (PWA)
+
+Add to Home Screen / Install app. Manifest name: **CatIntAssist — The Cat's Interpreter Assistant**.
+
+When a new build is deployed, installed users see **New app version available — Update**.
 
 ---
-*Created with ❤️ by Antigravity for the Modern Interpreter.*
+
+## PII guard (click-to-copy)
+
+Transcriptions and translations highlight common sensitive data and make it **click-to-copy**:
+phone numbers, **SSN** (incl. spoken digit-by-digit), **“last four of your social/SSN”** guard, **dates**, **full names / clinic names** (heuristic), **addresses**, and best-effort **emails**.
+---
+
+## Docs (humans & agents)
+
+**Start here:** [docs/README.md](./docs/README.md) → [docs/context/README.md](./docs/context/README.md)
+
+- Rules, scoreboard, connect, storage, onboarding — nested TLDR markdown (saves tokens vs scattered root files)
+- Feature deep dives: [docs/agents/](./docs/agents/)
+
+Legacy `agents.md` at repo root still holds task inbox + completed history; new context goes under `docs/context/`.
+
+---
+
+## Storage
+
+- **localStorage** + **IndexedDB** locally
+- Optional **ntfy.sh** sync (not a SQL database) — see [docs/context/storage.md](./docs/context/storage.md)
+
+---
+
+## Layout
+
+- **80%** live transcript + translation
+- **20%** scoreboard / controls
+- Optimized from **900×600** upward
+
+---
+
+*v4.47+ — See version tag top-right in the running app.*

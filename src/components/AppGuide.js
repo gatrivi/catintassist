@@ -1,15 +1,16 @@
 import React, { useCallback, useEffect, useState } from 'react';
+import { useAppGuide } from '../contexts/AppGuideContext';
 
-const GUIDE_STEPS = [
+export const GUIDE_STEPS = [
   {
     target: null,
     title: 'Welcome to CatIntAssist',
-    body: 'A real-time interpreter cockpit: live transcription, side-by-side translation, and a gamified earnings HUD. This tour takes ~60 seconds.',
+    body: 'The Cat\'s Interpreter Assistant: live transcription, side-by-side translation, and a gamified earnings HUD. This tour takes about a minute.',
   },
   {
     target: '[data-guide="connect"]',
-    title: '1 · Connect to the call tab',
-    body: 'Press the green button. Pick the browser tab with your interpreter line and allow audio. The stream stays attached between calls so you rarely re-prompt.',
+    title: '1 · Connect',
+    body: 'Single tap 🎤 = device microphone (great for demos and tablets). Double-tap 📺 = tab audio for interpreter work — pick your call tab and allow audio.',
   },
   {
     target: '[data-guide="transcript"]',
@@ -48,7 +49,7 @@ const GUIDE_STEPS = [
   },
 ];
 
-const AppGuideOverlay = ({ onClose }) => {
+export const AppGuideOverlay = ({ onClose }) => {
   const [step, setStep] = useState(0);
   const [spot, setSpot] = useState(null);
 
@@ -149,21 +150,19 @@ const AppGuideOverlay = ({ onClose }) => {
 };
 
 /** Help control for scoreboard / header (not the transcript footer). */
-export const AppGuideButton = () => {
-  const [open, setOpen] = useState(false);
+export const AppGuideButton = ({ className = '' }) => {
+  const { openGuide } = useAppGuide();
 
   return (
-    <>
-      <button
-        type="button"
-        className="app-guide-scoreboard-btn"
-        onClick={() => setOpen(true)}
-        title="How to use & test CatIntAssist"
-        aria-label="Open app guide"
-      >
-        ?
-      </button>
-      {open && <AppGuideOverlay onClose={() => setOpen(false)} />}
-    </>
+    <button
+      type="button"
+      className={`app-guide-scoreboard-btn${className ? ` ${className}` : ''}`}
+      onClick={() => openGuide()}
+      title="How to use & test CatIntAssist"
+      aria-label="Open app guide"
+      data-guide="help-btn"
+    >
+      ?
+    </button>
   );
 };

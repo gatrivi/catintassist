@@ -1,5 +1,7 @@
 # Scoreboard Glossary & Guidelines
 
+> TLDR: [docs/context/scoreboard.md](docs/context/scoreboard.md)
+
 The scoreboard now defaults to a 12-metric simple grid for "at a glance" clarity.
 
 Here are what the 12 metrics in the grid mean:

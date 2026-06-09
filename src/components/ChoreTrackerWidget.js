@@ -95,34 +95,11 @@ export const ChoreTrackerWidget = () => {
     <div ref={containerRef} style={{ position: 'relative' }}>
       {/* Collapsed Pill */}
       <button
+        type="button"
+        className={`habit-dock-btn${shouldNudge ? ' is-nudge' : ''}`}
         onClick={() => setIsOpen(o => !o)}
         title="Chore Tracker"
-        style={{
-          position: 'relative',
-          width: '40px',
-          height: '40px',
-          borderRadius: '20px',
-          border: '1px solid rgba(255,255,255,0.1)',
-          background: shouldNudge
-            ? 'rgba(245, 158, 11, 0.25)'
-            : 'rgba(7, 14, 35, 0.7)',
-          backdropFilter: 'blur(8px)',
-          WebkitBackdropFilter: 'blur(8px)',
-          color: shouldNudge ? '#fbbf24' : 'rgba(255,255,255,0.6)',
-          fontSize: '0.6rem',
-          fontWeight: 800,
-          cursor: 'pointer',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          gap: '1px',
-          boxShadow: shouldNudge
-            ? '0 0 12px rgba(245, 158, 11, 0.3)'
-            : '0 2px 8px rgba(0,0,0,0.3)',
-          animation: shouldNudge ? 'pulseGlow 2s infinite' : 'none',
-          transition: 'all 0.3s ease',
-          padding: 0,
-        }}
+        style={{ fontSize: '0.6rem', gap: '1px', color: shouldNudge ? '#fbbf24' : undefined }}
       >
         <span style={{ fontSize: '0.85rem' }}>🧹</span>
         <span>{allDone ? '✓' : `${completedCount}`}</span>

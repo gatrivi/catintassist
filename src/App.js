@@ -1,6 +1,14 @@
 import React, { useEffect, useState, useCallback, useRef } from 'react';
 import { SessionProvider, useSession } from './contexts/SessionContext';
-import { AudioSettingsProvider } from './contexts/AudioSettingsContext';
+import { AudioSettingsProvider, useAudioSettings } from './contexts/AudioSettingsContext';
+import { LanguageProvider, useLanguage } from './contexts/LanguageContext';
+import { AppGuideProvider } from './contexts/AppGuideContext';
+import { WelcomeBar } from './components/WelcomeBar';
+import { FirstVisitCoach } from './components/FirstVisitCoach';
+import { ConnectHint } from './components/ConnectHint';
+import { IdleDiscoveryHint } from './components/IdleDiscoveryHint';
+import { AppUpdateBanner } from './components/AppUpdateBanner';
+import { hapticConnect, flashConnectMode } from './utils/connectFeedback';
 import { DashboardHeader } from './components/DashboardHeader';
 import { TranscriptionBoard } from './components/TranscriptionBoard';
 import { GreetingsPanel } from './components/GreetingsPanel';
@@ -34,9 +42,11 @@ const CloudSyncIndicator = () => {
 };
 
 const Dashboard = () => {
-  const { startRecording, stopRecording, reconnectStream, captions, clearCaptions, sttLanguage, toggleLanguage, connectionState, connectionMessage, lastDataTime } = useDeepgram();
+  const { startRecording, stopRecording, reconnectStream, captions, clearCaptions, sttLanguage, toggleLanguage, connectionState, connectionMessage, lastDataTime, captureMode } = useDeepgram();
   const { isNotesOpen, setIsNotesOpen, isActive, isBreakActive, isZombieCall, minutesSinceLastBreak, startSession, clearZombieState, callFocusMode } = useSession();
-  const { playCoin } = useProgressiveAudio();
+  const { sourceLang, isDefaultPair, setCaptureMode: setLangCaptureMode } = useLanguage();
+  const { selectedMicId } = useAudioSettings();
+  const { playCoin, playMicConnect, playTabConnect } = useProgressiveAudio();
   const [isEditingBg, setIsEditingBg] = useState(false);
   const [workspaceView, setWorkspaceView] = useState(loadWorkspaceView);
   const [showStudioHint, setShowStudioHint] = useState(() => !hasSeenStudioHint());
@@ -126,14 +136,33 @@ const Dashboard = () => {
     ? 'zombie'
     : isActive ? 'call' : isBreakActive ? 'break' : 'avail';
 
-  // UNIFIED CONNECTION ENGINE
-  const handleConnection = useCallback(async (isRecovery = false) => {
-    const ok = await startRecording();
+  const runConnect = useCallback(async (mode, isRecovery = false) => {
+    const interpreterSockets = mode === 'tab' || isDefaultPair;
+    if (mode === 'tab') {
+      playTabConnect();
+      hapticConnect('tab');
+      flashConnectMode('tab');
+    } else {
+      playMicConnect();
+      hapticConnect('mic');
+      flashConnectMode('mic');
+    }
+    const ok = await startRecording({
+      mode,
+      sourceLang,
+      interpreterSockets,
+      micDeviceId: selectedMicId || undefined,
+    });
     if (ok) {
+      setLangCaptureMode(mode);
       if (isRecovery) clearZombieState();
       startSession(isRecovery);
     }
-  }, [startRecording, startSession, clearZombieState]);
+  }, [startRecording, startSession, clearZombieState, sourceLang, isDefaultPair, selectedMicId, setLangCaptureMode, playMicConnect, playTabConnect]);
+
+  const handleMicConnect = useCallback(() => runConnect('mic', false), [runConnect]);
+  const handleTabConnect = useCallback(() => runConnect('tab', false), [runConnect]);
+  const handleRecovery = useCallback(() => runConnect(captureMode || 'tab', true), [runConnect, captureMode]);
 
   // Micro-break nudge: top bar color shifts when working too long without a break
   const micBarColor = isZombieCall && connectionState !== 'connected' ? '#f59e0b'
@@ -153,6 +182,8 @@ const Dashboard = () => {
     const iv = setInterval(() => {
       idleMinuteCountRef.current += 1;
       playCoin(idleMinuteCountRef.current);
+      document.documentElement.setAttribute('data-habit-minute-flash', 'true');
+      setTimeout(() => document.documentElement.removeAttribute('data-habit-minute-flash'), 800);
     }, 60000);
     return () => clearInterval(iv);
   }, [isActive, isBreakActive, playCoin]);
@@ -198,6 +229,12 @@ const Dashboard = () => {
         <div id="top-mic-bar" style={{ height: '100%', width: '0%', background: micBarColor, transition: 'width 0.05s ease-out, background 0.5s ease', opacity: 0, boxShadow: micBarShadow }} />
       </div>
 
+      <AppUpdateBanner />
+      <WelcomeBar />
+      <ConnectHint />
+      <FirstVisitCoach />
+      <IdleDiscoveryHint isActive={isActive} isBreakActive={isBreakActive} />
+
       <SilenceGuardian lastDataTime={lastDataTime} />
 
       {!isActive && workspaceView === 'scoreboard' && (
@@ -205,10 +242,12 @@ const Dashboard = () => {
       )}
 
       <DashboardHeader 
-        onStartAudio={() => handleConnection(false)} 
+        onStartMicConnect={handleMicConnect}
+        onStartTabConnect={handleTabConnect}
         onStopAudio={stopRecording} 
         onReconnectStream={reconnectStream}
-        onRecovery={() => handleConnection(true)}
+        onRecovery={handleRecovery}
+        captureMode={captureMode}
         sttLanguage={sttLanguage}
         onToggleLanguage={toggleLanguage}
         connectionState={connectionState}
@@ -240,7 +279,7 @@ const Dashboard = () => {
               isBreakActive={isBreakActive}
               connectionState={connectionState}
               onClearAll={clearCaptions}
-              onReconnect={() => handleConnection(true)}
+              onReconnect={handleRecovery}
               lastDataTime={lastDataTime}
             />
           </div>
@@ -270,28 +309,10 @@ const Dashboard = () => {
         )}
         <button
           data-guide="notes"
+          className={`habit-dock-btn${isNotesOpen ? ' is-active' : ''}`}
           onClick={() => setIsNotesOpen(o => !o)}
           title="Quick Notes"
-          style={{
-            width: '40px',
-            height: '40px',
-            borderRadius: '20px',
-            border: '1px solid rgba(255,255,255,0.1)',
-            background: isNotesOpen ? 'rgba(14, 165, 233, 0.25)' : 'rgba(7, 14, 35, 0.7)',
-            backdropFilter: 'blur(8px)',
-            WebkitBackdropFilter: 'blur(8px)',
-            color: isNotesOpen ? '#38bdf8' : 'rgba(255,255,255,0.6)',
-            fontSize: '0.85rem',
-            fontWeight: 800,
-            cursor: 'pointer',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            boxShadow: isNotesOpen ? '0 0 12px rgba(14, 165, 233, 0.3)' : '0 2px 8px rgba(0,0,0,0.3)',
-            transition: 'all 0.3s ease',
-            padding: 0,
-            flexShrink: 0,
-          }}
+          style={{ color: isNotesOpen ? '#38bdf8' : 'rgba(255,255,255,0.65)', fontSize: '0.85rem' }}
         >
           📝
         </button>
@@ -303,9 +324,13 @@ const Dashboard = () => {
 function App() {
   return (
     <AudioSettingsProvider>
-      <SessionProvider>
-        <Dashboard />
-      </SessionProvider>
+      <LanguageProvider>
+        <SessionProvider>
+          <AppGuideProvider>
+            <Dashboard />
+          </AppGuideProvider>
+        </SessionProvider>
+      </LanguageProvider>
     </AudioSettingsProvider>
   );
 }

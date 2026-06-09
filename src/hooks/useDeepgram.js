@@ -1,6 +1,7 @@
 import { useState, useRef, useCallback } from 'react';
 import { useSession } from '../contexts/SessionContext';
 import { applyTranscriptFormatting, splitLongTextAtCommas } from '../utils/transcriptFormat';
+import { toDeepgramCode } from '../config/languages';
 
 const normalize = (s) => 
   (s || '')
@@ -207,14 +208,20 @@ export const useDeepgram = () => {
   const [connectionState, setConnectionState] = useState('disconnected');
   const [connectionMessage, setConnectionMessage] = useState('Disconnected');
   const [sttLanguage, setSttLanguage] = useState('auto');
-  const [lastDataTime, setLastDataTime] = useState(0); 
+  const [lastDataTime, setLastDataTime] = useState(0);
+  const [captureMode, setCaptureMode] = useState(null);
   
   const langModeRef = useRef('auto');
   const socketRefEn = useRef(null);
   const socketRefEs = useRef(null);
+  const socketRefCustom = useRef(null);
   const mediaRecorderRef = useRef(null);
   const streamRef = useRef(null);
   const isActiveRef = useRef(false);
+  const captureModeRef = useRef('mic');
+  const customSourceLangRef = useRef('en');
+  const useInterpreterSocketsRef = useRef(true);
+  const lastStartOptionsRef = useRef({ mode: 'mic' });
   const lastTranscriptTimeRef = useRef(Date.now());
   const turnWordsBaseRef = useRef(0); // words already sealed in the current silence-to-silence turn
   const currentTurnIdRef = useRef(null);
@@ -232,11 +239,117 @@ export const useDeepgram = () => {
 
     if (socketRefEn.current) { socketRefEn.current.close(); socketRefEn.current = null; }
     if (socketRefEs.current) { socketRefEs.current.close(); socketRefEs.current = null; }
+    if (socketRefCustom.current) { socketRefCustom.current.close(); socketRefCustom.current = null; }
     setConnectionState('disconnected');
     setConnectionMessage('Disconnected');
   }, []);
 
-  const startDeepgram = useCallback((stream) => {
+  const startCustomMicDeepgram = useCallback((stream, sourceLang) => {
+    const API_KEY = localStorage.getItem('DEEPGRAM_API_KEY') || process.env.REACT_APP_DEEPGRAM_API_KEY;
+    if (!API_KEY || API_KEY.trim() === '' || API_KEY === 'your_deepgram_api_key_here') {
+      alert('Deepgram API Key Missing');
+      setConnectionState('error');
+      return;
+    }
+
+    const dgLang = toDeepgramCode(sourceLang);
+    setConnectionState('connecting');
+    setConnectionMessage(`Mic · ${sourceLang.toUpperCase()}...`);
+
+    const url = `wss://api.deepgram.com/v1/listen?model=nova-2&smart_format=true&filler_words=true&language=${dgLang}&interim_results=true&endpointing=300`;
+    const ws = new WebSocket(url, ['token', API_KEY]);
+
+    ws.onopen = () => {
+      reconnectAttemptsRef.current = 0;
+      setConnectionState('connected');
+      setConnectionMessage(`Mic · ${sourceLang.toUpperCase()}`);
+      try {
+        if (!mediaRecorderRef.current) {
+          mediaRecorderRef.current = new MediaRecorder(stream);
+          mediaRecorderRef.current.addEventListener('dataavailable', (e) => {
+            if (e.data.size > 0 && socketRefCustom.current?.readyState === 1) {
+              socketRefCustom.current.send(e.data);
+            }
+          });
+          mediaRecorderRef.current.start(250);
+        }
+      } catch (err) { console.error(err); }
+    };
+
+    ws.onmessage = (message) => {
+      const received = JSON.parse(message.data);
+      const alt = received.channel?.alternatives?.[0];
+      const transcript = alt?.transcript;
+      if (!transcript || transcript.trim().length === 0) return;
+
+      const confidence = alt?.confidence || 0;
+      const isFinal = received.is_final;
+
+      if (isCallDetectionEnabled && confidence > 0.4) {
+        updateActivity();
+        setLastDataTime(Date.now());
+      }
+
+      const now = Date.now();
+      const timeSinceLast = now - lastTranscriptTimeRef.current;
+      lastTranscriptTimeRef.current = now;
+      const isSilentBreak = timeSinceLast > 2500;
+
+      updateCaptions((prev) => {
+        let last = prev[prev.length - 1];
+        const isNewTurn = isSilentBreak || !last;
+
+        if (isNewTurn) {
+          turnWordsBaseRef.current = 0;
+          currentTurnIdRef.current = `turn-${now}`;
+          last = {
+            id: `${Date.now()}-${++bubbleIdCounterRef.current}`,
+            finalized: '', interim: '',
+            turnId: currentTurnIdRef.current,
+            turnWordCount: 0,
+            lang: sourceLang,
+          };
+          prev = [...prev, last];
+        }
+
+        const current = { ...last };
+        const cleaned = hallucinationGuard(transcript);
+        if (!cleaned.trim() && !isFinal) return prev;
+
+        if (isFinal) {
+          current.finalized = (current.finalized + ' ' + cleaned).trim();
+          current.interim = '';
+        } else {
+          current.interim = cleaned;
+        }
+
+        const full = (current.finalized + ' ' + current.interim).trim();
+        current.lang = sourceLang;
+        current.text = full;
+        current.isFinal = isFinal;
+        current.turnWordCount = turnWordsBaseRef.current + full.split(/\s+/).filter(Boolean).length;
+
+        const newArr = [...prev];
+        newArr[newArr.length - 1] = current;
+        return newArr.slice(-150);
+      });
+    };
+
+    ws.onclose = () => {
+      if (isActiveRef.current && reconnectAttemptsRef.current < 5) {
+        reconnectAttemptsRef.current++;
+        const delay = Math.pow(2, reconnectAttemptsRef.current) * 1000;
+        setTimeout(() => {
+          if (isActiveRef.current) startCustomMicDeepgram(stream, sourceLang);
+        }, delay);
+      }
+    };
+
+    ws.onerror = (e) => console.error(e);
+    socketRefCustom.current = ws;
+  }, [isCallDetectionEnabled, updateActivity, updateCaptions]);
+
+  const startInterpreterDeepgram = useCallback((stream) => {
     const API_KEY = localStorage.getItem('DEEPGRAM_API_KEY') || process.env.REACT_APP_DEEPGRAM_API_KEY;
     if (!API_KEY || API_KEY.trim() === '' || API_KEY === 'your_deepgram_api_key_here') {
       alert("Deepgram API Key Missing");
@@ -469,6 +582,14 @@ export const useDeepgram = () => {
     socketRefEs.current = createSocket('es');
   }, [isCallDetectionEnabled, updateActivity, updateCaptions, requestHoldIntent]);
 
+  const startDeepgram = useCallback((stream) => {
+    if (useInterpreterSocketsRef.current) {
+      startInterpreterDeepgram(stream);
+    } else {
+      startCustomMicDeepgram(stream, customSourceLangRef.current);
+    }
+  }, [startInterpreterDeepgram, startCustomMicDeepgram]);
+
   const stopRecording = useCallback(() => {
     isActiveRef.current = false;
     turnWordsBaseRef.current = 0;
@@ -477,49 +598,80 @@ export const useDeepgram = () => {
     clearCaptions();
   }, [closeConnections, clearCaptions]);
 
-  const startRecording = useCallback(async () => {
+  const startRecording = useCallback(async (options = {}) => {
+    const mode = options.mode || 'mic';
+    const sourceLang = options.sourceLang || 'en';
+    const interpreterSockets = mode === 'tab' || options.interpreterSockets === true;
+
+    captureModeRef.current = mode;
+    customSourceLangRef.current = sourceLang;
+    useInterpreterSocketsRef.current = interpreterSockets;
+    lastStartOptionsRef.current = options;
+    setCaptureMode(mode);
+
     try {
       setConnectionState('connecting');
 
-      // REUSE EXISTING STREAM IF AVAILABLE AND ACTIVE
-      if (streamRef.current && streamRef.current.active && streamRef.current.getAudioTracks().length > 0) {
-        setConnectionMessage('Reusing Tab Audio...');
+      if (
+        streamRef.current?.active &&
+        streamRef.current.getAudioTracks().length > 0 &&
+        captureModeRef.current === mode
+      ) {
+        setConnectionMessage(mode === 'tab' ? 'Reusing Tab Audio...' : 'Reusing Mic...');
         isActiveRef.current = true;
         startDeepgram(streamRef.current);
         return true;
       }
 
-      setConnectionMessage('Requesting Tab Audio...');
-      const stream = await navigator.mediaDevices.getDisplayMedia({ video: true, audio: true });
-      if (stream.getAudioTracks().length === 0) {
-        setConnectionState('error');
-        setConnectionMessage('No Audio Track');
-        return false;
+      if (streamRef.current) {
+        streamRef.current.getTracks().forEach((t) => t.stop());
+        streamRef.current = null;
       }
+
+      let stream;
+
+      if (mode === 'tab') {
+        setConnectionMessage('Requesting Tab Audio...');
+        stream = await navigator.mediaDevices.getDisplayMedia({ video: true, audio: true });
+        if (stream.getAudioTracks().length === 0) {
+          setConnectionState('error');
+          setConnectionMessage('No Audio Track');
+          return false;
+        }
+        const videoTrack = stream.getVideoTracks()[0];
+        if (videoTrack) {
+          videoTrack.onended = () => {
+            streamRef.current = null;
+            stopRecording();
+          };
+        }
+      } else {
+        setConnectionMessage('Requesting Microphone...');
+        const constraints = options.micDeviceId
+          ? { audio: { deviceId: { exact: options.micDeviceId }, echoCancellation: true, noiseSuppression: true } }
+          : { audio: { echoCancellation: true, noiseSuppression: true } };
+        stream = await navigator.mediaDevices.getUserMedia(constraints);
+      }
+
       streamRef.current = stream;
       isActiveRef.current = true;
       startDeepgram(stream);
-      stream.getVideoTracks()[0].onended = () => {
-         streamRef.current = null;
-         stopRecording();
-      };
       return true;
     } catch (err) {
       console.error(err);
+      setConnectionState('error');
+      setConnectionMessage(mode === 'tab' ? 'Tab capture denied' : 'Mic access denied');
       return false;
     }
   }, [startDeepgram, stopRecording]);
 
   const reconnectStream = useCallback(() => {
     setConnectionState('connecting');
-    reconnectAttemptsRef.current = 0; // Reset manual attempts
+    reconnectAttemptsRef.current = 0;
     closeConnections();
     setTimeout(() => {
       if (streamRef.current && isActiveRef.current) startDeepgram(streamRef.current);
-      else {
-        // If stream is dead, we need a full restart
-        startRecording();
-      }
+      else startRecording(lastStartOptionsRef.current);
     }, 400);
   }, [closeConnections, startDeepgram, startRecording]);
 
@@ -538,5 +690,8 @@ export const useDeepgram = () => {
     });
   }, []);
 
-  return { startRecording, stopRecording, reconnectStream, captions, clearCaptions, sttLanguage, toggleLanguage, connectionState, connectionMessage, lastDataTime };
+  return {
+    startRecording, stopRecording, reconnectStream, captions, clearCaptions,
+    sttLanguage, toggleLanguage, connectionState, connectionMessage, lastDataTime, captureMode,
+  };
 };
