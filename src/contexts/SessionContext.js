@@ -415,6 +415,11 @@ export const SessionProvider = ({ children }) => {
     commitAvailTime();
     
     if (!isRecovery) {
+      // UX: new call starts → clear pinned messages so they don't bleed across calls.
+      try {
+        localStorage.removeItem('catint_pinned_msgs');
+      } catch {}
+      window.dispatchEvent(new CustomEvent('catint_pinned_cleared'));
       setSessionSeconds(0);
       accumulatorRef.current = 0;
     }
