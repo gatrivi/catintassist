@@ -5,7 +5,7 @@ import { LiveRollingNumber } from './LiveRollingNumber';
 import { useRewardAudio } from '../hooks/useRewardAudio';
 import { useSession } from '../contexts/SessionContext';
 import { useAudioSettings } from '../contexts/AudioSettingsContext';
-import { PlayIcon, StopIcon, formatTime } from './HeaderWidgets';
+import { StopIcon, formatTime } from './HeaderWidgets';
 import { DialGoalSelector } from './DialGoalSelector';
 import { useProgressiveAudio } from '../hooks/useProgressiveAudio';
 import { MonthHeatmap } from './MonthHeatmap';
@@ -13,6 +13,7 @@ import { TimeEditModal } from './TimeEditModal';
 import { GameScoreboard } from './GameScoreboard';
 import { AppGuideButton } from './AppGuide';
 import { WorkspaceViewSwitcher } from './WorkspaceViewSwitcher';
+import { ConnectInterpretButton } from './ConnectInterpretButton';
 
 const CelebrationParticles = ({ type, label, coins, onDismiss }) => {
   const [isClosing, setIsClosing] = useState(false);
@@ -130,6 +131,7 @@ export const DashboardHeader = ({
   offCallWorkspace = null,
   onCycleWorkspace,
   showStudioHint = false,
+  onConnectAnotherTab,
 }) => {
   const { isActive, sessionSeconds, sessionEarnings, stats, updateStat, stopSession, endDay, RATE_PER_MINUTE, arsRate, setArsRate, isBreakActive, breakSeconds, startBreak, stopBreak, availSeconds, isEditingScoreboard, setIsEditingScoreboard, visibleCards, isNotesOpen, setIsNotesOpen, isToolbarVisible, setIsToolbarVisible, isHeatmapOpen, setIsHeatmapOpen, isZombieCall, isScoreboardHelpVisible, setIsScoreboardHelpVisible, isHold, setIsHold, holdSeconds, dailyTimeline, historyTimeline, dailyLog, lastActivityTime, isCallDetectionEnabled, setIsCallDetectionEnabled, callFocusMode, setCallFocusMode, minutesSinceLastBreak } = useSession();
 
@@ -553,22 +555,15 @@ export const DashboardHeader = ({
     <div className="session-controls-sticky">
       <div style={{ display: 'flex', gap: '3px', alignItems: 'center', flexShrink: 0 }}>
         {!isActive ? (
-          <button
-            id="header-connect-btn"
-            data-guide="connect"
-            className="btn-emoji"
-            onClick={isZombieCall ? onRecovery : onStartAudio}
-            style={{
-              background: isZombieCall ? '#f59e0b' : '#10b981',
-              color: '#fff',
-              width: '30px',
-              height: '30px',
-              animation: (!isActive && !isBreakActive && (Date.now() - (lastDataTime || 0) < 5000)) ? 'pulseReminder 0.8s infinite' : 'none',
-            }}
-            title={isZombieCall ? 'RE-ATTACH TO CALL' : 'CONNECT'}
-          >
-            {isZombieCall ? '🟡' : '🟢'}
-          </button>
+          <ConnectInterpretButton
+            onSingle={() => (isZombieCall ? onRecovery() : onStartAudio())}
+            onDouble={onConnectAnotherTab}
+            flash={!isBreakActive && connectionState !== 'connected'}
+            disabled={false}
+            size="top"
+            singleTitle={isZombieCall ? 'RE-ATTACH TO CALL' : 'CONNECT'}
+            doubleTitle="connect to another browser tab"
+          />
         ) : (
           <>
             <button id="header-stop-btn" data-guide="stop" className="btn-emoji" onClick={handleStop} style={{ background: '#ef4444', color: '#fff', width: '30px', height: '30px' }} title="STOP / DISCONNECT">🛑</button>
@@ -670,6 +665,10 @@ export const DashboardHeader = ({
                     nextGoalLabel={nextGoalLabel} nextMilestone={nextMilestone}
                     daysInMonth={daysInMonth} currentDay={currentDay} remainingDays={remainingDays}
                     isActive={isActive} isBreakActive={isBreakActive}
+                    isZombieCall={isZombieCall}
+                    onStartAudio={onStartAudio}
+                    onRecovery={onRecovery}
+                    onConnectAnotherTab={onConnectAnotherTab}
                     onSwitchToNumbers={() => setScoreView('numbers')}
                     milestoneTargets={milestoneTargets}
                     isEditingScoreboard={isEditingScoreboard}
@@ -997,7 +996,7 @@ export const DashboardHeader = ({
             <div style={{ display: 'flex', gap: '0.3rem', alignItems: 'center' }}>
               <StateIndicators state={isActive ? 'call' : isBreakActive ? 'break' : 'avail'} breakMinutes={stats.dailyBreakMinutes || 0} />
               {!isActive ? (
-                 <button id="connect-btn" className="btn btn-primary" onClick={onStartAudio} style={{ padding: '0.4rem 0.8rem' }}><PlayIcon /> Connect</button>
+                 null
               ) : (
                 <div style={{ display: 'flex', gap: '0.3rem' }}>
                   <button id="stop-btn" className="btn btn-danger" onClick={handleStop}><StopIcon /> STOP</button>

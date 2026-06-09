@@ -34,7 +34,7 @@ const CloudSyncIndicator = () => {
 };
 
 const Dashboard = () => {
-  const { startRecording, stopRecording, reconnectStream, captions, clearCaptions, sttLanguage, toggleLanguage, connectionState, connectionMessage, lastDataTime } = useDeepgram();
+  const { startRecording, startRecordingFresh, stopRecording, reconnectStream, captions, clearCaptions, sttLanguage, toggleLanguage, connectionState, connectionMessage, lastDataTime } = useDeepgram();
   const { isNotesOpen, setIsNotesOpen, isActive, isBreakActive, isZombieCall, minutesSinceLastBreak, startSession, clearZombieState, callFocusMode } = useSession();
   const { playCoin } = useProgressiveAudio();
   const [isEditingBg, setIsEditingBg] = useState(false);
@@ -135,6 +135,15 @@ const Dashboard = () => {
     }
   }, [startRecording, startSession, clearZombieState]);
 
+  const handleConnectAnotherTab = useCallback(async () => {
+    const ok = await startRecordingFresh();
+    if (ok) {
+      const isRecovery = !!isZombieCall;
+      if (isRecovery) clearZombieState();
+      startSession(isRecovery);
+    }
+  }, [startRecordingFresh, isZombieCall, startSession, clearZombieState]);
+
   // Micro-break nudge: top bar color shifts when working too long without a break
   const micBarColor = isZombieCall && connectionState !== 'connected' ? '#f59e0b'
     : isActive && minutesSinceLastBreak > 110 ? '#ef4444'
@@ -209,6 +218,7 @@ const Dashboard = () => {
         onStopAudio={stopRecording} 
         onReconnectStream={reconnectStream}
         onRecovery={() => handleConnection(true)}
+        onConnectAnotherTab={handleConnectAnotherTab}
         sttLanguage={sttLanguage}
         onToggleLanguage={toggleLanguage}
         connectionState={connectionState}

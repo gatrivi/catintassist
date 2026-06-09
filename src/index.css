@@ -1352,6 +1352,23 @@ body {
   flex-shrink: 0;
 }
 
+@keyframes connectInterpretFlash {
+  0%, 100% {
+    box-shadow: 0 0 0 rgba(16, 185, 129, 0);
+    transform: scale(1);
+    border-color: rgba(16, 185, 129, 0.35);
+  }
+  50% {
+    box-shadow: 0 0 18px rgba(16, 185, 129, 0.45), 0 0 38px rgba(16, 185, 129, 0.18);
+    transform: scale(1.03);
+    border-color: rgba(16, 185, 129, 0.9);
+  }
+}
+
+.connect-interpret-flash {
+  animation: connectInterpretFlash 1.15s ease-in-out infinite;
+}
+
 .pinned-transcript-section {
   position: sticky;
   top: 0;
