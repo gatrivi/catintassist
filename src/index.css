@@ -1818,6 +1818,21 @@ body {
     min-height: 0;
   }
 
+  /* Mobile: keep Connect/Stop bar visible even if header is scrolled. */
+  .session-controls-sticky {
+    position: fixed !important;
+    top: 28px;
+    left: 0.1rem;
+    right: 0.1rem;
+    margin: 0;
+    z-index: 5000;
+  }
+
+  /* Reserve space so the fixed bar doesn't overlap content. */
+  .dashboard-header {
+    padding-top: 62px;
+  }
+
   /* mode 1 — Stats focus: header 60%, main 40% */
   .app-container.layout-stats {
     display: flex;
