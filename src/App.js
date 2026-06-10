@@ -1,16 +1,16 @@
-import React, { useEffect, useState, useCallback, useRef } from 'react';
-import { SessionProvider, useSession } from './contexts/SessionContext';
-import { AudioSettingsProvider } from './contexts/AudioSettingsContext';
-import { DashboardHeader } from './components/DashboardHeader';
-import { TranscriptionBoard } from './components/TranscriptionBoard';
-import { GreetingsPanel } from './components/GreetingsPanel';
-import { NotePad } from './components/NotePad';
-import { DictionaryTool } from './components/DictionaryTool';
-import { SilenceGuardian } from './components/SilenceGuardian';
-import { DeskExerciseWidget } from './components/DeskExerciseWidget';
-import { RosaryWidget } from './components/RosaryWidget';
-import { MealTrackerWidget } from './components/MealTrackerWidget';
-import { ChoreTrackerWidget } from './components/ChoreTrackerWidget';
+import React, { useEffect, useState, useCallback, useRef } from "react";
+import { SessionProvider, useSession } from "./contexts/SessionContext";
+import { AudioSettingsProvider } from "./contexts/AudioSettingsContext";
+import { DashboardHeader } from "./components/DashboardHeader";
+import { TranscriptionBoard } from "./components/TranscriptionBoard";
+import { GreetingsPanel } from "./components/GreetingsPanel";
+import { NotePad } from "./components/NotePad";
+import { DictionaryTool } from "./components/DictionaryTool";
+import { SilenceGuardian } from "./components/SilenceGuardian";
+import { DeskExerciseWidget } from "./components/DeskExerciseWidget";
+import { RosaryWidget } from "./components/RosaryWidget";
+import { MealTrackerWidget } from "./components/MealTrackerWidget";
+import { ChoreTrackerWidget } from "./components/ChoreTrackerWidget";
 import {
   WorkspaceViewSwitcher,
   OFF_CALL_VIEWS,
@@ -18,34 +18,66 @@ import {
   saveWorkspaceView,
   hasSeenStudioHint,
   markStudioHintSeen,
-} from './components/WorkspaceViewSwitcher';
-import { useDeepgram } from './hooks/useDeepgram';
-import { useProgressiveAudio } from './hooks/useProgressiveAudio';
-import { useAppUpdateCheck } from './hooks/useAppUpdateCheck';
-import { UpdateAppBanner } from './components/UpdateAppBanner';
-import { loadFile, generateObjectUrl } from './utils/storage';
-import './index.css';
+} from "./components/WorkspaceViewSwitcher";
+import { useDeepgram } from "./hooks/useDeepgram";
+import { useProgressiveAudio } from "./hooks/useProgressiveAudio";
+import { useAppUpdateCheck } from "./hooks/useAppUpdateCheck";
+import { UpdateAppBanner } from "./components/UpdateAppBanner";
+import { loadFile, generateObjectUrl } from "./utils/storage";
+import "./index.css";
 
 const CloudSyncIndicator = () => {
   const { syncStatus } = useSession();
-  const colors = { syncing: '#3b82f6', synced: '#10b981', error: '#ef4444', idle: 'transparent' };
-  const label = { syncing: '☁️...', synced: '☁️ ok', error: '☁️ !', idle: '' };
+  const colors = {
+    syncing: "#3b82f6",
+    synced: "#10b981",
+    error: "#ef4444",
+    idle: "transparent",
+  };
+  const label = { syncing: "☁️...", synced: "☁️ ok", error: "☁️ !", idle: "" };
   return (
-    <span style={{ color: colors[syncStatus], transition: 'color 0.3s' }}>{label[syncStatus]}</span>
+    <span style={{ color: colors[syncStatus], transition: "color 0.3s" }}>
+      {label[syncStatus]}
+    </span>
   );
 };
 
 const Dashboard = () => {
-  const { startRecording, startRecordingFresh, stopRecording, reconnectStream, captions, clearCaptions, sttLanguage, toggleLanguage, connectionState, connectionMessage, lastDataTime } = useDeepgram();
-  const { isNotesOpen, setIsNotesOpen, isActive, isBreakActive, isZombieCall, minutesSinceLastBreak, startSession, clearZombieState, callFocusMode } = useSession();
+  const {
+    startRecording,
+    startRecordingFresh,
+    stopRecording,
+    reconnectStream,
+    captions,
+    clearCaptions,
+    sttLanguage,
+    toggleLanguage,
+    connectionState,
+    connectionMessage,
+    lastDataTime,
+  } = useDeepgram();
+  const {
+    isNotesOpen,
+    setIsNotesOpen,
+    isActive,
+    isBreakActive,
+    isZombieCall,
+    minutesSinceLastBreak,
+    startSession,
+    clearZombieState,
+    callFocusMode,
+  } = useSession();
   const { playCoin } = useProgressiveAudio();
-  const { updateAvailable, latestVersionToken, dismissUpdate, reloadToUpdate } = useAppUpdateCheck();
+  const { updateAvailable, latestVersionToken, dismissUpdate, reloadToUpdate } =
+    useAppUpdateCheck();
   const [isEditingBg, setIsEditingBg] = useState(false);
   const [workspaceView, setWorkspaceView] = useState(loadWorkspaceView);
-  const [showStudioHint, setShowStudioHint] = useState(() => !hasSeenStudioHint());
+  const [showStudioHint, setShowStudioHint] = useState(
+    () => !hasSeenStudioHint(),
+  );
 
-  const offCallWorkspace = (isActive || isZombieCall) ? null : workspaceView;
-  const isSoundboardStudio = offCallWorkspace === 'soundboard';
+  const offCallWorkspace = isActive || isZombieCall ? null : workspaceView;
+  const isSoundboardStudio = offCallWorkspace === "soundboard";
 
   const cycleWorkspaceView = useCallback(() => {
     if (isActive || isZombieCall) return;
@@ -61,82 +93,116 @@ const Dashboard = () => {
 
   useEffect(() => {
     const applyBg = async () => {
-      const bgApp = await loadFile('bg_app');
+      const bgApp = await loadFile("bg_app");
       if (bgApp) {
         const url = generateObjectUrl(bgApp);
         document.body.style.backgroundImage = `url(${url})`;
-        document.body.style.backgroundSize = 'cover';
-        document.body.style.backgroundPosition = 'center';
-        document.body.style.backgroundAttachment = 'fixed';
+        document.body.style.backgroundSize = "cover";
+        document.body.style.backgroundPosition = "center";
+        document.body.style.backgroundAttachment = "fixed";
       }
     };
     applyBg();
-    
+
     // Listen for custom event when background changes in settings
-    window.addEventListener('cat_bg_changed', applyBg);
-    return () => window.removeEventListener('cat_bg_changed', applyBg);
+    window.addEventListener("cat_bg_changed", applyBg);
+    return () => window.removeEventListener("cat_bg_changed", applyBg);
   }, []);
 
   // Matrix Mode Easter Egg
   useEffect(() => {
-    const konamiCode = ['ArrowUp', 'ArrowUp', 'ArrowDown', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'ArrowLeft', 'ArrowRight', 'b', 'a'];
+    const konamiCode = [
+      "ArrowUp",
+      "ArrowUp",
+      "ArrowDown",
+      "ArrowDown",
+      "ArrowLeft",
+      "ArrowRight",
+      "ArrowLeft",
+      "ArrowRight",
+      "b",
+      "a",
+    ];
     let index = 0;
     const handleKeyDown = (e) => {
       if (e.key === konamiCode[index]) {
         index++;
         if (index === konamiCode.length) {
-          const current = document.body.getAttribute('data-easter-egg');
-          document.body.setAttribute('data-easter-egg', current === 'matrix' ? '' : 'matrix');
+          const current = document.body.getAttribute("data-easter-egg");
+          document.body.setAttribute(
+            "data-easter-egg",
+            current === "matrix" ? "" : "matrix",
+          );
           index = 0;
         }
       } else {
         index = 0;
       }
     };
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
   }, []);
 
   // Hotkeys for language switching
   useEffect(() => {
     const handleKeyDown = (e) => {
-      const isTyping = e.target.tagName === 'TEXTAREA' || e.target.tagName === 'INPUT';
-      
-      if (e.code === 'Escape' || (e.altKey && e.code === 'Space')) {
+      const isTyping =
+        e.target.tagName === "TEXTAREA" || e.target.tagName === "INPUT";
+
+      if (e.code === "Escape" || (e.altKey && e.code === "Space")) {
         e.preventDefault();
         toggleLanguage();
-      } else if (e.code === 'Space' && !isTyping) {
+      } else if (e.code === "Space" && !isTyping) {
         e.preventDefault();
         toggleLanguage();
       }
     };
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
   }, [toggleLanguage]);
 
   // Track idle time for full app vignette
   const [idleSecs, setIdleSecs] = useState(0);
   useEffect(() => {
-    if (isActive || isBreakActive) { setIdleSecs(0); return; }
-    const iv = setInterval(() => setIdleSecs(s => s + 1), 1000);
+    if (isActive || isBreakActive) {
+      setIdleSecs(0);
+      return;
+    }
+    const iv = setInterval(() => setIdleSecs((s) => s + 1), 1000);
     return () => clearInterval(iv);
   }, [isActive, isBreakActive]);
 
   const isBurnoutWarning = !isBreakActive && minutesSinceLastBreak > 110;
   // PRIORITY FIX: isActive (Call) must always block app-idle vignette
-  const stateClass = isActive ? 'app-active' : isBreakActive ? 'app-break' : (isBurnoutWarning ? 'burnout-alert' : (idleSecs > 45 ? 'app-idle' : ''));
-  const appState = isZombieCall && connectionState !== 'connected'
-    ? 'zombie'
-    : isActive ? 'call' : isBreakActive ? 'break' : 'avail';
+  const stateClass = isActive
+    ? "app-active"
+    : isBreakActive
+      ? "app-break"
+      : isBurnoutWarning
+        ? "burnout-alert"
+        : idleSecs > 45
+          ? "app-idle"
+          : "";
+  const appState =
+    isZombieCall && connectionState !== "connected"
+      ? "zombie"
+      : isActive
+        ? "call"
+        : isBreakActive
+          ? "break"
+          : "avail";
 
   // UNIFIED CONNECTION ENGINE
-  const handleConnection = useCallback(async (isRecovery = false) => {
-    const ok = await startRecording();
-    if (ok) {
-      if (isRecovery) clearZombieState();
-      startSession(isRecovery);
-    }
-  }, [startRecording, startSession, clearZombieState]);
+  const handleConnection = useCallback(
+    async (isRecovery = false) => {
+      const ok = await startRecording();
+      if (ok) {
+        if (isRecovery) clearZombieState();
+        startSession(isRecovery);
+      }
+    },
+    [startRecording, startSession, clearZombieState],
+  );
 
   const handleConnectAnotherTab = useCallback(async () => {
     const ok = await startRecordingFresh();
@@ -148,12 +214,20 @@ const Dashboard = () => {
   }, [startRecordingFresh, isZombieCall, startSession, clearZombieState]);
 
   // Micro-break nudge: top bar color shifts when working too long without a break
-  const micBarColor = isZombieCall && connectionState !== 'connected' ? '#f59e0b'
-    : isActive && minutesSinceLastBreak > 110 ? '#ef4444'
-    : isActive && minutesSinceLastBreak > 90 ? '#f59e0b'
-    : '#10b981';
-  const micBarShadow = isZombieCall && connectionState !== 'connected' ? '0 0 8px #f59e0b'
-    : isActive && minutesSinceLastBreak > 90 ? '0 0 8px #f59e0b' : '0 0 8px #10b981';
+  const micBarColor =
+    isZombieCall && connectionState !== "connected"
+      ? "#f59e0b"
+      : isActive && minutesSinceLastBreak > 110
+        ? "#ef4444"
+        : isActive && minutesSinceLastBreak > 90
+          ? "#f59e0b"
+          : "#10b981";
+  const micBarShadow =
+    isZombieCall && connectionState !== "connected"
+      ? "0 0 8px #f59e0b"
+      : isActive && minutesSinceLastBreak > 90
+        ? "0 0 8px #f59e0b"
+        : "0 0 8px #10b981";
 
   // Off-call minute chime: progressively deeper each minute
   const idleMinuteCountRef = useRef(0);
@@ -171,54 +245,84 @@ const Dashboard = () => {
 
   // Demo Scenario Trigger (Shift + D)
   useEffect(() => {
-    const scenarios = ['call', 'goal_hit', 'break', 'reset'];
+    const scenarios = ["call", "goal_hit", "break", "reset"];
     let scenarioIdx = 0;
-    
+
     const handleKeyDown = (e) => {
-      if (e.shiftKey && e.code === 'KeyD') {
+      if (e.shiftKey && e.code === "KeyD") {
         const scenario = scenarios[scenarioIdx];
         scenarioIdx = (scenarioIdx + 1) % scenarios.length;
-        
+
         // Trigger global demo event
-        const event = new CustomEvent('cat_demo_scenario', { detail: scenario });
+        const event = new CustomEvent("cat_demo_scenario", {
+          detail: scenario,
+        });
         window.dispatchEvent(event);
       }
     };
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
   }, []);
 
   return (
     <div
       className={`app-container ${stateClass}`}
       data-state={appState}
-      data-call-mode={(isActive || isZombieCall) ? 'true' : 'false'}
-      data-off-call-view={(isActive || isZombieCall) ? 'call' : workspaceView}
+      data-call-mode={isActive || isZombieCall ? "true" : "false"}
+      data-off-call-view={isActive || isZombieCall ? "call" : workspaceView}
     >
       {/* Version Tag - Always visible in the upper right */}
-      <div style={{ 
-        position: 'fixed', top: '1px', right: '4px', zIndex: 10000, 
-        fontSize: '0.55rem', fontWeight: 900, color: 'rgba(255,255,255,0.2)', 
-        pointerEvents: 'none', textTransform: 'uppercase', letterSpacing: '0.05em',
-        display: 'flex', alignItems: 'center', gap: '4px'
-      }}>
+      <div
+        style={{
+          position: "fixed",
+          top: "1px",
+          right: "4px",
+          zIndex: 10000,
+          fontSize: "0.55rem",
+          fontWeight: 900,
+          color: "rgba(255,255,255,0.2)",
+          pointerEvents: "none",
+          textTransform: "uppercase",
+          letterSpacing: "0.05em",
+          display: "flex",
+          alignItems: "center",
+          gap: "4px",
+        }}
+      >
         <CloudSyncIndicator />
         v4.47.1 (Full Stack)
       </div>
 
-      <div id="top-mic-bar-container" style={{ position: 'fixed', top: 0, left: 0, right: 0, height: '3px', zIndex: 9999, pointerEvents: 'none' }}>
-        <div id="top-mic-bar" style={{ height: '100%', width: '0%', background: micBarColor, transition: 'width 0.05s ease-out, background 0.5s ease', opacity: 0, boxShadow: micBarShadow }} />
+      <div
+        id="top-mic-bar-container"
+        style={{
+          position: "fixed",
+          top: 0,
+          left: 0,
+          right: 0,
+          height: "3px",
+          zIndex: 9999,
+          pointerEvents: "none",
+        }}
+      >
+        <div
+          id="top-mic-bar"
+          style={{
+            height: "100%",
+            width: "0%",
+            background: micBarColor,
+            transition: "width 0.05s ease-out, background 0.5s ease",
+            opacity: 0,
+            boxShadow: micBarShadow,
+          }}
+        />
       </div>
 
       <SilenceGuardian lastDataTime={lastDataTime} />
 
-      {!(isActive || isZombieCall) && workspaceView === 'scoreboard' && (
-        <main id="scoreboard-root" className="main-content view-scoreboard" />
-      )}
-
-      <DashboardHeader 
-        onStartAudio={() => handleConnection(false)} 
-        onStopAudio={stopRecording} 
+      <DashboardHeader
+        onStartAudio={() => handleConnection(false)}
+        onStopAudio={stopRecording}
         onReconnectStream={reconnectStream}
         onRecovery={() => handleConnection(true)}
         onConnectAnotherTab={handleConnectAnotherTab}
@@ -232,12 +336,23 @@ const Dashboard = () => {
         showStudioHint={showStudioHint}
       />
 
+      {!(isActive || isZombieCall) && workspaceView === "scoreboard" && (
+        <main id="scoreboard-root" className="main-content view-scoreboard" />
+      )}
+
       {isSoundboardStudio && (
         <main className="main-content view-soundboard">
-          <div className="workspace-soundboard-pane glass-panel" data-guide="soundboard-lab">
+          <div
+            className="workspace-soundboard-pane glass-panel"
+            data-guide="soundboard-lab"
+          >
             <div className="workspace-soundboard-head">
-              <span className="workspace-soundboard-title">Soundboard Studio</span>
-              <span className="workspace-soundboard-hint">Record · preview · health-check — off-call only</span>
+              <span className="workspace-soundboard-title">
+                Soundboard Studio
+              </span>
+              <span className="workspace-soundboard-hint">
+                Record · preview · health-check — off-call only
+              </span>
             </div>
             <GreetingsPanel onEditModeChange={setIsEditingBg} />
           </div>
@@ -245,11 +360,11 @@ const Dashboard = () => {
       )}
 
       {(isActive || isZombieCall) && (
-        <main className={`main-content ${isNotesOpen ? 'notes-open' : ''}`}>
+        <main className={`main-content ${isNotesOpen ? "notes-open" : ""}`}>
           <div className="transcription-pane" data-guide="transcript">
-            <TranscriptionBoard 
-              captions={captions} 
-              isActive={isActive} 
+            <TranscriptionBoard
+              captions={captions}
+              isActive={isActive}
               isBreakActive={isBreakActive}
               connectionState={connectionState}
               onClearAll={clearCaptions}
@@ -259,7 +374,16 @@ const Dashboard = () => {
           </div>
           {isNotesOpen && !isEditingBg && (
             <div className="tools-column notes-open">
-              <div className="glass-panel tools-notes" style={{ overflow: 'hidden', display: 'flex', flexDirection: 'column', flex: 1, minHeight: isActive && callFocusMode ? '200px' : undefined }}>
+              <div
+                className="glass-panel tools-notes"
+                style={{
+                  overflow: "hidden",
+                  display: "flex",
+                  flexDirection: "column",
+                  flex: 1,
+                  minHeight: isActive && callFocusMode ? "200px" : undefined,
+                }}
+              >
                 {(!isActive || !callFocusMode) && <DictionaryTool />}
                 <NotePad />
               </div>
@@ -290,25 +414,29 @@ const Dashboard = () => {
         )}
         <button
           data-guide="notes"
-          onClick={() => setIsNotesOpen(o => !o)}
+          onClick={() => setIsNotesOpen((o) => !o)}
           title="Quick Notes"
           style={{
-            width: '40px',
-            height: '40px',
-            borderRadius: '20px',
-            border: '1px solid rgba(255,255,255,0.1)',
-            background: isNotesOpen ? 'rgba(14, 165, 233, 0.25)' : 'rgba(7, 14, 35, 0.7)',
-            backdropFilter: 'blur(8px)',
-            WebkitBackdropFilter: 'blur(8px)',
-            color: isNotesOpen ? '#38bdf8' : 'rgba(255,255,255,0.6)',
-            fontSize: '0.85rem',
+            width: "40px",
+            height: "40px",
+            borderRadius: "20px",
+            border: "1px solid rgba(255,255,255,0.1)",
+            background: isNotesOpen
+              ? "rgba(14, 165, 233, 0.25)"
+              : "rgba(7, 14, 35, 0.7)",
+            backdropFilter: "blur(8px)",
+            WebkitBackdropFilter: "blur(8px)",
+            color: isNotesOpen ? "#38bdf8" : "rgba(255,255,255,0.6)",
+            fontSize: "0.85rem",
             fontWeight: 800,
-            cursor: 'pointer',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            boxShadow: isNotesOpen ? '0 0 12px rgba(14, 165, 233, 0.3)' : '0 2px 8px rgba(0,0,0,0.3)',
-            transition: 'all 0.3s ease',
+            cursor: "pointer",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            boxShadow: isNotesOpen
+              ? "0 0 12px rgba(14, 165, 233, 0.3)"
+              : "0 2px 8px rgba(0,0,0,0.3)",
+            transition: "all 0.3s ease",
             padding: 0,
             flexShrink: 0,
           }}
@@ -331,4 +459,3 @@ function App() {
 }
 
 export default App;
-
