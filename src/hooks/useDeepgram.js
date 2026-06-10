@@ -236,6 +236,17 @@ export const useDeepgram = () => {
     setConnectionMessage('Disconnected');
   }, []);
 
+  const stopStreamTracks = useCallback(() => {
+    try {
+      const s = streamRef.current;
+      if (!s) return;
+      s.getTracks?.().forEach((t) => {
+        try { t.stop(); } catch (_) {}
+      });
+    } catch (_) {}
+    streamRef.current = null;
+  }, []);
+
   const startDeepgram = useCallback((stream) => {
     const API_KEY = localStorage.getItem('DEEPGRAM_API_KEY') || process.env.REACT_APP_DEEPGRAM_API_KEY;
     if (!API_KEY || API_KEY.trim() === '' || API_KEY === 'your_deepgram_api_key_here') {
@@ -510,6 +521,42 @@ export const useDeepgram = () => {
     }
   }, [startDeepgram, stopRecording]);
 
+  // Force the browser to re-open the picker so the user can select another
+  // browser tab/audio source (used by double-tap connect).
+  const startRecordingFresh = useCallback(async () => {
+    try {
+      setConnectionState('connecting');
+      setConnectionMessage('Requesting Tab Audio (fresh)...');
+
+      // Close sockets/recorder and stop old tracks so we don't silently reuse
+      // an old active streamRef from a previous call.
+      closeConnections();
+      stopStreamTracks();
+
+      setConnectionState('connecting');
+      setConnectionMessage('Requesting Tab Audio...');
+
+      const stream = await navigator.mediaDevices.getDisplayMedia({ video: true, audio: true });
+      if (stream.getAudioTracks().length === 0) {
+        setConnectionState('error');
+        setConnectionMessage('No Audio Track');
+        return false;
+      }
+
+      streamRef.current = stream;
+      isActiveRef.current = true;
+      startDeepgram(stream);
+      stream.getVideoTracks()[0].onended = () => {
+        streamRef.current = null;
+        stopRecording();
+      };
+      return true;
+    } catch (err) {
+      console.error(err);
+      return false;
+    }
+  }, [closeConnections, startDeepgram, stopRecording, stopStreamTracks]);
+
   const reconnectStream = useCallback(() => {
     setConnectionState('connecting');
     reconnectAttemptsRef.current = 0; // Reset manual attempts
@@ -538,5 +585,5 @@ export const useDeepgram = () => {
     });
   }, []);
 
-  return { startRecording, stopRecording, reconnectStream, captions, clearCaptions, sttLanguage, toggleLanguage, connectionState, connectionMessage, lastDataTime };
+  return { startRecording, startRecordingFresh, stopRecording, reconnectStream, captions, clearCaptions, sttLanguage, toggleLanguage, connectionState, connectionMessage, lastDataTime };
 };

@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { AppGuideButton } from './AppGuide';
 import { StatNumber } from './StatNumber';
+import { ConnectInterpretButton } from './ConnectInterpretButton';
 
 // ─── ScoreboardTooltip ────────────────────────────────────────────────────────
 // A lightweight 'toastie' popover for dynamic info on hover.
@@ -129,53 +130,86 @@ const EmojiRow = ({ emoji, emptyEmoji, value, unitValue, maxValue, color = '#fff
 };
 
 // ─── DirectionalCue ──────────────────────────────────────────────────────────
-// Coaching-style cue: encouraging on mistakes, not discouraging.
-const COACHING_TIPS = [
-  'Each call is a rep. Stay consistent.',
-  'Pick up the next one. You got this.',
-  'Pace improves with reps. Keep going.',
-  'The log doesn\'t lie — every minute counts.',
-  'You\'re still in the game. Connect again.',
+// Directional cue shown under the scoreboard header.
+const IDLE_TIPS = [
+  'Open Soundboard Studio (studio switch) to record clips while off-call.',
+  'Click the 123 button to flip scoreboard into number view.',
+  'Use the green Connect button, then speak to keep the transcript flowing.',
+  'Double tap Connect to re-open the browser tab/audio picker.',
+  'Use Space/Alt+Space to toggle language detection while you wait.',
+  'If you see a key detail, pin it with 📍 so it stays at the top.',
+  'If audio stalls during a call, hit ⚡ Zap to refresh the stream.',
 ];
-const DirectionalCue = ({ pacePrediction, dailyGoal, totalDailyMins, breakLeft, qualityScore, cutoffWarning, isActive, isBreakActive }) => {
-  const tip = COACHING_TIPS[Math.floor(Date.now() / 30000) % COACHING_TIPS.length];
-  if (cutoffWarning?.pulse) return (
-    <div style={{ color: '#ef4444', fontWeight: 900, fontSize: '0.7rem', animation: 'pulseWarning 1s infinite' }}>
-      🚨 DEADLINE NEAR — Work banks at 00:00. Log off soon to save streak!
-    </div>
-  );
+
+const DirectionalCue = ({
+  pacePrediction, dailyGoal, totalDailyMins, breakLeft,
+  qualityScore, cutoffWarning, isActive, isBreakActive,
+  isZombieCall, onStartAudio, onRecovery, onConnectAnotherTab,
+}) => {
+  const idleTip = IDLE_TIPS[Math.floor(Date.now() / 12000) % IDLE_TIPS.length];
   const h = new Date().getHours();
   const goalsMet = totalDailyMins >= (dailyGoal || 1);
 
-  if (goalsMet && h >= 18) return (
-    <div style={{ color: '#10b981', fontWeight: 800, fontSize: '0.7rem' }}>
-      🌙 Daily goal reached and it's late. Rest up and win tomorrow? 💎
-    </div>
-  );
-  if (goalsMet) return (
-    <div style={{ color: '#10b981', fontWeight: 800, fontSize: '0.7rem' }}>✅ Bounty secured — anything extra is pure profit 💎</div>
-  );
-  if (isActive) return (
-    <div style={{ color: '#2dd4bf', fontWeight: 700, fontSize: '0.7rem', animation: 'encouragePulse 2s infinite' }}>
-      ⬆️ Climbing — ETA {pacePrediction?.label || '?'}
-    </div>
-  );
-  if (isBreakActive) return (
-    <div style={{ color: '#fb923c', fontWeight: 700, fontSize: '0.7rem' }}>
-      ☕ Break. Return soon to keep the momentum.
-    </div>
-  );
-  if (qualityScore?.goalUnreachable) return (
-    <div style={{ color: '#f97316', fontWeight: 700, fontSize: '0.7rem' }}>🎯 Adapt to {qualityScore.suggestedGoal}m — still winnable. {tip}</div>
-  );
-  if (breakLeft <= 0) return (
-    <div style={{ color: '#f59e0b', fontWeight: 700, fontSize: '0.7rem' }}>⚠️ Break budget spent. Every idle minute costs. {tip}</div>
-  );
-  
-  // SUPPORTIVE IDLE: Instead of "gap growing", we are "Standing By"
+  if (isActive) {
+    return (
+      <div style={{ color: '#2dd4bf', fontWeight: 700, fontSize: '0.7rem', animation: 'encouragePulse 2s infinite' }}>
+        ⬆️ Climbing — ETA {pacePrediction?.label || '?'}
+      </div>
+    );
+  }
+
+  if (isBreakActive) {
+    return (
+      <div style={{ color: '#fb923c', fontWeight: 700, fontSize: '0.7rem' }}>
+        ☕ Break. Return soon to keep the momentum.
+      </div>
+    );
+  }
+
+  const idleExtra = (() => {
+    if (cutoffWarning?.pulse) {
+      return { text: '🚨 DEADLINE NEAR — Work banks at 00:00. Log off soon to save streak!', color: '#ef4444', pulse: true };
+    }
+    if (goalsMet && h >= 18) return { text: '🌙 Daily goal reached and it\'s late. Rest up and win tomorrow? 💎', color: '#10b981' };
+    if (goalsMet) return { text: '✅ Bounty secured — anything extra is pure profit 💎', color: '#10b981' };
+    if (qualityScore?.goalUnreachable) return { text: `🎯 Adapt to ${qualityScore.suggestedGoal}m — still winnable.`, color: '#f97316' };
+    if (breakLeft <= 0) return { text: '⚠️ Break budget spent. Every idle minute costs.', color: '#f59e0b' };
+    return { text: null, color: '#9dffed' };
+  })();
+
+  const requiredIdleText =
+    'press the green button to start interpreting. double tap to connect to another browser tab (chrome preferred';
+
   return (
-    <div style={{ color: '#9dffed', fontWeight: 600, fontSize: '0.7rem' }}>
-      📡 Standing By — Ready for the next one. {tip}
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem' }}>
+      <div style={{ color: '#10b981', fontWeight: 900, fontSize: '0.7rem', lineHeight: 1.2 }}>
+        {requiredIdleText}
+      </div>
+
+      <ConnectInterpretButton
+        size="idle"
+        flash
+        onSingle={() => (isZombieCall ? onRecovery() : onStartAudio())}
+        onDouble={onConnectAnotherTab}
+        singleTitle={isZombieCall ? 'RE-ATTACH TO CALL' : 'CONNECT'}
+        doubleTitle="connect to another browser tab"
+      />
+
+      <div style={{ color: '#9dffed', fontWeight: 600, fontSize: '0.7rem', lineHeight: 1.2 }}>
+        Tip: {idleTip}
+      </div>
+
+      {idleExtra?.text && (
+        <div style={{
+          color: idleExtra.color,
+          fontWeight: 800,
+          fontSize: '0.7rem',
+          animation: idleExtra.pulse ? 'pulseWarning 1s infinite' : 'none',
+          lineHeight: 1.2,
+        }}>
+          {idleExtra.text}
+        </div>
+      )}
     </div>
   );
 };
@@ -257,7 +291,9 @@ const MomentumBar = ({ totalDailyMins, dailyGoal, shiftElapsedMins, isActive, mi
 export const GameScoreboard = ({ 
   liveDailyArs, dailyTargetArs, monthlyArs, monthlyTargetArs, stats, dailyGoal, totalDailyMins, totalOffCallMins, shiftElapsedMins,
   pacePrediction, qualityScore, cutoffWarning, breakLeft, breakLimit, nextGoalLabel, nextMilestone, daysInMonth, currentDay, remainingDays, isActive, isBreakActive, onSwitchToNumbers, milestoneTargets,
-  isEditingScoreboard, getCompensatedLogOff
+  isEditingScoreboard, getCompensatedLogOff,
+  isZombieCall,
+  onStartAudio, onRecovery, onConnectAnotherTab,
  }) => {
   // Drift counter: how many seconds since last call ended (affects UI urgency)
   const [idleSecs, setIdleSecs] = useState(0);
@@ -338,6 +374,10 @@ export const GameScoreboard = ({
           totalDailyMins={totalDailyMins} breakLeft={breakLeft} 
           qualityScore={qualityScore} cutoffWarning={cutoffWarning}
           isActive={isActive} isBreakActive={isBreakActive}
+          isZombieCall={isZombieCall}
+          onStartAudio={onStartAudio}
+          onRecovery={onRecovery}
+          onConnectAnotherTab={onConnectAnotherTab}
         />
       </div>
 
