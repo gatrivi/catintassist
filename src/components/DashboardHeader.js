@@ -156,6 +156,7 @@ export const DashboardHeader = ({
   const [scoreView, setScoreView] = useState('numbers'); // 'game' | 'numbers'
   const [silenceCount, setSilenceCount] = useState(0);
   const [hoveredTimelineEvent, setHoveredTimelineEvent] = useState(null);
+  const [hoveredMetricTooltip, setHoveredMetricTooltip] = useState(null); // {x,y,icon,heading,body,color}
   const [isZapping, setIsZapping] = useState(false);
   const [scoreboardRoot, setScoreboardRoot] = useState(null);
 
@@ -376,6 +377,94 @@ export const DashboardHeader = ({
     );
 
   const renderSessionArs = (size = 'sm', prefix = 'AR$') => renderLiveArs(sessionArsLive, size, prefix);
+
+  const metricTooltipData = React.useMemo(() => ({
+    1: {
+      icon: '🕒',
+      heading: 'MINS TODAY',
+      color: '#60a5fa',
+      body: 'Total minutes you have “banked” today so far (includes current call time). When this climbs toward your Daily Goal, your day quality and pacing stabilize.'
+    },
+    2: {
+      icon: '🧭',
+      heading: 'LEFT TODAY',
+      color: '#fca5a5',
+      body: 'How many minutes you still need to reach today’s goal. If this stays high late in the shift, switch pace: more productive calls, shorter idle gaps.'
+    },
+    3: {
+      icon: '🎯',
+      heading: 'TODAY GOAL',
+      color: '#34d399',
+      body: 'Your dynamic target for today’s minutes. It adapts to your shift timing and remaining workdays so you don’t grind blindly.'
+    },
+    4: {
+      icon: '💵',
+      heading: '$ TODAY',
+      color: '#34d399',
+      body: 'Estimated earnings you’ve made today in AR$ (live if you’re on a call). Use it to judge whether your pacing is paying off right now.'
+    },
+    5: {
+      icon: '🧾',
+      heading: '$ LEFT TODAY',
+      color: '#fcd34d',
+      body: 'Remaining AR$ needed to hit your daily money target. When this trends toward zero, you’re “done” even if your call still has time left.'
+    },
+    6: {
+      icon: '⚡',
+      heading: 'STAMINA RATIO',
+      color: '#c084fc',
+      body: 'On-call minutes divided by break (and downtime). Target is ~5.3x: it means you’re earning while keeping downtime under control.'
+    },
+    7: {
+      icon: '🗓️',
+      heading: '$ MONTH',
+      color: '#a855f7',
+      body: 'Your banked monthly earnings vs the big monthly target. This is the “long game” number—small daily wins compound.'
+    },
+    8: {
+      icon: '🧱',
+      heading: '$ LEFT MONTH',
+      color: '#fcd34d',
+      body: 'How much AR$ you still need to finish the month on target. Use it like a countdown: late-month rush is avoidable with small catch-up beats.'
+    },
+    9: {
+      icon: '🚪',
+      heading: 'OFF CALL',
+      color: '#fdba74',
+      body: 'Minutes you spent off-call today (avail + breaks). If this grows while you’re not actively earning, stamina ratio drops quickly.'
+    },
+    10: {
+      icon: '📊',
+      heading: 'MO AVG',
+      color: '#a855f7',
+      body: 'Average minutes per day so far this month. If the average is climbing, you’re likely ahead of your monthly pacing plan.'
+    },
+    11: {
+      icon: '🔇',
+      heading: 'SILENCE',
+      color: '#ef4444',
+      body: 'Time since the last audio activity (speech resets it). In-call, higher silence usually means the patient/user has gone quiet—pull them back gently.'
+    },
+    12: {
+      icon: '📞',
+      heading: 'CURR CALL',
+      color: '#10b981',
+      body: 'Current call duration and its live unbanked cash. It helps you separate “this call is productive” from “today is good overall.”'
+    }
+  }), []);
+
+  const showMetricTooltip = useCallback((e, metricKey) => {
+    const d = metricTooltipData[metricKey];
+    if (!d) return;
+    const rect = e.currentTarget.getBoundingClientRect();
+    setHoveredMetricTooltip({
+      x: rect.left + rect.width / 2,
+      y: rect.top,
+      ...d
+    });
+  }, [metricTooltipData]);
+
+  const hideMetricTooltip = useCallback(() => setHoveredMetricTooltip(null), []);
 
   useEffect(() => {
     if (Math.abs(displayBounty - currentBounty) > 1) {
@@ -679,41 +768,80 @@ export const DashboardHeader = ({
                 <div className="flip-back">
                   <div id="numeric-metric-grid" className="metric-grid metric-grid--scoreboard">
                     {/* 1. Mins worked today */}
-                    <div className={`metric-cell ${isEditingScoreboard ? 'grid-edit-mode' : ''}`} title="Minutes worked today (Click to toggle H:M)" style={{ position: 'relative', background: 'rgba(59,130,246,0.06)', cursor: 'pointer' }} onClick={() => setShowAsHours(!showAsHours)}>
+                    <div
+                      className={`metric-cell ${isEditingScoreboard ? 'grid-edit-mode' : ''}`}
+                      title="Minutes worked today (Click to toggle H:M)"
+                      style={{ position: 'relative', background: 'rgba(59,130,246,0.06)', cursor: 'pointer' }}
+                      onClick={() => setShowAsHours(!showAsHours)}
+                      onMouseEnter={(e) => showMetricTooltip(e, 1)}
+                      onMouseLeave={hideMetricTooltip}
+                    >
                       <HelpLabel text="1. MINS TODAY" />
                       <div className="metric-cell-val" style={{ color: '#60a5fa' }}><StatNumber value={formatValue(totalDailyMins)} size="lg" format={false} /></div>
                       <div className="metric-cell-label">MINS TODAY</div>
                     </div>
 
-                    <div className={`metric-cell ${isEditingScoreboard ? 'grid-edit-mode' : ''}`} title="Minutes left for daily goal (Click to toggle H:M)" style={{ position: 'relative', background: 'rgba(239,68,68,0.04)', cursor: 'pointer' }} onClick={() => setShowAsHours(!showAsHours)}>
+                    <div
+                      className={`metric-cell ${isEditingScoreboard ? 'grid-edit-mode' : ''}`}
+                      title="Minutes left for daily goal (Click to toggle H:M)"
+                      style={{ position: 'relative', background: 'rgba(239,68,68,0.04)', cursor: 'pointer' }}
+                      onClick={() => setShowAsHours(!showAsHours)}
+                      onMouseEnter={(e) => showMetricTooltip(e, 2)}
+                      onMouseLeave={hideMetricTooltip}
+                    >
                       <HelpLabel text="2. LEFT TODAY" />
                       <div className="metric-cell-val" style={{ color: '#fca5a5' }}><StatNumber value={formatValue(Math.max(0, dailyGoal - totalDailyMins))} size="lg" format={false} /></div>
                       <div className="metric-cell-label">LEFT TODAY</div>
                     </div>
 
                     {/* 3. Goal mins */}
-                    <div className={`metric-cell ${isEditingScoreboard ? 'grid-edit-mode' : ''}`} title="Target goal minutes for today (Click to toggle H:M)" style={{ position: 'relative', background: 'rgba(52,211,153,0.04)', cursor: 'pointer' }} onClick={() => setShowAsHours(!showAsHours)}>
+                    <div
+                      className={`metric-cell ${isEditingScoreboard ? 'grid-edit-mode' : ''}`}
+                      title="Target goal minutes for today (Click to toggle H:M)"
+                      style={{ position: 'relative', background: 'rgba(52,211,153,0.04)', cursor: 'pointer' }}
+                      onClick={() => setShowAsHours(!showAsHours)}
+                      onMouseEnter={(e) => showMetricTooltip(e, 3)}
+                      onMouseLeave={hideMetricTooltip}
+                    >
                       <HelpLabel text="3. TODAY GOAL" />
                       <div className="metric-cell-val"><StatNumber value={formatValue(dailyGoal)} size="lg" format={false} /></div>
                       <div className="metric-cell-label">TODAY GOAL</div>
                     </div>
 
                     {/* 4. Money today */}
-                    <div className={`metric-cell ${isEditingScoreboard ? 'grid-edit-mode' : ''}`} title="Money earned today" style={{ position: 'relative', background: 'rgba(16,185,129,0.06)' }}>
+                    <div
+                      className={`metric-cell ${isEditingScoreboard ? 'grid-edit-mode' : ''}`}
+                      title="Money earned today"
+                      style={{ position: 'relative', background: 'rgba(16,185,129,0.06)' }}
+                      onMouseEnter={(e) => showMetricTooltip(e, 4)}
+                      onMouseLeave={hideMetricTooltip}
+                    >
                       <HelpLabel text="4. $ TODAY" />
                       <div className="metric-cell-val" style={{ color: '#34d399' }}>{renderLiveArs(todayArsLive, 'lg', '$')}</div>
                       <div className="metric-cell-label">$ TODAY</div>
                     </div>
 
                     {/* 5. Money to be made today */}
-                    <div className={`metric-cell ${isEditingScoreboard ? 'grid-edit-mode' : ''}`} title="Money remaining for today's goal" style={{ position: 'relative', background: 'rgba(245,158,11,0.04)' }}>
+                    <div
+                      className={`metric-cell ${isEditingScoreboard ? 'grid-edit-mode' : ''}`}
+                      title="Money remaining for today's goal"
+                      style={{ position: 'relative', background: 'rgba(245,158,11,0.04)' }}
+                      onMouseEnter={(e) => showMetricTooltip(e, 5)}
+                      onMouseLeave={hideMetricTooltip}
+                    >
                       <HelpLabel text="5. $ LEFT TODAY" />
                       <div className="metric-cell-val" style={{ color: '#fcd34d' }}><StatNumber value={cashToTodayGoal} prefix="$" size="lg" /></div>
                       <div className="metric-cell-label">$ LEFT TODAY</div>
                     </div>
 
                     {/* 6. Stamina Ratio (On-Call vs Break) */}
-                    <div className={`metric-cell ${isEditingScoreboard ? 'grid-edit-mode' : ''}`} title="STAMINA RATIO: Your on-call minutes divided by break minutes. Target is 5.3x (8h on / 90m off)." style={{ position: 'relative', background: 'rgba(168,85,247,0.04)' }}>
+                    <div
+                      className={`metric-cell ${isEditingScoreboard ? 'grid-edit-mode' : ''}`}
+                      title="STAMINA RATIO: Your on-call minutes divided by break minutes. Target is 5.3x (8h on / 90m off)."
+                      style={{ position: 'relative', background: 'rgba(168,85,247,0.04)' }}
+                      onMouseEnter={(e) => showMetricTooltip(e, 6)}
+                      onMouseLeave={hideMetricTooltip}
+                    >
                       <HelpLabel text="6. STAMINA RATIO" />
                       <div className="metric-cell-val" style={{ color: (totalDailyMins / Math.max(0.1, liveBreakMins)) >= 5.3 ? '#c084fc' : '#9ca3af' }}>
                         {(totalDailyMins / Math.max(0.1, liveBreakMins)).toFixed(1)}x
@@ -722,35 +850,67 @@ export const DashboardHeader = ({
                     </div>
 
                     {/* 7. Money month */}
-                    <div className={`metric-cell ${isEditingScoreboard ? 'grid-edit-mode' : ''}`} title="Money earned this month" style={{ position: 'relative' }}>
+                    <div
+                      className={`metric-cell ${isEditingScoreboard ? 'grid-edit-mode' : ''}`}
+                      title="Money earned this month"
+                      style={{ position: 'relative' }}
+                      onMouseEnter={(e) => showMetricTooltip(e, 7)}
+                      onMouseLeave={hideMetricTooltip}
+                    >
                       <HelpLabel text="7. $ MONTH" />
                       <div className="metric-cell-val"><StatNumber value={monthlyArs} prefix="$" size="lg" /></div>
                       <div className="metric-cell-label">$ MONTH</div>
                     </div>
 
                     {/* 8. Money left month */}
-                    <div className={`metric-cell ${isEditingScoreboard ? 'grid-edit-mode' : ''}`} title="Money remaining for monthly goal" style={{ position: 'relative' }}>
+                    <div
+                      className={`metric-cell ${isEditingScoreboard ? 'grid-edit-mode' : ''}`}
+                      title="Money remaining for monthly goal"
+                      style={{ position: 'relative' }}
+                      onMouseEnter={(e) => showMetricTooltip(e, 8)}
+                      onMouseLeave={hideMetricTooltip}
+                    >
                       <HelpLabel text="8. $ LEFT MONTH" />
                       <div className="metric-cell-val"><StatNumber value={Math.max(0, monthlyTargetArs - monthlyArs)} prefix="$" size="lg" /></div>
                       <div className="metric-cell-label">$ LEFT MONTH</div>
                     </div>
 
                     {/* 9. Off-call total today */}
-                    <div className={`metric-cell ${isEditingScoreboard ? 'grid-edit-mode' : ''}`} title="Total time spent off-call today (Click to toggle H:M)" style={{ position: 'relative', background: 'rgba(251,146,60,0.06)', cursor: 'pointer' }} onClick={() => setShowAsHours(!showAsHours)}>
+                    <div
+                      className={`metric-cell ${isEditingScoreboard ? 'grid-edit-mode' : ''}`}
+                      title="Total time spent off-call today (Click to toggle H:M)"
+                      style={{ position: 'relative', background: 'rgba(251,146,60,0.06)', cursor: 'pointer' }}
+                      onClick={() => setShowAsHours(!showAsHours)}
+                      onMouseEnter={(e) => showMetricTooltip(e, 9)}
+                      onMouseLeave={hideMetricTooltip}
+                    >
                       <HelpLabel text="9. OFF CALL" />
                       <div className="metric-cell-val" style={{ color: '#fdba74' }}><StatNumber value={formatValue(totalOffCallMins)} size="lg" format={false} /></div>
                       <div className="metric-cell-label">OFF CALL</div>
                     </div>
 
                     {/* 10. Avg so far mo */}
-                    <div className={`metric-cell ${isEditingScoreboard ? 'grid-edit-mode' : ''}`} title="Average minutes per day so far (Click to toggle H:M)" style={{ position: 'relative', background: 'rgba(139,92,246,0.04)', cursor: 'pointer' }} onClick={() => setShowAsHours(!showAsHours)}>
+                    <div
+                      className={`metric-cell ${isEditingScoreboard ? 'grid-edit-mode' : ''}`}
+                      title="Average minutes per day so far (Click to toggle H:M)"
+                      style={{ position: 'relative', background: 'rgba(139,92,246,0.04)', cursor: 'pointer' }}
+                      onClick={() => setShowAsHours(!showAsHours)}
+                      onMouseEnter={(e) => showMetricTooltip(e, 10)}
+                      onMouseLeave={hideMetricTooltip}
+                    >
                       <HelpLabel text="10. MO AVG" />
                       <div className="metric-cell-val"><StatNumber value={formatValue(actualDailyAverage)} size="lg" format={false} /></div>
                       <div className="metric-cell-label">MO AVG</div>
                     </div>
 
                     {/* 11. Silence/Idle Timer */}
-                    <div className={`metric-cell ${isEditingScoreboard ? 'grid-edit-mode' : ''}`} title="Time since last audio activity (Reset by speech). In call, this tracks patient/user silence." style={{ position: 'relative', background: isActive ? 'rgba(239,68,68,0.06)' : 'rgba(255,255,255,0.04)' }}>
+                    <div
+                      className={`metric-cell ${isEditingScoreboard ? 'grid-edit-mode' : ''}`}
+                      title="Time since last audio activity (Reset by speech). In call, this tracks patient/user silence."
+                      style={{ position: 'relative', background: isActive ? 'rgba(239,68,68,0.06)' : 'rgba(255,255,255,0.04)' }}
+                      onMouseEnter={(e) => showMetricTooltip(e, 11)}
+                      onMouseLeave={hideMetricTooltip}
+                    >
                       <HelpLabel text="11. SILENCE" />
                       <div className="metric-watermark">{isActive ? '🔇' : '⏳'}</div>
                       <div className="metric-cell-val" style={{ color: silenceCount > 600 ? '#f87171' : 'white' }}>
@@ -760,7 +920,13 @@ export const DashboardHeader = ({
                     </div>
 
                     {/* 12. Current call min and cash */}
-                    <div className={`metric-cell ${isEditingScoreboard ? 'grid-edit-mode' : ''}`} title="Current call duration and unbanked cash" style={{ position: 'relative', background: isActive ? 'rgba(16,185,129,0.1)' : 'rgba(255,255,255,0.02)', border: isActive ? '1px solid rgba(16,185,129,0.3)' : 'none' }}>
+                    <div
+                      className={`metric-cell ${isEditingScoreboard ? 'grid-edit-mode' : ''}`}
+                      title="Current call duration and unbanked cash"
+                      style={{ position: 'relative', background: isActive ? 'rgba(16,185,129,0.1)' : 'rgba(255,255,255,0.02)', border: isActive ? '1px solid rgba(16,185,129,0.3)' : 'none' }}
+                      onMouseEnter={(e) => showMetricTooltip(e, 12)}
+                      onMouseLeave={hideMetricTooltip}
+                    >
                       <HelpLabel text="12. CURR CALL" />
                       <div className="metric-cell-val" style={{ display: 'flex', gap: '0.2rem', alignItems: 'center' }}>
                         <StatNumber value={formatTime(sessionSeconds)} size="md" format={false} />
@@ -1519,6 +1685,37 @@ ${isInDeficit ? `⚠️ DEFICIT: Behind pace by ${Math.round(monthlyDeficitMins)
           {...celebration}
           onDismiss={() => setCelebration(null)}
         />
+      )}
+
+      {/* Metric hover tooltip: long-form explanation (icon + color) */}
+      {hoveredMetricTooltip && (
+        <div
+          style={{
+            position: 'fixed',
+            left: hoveredMetricTooltip.x,
+            top: hoveredMetricTooltip.y,
+            transform: 'translate(-50%, calc(-100% - 10px))',
+            background: 'rgba(15, 23, 42, 0.96)',
+            border: `1px solid ${hoveredMetricTooltip.color}`,
+            boxShadow: '0 10px 25px rgba(0,0,0,0.55)',
+            borderRadius: '10px',
+            padding: '0.45rem 0.6rem',
+            zIndex: 1200,
+            pointerEvents: 'none',
+            maxWidth: '280px',
+            minWidth: '220px'
+          }}
+        >
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', marginBottom: '0.2rem' }}>
+            <span style={{ fontSize: '0.95rem', lineHeight: 1, color: hoveredMetricTooltip.color }}>{hoveredMetricTooltip.icon}</span>
+            <span style={{ fontSize: '0.62rem', fontWeight: 900, color: '#fff', textTransform: 'uppercase', letterSpacing: '0.06em' }}>
+              {hoveredMetricTooltip.heading}
+            </span>
+          </div>
+          <div style={{ fontSize: '0.62rem', lineHeight: 1.25, color: 'rgba(255,255,255,0.82)' }}>
+            {hoveredMetricTooltip.body}
+          </div>
+        </div>
       )}
     </header>
 
