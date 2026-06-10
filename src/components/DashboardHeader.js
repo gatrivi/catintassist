@@ -551,24 +551,34 @@ export const DashboardHeader = ({
   // Sticky connect/stop bar — always visible while scrolling the header
   const SessionControlsSticky = () => (
     <div className="session-controls-sticky">
+      {/* Connect must remain pinned to the very top of the viewport. */}
+      {!isActive && (
+        <button
+          id="header-connect-btn"
+          data-guide="connect"
+          className="btn-emoji"
+          onClick={isZombieCall ? onRecovery : onStartAudio}
+          style={{
+            position: 'fixed',
+            top: '6px',
+            left: '6px',
+            zIndex: 10001,
+            background: isZombieCall ? '#f59e0b' : '#10b981',
+            color: '#fff',
+            width: '30px',
+            height: '30px',
+            animation: (!isActive && !isBreakActive && (Date.now() - (lastDataTime || 0) < 5000)) ? 'pulseReminder 0.8s infinite' : 'none',
+          }}
+          title={isZombieCall ? 'RE-ATTACH TO CALL' : 'CONNECT'}
+        >
+          {isZombieCall ? '🟡' : '🟢'}
+        </button>
+      )}
+
       <div style={{ display: 'flex', gap: '3px', alignItems: 'center', flexShrink: 0 }}>
         {!isActive ? (
-          <button
-            id="header-connect-btn"
-            data-guide="connect"
-            className="btn-emoji"
-            onClick={isZombieCall ? onRecovery : onStartAudio}
-            style={{
-              background: isZombieCall ? '#f59e0b' : '#10b981',
-              color: '#fff',
-              width: '30px',
-              height: '30px',
-              animation: (!isActive && !isBreakActive && (Date.now() - (lastDataTime || 0) < 5000)) ? 'pulseReminder 0.8s infinite' : 'none',
-            }}
-            title={isZombieCall ? 'RE-ATTACH TO CALL' : 'CONNECT'}
-          >
-            {isZombieCall ? '🟡' : '🟢'}
-          </button>
+          // Spacer to preserve layout when connect button is moved to the fixed viewport.
+          <div style={{ width: 30, height: 30 }} />
         ) : (
           <>
             <button id="header-stop-btn" data-guide="stop" className="btn-emoji" onClick={handleStop} style={{ background: '#ef4444', color: '#fff', width: '30px', height: '30px' }} title="STOP / DISCONNECT">🛑</button>
