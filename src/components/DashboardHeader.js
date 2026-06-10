@@ -156,7 +156,7 @@ export const DashboardHeader = ({
   const [scoreView, setScoreView] = useState('numbers'); // 'game' | 'numbers'
   const [silenceCount, setSilenceCount] = useState(0);
   const [hoveredTimelineEvent, setHoveredTimelineEvent] = useState(null);
-  const [hoveredMetricTooltip, setHoveredMetricTooltip] = useState(null); // {x,y,icon,heading,body,color}
+  const [hoveredMetricTooltip, setHoveredMetricTooltip] = useState(null); // {x,y,placement,icon,heading,body,color}
   const [isZapping, setIsZapping] = useState(false);
   const [scoreboardRoot, setScoreboardRoot] = useState(null);
 
@@ -457,14 +457,30 @@ export const DashboardHeader = ({
     const d = metricTooltipData[metricKey];
     if (!d) return;
     const rect = e.currentTarget.getBoundingClientRect();
+    const placement = rect.top < 160 ? 'below' : 'above';
+    // If the card is too close to the top, show it under the cell instead of above it.
+    const y = placement === 'above' ? rect.top : rect.bottom;
+    const x = rect.left + rect.width / 2;
+    // Debug: confirms hover events + placement coords.
+    if (process.env.NODE_ENV !== 'production') {
+      // eslint-disable-next-line no-console
+      console.log('[MetricTooltip] enter', { metricKey, placement, x, y });
+    }
     setHoveredMetricTooltip({
-      x: rect.left + rect.width / 2,
-      y: rect.top,
+      x,
+      y,
+      placement,
       ...d
     });
   }, [metricTooltipData]);
 
-  const hideMetricTooltip = useCallback(() => setHoveredMetricTooltip(null), []);
+  const hideMetricTooltip = useCallback(() => {
+    if (process.env.NODE_ENV !== 'production') {
+      // eslint-disable-next-line no-console
+      console.log('[MetricTooltip] leave');
+    }
+    setHoveredMetricTooltip(null);
+  }, []);
 
   useEffect(() => {
     if (Math.abs(displayBounty - currentBounty) > 1) {
@@ -641,7 +657,10 @@ export const DashboardHeader = ({
 
   // Sticky connect/stop bar — always visible while scrolling the header
   const SessionControlsSticky = () => (
-    <div className="session-controls-sticky">
+    <div
+      className="session-controls-sticky"
+      style={!isActive ? { position: 'fixed', top: 0, left: 0, right: 0, zIndex: 10050, margin: 0 } : undefined}
+    >
       <div style={{ display: 'flex', gap: '3px', alignItems: 'center', flexShrink: 0 }}>
         {!isActive ? (
           <ConnectInterpretButton
@@ -1686,38 +1705,56 @@ ${isInDeficit ? `⚠️ DEFICIT: Behind pace by ${Math.round(monthlyDeficitMins)
           onDismiss={() => setCelebration(null)}
         />
       )}
+    </header>
 
-      {/* Metric hover tooltip: long-form explanation (icon + color) */}
-      {hoveredMetricTooltip && (
+    {/* Metric hover tooltip: portal to body avoids clipping/transform stacking issues */}
+    {hoveredMetricTooltip && createPortal(
+      <div
+        style={{
+          position: 'fixed',
+          left: hoveredMetricTooltip.x,
+          top: hoveredMetricTooltip.y,
+          transform: hoveredMetricTooltip.placement === 'above'
+            ? 'translate(-50%, calc(-100% - 10px))'
+            : 'translate(-50%, 10px)',
+          background: 'rgba(2, 6, 23, 0.70)',
+          backdropFilter: 'blur(12px)',
+          WebkitBackdropFilter: 'blur(12px)',
+          border: `1px solid rgba(255,255,255,0.14)`,
+          boxShadow: '0 8px 24px rgba(0,0,0,0.55), 0 0 0 1px rgba(255,255,255,0.06) inset',
+          borderRadius: '10px',
+          padding: '0.45rem 0.6rem',
+          zIndex: 1200,
+          pointerEvents: 'none',
+          maxWidth: '280px',
+          minWidth: '220px'
+        }}
+      >
         <div
           style={{
-            position: 'fixed',
-            left: hoveredMetricTooltip.x,
-            top: hoveredMetricTooltip.y,
-            transform: 'translate(-50%, calc(-100% - 10px))',
-            background: 'rgba(15, 23, 42, 0.96)',
-            border: `1px solid ${hoveredMetricTooltip.color}`,
-            boxShadow: '0 10px 25px rgba(0,0,0,0.55)',
-            borderRadius: '10px',
-            padding: '0.45rem 0.6rem',
-            zIndex: 1200,
-            pointerEvents: 'none',
-            maxWidth: '280px',
-            minWidth: '220px'
+            position: 'absolute',
+            top: -1,
+            left: -1,
+            right: -1,
+            height: '3px',
+            borderTopLeftRadius: '10px',
+            borderTopRightRadius: '10px',
+            background: hoveredMetricTooltip.color,
+            opacity: 0.95
           }}
-        >
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', marginBottom: '0.2rem' }}>
-            <span style={{ fontSize: '0.95rem', lineHeight: 1, color: hoveredMetricTooltip.color }}>{hoveredMetricTooltip.icon}</span>
-            <span style={{ fontSize: '0.62rem', fontWeight: 900, color: '#fff', textTransform: 'uppercase', letterSpacing: '0.06em' }}>
-              {hoveredMetricTooltip.heading}
-            </span>
-          </div>
-          <div style={{ fontSize: '0.62rem', lineHeight: 1.25, color: 'rgba(255,255,255,0.82)' }}>
-            {hoveredMetricTooltip.body}
-          </div>
+        />
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', marginBottom: '0.2rem' }}>
+          <span style={{ fontSize: '0.95rem', lineHeight: 1, color: hoveredMetricTooltip.color }}>{hoveredMetricTooltip.icon}</span>
+          <span style={{ fontSize: '0.62rem', fontWeight: 900, color: '#fff', textTransform: 'uppercase', letterSpacing: '0.06em' }}>
+            {hoveredMetricTooltip.heading}
+          </span>
         </div>
-      )}
-    </header>
+        <div style={{ fontSize: '0.62rem', lineHeight: 1.25, color: 'rgba(255,255,255,0.82)' }}>
+          {hoveredMetricTooltip.body}
+        </div>
+      </div>,
+      document.body
+    )}
 
     {scoreboardFill && scoreboardRoot && createPortal(renderWorkspaceBody(), scoreboardRoot)}
     </>
