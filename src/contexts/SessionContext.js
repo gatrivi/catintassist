@@ -284,6 +284,10 @@ export const SessionProvider = ({ children }) => {
   });
   const [isHeatmapOpen, setIsHeatmapOpen] = useState(false);
   const [isScoreboardHelpVisible, setIsScoreboardHelpVisible] = useState(false);
+  const [hideScoreboardLabels, setHideScoreboardLabels] = useState(() => {
+    const saved = localStorage.getItem('catint_hide_sb_labels');
+    return saved === 'true';
+  });
   const [isCallDetectionEnabled, setIsCallDetectionEnabled] = useState(() => {
     const saved = localStorage.getItem('catint_call_detect');
     return saved === null ? true : saved === 'true';
@@ -297,6 +301,7 @@ export const SessionProvider = ({ children }) => {
   useEffect(() => { localStorage.setItem('catint_toolbar_visible', JSON.stringify(isToolbarVisible)); }, [isToolbarVisible]);
   useEffect(() => { localStorage.setItem('catint_call_detect', JSON.stringify(isCallDetectionEnabled)); }, [isCallDetectionEnabled]);
   useEffect(() => { localStorage.setItem('catint_call_focus', JSON.stringify(callFocusMode)); }, [callFocusMode]);
+  useEffect(() => { localStorage.setItem('catint_hide_sb_labels', String(hideScoreboardLabels)); }, [hideScoreboardLabels]);
 
   // Post-Call Summary: extract key data when a call ends
   const [lastCallSummary, setLastCallSummary] = useState(null);
@@ -717,6 +722,8 @@ export const SessionProvider = ({ children }) => {
     setIsHeatmapOpen,
     isScoreboardHelpVisible,
     setIsScoreboardHelpVisible,
+    hideScoreboardLabels,
+    setHideScoreboardLabels,
     isCallDetectionEnabled,
     setIsCallDetectionEnabled,
     callFocusMode,
