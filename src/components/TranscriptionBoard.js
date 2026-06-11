@@ -70,11 +70,11 @@ const InteractiveText = ({ text, scramble = true, applyNumberWords = false, lang
           title={`Click to copy number: ${p}`}
           style={{ cursor: 'copy', backgroundColor: 'rgba(252, 211, 77, 0.1)', color: '#fcd34d', padding: '0 2px', borderRadius: '2px', fontWeight: 600, display: 'inline' }}
         >
-          {scramble ? <ScrambleText value={p} duration={300} /> : p}
+          {scramble ? <ScrambleText value={p} /> : p}
         </span>
       );
     }
-    return scramble ? <ScrambleText key={partKey} value={p} duration={300} /> : <span key={partKey}>{p}</span>;
+    return scramble ? <ScrambleText key={partKey} value={p} /> : <span key={partKey}>{p}</span>;
   };
 
   if (spellingLayout && processedText.includes('\n')) {
@@ -82,7 +82,7 @@ const InteractiveText = ({ text, scramble = true, applyNumberWords = false, lang
       <span className="bubble-spelling-lines" style={{ whiteSpace: 'pre-line', lineHeight: 1.35 }}>
         {processedText.split('\n').map((line, li) => (
           <span key={li} style={{ display: 'block', fontFamily: 'var(--font-mono)', fontWeight: 700 }}>
-            {scramble ? <ScrambleText value={line} duration={300} /> : line}
+            {scramble ? <ScrambleText value={line} /> : line}
           </span>
         ))}
       </span>
@@ -500,19 +500,20 @@ export const TranscriptionBoard = ({ captions, onClearAll, onReconnect, lastData
           const isPinned = pinnedIds.includes(cap.id);
           if (isPinned) return null;
           const isSplitContinuation = isSameAsPrevious && wordCount < 50;
-          const isLongBubble = wordCount > 50 && cap.isFinal !== false;
+          const isLive = cap.isFinal === false;
+          const isLongBubble = wordCount > 50 && !isLive;
           const isExpanded = expandedIds.has(cap.id);
           
           return (
-            <div key={cap.id || i} className="transcript-bubble" style={{
-              opacity: cap.isFinal === false ? 0.6 : 1,
+            <div key={cap.id || i} className={`transcript-bubble${isLive ? ' is-live' : ''}`} style={{
+              opacity: isLive ? 0.6 : 1,
               marginTop: isSplitContinuation ? '0rem' : '0.25rem',
               border: '1px solid transparent',
-              background: getBubbleStyle(cap.text, cap.isFinal === false, cap.lang).backgroundColor,
-              ...getBubbleStyle(cap.text, cap.isFinal === false, cap.lang)
+              background: getBubbleStyle(cap.text, isLive, cap.lang).backgroundColor,
+              ...getBubbleStyle(cap.text, isLive, cap.lang)
             }}>
               
-              <div style={{ maxHeight: isLongBubble && !isExpanded ? '5.5rem' : 'none', overflow: 'hidden', transition: 'max-height 0.3s ease' }}>
+              <div style={{ maxHeight: isLongBubble && !isExpanded ? '5.5rem' : 'none', overflow: isLongBubble && !isExpanded ? 'hidden' : 'visible', transition: 'max-height 0.3s ease' }}>
                 <TranslatedBubble 
                   id={cap.id} text={cap.text} lang={cap.lang} playTTS={playTTS} stopTTS={stopTTS} playingUrl={playingUrl} prefetchTTS={prefetchTTS} 
                   reverse={cap.lang === 'es'} ttsMode={ttsMode} turnWordCount={turnWordCount} showTurnWordCount={showTurnWordCount} shouldPrefetch={i >= captions.length - 3} 

@@ -55,6 +55,8 @@ const Dashboard = () => {
     connectionState,
     connectionMessage,
     lastDataTime,
+    micTestMode,
+    setMicTestMode,
   } = useDeepgram();
   const {
     isNotesOpen,
@@ -290,7 +292,7 @@ const Dashboard = () => {
         }}
       >
         <CloudSyncIndicator />
-        v4.47.5 (Full Stack)
+        v4.48.1 (Full Stack)
       </div>
 
       <div
@@ -331,6 +333,8 @@ const Dashboard = () => {
         connectionState={connectionState}
         connectionMessage={connectionMessage}
         lastDataTime={lastDataTime}
+        micTestMode={micTestMode}
+        setMicTestMode={setMicTestMode}
         offCallWorkspace={offCallWorkspace}
         onCycleWorkspace={cycleWorkspaceView}
         showStudioHint={showStudioHint}

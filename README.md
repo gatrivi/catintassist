@@ -66,7 +66,7 @@ CatIntAssist utilizes a "glass-panel" aesthetic with vibrant accents and micro-a
 1. Clone the repository.
 2. Install dependencies: `npm install`
 3. Configure your API keys in `.env` (Deepgram, etc.)
-4. Start the engine: `npm run dev`
+4. Start the engine: `npm start`
 
 ---
 *Created with ❤️ by Antigravity for the Modern Interpreter.*

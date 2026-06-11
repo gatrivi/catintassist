@@ -14,6 +14,7 @@ import { GameScoreboard } from './GameScoreboard';
 import { AppGuideButton } from './AppGuide';
 import { WorkspaceViewSwitcher } from './WorkspaceViewSwitcher';
 import { ConnectInterpretButton } from './ConnectInterpretButton';
+import { SlotMicroValue } from './SlotMicroValue';
 const CelebrationParticles = ({ type, label, coins, onDismiss }) => {
   const [isClosing, setIsClosing] = useState(false);
   const emojis = ['🪙', '🪙', '💸', '💵', '💰', '💎'];
@@ -164,6 +165,8 @@ const StateIndicators = ({ state, breakMinutes, isZombie, silenceCount }) => {
 export const DashboardHeader = ({
   onStartAudio, onStopAudio, onReconnectStream, sttLanguage, onToggleLanguage, onRecovery,
   connectionState, connectionMessage, lastDataTime,
+  micTestMode = false,
+  setMicTestMode,
   offCallWorkspace = null,
   onCycleWorkspace,
   showStudioHint = false,
@@ -707,6 +710,26 @@ export const DashboardHeader = ({
       style={undefined}
     >
       <div style={{ display: 'flex', gap: '3px', alignItems: 'center', flexShrink: 0 }}>
+        {!isActive && (
+          <button
+            id="header-mic-test-btn"
+            type="button"
+            className="btn-icon tiny-btn"
+            onClick={() => setMicTestMode?.(!micTestMode)}
+            style={{
+              width: '26px',
+              height: '26px',
+              fontSize: '0.7rem',
+              background: micTestMode ? 'rgba(245, 158, 11, 0.25)' : 'rgba(255,255,255,0.06)',
+              border: micTestMode ? '1px solid rgba(245, 158, 11, 0.55)' : '1px solid rgba(255,255,255,0.1)',
+              boxShadow: micTestMode ? '0 0 8px rgba(245, 158, 11, 0.35)' : 'none',
+            }}
+            title={micTestMode ? 'Mic Test ON — Connect uses your microphone (no tab picker)' : 'Mic Test OFF — Connect captures interpreter tab audio'}
+            aria-pressed={micTestMode}
+          >
+            🎤
+          </button>
+        )}
         {!isActive ? (
           <ConnectInterpretButton
             onSingle={() => (isZombieCall ? onRecovery() : onStartAudio())}
@@ -714,8 +737,8 @@ export const DashboardHeader = ({
             flash={!isBreakActive && connectionState !== 'connected'}
             disabled={false}
             size="top"
-            singleTitle={isZombieCall ? 'RE-ATTACH TO CALL' : 'CONNECT'}
-            doubleTitle="connect to another browser tab"
+            singleTitle={isZombieCall ? 'RE-ATTACH TO CALL' : (micTestMode ? 'CONNECT (MIC TEST)' : 'CONNECT')}
+            doubleTitle={micTestMode ? 're-request microphone' : 'connect to another browser tab'}
           />
         ) : (
           <>
@@ -743,23 +766,28 @@ export const DashboardHeader = ({
       </div>
 
       {isActive && (
-        <div className="call-micro-bar-center" style={{ flex: 1, minWidth: 0 }}>
+        <div className="call-micro-bar-center">
           <span
-            className="call-micro-bar-hold"
+            className="call-micro-bar-slot call-micro-bar-hold"
             title="Non-doctor hold time (resets on English speech)"
-            style={{
-              minWidth: '5.6ch',
-              visibility: silenceCount > 30 ? 'visible' : 'hidden',
-              display: 'inline-flex',
-            }}
+            style={{ visibility: silenceCount > 30 ? 'visible' : 'hidden' }}
           >
             {formatTime(Math.max(0, Math.floor((Date.now() - lastEnglishActivityTime) / 1000)))}
           </span>
-          <span className="call-micro-bar-timer">{formatTime(sessionSeconds)}</span>
-          <span className="call-micro-bar-earnings">{renderSessionArs('xs')}</span>
-          {minutesSinceLastBreak > 90 && (
-            <span className="call-micro-bar-nudge" title="Working 90+ minutes without a break">🍕 {Math.floor(minutesSinceLastBreak)}m</span>
-          )}
+          <span className="call-micro-bar-slot call-micro-bar-timer">
+            <SlotMicroValue text={formatTime(sessionSeconds)} />
+          </span>
+          <span className="call-micro-bar-slot call-micro-bar-earnings">
+            <SlotMicroValue text={`AR$${sessionArsLive}`} />
+          </span>
+          <span
+            className="call-micro-bar-slot call-micro-bar-nudge"
+            title="Working 90+ minutes without a break"
+            style={{ visibility: minutesSinceLastBreak > 90 ? 'visible' : 'hidden' }}
+          >
+            🍕 {Math.floor(minutesSinceLastBreak)}m
+          </span>
+          <span className="call-micro-bar-slot call-micro-bar-reserved" aria-hidden="true" />
         </div>
       )}
 

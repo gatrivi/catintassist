@@ -56,6 +56,34 @@ const peelCommaChunks = (text, template, bubbleIdCounterRef, turnWordsBase) => {
   return { sealed, remainder: '' };
 };
 
+const MIC_TEST_KEY = 'catint_mic_test_mode_v1';
+const MIC_DEVICE_KEY = 'CATINTASSIST_MIC_ID';
+
+const readMicTestMode = () => {
+  try {
+    return localStorage.getItem(MIC_TEST_KEY) === '1';
+  } catch {
+    return false;
+  }
+};
+
+/** Tab capture vs physical mic — mic mode skips getDisplayMedia picker. */
+const acquireAudioStream = async (useMic) => {
+  if (useMic) {
+    const micId = localStorage.getItem(MIC_DEVICE_KEY);
+    const audio = micId
+      ? {
+          deviceId: { exact: micId },
+          echoCancellation: true,
+          noiseSuppression: true,
+          autoGainControl: true,
+        }
+      : true;
+    return navigator.mediaDevices.getUserMedia({ audio });
+  }
+  return navigator.mediaDevices.getDisplayMedia({ video: true, audio: true });
+};
+
 
 export const useDeepgram = () => {
   const {
@@ -71,9 +99,12 @@ export const useDeepgram = () => {
   const [connectionState, setConnectionState] = useState('disconnected');
   const [connectionMessage, setConnectionMessage] = useState('Disconnected');
   const [sttLanguage, setSttLanguage] = useState('auto');
-  const [lastDataTime, setLastDataTime] = useState(0); 
+  const [lastDataTime, setLastDataTime] = useState(0);
+  const [micTestMode, setMicTestModeState] = useState(readMicTestMode);
   
   const langModeRef = useRef('auto');
+  const micTestModeRef = useRef(readMicTestMode());
+  const streamSourceRef = useRef(null); // 'mic' | 'tab'
   const socketRefEn = useRef(null);
   const socketRefEs = useRef(null);
   const mediaRecorderRef = useRef(null);
@@ -110,7 +141,21 @@ export const useDeepgram = () => {
       });
     } catch (_) {}
     streamRef.current = null;
+    streamSourceRef.current = null;
   }, []);
+
+  const setMicTestMode = useCallback((enabled) => {
+    const on = !!enabled;
+    micTestModeRef.current = on;
+    setMicTestModeState(on);
+    try {
+      localStorage.setItem(MIC_TEST_KEY, on ? '1' : '0');
+    } catch (_) {}
+    // Drop cached stream if source type would change on next connect.
+    if (streamRef.current && streamSourceRef.current !== (on ? 'mic' : 'tab')) {
+      stopStreamTracks();
+    }
+  }, [stopStreamTracks]);
 
   const startDeepgram = useCallback((stream) => {
     const API_KEY = localStorage.getItem('DEEPGRAM_API_KEY') || process.env.REACT_APP_DEEPGRAM_API_KEY;
@@ -367,74 +412,91 @@ export const useDeepgram = () => {
     clearCaptions();
   }, [closeConnections, clearCaptions]);
 
+  const stopRecordingRef = useRef(stopRecording);
+  stopRecordingRef.current = stopRecording;
+
+  const bindStreamLifecycle = useCallback((stream, source) => {
+    streamSourceRef.current = source;
+    const onStreamEnded = () => {
+      streamRef.current = null;
+      streamSourceRef.current = null;
+      stopRecordingRef.current();
+    };
+    if (source === 'tab') {
+      const vt = stream.getVideoTracks()[0];
+      if (vt) vt.onended = onStreamEnded;
+      return;
+    }
+    stream.getAudioTracks().forEach((track) => {
+      track.onended = onStreamEnded;
+    });
+  }, []);
+
+  const beginStream = useCallback((stream, source) => {
+    if (stream.getAudioTracks().length === 0) {
+      setConnectionState('error');
+      setConnectionMessage('No Audio Track');
+      stream.getTracks().forEach((t) => { try { t.stop(); } catch (_) {} });
+      return false;
+    }
+    streamRef.current = stream;
+    isActiveRef.current = true;
+    bindStreamLifecycle(stream, source);
+    startDeepgram(stream);
+    return true;
+  }, [bindStreamLifecycle, startDeepgram]);
+
   const startRecording = useCallback(async () => {
     try {
       setConnectionState('connecting');
+      const useMic = micTestModeRef.current;
+      const source = useMic ? 'mic' : 'tab';
 
-      // REUSE EXISTING STREAM IF AVAILABLE AND ACTIVE
-      if (streamRef.current && streamRef.current.active && streamRef.current.getAudioTracks().length > 0) {
-        setConnectionMessage('Reusing Tab Audio...');
+      // REUSE EXISTING STREAM IF AVAILABLE AND ACTIVE (same source type)
+      if (
+        streamRef.current &&
+        streamRef.current.active &&
+        streamRef.current.getAudioTracks().length > 0 &&
+        streamSourceRef.current === source
+      ) {
+        setConnectionMessage(useMic ? 'Reusing Microphone...' : 'Reusing Tab Audio...');
         isActiveRef.current = true;
         startDeepgram(streamRef.current);
         return true;
       }
 
-      setConnectionMessage('Requesting Tab Audio...');
-      const stream = await navigator.mediaDevices.getDisplayMedia({ video: true, audio: true });
-      if (stream.getAudioTracks().length === 0) {
-        setConnectionState('error');
-        setConnectionMessage('No Audio Track');
-        return false;
-      }
-      streamRef.current = stream;
-      isActiveRef.current = true;
-      startDeepgram(stream);
-      stream.getVideoTracks()[0].onended = () => {
-         streamRef.current = null;
-         stopRecording();
-      };
-      return true;
+      setConnectionMessage(useMic ? 'Requesting Microphone...' : 'Requesting Tab Audio...');
+      const stream = await acquireAudioStream(useMic);
+      return beginStream(stream, source);
     } catch (err) {
       console.error(err);
+      setConnectionState('error');
+      setConnectionMessage(micTestModeRef.current ? 'Mic Access Denied' : 'Tab Share Cancelled');
       return false;
     }
-  }, [startDeepgram, stopRecording]);
+  }, [beginStream, startDeepgram]);
 
-  // Force the browser to re-open the picker so the user can select another
-  // browser tab/audio source (used by double-tap connect).
+  // Force re-open picker (tab) or re-request mic (double-tap connect).
   const startRecordingFresh = useCallback(async () => {
     try {
+      const useMic = micTestModeRef.current;
+      const source = useMic ? 'mic' : 'tab';
       setConnectionState('connecting');
-      setConnectionMessage('Requesting Tab Audio (fresh)...');
+      setConnectionMessage(useMic ? 'Requesting Microphone (fresh)...' : 'Requesting Tab Audio (fresh)...');
 
-      // Close sockets/recorder and stop old tracks so we don't silently reuse
-      // an old active streamRef from a previous call.
       closeConnections();
       stopStreamTracks();
 
-      setConnectionState('connecting');
-      setConnectionMessage('Requesting Tab Audio...');
-
-      const stream = await navigator.mediaDevices.getDisplayMedia({ video: true, audio: true });
-      if (stream.getAudioTracks().length === 0) {
-        setConnectionState('error');
-        setConnectionMessage('No Audio Track');
-        return false;
-      }
-
-      streamRef.current = stream;
-      isActiveRef.current = true;
-      startDeepgram(stream);
-      stream.getVideoTracks()[0].onended = () => {
-        streamRef.current = null;
-        stopRecording();
-      };
-      return true;
+      setConnectionMessage(useMic ? 'Requesting Microphone...' : 'Requesting Tab Audio...');
+      const stream = await acquireAudioStream(useMic);
+      return beginStream(stream, source);
     } catch (err) {
       console.error(err);
+      setConnectionState('error');
+      setConnectionMessage(micTestModeRef.current ? 'Mic Access Denied' : 'Tab Share Cancelled');
       return false;
     }
-  }, [closeConnections, startDeepgram, stopRecording, stopStreamTracks]);
+  }, [beginStream, closeConnections, stopStreamTracks]);
 
   const reconnectStream = useCallback(() => {
     setConnectionState('connecting');
@@ -464,5 +526,19 @@ export const useDeepgram = () => {
     });
   }, []);
 
-  return { startRecording, startRecordingFresh, stopRecording, reconnectStream, captions, clearCaptions, sttLanguage, toggleLanguage, connectionState, connectionMessage, lastDataTime };
+  return {
+    startRecording,
+    startRecordingFresh,
+    stopRecording,
+    reconnectStream,
+    captions,
+    clearCaptions,
+    sttLanguage,
+    toggleLanguage,
+    connectionState,
+    connectionMessage,
+    lastDataTime,
+    micTestMode,
+    setMicTestMode,
+  };
 };

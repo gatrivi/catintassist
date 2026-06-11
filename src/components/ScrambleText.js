@@ -1,97 +1,106 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
+
+/** Longest shared prefix between two strings. */
+const commonPrefixLen = (a, b) => {
+  const n = Math.min(a.length, b.length);
+  let i = 0;
+  while (i < n && a[i] === b[i]) i += 1;
+  return i;
+};
 
 /**
- * ScrambleText Component
- * Smooth "terminal decode" effect. Only animates new text (suffix) on append,
- * preventing the jarring full-rescramble when words are added mid-stream.
- * Uses a soft number-only charset for calmer visuals.
+ * Typewriter text — reveals/shrinks one char at a time, no in-flow placeholders.
+ * Layout-safe: only settled prefix occupies space.
  */
-export const ScrambleText = ({ value, duration = 350, className = "" }) => {
+export const ScrambleText = ({
+  value = '',
+  charMs = 25,
+  shrinkMs = 18,
+  className = '',
+}) => {
   const spanRef = useRef(null);
-  const targetValueRef = useRef("");
-  const stableTextRef = useRef(""); // Text that has fully settled
-  const frameRef = useRef(null);
-  const startTimeRef = useRef(null);
-  const isAnimatingRef = useRef(false);
-  // Softer charset: numbers only (way less jarring than uppercase letters)
-  const chars = '0123456789';
+  const displayedRef = useRef('');
+  const targetRef = useRef('');
+  const timerRef = useRef(null);
+  const [displayed, setDisplayed] = useState(value || '');
 
   useEffect(() => {
-    targetValueRef.current = value || "";
+    const target = value || '';
+    targetRef.current = target;
 
-    if (value === stableTextRef.current) return;
-    if (!value) {
-      stableTextRef.current = "";
-      if (spanRef.current) spanRef.current.innerText = "";
-      return;
+    if (timerRef.current) clearTimeout(timerRef.current);
+
+    if (!target) {
+      displayedRef.current = '';
+      setDisplayed('');
+      if (spanRef.current) spanRef.current.textContent = '';
+      return undefined;
     }
 
-    // If already animating, the loop will pick up the new targetValueRef
-    // and resolve to it smoothly.
-    if (isAnimatingRef.current) return;
+    const tick = () => {
+      const t = targetRef.current;
+      const cur = displayedRef.current;
 
-    isAnimatingRef.current = true;
-    startTimeRef.current = performance.now();
+      if (cur === t) return;
 
-    // Append-only updates are faster and calmer
-    const stable = stableTextRef.current;
-    const isAppend = stable && value.startsWith(stable) && stable.length > 0;
-    const animDuration = isAppend ? 150 : duration;
+      const prefixLen = commonPrefixLen(cur, t);
+      const shared = t.slice(0, prefixLen);
 
-    const update = (now) => {
-      const elapsed = now - startTimeRef.current;
-      const progress = Math.min(elapsed / animDuration, 1);
-      const target = targetValueRef.current;
-
-      // Recompute prefix dynamically in case value changed mid-animation
-      const settled = stableTextRef.current;
-      let prefix = "";
-      let animateText = target;
-      if (settled && target.startsWith(settled) && settled.length > 0) {
-        prefix = settled;
-        animateText = target.slice(settled.length);
-      }
-
-      if (progress < 1) {
-        const resolvedCount = Math.floor(animateText.length * progress);
-        let newDisplay = prefix + animateText.slice(0, resolvedCount);
-
-        for (let i = resolvedCount; i < animateText.length; i++) {
-          if (animateText[i] === ' ') {
-            newDisplay += ' ';
-          } else {
-            newDisplay += chars[Math.floor(Math.random() * chars.length)];
-          }
+      if (cur.length > t.length || (cur.length === t.length && cur !== t)) {
+        // Shrink toward shared prefix, then grow if needed
+        if (cur.length > shared.length) {
+          const next = cur.slice(0, cur.length - 1);
+          displayedRef.current = next;
+          setDisplayed(next);
+          timerRef.current = setTimeout(tick, shrinkMs);
+          return;
         }
+      }
 
-        if (spanRef.current) spanRef.current.innerText = newDisplay;
-        frameRef.current = requestAnimationFrame(update);
-      } else {
-        if (spanRef.current) spanRef.current.innerText = target;
-        stableTextRef.current = target; // Mark fully settled
-        isAnimatingRef.current = false;
-        startTimeRef.current = null;
+      if (cur.length < t.length) {
+        const next = t.slice(0, cur.length + 1);
+        displayedRef.current = next;
+        setDisplayed(next);
+        timerRef.current = setTimeout(tick, charMs);
+        return;
+      }
+
+      // Same length but different chars — step through shared prefix then re-grow
+      if (cur !== t) {
+        if (cur.length > shared.length) {
+          const next = cur.slice(0, cur.length - 1);
+          displayedRef.current = next;
+          setDisplayed(next);
+          timerRef.current = setTimeout(tick, shrinkMs);
+        } else {
+          const next = t.slice(0, cur.length + 1);
+          displayedRef.current = next;
+          setDisplayed(next);
+          timerRef.current = setTimeout(tick, charMs);
+        }
       }
     };
 
-    frameRef.current = requestAnimationFrame(update);
-  }, [value, duration]);
+    tick();
 
-  useEffect(() => {
     return () => {
-      if (frameRef.current) cancelAnimationFrame(frameRef.current);
+      if (timerRef.current) clearTimeout(timerRef.current);
     };
-  }, []);
+  }, [value, charMs, shrinkMs]);
 
   return (
-    <span ref={spanRef} className={className} style={{
-      display: 'inline',
-      fontFamily: 'var(--font-mono, monospace)',
-      whiteSpace: 'normal',
-      wordBreak: 'break-word',
-      overflowWrap: 'break-word',
-    }}>
-      {value}
+    <span
+      ref={spanRef}
+      className={className}
+      style={{
+        display: 'inline',
+        fontFamily: 'var(--font-mono, monospace)',
+        whiteSpace: 'normal',
+        wordBreak: 'break-word',
+        overflowWrap: 'break-word',
+      }}
+    >
+      {displayed}
     </span>
   );
 };

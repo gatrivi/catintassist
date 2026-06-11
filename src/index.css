@@ -210,14 +210,27 @@ body {
   gap: 0.5rem;
 }
 .call-micro-bar-center {
-  display: flex;
+  display: grid;
+  grid-template-columns: 5.6ch 7ch 9ch 5ch 6ch;
   align-items: center;
-  gap: 0.6rem;
+  justify-items: center;
+  gap: 0.4rem;
   font-size: 0.8rem;
   font-weight: 800;
   color: #fff;
   flex: 1;
-  justify-content: center;
+  min-width: 0;
+}
+.call-micro-bar-slot {
+  min-width: 0;
+  width: 100%;
+  text-align: center;
+  white-space: nowrap;
+  overflow: hidden;
+}
+.call-micro-bar-slot .slot-text,
+.call-micro-bar-slot .slot-text .char-slot {
+  line-height: inherit !important;
 }
 .call-micro-bar-timer {
   font-family: var(--font-mono);
@@ -229,10 +242,6 @@ body {
   color: #f59e0b;
   text-shadow: 0 0 8px rgba(245, 158, 11, 0.35);
   font-size: 0.8rem;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  white-space: nowrap;
 }
 .call-micro-bar-earnings {
   color: #fcd34d;
@@ -1682,6 +1691,10 @@ body {
   font-size: 0.8rem;
   line-height: 1.25;
   color: #fff;
+}
+
+.transcript-bubble.is-live {
+  overflow: visible;
 }
 
 .phone-number {

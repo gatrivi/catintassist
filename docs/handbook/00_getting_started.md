@@ -5,3 +5,9 @@ core-buttons.png
 2. Hold. Start the 15min hold policy timer.
 3. 3. Refresh interpretation stream
 4. Start break timer
+
+## Local dev (Fast Refresh / HMR)
+`npm start` → http://localhost:3000 — save files to hot-reload. Restart after `.env` changes.
+
+## Mic Test (v4.48.1)
+🎤 next to Connect — ON = transcribe from your microphone (no tab picker). OFF = normal tab audio capture.
