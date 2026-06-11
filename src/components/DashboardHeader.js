@@ -14,9 +14,6 @@ import { GameScoreboard } from './GameScoreboard';
 import { AppGuideButton } from './AppGuide';
 import { WorkspaceViewSwitcher } from './WorkspaceViewSwitcher';
 import { ConnectInterpretButton } from './ConnectInterpretButton';
-import "slot-text/style.css";
-import { SlotText } from "slot-text/react";
-
 const CelebrationParticles = ({ type, label, coins, onDismiss }) => {
   const [isClosing, setIsClosing] = useState(false);
   const emojis = ['🪙', '🪙', '💸', '💵', '💰', '💎'];
@@ -79,6 +76,7 @@ const CelebrationParticles = ({ type, label, coins, onDismiss }) => {
 };
 
 const StateIndicators = ({ state, breakMinutes, isZombie, silenceCount }) => {
+  const showSilenceTimer = silenceCount > 30;
   if (state === 'call') {
     return (
       <div className="emoji-money" style={{ fontSize: '1.1rem', marginRight: '0.2rem' }}>💰</div>
@@ -97,9 +95,20 @@ const StateIndicators = ({ state, breakMinutes, isZombie, silenceCount }) => {
             </span>
           ))}
         </div>
-        {silenceCount > 5 && (
-          <span style={{ fontSize: '0.65rem', color: '#fb923c', fontWeight: 600 }}>{formatTime(silenceCount)}</span>
-        )}
+        <span
+          style={{
+            fontSize: '0.65rem',
+            color: '#fb923c',
+            fontWeight: 600,
+            fontFamily: 'var(--font-mono)',
+            minWidth: '5.6ch',
+            visibility: showSilenceTimer ? 'visible' : 'hidden',
+            display: 'inline-block',
+            textAlign: 'center',
+          }}
+        >
+          {formatTime(silenceCount)}
+        </span>
       </div>
     );
   }
@@ -108,7 +117,20 @@ const StateIndicators = ({ state, breakMinutes, isZombie, silenceCount }) => {
     return (
       <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
         <div style={{ animation: 'pulseWarning 1s infinite', fontSize: '1rem', color: '#f59e0b' }}>🤖</div>
-        <span style={{ fontSize: '0.65rem', color: '#f59e0b', fontWeight: 800 }}>{formatTime(silenceCount)}</span>
+        <span
+          style={{
+            fontSize: '0.65rem',
+            color: '#f59e0b',
+            fontWeight: 800,
+            fontFamily: 'var(--font-mono)',
+            minWidth: '5.6ch',
+            visibility: showSilenceTimer ? 'visible' : 'hidden',
+            display: 'inline-block',
+            textAlign: 'center',
+          }}
+        >
+          {formatTime(silenceCount)}
+        </span>
       </div>
     );
   }
@@ -118,11 +140,23 @@ const StateIndicators = ({ state, breakMinutes, isZombie, silenceCount }) => {
       <div style={{ animation: 'encouragePulse 3s infinite', fontSize: '1rem', color: '#fb923c' }}>
         {Math.floor(Date.now() / 2000) % 2 === 0 ? '📡' : '⏳'}
       </div>
-      {silenceCount > 0 && (
-        <span style={{ fontSize: '0.75rem', color: '#fb923c', fontWeight: 800, background: 'rgba(251, 146, 60, 0.1)', padding: '0 4px', borderRadius: '4px' }}>
-          {formatTime(silenceCount)}
-        </span>
-      )}
+      <span
+        style={{
+          fontSize: '0.75rem',
+          color: '#fb923c',
+          fontWeight: 800,
+          fontFamily: 'var(--font-mono)',
+          background: 'rgba(251, 146, 60, 0.1)',
+          padding: '0 4px',
+          borderRadius: '4px',
+          minWidth: '6.6ch',
+          visibility: showSilenceTimer ? 'visible' : 'hidden',
+          display: 'inline-block',
+          textAlign: 'center',
+        }}
+      >
+        {formatTime(silenceCount)}
+      </span>
     </div>
   );
 };
@@ -710,24 +744,17 @@ export const DashboardHeader = ({
 
       {isActive && (
         <div className="call-micro-bar-center" style={{ flex: 1, minWidth: 0 }}>
-          {silenceCount >= 1 && (
-            <span
-              className="call-micro-bar-hold"
-              title="Non-doctor hold time (resets on English speech)"
-            >
-              <SlotText
-                text={formatTime(Math.max(0, Math.floor((Date.now() - lastEnglishActivityTime) / 1000)))}
-                options={{
-                  duration: 180,
-                  stagger: 18,
-                  direction: "up",
-                  skipUnchanged: true,
-                  interrupt: true,
-                }}
-                style={{ lineHeight: "inherit" }}
-              />
-            </span>
-          )}
+          <span
+            className="call-micro-bar-hold"
+            title="Non-doctor hold time (resets on English speech)"
+            style={{
+              minWidth: '5.6ch',
+              visibility: silenceCount > 30 ? 'visible' : 'hidden',
+              display: 'inline-flex',
+            }}
+          >
+            {formatTime(Math.max(0, Math.floor((Date.now() - lastEnglishActivityTime) / 1000)))}
+          </span>
           <span className="call-micro-bar-timer">{formatTime(sessionSeconds)}</span>
           <span className="call-micro-bar-earnings">{renderSessionArs('xs')}</span>
           {minutesSinceLastBreak > 90 && (
@@ -962,7 +989,9 @@ export const DashboardHeader = ({
                       <HelpLabel text="11. SILENCE" />
                       <div className="metric-watermark">{isActive ? '🔇' : '⏳'}</div>
                       <div className="metric-cell-val" style={{ color: silenceCount > 600 ? '#f87171' : 'white' }}>
-                        <StatNumber value={formatTime(silenceCount)} size="md" format={false} />
+                        <div style={{ visibility: silenceCount > 30 ? 'visible' : 'hidden' }}>
+                          <StatNumber value={formatTime(silenceCount)} size="md" format={false} />
+                        </div>
                       </div>
                       <div className="metric-cell-label">{isActive ? 'CALL SILENCE' : 'APP IDLE'}</div>
                     </div>

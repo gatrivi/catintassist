@@ -85,9 +85,11 @@ export const ScrambleText = ({ value, duration = 350, className = "" }) => {
 
   return (
     <span ref={spanRef} className={className} style={{
-      display: 'inline-block',
+      display: 'inline',
       fontFamily: 'var(--font-mono, monospace)',
-      whiteSpace: 'pre-wrap'
+      whiteSpace: 'normal',
+      wordBreak: 'break-word',
+      overflowWrap: 'break-word',
     }}>
       {value}
     </span>

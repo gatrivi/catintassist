@@ -11,8 +11,7 @@ import {
   getNumberHighlightRegex,
   repairNYCZipNumbers,
 } from '../utils/sensitiveDataProtector';
-import "slot-text/style.css";
-import { SlotText } from "slot-text/react";
+import { ScrambleText } from './ScrambleText';
 
 // EL TABLERO DE TEXTO: Aquí es donde aparece todo lo que dicen en la llamada.
 // Muestra quién habla, lo traduce y te deja copiar los números con un clic.
@@ -71,40 +70,11 @@ const InteractiveText = ({ text, scramble = true, applyNumberWords = false, lang
           title={`Click to copy number: ${p}`}
           style={{ cursor: 'copy', backgroundColor: 'rgba(252, 211, 77, 0.1)', color: '#fcd34d', padding: '0 2px', borderRadius: '2px', fontWeight: 600, display: 'inline' }}
         >
-          {scramble ? (
-            <SlotText
-              text={p}
-              options={{
-                duration: 300,
-                stagger: 35,
-                direction: "down",
-                skipUnchanged: true,
-                interrupt: true,
-              }}
-              style={{ lineHeight: 'inherit' }}
-            />
-          ) : (
-            p
-          )}
+          {scramble ? <ScrambleText value={p} duration={300} /> : p}
         </span>
       );
     }
-    return scramble ? (
-      <SlotText
-        key={partKey}
-        text={p}
-        options={{
-          duration: 300,
-          stagger: 35,
-          direction: "down",
-          skipUnchanged: true,
-          interrupt: true,
-        }}
-        style={{ lineHeight: 'inherit' }}
-      />
-    ) : (
-      <span key={partKey}>{p}</span>
-    );
+    return scramble ? <ScrambleText key={partKey} value={p} duration={300} /> : <span key={partKey}>{p}</span>;
   };
 
   if (spellingLayout && processedText.includes('\n')) {
@@ -112,21 +82,7 @@ const InteractiveText = ({ text, scramble = true, applyNumberWords = false, lang
       <span className="bubble-spelling-lines" style={{ whiteSpace: 'pre-line', lineHeight: 1.35 }}>
         {processedText.split('\n').map((line, li) => (
           <span key={li} style={{ display: 'block', fontFamily: 'var(--font-mono)', fontWeight: 700 }}>
-            {scramble ? (
-              <SlotText
-                text={line}
-                options={{
-                  duration: 300,
-                  stagger: 35,
-                  direction: "down",
-                  skipUnchanged: true,
-                  interrupt: true,
-                }}
-                style={{ lineHeight: 'inherit' }}
-              />
-            ) : (
-              line
-            )}
+            {scramble ? <ScrambleText value={line} duration={300} /> : line}
           </span>
         ))}
       </span>
@@ -247,7 +203,7 @@ const TranslatedBubble = ({ id, text, lang, playTTS, stopTTS, playingUrl, prefet
       />
       </div>
 
-      <div className="bubble-col bubble-col-translation" style={{ color: translationColor, textAlign: reverse ? 'left' : 'right' }}>
+      <div className="bubble-col bubble-col-translation" style={{ color: translationColor, textAlign: 'left' }}>
         <div className="bubble-line bubble-line-translation">
           {translation ? (
             <InteractiveText text={translation} scramble={true} applyNumberWords={targetUsesNumberWords} lang={targetLang} />
