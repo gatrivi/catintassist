@@ -12,12 +12,14 @@
     "react-dom": "^19.2.3",
     "react-grid-layout": "^2.2.2",
     "react-scripts": "5.0.1",
+    "slot-text": "^0.2.2",
     "web-vitals": "^2.1.4"
   },
   "scripts": {
     "start": "react-scripts start",
     "build": "react-scripts build",
-    "test": "react-scripts test",
+    "test": "react-scripts test --watchAll=false",
+    "test:watch": "react-scripts test",
     "eject": "react-scripts eject"
   },
   "eslintConfig": {

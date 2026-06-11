@@ -4,8 +4,15 @@ import { useTTS } from '../hooks/useTTS';
 import { useTranslate } from '../hooks/useTranslate';
 import { useSession, safeSet } from '../contexts/SessionContext';
 import { useProgressiveAudio } from '../hooks/useProgressiveAudio';
-import { ScrambleText } from './ScrambleText';
 import { formatTranscriptForDisplay, isSpellingBlock } from '../utils/transcriptFormat';
+import {
+  convertEnglishNumberWords,
+  formatPhoneAndSSNDigits,
+  getNumberHighlightRegex,
+  repairNYCZipNumbers,
+} from '../utils/sensitiveDataProtector';
+import "slot-text/style.css";
+import { SlotText } from "slot-text/react";
 
 // EL TABLERO DE TEXTO: Aquí es donde aparece todo lo que dicen en la llamada.
 // Muestra quién habla, lo traduce y te deja copiar los números con un clic.
@@ -27,29 +34,6 @@ const getBubbleStyle = (text, isCurrent, lang) => {
   return { borderLeft: `3px solid ${baseBorder}`, backgroundColor: baseBg };
 };
 
-const normalizeAccents = (str) => str.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
-
-// English STT only — avoids "ten" → "10" inside Spanish words like "tenía"
-const convertEnglishNumberWords = (text) => {
-  const map = {
-    'zero': '0', 'one': '1', 'two': '2', 'three': '3', 'four': '4', 'five': '5',
-    'six': '6', 'seven': '7', 'eight': '8', 'nine': '9', 'ten': '10',
-    'eleven': '11', 'twelve': '12', 'thirteen': '13', 'fourteen': '14', 'fifteen': '15',
-    'sixteen': '16', 'seventeen': '17', 'eighteen': '18', 'nineteen': '19', 'twenty': '20',
-    'thirty': '30', 'forty': '40', 'fifty': '50', 'sixty': '60', 'seventy': '70', 'eighty': '80', 'ninety': '90',
-    'cero': '0', 'uno': '1', 'dos': '2', 'tres': '3', 'cuatro': '4', 'cinco': '5',
-    'seis': '6', 'siete': '7', 'ocho': '8', 'nueve': '9', 'diez': '10',
-    'once': '11', 'doce': '12', 'trece': '13', 'catorce': '14', 'quince': '15',
-    'dieciseis': '16', 'diecisiete': '17', 'dieciocho': '18', 'diecinueve': '19', 'veinte': '20',
-    'veintiuno': '21', 'veintidos': '22', 'veintitres': '23', 'veinticuatro': '24', 'veinticinco': '25',
-    'veintiseis': '26', 'veintisiete': '27', 'veintiocho': '28', 'veintinueve': '29',
-    'treinta': '30', 'cuarenta': '40', 'cincuenta': '50', 'sesenta': '60', 'setenta': '70', 'ochenta': '80', 'noventa': '90'
-  };
-  const keys = Object.keys(map).join('|');
-  const re = new RegExp(`\\b(${keys})\\b`, 'gi');
-  return text.replace(re, (matched) => map[normalizeAccents(matched)] || matched);
-};
-
 const InteractiveText = ({ text, scramble = true, applyNumberWords = false, lang = 'en' }) => {
   if (!text) return null;
 
@@ -58,30 +42,15 @@ const InteractiveText = ({ text, scramble = true, applyNumberWords = false, lang
   const spellingLayout = isSpellingBlock(text);
 
   // 2. GROUP PHONE NUMBERS / SSN: If we see 8-16 digits read out singly (with spaces), join and format them.
-  const groupedDigits = processedText.replace(
-    /\b(?:\d[\s.,-:]*){7,15}\d\b/g,
-    (m) => {
-      const digitsOnly = m.replace(/\D/g, '');
-      if (digitsOnly.length === 10) {
-        return `${digitsOnly.slice(0,3)}-${digitsOnly.slice(3,6)}-${digitsOnly.slice(6)}`;
-      }
-      if (digitsOnly.length === 11 && digitsOnly.startsWith('1')) {
-        return `+1 ${digitsOnly.slice(1,4)}-${digitsOnly.slice(4,7)}-${digitsOnly.slice(7)}`;
-      }
-      return digitsOnly.replace(/(\d{3})(?=\d)/g, '$1-');
-    }
-  );
+  const groupedDigits = formatPhoneAndSSNDigits(processedText);
   
   // NYC ZIP REPAIR: In NYC, people often say "one hundred thirty four" for 10034.
   // Deepgram might transcribe "New York 134". We fix it to "New York 10034".
-  const repairedText = groupedDigits.replace(/\b(New York|NY|N\.Y\.)\s*,?\s*(\d{3})\b/gi, (m, city, zip) => {
-    const suffix = zip.slice(-2);
-    return `${city} 100${suffix}`;
-  });
+  const repairedText = repairNYCZipNumbers(groupedDigits);
 
   // NÚMEROS MÁGICOS: Detectamos números de teléfono, años y códigos.
   // Los resaltamos para que puedas copiarlos rápido si haces clic.
-  const numRegex = /(\+?\(?\d{1,4}?\)?[\s.-]?\(?\d{2,4}?\)?[\s.-]?\d{3,4}[\s.-]?\d{3,4}|\b\d+[\d.,/\\-]*\b)/g;
+  const numRegex = getNumberHighlightRegex();
 
   const parts = repairedText.split(numRegex);
 
@@ -102,11 +71,40 @@ const InteractiveText = ({ text, scramble = true, applyNumberWords = false, lang
           title={`Click to copy number: ${p}`}
           style={{ cursor: 'copy', backgroundColor: 'rgba(252, 211, 77, 0.1)', color: '#fcd34d', padding: '0 2px', borderRadius: '2px', fontWeight: 600, display: 'inline' }}
         >
-          {scramble ? <ScrambleText value={p} duration={300} /> : p}
+          {scramble ? (
+            <SlotText
+              text={p}
+              options={{
+                duration: 300,
+                stagger: 35,
+                direction: "down",
+                skipUnchanged: true,
+                interrupt: true,
+              }}
+              style={{ lineHeight: 'inherit' }}
+            />
+          ) : (
+            p
+          )}
         </span>
       );
     }
-    return scramble ? <ScrambleText key={partKey} value={p} duration={300} /> : <span key={partKey}>{p}</span>;
+    return scramble ? (
+      <SlotText
+        key={partKey}
+        text={p}
+        options={{
+          duration: 300,
+          stagger: 35,
+          direction: "down",
+          skipUnchanged: true,
+          interrupt: true,
+        }}
+        style={{ lineHeight: 'inherit' }}
+      />
+    ) : (
+      <span key={partKey}>{p}</span>
+    );
   };
 
   if (spellingLayout && processedText.includes('\n')) {
@@ -114,7 +112,21 @@ const InteractiveText = ({ text, scramble = true, applyNumberWords = false, lang
       <span className="bubble-spelling-lines" style={{ whiteSpace: 'pre-line', lineHeight: 1.35 }}>
         {processedText.split('\n').map((line, li) => (
           <span key={li} style={{ display: 'block', fontFamily: 'var(--font-mono)', fontWeight: 700 }}>
-            {scramble ? <ScrambleText value={line} duration={300} /> : line}
+            {scramble ? (
+              <SlotText
+                text={line}
+                options={{
+                  duration: 300,
+                  stagger: 35,
+                  direction: "down",
+                  skipUnchanged: true,
+                  interrupt: true,
+                }}
+                style={{ lineHeight: 'inherit' }}
+              />
+            ) : (
+              line
+            )}
           </span>
         ))}
       </span>
@@ -208,6 +220,11 @@ const TranslatedBubble = ({ id, text, lang, playTTS, stopTTS, playingUrl, prefet
   const isThisPlaying = playingUrl && audioUrl && playingUrl === audioUrl;
   const transcriptColor = '#ffffff';
   const translationColor = '#a1a1aa';
+  // Pane contract (for outside agents/models):
+  // - left column is the EN/transcript lane
+  // - right column is the ES/translation lane
+  // `convertEnglishNumberWords` must ONLY run when the lane language truly starts with `en`.
+  // Bug example to avoid: Spanish "once" (meaning 11) must NOT be converted on the left EN lane.
   const sourceUsesNumberWords = (lang || 'en').toLowerCase().startsWith('en');
   const targetUsesNumberWords = (targetLang || 'en').toLowerCase().startsWith('en');
 
@@ -289,7 +306,7 @@ export const TranscriptionBoard = ({ captions, onClearAll, onReconnect, lastData
     };
     window.addEventListener('catint_pinned_cleared', onPinnedCleared);
     return () => window.removeEventListener('catint_pinned_cleared', onPinnedCleared);
-  }, [safeSet]);
+  }, []);
 
   const pinnedIds = pinnedCaptions.map((p) => p.id);
 

@@ -14,6 +14,8 @@ import { GameScoreboard } from './GameScoreboard';
 import { AppGuideButton } from './AppGuide';
 import { WorkspaceViewSwitcher } from './WorkspaceViewSwitcher';
 import { ConnectInterpretButton } from './ConnectInterpretButton';
+import "slot-text/style.css";
+import { SlotText } from "slot-text/react";
 
 const CelebrationParticles = ({ type, label, coins, onDismiss }) => {
   const [isClosing, setIsClosing] = useState(false);
@@ -133,7 +135,7 @@ export const DashboardHeader = ({
   showStudioHint = false,
   onConnectAnotherTab,
 }) => {
-  const { isActive, sessionSeconds, sessionEarnings, stats, updateStat, stopSession, endDay, RATE_PER_MINUTE, arsRate, setArsRate, isBreakActive, breakSeconds, startBreak, stopBreak, availSeconds, isEditingScoreboard, setIsEditingScoreboard, visibleCards, isNotesOpen, setIsNotesOpen, isToolbarVisible, setIsToolbarVisible, isHeatmapOpen, setIsHeatmapOpen, isZombieCall, isScoreboardHelpVisible, setIsScoreboardHelpVisible, isHold, setIsHold, holdSeconds, dailyTimeline, historyTimeline, dailyLog, lastActivityTime, isCallDetectionEnabled, setIsCallDetectionEnabled, callFocusMode, setCallFocusMode, minutesSinceLastBreak } = useSession();
+  const { isActive, sessionSeconds, sessionEarnings, stats, updateStat, stopSession, endDay, RATE_PER_MINUTE, arsRate, setArsRate, isBreakActive, breakSeconds, startBreak, stopBreak, availSeconds, isEditingScoreboard, setIsEditingScoreboard, visibleCards, isNotesOpen, setIsNotesOpen, isToolbarVisible, setIsToolbarVisible, isHeatmapOpen, setIsHeatmapOpen, isZombieCall, isScoreboardHelpVisible, setIsScoreboardHelpVisible, isHold, setIsHold, holdSeconds, dailyTimeline, historyTimeline, dailyLog, lastActivityTime, lastEnglishActivityTime, isCallDetectionEnabled, setIsCallDetectionEnabled, callFocusMode, setCallFocusMode, minutesSinceLastBreak } = useSession();
 
   const headerMinimal = !isActive && offCallWorkspace === 'soundboard';
   const scoreboardFill = !isActive && offCallWorkspace === 'scoreboard';
@@ -708,6 +710,24 @@ export const DashboardHeader = ({
 
       {isActive && (
         <div className="call-micro-bar-center" style={{ flex: 1, minWidth: 0 }}>
+          {silenceCount >= 1 && (
+            <span
+              className="call-micro-bar-hold"
+              title="Non-doctor hold time (resets on English speech)"
+            >
+              <SlotText
+                text={formatTime(Math.max(0, Math.floor((Date.now() - lastEnglishActivityTime) / 1000)))}
+                options={{
+                  duration: 180,
+                  stagger: 18,
+                  direction: "up",
+                  skipUnchanged: true,
+                  interrupt: true,
+                }}
+                style={{ lineHeight: "inherit" }}
+              />
+            </span>
+          )}
           <span className="call-micro-bar-timer">{formatTime(sessionSeconds)}</span>
           <span className="call-micro-bar-earnings">{renderSessionArs('xs')}</span>
           {minutesSinceLastBreak > 90 && (

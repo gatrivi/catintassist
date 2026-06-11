@@ -57,6 +57,9 @@ export const SessionProvider = ({ children }) => {
   const [breakSeconds, setBreakSeconds] = useState(() => Number(localStorage.getItem('catint_b_sec')) || 0);
   const [availSeconds, setAvailSeconds] = useState(() => Number(localStorage.getItem('catint_a_sec')) || 0);
   const [lastActivityTime, setLastActivityTime] = useState(Date.now());
+  // Tracks the last time we saw English speech come through STT.
+  // Used to time "non-doctor hold" during silence (doctors speak English).
+  const [lastEnglishActivityTime, setLastEnglishActivityTime] = useState(Date.now());
   const [historyTimeline, setHistoryTimeline] = useState(() => {
     try { return JSON.parse(localStorage.getItem('catintassist_history_timeline')) || {}; } catch(e) { return {}; }
   });
@@ -248,6 +251,7 @@ export const SessionProvider = ({ children }) => {
   const [holdIntentAt, setHoldIntentAt] = useState(0);
 
   const updateActivity = () => setLastActivityTime(Date.now());
+  const updateEnglishActivity = () => setLastEnglishActivityTime(Date.now());
   const requestHoldIntent = () => setHoldIntentAt(Date.now());
 
   const recordTimelineEvent = useCallback((type) => {
@@ -423,6 +427,7 @@ export const SessionProvider = ({ children }) => {
   // EMPEZAR LLAMADA: Dejamos de descansar y empezamos a contar los minutos de la llamada.
   const startSession = (isRecovery = false) => {
     updateActivity(); // <--- Reset silence timer on start
+    setLastEnglishActivityTime(Date.now()); // reset "non-doctor hold" timer baseline
     
     // Logic fix: If a call starts while on break, automatically end the break.
     if (isBreakActive) {
@@ -737,6 +742,8 @@ export const SessionProvider = ({ children }) => {
     setWorkSessionStartTime,
     lastActivityTime,
     updateActivity,
+    lastEnglishActivityTime,
+    updateEnglishActivity,
     dailyLog,
     commitDayToLog,
     isZombieCall,

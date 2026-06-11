@@ -1,119 +1,10 @@
 import { useState, useRef, useCallback } from 'react';
 import { useSession } from '../contexts/SessionContext';
 import { applyTranscriptFormatting, splitLongTextAtCommas } from '../utils/transcriptFormat';
-
-const normalize = (s) => 
-  (s || '')
-    .normalize('NFD')
-    .replace(/[\u0300-\u036f]/g, '') // Remove accents/diacritics
-    .toLowerCase()
-    .replace(/[^a-z0-9]/g, ''); // Keep only alphanumeric
-
-// Number-word detection for EN and ES to protect phone/SSN/address data
-const NUMBER_WORDS = new Set([
-  'zero','one','two','three','four','five','six','seven','eight','nine','ten',
-  'eleven','twelve','thirteen','fourteen','fifteen','sixteen','seventeen','eighteen','nineteen',
-  'twenty','thirty','forty','fifty','sixty','seventy','eighty','ninety',
-  'hundred', 'thousand',
-  'cero','uno','dos','tres','cuatro','cinco','seis','siete','ocho','nueve','diez',
-  'once','doce','trece','catorce','quince','dieciseis','diecisiete','dieciocho','diecinueve',
-  'veinte','veintiuno','veintidos','veintitres','veinticuatro','veinticinco','veintiseis',
-  'veintisiete','veintiocho','veintinueve','treinta','cuarenta','cincuenta','sesenta','setenta',
-  'ochenta','noventa',
-  'cien', 'ciento', 'mil'
-]);
-
-const normalizeWord = (w) =>
-  w.toLowerCase().replace(/[^a-z0-9]/g, '').normalize('NFD').replace(/[\u0300-\u036f]/g, '');
-
-const isNumberLike = (word) => {
-  if (!word) return false;
-  const norm = normalizeWord(word);
-  return /^\d+$/.test(norm) || NUMBER_WORDS.has(norm);
-};
-
-const containsNumberSequence = (text, minLength = 2) => {
-  const words = text.trim().split(/\s+/).filter(Boolean);
-  if (words.length === 0) return false;
-  let count = 0;
-  let numberWords = 0;
-  for (const w of words) {
-    if (isNumberLike(w)) {
-      count++;
-      numberWords++;
-      if (count >= minLength) return true;
-    } else {
-      count = 0;
-    }
-  }
-  // Protect number-dense text (>30% number-like words)
-  if (numberWords / words.length > 0.30) return true;
-  return false;
-};
-
-const FILLER_WORDS = new Set(['um','uh','eh','ah','like','well','so','okay','ok','yeah','yep','nope','hmm','hm','bueno','pues','este','ees','ehm']);
-const PHRASE_FILLERS = ['you know', 'i mean', 'sort of', 'kind of'];
-
-const cleanFillerWords = (text) => {
-  if (!text) return text;
-  let t = text;
-  // Strip common phrase fillers (case insensitive)
-  PHRASE_FILLERS.forEach(phrase => {
-    const re = new RegExp(`\\b${phrase}\\b`, 'gi');
-    t = t.replace(re, '');
-  });
-  // Strip standalone filler words from the start of the string
-  const words = t.trim().split(/\s+/);
-  let startIdx = 0;
-  while (startIdx < words.length && FILLER_WORDS.has(words[startIdx].toLowerCase().replace(/[^a-z]/g, ''))) {
-    startIdx++;
-  }
-  if (startIdx > 0) {
-    t = words.slice(startIdx).join(' ');
-  }
-  return t.replace(/\s+/g, ' ').trim();
-};
-
-const hallucinationGuard = (text) => {
-  if (!text) return text;
-  const words = text.trim().split(/\s+/);
-  
-  // Noise filtering: skip isolated "bueno", "um", etc.
-  if (words.length === 1) {
-    const w = words[0].toLowerCase();
-    if (isNumberLike(w)) return text; // Never filter single numbers
-    if (w === 'bueno' || w === 'um' || w === 'eh' || w === 'uh' || w === 'ah') return '';
-  }
-  
-  if (words.length < 2) return text;
-
-  let cleaned = [];
-  let lastWord = '';
-  let lastPair = '';
-
-  for (let i = 0; i < words.length; i++) {
-    const word = words[i];
-    const norm = normalize(word);
-    const pair = i > 0 ? normalize(words[i-1] + word) : '';
-    
-    // Protection: allow repeated numbers ("one one one", "2 2 2")
-    if (norm === lastWord && norm.length > 1 && !isNumberLike(word)) continue; 
-    if (pair === lastPair && pair.length > 4 && !containsNumberSequence(words.slice(i-1, i+1).join(' '))) continue;
-
-    cleaned.push(word);
-    lastWord = norm;
-    lastPair = pair;
-  }
-
-  // Adaptive pruning: Only prune if it doesn't look like a valid list of data (numbers)
-  // Lowered threshold to 2 consecutive number-words to protect phone numbers like "five five five"
-  if (words.length > 15 && cleaned.length < words.length * 0.5 && !containsNumberSequence(text, 2)) {
-     console.log('[PRUNED]', text, '→', cleaned.slice(0, 12).join(' '));
-     return cleaned.slice(0, 12).join(' ') + "... [Stutter Pruned]";
-  }
-
-  return cleanFillerWords(cleaned.join(' '));
-};
+import {
+  hallucinationGuard,
+  removeOverlapPreservingDigitSequences,
+} from '../utils/sensitiveDataProtector';
 
 /** Split leading complete sentences (ends with . ! ?) from trailing fragment. */
 const peelCompleteSentences = (text) => {
@@ -165,44 +56,17 @@ const peelCommaChunks = (text, template, bubbleIdCounterRef, turnWordsBase) => {
   return { sealed, remainder: '' };
 };
 
-const removeOverlap = (base, addition) => {
-  if (!base || !addition) return addition;
-  
-  // 1. WORD-WALK DEDUPLICATION (The "Toddler" logic: check if start of addition matches end of history)
-  // This is position-aware and much safer than a global subset check.
-  const bWords = base.trim().split(/\s+/).map(normalize);
-  const aWords = addition.trim().split(/\s+/).map(normalize);
-  const aWordsRaw = addition.trim().split(/\s+/);
-  
-  let bestOverlap = 0;
-  const maxCheck = Math.min(aWords.length, bWords.length, 50);
-
-  // We look for the longest possible overlap of words at the boundary
-  for (let i = 1; i <= maxCheck; i++) {
-    const aPrefix = aWords.slice(0, i).join('');
-    const bSuffix = bWords.slice(-i).join('');
-    if (aPrefix === bSuffix) {
-      bestOverlap = i;
-    }
-  }
-
-  // CRITICAL: Never strip digit sequences at chunk boundaries.
-  // Phone numbers and SSNs straddling a boundary must not be lost.
-  if (bestOverlap > 0) {
-    const overlapSlice = aWordsRaw.slice(0, bestOverlap);
-    const overlapText = overlapSlice.join(' ');
-    console.log('[OVERLAP]', bestOverlap, 'words:', overlapText);
-    if (/\d/.test(overlapText) || overlapSlice.some(isNumberLike)) {
-      bestOverlap = 0;
-    }
-  }
-
-  return aWordsRaw.slice(bestOverlap).join(' ');
-};
-
 
 export const useDeepgram = () => {
-  const { updateActivity, isCallDetectionEnabled, requestHoldIntent, captions, updateCaptions, clearCaptions } = useSession();
+  const {
+    updateActivity,
+    updateEnglishActivity,
+    isCallDetectionEnabled,
+    requestHoldIntent,
+    captions,
+    updateCaptions,
+    clearCaptions,
+  } = useSession();
   
   const [connectionState, setConnectionState] = useState('disconnected');
   const [connectionMessage, setConnectionMessage] = useState('Disconnected');
@@ -216,6 +80,7 @@ export const useDeepgram = () => {
   const streamRef = useRef(null);
   const isActiveRef = useRef(false);
   const lastTranscriptTimeRef = useRef(Date.now());
+  const lastEnglishActivityPulseRef = useRef(0);
   const turnWordsBaseRef = useRef(0); // words already sealed in the current silence-to-silence turn
   const currentTurnIdRef = useRef(null);
   const bubbleIdCounterRef = useRef(0);
@@ -346,7 +211,7 @@ export const useDeepgram = () => {
           const currentFinalized = (lang === 'en' ? current.enFinalized : current.esFinalized) || '';
           const baseContext = (historyText + ' ' + currentFinalized).trim();
 
-          const cleaned = removeOverlap(baseContext, transcript);
+          const cleaned = removeOverlapPreservingDigitSequences(baseContext, transcript);
           if (!cleaned.trim() && !isFinal) return prev; 
 
           if (isFinal) {
@@ -373,6 +238,20 @@ export const useDeepgram = () => {
           else winner = (confidence > 0.8 && esW > 0) ? 'es' : 'en';
           
           if (langModeRef.current !== 'auto') winner = langModeRef.current;
+
+          // Non-doctor hold timer reset: reset only when English speech is detected.
+          // Throttle to avoid spamming updates during interim packets.
+          if (
+            isCallDetectionEnabled &&
+            winner === 'en' &&
+            confidence > 0.4 &&
+            transcript &&
+            transcript.trim().length > 0 &&
+            now - lastEnglishActivityPulseRef.current > 500
+          ) {
+            updateEnglishActivity();
+            lastEnglishActivityPulseRef.current = now;
+          }
 
           current.lang = winner;
           current.text = winner === 'en' ? enFull : esFull;
