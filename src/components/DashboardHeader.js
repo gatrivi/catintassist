@@ -482,6 +482,15 @@ export const DashboardHeader = ({
     setHoveredMetricTooltip(null);
   }, []);
 
+  // Progress-bar hover tooltip (uses the same portal renderer as metric cards)
+  const showProgressBarTooltip = useCallback((e, { icon, heading, color, body }) => {
+    const rect = e.currentTarget.getBoundingClientRect();
+    const placement = rect.top < 160 ? 'below' : 'above';
+    const x = rect.left + rect.width / 2;
+    const y = placement === 'above' ? rect.top : rect.bottom;
+    setHoveredMetricTooltip({ x, y, placement, icon, heading, color, body });
+  }, []);
+
   useEffect(() => {
     if (Math.abs(displayBounty - currentBounty) > 1) {
       setIsBountyAnimating(true);
@@ -1287,7 +1296,20 @@ ${isInDeficit ? `⚠️ DEFICIT: Behind pace by ${Math.round(monthlyDeficitMins)
               </div>
               <span style={{ opacity: 0.5 }}>Goal: {stats.goalMinutes}m</span>
             </div>
-            <div style={{ position: 'relative', marginTop: '0.3rem' }}>
+            <div
+              style={{ position: 'relative', marginTop: '0.3rem' }}
+              onMouseEnter={(e) =>
+                showProgressBarTooltip(e, {
+                  icon: '🗓️',
+                  heading: 'MONTHLY PROGRESS',
+                  color: isMonthlyGoalMet ? '#10b981' : (isInDeficit ? '#f59e0b' : '#a855f7'),
+                  body: `Banked: ${Math.round(stats.monthlyMinutes)}m / ${Math.round(stats.goalMinutes)}m.\n` +
+                    `Including current call: ${Math.round(stats.monthlyMinutes + unbankedMins)}m.\n` +
+                    `Progress: ${((monthlyProgressRatio || 0) * 100).toFixed(1)}% (pending: ${((monthlyPendingRatio || 0) * 100).toFixed(1)}%).`
+                })
+              }
+              onMouseLeave={hideMetricTooltip}
+            >
               <div style={{ position: 'absolute', inset: 0, pointerEvents: 'none', zIndex: 11 }}>
                 {[5500, 11000, 16500].map((m, i) => {
                   const ratio = m / 16500;
@@ -1402,6 +1424,17 @@ ${isInDeficit ? `⚠️ DEFICIT: Behind pace by ${Math.round(monthlyDeficitMins)
             </div>
             <div 
               title="Weekly Ladder: This bar fills up every 1375m. It's your current sprint target."
+              onMouseEnter={(e) =>
+                showProgressBarTooltip(e, {
+                  icon: '🪜',
+                  heading: 'WEEKLY LADDER',
+                  color: stats.monthlyMinutes >= 11000 ? '#fcd34d' : (stats.monthlyMinutes >= 5500 ? '#a855f7' : '#3b82f6'),
+                  body: `Step: ${currentIdx + 1}/12.\n` +
+                    `This sprint: ${Math.round(stats.monthlyMinutes % 1375)}m / 1375m.\n` +
+                    `Current tier: ${milestoneLabels[currentIdx]}.`
+                })
+              }
+              onMouseLeave={hideMetricTooltip}
               style={{ height: '8px', background: 'rgba(0,0,0,0.5)', borderRadius: '4px', overflow: 'hidden', position: 'relative', cursor: 'help' }}>
               <div style={{ 
                 position: 'absolute', left: 0, top: 0, bottom: 0, 
@@ -1466,6 +1499,17 @@ ${isInDeficit ? `⚠️ DEFICIT: Behind pace by ${Math.round(monthlyDeficitMins)
             </div>
             <div 
               title="Daily Multi-Tier Bar: Blue (Floor), Purple (350m Growth), Gold (480m focus)."
+              onMouseEnter={(e) =>
+                showProgressBarTooltip(e, {
+                  icon: '☀️',
+                  heading: 'DAILY PROGRESS',
+                  color: stats.dailyMinutes >= 480 ? '#fcd34d' : (stats.dailyMinutes >= 350 ? '#c084fc' : '#60a5fa'),
+                  body: `Banked today: ${Math.round(stats.dailyMinutes)}m.\n` +
+                    `Including current call: ${Math.round(totalDailyMins)}m / 480m.\n` +
+                    `Min target: ${Math.round(dailyGoal)}m.`
+                })
+              }
+              onMouseLeave={hideMetricTooltip}
               style={{ height: '6px', background: 'rgba(251, 146, 60, 0.1)', borderRadius: '3px', position: 'relative', overflow: overtimeMode === 'tail' ? 'visible' : 'hidden', cursor: 'help' }}>
               
               {/* Target Notches */}
@@ -1589,10 +1633,10 @@ ${isInDeficit ? `⚠️ DEFICIT: Behind pace by ${Math.round(monthlyDeficitMins)
               
               {/* Progress Fill (Total Mins Goal Overlay) */}
               <div 
-                title={`Daily Total: ${Math.round(stats.dailyMinutes)}m`}
+                title={`Daily Total (banked + current call): ${Math.round(totalDailyMins)}m`}
                 style={{ 
                   position: 'absolute', left: 0, top: 0, bottom: 0, 
-                  width: `${Math.min(1, stats.dailyMinutes / 480) * 100}%`, 
+                  width: `${Math.min(1, totalDailyMins / 480) * 100}%`, 
                   backgroundColor: 'rgba(255,255,255,0.05)', 
                   transition: 'width 1s cubic-bezier(0.34, 1.56, 0.64, 1)', zIndex: 2, pointerEvents: 'none' 
                 }} />
@@ -1678,7 +1722,7 @@ ${isInDeficit ? `⚠️ DEFICIT: Behind pace by ${Math.round(monthlyDeficitMins)
 
   return (
     <>
-    <header className={`dashboard-header glass-panel${headerMinimal || scoreboardFill ? ' dashboard-header--controls-only' : ''}${headerMinimal ? ' dashboard-header--minimal' : ''}`} style={{ position: 'relative', zIndex: 100 }}>
+    <header className={`dashboard-header glass-panel${headerMinimal || scoreboardFill ? ' dashboard-header--controls-only' : ''}${headerMinimal ? ' dashboard-header--minimal' : ''}`} style={{ position: 'relative', zIndex: 3000 }}>
 
       <SessionControlsSticky />
 
@@ -1749,7 +1793,7 @@ ${isInDeficit ? `⚠️ DEFICIT: Behind pace by ${Math.round(monthlyDeficitMins)
             {hoveredMetricTooltip.heading}
           </span>
         </div>
-        <div style={{ fontSize: '0.62rem', lineHeight: 1.25, color: 'rgba(255,255,255,0.82)' }}>
+        <div style={{ fontSize: '0.62rem', lineHeight: 1.25, color: 'rgba(255,255,255,0.82)', whiteSpace: 'pre-line' }}>
           {hoveredMetricTooltip.body}
         </div>
       </div>,

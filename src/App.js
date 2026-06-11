@@ -290,7 +290,7 @@ const Dashboard = () => {
         }}
       >
         <CloudSyncIndicator />
-        v4.47.1 (Full Stack)
+        v4.47.2 (Full Stack)
       </div>
 
       <div

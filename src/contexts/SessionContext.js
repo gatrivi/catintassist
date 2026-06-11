@@ -68,7 +68,9 @@ export const SessionProvider = ({ children }) => {
   
   const [stats, setStats] = useState(() => {
     const saved = localStorage.getItem('catintassist_stats');
-    const today = new Date().toDateString();
+    const now = new Date();
+    const today = now.toDateString();
+    const currentMonthKey = `${now.getFullYear()}-${now.getMonth()}`;
     let initialStats = {
       dailyMinutes: 0,
       dailyBreakMinutes: 0,
@@ -79,6 +81,7 @@ export const SessionProvider = ({ children }) => {
       callsToday: 0,
       streak: 0,
       lastDate: today,
+      lastMonthKey: currentMonthKey,
       dayStartTime: null,
       shiftStartSentiment: 0 // minutes late from 9am
     };
@@ -115,6 +118,20 @@ export const SessionProvider = ({ children }) => {
           setDailyTimeline([]);
           setHoldSeconds(0);
         }
+
+        // Month rollover: monthlyMinutes drives “income” and the ladder bar.
+        const parsedMonthKey = parsed.lastMonthKey || (() => {
+          const d = new Date(parsed.lastDate || today);
+          return `${d.getFullYear()}-${d.getMonth()}`;
+        })();
+
+        if (parsedMonthKey !== currentMonthKey) {
+          parsed.monthlyMinutes = 0;
+          parsed.weeklyMinutes = 0;
+        }
+
+        parsed.lastMonthKey = currentMonthKey;
+
         return { ...initialStats, ...parsed };
       } catch (e) { return initialStats; }
     }
@@ -602,6 +619,19 @@ export const SessionProvider = ({ children }) => {
       if (breakTimerRef.current) clearInterval(breakTimerRef.current);
     };
   }, [isBreakActive]);
+
+  // Month guard (reset monthlyMinutes when calendar month changes)
+  useEffect(() => {
+    const monthGuard = setInterval(() => {
+      const now = new Date();
+      const monthKey = `${now.getFullYear()}-${now.getMonth()}`;
+      setStats(prev => {
+        if (!prev || prev.lastMonthKey === monthKey) return prev;
+        return { ...prev, monthlyMinutes: 0, weeklyMinutes: 0, lastMonthKey: monthKey };
+      });
+    }, 30000);
+    return () => clearInterval(monthGuard);
+  }, []);
 
   const availTimerRef = useRef(null);
   useEffect(() => {

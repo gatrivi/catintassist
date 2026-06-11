@@ -440,6 +440,14 @@ body {
   display: flex;
   flex-direction: column;
   overflow: hidden;
+  position: relative;
+  z-index: 1;
+}
+
+/* Ensure scoreboard content never covers the always-needed connect/controls header. */
+#scoreboard-root {
+  position: relative;
+  z-index: 1;
 }
 
 .scoreboard-workspace {
