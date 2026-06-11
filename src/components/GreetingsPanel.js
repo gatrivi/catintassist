@@ -10,6 +10,7 @@ import {
 } from '../utils/storage';
 import { bindAudioToSink, primePlaybackElements, rampVolume } from '../utils/audioRoute';
 import { useAudioSettings } from '../contexts/AudioSettingsContext';
+import AudioEditorPanel from './AudioEditorPanel';
 
 const CALL_PATH_STORAGE = 'catint_call_path_verified';
 
@@ -137,6 +138,7 @@ export const GreetingsPanel = ({ onEditModeChange }) => {
   const [missingOnly, setMissingOnly] = useState(false);
   const [storageSummary, setStorageSummary] = useState(null);
   const [storageBusy, setStorageBusy] = useState(false);
+  const [editingKey, setEditingKey] = useState(null);
 
   const audioRefSink = useRef(new Audio());
   const audioRefLocal = useRef(new Audio());
@@ -646,6 +648,14 @@ export const GreetingsPanel = ({ onEditModeChange }) => {
               </button>
               <button
                 type="button"
+                className="sb-btn sb-btn--edit"
+                onClick={() => setEditingKey(key)}
+                title="Edit waveform — crop, re-record, remove silences"
+              >
+                ✏️
+              </button>
+              <button
+                type="button"
                 className="sb-btn sb-btn--call"
                 onClick={() => playAudioBlock(key, true, { bypassGate: true, callerOnly: true })}
                 disabled={!selectedSinkId}
@@ -676,12 +686,39 @@ export const GreetingsPanel = ({ onEditModeChange }) => {
     );
   };
 
+  const editorOverlay = editingKey && blobs[editingKey] ? (
+    <div className="sb-editor-overlay" role="dialog" aria-label={`Edit ${editingKey}`}>
+      <div className="sb-editor-modal glass-panel">
+        <div className="sb-editor-modal-head">
+          <strong>Edit clip — {editingKey}</strong>
+          <button type="button" className="sb-filter-chip" onClick={() => setEditingKey(null)}>✕ Close</button>
+        </div>
+        <AudioEditorPanel
+          key={editingKey}
+          blob={blobs[editingKey]}
+          label={editingKey}
+          localVolume={localVolume}
+          onSave={async (editedBlob) => {
+            await handleFileUpload(editingKey, editedBlob);
+            setEditingKey(null);
+          }}
+          onDelete={() => {
+            handleClear(editingKey);
+            setEditingKey(null);
+          }}
+          onClose={() => setEditingKey(null)}
+        />
+      </div>
+    </div>
+  ) : null;
+
   if (mode === 'settings') {
     const stats = getSetupStats(blobs);
     const pct = stats.total ? Math.round((stats.saved / stats.total) * 100) : 0;
 
     return (
       <div className="sb-setup glass-panel" style={{ border: 'none' }}>
+        {editorOverlay}
         <div className="sb-setup-head">
           <span className="sb-setup-title">⚙️ Setup Soundboard</span>
           <div className="sb-setup-actions">
@@ -838,6 +875,7 @@ export const GreetingsPanel = ({ onEditModeChange }) => {
 
   return (
     <div className="sb-play-wrap">
+      {editorOverlay}
       {safetyNotice && (
         <div style={{ fontSize: '0.7rem', fontWeight: 700, color: '#fbbf24', background: 'rgba(245, 158, 11, 0.12)', border: '1px solid rgba(245, 158, 11, 0.35)', borderRadius: '6px', padding: '0.35rem 0.5rem' }}>
           {safetyNotice}
