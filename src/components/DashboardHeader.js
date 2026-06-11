@@ -670,7 +670,7 @@ export const DashboardHeader = ({
   const SessionControlsSticky = () => (
     <div
       className="session-controls-sticky"
-      style={!isActive ? { position: 'fixed', top: 0, left: 0, right: 0, zIndex: 10050, margin: 0 } : undefined}
+      style={undefined}
     >
       <div style={{ display: 'flex', gap: '3px', alignItems: 'center', flexShrink: 0 }}>
         {!isActive ? (
@@ -1742,7 +1742,7 @@ ${isInDeficit ? `⚠️ DEFICIT: Behind pace by ${Math.round(monthlyDeficitMins)
 
   return (
     <>
-    <header className={`dashboard-header glass-panel${headerMinimal || scoreboardFill ? ' dashboard-header--controls-only' : ''}${headerMinimal ? ' dashboard-header--minimal' : ''}`} style={{ position: 'relative', zIndex: 3000 }}>
+    <header className={`dashboard-header glass-panel${headerMinimal || scoreboardFill ? ' dashboard-header--controls-only' : ''}${headerMinimal ? ' dashboard-header--minimal' : ''}`} style={{ position: 'relative', zIndex: 100 }}>
 
       <SessionControlsSticky />
 

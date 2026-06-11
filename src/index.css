@@ -442,6 +442,7 @@ body {
 .dashboard-header--controls-only {
   flex-shrink: 0;
   max-height: none;
+  overflow-y: visible;
 }
 
 .main-content.view-scoreboard {
