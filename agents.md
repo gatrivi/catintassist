@@ -126,4 +126,5 @@ CURRENT INBOX
 - [x] Post-Call Summary: on call end, extracts numbers and dollar amounts from the transcript, shows dismissible toast (v4.22.0)
 - [x] Enhanced Filler Filter: strips um/uh/like/you know/bueno/pues from sentence starts, reducing reading fatigue (v4.22.0)
 - [x] v4.27.0: transcript white / translation gray; bubble splits on `. ! ?`; quick notes during call focus; sticky connect/stop; persistent pin section; EN-only number words (fixes ten/tenía)
+- [x] Shift attach split: auto-attach tab at 9am; CONNECT vs CALL START; off-call status bar; idle pane tips/checklist/metrics rotation; C/M hotkeys (v4.48.3)
 </details>
