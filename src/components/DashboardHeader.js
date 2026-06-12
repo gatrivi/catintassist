@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { StatNumber } from './StatNumber';
 import { LiveRollingNumber } from './LiveRollingNumber';
@@ -162,6 +162,248 @@ const StateIndicators = ({ state, breakMinutes, isZombie, silenceCount }) => {
   );
 };
 
+const SessionControlsSticky = React.memo(({
+  isActive,
+  isBreakActive,
+  micTestMode,
+  setMicTestMode,
+  connectionState,
+  connectionMessage,
+  showEndDayButton,
+  onEndDay,
+
+  // Connect UX
+  connectFlash,
+  connectLabel,
+  connectSingleTitle,
+  connectDoubleTitle,
+  connectOnSingle,
+  connectOnDouble,
+  requireDoubleTapIndicator,
+  pendingDoubleTapTitle,
+  onArmDoubleTap,
+
+  // Break
+  minutesSinceLastBreak,
+  shouldBreakNudge,
+  breakNudgeStage,
+  stopBreak,
+  onStartBreak,
+
+  // Call controls
+  handleStop,
+  isHold,
+  setIsHold,
+  disableZap,
+  isZapping,
+  onReconnectStream,
+
+  // Call micro bar
+  silenceCount,
+  lastEnglishActivityTime,
+  sessionSeconds,
+  sessionArsLive,
+  callModeExpanded,
+  setCallModeExpanded,
+  isNotesOpen,
+  setIsNotesOpen,
+}) => {
+  const showConnecting = isActive && connectionState !== 'connected';
+
+  return (
+    <div className="session-controls-sticky" style={undefined}>
+      <div style={{ display: 'flex', gap: '3px', alignItems: 'center', flexShrink: 0 }}>
+        {!isActive && (
+          <button
+            id="header-mic-test-btn"
+            type="button"
+            className="btn-icon tiny-btn"
+            onClick={() => setMicTestMode?.(!micTestMode)}
+            style={{
+              width: '26px',
+              height: '26px',
+              fontSize: '0.7rem',
+              background: micTestMode ? 'rgba(245, 158, 11, 0.25)' : 'rgba(255,255,255,0.06)',
+              border: micTestMode ? '1px solid rgba(245, 158, 11, 0.55)' : '1px solid rgba(255,255,255,0.1)',
+              boxShadow: micTestMode ? '0 0 8px rgba(245, 158, 11, 0.35)' : 'none',
+            }}
+            title={micTestMode ? 'Mic Test ON — Connect uses your microphone (no tab picker)' : 'Mic Test OFF — Connect captures interpreter tab audio'}
+            aria-pressed={micTestMode}
+          >
+            🎤
+          </button>
+        )}
+
+        {!isActive ? (
+          <ConnectInterpretButton
+            onSingle={connectOnSingle}
+            onDouble={connectOnDouble}
+            flash={connectFlash}
+            disabled={false}
+            size="top"
+            label={connectLabel}
+            requireDoubleTapIndicator={requireDoubleTapIndicator}
+            onArmDoubleTap={onArmDoubleTap}
+            pendingDoubleTapTitle={pendingDoubleTapTitle}
+            singleTitle={connectSingleTitle}
+            doubleTitle={connectDoubleTitle}
+          />
+        ) : (
+          <>
+            <button
+              id="header-stop-btn"
+              data-guide="stop"
+              className="btn-emoji"
+              onClick={handleStop}
+              style={{ background: '#ef4444', color: '#fff', width: '30px', height: '30px' }}
+              title="STOP / DISCONNECT"
+            >
+              🛑
+            </button>
+            <button
+              id="header-hold-btn"
+              className="btn btn-condensed"
+              onClick={() => setIsHold(!isHold)}
+              style={{
+                background: isHold ? '#f59e0b' : 'rgba(255,255,255,0.08)',
+                height: '30px',
+                padding: '0',
+                width: '30px',
+                fontSize: '0.65rem',
+                border: '1px solid rgba(255,255,255,0.1)',
+              }}
+            >
+              {isHold ? 'H' : '⏸'}
+            </button>
+            <button
+              id="header-zap-btn"
+              className={`btn-emoji ${isZapping ? 'zap-active' : ''}`}
+              onClick={disableZap ? undefined : () => {
+                // ZAP is intentionally disabled (no effective behavior).
+                if (disableZap) return;
+                onReconnectStream();
+              }}
+              disabled={disableZap}
+              style={{
+                background: '#0ea5e9',
+                width: '30px',
+                height: '30px',
+                opacity: disableZap ? 0.25 : 1,
+              }}
+              title={disableZap ? 'ZAP disabled' : 'ZAP - Reconnect Audio Stream'}
+            >
+              ⚡
+            </button>
+          </>
+        )}
+
+        <button
+          id="header-break-btn"
+          className="btn-emoji"
+          onClick={isBreakActive ? stopBreak : onStartBreak}
+          style={{
+            background: '#fb923c',
+            color: '#fff',
+            height: '30px',
+            opacity: isActive ? 0.35 : 1,
+            width: shouldBreakNudge ? '86px' : '30px',
+            padding: shouldBreakNudge ? '0 8px' : '0',
+            fontSize: shouldBreakNudge ? '0.62rem' : undefined,
+            borderRadius: shouldBreakNudge ? '8px' : undefined,
+          }}
+          disabled={isActive}
+          title="BREAK"
+        >
+          {shouldBreakNudge ? (breakNudgeStage >= 2 ? '☕ BREAK' : '☕ BREAK') : '☕'}
+        </button>
+
+        {showEndDayButton && (
+          <button
+            id="header-end-day-btn"
+            className="btn-emoji"
+            onClick={onEndDay}
+            style={{ background: '#8b5cf6', color: '#fff', width: '30px', height: '30px' }}
+            title="END DAY"
+          >
+            🌙
+          </button>
+        )}
+      </div>
+
+      {isActive && (
+        <div className="call-micro-bar-center">
+          <span
+            className="call-micro-bar-slot call-micro-bar-hold"
+            title="Non-doctor hold time (resets on English speech)"
+            style={{ visibility: !showConnecting && silenceCount > 30 ? 'visible' : 'hidden' }}
+          >
+            {formatTime(Math.max(0, Math.floor((Date.now() - lastEnglishActivityTime) / 1000)))}
+          </span>
+
+          <span className="call-micro-bar-slot call-micro-bar-timer">
+            {showConnecting ? (
+              <span style={{ fontSize: '0.68rem', fontWeight: 900, color: '#f59e0b' }}>
+                {connectionMessage || 'Connecting…'}
+              </span>
+            ) : (
+              <SlotMicroValue text={formatTime(sessionSeconds)} />
+            )}
+          </span>
+
+          {!showConnecting && (
+            <span className="call-micro-bar-slot call-micro-bar-earnings">
+              <SlotMicroValue text={`AR$${sessionArsLive}`} />
+            </span>
+          )}
+
+          {!showConnecting && (
+            <span
+              className="call-micro-bar-slot call-micro-bar-nudge"
+              title="Working 90+ minutes without a break"
+              style={{ visibility: minutesSinceLastBreak > 90 ? 'visible' : 'hidden' }}
+            >
+              🍕 {Math.floor(minutesSinceLastBreak)}m
+            </span>
+          )}
+          <span className="call-micro-bar-slot call-micro-bar-reserved" aria-hidden="true" />
+        </div>
+      )}
+
+      <div style={{ display: 'flex', gap: '3px', alignItems: 'center', flexShrink: 0 }}>
+        {isActive && !callModeExpanded && (
+          <button
+            className="btn-icon tiny-btn"
+            onClick={() => setCallModeExpanded(true)}
+            style={{ width: '24px', height: '24px', fontSize: '0.7rem' }}
+            title="Expand Header"
+          >
+            🔼
+          </button>
+        )}
+        {isActive && callModeExpanded && (
+          <button
+            className="btn-icon tiny-btn"
+            onClick={() => setCallModeExpanded(false)}
+            style={{ width: '24px', height: '24px', fontSize: '0.7rem' }}
+            title="Compact Header"
+          >
+            🔽
+          </button>
+        )}
+        <button
+          className="btn-icon tiny-btn"
+          onClick={() => setIsNotesOpen(!isNotesOpen)}
+          style={{ opacity: isNotesOpen ? 1 : 0.45, width: '24px', height: '24px', fontSize: '0.75rem' }}
+          title="Quick Notes"
+        >
+          📝
+        </button>
+        <AppGuideButton />
+      </div>
+    </div>
+  );
+};
+
 export const DashboardHeader = ({
   onStartAudio, onStopAudio, onReconnectStream, sttLanguage, onToggleLanguage, onRecovery,
   connectionState, connectionMessage, lastDataTime,
@@ -171,6 +413,7 @@ export const DashboardHeader = ({
   onCycleWorkspace,
   showStudioHint = false,
   onConnectAnotherTab,
+  tabStreamReady = false,
 }) => {
   const { isActive, sessionSeconds, sessionEarnings, stats, updateStat, stopSession, endDay, RATE_PER_MINUTE, arsRate, setArsRate, isBreakActive, breakSeconds, startBreak, stopBreak, availSeconds, isEditingScoreboard, setIsEditingScoreboard, visibleCards, isNotesOpen, setIsNotesOpen, isToolbarVisible, setIsToolbarVisible, isHeatmapOpen, setIsHeatmapOpen, isZombieCall, isScoreboardHelpVisible, setIsScoreboardHelpVisible, isHold, setIsHold, holdSeconds, dailyTimeline, historyTimeline, dailyLog, lastActivityTime, lastEnglishActivityTime, isCallDetectionEnabled, setIsCallDetectionEnabled, callFocusMode, setCallFocusMode, minutesSinceLastBreak } = useSession();
 
@@ -223,6 +466,24 @@ export const DashboardHeader = ({
   useEffect(() => {
     if (!isActive) setCallModeExpanded(false);
   }, [isActive]);
+
+  // Break nudges during idle (not on a call, not currently on break).
+  // Stage thresholds are intentionally coarse to avoid spamming the UI.
+  const breakNudgeStage = !isActive && !isBreakActive
+    ? (minutesSinceLastBreak >= 180 ? 3 : minutesSinceLastBreak >= 120 ? 2 : minutesSinceLastBreak >= 60 ? 1 : 0)
+    : 0;
+  const shouldBreakNudge = breakNudgeStage > 0;
+  const lastBreakNudgeStageRef = useRef(0);
+  useEffect(() => {
+    if (isActive || isBreakActive) {
+      lastBreakNudgeStageRef.current = 0;
+      return;
+    }
+    if (breakNudgeStage > 0 && lastBreakNudgeStageRef.current !== breakNudgeStage) {
+      lastBreakNudgeStageRef.current = breakNudgeStage;
+      audioEngine.playWarningPing?.();
+    }
+  }, [breakNudgeStage, isActive, isBreakActive, audioEngine]);
 
   const startOfToday = new Date().setHours(0,0,0,0);
   const timelineStart = startOfToday + 9 * 3600000;
@@ -390,6 +651,15 @@ export const DashboardHeader = ({
   const ABSOLUTE_END = 23;
   const currentTime = now.getHours() + (now.getMinutes() / 60);
   const shiftElapsedRatio = Math.min(1, Math.max(0, (currentTime - DAILY_SHIFT_START) / (DAILY_SHIFT_END - DAILY_SHIFT_START)));
+
+  // Log-off nudge (progressive fill + shine near 18:00, off-call only)
+  const logoffGlowWindowStart = 17;
+  const logoffGlowWindowEnd = 18;
+  const logoffGlowProgress =
+    !isActive && !isBreakActive
+      ? Math.min(1, Math.max(0, (currentTime - logoffGlowWindowStart) / (logoffGlowWindowEnd - logoffGlowWindowStart)))
+      : 0;
+  const shouldLogoffShine = !isActive && !isBreakActive && currentTime >= 17.75;
   
   const getDayEmoji = () => {
     if (currentTime < 13) return '🌅';
@@ -703,106 +973,29 @@ export const DashboardHeader = ({
 
   const rateOf = (view) => view === 'effective' ? effectiveRateArsHr : activeRateArsHr;
 
-  // Sticky connect/stop bar — always visible while scrolling the header
-  const SessionControlsSticky = () => (
-    <div
-      className="session-controls-sticky"
-      style={undefined}
-    >
-      <div style={{ display: 'flex', gap: '3px', alignItems: 'center', flexShrink: 0 }}>
-        {!isActive && (
-          <button
-            id="header-mic-test-btn"
-            type="button"
-            className="btn-icon tiny-btn"
-            onClick={() => setMicTestMode?.(!micTestMode)}
-            style={{
-              width: '26px',
-              height: '26px',
-              fontSize: '0.7rem',
-              background: micTestMode ? 'rgba(245, 158, 11, 0.25)' : 'rgba(255,255,255,0.06)',
-              border: micTestMode ? '1px solid rgba(245, 158, 11, 0.55)' : '1px solid rgba(255,255,255,0.1)',
-              boxShadow: micTestMode ? '0 0 8px rgba(245, 158, 11, 0.35)' : 'none',
-            }}
-            title={micTestMode ? 'Mic Test ON — Connect uses your microphone (no tab picker)' : 'Mic Test OFF — Connect captures interpreter tab audio'}
-            aria-pressed={micTestMode}
-          >
-            🎤
-          </button>
-        )}
-        {!isActive ? (
-          <ConnectInterpretButton
-            onSingle={() => (isZombieCall ? onRecovery() : onStartAudio())}
-            onDouble={onConnectAnotherTab}
-            flash={!isBreakActive && connectionState !== 'connected'}
-            disabled={false}
-            size="top"
-            singleTitle={isZombieCall ? 'RE-ATTACH TO CALL' : (micTestMode ? 'CONNECT (MIC TEST)' : 'CONNECT')}
-            doubleTitle={micTestMode ? 're-request microphone' : 'connect to another browser tab'}
-          />
-        ) : (
-          <>
-            <button id="header-stop-btn" data-guide="stop" className="btn-emoji" onClick={handleStop} style={{ background: '#ef4444', color: '#fff', width: '30px', height: '30px' }} title="STOP / DISCONNECT">🛑</button>
-            <button id="header-hold-btn" className="btn btn-condensed" onClick={() => setIsHold(!isHold)} style={{ background: isHold ? '#f59e0b' : 'rgba(255,255,255,0.08)', height: '30px', padding: '0', width: '30px', fontSize: '0.65rem', border: '1px solid rgba(255,255,255,0.1)' }}>{isHold ? 'H' : '⏸'}</button>
-            <button
-              id="header-zap-btn"
-              className={`btn-emoji ${isZapping ? 'zap-active' : ''}`}
-              onClick={() => {
-                setIsZapping(true);
-                onReconnectStream();
-                setTimeout(() => setIsZapping(false), 450);
-              }}
-              style={{ background: '#0ea5e9', width: '30px', height: '30px' }}
-              title="ZAP - Reconnect Audio Stream"
-            >
-              ⚡
-            </button>
-          </>
-        )}
-        <button id="header-break-btn" className="btn-emoji" onClick={isBreakActive ? stopBreak : handleStartBreak} style={{ background: '#fb923c', color: '#fff', width: '30px', height: '30px', opacity: isActive ? 0.35 : 1 }} disabled={isActive} title="BREAK">☕</button>
-        {!isActive && stats.dailyMinutes > 0 && !isBreakActive && (
-          <button id="header-end-day-btn" className="btn-emoji" onClick={handleEndDay} style={{ background: '#8b5cf6', color: '#fff', width: '30px', height: '30px' }} title="END DAY">🌙</button>
-        )}
-      </div>
+  // Sticky connect/stop bar — module component (stable identity)
+  const tabNeedsReconnect = !micTestMode && !tabStreamReady;
+  const connectRequireDoubleTapIndicator = tabNeedsReconnect;
+  const connectLabel = tabNeedsReconnect ? 'TAB RECONNECT' : 'CALL START';
+  const connectSingleTitle = isZombieCall
+    ? 'RE-ATTACH'
+    : micTestMode
+      ? 'CONNECT (MIC TEST)'
+      : 'CALL START';
+  const connectDoubleTitle = micTestMode
+    ? 're-request microphone'
+    : 'connect to another browser tab';
 
-      {isActive && (
-        <div className="call-micro-bar-center">
-          <span
-            className="call-micro-bar-slot call-micro-bar-hold"
-            title="Non-doctor hold time (resets on English speech)"
-            style={{ visibility: silenceCount > 30 ? 'visible' : 'hidden' }}
-          >
-            {formatTime(Math.max(0, Math.floor((Date.now() - lastEnglishActivityTime) / 1000)))}
-          </span>
-          <span className="call-micro-bar-slot call-micro-bar-timer">
-            <SlotMicroValue text={formatTime(sessionSeconds)} />
-          </span>
-          <span className="call-micro-bar-slot call-micro-bar-earnings">
-            <SlotMicroValue text={`AR$${sessionArsLive}`} />
-          </span>
-          <span
-            className="call-micro-bar-slot call-micro-bar-nudge"
-            title="Working 90+ minutes without a break"
-            style={{ visibility: minutesSinceLastBreak > 90 ? 'visible' : 'hidden' }}
-          >
-            🍕 {Math.floor(minutesSinceLastBreak)}m
-          </span>
-          <span className="call-micro-bar-slot call-micro-bar-reserved" aria-hidden="true" />
-        </div>
-      )}
+  const connectOnSingle = tabNeedsReconnect
+    ? (() => {}) // first tap arms the “second tap required” UX
+    : (isZombieCall ? onRecovery : onStartAudio);
 
-      <div style={{ display: 'flex', gap: '3px', alignItems: 'center', flexShrink: 0 }}>
-        {isActive && !callModeExpanded && (
-          <button className="btn-icon tiny-btn" onClick={() => setCallModeExpanded(true)} style={{ width: '24px', height: '24px', fontSize: '0.7rem' }} title="Expand Header">🔼</button>
-        )}
-        {isActive && callModeExpanded && (
-          <button className="btn-icon tiny-btn" onClick={() => setCallModeExpanded(false)} style={{ width: '24px', height: '24px', fontSize: '0.7rem' }} title="Compact Header">🔽</button>
-        )}
-        <button className="btn-icon tiny-btn" onClick={() => setIsNotesOpen(!isNotesOpen)} style={{ opacity: isNotesOpen ? 1 : 0.45, width: '24px', height: '24px', fontSize: '0.75rem' }} title="Quick Notes">📝</button>
-        <AppGuideButton />
-      </div>
-    </div>
-  );
+  const connectOnDouble = tabNeedsReconnect
+    ? (isZombieCall ? onRecovery : onStartAudio) // second tap performs attach via picker
+    : onConnectAnotherTab; // double tap connects a different browser tab
+
+  const connectFlash = !isBreakActive && tabNeedsReconnect;
+  const showEndDayButton = !isActive && stats.dailyMinutes > 0 && !isBreakActive;
 
   // Listen for Demo Scenarios
   useEffect(() => {
@@ -1083,8 +1276,39 @@ export const DashboardHeader = ({
                <div id="pill-shift" className="metric-pill compact-pill" title="SHIFT" style={{ padding: '0.1rem 0.3rem' }}>
                  <span style={{ fontSize: '0.55rem' }}>🏃{formatHoursMins(shiftElapsedMins)}</span>
                </div>
-               <div id="pill-logoff" className="metric-pill compact-pill" title="LOG OFF" style={{ background: 'rgba(245,158,11,0.08)', border: '1px solid rgba(245,158,11,0.2)', padding: '0.1rem 0.3rem' }}>
-                 <span style={{ color: '#fcd34d', fontSize: '0.55rem' }}>🚪{getCompensatedLogOff()}</span>
+               <div
+                 id="pill-logoff"
+                 className="metric-pill compact-pill"
+                 title="LOG OFF"
+                 style={{
+                   position: 'relative',
+                   overflow: 'hidden',
+                   background: 'rgba(245,158,11,0.08)',
+                   border: '1px solid rgba(245,158,11,0.2)',
+                   padding: '0.1rem 0.3rem',
+                   boxShadow: shouldLogoffShine ? '0 0 14px rgba(245,158,11,0.45)' : undefined,
+                   animation: shouldLogoffShine ? 'shineSweep 3s linear infinite' : undefined,
+                   backgroundImage: shouldLogoffShine ? 'linear-gradient(90deg, rgba(245,158,11,0.10), rgba(245,158,11,0.22), rgba(245,158,11,0.10))' : undefined,
+                   backgroundSize: shouldLogoffShine ? '200% 100%' : undefined,
+                   backgroundPosition: '0% 0%',
+                 }}
+               >
+                 <div
+                   aria-hidden="true"
+                   style={{
+                     position: 'absolute',
+                     left: 0,
+                     top: 0,
+                     bottom: 0,
+                     width: `${Math.round(logoffGlowProgress * 100)}%`,
+                     background: 'rgba(245,158,11,0.22)',
+                     transition: 'width 0.8s ease',
+                     pointerEvents: 'none',
+                   }}
+                 />
+                 <span style={{ position: 'relative', zIndex: 1, color: '#fcd34d', fontSize: '0.55rem' }}>
+                   🚪{getCompensatedLogOff()}
+                 </span>
                </div>
             </div>
           </div>
@@ -1801,7 +2025,49 @@ ${isInDeficit ? `⚠️ DEFICIT: Behind pace by ${Math.round(monthlyDeficitMins)
     <>
     <header className={`dashboard-header glass-panel${headerMinimal || scoreboardFill ? ' dashboard-header--controls-only' : ''}${headerMinimal ? ' dashboard-header--minimal' : ''}`} style={{ position: 'relative', zIndex: 100 }}>
 
-      <SessionControlsSticky />
+      <SessionControlsSticky
+        isActive={isActive}
+        isBreakActive={isBreakActive}
+        micTestMode={micTestMode}
+        setMicTestMode={setMicTestMode}
+        connectionState={connectionState}
+        connectionMessage={connectionMessage}
+
+        showEndDayButton={showEndDayButton}
+        onEndDay={handleEndDay}
+
+        connectFlash={connectFlash}
+        connectLabel={connectLabel}
+        connectSingleTitle={connectSingleTitle}
+        connectDoubleTitle={connectDoubleTitle}
+        connectOnSingle={connectOnSingle}
+        connectOnDouble={connectOnDouble}
+        requireDoubleTapIndicator={connectRequireDoubleTapIndicator}
+        pendingDoubleTapTitle="Tap again to attach"
+        onArmDoubleTap={() => audioEngine.playWarningPing?.()}
+
+        minutesSinceLastBreak={minutesSinceLastBreak}
+        shouldBreakNudge={shouldBreakNudge}
+        breakNudgeStage={breakNudgeStage}
+        stopBreak={stopBreak}
+        onStartBreak={handleStartBreak}
+
+        handleStop={handleStop}
+        isHold={isHold}
+        setIsHold={setIsHold}
+        disableZap={true}
+        isZapping={isZapping}
+        onReconnectStream={onReconnectStream}
+
+        silenceCount={silenceCount}
+        lastEnglishActivityTime={lastEnglishActivityTime}
+        sessionSeconds={sessionSeconds}
+        sessionArsLive={sessionArsLive}
+        callModeExpanded={callModeExpanded}
+        setCallModeExpanded={setCallModeExpanded}
+        isNotesOpen={isNotesOpen}
+        setIsNotesOpen={setIsNotesOpen}
+      />
 
       {!headerMinimal && !scoreboardFill && renderWorkspaceBody()}
 

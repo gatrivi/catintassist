@@ -57,6 +57,7 @@ const Dashboard = () => {
     lastDataTime,
     micTestMode,
     setMicTestMode,
+    tabStreamReady,
   } = useDeepgram();
   const {
     isNotesOpen,
@@ -68,6 +69,7 @@ const Dashboard = () => {
     startSession,
     clearZombieState,
     callFocusMode,
+    stopBreak,
   } = useSession();
   const { playCoin } = useProgressiveAudio();
   const { updateAvailable, latestVersionToken, dismissUpdate, reloadToUpdate } =
@@ -77,6 +79,14 @@ const Dashboard = () => {
   const [showStudioHint, setShowStudioHint] = useState(
     () => !hasSeenStudioHint(),
   );
+
+  // UX: on every page load, assume tab capture needs a fresh user attach.
+  // This prevents zombie-call ambiguity after refresh/reopen.
+  useEffect(() => {
+    try {
+      sessionStorage.removeItem('catint_tab_stream_ok_v1');
+    } catch {}
+  }, []);
 
   const offCallWorkspace = isActive || isZombieCall ? null : workspaceView;
   const isSoundboardStudio = offCallWorkspace === "soundboard";
@@ -197,23 +207,25 @@ const Dashboard = () => {
   // UNIFIED CONNECTION ENGINE
   const handleConnection = useCallback(
     async (isRecovery = false) => {
+      if (isBreakActive) stopBreak(); // stop break immediately on call start click
       const ok = await startRecording();
       if (ok) {
         if (isRecovery) clearZombieState();
         startSession(isRecovery);
       }
     },
-    [startRecording, startSession, clearZombieState],
+    [startRecording, startSession, clearZombieState, isBreakActive, stopBreak],
   );
 
   const handleConnectAnotherTab = useCallback(async () => {
+    if (isBreakActive) stopBreak();
     const ok = await startRecordingFresh();
     if (ok) {
       const isRecovery = !!isZombieCall;
       if (isRecovery) clearZombieState();
       startSession(isRecovery);
     }
-  }, [startRecordingFresh, isZombieCall, startSession, clearZombieState]);
+  }, [startRecordingFresh, isZombieCall, startSession, clearZombieState, isBreakActive, stopBreak]);
 
   // Micro-break nudge: top bar color shifts when working too long without a break
   const micBarColor =
@@ -292,7 +304,7 @@ const Dashboard = () => {
         }}
       >
         <CloudSyncIndicator />
-        v4.48.1 (Full Stack)
+        v4.48.2 (Full Stack)
       </div>
 
       <div
@@ -335,6 +347,7 @@ const Dashboard = () => {
         lastDataTime={lastDataTime}
         micTestMode={micTestMode}
         setMicTestMode={setMicTestMode}
+        tabStreamReady={tabStreamReady}
         offCallWorkspace={offCallWorkspace}
         onCycleWorkspace={cycleWorkspaceView}
         showStudioHint={showStudioHint}

@@ -6,6 +6,15 @@ import {
   removeOverlapPreservingDigitSequences,
 } from '../utils/sensitiveDataProtector';
 
+const TAB_STREAM_READY_KEY = 'catint_tab_stream_ok_v1';
+const readTabStreamReady = () => {
+  try {
+    return sessionStorage.getItem(TAB_STREAM_READY_KEY) === '1';
+  } catch {
+    return false;
+  }
+};
+
 /** Split leading complete sentences (ends with . ! ?) from trailing fragment. */
 const peelCompleteSentences = (text) => {
   const sentences = [];
@@ -101,6 +110,7 @@ export const useDeepgram = () => {
   const [sttLanguage, setSttLanguage] = useState('auto');
   const [lastDataTime, setLastDataTime] = useState(0);
   const [micTestMode, setMicTestModeState] = useState(readMicTestMode);
+  const [tabStreamReady, setTabStreamReady] = useState(readTabStreamReady);
   
   const langModeRef = useRef('auto');
   const micTestModeRef = useRef(readMicTestMode());
@@ -142,6 +152,10 @@ export const useDeepgram = () => {
     } catch (_) {}
     streamRef.current = null;
     streamSourceRef.current = null;
+    setTabStreamReady(false);
+    try {
+      sessionStorage.setItem(TAB_STREAM_READY_KEY, '0');
+    } catch {}
   }, []);
 
   const setMicTestMode = useCallback((enabled) => {
@@ -443,6 +457,12 @@ export const useDeepgram = () => {
     isActiveRef.current = true;
     bindStreamLifecycle(stream, source);
     startDeepgram(stream);
+    if (source === 'tab') {
+      setTabStreamReady(true);
+      try {
+        sessionStorage.setItem(TAB_STREAM_READY_KEY, '1');
+      } catch {}
+    }
     return true;
   }, [bindStreamLifecycle, startDeepgram]);
 
@@ -486,6 +506,13 @@ export const useDeepgram = () => {
 
       closeConnections();
       stopStreamTracks();
+      if (source === 'tab') {
+        // Force "tab needs reconnect" UX until we successfully reacquire a stream.
+        setTabStreamReady(false);
+        try {
+          sessionStorage.setItem(TAB_STREAM_READY_KEY, '0');
+        } catch {}
+      }
 
       setConnectionMessage(useMic ? 'Requesting Microphone...' : 'Requesting Tab Audio...');
       const stream = await acquireAudioStream(useMic);
@@ -540,5 +567,6 @@ export const useDeepgram = () => {
     lastDataTime,
     micTestMode,
     setMicTestMode,
+    tabStreamReady,
   };
 };

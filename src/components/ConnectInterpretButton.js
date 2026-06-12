@@ -11,9 +11,14 @@ export const ConnectInterpretButton = ({
   size = 'top', // 'top' | 'idle'
   singleTitle,
   doubleTitle,
+  label = 'Connect',
+  requireDoubleTapIndicator = false,
+  onArmDoubleTap,
+  pendingDoubleTapTitle = 'Tap again to start',
 }) => {
   const timeoutRef = useRef(null);
   const lastClickAtRef = useRef(0);
+  const [isPendingDoubleTap, setIsPendingDoubleTap] = React.useState(false);
 
   useEffect(() => {
     return () => {
@@ -49,6 +54,7 @@ export const ConnectInterpretButton = ({
 
     if (isDouble) {
       lastClickAtRef.current = 0;
+      setIsPendingDoubleTap(false);
       if (timeoutRef.current) clearTimeout(timeoutRef.current);
       timeoutRef.current = null;
       onDouble?.();
@@ -59,8 +65,15 @@ export const ConnectInterpretButton = ({
     timeoutRef.current = setTimeout(() => {
       lastClickAtRef.current = 0;
       timeoutRef.current = null;
-      onSingle?.();
+      setIsPendingDoubleTap(false);
+      // If the parent says double-tap is required, first tap only arms UI.
+      if (!requireDoubleTapIndicator) onSingle?.();
     }, DOUBLE_TAP_MS);
+
+    if (requireDoubleTapIndicator) {
+      setIsPendingDoubleTap(true);
+      onArmDoubleTap?.();
+    }
   };
 
   return (
@@ -68,21 +81,25 @@ export const ConnectInterpretButton = ({
       type="button"
       onClick={handleClick}
       disabled={disabled}
-      className={`connect-interpret-btn btn-primaryish ${flash ? 'connect-interpret-flash' : ''}`}
+      className={`connect-interpret-btn btn-primaryish ${flash || isPendingDoubleTap ? 'connect-interpret-flash' : ''}`}
       style={{
         ...style,
         background: '#10b981',
         color: '#fff',
         border: '1px solid rgba(16,185,129,0.35)',
       }}
-      title={doubleTitle ? `${singleTitle || 'Connect'} (double tap: ${doubleTitle})` : singleTitle || 'Connect'}
-      aria-label={singleTitle || 'Connect'}
+      title={doubleTitle
+        ? (requireDoubleTapIndicator
+            ? `${label} — double-tap required (2nd click opens picker).`
+            : `${singleTitle || label} (double tap: ${doubleTitle})`)
+        : (singleTitle || label)}
+      aria-label={singleTitle || label}
     >
       <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem' }}>
         <span aria-hidden style={{ display: 'inline-flex', transform: 'translateY(-0.5px)' }}>
           <PlayIcon />
         </span>
-        <span>Connect</span>
+        <span>{isPendingDoubleTap ? pendingDoubleTapTitle : label}</span>
       </span>
     </button>
   );
