@@ -326,6 +326,10 @@ export const useDeepgram = () => {
 
           // Finalize complete sentences, then comma-chunk long breathless runs
           if (isFinal && current.text?.trim()) {
+            // Preserve the previous bubble's id for the first sealed chunk.
+            // This prevents React from remounting the "before split" bubble,
+            // reducing the visible "dance" when the UI splits a long message.
+            const originalLastId = last?.id;
             const { sentences, remainder: sentRemainder } = peelCompleteSentences(current.text);
             let sealedAll = [];
             let tailText = sentRemainder;
@@ -369,6 +373,9 @@ export const useDeepgram = () => {
             }
 
             if (sealedAll.length > 0) {
+              if (sealedAll[0] && originalLastId) {
+                sealedAll[0] = { ...sealedAll[0], id: originalLastId };
+              }
               newArr = [...prev.slice(0, -1), ...sealedAll];
               if (tailText?.trim()) {
                 const lang = current.lang || 'en';

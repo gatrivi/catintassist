@@ -402,7 +402,7 @@ const SessionControlsSticky = React.memo(({
       </div>
     </div>
   );
-};
+});
 
 export const DashboardHeader = ({
   onStartAudio, onStopAudio, onReconnectStream, sttLanguage, onToggleLanguage, onRecovery,

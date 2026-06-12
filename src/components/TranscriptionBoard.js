@@ -160,9 +160,33 @@ const BubbleRail = ({
   );
 };
 
-const TranslatedBubble = ({ id, text, lang, playTTS, stopTTS, playingUrl, prefetchTTS, reverse = false, ttsMode, turnWordCount, showTurnWordCount, shouldPrefetch, isPinned, onTogglePin }) => {
+const TranslatedBubble = ({
+  id,
+  text,
+  lang,
+  playTTS,
+  stopTTS,
+  playingUrl,
+  prefetchTTS,
+  reverse = false,
+  ttsMode,
+  turnWordCount,
+  showTurnWordCount,
+  shouldPrefetch,
+  isPinned,
+  onTogglePin,
+  forceTranslateKey = 0,
+  onManualRetranslate,
+}) => {
   const { translationMood } = useSession();
-  const { translation, audioUrl, engineStatus, targetLang } = useTranslate(text, lang, prefetchTTS, shouldPrefetch, translationMood);
+  const { translation, audioUrl, engineStatus, targetLang } = useTranslate(
+    text,
+    lang,
+    prefetchTTS,
+    shouldPrefetch,
+    translationMood,
+    forceTranslateKey,
+  );
   const hasAutoPlayedRef = useRef(false);
 
   useEffect(() => {
@@ -176,6 +200,14 @@ const TranslatedBubble = ({ id, text, lang, playTTS, stopTTS, playingUrl, prefet
   const isThisPlaying = playingUrl && audioUrl && playingUrl === audioUrl;
   const transcriptColor = '#ffffff';
   const translationColor = '#a1a1aa';
+
+  const normSource = (text || '').trim().toLowerCase();
+  const normTranslation = (translation || '').trim().toLowerCase();
+  const isTranslationStuck =
+    Boolean(translation) &&
+    normSource.length > 0 &&
+    normTranslation === normSource;
+  const showRetranslateBtn = !isPinned && isTranslationStuck;
   // Pane contract (for outside agents/models):
   // - left column is the EN/transcript lane
   // - right column is the ES/translation lane
@@ -192,15 +224,30 @@ const TranslatedBubble = ({ id, text, lang, playTTS, stopTTS, playingUrl, prefet
         </div>
       </div>
 
-      <div data-guide="bubble-rail" className="bubble-col bubble-col-rail">
-      <BubbleRail
-        engineStatus={engineStatus}
-        turnWordCount={turnWordCount}
-        showTurnWordCount={showTurnWordCount}
-        isThisPlaying={isThisPlaying}
-        canPlay={Boolean(translation && audioUrl)}
-        onPlayClick={() => (isThisPlaying ? stopTTS() : playTTS(translation, targetLang, audioUrl))}
-      />
+      <div
+        data-guide="bubble-rail"
+        className="bubble-col bubble-col-rail"
+        style={{ position: 'relative', minWidth: '6ch' }}
+      >
+        <BubbleRail
+          engineStatus={engineStatus}
+          turnWordCount={turnWordCount}
+          showTurnWordCount={showTurnWordCount}
+          isThisPlaying={isThisPlaying}
+          canPlay={Boolean(translation && audioUrl)}
+          onPlayClick={() => (isThisPlaying ? stopTTS() : playTTS(translation, targetLang, audioUrl))}
+        />
+        {showRetranslateBtn && (
+          <button
+            type="button"
+            className="bubble-retranslate-btn"
+            onClick={onManualRetranslate}
+            title="Retrigger translation for this message"
+            aria-label="Retrigger translation"
+          >
+            ↻
+          </button>
+        )}
       </div>
 
       <div className="bubble-col bubble-col-translation" style={{ color: translationColor, textAlign: 'left' }}>
@@ -231,6 +278,7 @@ export const TranscriptionBoard = ({ captions, onClearAll, onReconnect, lastData
       return [];
     }
   });
+  const [translationBumps, setTranslationBumps] = useState({});
   const { playTTS, stopTTS, isPlaying, playingUrl, prefetchTTS } = useTTS();
   const { playWarningPing } = useProgressiveAudio();
   const { isActive, isZombieCall, lastCallSummary, setLastCallSummary } = useSession();
@@ -287,6 +335,15 @@ export const TranscriptionBoard = ({ captions, onClearAll, onReconnect, lastData
       }
       return [...prev, { id: cap.id, text: cap.text, lang: cap.lang || 'en' }];
     });
+  };
+
+  const bumpManualRetranslate = (cap) => {
+    const capId = cap?.id;
+    if (!capId) return;
+    setTranslationBumps((prev) => ({
+      ...prev,
+      [capId]: (prev[capId] || 0) + 1,
+    }));
   };
 
   useEffect(() => {
@@ -463,6 +520,8 @@ export const TranscriptionBoard = ({ captions, onClearAll, onReconnect, lastData
                   shouldPrefetch={false}
                   isPinned={true}
                   onTogglePin={() => togglePin(cap)}
+                  forceTranslateKey={translationBumps[cap.id] ?? 0}
+                  onManualRetranslate={() => bumpManualRetranslate(cap)}
                 />
                 <button
                   type="button"
@@ -518,6 +577,8 @@ export const TranscriptionBoard = ({ captions, onClearAll, onReconnect, lastData
                   id={cap.id} text={cap.text} lang={cap.lang} playTTS={playTTS} stopTTS={stopTTS} playingUrl={playingUrl} prefetchTTS={prefetchTTS} 
                   reverse={cap.lang === 'es'} ttsMode={ttsMode} turnWordCount={turnWordCount} showTurnWordCount={showTurnWordCount} shouldPrefetch={i >= captions.length - 3} 
                   isPinned={false} onTogglePin={() => togglePin(cap)}
+                  forceTranslateKey={translationBumps[cap.id] ?? 0}
+                  onManualRetranslate={() => bumpManualRetranslate(cap)}
                 />
               </div>
               

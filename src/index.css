@@ -1435,9 +1435,19 @@ body {
 .pinned-transcript-section {
   position: sticky;
   top: 0;
-  z-index: 5;
+  z-index: 50; /* Must sit above normal-row absolute pin buttons */
   background: rgba(12, 12, 18, 0.92);
   backdrop-filter: blur(6px);
+}
+
+/* Pinned section: avoid mount animations (they cause visible "jiggle" / re-stitch feel). */
+.pinned-transcript-section .transcript-bubble {
+  animation: none !important;
+}
+
+/* Ensure pinned section pin controls win click stacking. */
+.pinned-transcript-section .bubble-pin-btn {
+  z-index: 60;
 }
 
 /* ── Soundboard hide / show (high visibility) ───────────────────────────── */
@@ -2801,6 +2811,32 @@ body {
   opacity: 0.42;
   color: #e2e8f0;
   transition: opacity 0.15s ease, transform 0.15s ease, background 0.15s ease, font-size 0.15s ease;
+}
+
+/* Manual translation retrigger (tiny, overlay on the bubble rail). */
+.bubble-retranslate-btn {
+  position: absolute;
+  top: -2px;
+  right: -2px;
+  z-index: 20;
+  width: 14px;
+  height: 14px;
+  padding: 0;
+  border-radius: 4px;
+  border: none;
+  background: rgba(56, 189, 248, 0.18);
+  color: rgba(125, 211, 252, 0.95);
+  cursor: pointer;
+  font-size: 10px;
+  line-height: 14px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.bubble-retranslate-btn:hover {
+  background: rgba(56, 189, 248, 0.30);
+  box-shadow: 0 0 0 1px rgba(56, 189, 248, 0.35);
 }
 
 .bubble-pin-btn.is-pinned {

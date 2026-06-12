@@ -37,7 +37,7 @@ const setCached = (text, langPair, result) => {
   }
 };
 
-export const useTranslate = (text, lang, prefetchTTS, shouldPrefetch, mood = 'default') => {
+export const useTranslate = (text, lang, prefetchTTS, shouldPrefetch, mood = 'default', forceTranslateKey = 0) => {
   const [translation, setTranslation] = useState('');
   const [audioUrl, setAudioUrl] = useState(null);
   const [isTranslating, setIsTranslating] = useState(false);
@@ -74,6 +74,14 @@ export const useTranslate = (text, lang, prefetchTTS, shouldPrefetch, mood = 'de
     // NORMALIZE TEXT for comparison
     const normText = text.trim().replace(/\s+/g, ' ');
     const wordCount = normText.split(/\s+/).length;
+    const force = forceTranslateKey > 0;
+
+    // Manual retrigger: break sticky pairing + prevent "delta skip".
+    if (force) {
+      langPairRef.current = null;
+      lastTranslatedTextRef.current = '';
+      lastWordCountRef.current = 0;
+    }
 
     // POLICY CHECK: Skip if too long, too short, or just noise/filler
     const wordDelta = Math.abs(wordCount - lastWordCountRef.current);
@@ -96,6 +104,7 @@ export const useTranslate = (text, lang, prefetchTTS, shouldPrefetch, mood = 'de
 
     const shouldSkipDueToDelta = mood !== 'fast' && 
                                  wordDelta < 2 && 
+                                 !force && 
                                  !forceTrigger && 
                                  lastTranslatedTextRef.current;
     
@@ -251,7 +260,7 @@ export const useTranslate = (text, lang, prefetchTTS, shouldPrefetch, mood = 'de
       if (debounceTimerRef.current) clearTimeout(debounceTimerRef.current);
       if (abortControllerRef.current) abortControllerRef.current.abort();
     };
-  }, [text, lang, shouldPrefetch, prefetchTTS, currentLangPair, mood]);
+  }, [text, lang, shouldPrefetch, prefetchTTS, currentLangPair, mood, forceTranslateKey]);
 
   return { translation, audioUrl, isTranslating, engineStatus, targetLang: (langPairRef.current || currentLangPair).split('-')[1] };
 };
