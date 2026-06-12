@@ -132,21 +132,52 @@ const EmojiRow = ({ emoji, emptyEmoji, value, unitValue, maxValue, color = '#fff
 // ─── DirectionalCue ──────────────────────────────────────────────────────────
 // Directional cue shown under the scoreboard header.
 const IDLE_TIPS = [
-  'Open Soundboard Studio (studio switch) to record clips while off-call.',
-  'Click the 123 button to flip scoreboard into number view.',
-  'Use the green Connect button, then speak to keep the transcript flowing.',
-  'Double tap Connect to re-open the browser tab/audio picker.',
-  'Use Space/Alt+Space to toggle language detection while you wait.',
-  'If you see a key detail, pin it with 📍 so it stays at the top.',
-  'If audio stalls during a call, hit ⚡ Zap to refresh the stream.',
+  'At 9am the app auto-attaches your interpreting tab — watch the status bar above.',
+  'Press C or ▶ CONNECT to attach; press again (CALL START) when the patient connects.',
+  'Press M or 🎤 to use your device microphone instead of tab audio.',
+  'Double-tap CONNECT to re-open the browser tab picker (Chrome preferred).',
+  'Use Space/Alt+Space to toggle EN/ES detection while you wait.',
+  'Pin key details with 📍 so voicemail numbers stay visible.',
+  'Soundboard Studio (dock switch) — record greetings off-call only.',
+];
+
+const IDLE_CHECKLIST = [
+  '① CONNECT tab · ② CALL START when patient is on · ③ STOP when done',
+  'Status bar alternates connect vs mic tips until audio is attached.',
+  'After attach: status says CALL START — timer begins only then.',
 ];
 
 const DirectionalCue = ({
   pacePrediction, dailyGoal, totalDailyMins, breakLeft,
   qualityScore, cutoffWarning, isActive, isBreakActive,
-  isZombieCall, onStartAudio, onRecovery, onConnectAnotherTab,
+  isZombieCall, audioAttached,
+  onAttachAudio, onAttachAudioFresh, onStartCall,
+  onRecovery, onConnectAnotherTab,
+  shiftElapsedMins,
 }) => {
-  const idleTip = IDLE_TIPS[Math.floor(Date.now() / 12000) % IDLE_TIPS.length];
+  const [rotateTick, setRotateTick] = useState(0);
+  useEffect(() => {
+    const iv = setInterval(() => setRotateTick((n) => n + 1), 12000);
+    return () => clearInterval(iv);
+  }, []);
+
+  const bucket = rotateTick % 3;
+  const idleSecondary = (() => {
+    if (bucket === 0) {
+      return { label: 'Tip', text: IDLE_TIPS[rotateTick % IDLE_TIPS.length], color: '#9dffed' };
+    }
+    if (bucket === 1) {
+      return { label: 'Flow', text: IDLE_CHECKLIST[rotateTick % IDLE_CHECKLIST.length], color: '#a5f3fc' };
+    }
+    const left = Math.max(0, Math.round(dailyGoal - totalDailyMins));
+    const pace = pacePrediction?.label || '—';
+    return {
+      label: 'Shift',
+      text: `${left}m to daily goal · pace ETA ${pace} · ${Math.round(breakLeft)}m break left`,
+      color: '#fcd34d',
+    };
+  })();
+
   const h = new Date().getHours();
   const goalsMet = totalDailyMins >= (dailyGoal || 1);
 
@@ -177,8 +208,23 @@ const DirectionalCue = ({
     return { text: null, color: '#9dffed' };
   })();
 
-  const requiredIdleText =
-    'press the green button to start interpreting. double tap to connect to another browser tab (chrome preferred';
+  const requiredIdleText = isZombieCall
+    ? 'Call still active — press C or ▶ RE-ATTACH (timer saved)'
+    : audioAttached
+      ? 'Tab hooked — press C or ▶ CALL START when call begins'
+      : 'Press C or ▶ CONNECT to attach interpreting platform';
+
+  const connectLabel = isZombieCall ? 'RE-ATTACH' : audioAttached ? 'CALL START' : 'CONNECT';
+  const handleSingle = () => {
+    if (isZombieCall) return onRecovery?.();
+    if (!audioAttached) return onAttachAudio?.();
+    return onStartCall?.();
+  };
+  const handleDouble = () => {
+    if (isZombieCall) return onRecovery?.();
+    if (!audioAttached) return (onAttachAudioFresh || onAttachAudio)?.();
+    return onConnectAnotherTab?.();
+  };
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem' }}>
@@ -188,15 +234,16 @@ const DirectionalCue = ({
 
       <ConnectInterpretButton
         size="idle"
-        flash
-        onSingle={() => (isZombieCall ? onRecovery() : onStartAudio())}
-        onDouble={onConnectAnotherTab}
-        singleTitle={isZombieCall ? 'RE-ATTACH TO CALL' : 'CONNECT'}
-        doubleTitle="connect to another browser tab"
+        flash={!audioAttached && !isZombieCall}
+        label={connectLabel}
+        onSingle={handleSingle}
+        onDouble={handleDouble}
+        singleTitle={connectLabel}
+        doubleTitle="attach another browser tab"
       />
 
-      <div style={{ color: '#9dffed', fontWeight: 600, fontSize: '0.7rem', lineHeight: 1.2 }}>
-        Tip: {idleTip}
+      <div style={{ color: idleSecondary.color, fontWeight: 600, fontSize: '0.7rem', lineHeight: 1.2 }}>
+        {idleSecondary.label}: {idleSecondary.text}
       </div>
 
       {idleExtra?.text && (
@@ -293,7 +340,9 @@ export const GameScoreboard = ({
   pacePrediction, qualityScore, cutoffWarning, breakLeft, breakLimit, nextGoalLabel, nextMilestone, daysInMonth, currentDay, remainingDays, isActive, isBreakActive, onSwitchToNumbers, milestoneTargets,
   isEditingScoreboard, getCompensatedLogOff,
   isZombieCall,
-  onStartAudio, onRecovery, onConnectAnotherTab,
+  audioAttached = false,
+  onAttachAudio, onAttachAudioFresh, onStartCall,
+  onRecovery, onConnectAnotherTab,
  }) => {
   // Drift counter: how many seconds since last call ended (affects UI urgency)
   const [idleSecs, setIdleSecs] = useState(0);
@@ -375,9 +424,13 @@ export const GameScoreboard = ({
           qualityScore={qualityScore} cutoffWarning={cutoffWarning}
           isActive={isActive} isBreakActive={isBreakActive}
           isZombieCall={isZombieCall}
-          onStartAudio={onStartAudio}
+          audioAttached={audioAttached}
+          onAttachAudio={onAttachAudio}
+          onAttachAudioFresh={onAttachAudioFresh}
+          onStartCall={onStartCall}
           onRecovery={onRecovery}
           onConnectAnotherTab={onConnectAnotherTab}
+          shiftElapsedMins={shiftElapsedMins}
         />
       </div>
 

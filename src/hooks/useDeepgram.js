@@ -103,6 +103,8 @@ export const useDeepgram = () => {
     captions,
     updateCaptions,
     clearCaptions,
+    isActive,
+    isZombieCall,
   } = useSession();
   
   const [connectionState, setConnectionState] = useState('disconnected');
@@ -120,6 +122,7 @@ export const useDeepgram = () => {
   const mediaRecorderRef = useRef(null);
   const streamRef = useRef(null);
   const isActiveRef = useRef(false);
+  const shouldCaptureCaptionsRef = useRef(false);
   const lastTranscriptTimeRef = useRef(Date.now());
   const lastEnglishActivityPulseRef = useRef(0);
   const turnWordsBaseRef = useRef(0); // words already sealed in the current silence-to-silence turn
@@ -127,6 +130,11 @@ export const useDeepgram = () => {
   const bubbleIdCounterRef = useRef(0);
   const overrideTimeoutRef = useRef(null);
   const reconnectAttemptsRef = useRef(0);
+
+  // Only store transcript bubbles during an active or zombie-resumed call.
+  useEffect(() => {
+    shouldCaptureCaptionsRef.current = !!(isActive || isZombieCall);
+  }, [isActive, isZombieCall]);
 
   const closeConnections = useCallback(() => {
     try {
@@ -235,6 +243,8 @@ export const useDeepgram = () => {
         const timeSinceLast = now - lastTranscriptTimeRef.current;
         lastTranscriptTimeRef.current = now;
         const isSilentBreak = timeSinceLast > 2500;
+
+        if (!shouldCaptureCaptionsRef.current) return;
 
         updateCaptions(prev => {
           let last = prev[prev.length - 1];

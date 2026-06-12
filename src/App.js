@@ -204,28 +204,119 @@ const Dashboard = () => {
           ? "break"
           : "avail";
 
-  // UNIFIED CONNECTION ENGINE
-  const handleConnection = useCallback(
-    async (isRecovery = false) => {
-      if (isBreakActive) stopBreak(); // stop break immediately on call start click
-      const ok = await startRecording();
-      if (ok) {
-        if (isRecovery) clearZombieState();
-        startSession(isRecovery);
-      }
+  // Audio attached = sockets live + tab stream (or mic test mode).
+  const audioAttached =
+    connectionState === "connected" && (micTestMode || tabStreamReady);
+
+  // Step 1: attach audio only (no call timer, no transcript capture).
+  const handleAttachAudio = useCallback(
+    async (fresh = false) => {
+      if (isBreakActive) stopBreak();
+      return fresh ? startRecordingFresh() : startRecording();
     },
-    [startRecording, startSession, clearZombieState, isBreakActive, stopBreak],
+    [startRecording, startRecordingFresh, isBreakActive, stopBreak],
   );
+
+  // Step 2: start call timer + transcription UI (audio should already be attached).
+  const handleStartCall = useCallback(
+    (isRecovery = false) => {
+      if (isBreakActive) stopBreak();
+      if (isRecovery) clearZombieState();
+      startSession(isRecovery);
+    },
+    [startSession, clearZombieState, isBreakActive, stopBreak],
+  );
+
+  // Zombie refresh: re-attach audio then resume preserved call state.
+  const handleRecovery = useCallback(async () => {
+    if (isBreakActive) stopBreak();
+    let ok = audioAttached;
+    if (!ok) ok = await startRecording();
+    if (ok) handleStartCall(true);
+  }, [audioAttached, startRecording, handleStartCall, isBreakActive, stopBreak]);
 
   const handleConnectAnotherTab = useCallback(async () => {
     if (isBreakActive) stopBreak();
-    const ok = await startRecordingFresh();
-    if (ok) {
-      const isRecovery = !!isZombieCall;
-      if (isRecovery) clearZombieState();
-      startSession(isRecovery);
-    }
-  }, [startRecordingFresh, isZombieCall, startSession, clearZombieState, isBreakActive, stopBreak]);
+    await startRecordingFresh();
+  }, [startRecordingFresh, isBreakActive, stopBreak]);
+
+  const AUTO_ATTACH_KEY = "catint_auto_attach_v1";
+  const autoAttachAttemptedRef = useRef(false);
+
+  // Auto-attach interpreting tab at/after 09:00 (once per day, off-call only).
+  useEffect(() => {
+    const tryAutoAttach = async () => {
+      const now = new Date();
+      if (now.getHours() < 9) return;
+      if (isActive || isBreakActive || isZombieCall) return;
+      if (audioAttached || connectionState === "connecting") return;
+
+      const today = now.toDateString();
+      try {
+        if (localStorage.getItem(AUTO_ATTACH_KEY) === today) return;
+      } catch {}
+
+      if (autoAttachAttemptedRef.current) return;
+      autoAttachAttemptedRef.current = true;
+
+      const ok = await startRecordingFresh();
+      if (ok) {
+        try {
+          localStorage.setItem(AUTO_ATTACH_KEY, today);
+        } catch {}
+      } else {
+        autoAttachAttemptedRef.current = false;
+      }
+    };
+
+    tryAutoAttach();
+    const iv = setInterval(tryAutoAttach, 30000);
+    return () => clearInterval(iv);
+  }, [
+    isActive,
+    isBreakActive,
+    isZombieCall,
+    audioAttached,
+    connectionState,
+    startRecordingFresh,
+  ]);
+
+  // Hotkeys: C = connect/attach or start call; M = mic test toggle.
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      const isTyping =
+        e.target.tagName === "TEXTAREA" || e.target.tagName === "INPUT";
+      if (isTyping || e.metaKey || e.ctrlKey || e.altKey) return;
+
+      if (e.code === "KeyM" && !isActive) {
+        e.preventDefault();
+        setMicTestMode(!micTestMode);
+        return;
+      }
+      if (e.code === "KeyC" && !isActive && !isBreakActive) {
+        e.preventDefault();
+        if (isZombieCall) {
+          handleRecovery();
+        } else if (!audioAttached) {
+          handleAttachAudio(false);
+        } else {
+          handleStartCall(false);
+        }
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [
+    isActive,
+    isBreakActive,
+    isZombieCall,
+    audioAttached,
+    micTestMode,
+    setMicTestMode,
+    handleAttachAudio,
+    handleStartCall,
+    handleRecovery,
+  ]);
 
   // Micro-break nudge: top bar color shifts when working too long without a break
   const micBarColor =
@@ -304,7 +395,7 @@ const Dashboard = () => {
         }}
       >
         <CloudSyncIndicator />
-        v4.48.2 (Full Stack)
+        v4.48.3 (Full Stack)
       </div>
 
       <div
@@ -335,11 +426,14 @@ const Dashboard = () => {
       <SilenceGuardian lastDataTime={lastDataTime} />
 
       <DashboardHeader
-        onStartAudio={() => handleConnection(false)}
+        onAttachAudio={() => handleAttachAudio(false)}
+        onAttachAudioFresh={() => handleAttachAudio(true)}
+        onStartCall={() => handleStartCall(false)}
         onStopAudio={stopRecording}
         onReconnectStream={reconnectStream}
-        onRecovery={() => handleConnection(true)}
+        onRecovery={handleRecovery}
         onConnectAnotherTab={handleConnectAnotherTab}
+        audioAttached={audioAttached}
         sttLanguage={sttLanguage}
         onToggleLanguage={toggleLanguage}
         connectionState={connectionState}
@@ -385,7 +479,7 @@ const Dashboard = () => {
               isBreakActive={isBreakActive}
               connectionState={connectionState}
               onClearAll={clearCaptions}
-              onReconnect={() => handleConnection(true)}
+              onReconnect={handleRecovery}
               lastDataTime={lastDataTime}
             />
           </div>

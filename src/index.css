@@ -253,6 +253,15 @@ body {
   animation: nudgePulse 2s infinite;
   white-space: nowrap;
 }
+.off-call-status-bar {
+  grid-template-columns: 1fr;
+  flex: 1;
+  min-width: 0;
+}
+.call-micro-bar-status {
+  text-overflow: ellipsis;
+  letter-spacing: 0.02em;
+}
 @keyframes nudgePulse {
   0%, 100% { opacity: 0.7; }
   50% { opacity: 1; text-shadow: 0 0 6px #f59e0b; }

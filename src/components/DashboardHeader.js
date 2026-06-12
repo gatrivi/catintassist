@@ -162,9 +162,13 @@ const StateIndicators = ({ state, breakMinutes, isZombie, silenceCount }) => {
   );
 };
 
+const OFFCALL_STATUS_ROTATE_MS = 8000;
+
 const SessionControlsSticky = React.memo(({
   isActive,
   isBreakActive,
+  isZombieCall,
+  audioAttached,
   micTestMode,
   setMicTestMode,
   connectionState,
@@ -209,6 +213,31 @@ const SessionControlsSticky = React.memo(({
   setIsNotesOpen,
 }) => {
   const showConnecting = isActive && connectionState !== 'connected';
+  const [statusRotate, setStatusRotate] = React.useState(0);
+
+  React.useEffect(() => {
+    if (isActive) return undefined;
+    const iv = setInterval(() => setStatusRotate((n) => n + 1), OFFCALL_STATUS_ROTATE_MS);
+    return () => clearInterval(iv);
+  }, [isActive]);
+
+  const offCallStatusText = (() => {
+    if (isBreakActive) return '☕ On break — press C or ▶ CALL START when you return';
+    if (connectionState === 'connecting') {
+      return connectionMessage || 'Connecting to interpreting platform…';
+    }
+    if (isZombieCall) {
+      return 'Press C or ▶ RE-ATTACH — call timer & transcript preserved';
+    }
+    if (audioAttached) {
+      return 'Press C or ▶ CALL START when the call begins';
+    }
+    const msgs = [
+      'Press C or ▶ CONNECT to attach interpreting platform',
+      'or press M / 🎤 to interpret with your device microphone',
+    ];
+    return msgs[statusRotate % msgs.length];
+  })();
 
   return (
     <div className="session-controls-sticky" style={undefined}>
@@ -330,7 +359,7 @@ const SessionControlsSticky = React.memo(({
         )}
       </div>
 
-      {isActive && (
+      {isActive ? (
         <div className="call-micro-bar-center">
           <span
             className="call-micro-bar-slot call-micro-bar-hold"
@@ -366,6 +395,26 @@ const SessionControlsSticky = React.memo(({
             </span>
           )}
           <span className="call-micro-bar-slot call-micro-bar-reserved" aria-hidden="true" />
+        </div>
+      ) : (
+        <div className="call-micro-bar-center off-call-status-bar" title="Connection status">
+          <span
+            className="call-micro-bar-slot call-micro-bar-status"
+            style={{
+              gridColumn: '1 / -1',
+              fontSize: '0.68rem',
+              fontWeight: 700,
+              color: isZombieCall
+                ? '#fbbf24'
+                : audioAttached
+                  ? '#34d399'
+                  : connectionState === 'connecting'
+                    ? '#f59e0b'
+                    : '#9dffed',
+            }}
+          >
+            {offCallStatusText}
+          </span>
         </div>
       )}
 
@@ -405,8 +454,17 @@ const SessionControlsSticky = React.memo(({
 });
 
 export const DashboardHeader = ({
-  onStartAudio, onStopAudio, onReconnectStream, sttLanguage, onToggleLanguage, onRecovery,
-  connectionState, connectionMessage, lastDataTime,
+  onAttachAudio,
+  onAttachAudioFresh,
+  onStartCall,
+  onStopAudio,
+  onReconnectStream,
+  sttLanguage,
+  onToggleLanguage,
+  onRecovery,
+  connectionState,
+  connectionMessage,
+  lastDataTime,
   micTestMode = false,
   setMicTestMode,
   offCallWorkspace = null,
@@ -414,6 +472,7 @@ export const DashboardHeader = ({
   showStudioHint = false,
   onConnectAnotherTab,
   tabStreamReady = false,
+  audioAttached = false,
 }) => {
   const { isActive, sessionSeconds, sessionEarnings, stats, updateStat, stopSession, endDay, RATE_PER_MINUTE, arsRate, setArsRate, isBreakActive, breakSeconds, startBreak, stopBreak, availSeconds, isEditingScoreboard, setIsEditingScoreboard, visibleCards, isNotesOpen, setIsNotesOpen, isToolbarVisible, setIsToolbarVisible, isHeatmapOpen, setIsHeatmapOpen, isZombieCall, isScoreboardHelpVisible, setIsScoreboardHelpVisible, isHold, setIsHold, holdSeconds, dailyTimeline, historyTimeline, dailyLog, lastActivityTime, lastEnglishActivityTime, isCallDetectionEnabled, setIsCallDetectionEnabled, callFocusMode, setCallFocusMode, minutesSinceLastBreak } = useSession();
 
@@ -590,8 +649,8 @@ export const DashboardHeader = ({
       setCelebration({ type: 'call', label: `+AR$${Math.round(mins * RATE_PER_MINUTE * arsRate).toLocaleString('es-AR')}`, coins: Math.min(60, Math.floor(mins * 1.5)) });
       setTimeout(() => setCelebration(null), 4000);
     });
-    onStopAudio();
-  }, [stopSession, RATE_PER_MINUTE, arsRate, audioEngine, onStopAudio]);
+    // Keep audio stream attached for the next call (attach once per shift).
+  }, [stopSession, RATE_PER_MINUTE, arsRate, audioEngine]);
 
   const handleEndDay = () => {
     setCallModeExpanded(false);
@@ -973,28 +1032,43 @@ export const DashboardHeader = ({
 
   const rateOf = (view) => view === 'effective' ? effectiveRateArsHr : activeRateArsHr;
 
-  // Sticky connect/stop bar — module component (stable identity)
+  // Sticky connect/stop bar — attach audio first, start call separately.
   const tabNeedsReconnect = !micTestMode && !tabStreamReady;
-  const connectRequireDoubleTapIndicator = tabNeedsReconnect;
-  const connectLabel = tabNeedsReconnect ? 'TAB RECONNECT' : 'CALL START';
-  const connectSingleTitle = isZombieCall
+  const connectRequireDoubleTapIndicator = tabNeedsReconnect && !isZombieCall;
+  const connectLabel = isZombieCall
     ? 'RE-ATTACH'
-    : micTestMode
-      ? 'CONNECT (MIC TEST)'
-      : 'CALL START';
+    : tabNeedsReconnect
+      ? 'TAB RECONNECT'
+      : audioAttached
+        ? 'CALL START'
+        : 'CONNECT';
+  const connectSingleTitle = isZombieCall
+    ? 'RE-ATTACH TO CALL'
+    : tabNeedsReconnect
+      ? 'ATTACH TAB (double-tap)'
+      : audioAttached
+        ? 'START CALL / TRANSCRIBE'
+        : micTestMode
+          ? 'CONNECT (MIC TEST)'
+          : 'CONNECT TO PLATFORM';
   const connectDoubleTitle = micTestMode
     ? 're-request microphone'
-    : 'connect to another browser tab';
+    : 'attach another browser tab';
 
-  const connectOnSingle = tabNeedsReconnect
-    ? (() => {}) // first tap arms the “second tap required” UX
-    : (isZombieCall ? onRecovery : onStartAudio);
+  const connectOnSingle = (() => {
+    if (isZombieCall) return onRecovery;
+    if (tabNeedsReconnect) return () => {}; // first tap arms double-tap UX
+    if (!audioAttached) return onAttachAudio;
+    return onStartCall;
+  })();
 
-  const connectOnDouble = tabNeedsReconnect
-    ? (isZombieCall ? onRecovery : onStartAudio) // second tap performs attach via picker
-    : onConnectAnotherTab; // double tap connects a different browser tab
+  const connectOnDouble = (() => {
+    if (isZombieCall) return onRecovery;
+    if (tabNeedsReconnect) return onAttachAudioFresh || onAttachAudio;
+    return onConnectAnotherTab;
+  })();
 
-  const connectFlash = !isBreakActive && tabNeedsReconnect;
+  const connectFlash = !isBreakActive && (tabNeedsReconnect || (!audioAttached && !isZombieCall));
   const showEndDayButton = !isActive && stats.dailyMinutes > 0 && !isBreakActive;
 
   // Listen for Demo Scenarios
@@ -1002,7 +1076,8 @@ export const DashboardHeader = ({
     const handleScenario = (e) => {
       const scenario = e.detail;
       if (scenario === 'call') {
-        onStartAudio();
+        if (audioAttached) onStartCall();
+        else onAttachAudio?.();
       } else if (scenario === 'goal_hit') {
         handleStop();
         setTimeout(() => {
@@ -1024,7 +1099,7 @@ export const DashboardHeader = ({
     };
     window.addEventListener('cat_demo_scenario', handleScenario);
     return () => window.removeEventListener('cat_demo_scenario', handleScenario);
-  }, [onStartAudio, onStopAudio, handleStop, handleStartBreak, stopBreak, stopSession, audioEngine]);
+  }, [onAttachAudio, onStartCall, audioAttached, onStopAudio, handleStop, handleStartBreak, stopBreak, stopSession, audioEngine]);
 
   const renderWorkspaceBody = () => (
       <div className={`dashboard-header-fill${scoreboardFill ? ' scoreboard-workspace' : ''}`}>
@@ -1051,9 +1126,12 @@ export const DashboardHeader = ({
                     daysInMonth={daysInMonth} currentDay={currentDay} remainingDays={remainingDays}
                     isActive={isActive} isBreakActive={isBreakActive}
                     isZombieCall={isZombieCall}
-                    onStartAudio={onStartAudio}
+                    onAttachAudio={onAttachAudio}
+                    onAttachAudioFresh={onAttachAudioFresh}
+                    onStartCall={onStartCall}
                     onRecovery={onRecovery}
                     onConnectAnotherTab={onConnectAnotherTab}
+                    audioAttached={audioAttached}
                     onSwitchToNumbers={() => setScoreView('numbers')}
                     milestoneTargets={milestoneTargets}
                     isEditingScoreboard={isEditingScoreboard}
@@ -2028,6 +2106,8 @@ ${isInDeficit ? `⚠️ DEFICIT: Behind pace by ${Math.round(monthlyDeficitMins)
       <SessionControlsSticky
         isActive={isActive}
         isBreakActive={isBreakActive}
+        isZombieCall={isZombieCall}
+        audioAttached={audioAttached}
         micTestMode={micTestMode}
         setMicTestMode={setMicTestMode}
         connectionState={connectionState}
