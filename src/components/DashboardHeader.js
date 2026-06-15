@@ -634,6 +634,11 @@ export const DashboardHeader = ({
   const handleStop = useCallback(() => {
     setCallModeExpanded(false);
     stopSession((mins) => {
+      // UX: STOP/Disconnect must clear transcript + translations.
+      // `stopSession` extracts call summary before captions are cleared,
+      // so triggering audio teardown here is safe.
+      onStopAudio?.();
+
       // DENOMINATION PAYOUT LOGIC
       // Diamonds = 20m, Bills = 5m, Coins = 1m
       let rem = Math.round(mins);
@@ -650,7 +655,7 @@ export const DashboardHeader = ({
       setTimeout(() => setCelebration(null), 4000);
     });
     // Keep audio stream attached for the next call (attach once per shift).
-  }, [stopSession, RATE_PER_MINUTE, arsRate, audioEngine]);
+  }, [stopSession, onStopAudio, RATE_PER_MINUTE, arsRate, audioEngine]);
 
   const handleEndDay = () => {
     setCallModeExpanded(false);

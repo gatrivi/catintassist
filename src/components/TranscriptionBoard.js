@@ -177,6 +177,7 @@ const TranslatedBubble = ({
   onTogglePin,
   forceTranslateKey = 0,
   onManualRetranslate,
+  isTailMovedSection = false,
 }) => {
   const { translationMood } = useSession();
   const { translation, audioUrl, engineStatus, targetLang } = useTranslate(
@@ -188,6 +189,33 @@ const TranslatedBubble = ({
     forceTranslateKey,
   );
   const hasAutoPlayedRef = useRef(false);
+
+  // Tail highlight occasionally flashes and disappears due to rapid interim flag flips.
+  // We lock the blue class for a short window to match the flowed/move cue duration.
+  const tailLockTimerRef = useRef(null);
+  const [tailBlueLocked, setTailBlueLocked] = useState(false);
+
+  useEffect(() => {
+    if (!isTailMovedSection) return;
+
+    setTailBlueLocked(true);
+    if (tailLockTimerRef.current) {
+      clearTimeout(tailLockTimerRef.current);
+    }
+    tailLockTimerRef.current = setTimeout(() => {
+      setTailBlueLocked(false);
+    }, 350);
+
+    return () => {
+      if (tailLockTimerRef.current) clearTimeout(tailLockTimerRef.current);
+    };
+  }, [isTailMovedSection, id]);
+
+  useEffect(() => {
+    return () => {
+      if (tailLockTimerRef.current) clearTimeout(tailLockTimerRef.current);
+    };
+  }, []);
 
   useEffect(() => {
     if (ttsMode === 'auto' && translation && audioUrl && !hasAutoPlayedRef.current) {
@@ -207,7 +235,37 @@ const TranslatedBubble = ({
     Boolean(translation) &&
     normSource.length > 0 &&
     normTranslation === normSource;
-  const showRetranslateBtn = !isPinned && isTranslationStuck;
+  const isTranslationMissing = engineStatus === 'ready' && !translation?.trim();
+
+  // UX: if a message is clearly "untranslated", we should just try again,
+  // and only show a ↻ button as a fallback.
+  const shouldAutoRetranslate =
+    !isPinned && engineStatus === 'ready' && (isTranslationStuck || isTranslationMissing);
+  const [autoRetranslatePending, setAutoRetranslatePending] = useState(false);
+  const [hasAutoRetranslated, setHasAutoRetranslated] = useState(false);
+
+  useEffect(() => {
+    setAutoRetranslatePending(false);
+    setHasAutoRetranslated(false);
+  }, [id]);
+
+  useEffect(() => {
+    if (!shouldAutoRetranslate) return;
+    if (hasAutoRetranslated || autoRetranslatePending) return;
+
+    setAutoRetranslatePending(true);
+    const t = setTimeout(() => {
+      onManualRetranslate?.();
+      setHasAutoRetranslated(true);
+      setAutoRetranslatePending(false);
+    }, 200);
+
+    return () => clearTimeout(t);
+  }, [shouldAutoRetranslate, hasAutoRetranslated, autoRetranslatePending, onManualRetranslate]);
+
+  const isProblemTranslation = isTranslationStuck || isTranslationMissing;
+  const showManualRetranslateBtn =
+    !isPinned && engineStatus === 'ready' && isProblemTranslation && hasAutoRetranslated && !autoRetranslatePending;
   // Pane contract (for outside agents/models):
   // - left column is the EN/transcript lane
   // - right column is the ES/translation lane
@@ -219,11 +277,11 @@ const TranslatedBubble = ({
   return (
     <div className={`translated-bubble-row${reverse ? ' is-reverse' : ''}`}>
       <div className="bubble-col bubble-col-source" style={{ textAlign: reverse ? 'right' : 'left', position: 'relative' }}>
-        <div className="bubble-line" style={{ color: transcriptColor }}>
+        <div className={`bubble-line${tailBlueLocked ? ' is-tail-blue' : ''}`} style={{ color: transcriptColor }}>
           <InteractiveText text={text} scramble={true} applyNumberWords={sourceUsesNumberWords} lang={lang} />
         </div>
 
-        {showRetranslateBtn && (
+        {showManualRetranslateBtn && (
           <button
             type="button"
             className="bubble-retranslate-btn is-left"
@@ -249,7 +307,20 @@ const TranslatedBubble = ({
           canPlay={Boolean(translation && audioUrl)}
           onPlayClick={() => (isThisPlaying ? stopTTS() : playTTS(translation, targetLang, audioUrl))}
         />
-        {showRetranslateBtn && (
+      </div>
+
+      <div className="bubble-col bubble-col-translation" style={{ color: translationColor, textAlign: 'left', position: 'relative' }}>
+        <div className="bubble-line bubble-line-translation">
+          {translation ? (
+            <InteractiveText text={translation} scramble={true} applyNumberWords={targetUsesNumberWords} lang={targetLang} />
+          ) : engineStatus === 'ready' ? (
+            <span style={{ opacity: 0.3, fontSize: '0.7rem' }}>⚠️ translation failed</span>
+          ) : (
+            <span style={{ opacity: 0.2 }}>...</span>
+          )}
+        </div>
+
+        {showManualRetranslateBtn && (
           <button
             type="button"
             className="bubble-retranslate-btn"
@@ -260,18 +331,6 @@ const TranslatedBubble = ({
             ↻
           </button>
         )}
-      </div>
-
-      <div className="bubble-col bubble-col-translation" style={{ color: translationColor, textAlign: 'left' }}>
-        <div className="bubble-line bubble-line-translation">
-          {translation ? (
-            <InteractiveText text={translation} scramble={true} applyNumberWords={targetUsesNumberWords} lang={targetLang} />
-          ) : engineStatus === 'ready' ? (
-            <span style={{ opacity: 0.3, fontSize: '0.7rem' }}>⚠️ translation failed</span>
-          ) : (
-            <span style={{ opacity: 0.2 }}>...</span>
-          )}
-        </div>
       </div>
     </div>
   );
@@ -570,13 +629,33 @@ export const TranscriptionBoard = ({ captions, onClearAll, onReconnect, lastData
           const showTurnWordCount = i === turnDisplayMeta.lastIndexByTurn[tid];
           const isPinned = pinnedIds.includes(cap.id);
           if (isPinned) return null;
+          // UI_SPLIT_HEURISTIC:
+          // This is the current UI-only signal we use to trigger the "flow/move" look.
+          // IMPORTANT: The real algorithm-selected moved text section happens inside
+          // `useDeepgram.js` (see `ALGO_MOVED_SECTION` comment), and this heuristic may
+          // differ. Blue should be attached to ONLY the moved section substring.
           const isSplitContinuation = isSameAsPrevious && wordCount < 50;
           const isLive = cap.isFinal === false;
           const isLongBubble = wordCount > 50 && !isLive;
           const isExpanded = expandedIds.has(cap.id);
+          // ALGO_MOVED_SECTION (tailText remainder bubble):
+          // In `useDeepgram`, the remainder bubble is created with `isFinal:false`
+          // but still filled with the lane's `*Finalized` content, while the interim is empty.
+          // We use that to flash only the moved remainder text (not the earlier sealed part).
+          const isTailMovedSection =
+            cap.isFinal === false &&
+            ((cap.lang === 'en' && cap.enFinalized && !cap.enInterim) ||
+              (cap.lang === 'es' && cap.esFinalized && !cap.esInterim));
           
           return (
-            <div key={cap.id || i} className={`transcript-bubble${isLive ? ' is-live' : ''}${isSplitContinuation ? ' is-flowed' : ''}`} style={{
+            <div
+              key={cap.id || i}
+              className={`transcript-bubble${isLive ? ' is-live' : ''}${isSplitContinuation ? ' is-flowed' : ''}`}
+              // UI_FLOW_ANIMATION_TRIGGER:
+              // `.transcript-bubble.is-flowed` in `index.css` is currently what "animates the flow".
+              // Once you wire blue-to-substring, this class should stop being used (or be text-only)
+              // to avoid bubble height jitter during reading.
+              style={{
               opacity: isLive ? 0.6 : 1,
               marginTop: isSplitContinuation ? '0rem' : '0.25rem',
               border: '1px solid transparent',
@@ -591,6 +670,7 @@ export const TranscriptionBoard = ({ captions, onClearAll, onReconnect, lastData
                   isPinned={false} onTogglePin={() => togglePin(cap)}
                   forceTranslateKey={translationBumps[cap.id] ?? 0}
                   onManualRetranslate={() => bumpManualRetranslate(cap)}
+                  isTailMovedSection={isTailMovedSection}
                 />
               </div>
               

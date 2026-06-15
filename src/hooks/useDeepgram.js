@@ -293,8 +293,6 @@ export const useDeepgram = () => {
 
           updateCaptions((prev) => {
             let last = prev[prev.length - 1];
-            const lastText =
-              (lang === "en" ? last?.enFull : last?.esFull) || "";
             // New bubble only after silence or at stream start — sentence splits handled below
             const isNewTurn = isSilentBreak || !last;
 
@@ -416,6 +414,9 @@ export const useDeepgram = () => {
               const { sentences, remainder: sentRemainder } =
                 peelCompleteSentences(current.text);
               let sealedAll = [];
+              // ALGO_SPLIT_FLAG: `tailText` is the exact string remainder selected
+              // to be shown AFTER the UI decides to "flow" into the next bubble.
+              // Everything in `sentences`/`sealedAll` is the part *not* moved.
               let tailText = sentRemainder;
 
               if (sentences.length > 0) {
@@ -434,6 +435,8 @@ export const useDeepgram = () => {
               }
 
               if (tailText?.trim()) {
+                // ALGO_SPLIT_FLAG: if tailText is still too long (comma chunking),
+                // peelCommaChunks further selects a chunk to become the remainder bubble.
                 const { sealed: commaSealed, remainder: commaRemainder } =
                   peelCommaChunks(
                     tailText,
@@ -454,6 +457,8 @@ export const useDeepgram = () => {
                 !sealedAll.length &&
                 current.text?.trim()
               ) {
+                // ALGO_SPLIT_FLAG: rare case where there were no sentence endings,
+                // so comma-chunking becomes the split selector.
                 const { sealed: commaOnly, remainder: commaRemainder } =
                   peelCommaChunks(
                     current.text,
@@ -477,6 +482,10 @@ export const useDeepgram = () => {
                 if (tailText?.trim()) {
                   const lang = current.lang || "en";
                   const formatted = sealText(tailText, lang);
+                  // ALGO_MOVED_SECTION: this `newArr.push` is the "to-be-flowed" remainder
+                  // that will show up as its own bubble (isFinal:false) in the UI.
+                  // Blue animation should be triggered for ONLY this remainder section,
+                  // not for the already sealed part (sealedAll).
                   newArr.push({
                     ...current,
                     id: `${Date.now()}-${++bubbleIdCounterRef.current}`,
@@ -527,7 +536,7 @@ export const useDeepgram = () => {
       socketRefEn.current = createSocket("en");
       socketRefEs.current = createSocket("es");
     },
-    [isCallDetectionEnabled, updateActivity, updateCaptions, requestHoldIntent],
+    [isCallDetectionEnabled, updateActivity, updateCaptions, updateEnglishActivity, requestHoldIntent],
   );
 
   const stopRecording = useCallback(() => {
