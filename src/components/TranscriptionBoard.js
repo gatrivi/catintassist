@@ -218,10 +218,22 @@ const TranslatedBubble = ({
 
   return (
     <div className={`translated-bubble-row${reverse ? ' is-reverse' : ''}`}>
-      <div className="bubble-col bubble-col-source" style={{ textAlign: reverse ? 'right' : 'left' }}>
+      <div className="bubble-col bubble-col-source" style={{ textAlign: reverse ? 'right' : 'left', position: 'relative' }}>
         <div className="bubble-line" style={{ color: transcriptColor }}>
           <InteractiveText text={text} scramble={true} applyNumberWords={sourceUsesNumberWords} lang={lang} />
         </div>
+
+        {showRetranslateBtn && (
+          <button
+            type="button"
+            className="bubble-retranslate-btn is-left"
+            onClick={onManualRetranslate}
+            title="Retrigger translation for this message"
+            aria-label="Retrigger translation"
+          >
+            ↻
+          </button>
+        )}
       </div>
 
       <div
@@ -564,7 +576,7 @@ export const TranscriptionBoard = ({ captions, onClearAll, onReconnect, lastData
           const isExpanded = expandedIds.has(cap.id);
           
           return (
-            <div key={cap.id || i} className={`transcript-bubble${isLive ? ' is-live' : ''}`} style={{
+            <div key={cap.id || i} className={`transcript-bubble${isLive ? ' is-live' : ''}${isSplitContinuation ? ' is-flowed' : ''}`} style={{
               opacity: isLive ? 0.6 : 1,
               marginTop: isSplitContinuation ? '0rem' : '0.25rem',
               border: '1px solid transparent',

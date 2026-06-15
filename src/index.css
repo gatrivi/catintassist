@@ -1712,6 +1712,39 @@ body {
   color: #fff;
 }
 
+.transcript-bubble.is-flowed {
+  animation: flowedBlueFlash 0.35s ease-out;
+}
+
+@keyframes flowedBlueFlash {
+  0% {
+    box-shadow: 0 0 0 rgba(56, 189, 248, 0);
+  }
+  40% {
+    box-shadow: 0 0 0 2px rgba(56, 189, 248, 0.65), 0 0 18px rgba(56, 189, 248, 0.25);
+  }
+  100% {
+    box-shadow: 0 0 0 rgba(56, 189, 248, 0);
+  }
+}
+
+.transcript-bubble.is-flowed .bubble-col-source .bubble-line,
+.transcript-bubble.is-flowed .bubble-col-translation .bubble-line-translation {
+  animation: flowedBlueTextShadow 0.35s ease-out;
+}
+
+@keyframes flowedBlueTextShadow {
+  0% {
+    text-shadow: none;
+  }
+  40% {
+    text-shadow: 0 0 12px rgba(125, 211, 252, 0.9);
+  }
+  100% {
+    text-shadow: none;
+  }
+}
+
 .transcript-bubble.is-live {
   overflow: visible;
 }
@@ -2841,6 +2874,11 @@ body {
   display: inline-flex;
   align-items: center;
   justify-content: center;
+}
+
+.bubble-retranslate-btn.is-left {
+  left: -2px;
+  right: auto;
 }
 
 .bubble-retranslate-btn:hover {
