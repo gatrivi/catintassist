@@ -1,3 +1,8 @@
+# Redirect (v4.48.2)
+This doc moved to `docs/archive/demo-script.md`.
+
+<details><summary>Legacy (kept for reference)</summary>
+
 # 🐾 CatIntAssist: 60-Second Demo Showcase Plan
 
 This script is designed to highlight the high-value features of the CatIntAssist application in a fast-paced, visually impressive 60-second window. It focuses on the sleek UI, real-time AI transcription, and gamified dopamine hooks.
@@ -55,3 +60,5 @@ This script is designed to highlight the high-value features of the CatIntAssist
 - [x] **Long Bubble Warning**: Logic confirmed in `TranscriptionBoard.js` (`wordCount >= 40`).
 - [x] **Celebration Particles/Audio**: Confirmed triggered on session end.
 - [x] **Dictionary Tool**: Popover logic confirmed.
+
+</details>

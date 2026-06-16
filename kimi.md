@@ -1,3 +1,8 @@
+# Redirect (v4.48.2)
+This doc moved to `docs/archive/kimi.md`.
+
+<details><summary>Legacy (kept for reference)</summary>
+
 # kimi.md
 
 This file contains instructions to ensure Kimi Code remains accurate, stays in scope, and retains project context across sessions.
@@ -38,3 +43,5 @@ This file contains instructions to ensure Kimi Code remains accurate, stays in s
 * **Role/Background:** name is gatrivi. MERN developer interested in meditation, writing, church, gurdjieff, vipassana
 * **Project Goals:** [Specific project objective]
 * **Constraints:** [List specific things to avoid or non-negotiable rules]
+
+</details>

@@ -1,3 +1,8 @@
+# Redirect (v4.48.2)
+This doc moved to `docs/README.md`.
+
+<details><summary>Legacy (kept for reference)</summary>
+
 # 🐾 CatIntAssist: The Powerful Interpreter Workspace
 
 **CatIntAssist** is a premium, high-density transcription and interpretation assistant designed specifically for medical interpreters. It combines real-time AI transcription, multi-service translation fallbacks, and comprehensive goal-tracking into a single, aesthetic dashboard.
@@ -70,3 +75,5 @@ CatIntAssist utilizes a "glass-panel" aesthetic with vibrant accents and micro-a
 
 ---
 *Created with ❤️ by Antigravity for the Modern Interpreter.*
+
+</details>

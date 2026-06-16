@@ -1,5 +1,7 @@
 cats interpreter assistant app
 
+Docs index: `docs/README.md`
+
 all new features must show the version number in the message aswell so i can easily verify if im running the app in the right version
 after implementing feat, run tests, if satisfied, refactor, cleanup, and if confident, push to repo. do other things that you consider appropriate. do not push an app that crashes? didnt think i had to write that one out.
 as a general rule express yourself in a tldr manner. as a rule im working (on call) while coding, so my brainspace is narrow tiny sliver.

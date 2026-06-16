@@ -213,6 +213,7 @@ const SessionControlsSticky = React.memo(({
   setIsNotesOpen,
 }) => {
   const showConnecting = isActive && connectionState !== 'connected';
+  const slackText = `SLACK ${formatTime(silenceCount)}`;
   const [statusRotate, setStatusRotate] = React.useState(0);
 
   React.useEffect(() => {
@@ -227,14 +228,14 @@ const SessionControlsSticky = React.memo(({
       return connectionMessage || 'Connecting to interpreting platform…';
     }
     if (isZombieCall) {
-      return 'Press C or ▶ RE-ATTACH — call timer & transcript preserved';
+      return `Press C or ▶ RE-ATTACH — call timer & transcript preserved · ${slackText}`;
     }
     if (audioAttached) {
-      return 'Press C or ▶ CALL START when the call begins';
+      return `Press C or ▶ CALL START when the call begins · ${slackText}`;
     }
     const msgs = [
-      'Press C or ▶ CONNECT to attach interpreting platform',
-      'or press M / 🎤 to interpret with your device microphone',
+      `Press C or ▶ CONNECT to attach interpreting platform · ${slackText}`,
+      `or press M / 🎤 to interpret with your device microphone · ${slackText}`,
     ];
     return msgs[statusRotate % msgs.length];
   })();
@@ -385,6 +386,25 @@ const SessionControlsSticky = React.memo(({
             </span>
           )}
 
+          {showConnecting && (
+            <span
+              className="call-micro-bar-slot call-micro-bar-disconnected"
+              title="No audio packets received — slacking off time"
+              style={{
+                fontFamily: "var(--font-mono)",
+                color: "#fbbf24",
+                fontSize: "0.7rem",
+                fontWeight: 900,
+                whiteSpace: "nowrap",
+                textOverflow: "ellipsis",
+                overflow: "hidden",
+                maxWidth: "10ch",
+              }}
+            >
+              {slackText}
+            </span>
+          )}
+
           {!showConnecting && (
             <span
               className="call-micro-bar-slot call-micro-bar-nudge"
@@ -474,7 +494,7 @@ export const DashboardHeader = ({
   tabStreamReady = false,
   audioAttached = false,
 }) => {
-  const { isActive, sessionSeconds, sessionEarnings, stats, updateStat, stopSession, endDay, RATE_PER_MINUTE, arsRate, setArsRate, isBreakActive, breakSeconds, startBreak, stopBreak, availSeconds, isEditingScoreboard, setIsEditingScoreboard, visibleCards, isNotesOpen, setIsNotesOpen, isToolbarVisible, setIsToolbarVisible, isHeatmapOpen, setIsHeatmapOpen, isZombieCall, isScoreboardHelpVisible, setIsScoreboardHelpVisible, isHold, setIsHold, holdSeconds, dailyTimeline, historyTimeline, dailyLog, lastActivityTime, lastEnglishActivityTime, isCallDetectionEnabled, setIsCallDetectionEnabled, callFocusMode, setCallFocusMode, minutesSinceLastBreak } = useSession();
+  const { isActive, sessionSeconds, sessionEarnings, stats, updateStat, stopSession, endDay, RATE_PER_MINUTE, arsRate, setArsRate, isBreakActive, breakSeconds, startBreak, stopBreak, availSeconds, isEditingScoreboard, setIsEditingScoreboard, visibleCards, isNotesOpen, setIsNotesOpen, isToolbarVisible, setIsToolbarVisible, isHeatmapOpen, setIsHeatmapOpen, isZombieCall, isScoreboardHelpVisible, setIsScoreboardHelpVisible, isHold, setIsHold, holdSeconds, dailyTimeline, historyTimeline, dailyLog, lastActivityTime, lastEnglishActivityTime, isCallDetectionEnabled, setIsCallDetectionEnabled, callFocusMode, setCallFocusMode, minutesSinceLastBreak, requestHipaaDisconnectGrace } = useSession();
 
   const headerMinimal = !isActive && offCallWorkspace === 'soundboard';
   const scoreboardFill = !isActive && offCallWorkspace === 'scoreboard';
@@ -633,10 +653,11 @@ export const DashboardHeader = ({
 
   const handleStop = useCallback(() => {
     setCallModeExpanded(false);
+    // HIPAA grace: keep transcript/translation/pins for a short window.
+    // Final clearing happens inside SessionContext after the grace timer.
+    requestHipaaDisconnectGrace?.(15000);
     stopSession((mins) => {
-      // UX: STOP/Disconnect must clear transcript + translations.
-      // `stopSession` extracts call summary before captions are cleared,
-      // so triggering audio teardown here is safe.
+      // Stop audio immediately; transcript/translation destruction is deferred by HIPAA grace.
       onStopAudio?.();
 
       // DENOMINATION PAYOUT LOGIC
@@ -655,7 +676,7 @@ export const DashboardHeader = ({
       setTimeout(() => setCelebration(null), 4000);
     });
     // Keep audio stream attached for the next call (attach once per shift).
-  }, [stopSession, onStopAudio, RATE_PER_MINUTE, arsRate, audioEngine]);
+  }, [stopSession, onStopAudio, requestHipaaDisconnectGrace, RATE_PER_MINUTE, arsRate, audioEngine]);
 
   const handleEndDay = () => {
     setCallModeExpanded(false);

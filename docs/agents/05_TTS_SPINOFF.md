@@ -1,3 +1,8 @@
+# Redirect (v4.48.2)
+This doc is legacy. See `docs/tts/README.md` (and `docs/archive/tts-spin-off.md` for the full snapshot).
+
+<details><summary>Legacy (kept for reference)</summary>
+
 # TTS Spin-off Project Brief
 
 **Why separate:** Local TTS (Piper/Kokoro/Coqui) is R&D-heavy. Keep CatIntAssist context lean; merge when audio path works.
@@ -108,3 +113,5 @@ Only: **text → audio bytes → browser playback → virtual sink**
 3. Record 60s flagship demo (see `00_PORTFOLIO.md`)  
 
 **Parent doc index:** `00_PORTFOLIO.md`
+
+</details>

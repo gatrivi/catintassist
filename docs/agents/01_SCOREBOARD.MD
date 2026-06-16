@@ -1,3 +1,8 @@
+# Redirect (v4.48.2)
+This doc moved to `docs/scoreboard/README.md`.
+
+<details><summary>Legacy (kept for reference)</summary>
+
 # 📊 Scoreboard Implementation Status
 Updated: 2026-04-06 (v3.7.0 — Smart Grid)
 
@@ -65,3 +70,5 @@ The central 2x3 grid is split into two rows:
 ### ROLLBACK REFERENCE
 - v3.6.2 (Watermark Grid): Old grid was Cash Row + Mins Row (redundant pairings)
 - Snapshot commit: `df7652e`
+
+</details>

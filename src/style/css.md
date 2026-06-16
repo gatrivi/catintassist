@@ -1,3 +1,8 @@
+# Redirect (v4.48.2)
+This doc moved to `docs/development/css-reference.md`.
+
+<details><summary>Legacy (kept for reference)</summary>
+
 :root {
 --bg: #0f1115;
 --panel: #1a1d24;
@@ -9,6 +14,8 @@
 --shadow: 0 12px 30px rgba(0, 0, 0, 0.35);
 font-family: "IBM Plex Mono", "Courier New", monospace;
 }
+
+</details>
 
 - {
   box-sizing: border-box;

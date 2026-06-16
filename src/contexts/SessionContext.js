@@ -36,6 +36,14 @@ export const SessionProvider = ({ children }) => {
     const wasActive = localStorage.getItem('catint_active');
     return wasActive === 'true'; 
   });
+
+  // HIPAA: after STOP/disconnect we keep transcript/translation/pins for a short grace
+  // window (to allow quick reconnect for "bad translation service" refresh).
+  const HIPAA_GRACE_MS_DEFAULT = 15000;
+  const [hipaaGraceActive, setHipaaGraceActive] = useState(false);
+  const hipaaGraceActiveRef = useRef(false);
+  const hipaaGraceTimerRef = useRef(null);
+  const skipPinnedClearOnceRef = useRef(false);
   
   const [captions, setCaptions] = useState([]);
   const captionsRef = useRef(captions);
@@ -182,6 +190,89 @@ export const SessionProvider = ({ children }) => {
     try {
       await idbSet('catint_captions_v2', []);
     } catch (e) {}
+  }, []);
+
+  const purgeTranslationCache = useCallback(() => {
+    // HIPAA: if the call ended, there is no reason to keep transcript/translation caches.
+    try {
+      Object.keys(localStorage)
+        .filter((k) => k.startsWith(PURGE_KEYS_PREFIX))
+        .forEach((k) => localStorage.removeItem(k));
+    } catch (e) {
+      // non-fatal
+    }
+  }, []);
+
+  const purgeNotesTrashAtEndOfDay = useCallback(() => {
+    const prefix = 'catintassist_notes_trash:';
+    try {
+      Object.keys(localStorage)
+        .filter((k) => k.startsWith(prefix))
+        .forEach((k) => localStorage.removeItem(k));
+    } catch (e) {}
+  }, []);
+
+  const finalizeHipaaDisconnectClear = useCallback(async () => {
+    // Prevent double-finalize.
+    if (!hipaaGraceActiveRef.current) return;
+
+    hipaaGraceActiveRef.current = false;
+    if (hipaaGraceTimerRef.current) {
+      clearTimeout(hipaaGraceTimerRef.current);
+      hipaaGraceTimerRef.current = null;
+    }
+
+    // HIPAA: clear transcription/translation/pins and notes.
+    await clearCaptions();
+
+    try {
+      window.dispatchEvent(new CustomEvent('catint_pinned_cleared'));
+    } catch (e) {}
+
+    // Notes: move live notes to trash (in case you want audit) then clear live UI.
+    try {
+      const liveNotes = localStorage.getItem('catintassist_notes') || '';
+      if (liveNotes.trim().length > 0) {
+        const trashKey = `catintassist_notes_trash:${new Date().toISOString()}`;
+        localStorage.setItem(trashKey, liveNotes);
+      }
+      localStorage.setItem('catintassist_notes', '');
+      window.dispatchEvent(new CustomEvent('catint_notes_cleared'));
+    } catch (e) {}
+
+    purgeTranslationCache();
+    setHipaaGraceActive(false);
+  }, [clearCaptions, purgeTranslationCache]);
+
+  const requestHipaaDisconnectGrace = useCallback(
+    (leewayMs = HIPAA_GRACE_MS_DEFAULT) => {
+      // Mark grace active immediately for deepgram/notes effects.
+      hipaaGraceActiveRef.current = true;
+      setHipaaGraceActive(true);
+
+      if (hipaaGraceTimerRef.current) {
+        clearTimeout(hipaaGraceTimerRef.current);
+        hipaaGraceTimerRef.current = null;
+      }
+
+      hipaaGraceTimerRef.current = setTimeout(() => {
+        finalizeHipaaDisconnectClear();
+      }, leewayMs);
+    },
+    [finalizeHipaaDisconnectClear],
+  );
+
+  const cancelHipaaDisconnectGrace = useCallback(() => {
+    hipaaGraceActiveRef.current = false;
+    setHipaaGraceActive(false);
+
+    if (hipaaGraceTimerRef.current) {
+      clearTimeout(hipaaGraceTimerRef.current);
+      hipaaGraceTimerRef.current = null;
+    }
+
+    // One-shot: reconnect inside grace should not clear pinned messages.
+    skipPinnedClearOnceRef.current = true;
   }, []);
 
   useEffect(() => {
@@ -438,10 +529,15 @@ export const SessionProvider = ({ children }) => {
     
     if (!isRecovery) {
       // UX: new call starts → clear pinned messages so they don't bleed across calls.
-      try {
-        localStorage.removeItem('catint_pinned_msgs');
-      } catch {}
-      window.dispatchEvent(new CustomEvent('catint_pinned_cleared'));
+      const skipPins = !!skipPinnedClearOnceRef.current;
+      if (skipPins) {
+        skipPinnedClearOnceRef.current = false;
+      } else {
+        try {
+          localStorage.removeItem('catint_pinned_msgs');
+        } catch {}
+        window.dispatchEvent(new CustomEvent('catint_pinned_cleared'));
+      }
       setSessionSeconds(0);
       accumulatorRef.current = 0;
     }
@@ -520,6 +616,13 @@ export const SessionProvider = ({ children }) => {
 
   // End of Day: commit daily total to log, check streak, reset counters
   const endDay = (onDayEnded) => {
+    // HIPAA: ensure any residual user-entered content is destroyed at latest.
+    try {
+      safeLocalStorageSet('catint_pinned_msgs', JSON.stringify([]));
+      window.dispatchEvent(new CustomEvent('catint_pinned_cleared'));
+    } catch (e) {}
+    purgeNotesTrashAtEndOfDay();
+
     commitAvailTime();
     setStats(prev => {
       // Write today into daily log before zeroing
@@ -780,7 +883,13 @@ export const SessionProvider = ({ children }) => {
     captions,
     updateCaptions,
     clearCaptions,
-    isCaptionsLoaded
+    isCaptionsLoaded,
+
+    // HIPAA grace disconnect support
+    hipaaGraceActive,
+    hipaaGraceActiveRef,
+    requestHipaaDisconnectGrace,
+    cancelHipaaDisconnectGrace
   };
 
   return (

@@ -1,3 +1,8 @@
+# Redirect (v4.48.2)
+This doc is legacy. See `docs/transcription-pane/README.md` (and `docs/archive/mainview.md` for the full snapshot).
+
+<details><summary>Legacy (kept for reference)</summary>
+
 # 🎙️ Main View: Transcription & Translation
 Updated: 2026-04-05
 
@@ -11,3 +16,5 @@ Updated: 2026-04-05
 - [x] **Pinning**: Important messages can be pinned to stay in view.
 - [x] **Auto-scroll**: The board stays anchored to the latest transcript.
 - [x] **Inactivity Detect**: Silence Guardian monitors this view for active audio flow.
+
+</details>

@@ -1,3 +1,8 @@
+# Redirect (v4.48.2)
+This doc moved to `docs/scoreboard/README.md`.
+
+<details><summary>Legacy (kept for reference)</summary>
+
 # Scoreboard Glossary & Guidelines
 
 The scoreboard now defaults to a 12-metric simple grid for "at a glance" clarity.
@@ -44,3 +49,5 @@ Duration of the current active call and the unbanked money earned during it.
 - Resets happen at midnight (00:00).
 - Avail time is only tracked between 9 AM and 11:59 PM.
 - If you need the old gamified layout, click "RETURN TO GAMIFIED VIEW" at the bottom of the grid.
+
+</details>

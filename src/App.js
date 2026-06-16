@@ -63,10 +63,12 @@ const Dashboard = () => {
     isNotesOpen,
     setIsNotesOpen,
     isActive,
+    hipaaGraceActive,
     isBreakActive,
     isZombieCall,
     minutesSinceLastBreak,
     startSession,
+    cancelHipaaDisconnectGrace,
     clearZombieState,
     callFocusMode,
     stopBreak,
@@ -211,34 +213,42 @@ const Dashboard = () => {
   // Step 1: attach audio only (no call timer, no transcript capture).
   const handleAttachAudio = useCallback(
     async (fresh = false) => {
+      // HIPAA: cancel any pending disconnect grace when user reconnects.
+      cancelHipaaDisconnectGrace?.();
       if (isBreakActive) stopBreak();
       return fresh ? startRecordingFresh() : startRecording();
     },
-    [startRecording, startRecordingFresh, isBreakActive, stopBreak],
+    [startRecording, startRecordingFresh, isBreakActive, stopBreak, cancelHipaaDisconnectGrace],
   );
 
   // Step 2: start call timer + transcription UI (audio should already be attached).
   const handleStartCall = useCallback(
     (isRecovery = false) => {
+      // HIPAA: cancel any pending disconnect grace when starting/resuming a call.
+      cancelHipaaDisconnectGrace?.();
       if (isBreakActive) stopBreak();
       if (isRecovery) clearZombieState();
       startSession(isRecovery);
     },
-    [startSession, clearZombieState, isBreakActive, stopBreak],
+    [startSession, clearZombieState, isBreakActive, stopBreak, cancelHipaaDisconnectGrace],
   );
 
   // Zombie refresh: re-attach audio then resume preserved call state.
   const handleRecovery = useCallback(async () => {
+    // HIPAA: cancel any pending disconnect grace when resuming a preserved call.
+    cancelHipaaDisconnectGrace?.();
     if (isBreakActive) stopBreak();
     let ok = audioAttached;
     if (!ok) ok = await startRecording();
     if (ok) handleStartCall(true);
-  }, [audioAttached, startRecording, handleStartCall, isBreakActive, stopBreak]);
+  }, [audioAttached, startRecording, handleStartCall, isBreakActive, stopBreak, cancelHipaaDisconnectGrace]);
 
   const handleConnectAnotherTab = useCallback(async () => {
+    // HIPAA: cancel any pending disconnect grace when attaching a new stream.
+    cancelHipaaDisconnectGrace?.();
     if (isBreakActive) stopBreak();
     await startRecordingFresh();
-  }, [startRecordingFresh, isBreakActive, stopBreak]);
+  }, [startRecordingFresh, isBreakActive, stopBreak, cancelHipaaDisconnectGrace]);
 
   const AUTO_ATTACH_KEY = "catint_auto_attach_v1";
   const autoAttachAttemptedRef = useRef(false);
@@ -395,7 +405,7 @@ const Dashboard = () => {
         }}
       >
         <CloudSyncIndicator />
-        v4.48.7 (Full Stack)
+        v4.48.9 (Full Stack)
       </div>
 
       <div
@@ -470,7 +480,7 @@ const Dashboard = () => {
         </main>
       )}
 
-      {(isActive || isZombieCall) && (
+      {(isActive || isZombieCall || hipaaGraceActive) && (
         <main className={`main-content ${isNotesOpen ? "notes-open" : ""}`}>
           <div className="transcription-pane" data-guide="transcript">
             <TranscriptionBoard

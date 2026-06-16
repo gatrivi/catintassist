@@ -2768,6 +2768,35 @@ body {
   color: #38bdf8;
 }
 
+/* Rail-mode retranslate: replaces the play rail with a single ↻ button */
+.bubble-rail-retranslate-btn {
+  flex: 0 0 auto;
+  width: 6ch;
+  max-width: 6ch;
+  min-width: 6ch;
+  height: 16px;
+  padding: 0;
+  margin-top: 0.1rem;
+  border: 1px solid rgba(56, 189, 248, 0.35);
+  border-radius: 4px;
+  background: rgba(56, 189, 248, 0.12);
+  color: rgba(125, 211, 252, 0.95);
+  cursor: pointer;
+  font-family: var(--font-mono);
+  font-weight: 900;
+  font-size: 0.65rem;
+  line-height: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.15rem;
+}
+
+.bubble-rail-retranslate-btn:hover {
+  background: rgba(56, 189, 248, 0.22);
+  box-shadow: 0 0 0 1px rgba(56, 189, 248, 0.25);
+}
+
 /* ── App guide (spotlight tour) ─────────────────────────────────────────── */
 .app-guide-scoreboard-btn {
   width: 22px;

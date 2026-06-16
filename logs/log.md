@@ -1,4 +1,9 @@
 
+# Redirect (v4.48.2)
+This doc moved to `docs/archive/work-log.md`.
+
+<details><summary>Legacy (kept for reference)</summary>
+
 Tu 31
 - Upgrade pick wheel. still needs work
 - improved money rain
@@ -61,5 +66,7 @@ ok-- allow editing both call times and breaks
 ok-- allow setting both default monthly goal (5500 min) and personalized goals
 -- main view should show total monthly earning, weekly and daily earnings
 -- should show how many minutes have been worked today and which should be the monthly average to meet goals
+
+</details>
 
 

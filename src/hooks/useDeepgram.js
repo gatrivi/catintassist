@@ -112,6 +112,7 @@ export const useDeepgram = () => {
     clearCaptions,
     isActive,
     isZombieCall,
+    hipaaGraceActiveRef,
   } = useSession();
 
   const [connectionState, setConnectionState] = useState("disconnected");
@@ -544,8 +545,10 @@ export const useDeepgram = () => {
     turnWordsBaseRef.current = 0;
     currentTurnIdRef.current = null;
     closeConnections();
-    clearCaptions();
-  }, [closeConnections, clearCaptions]);
+    // HIPAA grace: do not destroy transcription/translation immediately;
+    // defer to SessionContext finalizer (15s leeway for quick reconnect).
+    if (!hipaaGraceActiveRef?.current) clearCaptions();
+  }, [closeConnections, clearCaptions, hipaaGraceActiveRef]);
 
   const stopRecordingRef = useRef(stopRecording);
   stopRecordingRef.current = stopRecording;

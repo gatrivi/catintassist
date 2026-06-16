@@ -1,31 +1,31 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { safeSet } from '../contexts/SessionContext';
 import { useTTS } from '../hooks/useTTS';
-import { useSession } from '../contexts/SessionContext';
 
 export const NotePad = () => {
   const { playTTS, stopTTS, isPlaying } = useTTS();
-  const { isActive } = useSession();
   const [notes, setNotes] = useState(() => {
     return localStorage.getItem('catintassist_notes') || '';
   });
 
-  const prevActiveRef = useRef(isActive);
   const saveTimeoutRef = useRef(null);
 
   useEffect(() => {
-    if (prevActiveRef.current && !isActive) {
-      setNotes('');
-    }
     if (saveTimeoutRef.current) {
       clearTimeout(saveTimeoutRef.current);
     }
     saveTimeoutRef.current = setTimeout(() => {
       safeSet('catintassist_notes', notes);
     }, 500); 
-    prevActiveRef.current = isActive;
     return () => clearTimeout(saveTimeoutRef.current);
-  }, [isActive, notes]);
+  }, [notes]);
+
+  // HIPAA: notes are cleared only by SessionContext finalizer (after grace expiry).
+  useEffect(() => {
+    const onCleared = () => setNotes('');
+    window.addEventListener('catint_notes_cleared', onCleared);
+    return () => window.removeEventListener('catint_notes_cleared', onCleared);
+  }, []);
 
   const clearNotes = () => {
     if (window.confirm("Are you sure you want to clear your session notes?")) {

@@ -1,3 +1,8 @@
+# Redirect (v4.48.2)
+This doc is legacy. See `docs/soundboard/README.md` (and `docs/archive/soundboard-checklist.md` for the full snapshot).
+
+<details><summary>Legacy (kept for reference)</summary>
+
 # Soundboard Roadmap Checklist
 
 Status enum: `NOT_STARTED` · `PARTIAL` · `DONE` · `BROKEN`
@@ -55,3 +60,5 @@ Updated: v4.45.0 · See `00_PORTFOLIO.md` for interview priorities.
 4. **▶ Preview** — you only; waveform fills green as it plays
 5. **📡 Call Test** — routes to header speaker/output; hear patient path
 6. **Play mode** — untested or ⛔ clips preview locally; passing clips go to mic when Test Mode off
+
+</details>

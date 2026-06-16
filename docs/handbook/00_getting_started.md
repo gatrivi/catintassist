@@ -1,3 +1,8 @@
+# Redirect (v4.48.2)
+This doc moved to `docs/onboarding/quickstart.md`.
+
+<details><summary>Legacy (kept for reference)</summary>
+
 core-buttons.png
 1. Connect. Press this to connect to the interpretations service.
 - In some versions, one click starts interpreting from your mic
@@ -11,3 +16,5 @@ core-buttons.png
 
 ## Mic Test (v4.48.1)
 🎤 next to Connect — ON = transcribe from your microphone (no tab picker). OFF = normal tab audio capture.
+
+</details>

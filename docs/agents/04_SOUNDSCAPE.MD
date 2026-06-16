@@ -1,3 +1,8 @@
+# Redirect (v4.48.2)
+This doc is legacy. See `docs/soundscape/README.md`.
+
+<details><summary>Legacy (kept for reference)</summary>
+
 # 🎵 Soundscape: Progressive Audio Feedback
 Updated: 2026-04-05
 
@@ -15,3 +20,5 @@ A zero-sample-base audio engine to prevent clipping and memory leaks.
 - [x] **Silence Guardian Ping**: (Double-clink) Alert for inactivity.
 - [x] **Goal Milestone**: Resonant chime when finishing a Dial Goal.
 - [x] **Smart Mute**: Global state prevents all synthetic triggers when muted.
+
+</details>

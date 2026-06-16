@@ -1,3 +1,8 @@
+# Redirect (v4.48.2)
+This doc is legacy. See `docs/soundboard/README.md` (and `docs/archive/soundboard.md` for the full snapshot).
+
+<details><summary>Legacy (kept for reference)</summary>
+
 # 🔈 Soundboard: Pre-recorded Greetings
 Updated: 2026-04-05 (v3.6.2)
 
@@ -14,3 +19,5 @@ The app uses Deepgram to automatically analyze the "legibility" of your recorded
 
 ### KNOWN ISSUES
 - [ ] Users still report "crackles." This might be related to browser buffer overhead during high STT load.
+
+</details>

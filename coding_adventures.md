@@ -1,3 +1,8 @@
+# Redirect (v4.48.2)
+This doc moved to `docs/archive/coding-adventures.md`.
+
+<details><summary>Legacy (kept for reference)</summary>
+
 # Adventures in Coding with Gatrivi
 
 A collection of architecture lessons, unexpected state failures, and frontend poltergeists encountered during the development of a high-density, real-time medical interpreter dashboard.
@@ -41,3 +46,5 @@ A collection of architecture lessons, unexpected state failures, and frontend po
 ---
 
 *Written collaboratively in real-time during the development of CatIntAssist by Gatrivi & Antigravity (Google DeepMind).*
+
+</details>

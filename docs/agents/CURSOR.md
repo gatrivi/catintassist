@@ -1,3 +1,8 @@
+# Redirect (v4.48.2)
+This doc moved to `docs/cursor-agent/README.md`.
+
+<details><summary>Legacy (kept for reference)</summary>
+
 # Cursor agent rules (CatIntAssist)
 
 Read this file first. Stays small on purpose.
@@ -28,3 +33,5 @@ Do **not** re-read the whole repo for a one-file fix.
 ## IndexedDB
 
 Clips in browser IndexedDB per origin (`idb-keyval`). Not in git. Export/import in Setup → storage panel.
+
+</details>

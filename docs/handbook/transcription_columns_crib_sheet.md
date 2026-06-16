@@ -1,3 +1,8 @@
+# Redirect (v4.48.2)
+This doc moved to `docs/transcription-pane/README.md`.
+
+<details><summary>Legacy (kept for reference)</summary>
+
 # Transcription columns — crib sheet
 
 Study notes for the main view (transcription + translation).  
@@ -135,3 +140,5 @@ If EN speech shows white on the right → `lang` detection bug, not “wrong col
 ---
 
 *Last updated: plan for v4.48.2 column fix. Bump this file when that ships.*
+
+</details>

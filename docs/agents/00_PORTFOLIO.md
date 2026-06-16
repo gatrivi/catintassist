@@ -1,3 +1,8 @@
+# Redirect (v4.48.2)
+This doc moved to `docs/archive/portfolio.md`.
+
+<details><summary>Legacy (kept for reference)</summary>
+
 # CatIntAssist — Portfolio & Interview Map
 
 **Version:** v4.44.0 · **Stack:** React, Deepgram STT, DeepL/Google translate, Web Audio  
@@ -120,3 +125,5 @@ State:    SessionContext (timers, stats, pins)
 **Shipped:** Impressive breadth — STT, translate, scoreboard, soundboard safety, spelling UX.  
 **Missing for flagship:** One **reliable** spoken output path and a **2-minute recorded demo**.  
 Local TTS + virtual mic routing = turns a dev project into a product story.
+
+</details>

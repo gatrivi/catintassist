@@ -280,18 +280,6 @@ const TranslatedBubble = ({
         <div className={`bubble-line${tailBlueLocked ? ' is-tail-blue' : ''}`} style={{ color: transcriptColor }}>
           <InteractiveText text={text} scramble={true} applyNumberWords={sourceUsesNumberWords} lang={lang} />
         </div>
-
-        {showManualRetranslateBtn && (
-          <button
-            type="button"
-            className="bubble-retranslate-btn is-left"
-            onClick={onManualRetranslate}
-            title="Retrigger translation for this message"
-            aria-label="Retrigger translation"
-          >
-            ↻
-          </button>
-        )}
       </div>
 
       <div
@@ -299,14 +287,26 @@ const TranslatedBubble = ({
         className="bubble-col bubble-col-rail"
         style={{ position: 'relative', minWidth: '6ch' }}
       >
-        <BubbleRail
-          engineStatus={engineStatus}
-          turnWordCount={turnWordCount}
-          showTurnWordCount={showTurnWordCount}
-          isThisPlaying={isThisPlaying}
-          canPlay={Boolean(translation && audioUrl)}
-          onPlayClick={() => (isThisPlaying ? stopTTS() : playTTS(translation, targetLang, audioUrl))}
-        />
+        {showManualRetranslateBtn ? (
+          <button
+            type="button"
+            className="bubble-rail-retranslate-btn"
+            onClick={onManualRetranslate}
+            title="Retrigger translation for this message"
+            aria-label="Retrigger translation"
+          >
+            {reverse ? '←' : '→'} ↻
+          </button>
+        ) : (
+          <BubbleRail
+            engineStatus={engineStatus}
+            turnWordCount={turnWordCount}
+            showTurnWordCount={showTurnWordCount}
+            isThisPlaying={isThisPlaying}
+            canPlay={Boolean(translation && audioUrl)}
+            onPlayClick={() => (isThisPlaying ? stopTTS() : playTTS(translation, targetLang, audioUrl))}
+          />
+        )}
       </div>
 
       <div className="bubble-col bubble-col-translation" style={{ color: translationColor, textAlign: 'left', position: 'relative' }}>
@@ -319,18 +319,6 @@ const TranslatedBubble = ({
             <span style={{ opacity: 0.2 }}>...</span>
           )}
         </div>
-
-        {showManualRetranslateBtn && (
-          <button
-            type="button"
-            className="bubble-retranslate-btn"
-            onClick={onManualRetranslate}
-            title="Retrigger translation for this message"
-            aria-label="Retrigger translation"
-          >
-            ↻
-          </button>
-        )}
       </div>
     </div>
   );
