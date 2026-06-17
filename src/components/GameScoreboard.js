@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { AppGuideButton } from './AppGuide';
 import { StatNumber } from './StatNumber';
 import { ConnectInterpretButton } from './ConnectInterpretButton';
+import { getRuntimeDeepgramKey } from '../utils/deepgramRuntimeKey';
 
 // ─── ScoreboardTooltip ────────────────────────────────────────────────────────
 // A lightweight 'toastie' popover for dynamic info on hover.
@@ -232,6 +233,17 @@ const DirectionalCue = ({
     connectProgress?.phase === 'connecting' &&
     !connectProgress?.transcriptReceived;
 
+  const hasEnvKey = !!process.env.REACT_APP_DEEPGRAM_API_KEY;
+  const hasLegacyStoredKey = (() => {
+    try {
+      return !!localStorage.getItem('DEEPGRAM_API_KEY');
+    } catch (_) {
+      return false;
+    }
+  })();
+  const hasRuntimeKey = !!getRuntimeDeepgramKey();
+  const apiKeyMissing = !(hasRuntimeKey || hasEnvKey || hasLegacyStoredKey);
+
   const h = new Date().getHours();
   const goalsMet = totalDailyMins >= (dailyGoal || 1);
 
@@ -264,18 +276,34 @@ const DirectionalCue = ({
 
   const requiredIdleText = isZombieCall
     ? 'Call still active — press C or ▶ RE-ATTACH (timer saved)'
-    : audioAttached
-      ? 'Tab hooked — press C or ▶ CALL START when call begins'
-      : 'Press C or ▶ CONNECT to attach interpreting platform';
+    : apiKeyMissing
+      ? '🔑 Enter key to unlock Deepgram'
+      : audioAttached
+        ? 'Tab hooked — press C or ▶ CALL START when call begins'
+        : 'Press C or ▶ CONNECT to attach interpreting platform';
 
-  const connectLabel = isZombieCall ? 'RE-ATTACH' : audioAttached ? 'CALL START' : 'CONNECT';
+  const connectLabel = isZombieCall
+    ? 'RE-ATTACH'
+    : apiKeyMissing
+      ? '🔑 Enter key'
+      : audioAttached
+        ? 'CALL START'
+        : 'CONNECT';
+
+  const showKeyVault = () => {
+    try {
+      window.dispatchEvent(new CustomEvent('cat_show_deepgram_key_vault'));
+    } catch (_) {}
+  };
   const handleSingle = () => {
     if (isZombieCall) return onRecovery?.();
+    if (apiKeyMissing) return showKeyVault();
     if (!audioAttached) return onAttachAudio?.();
     return onStartCall?.();
   };
   const handleDouble = () => {
     if (isZombieCall) return onRecovery?.();
+    if (apiKeyMissing) return showKeyVault();
     if (!audioAttached) return (onAttachAudioFresh || onAttachAudio)?.();
     return onConnectAnotherTab?.();
   };

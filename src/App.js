@@ -85,14 +85,18 @@ const Dashboard = () => {
     () => !hasSeenStudioHint(),
   );
 
-  // Vault overlay only appears when no Deepgram key is available
-  // (runtime vault > localStorage legacy > build-time env).
+  const [vaultForced, setVaultForced] = useState(false);
   const [, setRuntimeKeyTick] = useState(0);
   useEffect(() => {
-    const onChange = () => setRuntimeKeyTick((t) => t + 1);
-    window.addEventListener("cat_deepgram_runtime_key_changed", onChange);
-    return () =>
-      window.removeEventListener("cat_deepgram_runtime_key_changed", onChange);
+    const onRuntime = () => setRuntimeKeyTick((t) => t + 1);
+    const onShowVault = () => setVaultForced(true);
+
+    window.addEventListener("cat_deepgram_runtime_key_changed", onRuntime);
+    window.addEventListener("cat_show_deepgram_key_vault", onShowVault);
+    return () => {
+      window.removeEventListener("cat_deepgram_runtime_key_changed", onRuntime);
+      window.removeEventListener("cat_show_deepgram_key_vault", onShowVault);
+    };
   }, []);
 
   const hasEnvKey = !!process.env.REACT_APP_DEEPGRAM_API_KEY;
@@ -106,6 +110,11 @@ const Dashboard = () => {
   // Pulls from volatile in-memory vault; triggers rerender via `runtimeKeyTick`.
   const hasRuntimeKey = !!getRuntimeDeepgramKey();
   const apiKeyMissing = !(hasRuntimeKey || hasEnvKey || hasLegacyStoredKey);
+
+  useEffect(() => {
+    // Once the user unlocks the key, remove forced overlay.
+    if (hasRuntimeKey) setVaultForced(false);
+  }, [hasRuntimeKey]);
 
   // UX: on every page load, assume tab capture needs a fresh user attach.
   // This prevents zombie-call ambiguity after refresh/reopen.
@@ -433,7 +442,9 @@ const Dashboard = () => {
         v4.49.1 (Full Stack)
       </div>
 
-      {apiKeyMissing && !(isActive || isZombieCall) && <DeepgramKeyVault />}
+      {(apiKeyMissing || vaultForced) && !(isActive || isZombieCall) && (
+        <DeepgramKeyVault />
+      )}
 
       <div
         id="top-mic-bar-container"

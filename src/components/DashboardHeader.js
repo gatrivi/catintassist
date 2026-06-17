@@ -15,6 +15,7 @@ import { AppGuideButton } from './AppGuide';
 import { WorkspaceViewSwitcher } from './WorkspaceViewSwitcher';
 import { ConnectInterpretButton } from './ConnectInterpretButton';
 import { SlotMicroValue } from './SlotMicroValue';
+import { getRuntimeDeepgramKey } from '../utils/deepgramRuntimeKey';
 const CelebrationParticles = ({ type, label, coins, onDismiss }) => {
   const [isClosing, setIsClosing] = useState(false);
   const emojis = ['🪙', '🪙', '💸', '💵', '💰', '💎'];
@@ -168,6 +169,7 @@ const SessionControlsSticky = React.memo(({
   isActive,
   isBreakActive,
   isZombieCall,
+  apiKeyMissing,
   audioAttached,
   micTestMode,
   setMicTestMode,
@@ -223,6 +225,7 @@ const SessionControlsSticky = React.memo(({
   }, [isActive]);
 
   const offCallStatusText = (() => {
+    if (apiKeyMissing) return '🔑 Enter key to unlock Deepgram';
     if (isBreakActive) return '☕ On break — press C or ▶ CALL START when you return';
     if (connectionState === 'connecting') {
       return connectionMessage || 'Connecting to interpreting platform…';
@@ -1066,8 +1069,30 @@ export const DashboardHeader = ({
 
   // Sticky connect/stop bar — attach audio first, start call separately.
   const tabNeedsReconnect = !micTestMode && !tabStreamReady;
-  const connectRequireDoubleTapIndicator = tabNeedsReconnect && !isZombieCall;
-  const connectLabel = isZombieCall
+  const hasEnvKey = !!process.env.REACT_APP_DEEPGRAM_API_KEY;
+  const hasLegacyStoredKey = (() => {
+    try {
+      return !!localStorage.getItem('DEEPGRAM_API_KEY');
+    } catch (_) {
+      return false;
+    }
+  })();
+  const hasRuntimeKey = !!getRuntimeDeepgramKey();
+  const apiKeyMissing = !(hasRuntimeKey || hasEnvKey || hasLegacyStoredKey);
+
+  const showKeyVault = () => {
+    try {
+      window.dispatchEvent(new CustomEvent('cat_show_deepgram_key_vault'));
+    } catch (_) {}
+  };
+
+  const connectRequireDoubleTapIndicator = apiKeyMissing
+    ? false
+    : tabNeedsReconnect && !isZombieCall;
+
+  const connectLabel = apiKeyMissing
+    ? '🔑 Enter key'
+    : isZombieCall
     ? 'RE-ATTACH'
     : tabNeedsReconnect
       ? 'TAB RECONNECT'
@@ -1076,18 +1101,23 @@ export const DashboardHeader = ({
         : 'CONNECT';
   const connectSingleTitle = isZombieCall
     ? 'RE-ATTACH TO CALL'
-    : tabNeedsReconnect
-      ? 'ATTACH TAB (double-tap)'
-      : audioAttached
-        ? 'START CALL / TRANSCRIBE'
-        : micTestMode
-          ? 'CONNECT (MIC TEST)'
-          : 'CONNECT TO PLATFORM';
+    : apiKeyMissing
+      ? 'Enter key to unlock Deepgram'
+      : tabNeedsReconnect
+        ? 'ATTACH TAB (double-tap)'
+        : audioAttached
+          ? 'START CALL / TRANSCRIBE'
+          : micTestMode
+            ? 'CONNECT (MIC TEST)'
+            : 'CONNECT TO PLATFORM';
   const connectDoubleTitle = micTestMode
     ? 're-request microphone'
-    : 'attach another browser tab';
+    : apiKeyMissing
+      ? 'Enter key to unlock Deepgram'
+      : 'attach another browser tab';
 
   const connectOnSingle = (() => {
+    if (apiKeyMissing) return showKeyVault;
     if (isZombieCall) return onRecovery;
     if (tabNeedsReconnect) return () => {}; // first tap arms double-tap UX
     if (!audioAttached) return onAttachAudio;
@@ -1095,12 +1125,13 @@ export const DashboardHeader = ({
   })();
 
   const connectOnDouble = (() => {
+    if (apiKeyMissing) return showKeyVault;
     if (isZombieCall) return onRecovery;
     if (tabNeedsReconnect) return onAttachAudioFresh || onAttachAudio;
     return onConnectAnotherTab;
   })();
 
-  const connectFlash = !isBreakActive && (tabNeedsReconnect || (!audioAttached && !isZombieCall));
+  const connectFlash = !isBreakActive && !apiKeyMissing && (tabNeedsReconnect || (!audioAttached && !isZombieCall));
   const showEndDayButton = !isActive && stats.dailyMinutes > 0 && !isBreakActive;
 
   // Listen for Demo Scenarios
@@ -2141,6 +2172,7 @@ ${isInDeficit ? `⚠️ DEFICIT: Behind pace by ${Math.round(monthlyDeficitMins)
         isActive={isActive}
         isBreakActive={isBreakActive}
         isZombieCall={isZombieCall}
+        apiKeyMissing={apiKeyMissing}
         audioAttached={audioAttached}
         micTestMode={micTestMode}
         setMicTestMode={setMicTestMode}
