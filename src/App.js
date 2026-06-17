@@ -444,7 +444,7 @@ const Dashboard = () => {
         }}
       >
         <CloudSyncIndicator />
-        v4.49.3 (Full Stack)
+        v4.49.4 (Full Stack)
       </div>
 
       {(apiKeyMissing || vaultForced) && !(isActive || isZombieCall) && (

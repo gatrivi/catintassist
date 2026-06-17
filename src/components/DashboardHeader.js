@@ -271,19 +271,46 @@ const SessionControlsSticky = React.memo(({
         )}
 
         {!isActive ? (
-          <ConnectInterpretButton
-            onSingle={connectOnSingle}
-            onDouble={connectOnDouble}
-            flash={connectFlash}
-            disabled={false}
-            size="top"
-            label={connectLabel}
-            requireDoubleTapIndicator={requireDoubleTapIndicator}
-            onArmDoubleTap={onArmDoubleTap}
-            pendingDoubleTapTitle={pendingDoubleTapTitle}
-            singleTitle={connectSingleTitle}
-            doubleTitle={connectDoubleTitle}
-          />
+          <>
+            <button
+              id="header-key-vault-btn"
+              type="button"
+              className="btn-emoji"
+              onClick={() => {
+                try {
+                  window.dispatchEvent(
+                    new CustomEvent("cat_show_deepgram_key_vault"),
+                  );
+                } catch (_) {}
+              }}
+              style={{
+                background: "rgba(16,185,129,0.16)",
+                color: "#d1fae5",
+                width: "30px",
+                height: "30px",
+                borderRadius: "8px",
+                border: "1px solid rgba(16,185,129,0.35)",
+              }}
+              title="Deepgram Key Vault"
+              aria-label="Deepgram Key Vault"
+            >
+              🔑
+            </button>
+
+            <ConnectInterpretButton
+              onSingle={connectOnSingle}
+              onDouble={connectOnDouble}
+              flash={connectFlash}
+              disabled={false}
+              size="top"
+              label={connectLabel}
+              requireDoubleTapIndicator={requireDoubleTapIndicator}
+              onArmDoubleTap={onArmDoubleTap}
+              pendingDoubleTapTitle={pendingDoubleTapTitle}
+              singleTitle={connectSingleTitle}
+              doubleTitle={connectDoubleTitle}
+            />
+          </>
         ) : (
           <>
             <button
