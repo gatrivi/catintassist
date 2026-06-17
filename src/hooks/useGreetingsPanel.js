@@ -8,6 +8,7 @@ import {
 import { bindAudioToSink, primePlaybackElements, rampVolume } from '../utils/audioRoute';
 import { useAudioSettings } from '../contexts/AudioSettingsContext';
 import { createSpeechProcessingGraph, createNoiseGate } from '../utils/audioProcessing';
+import { getRuntimeDeepgramKey } from '../utils/deepgramRuntimeKey';
 
 export const TIME_SLOTS = ['morning', 'afternoon', 'evening'];
 
@@ -106,7 +107,10 @@ export function useGreetingsPanel(onEditModeChange) {
   const analyzeHealth = useCallback(async (key) => {
     const blob = await loadFile(key);
     if (!blob) return;
-    const API_KEY = localStorage.getItem('DEEPGRAM_API_KEY') || process.env.REACT_APP_DEEPGRAM_API_KEY;
+    const API_KEY =
+      getRuntimeDeepgramKey() ||
+      localStorage.getItem('DEEPGRAM_API_KEY') ||
+      process.env.REACT_APP_DEEPGRAM_API_KEY;
     if (!API_KEY) return;
     setIsAnalyzing(key);
     try {

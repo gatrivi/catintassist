@@ -8,6 +8,7 @@ import {
   hallucinationGuard,
   removeOverlapPreservingDigitSequences,
 } from "../utils/sensitiveDataProtector";
+import { getRuntimeDeepgramKey } from "../utils/deepgramRuntimeKey";
 
 const TAB_STREAM_READY_KEY = "catint_tab_stream_ok_v1";
 const readTabStreamReady = () => {
@@ -277,6 +278,7 @@ export const useDeepgram = () => {
   const startDeepgram = useCallback(
     (stream) => {
       const API_KEY =
+        getRuntimeDeepgramKey() ||
         localStorage.getItem("DEEPGRAM_API_KEY") ||
         process.env.REACT_APP_DEEPGRAM_API_KEY;
       if (
@@ -284,10 +286,9 @@ export const useDeepgram = () => {
         API_KEY.trim() === "" ||
         API_KEY === "your_deepgram_api_key_here"
       ) {
-        alert("Deepgram API Key Missing");
         setConnectionState("error");
         const msg =
-          "Deepgram API key is missing. Please add it to your .env file and reload the app, then press Connect again.";
+          "Deepgram API key is missing. Paste + unlock it in the Deepgram Key Vault, then press Connect again.";
         setConnectionMessage(msg);
         syncConnectProgress({ phase: "error", lastError: msg });
         return;

@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useState, useEffect, useRef, useCallback } from 'react';
 import { useRewardAudio } from '../hooks/useRewardAudio';
 import { set as idbSet, get as idbGet } from 'idb-keyval';
+import { getRuntimeDeepgramKey } from '../utils/deepgramRuntimeKey';
 
 const PURGE_KEYS_PREFIX = 'trans_cache:';
 
@@ -284,13 +285,20 @@ export const SessionProvider = ({ children }) => {
   const syncIdRef = useRef(null);
 
   useEffect(() => {
-    const key = localStorage.getItem('DEEPGRAM_API_KEY');
-    if (key && key.length > 10) {
-      // Simple hash to create a unique topic
-      let hash = 0;
-      for (let i = 0; i < key.length; i++) hash = ((hash << 5) - hash) + key.charCodeAt(i);
-      syncIdRef.current = `catint_sync_${Math.abs(hash).toString(36)}`;
-    }
+    const computeSyncId = () => {
+      const key = getRuntimeDeepgramKey() || localStorage.getItem('DEEPGRAM_API_KEY');
+      if (key && key.length > 10) {
+        // Simple hash to create a unique topic
+        let hash = 0;
+        for (let i = 0; i < key.length; i++) {
+          hash = ((hash << 5) - hash) + key.charCodeAt(i);
+        }
+        syncIdRef.current = `catint_sync_${Math.abs(hash).toString(36)}`;
+      }
+    };
+    computeSyncId();
+    window.addEventListener('cat_deepgram_runtime_key_changed', computeSyncId);
+    return () => window.removeEventListener('cat_deepgram_runtime_key_changed', computeSyncId);
   }, []);
 
   const pushState = useCallback(async (forceStats = null) => {

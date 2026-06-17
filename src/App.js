@@ -24,6 +24,8 @@ import { useProgressiveAudio } from "./hooks/useProgressiveAudio";
 import { useAppUpdateCheck } from "./hooks/useAppUpdateCheck";
 import { UpdateAppBanner } from "./components/UpdateAppBanner";
 import { loadFile, generateObjectUrl } from "./utils/storage";
+import DeepgramKeyVault from "./components/DeepgramKeyVault";
+import { getRuntimeDeepgramKey } from "./utils/deepgramRuntimeKey";
 import "./index.css";
 
 const CloudSyncIndicator = () => {
@@ -82,6 +84,28 @@ const Dashboard = () => {
   const [showStudioHint, setShowStudioHint] = useState(
     () => !hasSeenStudioHint(),
   );
+
+  // Vault overlay only appears when no Deepgram key is available
+  // (runtime vault > localStorage legacy > build-time env).
+  const [, setRuntimeKeyTick] = useState(0);
+  useEffect(() => {
+    const onChange = () => setRuntimeKeyTick((t) => t + 1);
+    window.addEventListener("cat_deepgram_runtime_key_changed", onChange);
+    return () =>
+      window.removeEventListener("cat_deepgram_runtime_key_changed", onChange);
+  }, []);
+
+  const hasEnvKey = !!process.env.REACT_APP_DEEPGRAM_API_KEY;
+  const hasLegacyStoredKey = (() => {
+    try {
+      return !!localStorage.getItem("DEEPGRAM_API_KEY");
+    } catch (_) {
+      return false;
+    }
+  })();
+  // Pulls from volatile in-memory vault; triggers rerender via `runtimeKeyTick`.
+  const hasRuntimeKey = !!getRuntimeDeepgramKey();
+  const apiKeyMissing = !(hasRuntimeKey || hasEnvKey || hasLegacyStoredKey);
 
   // UX: on every page load, assume tab capture needs a fresh user attach.
   // This prevents zombie-call ambiguity after refresh/reopen.
@@ -406,8 +430,10 @@ const Dashboard = () => {
         }}
       >
         <CloudSyncIndicator />
-        v4.49.0 (Full Stack)
+        v4.49.1 (Full Stack)
       </div>
+
+      {apiKeyMissing && !(isActive || isZombieCall) && <DeepgramKeyVault />}
 
       <div
         id="top-mic-bar-container"
