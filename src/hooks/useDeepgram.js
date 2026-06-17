@@ -117,6 +117,15 @@ export const useDeepgram = () => {
 
   const [connectionState, setConnectionState] = useState("disconnected");
   const [connectionMessage, setConnectionMessage] = useState("Disconnected");
+  const [connectProgress, setConnectProgress] = useState({
+    phase: "idle", // idle | connecting | ready | error
+    audioStreamReady: false,
+    socketsOpen: false,
+    audioChunksSent: false,
+    transcriptReceived: false,
+    lastUpdatedAt: 0,
+    lastError: null,
+  });
   const [sttLanguage, setSttLanguage] = useState("auto");
   const [lastDataTime, setLastDataTime] = useState(0);
   const [micTestMode, setMicTestModeState] = useState(readMicTestMode);
@@ -138,6 +147,38 @@ export const useDeepgram = () => {
   const bubbleIdCounterRef = useRef(0);
   const overrideTimeoutRef = useRef(null);
   const reconnectAttemptsRef = useRef(0);
+  const connectAttemptIdRef = useRef(0);
+  const watchdogTimeoutRef = useRef(null);
+  const connectFlagsRef = useRef({
+    phase: "idle",
+    audioStreamReady: false,
+    socketsOpen: false,
+    audioChunksSent: false,
+    transcriptReceived: false,
+    lastUpdatedAt: 0,
+    lastError: null,
+  });
+
+  const syncConnectProgress = (patch) => {
+    connectFlagsRef.current = { ...connectFlagsRef.current, ...patch, lastUpdatedAt: Date.now() };
+    setConnectProgress(connectFlagsRef.current);
+  };
+
+  const resetConnectProgress = () => {
+    syncConnectProgress({
+      phase: "connecting",
+      audioStreamReady: false,
+      socketsOpen: false,
+      audioChunksSent: false,
+      transcriptReceived: false,
+      lastError: null,
+    });
+  };
+
+  const clearWatchdog = useCallback(() => {
+    if (watchdogTimeoutRef.current) clearTimeout(watchdogTimeoutRef.current);
+    watchdogTimeoutRef.current = null;
+  }, []);
 
   // Only store transcript bubbles during an active or zombie-resumed call.
   useEffect(() => {
@@ -167,7 +208,34 @@ export const useDeepgram = () => {
     }
     setConnectionState("disconnected");
     setConnectionMessage("Disconnected");
+    syncConnectProgress({
+      phase: "idle",
+      audioStreamReady: false,
+      socketsOpen: false,
+      audioChunksSent: false,
+      transcriptReceived: false,
+      lastError: null,
+    });
   }, []);
+
+  const failConnection = useCallback(
+    (message) => {
+      // Stop Deepgram reconnect attempts and prevent further state flips.
+      isActiveRef.current = false;
+      reconnectAttemptsRef.current = 0;
+      clearWatchdog();
+      try {
+        if (overrideTimeoutRef.current) clearTimeout(overrideTimeoutRef.current);
+      } catch {}
+
+      // closeConnections flips state to "disconnected"; we override right after.
+      closeConnections();
+      setConnectionState("error");
+      setConnectionMessage(message);
+      syncConnectProgress({ phase: "error", lastError: message });
+    },
+    [clearWatchdog, closeConnections],
+  );
 
   const stopStreamTracks = useCallback(() => {
     try {
@@ -218,6 +286,10 @@ export const useDeepgram = () => {
       ) {
         alert("Deepgram API Key Missing");
         setConnectionState("error");
+        const msg =
+          "Deepgram API key is missing. Please add it to your .env file and reload the app, then press Connect again.";
+        setConnectionMessage(msg);
+        syncConnectProgress({ phase: "error", lastError: msg });
         return;
       }
 
@@ -234,6 +306,21 @@ export const useDeepgram = () => {
             socketRefEn.current?.readyState === 1 &&
             socketRefEs.current?.readyState === 1
           ) {
+            syncConnectProgress({ socketsOpen: true, phase: "connecting" });
+            // If sockets open but we never send audio, the connection is likely stale.
+            const attemptId = connectAttemptIdRef.current;
+            clearWatchdog();
+            watchdogTimeoutRef.current = setTimeout(() => {
+              const stillSameAttempt = connectAttemptIdRef.current === attemptId;
+              if (!stillSameAttempt) return;
+              if (connectFlagsRef.current.audioChunksSent) return;
+              // Only fail if we haven't received transcripts either (helps avoid false positives).
+              if (connectFlagsRef.current.transcriptReceived) return;
+              failConnection(
+                "Deepgram sockets opened, but audio did not reach Deepgram. This usually means the connection is stale. Press Connect again (or ZAP ⚡) to refresh."
+              );
+            }, 9000);
+
             setConnectionState("connected");
             setConnectionMessage("Live");
             try {
@@ -243,10 +330,19 @@ export const useDeepgram = () => {
                   "dataavailable",
                   (e) => {
                     if (e.data.size > 0) {
-                      if (socketRefEn.current?.readyState === 1)
+                      let sentAny = false;
+                      if (socketRefEn.current?.readyState === 1) {
+                        sentAny = true;
                         socketRefEn.current.send(e.data);
-                      if (socketRefEs.current?.readyState === 1)
+                      }
+                      if (socketRefEs.current?.readyState === 1) {
+                        sentAny = true;
                         socketRefEs.current.send(e.data);
+                      }
+                      if (sentAny && !connectFlagsRef.current.audioChunksSent) {
+                        syncConnectProgress({ audioChunksSent: true });
+                        clearWatchdog();
+                      }
                     }
                   },
                 );
@@ -263,6 +359,9 @@ export const useDeepgram = () => {
           const alt = received.channel?.alternatives?.[0];
           const transcript = alt?.transcript;
           if (!transcript || transcript.trim().length === 0) return;
+          if (!connectFlagsRef.current.transcriptReceived) {
+            syncConnectProgress({ transcriptReceived: true, phase: "ready" });
+          }
 
           const confidence = alt?.confidence || 0;
           const isFinal = received.is_final;
@@ -530,7 +629,15 @@ export const useDeepgram = () => {
             }, delay);
           }
         };
-        ws.onerror = (e) => console.error(e);
+        ws.onerror = () => {
+          // Only surface errors during an active connect attempt.
+          if (connectFlagsRef.current.phase === "ready") return;
+          // If this is happening after we already attached audio, don't spam the user.
+          if (connectFlagsRef.current.phase !== "connecting") return;
+          failConnection(
+            "Deepgram WebSocket failed to connect. Check your network and that your Deepgram API key is valid, then press Connect again."
+          );
+        };
         return ws;
       };
 
@@ -574,7 +681,13 @@ export const useDeepgram = () => {
     (stream, source) => {
       if (stream.getAudioTracks().length === 0) {
         setConnectionState("error");
-        setConnectionMessage("No Audio Track");
+        setConnectionMessage(
+          "No audio track was detected. Make sure your selected tab or microphone includes audio, then press Connect again."
+        );
+        syncConnectProgress({
+          phase: "error",
+          lastError: "No audio track was detected. Make sure your selected tab or microphone includes audio, then press Connect again.",
+        });
         stream.getTracks().forEach((t) => {
           try {
             t.stop();
@@ -585,6 +698,7 @@ export const useDeepgram = () => {
       streamRef.current = stream;
       isActiveRef.current = true;
       bindStreamLifecycle(stream, source);
+      syncConnectProgress({ audioStreamReady: true, phase: "connecting" });
       startDeepgram(stream);
       if (source === "tab") {
         setTabStreamReady(true);
@@ -599,6 +713,9 @@ export const useDeepgram = () => {
 
   const startRecording = useCallback(async () => {
     try {
+      connectAttemptIdRef.current += 1;
+      resetConnectProgress();
+      clearWatchdog();
       setConnectionState("connecting");
       const useMic = micTestModeRef.current;
       const source = useMic ? "mic" : "tab";
@@ -625,28 +742,32 @@ export const useDeepgram = () => {
       return beginStream(stream, source);
     } catch (err) {
       console.error(err);
+      const msg = micTestModeRef.current
+        ? "Microphone access was denied. Please allow microphone permissions and press Connect again."
+        : "Tab sharing was cancelled. Please start tab sharing again and press Connect again.";
       setConnectionState("error");
-      setConnectionMessage(
-        micTestModeRef.current ? "Mic Access Denied" : "Tab Share Cancelled",
-      );
+      setConnectionMessage(msg);
+      syncConnectProgress({ phase: "error", lastError: msg });
       return false;
     }
-  }, [beginStream, startDeepgram]);
+  }, [beginStream, startDeepgram, clearWatchdog]);
 
   // Force re-open picker (tab) or re-request mic (double-tap connect).
   const startRecordingFresh = useCallback(async () => {
     try {
+      connectAttemptIdRef.current += 1;
+      clearWatchdog();
       const useMic = micTestModeRef.current;
       const source = useMic ? "mic" : "tab";
+      closeConnections();
+      stopStreamTracks();
+      resetConnectProgress();
       setConnectionState("connecting");
       setConnectionMessage(
         useMic
           ? "Requesting Microphone (fresh)..."
           : "Requesting Tab Audio (fresh)...",
       );
-
-      closeConnections();
-      stopStreamTracks();
       if (source === "tab") {
         // Force "tab needs reconnect" UX until we successfully reacquire a stream.
         setTabStreamReady(false);
@@ -662,18 +783,24 @@ export const useDeepgram = () => {
       return beginStream(stream, source);
     } catch (err) {
       console.error(err);
+      const msg = micTestModeRef.current
+        ? "Microphone access was denied. Please allow microphone permissions and press Connect again."
+        : "Tab sharing was cancelled. Please start tab sharing again and press Connect again.";
       setConnectionState("error");
-      setConnectionMessage(
-        micTestModeRef.current ? "Mic Access Denied" : "Tab Share Cancelled",
-      );
+      setConnectionMessage(msg);
+      syncConnectProgress({ phase: "error", lastError: msg });
       return false;
     }
-  }, [beginStream, closeConnections, stopStreamTracks]);
+  }, [beginStream, closeConnections, stopStreamTracks, clearWatchdog]);
 
   const reconnectStream = useCallback(() => {
-    setConnectionState("connecting");
+    connectAttemptIdRef.current += 1;
+    clearWatchdog();
     reconnectAttemptsRef.current = 0; // Reset manual attempts
     closeConnections();
+    resetConnectProgress();
+    setConnectionState("connecting");
+    setConnectionMessage("Reconnecting to Deepgram...");
     setTimeout(() => {
       if (streamRef.current && isActiveRef.current)
         startDeepgram(streamRef.current);
@@ -682,7 +809,7 @@ export const useDeepgram = () => {
         startRecording();
       }
     }, 400);
-  }, [closeConnections, startDeepgram, startRecording]);
+  }, [closeConnections, startDeepgram, startRecording, clearWatchdog]);
 
   const toggleLanguage = useCallback(() => {
     setSttLanguage((prev) => {
@@ -710,6 +837,7 @@ export const useDeepgram = () => {
     toggleLanguage,
     connectionState,
     connectionMessage,
+    connectProgress,
     lastDataTime,
     micTestMode,
     setMicTestMode,

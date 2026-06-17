@@ -54,6 +54,7 @@ const Dashboard = () => {
     toggleLanguage,
     connectionState,
     connectionMessage,
+    connectProgress,
     lastDataTime,
     micTestMode,
     setMicTestMode,
@@ -405,7 +406,7 @@ const Dashboard = () => {
         }}
       >
         <CloudSyncIndicator />
-        v4.48.9 (Full Stack)
+        v4.49.0 (Full Stack)
       </div>
 
       <div
@@ -448,6 +449,7 @@ const Dashboard = () => {
         onToggleLanguage={toggleLanguage}
         connectionState={connectionState}
         connectionMessage={connectionMessage}
+        connectProgress={connectProgress}
         lastDataTime={lastDataTime}
         micTestMode={micTestMode}
         setMicTestMode={setMicTestMode}

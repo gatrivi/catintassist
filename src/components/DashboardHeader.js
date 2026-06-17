@@ -227,6 +227,9 @@ const SessionControlsSticky = React.memo(({
     if (connectionState === 'connecting') {
       return connectionMessage || 'Connecting to interpreting platform…';
     }
+    if (connectionState === 'error') {
+      return connectionMessage || 'Deepgram connection failed. Press Connect again.';
+    }
     if (isZombieCall) {
       return `Press C or ▶ RE-ATTACH — call timer & transcript preserved · ${slackText}`;
     }
@@ -428,6 +431,8 @@ const SessionControlsSticky = React.memo(({
                 ? '#fbbf24'
                 : audioAttached
                   ? '#34d399'
+                : connectionState === 'error'
+                  ? '#ef4444'
                   : connectionState === 'connecting'
                     ? '#f59e0b'
                     : '#9dffed',
@@ -484,6 +489,7 @@ export const DashboardHeader = ({
   onRecovery,
   connectionState,
   connectionMessage,
+  connectProgress,
   lastDataTime,
   micTestMode = false,
   setMicTestMode,
@@ -1152,6 +1158,8 @@ export const DashboardHeader = ({
                     daysInMonth={daysInMonth} currentDay={currentDay} remainingDays={remainingDays}
                     isActive={isActive} isBreakActive={isBreakActive}
                     isZombieCall={isZombieCall}
+                    connectionState={connectionState}
+                    connectProgress={connectProgress}
                     onAttachAudio={onAttachAudio}
                     onAttachAudioFresh={onAttachAudioFresh}
                     onStartCall={onStartCall}

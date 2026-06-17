@@ -147,7 +147,55 @@ const IDLE_CHECKLIST = [
   'After attach: status says CALL START — timer begins only then.',
 ];
 
+const ConnectingChecklist = ({ connectProgress }) => {
+  const s = connectProgress || {};
+  const step1 = !!s.audioStreamReady;
+  const step2 = !!s.socketsOpen;
+  const step3 = !!s.audioChunksSent;
+  const step4 = !!s.transcriptReceived;
+
+  const mk = (done, prevDone) => {
+    if (done) return { mark: '✓', color: '#34d399' };
+    if (prevDone) return { mark: '→', color: '#f59e0b' };
+    return { mark: '•', color: 'rgba(255,255,255,0.35)' };
+  };
+
+  const row1 = mk(step1, false);
+  const row2 = mk(step2, step1);
+  const row3 = mk(step3, step2);
+  const row4 = mk(step4, step3);
+
+  // Keep it short: only show transcript row once audio is definitely flowing.
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.15rem' }}>
+      <div style={{ fontWeight: 900, fontSize: '0.7rem', color: '#f59e0b', lineHeight: 1.15 }}>
+        Connecting to Deepgram
+      </div>
+      <div style={{ display: 'flex', gap: '0.35rem', alignItems: 'center', fontSize: '0.7rem', fontWeight: 700 }}>
+        <span style={{ color: row1.color, fontFamily: 'var(--font-mono, monospace)' }}>{row1.mark}</span>
+        <span>1) Audio stream ready</span>
+      </div>
+      <div style={{ display: 'flex', gap: '0.35rem', alignItems: 'center', fontSize: '0.7rem', fontWeight: 700 }}>
+        <span style={{ color: row2.color, fontFamily: 'var(--font-mono, monospace)' }}>{row2.mark}</span>
+        <span>2) Deepgram sockets open</span>
+      </div>
+      <div style={{ display: 'flex', gap: '0.35rem', alignItems: 'center', fontSize: '0.7rem', fontWeight: 700 }}>
+        <span style={{ color: row3.color, fontFamily: 'var(--font-mono, monospace)' }}>{row3.mark}</span>
+        <span>3) Audio sending</span>
+      </div>
+      {step3 && (
+        <div style={{ display: 'flex', gap: '0.35rem', alignItems: 'center', fontSize: '0.7rem', fontWeight: 700 }}>
+          <span style={{ color: row4.color, fontFamily: 'var(--font-mono, monospace)' }}>{row4.mark}</span>
+          <span>4) Waiting for transcript</span>
+        </div>
+      )}
+    </div>
+  );
+};
+
 const DirectionalCue = ({
+  connectionState,
+  connectProgress,
   pacePrediction, dailyGoal, totalDailyMins, breakLeft,
   qualityScore, cutoffWarning, isActive, isBreakActive,
   isZombieCall, audioAttached,
@@ -177,6 +225,12 @@ const DirectionalCue = ({
       color: '#fcd34d',
     };
   })();
+
+  const showConnectChecklist =
+    !isActive &&
+    !isBreakActive &&
+    connectProgress?.phase === 'connecting' &&
+    !connectProgress?.transcriptReceived;
 
   const h = new Date().getHours();
   const goalsMet = totalDailyMins >= (dailyGoal || 1);
@@ -242,9 +296,13 @@ const DirectionalCue = ({
         doubleTitle="attach another browser tab"
       />
 
-      <div style={{ color: idleSecondary.color, fontWeight: 600, fontSize: '0.7rem', lineHeight: 1.2 }}>
-        {idleSecondary.label}: {idleSecondary.text}
-      </div>
+      {showConnectChecklist ? (
+        <ConnectingChecklist connectProgress={connectProgress} />
+      ) : (
+        <div style={{ color: idleSecondary.color, fontWeight: 600, fontSize: '0.7rem', lineHeight: 1.2 }}>
+          {idleSecondary.label}: {idleSecondary.text}
+        </div>
+      )}
 
       {idleExtra?.text && (
         <div style={{
@@ -340,6 +398,8 @@ export const GameScoreboard = ({
   pacePrediction, qualityScore, cutoffWarning, breakLeft, breakLimit, nextGoalLabel, nextMilestone, daysInMonth, currentDay, remainingDays, isActive, isBreakActive, onSwitchToNumbers, milestoneTargets,
   isEditingScoreboard, getCompensatedLogOff,
   isZombieCall,
+  connectionState,
+  connectProgress,
   audioAttached = false,
   onAttachAudio, onAttachAudioFresh, onStartCall,
   onRecovery, onConnectAnotherTab,
@@ -424,6 +484,8 @@ export const GameScoreboard = ({
           qualityScore={qualityScore} cutoffWarning={cutoffWarning}
           isActive={isActive} isBreakActive={isBreakActive}
           isZombieCall={isZombieCall}
+          connectionState={connectionState}
+          connectProgress={connectProgress}
           audioAttached={audioAttached}
           onAttachAudio={onAttachAudio}
           onAttachAudioFresh={onAttachAudioFresh}
