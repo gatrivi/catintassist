@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { AppGuideButton } from './AppGuide';
 import { StatNumber } from './StatNumber';
 import { ConnectInterpretButton } from './ConnectInterpretButton';
-import { getRuntimeDeepgramKey } from '../utils/deepgramRuntimeKey';
+import { getRuntimeDeepgramKey, isValidDeepgramApiKey } from '../utils/deepgramRuntimeKey';
 
 // ─── ScoreboardTooltip ────────────────────────────────────────────────────────
 // A lightweight 'toastie' popover for dynamic info on hover.
@@ -233,15 +233,16 @@ const DirectionalCue = ({
     connectProgress?.phase === 'connecting' &&
     !connectProgress?.transcriptReceived;
 
-  const hasEnvKey = !!process.env.REACT_APP_DEEPGRAM_API_KEY;
-  const hasLegacyStoredKey = (() => {
+  const hasEnvKey = isValidDeepgramApiKey(process.env.REACT_APP_DEEPGRAM_API_KEY);
+  const legacyKey = (() => {
     try {
-      return !!localStorage.getItem('DEEPGRAM_API_KEY');
+      return localStorage.getItem('DEEPGRAM_API_KEY');
     } catch (_) {
-      return false;
+      return null;
     }
   })();
-  const hasRuntimeKey = !!getRuntimeDeepgramKey();
+  const hasLegacyStoredKey = isValidDeepgramApiKey(legacyKey);
+  const hasRuntimeKey = isValidDeepgramApiKey(getRuntimeDeepgramKey());
   const apiKeyMissing = !(hasRuntimeKey || hasEnvKey || hasLegacyStoredKey);
 
   const h = new Date().getHours();

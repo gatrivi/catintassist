@@ -15,7 +15,7 @@ import { AppGuideButton } from './AppGuide';
 import { WorkspaceViewSwitcher } from './WorkspaceViewSwitcher';
 import { ConnectInterpretButton } from './ConnectInterpretButton';
 import { SlotMicroValue } from './SlotMicroValue';
-import { getRuntimeDeepgramKey } from '../utils/deepgramRuntimeKey';
+import { getRuntimeDeepgramKey, isValidDeepgramApiKey } from '../utils/deepgramRuntimeKey';
 const CelebrationParticles = ({ type, label, coins, onDismiss }) => {
   const [isClosing, setIsClosing] = useState(false);
   const emojis = ['🪙', '🪙', '💸', '💵', '💰', '💎'];
@@ -1069,15 +1069,16 @@ export const DashboardHeader = ({
 
   // Sticky connect/stop bar — attach audio first, start call separately.
   const tabNeedsReconnect = !micTestMode && !tabStreamReady;
-  const hasEnvKey = !!process.env.REACT_APP_DEEPGRAM_API_KEY;
-  const hasLegacyStoredKey = (() => {
+  const hasEnvKey = isValidDeepgramApiKey(process.env.REACT_APP_DEEPGRAM_API_KEY);
+  const legacyKey = (() => {
     try {
-      return !!localStorage.getItem('DEEPGRAM_API_KEY');
+      return localStorage.getItem('DEEPGRAM_API_KEY');
     } catch (_) {
-      return false;
+      return null;
     }
   })();
-  const hasRuntimeKey = !!getRuntimeDeepgramKey();
+  const hasLegacyStoredKey = isValidDeepgramApiKey(legacyKey);
+  const hasRuntimeKey = isValidDeepgramApiKey(getRuntimeDeepgramKey());
   const apiKeyMissing = !(hasRuntimeKey || hasEnvKey || hasLegacyStoredKey);
 
   const showKeyVault = () => {

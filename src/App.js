@@ -25,7 +25,10 @@ import { useAppUpdateCheck } from "./hooks/useAppUpdateCheck";
 import { UpdateAppBanner } from "./components/UpdateAppBanner";
 import { loadFile, generateObjectUrl } from "./utils/storage";
 import DeepgramKeyVault from "./components/DeepgramKeyVault";
-import { getRuntimeDeepgramKey } from "./utils/deepgramRuntimeKey";
+import {
+  getRuntimeDeepgramKey,
+  isValidDeepgramApiKey,
+} from "./utils/deepgramRuntimeKey";
 import "./index.css";
 
 const CloudSyncIndicator = () => {
@@ -99,16 +102,18 @@ const Dashboard = () => {
     };
   }, []);
 
-  const hasEnvKey = !!process.env.REACT_APP_DEEPGRAM_API_KEY;
-  const hasLegacyStoredKey = (() => {
+  const hasEnvKey = isValidDeepgramApiKey(
+    process.env.REACT_APP_DEEPGRAM_API_KEY,
+  );
+  const legacyKey = (() => {
     try {
-      return !!localStorage.getItem("DEEPGRAM_API_KEY");
+      return localStorage.getItem("DEEPGRAM_API_KEY");
     } catch (_) {
-      return false;
+      return null;
     }
   })();
-  // Pulls from volatile in-memory vault; triggers rerender via `runtimeKeyTick`.
-  const hasRuntimeKey = !!getRuntimeDeepgramKey();
+  const hasLegacyStoredKey = isValidDeepgramApiKey(legacyKey);
+  const hasRuntimeKey = isValidDeepgramApiKey(getRuntimeDeepgramKey());
   const apiKeyMissing = !(hasRuntimeKey || hasEnvKey || hasLegacyStoredKey);
 
   useEffect(() => {
@@ -439,7 +444,7 @@ const Dashboard = () => {
         }}
       >
         <CloudSyncIndicator />
-        v4.49.1 (Full Stack)
+        v4.49.3 (Full Stack)
       </div>
 
       {(apiKeyMissing || vaultForced) && !(isActive || isZombieCall) && (
