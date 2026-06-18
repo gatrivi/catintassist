@@ -100,6 +100,9 @@ export const useDeepgram = () => {
     isActive,
     isZombieCall,
     hipaaGraceActiveRef,
+    notifySpeechDuringCall,
+    trySpeechAutoStart,
+    speechAutoConnect,
   } = useSession();
 
   const [connectionState, setConnectionState] = useState("disconnected");
@@ -380,12 +383,24 @@ export const useDeepgram = () => {
           const alt = received.channel?.alternatives?.[0];
           const transcript = alt?.transcript;
           if (!transcript || transcript.trim().length === 0) return;
-          if (!connectFlagsRef.current.transcriptReceived) {
-            syncConnectProgress({ transcriptReceived: true, phase: "ready" });
-          }
 
           const confidence = alt?.confidence || 0;
           const isFinal = received.is_final;
+
+          if (confidence > 0.4) {
+            if (isActive) {
+              notifySpeechDuringCall();
+            } else if (speechAutoConnect && !isZombieCall) {
+              if (trySpeechAutoStart()) {
+                shouldCaptureCaptionsRef.current = true;
+                notifySpeechDuringCall();
+              }
+            }
+          }
+
+          if (!connectFlagsRef.current.transcriptReceived) {
+            syncConnectProgress({ transcriptReceived: true, phase: "ready" });
+          }
 
           if (isCallDetectionEnabled && confidence > 0.4) {
             updateActivity();
@@ -665,7 +680,18 @@ export const useDeepgram = () => {
       socketRefEn.current = createSocket("en");
       socketRefEs.current = createSocket("es");
     },
-    [isCallDetectionEnabled, updateActivity, updateCaptions, updateEnglishActivity, requestHoldIntent],
+    [
+      isCallDetectionEnabled,
+      updateActivity,
+      updateCaptions,
+      updateEnglishActivity,
+      requestHoldIntent,
+      notifySpeechDuringCall,
+      trySpeechAutoStart,
+      speechAutoConnect,
+      isActive,
+      isZombieCall,
+    ],
   );
 
   const stopRecording = useCallback(() => {

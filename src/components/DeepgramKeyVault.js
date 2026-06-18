@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useState } from "react";
 import {
   getRuntimeDeepgramKey,
   setRuntimeDeepgramKey,
+  clearRememberedKey,
 } from "../utils/deepgramRuntimeKey";
 
 // ==========================================
@@ -81,7 +82,7 @@ const LG_KEYS = {
   iv: "dg_iv",
 };
 
-export default function DeepgramKeyVault() {
+export default function DeepgramKeyVault({ embedded = false }) {
   const [apiKey, setApiKey] = useState("");
   const [password, setPassword] = useState("");
   const [unlockPassword, setUnlockPassword] = useState("");
@@ -109,6 +110,7 @@ export default function DeepgramKeyVault() {
     e.preventDefault();
     setError("");
     try {
+      window.dispatchEvent(new Event("cat_vault_unlocking"));
       const encryptedData = await encryptToken(apiKey, password);
 
       localStorage.setItem(LG_KEYS.cipher, encryptedData.ciphertext);
@@ -129,6 +131,7 @@ export default function DeepgramKeyVault() {
     e.preventDefault();
     setError("");
     try {
+      window.dispatchEvent(new Event("cat_vault_unlocking"));
       const cipher = localStorage.getItem(LG_KEYS.cipher) || "";
       const salt = localStorage.getItem(LG_KEYS.salt) || "";
       const iv = localStorage.getItem(LG_KEYS.iv) || "";
@@ -149,36 +152,13 @@ export default function DeepgramKeyVault() {
   };
 
   const handleLock = () => {
-    setRuntimeDeepgramKey(null);
+    clearRememberedKey();
     setUnlocked(false);
     setUnlockPassword("");
   };
 
-  return (
-    <div
-      style={{
-        position: "fixed",
-        inset: 0,
-        background: "rgba(0,0,0,0.45)",
-        zIndex: 999999,
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-        padding: 16,
-      }}
-    >
-      <div
-        style={{
-          width: "min(520px, 96vw)",
-          background: "#0b1220",
-          border: "1px solid rgba(255,255,255,0.08)",
-          borderRadius: 12,
-          padding: 16,
-          color: "#fff",
-          fontFamily: "monospace",
-          boxShadow: "0 20px 60px rgba(0,0,0,0.5)",
-        }}
-      >
+  const inner = (
+    <>
         <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
           <div
             style={{
@@ -195,8 +175,7 @@ export default function DeepgramKeyVault() {
         </div>
 
         <p style={{ marginTop: 10, color: "rgba(255,255,255,0.75)", fontSize: 12 }}>
-          Paste your Deepgram API key, encrypt it in-browser, and unlock it
-          for this session (raw key is only kept in volatile memory).
+          Paste your Deepgram API key. Unlock remembered for 30 days on this device.
         </p>
 
         {error && (
@@ -289,7 +268,7 @@ export default function DeepgramKeyVault() {
           >
             <h4 style={{ margin: 0, fontSize: 13, color: "#22c55e" }}>✓ Unlocked</h4>
             <p style={{ marginTop: 8, color: "rgba(255,255,255,0.72)", fontSize: 12 }}>
-              You can now press Connect. Reloading the page clears this session key.
+              Key unlocked for 30 days on this device. Press Lock to clear.
             </p>
             <button
               onClick={handleLock}
@@ -299,6 +278,37 @@ export default function DeepgramKeyVault() {
             </button>
           </div>
         )}
+    </>
+  );
+
+  if (embedded) return inner;
+
+  return (
+    <div
+      style={{
+        position: "fixed",
+        inset: 0,
+        background: "rgba(0,0,0,0.45)",
+        zIndex: 999999,
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        padding: 16,
+      }}
+    >
+      <div
+        style={{
+          width: "min(520px, 96vw)",
+          background: "#0b1220",
+          border: "1px solid rgba(255,255,255,0.08)",
+          borderRadius: 12,
+          padding: 16,
+          color: "#fff",
+          fontFamily: "monospace",
+          boxShadow: "0 20px 60px rgba(0,0,0,0.5)",
+        }}
+      >
+        {inner}
       </div>
     </div>
   );

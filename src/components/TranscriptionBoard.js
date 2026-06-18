@@ -179,6 +179,7 @@ const TranslatedBubble = ({
   forceTranslateKey = 0,
   onManualRetranslate,
   isTailMovedSection = false,
+  isFinal = true,
 }) => {
   const { translationMood } = useSession();
   const { translation, audioUrl, engineStatus, targetLang } = useTranslate(
@@ -188,6 +189,7 @@ const TranslatedBubble = ({
     shouldPrefetch,
     translationMood,
     forceTranslateKey,
+    { isFinal },
   );
   const hasAutoPlayedRef = useRef(false);
 
@@ -661,6 +663,7 @@ export const TranscriptionBoard = ({ captions, onClearAll, onReconnect, lastData
                   forceTranslateKey={translationBumps[cap.id] ?? 0}
                   onManualRetranslate={() => bumpManualRetranslate(cap)}
                   isTailMovedSection={isTailMovedSection}
+                  isFinal={cap.isFinal !== false}
                 />
               </div>
               

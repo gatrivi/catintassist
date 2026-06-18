@@ -56,11 +56,42 @@ export const SessionProvider = ({ children }) => {
     safeLocalStorageSet('catint_active', 'false');
   };
 
-  const [translationMood, setTranslationMood] = useState(() => localStorage.getItem('catint_trans_mood') || 'default');
+  const [translationMood, setTranslationMood] = useState(() => localStorage.getItem('catint_trans_mood') || 'auto');
   
   useEffect(() => {
     localStorage.setItem('catint_trans_mood', translationMood);
   }, [translationMood]);
+
+  const [speechAutoConnect, setSpeechAutoConnect] = useState(() => {
+    try {
+      return localStorage.getItem('catint_speech_auto_v1') === '1';
+    } catch {
+      return false;
+    }
+  });
+  const speechAutoConnectRef = useRef(speechAutoConnect);
+  useEffect(() => {
+    speechAutoConnectRef.current = speechAutoConnect;
+    try {
+      localStorage.setItem('catint_speech_auto_v1', speechAutoConnect ? '1' : '0');
+    } catch (_) {}
+  }, [speechAutoConnect]);
+
+  const [vaultStatus, setVaultStatus] = useState('idle');
+  useEffect(() => {
+    const onUnlocking = () => setVaultStatus('unlocking');
+    const onIdle = () => setVaultStatus('idle');
+    window.addEventListener('cat_vault_unlocking', onUnlocking);
+    window.addEventListener('cat_deepgram_runtime_key_changed', onIdle);
+    return () => {
+      window.removeEventListener('cat_vault_unlocking', onUnlocking);
+      window.removeEventListener('cat_deepgram_runtime_key_changed', onIdle);
+    };
+  }, []);
+
+  const callHadSpeechRef = useRef(false);
+  const callLastSpeechAtRef = useRef(Date.now());
+  const [lastSilenceDeductionMins, setLastSilenceDeductionMins] = useState(0);
   const [sessionSeconds, setSessionSeconds] = useState(() => Number(localStorage.getItem('catint_s_sec')) || 0);
   const [isBreakActive, setIsBreakActive] = useState(() => JSON.parse(localStorage.getItem('catint_break')) || false);
   const [breakSeconds, setBreakSeconds] = useState(() => Number(localStorage.getItem('catint_b_sec')) || 0);
@@ -140,6 +171,7 @@ export const SessionProvider = ({ children }) => {
         if (parsedMonthKey !== currentMonthKey) {
           parsed.monthlyMinutes = 0;
           parsed.weeklyMinutes = 0;
+          parsed.shiftStartSentiment = 0;
         }
 
         parsed.lastMonthKey = currentMonthKey;
@@ -525,8 +557,10 @@ export const SessionProvider = ({ children }) => {
 
   // EMPEZAR LLAMADA: Dejamos de descansar y empezamos a contar los minutos de la llamada.
   const startSession = (isRecovery = false) => {
-    updateActivity(); // <--- Reset silence timer on start
-    setLastEnglishActivityTime(Date.now()); // reset "non-doctor hold" timer baseline
+    updateActivity();
+    setLastEnglishActivityTime(Date.now());
+    callHadSpeechRef.current = false;
+    callLastSpeechAtRef.current = Date.now();
     
     // Logic fix: If a call starts while on break, automatically end the break.
     if (isBreakActive) {
@@ -588,15 +622,38 @@ export const SessionProvider = ({ children }) => {
     });
   };
   
+  const notifySpeechDuringCall = useCallback(() => {
+    callHadSpeechRef.current = true;
+    callLastSpeechAtRef.current = Date.now();
+  }, []);
+
+  const trySpeechAutoStart = useCallback(() => {
+    if (!speechAutoConnectRef.current || isActive) return false;
+    startSession(false);
+    return true;
+  }, [isActive, startSession]);
+
   // TERMINAR LLAMADA: Guardamos los minutos que trabajamos para no perderlos.
   const stopSession = (onCallEnded) => {
     setIsActive(false);
-    // Post-call summary: extract key data before captions are cleared
     const summary = extractCallSummary(captionsRef.current);
     if (summary && (summary.numbers.length > 0 || summary.dollars.length > 0)) {
       setLastCallSummary(summary);
     }
-    const minutesToAdd = sessionSeconds / 60;
+
+    let billableSecs = sessionSeconds;
+    const trailingSilenceSecs = Math.max(0, (Date.now() - callLastSpeechAtRef.current) / 1000);
+    if (!callHadSpeechRef.current) {
+      billableSecs = 0;
+      setLastSilenceDeductionMins(sessionSeconds / 60);
+    } else if (trailingSilenceSecs > 30) {
+      billableSecs = Math.max(0, sessionSeconds - trailingSilenceSecs);
+      setLastSilenceDeductionMins(trailingSilenceSecs / 60);
+    } else {
+      setLastSilenceDeductionMins(0);
+    }
+
+    const minutesToAdd = billableSecs / 60;
     if (minutesToAdd > 0) {
       setStats(prev => {
         const today = new Date().toDateString();
@@ -743,7 +800,7 @@ export const SessionProvider = ({ children }) => {
       const monthKey = `${now.getFullYear()}-${now.getMonth()}`;
       setStats(prev => {
         if (!prev || prev.lastMonthKey === monthKey) return prev;
-        return { ...prev, monthlyMinutes: 0, weeklyMinutes: 0, lastMonthKey: monthKey };
+        return { ...prev, monthlyMinutes: 0, weeklyMinutes: 0, shiftStartSentiment: 0, lastMonthKey: monthKey };
       });
     }, 30000);
     return () => clearInterval(monthGuard);
@@ -796,7 +853,22 @@ export const SessionProvider = ({ children }) => {
   };
 
   const updateStat = (key, value) => {
-    setStats(prev => ({ ...prev, [key]: Number(value) }));
+    setStats((prev) => ({ ...prev, [key]: Number(value) }));
+  };
+
+  /** Retroactive daily edit — keeps monthly + progress bar in sync. */
+  const adjustDailyMinutes = (newDailyMinutes) => {
+    setStats((prev) => {
+      const delta = Number(newDailyMinutes) - (prev.dailyMinutes || 0);
+      const newStats = {
+        ...prev,
+        dailyMinutes: Number(newDailyMinutes),
+        monthlyMinutes: Math.max(0, (prev.monthlyMinutes || 0) + delta),
+        weeklyMinutes: Math.max(0, (prev.weeklyMinutes || 0) + delta),
+      };
+      safeLocalStorageSet('catintassist_stats', JSON.stringify(newStats));
+      return newStats;
+    });
   };
 
   const getCompensatedLogOff = () => {
@@ -861,6 +933,13 @@ export const SessionProvider = ({ children }) => {
     clearZombieState,
     translationMood,
     setTranslationMood,
+    speechAutoConnect,
+    setSpeechAutoConnect,
+    trySpeechAutoStart,
+    notifySpeechDuringCall,
+    lastSilenceDeductionMins,
+    vaultStatus,
+    adjustDailyMinutes,
     isHeatmapOpen,
     setIsHeatmapOpen,
     isScoreboardHelpVisible,

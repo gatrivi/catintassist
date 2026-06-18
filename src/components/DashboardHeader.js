@@ -15,7 +15,7 @@ import { AppGuideButton } from './AppGuide';
 import { WorkspaceViewSwitcher } from './WorkspaceViewSwitcher';
 import { ConnectInterpretButton } from './ConnectInterpretButton';
 import { SlotMicroValue } from './SlotMicroValue';
-import { getRuntimeDeepgramKey, isValidDeepgramApiKey } from '../utils/deepgramRuntimeKey';
+import { getRuntimeDeepgramKey, isValidDeepgramApiKey, isRememberExpired } from '../utils/deepgramRuntimeKey';
 const CelebrationParticles = ({ type, label, coins, onDismiss }) => {
   const [isClosing, setIsClosing] = useState(false);
   const emojis = ['🪙', '🪙', '💸', '💵', '💰', '💎'];
@@ -171,6 +171,7 @@ const SessionControlsSticky = React.memo(({
   isZombieCall,
   apiKeyMissing,
   vaultNeedsDecrypt,
+  apiKeyMissingNoVault = false,
   audioAttached,
   micTestMode,
   setMicTestMode,
@@ -190,6 +191,9 @@ const SessionControlsSticky = React.memo(({
   requireDoubleTapIndicator,
   pendingDoubleTapTitle,
   onArmDoubleTap,
+
+  settingsOpen = false,
+  vaultStatus = 'idle',
 
   // Break
   minutesSinceLastBreak,
@@ -227,16 +231,27 @@ const SessionControlsSticky = React.memo(({
   }, [isActive]);
 
   const offCallStatusText = (() => {
-    if (vaultNeedsDecrypt)
-      return '🔐 enter password to enable transcription service';
-    if (apiKeyMissing) return '🔑 Enter key to unlock Deepgram';
-    if (isBreakActive) return '☕ On break — press C or ▶ CALL START when you return';
+    if (settingsOpen && vaultNeedsDecrypt) {
+      return '🔐 Unlock Deepgram — enter password in Settings (⚙)';
+    }
+    if (settingsOpen && apiKeyMissingNoVault) {
+      return '🔑 Setup Deepgram key in Settings (⚙)';
+    }
+    if (vaultStatus === 'unlocking') return '⏳ Decrypting key…';
     if (connectionState === 'connecting') {
-      return connectionMessage || 'Connecting to interpreting platform…';
+      return connectionMessage || 'Connecting to Deepgram…';
     }
     if (connectionState === 'error') {
-      return connectionMessage || 'Deepgram connection failed. Press Connect again.';
+      return `❌ ${connectionMessage || 'Transcription failed'} — retry CONNECT (no password if unlocked)`;
     }
+    if (isRememberExpired() && apiKeyMissing) {
+      return '🔐 Password expired — open Settings (⚙)';
+    }
+    if (vaultNeedsDecrypt) {
+      return '🔐 Deepgram locked — open Settings (⚙) or press 🔒 Decrypt';
+    }
+    if (apiKeyMissingNoVault) return '🔑 No Deepgram key — open Settings (⚙)';
+    if (isBreakActive) return '☕ On break — press C or ▶ CALL START when you return';
     if (isZombieCall) {
       return `Press C or ▶ RE-ATTACH — call timer & transcript preserved · ${slackText}`;
     }
@@ -296,9 +311,7 @@ const SessionControlsSticky = React.memo(({
               className="btn-emoji"
               onClick={() => {
                 try {
-                  window.dispatchEvent(
-                    new CustomEvent("cat_show_deepgram_key_vault"),
-                  );
+                  window.dispatchEvent(new CustomEvent("cat_show_settings"));
                 } catch (_) {}
               }}
               style={{
@@ -541,8 +554,9 @@ export const DashboardHeader = ({
   tabStreamReady = false,
   audioAttached = false,
   apiKeyRejected = false,
+  settingsOpen = false,
 }) => {
-  const { isActive, sessionSeconds, sessionEarnings, stats, updateStat, stopSession, endDay, RATE_PER_MINUTE, arsRate, setArsRate, isBreakActive, breakSeconds, startBreak, stopBreak, availSeconds, isEditingScoreboard, setIsEditingScoreboard, visibleCards, isNotesOpen, setIsNotesOpen, isToolbarVisible, setIsToolbarVisible, isHeatmapOpen, setIsHeatmapOpen, isZombieCall, isScoreboardHelpVisible, setIsScoreboardHelpVisible, isHold, setIsHold, holdSeconds, dailyTimeline, historyTimeline, dailyLog, lastActivityTime, lastEnglishActivityTime, isCallDetectionEnabled, setIsCallDetectionEnabled, callFocusMode, setCallFocusMode, minutesSinceLastBreak, requestHipaaDisconnectGrace } = useSession();
+  const { isActive, sessionSeconds, sessionEarnings, stats, updateStat, stopSession, endDay, RATE_PER_MINUTE, arsRate, setArsRate, isBreakActive, breakSeconds, startBreak, stopBreak, availSeconds, isEditingScoreboard, setIsEditingScoreboard, visibleCards, isNotesOpen, setIsNotesOpen, isToolbarVisible, setIsToolbarVisible, isHeatmapOpen, setIsHeatmapOpen, isZombieCall, isScoreboardHelpVisible, setIsScoreboardHelpVisible, isHold, setIsHold, holdSeconds, dailyTimeline, historyTimeline, dailyLog, lastActivityTime, lastEnglishActivityTime, isCallDetectionEnabled, setIsCallDetectionEnabled, callFocusMode, setCallFocusMode, minutesSinceLastBreak, requestHipaaDisconnectGrace, vaultStatus } = useSession();
 
   const headerMinimal = !isActive && offCallWorkspace === 'soundboard';
   const scoreboardFill = !isActive && offCallWorkspace === 'scoreboard';
@@ -1137,7 +1151,7 @@ export const DashboardHeader = ({
 
   const showKeyVault = () => {
     try {
-      window.dispatchEvent(new CustomEvent('cat_show_deepgram_key_vault'));
+      window.dispatchEvent(new CustomEvent('cat_show_settings'));
     } catch (_) {}
   };
 
@@ -2235,12 +2249,15 @@ ${isInDeficit ? `⚠️ DEFICIT: Behind pace by ${Math.round(monthlyDeficitMins)
         isZombieCall={isZombieCall}
         apiKeyMissing={apiKeyMissing}
         vaultNeedsDecrypt={vaultNeedsDecrypt}
+        apiKeyMissingNoVault={apiKeyMissingNoVault}
         audioAttached={audioAttached}
         micTestMode={micTestMode}
         setMicTestMode={setMicTestMode}
         connectionState={connectionState}
         connectionMessage={connectionMessage}
         apiKeyRejected={apiKeyRejected}
+        settingsOpen={settingsOpen}
+        vaultStatus={vaultStatus}
 
         showEndDayButton={showEndDayButton}
         onEndDay={handleEndDay}

@@ -12,7 +12,7 @@ export const TimeEditModal = ({ mode, onClose }) => {
   const {
     sessionSeconds, setSessionSeconds,
     breakSeconds, setBreakSeconds,
-    stats, updateStat,
+    stats, adjustDailyMinutes, updateStat,
     isActive, isBreakActive,
   } = useSession();
 
@@ -37,7 +37,7 @@ export const TimeEditModal = ({ mode, onClose }) => {
   const applyAdd = () => {
     const v = parseFloat(addMins);
     if (isNaN(v) || v === 0) return;
-    if (mode === 'call') updateStat('dailyMinutes', bankedValue + v);
+    if (mode === 'call') adjustDailyMinutes(bankedValue + v);
     else updateStat('dailyBreakMinutes', bankedValue + v);
     setAddMins('');
   };
@@ -45,7 +45,7 @@ export const TimeEditModal = ({ mode, onClose }) => {
   const applyBanked = () => {
     const v = parseFloat(bankedMins);
     if (isNaN(v) || v < 0) return;
-    if (mode === 'call') updateStat('dailyMinutes', v);
+    if (mode === 'call') adjustDailyMinutes(v);
     else updateStat('dailyBreakMinutes', v);
   };
 

@@ -24,10 +24,11 @@ import { useProgressiveAudio } from "./hooks/useProgressiveAudio";
 import { useAppUpdateCheck } from "./hooks/useAppUpdateCheck";
 import { UpdateAppBanner } from "./components/UpdateAppBanner";
 import { loadFile, generateObjectUrl } from "./utils/storage";
-import DeepgramKeyVault from "./components/DeepgramKeyVault";
+import SettingsPanel from "./components/SettingsPanel";
 import {
   getRuntimeDeepgramKey,
   isValidDeepgramApiKey,
+  isRememberExpired,
 } from "./utils/deepgramRuntimeKey";
 import "./index.css";
 
@@ -89,17 +90,27 @@ const Dashboard = () => {
     () => !hasSeenStudioHint(),
   );
 
-  const [vaultForced, setVaultForced] = useState(false);
+  const [settingsOpen, setSettingsOpen] = useState(false);
+  const [settingsSection, setSettingsSection] = useState("deepgram");
   const [, setRuntimeKeyTick] = useState(0);
   useEffect(() => {
     const onRuntime = () => setRuntimeKeyTick((t) => t + 1);
-    const onShowVault = () => setVaultForced(true);
+    const onShowVault = () => {
+      setSettingsSection("deepgram");
+      setSettingsOpen(true);
+    };
+    const onShowSettings = () => {
+      setSettingsSection("deepgram");
+      setSettingsOpen(true);
+    };
 
     window.addEventListener("cat_deepgram_runtime_key_changed", onRuntime);
     window.addEventListener("cat_show_deepgram_key_vault", onShowVault);
+    window.addEventListener("cat_show_settings", onShowSettings);
     return () => {
       window.removeEventListener("cat_deepgram_runtime_key_changed", onRuntime);
       window.removeEventListener("cat_show_deepgram_key_vault", onShowVault);
+      window.removeEventListener("cat_show_settings", onShowSettings);
     };
   }, []);
 
@@ -118,8 +129,7 @@ const Dashboard = () => {
   const apiKeyMissing = !(hasRuntimeKey || hasEnvKey || hasLegacyStoredKey);
 
   useEffect(() => {
-    // Once the user unlocks the key, remove forced overlay.
-    if (hasRuntimeKey) setVaultForced(false);
+    if (hasRuntimeKey) setSettingsOpen(false);
   }, [hasRuntimeKey]);
 
   // UX: on every page load, assume tab capture needs a fresh user attach.
@@ -436,7 +446,6 @@ const Dashboard = () => {
           fontSize: "0.55rem",
           fontWeight: 900,
           color: "rgba(255,255,255,0.2)",
-          pointerEvents: "none",
           textTransform: "uppercase",
           letterSpacing: "0.05em",
           display: "flex",
@@ -444,12 +453,62 @@ const Dashboard = () => {
           gap: "4px",
         }}
       >
-        <CloudSyncIndicator />
-        v4.49.6 (Full Stack)
+        <button
+          type="button"
+          onClick={() => {
+            setSettingsSection("deepgram");
+            setSettingsOpen(true);
+          }}
+          title="Settings"
+          style={{
+            background: "transparent",
+            border: "none",
+            cursor: "pointer",
+            fontSize: "0.65rem",
+            padding: 0,
+            opacity: 0.45,
+            lineHeight: 1,
+          }}
+        >
+          ⚙
+        </button>
+        <span style={{ pointerEvents: "none", display: "flex", alignItems: "center", gap: "4px" }}>
+          <CloudSyncIndicator />
+          v4.50.0 (Full Stack)
+        </span>
       </div>
 
-      {(apiKeyMissing || vaultForced) && !(isActive || isZombieCall) && (
-        <DeepgramKeyVault />
+      <SettingsPanel
+        open={settingsOpen}
+        onClose={() => setSettingsOpen(false)}
+        initialSection={settingsSection}
+      />
+
+      {apiKeyMissing && !isActive && !isZombieCall && settingsOpen === false && (
+        <div
+          style={{
+            position: "fixed",
+            bottom: 8,
+            left: "50%",
+            transform: "translateX(-50%)",
+            zIndex: 99990,
+            background: "rgba(245,158,11,0.15)",
+            border: "1px solid rgba(245,158,11,0.4)",
+            borderRadius: 8,
+            padding: "6px 12px",
+            fontSize: "0.68rem",
+            color: "#fcd34d",
+            cursor: "pointer",
+          }}
+          onClick={() => {
+            setSettingsSection("deepgram");
+            setSettingsOpen(true);
+          }}
+        >
+          {isRememberExpired()
+            ? "🔐 Password expired — open Settings (⚙)"
+            : "🔑 Deepgram key needed — open Settings (⚙)"}
+        </div>
       )}
 
       <div
@@ -501,6 +560,7 @@ const Dashboard = () => {
         offCallWorkspace={offCallWorkspace}
         onCycleWorkspace={cycleWorkspaceView}
         showStudioHint={showStudioHint}
+        settingsOpen={settingsOpen}
       />
 
       {!(isActive || isZombieCall) && workspaceView === "scoreboard" && (
