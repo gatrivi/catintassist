@@ -118,6 +118,7 @@ export const useDeepgram = () => {
 
   const [connectionState, setConnectionState] = useState("disconnected");
   const [connectionMessage, setConnectionMessage] = useState("Disconnected");
+  const [apiKeyRejected, setApiKeyRejected] = useState(false);
   const [connectProgress, setConnectProgress] = useState({
     phase: "idle", // idle | connecting | ready | error
     audioStreamReady: false,
@@ -209,6 +210,7 @@ export const useDeepgram = () => {
     }
     setConnectionState("disconnected");
     setConnectionMessage("Disconnected");
+    setApiKeyRejected(false);
     syncConnectProgress({
       phase: "idle",
       audioStreamReady: false,
@@ -217,6 +219,21 @@ export const useDeepgram = () => {
       transcriptReceived: false,
       lastError: null,
     });
+  }, []);
+
+  const isLikelyApiKeyRejected = useCallback((text) => {
+    const s = (text || "").toString().toLowerCase();
+    // Deepgram typically returns auth-ish errors mentioning token/key.
+    return (
+      s.includes("unauthorized") ||
+      s.includes("forbidden") ||
+      (s.includes("missing") && s.includes("token")) ||
+      (s.includes("invalid") && s.includes("token")) ||
+      (s.includes("api key") &&
+        (s.includes("reject") ||
+          s.includes("invalid") ||
+          s.includes("missing")))
+    );
   }, []);
 
   const failConnection = useCallback(
@@ -234,8 +251,9 @@ export const useDeepgram = () => {
       setConnectionState("error");
       setConnectionMessage(message);
       syncConnectProgress({ phase: "error", lastError: message });
+      if (isLikelyApiKeyRejected(message)) setApiKeyRejected(true);
     },
-    [clearWatchdog, closeConnections],
+    [clearWatchdog, closeConnections, isLikelyApiKeyRejected],
   );
 
   const stopStreamTracks = useCallback(() => {
@@ -357,6 +375,22 @@ export const useDeepgram = () => {
 
         ws.onmessage = (message) => {
           const received = JSON.parse(message.data);
+          // Deepgram may send structured auth errors over the socket.
+          // If we detect "missing/invalid token", surface a targeted UX message.
+          if (received?.type === "error" || received?.error || received?.message) {
+            const errText =
+              received?.error?.message ||
+              received?.error?.code ||
+              received?.message ||
+              message?.data;
+            if (isLikelyApiKeyRejected(errText)) {
+              const msg =
+                "Deepgram rejected the API key (missing/invalid token). Unlock the Key Vault with the correct password and press Connect again.";
+              setApiKeyRejected(true);
+              failConnection(msg);
+              return;
+            }
+          }
           const alt = received.channel?.alternatives?.[0];
           const transcript = alt?.transcript;
           if (!transcript || transcript.trim().length === 0) return;
@@ -838,6 +872,7 @@ export const useDeepgram = () => {
     toggleLanguage,
     connectionState,
     connectionMessage,
+    apiKeyRejected,
     connectProgress,
     lastDataTime,
     micTestMode,

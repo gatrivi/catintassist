@@ -170,11 +170,13 @@ const SessionControlsSticky = React.memo(({
   isBreakActive,
   isZombieCall,
   apiKeyMissing,
+  vaultNeedsDecrypt,
   audioAttached,
   micTestMode,
   setMicTestMode,
   connectionState,
   connectionMessage,
+  apiKeyRejected,
   showEndDayButton,
   onEndDay,
 
@@ -225,6 +227,8 @@ const SessionControlsSticky = React.memo(({
   }, [isActive]);
 
   const offCallStatusText = (() => {
+    if (vaultNeedsDecrypt)
+      return '🔐 enter password to enable transcription service';
     if (apiKeyMissing) return '🔑 Enter key to unlock Deepgram';
     if (isBreakActive) return '☕ On break — press C or ▶ CALL START when you return';
     if (connectionState === 'connecting') {
@@ -272,31 +276,6 @@ const SessionControlsSticky = React.memo(({
 
         {!isActive ? (
           <>
-            <button
-              id="header-key-vault-btn"
-              type="button"
-              className="btn-emoji"
-              onClick={() => {
-                try {
-                  window.dispatchEvent(
-                    new CustomEvent("cat_show_deepgram_key_vault"),
-                  );
-                } catch (_) {}
-              }}
-              style={{
-                background: "rgba(16,185,129,0.16)",
-                color: "#d1fae5",
-                width: "30px",
-                height: "30px",
-                borderRadius: "8px",
-                border: "1px solid rgba(16,185,129,0.35)",
-              }}
-              title="Deepgram Key Vault"
-              aria-label="Deepgram Key Vault"
-            >
-              🔑
-            </button>
-
             <ConnectInterpretButton
               onSingle={connectOnSingle}
               onDouble={connectOnDouble}
@@ -310,6 +289,38 @@ const SessionControlsSticky = React.memo(({
               singleTitle={connectSingleTitle}
               doubleTitle={connectDoubleTitle}
             />
+
+            <button
+              id="header-key-vault-btn"
+              type="button"
+              className="btn-emoji"
+              onClick={() => {
+                try {
+                  window.dispatchEvent(
+                    new CustomEvent("cat_show_deepgram_key_vault"),
+                  );
+                } catch (_) {}
+              }}
+              style={{
+                background: apiKeyRejected
+                  ? "rgba(16,185,129,0.16)"
+                  : "rgba(16,185,129,0.08)",
+                color: apiKeyRejected
+                  ? "#d1fae5"
+                  : "rgba(209,250,229,0.55)",
+                width: "30px",
+                height: "30px",
+                borderRadius: "8px",
+                border: apiKeyRejected
+                  ? "1px solid rgba(16,185,129,0.35)"
+                  : "1px solid rgba(16,185,129,0.22)",
+                boxShadow: apiKeyRejected ? "0 0 12px rgba(16,185,129,0.25)" : "none",
+              }}
+              title="Deepgram Key Vault"
+              aria-label="Deepgram Key Vault"
+            >
+              🔑
+            </button>
           </>
         ) : (
           <>
@@ -529,6 +540,7 @@ export const DashboardHeader = ({
   onConnectAnotherTab,
   tabStreamReady = false,
   audioAttached = false,
+  apiKeyRejected = false,
 }) => {
   const { isActive, sessionSeconds, sessionEarnings, stats, updateStat, stopSession, endDay, RATE_PER_MINUTE, arsRate, setArsRate, isBreakActive, breakSeconds, startBreak, stopBreak, availSeconds, isEditingScoreboard, setIsEditingScoreboard, visibleCards, isNotesOpen, setIsNotesOpen, isToolbarVisible, setIsToolbarVisible, isHeatmapOpen, setIsHeatmapOpen, isZombieCall, isScoreboardHelpVisible, setIsScoreboardHelpVisible, isHold, setIsHold, holdSeconds, dailyTimeline, historyTimeline, dailyLog, lastActivityTime, lastEnglishActivityTime, isCallDetectionEnabled, setIsCallDetectionEnabled, callFocusMode, setCallFocusMode, minutesSinceLastBreak, requestHipaaDisconnectGrace } = useSession();
 
@@ -1108,6 +1120,21 @@ export const DashboardHeader = ({
   const hasRuntimeKey = isValidDeepgramApiKey(getRuntimeDeepgramKey());
   const apiKeyMissing = !(hasRuntimeKey || hasEnvKey || hasLegacyStoredKey);
 
+  // Encrypted token presence (vault setup) exists even if the session key isn't unlocked yet.
+  const encryptedKeySaved = (() => {
+    try {
+      return (
+        !!localStorage.getItem("dg_cipher") &&
+        !!localStorage.getItem("dg_salt") &&
+        !!localStorage.getItem("dg_iv")
+      );
+    } catch (_) {
+      return false;
+    }
+  })();
+  const vaultNeedsDecrypt = apiKeyMissing && encryptedKeySaved;
+  const apiKeyMissingNoVault = apiKeyMissing && !encryptedKeySaved;
+
   const showKeyVault = () => {
     try {
       window.dispatchEvent(new CustomEvent('cat_show_deepgram_key_vault'));
@@ -1118,8 +1145,10 @@ export const DashboardHeader = ({
     ? false
     : tabNeedsReconnect && !isZombieCall;
 
-  const connectLabel = apiKeyMissing
-    ? '🔑 Enter key'
+  const connectLabel = vaultNeedsDecrypt
+    ? '🔒 Decrypt'
+    : apiKeyMissingNoVault
+      ? '🔑 Enter key'
     : isZombieCall
     ? 'RE-ATTACH'
     : tabNeedsReconnect
@@ -1129,8 +1158,10 @@ export const DashboardHeader = ({
         : 'CONNECT';
   const connectSingleTitle = isZombieCall
     ? 'RE-ATTACH TO CALL'
-    : apiKeyMissing
-      ? 'Enter key to unlock Deepgram'
+    : vaultNeedsDecrypt
+      ? 'Decrypt (enter password to unlock Deepgram)'
+      : apiKeyMissingNoVault
+        ? 'Enter key to unlock Deepgram'
       : tabNeedsReconnect
         ? 'ATTACH TAB (double-tap)'
         : audioAttached
@@ -1140,8 +1171,10 @@ export const DashboardHeader = ({
             : 'CONNECT TO PLATFORM';
   const connectDoubleTitle = micTestMode
     ? 're-request microphone'
-    : apiKeyMissing
-      ? 'Enter key to unlock Deepgram'
+    : vaultNeedsDecrypt
+      ? 'Decrypt (enter password to unlock Deepgram)'
+      : apiKeyMissingNoVault
+        ? 'Enter key to unlock Deepgram'
       : 'attach another browser tab';
 
   const connectOnSingle = (() => {
@@ -2201,11 +2234,13 @@ ${isInDeficit ? `⚠️ DEFICIT: Behind pace by ${Math.round(monthlyDeficitMins)
         isBreakActive={isBreakActive}
         isZombieCall={isZombieCall}
         apiKeyMissing={apiKeyMissing}
+        vaultNeedsDecrypt={vaultNeedsDecrypt}
         audioAttached={audioAttached}
         micTestMode={micTestMode}
         setMicTestMode={setMicTestMode}
         connectionState={connectionState}
         connectionMessage={connectionMessage}
+        apiKeyRejected={apiKeyRejected}
 
         showEndDayButton={showEndDayButton}
         onEndDay={handleEndDay}

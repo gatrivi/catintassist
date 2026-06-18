@@ -12,6 +12,7 @@ import {
   repairNYCZipNumbers,
 } from '../utils/sensitiveDataProtector';
 import { ScrambleText } from './ScrambleText';
+import { isTranslationPassthrough } from '../utils/translationQuality';
 
 // EL TABLERO DE TEXTO: Aquí es donde aparece todo lo que dicen en la llamada.
 // Muestra quién habla, lo traduce y te deja copiar los números con un clic.
@@ -234,7 +235,8 @@ const TranslatedBubble = ({
   const isTranslationStuck =
     Boolean(translation) &&
     normSource.length > 0 &&
-    normTranslation === normSource;
+    (normTranslation === normSource ||
+      isTranslationPassthrough(text, translation, lang, targetLang));
   const isTranslationMissing = engineStatus === 'ready' && !translation?.trim();
 
   // UX: if a message is clearly "untranslated", we should just try again,

@@ -59,6 +59,7 @@ const Dashboard = () => {
     toggleLanguage,
     connectionState,
     connectionMessage,
+    apiKeyRejected,
     connectProgress,
     lastDataTime,
     micTestMode,
@@ -444,7 +445,7 @@ const Dashboard = () => {
         }}
       >
         <CloudSyncIndicator />
-        v4.49.4 (Full Stack)
+        v4.49.6 (Full Stack)
       </div>
 
       {(apiKeyMissing || vaultForced) && !(isActive || isZombieCall) && (
@@ -491,6 +492,7 @@ const Dashboard = () => {
         onToggleLanguage={toggleLanguage}
         connectionState={connectionState}
         connectionMessage={connectionMessage}
+        apiKeyRejected={apiKeyRejected}
         connectProgress={connectProgress}
         lastDataTime={lastDataTime}
         micTestMode={micTestMode}
