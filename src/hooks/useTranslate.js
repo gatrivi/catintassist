@@ -3,11 +3,12 @@ import {
   isTranslationPassthrough,
   splitTranslatableSegments,
   isIncrementalTranscriptGrowth,
+  isSentenceComplete,
 } from '../utils/translationQuality';
+import { translateWithFallback } from '../utils/translationEngines';
+import { dedupeInFlight, withTranslationSlot } from '../utils/translationRequestQueue';
 
-// Persistent Cache and Blacklist to save quota and skip broken services
 let TRANS_CACHE = {};
-const BLACKBOX = {}; // Stores { service_id: timestamp_of_error }
 
 const MAX_MEM_CACHE = 500;
 const MAX_STORAGE_CACHE = 1000;
@@ -15,9 +16,7 @@ const MAX_STORAGE_CACHE = 1000;
 const pruneStorage = () => {
   try {
     const keys = Object.keys(localStorage).filter((k) => k.startsWith('trans_cache:'));
-    if (keys.length > MAX_STORAGE_CACHE) {
-      keys.forEach((k) => localStorage.removeItem(k));
-    }
+    if (keys.length > MAX_STORAGE_CACHE) keys.forEach((k) => localStorage.removeItem(k));
   } catch (e) {}
 };
 
@@ -46,7 +45,7 @@ const setCached = (text, langPair, result) => {
   }
 };
 
-const ACCEPT_TRANSLATION = (source, result, sLang, tLang) => {
+const acceptTranslation = (source, result, sLang, tLang) => {
   const clean = (result || '').trim();
   if (!clean || clean.length < 2) return '';
   if (isTranslationPassthrough(source, clean, sLang, tLang)) return '';
@@ -58,42 +57,26 @@ export const useTranslate = (
   lang,
   prefetchTTS,
   shouldPrefetch,
-  mood = 'default',
+  mood = 'auto',
   forceTranslateKey = 0,
+  { isFinal = true } = {},
 ) => {
   const [translation, setTranslation] = useState('');
   const [audioUrl, setAudioUrl] = useState(null);
   const [isTranslating, setIsTranslating] = useState(false);
   const [engineStatus, setEngineStatus] = useState('idle');
 
-  // STICKY LANGUAGE PAIR: Once a bubble has a translation, we lock the source/target
-  // to prevent Deepgram flip-flops from destroying the work.
   const langPairRef = useRef(null);
-
   const prevTextRef = useRef('');
-  const lastPrefetchedTextRef = useRef('');
   const lastTranslatedTextRef = useRef('');
   const lastWordCountRef = useRef(0);
   const debounceTimerRef = useRef(null);
   const abortControllerRef = useRef(null);
+  const hasGoodTranslationRef = useRef(false);
 
   const sourceLang = (lang || 'en').toLowerCase().startsWith('es') ? 'es' : 'en';
   const targetLang = sourceLang === 'en' ? 'es' : 'en';
   const currentLangPair = `${sourceLang}-${targetLang}`;
-
-  const sanitizeTranslation = (input) => {
-    if (!input || typeof input !== 'string') return '';
-    const upper = input.toUpperCase();
-    const isError =
-      upper.includes('MYMEMORY') ||
-      upper.includes('LIMIT') ||
-      upper.includes('THROTTLED') ||
-      upper.includes('FORBIDDEN') ||
-      upper.includes('QUOTA') ||
-      upper.includes('ABORT') ||
-      input.includes('<html>');
-    return isError ? '' : input.trim();
-  };
 
   useEffect(() => {
     if (!text || !text.trim()) {
@@ -104,20 +87,11 @@ export const useTranslate = (
       return;
     }
 
-    const t = () =>
-      new Date().toLocaleTimeString('en-GB', { hour12: false }) +
-      '.' +
-      String(new Date().getMilliseconds()).padStart(3, '0');
-
     const normText = text.trim().replace(/\s+/g, ' ');
     const wordCount = normText.split(/\s+/).length;
     const force = forceTranslateKey > 0;
 
-    // Bubble split / rewrite: drop delta-skip state so sealed chunks retranslate.
-    if (
-      prevTextRef.current &&
-      !isIncrementalTranscriptGrowth(prevTextRef.current, normText)
-    ) {
+    if (prevTextRef.current && !isIncrementalTranscriptGrowth(prevTextRef.current, normText)) {
       lastTranslatedTextRef.current = '';
       lastWordCountRef.current = 0;
     }
@@ -129,6 +103,14 @@ export const useTranslate = (
       lastWordCountRef.current = 0;
     }
 
+    // Auto mode: only translate sealed bubbles or sentence-complete text.
+    if (mood === 'auto') {
+      const sealed = isFinal !== false;
+      const complete = isSentenceComplete(normText);
+      if (!sealed && !complete) return;
+      if (normText === lastTranslatedTextRef.current && hasGoodTranslationRef.current) return;
+    }
+
     const wordDelta = Math.abs(wordCount - lastWordCountRef.current);
     const IS_FILLER =
       /^bueno[.,!?]*$/i.test(normText) && wordDelta < 2 && lastTranslatedTextRef.current;
@@ -137,18 +119,18 @@ export const useTranslate = (
 
     if (IS_TOO_LONG || IS_FILLER || IS_TOO_SHORT) {
       setEngineStatus(IS_TOO_LONG ? 'ready' : 'idle');
-      if (IS_TOO_LONG) setTranslation('(Text too long for direct translation [v4.49.6])');
+      if (IS_TOO_LONG) setTranslation('(Text too long for direct translation [v4.50.0])');
       return;
     }
 
     const hasPunctuation = /[.,?]/.test(normText);
-    const forceTrigger = wordCount >= 10 || hasPunctuation;
+    const forceTrigger = mood === 'auto' ? isSentenceComplete(normText) : wordCount >= 10 || hasPunctuation;
 
-    const isNoise = normText.length < 3 && !/\w/.test(normText);
-    if (isNoise) return;
+    if (normText.length < 3 && !/\w/.test(normText)) return;
 
     const shouldSkipDueToDelta =
       mood !== 'fast' &&
+      mood !== 'auto' &&
       wordDelta < 2 &&
       !force &&
       !forceTrigger &&
@@ -156,8 +138,8 @@ export const useTranslate = (
 
     if (shouldSkipDueToDelta) return;
 
-    const debounceTimes = { fast: 300, default: 600, chill: 1000 };
-    const waitTime = forceTrigger ? 200 : debounceTimes[mood] || 600;
+    const debounceTimes = { auto: 800, fast: 300, default: 600, chill: 1000 };
+    const waitTime = forceTrigger ? (mood === 'auto' ? 800 : 200) : debounceTimes[mood] || 600;
 
     if (debounceTimerRef.current) clearTimeout(debounceTimerRef.current);
 
@@ -169,10 +151,6 @@ export const useTranslate = (
       const langPair = langPairRef.current || currentLangPair;
       const [sLang, tLang] = langPair.split('-');
 
-      console.log(
-        `[${t()}] [v4.49.6] Translating ${langPair} (${wordCount}w): "${normText.substring(0, 30)}..."`,
-      );
-
       setIsTranslating(true);
       setEngineStatus('translating');
 
@@ -181,133 +159,41 @@ export const useTranslate = (
         OPENAI: localStorage.getItem('OPENAI_API_KEY'),
       };
 
-      const raceChunk = async (chunk, timeoutMs = 3500) => {
+      const fetchChunk = async (chunk) => {
         const norm = chunk.trim().replace(/\s+/g, ' ');
         const cached = getCached(norm, langPair);
         if (cached) {
-          const accepted = ACCEPT_TRANSLATION(norm, cached, sLang, tLang);
+          const accepted = acceptTranslation(norm, cached, sLang, tLang);
           if (accepted) return accepted;
         }
 
-        const fetchers = {
-          deepl: async (c) => {
-            if (!keys.DEEPL) throw new Error('no key');
-            const r = await fetch('https://api-free.deepl.com/v2/translate', {
-              method: 'POST',
+        const cacheKey = `${langPair}:${norm}`;
+        return dedupeInFlight(cacheKey, () =>
+          withTranslationSlot(async () => {
+            const res = await translateWithFallback({
+              text: norm,
+              sLang,
+              tLang,
+              keys,
               signal,
-              headers: {
-                Authorization: `DeepL-Auth-Key ${keys.DEEPL}`,
-                'Content-Type': 'application/x-www-form-urlencoded',
-              },
-              body: new URLSearchParams({
-                text: c,
-                target_lang: tLang.toUpperCase(),
-                source_lang: sLang.toUpperCase(),
-              }),
-            });
-            if (!r.ok) throw new Error(`status ${r.status}`);
-            const d = await r.json();
-            return d.translations?.[0]?.text;
-          },
-          openai: async (c) => {
-            if (!keys.OPENAI) throw new Error('no key');
-            const r = await fetch('https://api.openai.com/v1/chat/completions', {
-              method: 'POST',
-              signal,
-              headers: {
-                Authorization: `Bearer ${keys.OPENAI}`,
-                'Content-Type': 'application/json',
-              },
-              body: JSON.stringify({
-                model: 'gpt-4o-mini',
-                messages: [
-                  {
-                    role: 'system',
-                    content: `Translate from ${sLang} to ${tLang}. Return ONLY the direct translation.`,
-                  },
-                  { role: 'user', content: c },
-                ],
-                temperature: 0,
-              }),
-            });
-            if (!r.ok) throw new Error(`status ${r.status}`);
-            const d = await r.json();
-            return d.choices?.[0]?.message?.content;
-          },
-          google_gtx: async (c) => {
-            const r = await fetch(
-              `https://translate.googleapis.com/translate_a/single?client=gtx&sl=${sLang}&tl=${tLang}&dt=t&q=${encodeURIComponent(c)}`,
-              { signal },
-            );
-            if (!r.ok) throw new Error(`gtx ${r.status}`);
-            const d = await r.json();
-            return (
-              d?.[0]
-                ?.map((s) => s[0])
-                .filter(Boolean)
-                .join(' ')
-                .replace(/\s+/g, ' ')
-                .trim() || ''
-            );
-          },
-          mymemory: async (c) => {
-            const r = await fetch(
-              `https://api.mymemory.translated.net/get?q=${encodeURIComponent(c)}&langpair=${sLang}|${tLang}`,
-              { signal },
-            );
-            if (!r.ok) throw new Error(`mymemory ${r.status}`);
-            const d = await r.json();
-            return d?.responseData?.translatedText;
-          },
-        };
-
-        const pool = [];
-        const isBlocked = (id) => BLACKBOX[id] && Date.now() - BLACKBOX[id] < 300000;
-
-        if (keys.DEEPL) pool.push({ id: 'deepl', fn: fetchers.deepl, delay: 0 });
-        if (keys.OPENAI) pool.push({ id: 'openai', fn: fetchers.openai, delay: 100 });
-        if (!isBlocked('google_gtx')) pool.push({ id: 'google_gtx', fn: fetchers.google_gtx, delay: 0 });
-        if (!isBlocked('mymemory')) pool.push({ id: 'mymemory', fn: fetchers.mymemory, delay: 150 });
-
-        if (pool.length === 0) return '';
-
-        let resolved = false;
-        return new Promise((resolve) => {
-          const timeouts = [];
-          pool.forEach((service) => {
-            const tout = setTimeout(async () => {
-              if (resolved || signal.aborted) return;
-              try {
-                const res = await service.fn(norm);
-                const clean = sanitizeTranslation(String(res));
-                const accepted = ACCEPT_TRANSLATION(norm, clean, sLang, tLang);
-                if (accepted && !resolved && !signal.aborted) {
-                  resolved = true;
-                  timeouts.forEach(clearTimeout);
-                  setCached(norm, langPair, accepted);
-                  resolve(accepted);
+              acceptFn: (src, out) => acceptTranslation(src, out, sLang, tLang),
+              onEngineFail: (id, reason) => {
+                if (reason === 'throttled') {
+                  console.log(`[v4.50.0] ${id} throttled → next engine`);
                 }
-              } catch (e) {
-                if (e.name === 'AbortError') return;
-                BLACKBOX[service.id] = Date.now();
-              }
-            }, service.delay);
-            timeouts.push(tout);
-          });
-          setTimeout(() => {
-            if (!resolved && !signal.aborted) {
-              resolved = true;
-              resolve('');
-            }
-          }, timeoutMs);
-        });
+              },
+            });
+            if (res) setCached(norm, langPair, res);
+            return res;
+          }),
+        );
       };
 
       const translateSegments = async (segments) => {
         const results = [];
         for (const segment of segments) {
           if (signal.aborted) return '';
-          const res = await raceChunk(segment);
+          const res = await fetchChunk(segment);
           if (!res) return '';
           results.push(res);
         }
@@ -318,33 +204,32 @@ export const useTranslate = (
         const segments = splitTranslatableSegments(normText);
         let final = await translateSegments(segments);
 
-        // If chunked translation failed or echoed English, retry whole text once.
         if (
+          mood !== 'auto' &&
           (!final || isTranslationPassthrough(normText, final, sLang, tLang)) &&
           segments.length > 1 &&
           !signal.aborted
         ) {
-          final = await raceChunk(normText, 5000);
+          final = await fetchChunk(normText);
         }
 
         if (signal.aborted) return;
 
         if (final && final.length > 1 && !isTranslationPassthrough(normText, final, sLang, tLang)) {
           if (!langPairRef.current) langPairRef.current = langPair;
-
           setTranslation(final);
+          hasGoodTranslationRef.current = true;
           lastTranslatedTextRef.current = normText;
           lastWordCountRef.current = wordCount;
 
           if (shouldPrefetch && typeof prefetchTTS === 'function') {
             const url = await prefetchTTS(final, tLang);
             setAudioUrl(url);
-            lastPrefetchedTextRef.current = final;
           }
         } else if (!signal.aborted) {
-          // Keep prior good translation on failure — do not overwrite with English echo.
           if (!lastTranslatedTextRef.current || lastTranslatedTextRef.current !== normText) {
             setTranslation('');
+            hasGoodTranslationRef.current = false;
           }
           lastTranslatedTextRef.current = normText;
           lastWordCountRef.current = wordCount;
@@ -363,7 +248,7 @@ export const useTranslate = (
       if (debounceTimerRef.current) clearTimeout(debounceTimerRef.current);
       if (abortControllerRef.current) abortControllerRef.current.abort();
     };
-  }, [text, lang, shouldPrefetch, prefetchTTS, currentLangPair, mood, forceTranslateKey]);
+  }, [text, lang, shouldPrefetch, prefetchTTS, currentLangPair, mood, forceTranslateKey, isFinal]);
 
   return {
     translation,

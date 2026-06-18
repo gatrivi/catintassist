@@ -109,6 +109,21 @@ export const formatSpellingText = (text, lang = 'en') => {
   return parts.filter(Boolean).join('\n');
 };
 
+/** Split leading complete sentences (ends with . ! ?) from trailing fragment. */
+export const peelCompleteSentences = (text) => {
+  const sentences = [];
+  let rest = (text || '').trim();
+  while (rest) {
+    const m = rest.match(/^(.+?[.!?…]+)(?:\s+)([\s\S]+)$/);
+    if (!m) break;
+    const sent = m[1].trim();
+    if (!sent) break;
+    sentences.push(sent);
+    rest = m[2].trim();
+  }
+  return { sentences, remainder: rest };
+};
+
 /** Split long comma-heavy fragments (no sentence end) for translation limits */
 export const splitLongTextAtCommas = (text, maxWords = 40) => {
   const trimmed = (text || '').trim();

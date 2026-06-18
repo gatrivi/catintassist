@@ -1,4 +1,6 @@
-/** Translation quality helpers — v4.49.6 */
+/** Translation quality helpers — v4.50.0 */
+
+import { peelCompleteSentences } from './transcriptFormat';
 
 const normalize = (text) => (text || '').trim().replace(/\s+/g, ' ').toLowerCase();
 
@@ -46,22 +48,21 @@ export const isTranslationPassthrough = (source, translation, sourceLang, target
   return false;
 };
 
-/** Split on sentence boundaries for chunked translation. */
+/** Split on sentence boundaries (matches Deepgram bubble splits). */
 export const splitTranslatableSegments = (text) => {
   const normText = (text || '').trim().replace(/\s+/g, ' ');
   if (!normText) return [];
 
-  const segmentRegex = /([^.,!?]+[.,!?]+\s*)/g;
-  const stableMatches = normText.match(segmentRegex) || [];
-  const validSegments = stableMatches.map((s) => s.trim()).filter((s) => s.length > 1);
-  const activeText = normText.replace(segmentRegex, '').trim();
+  const { sentences, remainder } = peelCompleteSentences(normText);
+  if (sentences.length === 0) return [normText];
 
-  if (validSegments.length === 0) return [normText];
-
-  const segments = [...validSegments];
-  if (activeText.length > 1) segments.push(activeText);
+  const segments = [...sentences];
+  if (remainder.length > 1) segments.push(remainder);
   return segments;
 };
+
+/** True when text ends with sentence punctuation (stable for translation). */
+export const isSentenceComplete = (text) => /[.!?…]\s*$/.test((text || '').trim());
 
 /** True when incremental interim text is growing; false on bubble split / rewrite. */
 export const isIncrementalTranscriptGrowth = (prevText, nextText) => {
