@@ -45,9 +45,12 @@ Press the **red stop button** when the call ends.
 
 If your key is already in `.env` as `REACT_APP_DEEPGRAM_API_KEY`, you can skip this.
 
----
+## Layout (v4.52.0)
 
-## Local dev
+Settings → **Layout** tab: swap interpret pane vs scoreboard when waiting for a call.
+Default: interpret on top (80%), scoreboard below (20%).
+
+---
 
 1. `npm install`
 2. Put keys in `.env`

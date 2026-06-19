@@ -9,7 +9,10 @@ import {
   hallucinationGuard,
   removeOverlapPreservingDigitSequences,
 } from "../utils/sensitiveDataProtector";
-import { getEffectiveDeepgramKey } from "../utils/deepgramRuntimeKey";
+import {
+  getEffectiveDeepgramKey,
+  getDeepgramKeyInfo,
+} from "../utils/deepgramRuntimeKey";
 
 const TAB_STREAM_READY_KEY = "catint_tab_stream_ok_v1";
 const readTabStreamReady = () => {
@@ -18,6 +21,20 @@ const readTabStreamReady = () => {
   } catch {
     return false;
   }
+};
+
+const deepgramKeyRejectedMessage = () => {
+  const { source, masked } = getDeepgramKeyInfo();
+  if (source === "runtime") {
+    return `Deepgram rejected your saved key (${masked}) — open Settings and check the key.`;
+  }
+  if (source === "env") {
+    return `Deepgram rejected the .env key (${masked}) — fix .env and restart, or save key in Settings.`;
+  }
+  if (source === "legacy") {
+    return `Deepgram rejected stored key (${masked}) — update in Settings.`;
+  }
+  return "Deepgram API key is missing or invalid — open Settings (gear) and paste your key.";
 };
 
 const sealText = (raw, lang) => applyTranscriptFormatting(raw.trim(), lang);
@@ -377,8 +394,7 @@ export const useDeepgram = () => {
               received?.message ||
               message?.data;
             if (isLikelyApiKeyRejected(errText)) {
-              const msg =
-                "Deepgram rejected the API key (missing/invalid token). Unlock the Key Vault with the correct password and press Connect again.";
+              const msg = deepgramKeyRejectedMessage();
               setApiKeyRejected(true);
               failConnection(msg);
               return;
@@ -675,7 +691,7 @@ export const useDeepgram = () => {
           // If this is happening after we already attached audio, don't spam the user.
           if (connectFlagsRef.current.phase !== "connecting") return;
           failConnection(
-            "Deepgram WebSocket failed to connect. Check your network and that your Deepgram API key is valid, then press Connect again."
+            "Deepgram WebSocket failed — check network connection, then try again. (Not an API key error.)"
           );
         };
         return ws;

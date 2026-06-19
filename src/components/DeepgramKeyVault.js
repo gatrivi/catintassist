@@ -3,6 +3,8 @@ import {
   getRuntimeDeepgramKey,
   setRuntimeDeepgramKey,
   clearRememberedKey,
+  getDeepgramKeyInfo,
+  hasConflictingDeepgramKeys,
 } from "../utils/deepgramRuntimeKey";
 
 // ==========================================
@@ -88,6 +90,8 @@ export default function DeepgramKeyVault({ embedded = false }) {
   const [unlockPassword, setUnlockPassword] = useState("");
   const [error, setError] = useState("");
   const [unlocked, setUnlocked] = useState(false);
+  const [keyInfo, setKeyInfo] = useState(getDeepgramKeyInfo);
+  const [keyConflict, setKeyConflict] = useState(hasConflictingDeepgramKeys);
 
   const isKeySaved = useMemo(() => {
     try {
@@ -98,8 +102,11 @@ export default function DeepgramKeyVault({ embedded = false }) {
   }, []);
 
   useEffect(() => {
-    // Keep UI in sync with volatile in-memory runtime key.
-    const sync = () => setUnlocked(!!getRuntimeDeepgramKey());
+    const sync = () => {
+      setUnlocked(!!getRuntimeDeepgramKey());
+      setKeyInfo(getDeepgramKeyInfo());
+      setKeyConflict(hasConflictingDeepgramKeys());
+    };
     sync();
     window.addEventListener("cat_deepgram_runtime_key_changed", sync);
     return () =>
@@ -176,6 +183,26 @@ export default function DeepgramKeyVault({ embedded = false }) {
 
         <p style={{ marginTop: 10, color: "rgba(255,255,255,0.75)", fontSize: 12 }}>
           Paste your Deepgram API key. Unlock remembered for 30 days on this device.
+        </p>
+
+        {keyInfo.key && (
+          <p style={{ marginTop: 8, fontSize: 11, color: '#93c5fd' }}>
+            Active key: from{' '}
+            {keyInfo.source === 'runtime'
+              ? 'Settings'
+              : keyInfo.source === 'env'
+                ? '.env file'
+                : 'saved storage'}{' '}
+            ({keyInfo.masked})
+          </p>
+        )}
+        {keyConflict && (
+          <p style={{ marginTop: 6, fontSize: 11, color: '#fbbf24' }}>
+            Settings key and .env key differ — Settings wins. Remove or fix .env if confused.
+          </p>
+        )}
+        <p style={{ marginTop: 4, fontSize: 10, color: 'rgba(255,255,255,0.45)' }}>
+          Restart the app after changing .env (npm start again).
         </p>
 
         {error && (

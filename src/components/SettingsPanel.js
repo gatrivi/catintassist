@@ -2,6 +2,12 @@ import React, { useEffect, useState } from 'react';
 import { useSession } from '../contexts/SessionContext';
 import DeepgramKeyVault from './DeepgramKeyVault';
 import { TranslationKeysForm } from './TranslationKeysForm';
+import {
+  loadPaneOrder,
+  savePaneOrder,
+  PANE_INTERPRET_TOP,
+  PANE_SCOREBOARD_TOP,
+} from '../utils/workspaceLayout';
 
 const MOODS = ['auto', 'default', 'fast', 'chill'];
 const MOOD_LABELS = { auto: 'Trans Auto', default: 'Default', fast: 'Fast', chill: 'Chill' };
@@ -15,6 +21,7 @@ export default function SettingsPanel({ open, onClose, initialSection = 'deepgra
     vaultStatus,
   } = useSession();
   const [section, setSection] = useState(initialSection);
+  const [paneOrder, setPaneOrder] = useState(loadPaneOrder);
 
   useEffect(() => {
     if (open) setSection(initialSection);
@@ -49,19 +56,19 @@ export default function SettingsPanel({ open, onClose, initialSection = 'deepgra
         }}
       >
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <h3 style={{ margin: 0, fontSize: 14 }}>Settings [v4.51.0]</h3>
+          <h3 style={{ margin: 0, fontSize: 14 }}>Settings [v4.52.0]</h3>
           <button type="button" onClick={onClose} style={tabBtn}>✕</button>
         </div>
 
         <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap', marginTop: 10 }}>
-          {['deepgram', 'translation', 'behavior'].map((id) => (
+          {['deepgram', 'translation', 'behavior', 'layout'].map((id) => (
             <button
               key={id}
               type="button"
               onClick={() => setSection(id)}
               style={{ ...tabBtn, background: section === id ? 'rgba(59,130,246,0.25)' : tabBtn.background }}
             >
-              {id === 'deepgram' ? 'Deepgram' : id === 'translation' ? 'Translation' : 'Behavior'}
+              {id === 'deepgram' ? 'Deepgram' : id === 'translation' ? 'Translation' : id === 'behavior' ? 'Behavior' : 'Layout'}
             </button>
           ))}
         </div>
@@ -116,6 +123,40 @@ export default function SettingsPanel({ open, onClose, initialSection = 'deepgra
             <p style={{ fontSize: 10, color: 'rgba(255,255,255,0.5)', marginTop: 6 }}>
               Requires audio attached. Trailing silence deducted on STOP if you forgot the button.
             </p>
+          </div>
+        )}
+
+        {section === 'layout' && (
+          <div style={{ marginTop: 12 }}>
+            <div style={{ fontSize: 11, color: '#93c5fd', marginBottom: 8 }}>
+              Which panel is on top when waiting for a call
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+              <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12, cursor: 'pointer' }}>
+                <input
+                  type="radio"
+                  name="pane-order"
+                  checked={paneOrder === PANE_INTERPRET_TOP}
+                  onChange={() => {
+                    const next = savePaneOrder(PANE_INTERPRET_TOP);
+                    setPaneOrder(next);
+                  }}
+                />
+                Interpret pane on top (80%) — recommended
+              </label>
+              <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12, cursor: 'pointer' }}>
+                <input
+                  type="radio"
+                  name="pane-order"
+                  checked={paneOrder === PANE_SCOREBOARD_TOP}
+                  onChange={() => {
+                    const next = savePaneOrder(PANE_SCOREBOARD_TOP);
+                    setPaneOrder(next);
+                  }}
+                />
+                Scoreboard on top
+              </label>
+            </div>
           </div>
         )}
       </div>

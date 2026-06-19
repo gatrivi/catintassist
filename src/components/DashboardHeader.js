@@ -12,6 +12,7 @@ import { MonthHeatmap } from './MonthHeatmap';
 import { TimeEditModal } from './TimeEditModal';
 import { GameScoreboard } from './GameScoreboard';
 import { AppGuideButton } from './AppGuide';
+import { SettingsButton } from './SettingsButton';
 import { WorkspaceViewSwitcher } from './WorkspaceViewSwitcher';
 import { ConnectInterpretButton } from './ConnectInterpretButton';
 import { SlotMicroValue } from './SlotMicroValue';
@@ -549,6 +550,7 @@ const SessionControlsSticky = React.memo(({
           📝
         </button>
         <AppGuideButton />
+        <SettingsButton />
       </div>
     </div>
   );
@@ -608,9 +610,19 @@ export const DashboardHeader = ({
   useEffect(() => {
     if (!scoreboardFill) {
       setScoreboardRoot(null);
-      return;
+      return undefined;
     }
-    setScoreboardRoot(document.getElementById('scoreboard-root'));
+    const attach = () => {
+      const el = document.getElementById('scoreboard-metrics-root');
+      if (el) setScoreboardRoot(el);
+    };
+    attach();
+    window.addEventListener('cat_scoreboard_metrics_ready', attach);
+    window.addEventListener('cat_pane_order_changed', attach);
+    return () => {
+      window.removeEventListener('cat_scoreboard_metrics_ready', attach);
+      window.removeEventListener('cat_pane_order_changed', attach);
+    };
   }, [scoreboardFill]);
 
   const [showAsHours, setShowAsHours] = useState(false);

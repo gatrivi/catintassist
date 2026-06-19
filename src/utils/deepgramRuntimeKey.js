@@ -7,17 +7,52 @@ const THIRTY_DAYS_MS = 30 * 24 * 60 * 60 * 1000;
 
 export const getRuntimeDeepgramKey = () => runtimeDeepgramKey;
 
-/** Env key first (deploy/newcomer), then vault/session, then legacy localStorage. */
-export const getEffectiveDeepgramKey = () => {
+/** Mask key tail for display in errors/settings. */
+export const maskDeepgramKey = (key) => {
+  if (!key || typeof key !== 'string') return '—';
+  const k = key.trim();
+  if (k.length <= 4) return '****';
+  return `...${k.slice(-4)}`;
+};
+
+/** Which key source wins: runtime (Settings) → env → legacy. */
+export const getDeepgramKeySource = () => {
+  const runtime = getRuntimeDeepgramKey();
+  if (isValidDeepgramApiKey(runtime)) return 'runtime';
   const env = process.env.REACT_APP_DEEPGRAM_API_KEY;
-  if (isValidDeepgramApiKey(env)) return env.trim();
+  if (isValidDeepgramApiKey(env)) return 'env';
+  try {
+    const legacy = localStorage.getItem('DEEPGRAM_API_KEY');
+    if (isValidDeepgramApiKey(legacy)) return 'legacy';
+  } catch (_) {}
+  return 'none';
+};
+
+export const getDeepgramKeyInfo = () => {
+  const source = getDeepgramKeySource();
+  const key = getEffectiveDeepgramKey();
+  return { source, key, masked: maskDeepgramKey(key) };
+};
+
+/** Runtime (Settings) first, then env, then legacy localStorage. */
+export const getEffectiveDeepgramKey = () => {
   const runtime = getRuntimeDeepgramKey();
   if (isValidDeepgramApiKey(runtime)) return runtime.trim();
+  const env = process.env.REACT_APP_DEEPGRAM_API_KEY;
+  if (isValidDeepgramApiKey(env)) return env.trim();
   try {
     const legacy = localStorage.getItem('DEEPGRAM_API_KEY');
     if (isValidDeepgramApiKey(legacy)) return legacy.trim();
   } catch (_) {}
   return null;
+};
+
+/** True when env and runtime keys both valid but differ. */
+export const hasConflictingDeepgramKeys = () => {
+  const runtime = getRuntimeDeepgramKey();
+  const env = process.env.REACT_APP_DEEPGRAM_API_KEY;
+  if (!isValidDeepgramApiKey(runtime) || !isValidDeepgramApiKey(env)) return false;
+  return runtime.trim() !== env.trim();
 };
 
 export const hasConfiguredDeepgramKey = () => Boolean(getEffectiveDeepgramKey());

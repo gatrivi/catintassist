@@ -25,7 +25,8 @@ import { useAppUpdateCheck } from "./hooks/useAppUpdateCheck";
 import { UpdateAppBanner } from "./components/UpdateAppBanner";
 import { loadFile, generateObjectUrl } from "./utils/storage";
 import SettingsPanel from "./components/SettingsPanel";
-import { NewcomerIdleGuide } from "./components/NewcomerIdleGuide";
+import { OffCallWorkspace } from "./components/OffCallWorkspace";
+import { loadPaneOrder } from "./utils/workspaceLayout";
 import {
   getRuntimeDeepgramKey,
   hasConfiguredDeepgramKey,
@@ -94,6 +95,7 @@ const Dashboard = () => {
 
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [settingsSection, setSettingsSection] = useState("deepgram");
+  const [paneOrder, setPaneOrder] = useState(loadPaneOrder);
   const [, setRuntimeKeyTick] = useState(0);
   useEffect(() => {
     const onRuntime = () => setRuntimeKeyTick((t) => t + 1);
@@ -105,14 +107,17 @@ const Dashboard = () => {
       setSettingsSection("deepgram");
       setSettingsOpen(true);
     };
+    const onPaneOrder = (e) => setPaneOrder(e.detail || loadPaneOrder());
 
     window.addEventListener("cat_deepgram_runtime_key_changed", onRuntime);
     window.addEventListener("cat_show_deepgram_key_vault", onShowVault);
     window.addEventListener("cat_show_settings", onShowSettings);
+    window.addEventListener("cat_pane_order_changed", onPaneOrder);
     return () => {
       window.removeEventListener("cat_deepgram_runtime_key_changed", onRuntime);
       window.removeEventListener("cat_show_deepgram_key_vault", onShowVault);
       window.removeEventListener("cat_show_settings", onShowSettings);
+      window.removeEventListener("cat_pane_order_changed", onPaneOrder);
     };
   }, []);
 
@@ -459,7 +464,7 @@ const Dashboard = () => {
         </button>
         <span style={{ pointerEvents: "none", display: "flex", alignItems: "center", gap: "4px" }}>
           <CloudSyncIndicator />
-          v4.51.0 (Newcomer UX)
+          v4.52.0 (Layout+Key)
         </span>
       </div>
 
@@ -549,25 +554,12 @@ const Dashboard = () => {
       />
 
       {!(isActive || isZombieCall) && workspaceView === "scoreboard" && (
-        <main id="scoreboard-root" className="main-content view-scoreboard">
-          <div
-            style={{
-              flex: 1,
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              padding: "1rem",
-              minHeight: 0,
-            }}
-          >
-            <NewcomerIdleGuide
-              audioAttached={audioAttached}
-              micTestMode={micTestMode}
-              connectionState={connectionState}
-              isActive={false}
-            />
-          </div>
-        </main>
+        <OffCallWorkspace
+          paneOrder={paneOrder}
+          audioAttached={audioAttached}
+          micTestMode={micTestMode}
+          connectionState={connectionState}
+        />
       )}
 
       {isSoundboardStudio && (
