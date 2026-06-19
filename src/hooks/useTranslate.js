@@ -248,7 +248,7 @@ export const useTranslate = (
         if (acceptable) {
           if (!langPairRef.current) langPairRef.current = langPair;
           setTranslation(final);
-          hasGoodTranslationRef.current = meta.quality === 'ok';
+          hasGoodTranslationRef.current = meta.quality === 'ok' || meta.quality === 'weak';
           lastTranslatedTextRef.current = normText;
           lastWordCountRef.current = wordCount;
 

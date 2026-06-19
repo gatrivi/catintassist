@@ -1739,21 +1739,9 @@ body {
   color: #fff;
 }
 
-/* UI flow/move animation trigger (cue only, no layout-affecting shadows).
-   Real user-facing "do not read" feedback is the text-only `.is-tail-blue` below. */
+/* UI flow/move cue — border only, no animation (v4.55: stable work pane) */
 .transcript-bubble.is-flowed {
-  animation: flowedMoveCue 0.22s ease-out 0.06s both;
-}
-
-@keyframes flowedMoveCue {
-  0% {
-    border-left-color: rgba(59, 130, 246, 0.55);
-    opacity: 0.98;
-  }
-  100% {
-    border-left-color: var(--accent-primary);
-    opacity: 1;
-  }
+  border-left-color: var(--accent-primary);
 }
 
 /* The actual "tailText moved remainder" feedback: text-only, no height/layout impact. */
@@ -2729,6 +2717,7 @@ body {
   width: 6ch;
   max-width: 6ch;
   min-width: 6ch;
+  min-height: 16px;
   padding: 0;
   line-height: 1;
   align-self: start;
@@ -2795,12 +2784,20 @@ body {
   color: #38bdf8;
 }
 
+.bubble-col-rail {
+  min-height: 18px;
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+}
+
 /* Rail-mode retranslate: replaces the play rail with a single ↻ button */
 .bubble-rail-retranslate-btn {
   flex: 0 0 auto;
   width: 6ch;
   max-width: 6ch;
   min-width: 6ch;
+  min-height: 16px;
   height: 16px;
   padding: 0;
   margin-top: 0.1rem;

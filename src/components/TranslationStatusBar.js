@@ -44,7 +44,7 @@ export const TranslationStatusBar = ({ meta = null, compact = false }) => {
       }}
     >
       <div style={{ fontWeight: 800, color: '#93c5fd', marginBottom: 4 }}>
-        Translation engines [v4.54.0]
+        Translation engines [v4.55.0]
       </div>
       <div>{keyLine}</div>
       <div style={{ marginTop: 2 }}>Chain: {chainLine}</div>

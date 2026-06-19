@@ -48,6 +48,25 @@ export const isTranslationPassthrough = (source, translation, sourceLang, target
   return false;
 };
 
+/** True when translation looks broken and should retry — weak accepts are settled (v4.55.0). */
+export const isTranslationStuckForRetranslate = (
+  source,
+  translation,
+  sourceLang,
+  targetLang,
+  { quality } = {},
+) => {
+  if (quality === 'weak') return false;
+  if (!translation?.trim()) return false;
+  const normSource = normalize(source);
+  const normTranslation = normalize(translation);
+  if (!normSource.length) return false;
+  return (
+    normTranslation === normSource ||
+    isTranslationPassthrough(source, translation, sourceLang, targetLang)
+  );
+};
+
 /** Split on sentence boundaries (matches Deepgram bubble splits). */
 export const splitTranslatableSegments = (text) => {
   const normText = (text || '').trim().replace(/\s+/g, ' ');

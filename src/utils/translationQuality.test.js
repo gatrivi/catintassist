@@ -1,6 +1,7 @@
 import {
   translationSimilarity,
   isTranslationPassthrough,
+  isTranslationStuckForRetranslate,
   splitTranslatableSegments,
   isIncrementalTranscriptGrowth,
 } from './translationQuality';
@@ -51,6 +52,20 @@ describe('splitTranslatableSegments', () => {
       'Second sentence.',
       'tail fragment',
     ]);
+  });
+});
+
+describe('isTranslationStuckForRetranslate', () => {
+  test('weak same-word accept is not stuck (v4.55.0)', () => {
+    expect(
+      isTranslationStuckForRetranslate('K.', 'K.', 'en', 'es', { quality: 'weak' }),
+    ).toBe(false);
+  });
+
+  test('passthrough without weak flag is stuck', () => {
+    expect(
+      isTranslationStuckForRetranslate('Hello world', 'Hello world', 'en', 'es', { quality: 'ok' }),
+    ).toBe(true);
   });
 });
 

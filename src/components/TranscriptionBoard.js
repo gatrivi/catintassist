@@ -13,8 +13,7 @@ import {
 } from '../utils/sensitiveDataProtector';
 import { ScrambleText } from './ScrambleText';
 import { NewcomerIdleGuide } from './NewcomerIdleGuide';
-import { isTranslationPassthrough } from '../utils/translationQuality';
-import { TranslationStatusBar } from './TranslationStatusBar';
+import { isTranslationStuckForRetranslate } from '../utils/translationQuality';
 
 // EL TABLERO DE TEXTO: Aquí es donde aparece todo lo que dicen en la llamada.
 // Muestra quién habla, lo traduce y te deja copiar los números con un clic.
@@ -234,13 +233,13 @@ const TranslatedBubble = ({
   const transcriptColor = '#ffffff';
   const translationColor = '#a1a1aa';
 
-  const normSource = (text || '').trim().toLowerCase();
-  const normTranslation = (translation || '').trim().toLowerCase();
-  const isTranslationStuck =
-    Boolean(translation) &&
-    normSource.length > 0 &&
-    (normTranslation === normSource ||
-      isTranslationPassthrough(text, translation, lang, targetLang));
+  const isTranslationStuck = isTranslationStuckForRetranslate(
+    text,
+    translation,
+    lang,
+    targetLang,
+    translationMeta,
+  );
   const isTranslationMissing = engineStatus === 'ready' && !translation?.trim();
 
   // UX: if a message is clearly "untranslated", we should just try again,
@@ -279,6 +278,11 @@ const TranslatedBubble = ({
   // Bug example to avoid: Spanish "once" (meaning 11) must NOT be converted on the left EN lane.
   const sourceUsesNumberWords = (lang || 'en').toLowerCase().startsWith('en');
   const targetUsesNumberWords = (targetLang || 'en').toLowerCase().startsWith('en');
+  const translationFailed =
+    engineStatus === 'ready' && !translation?.trim() && translationMeta?.quality === 'failed';
+  const translationTitle = translationFailed
+    ? 'Translation failed — check Settings → Translation for engine status'
+    : undefined;
 
   return (
     <div className={`translated-bubble-row${reverse ? ' is-reverse' : ''}`}>
@@ -315,7 +319,11 @@ const TranslatedBubble = ({
         )}
       </div>
 
-      <div className="bubble-col bubble-col-translation" style={{ color: translationColor, textAlign: 'left', position: 'relative' }}>
+      <div
+        className="bubble-col bubble-col-translation"
+        style={{ color: translationColor, textAlign: 'left', position: 'relative' }}
+        title={translationTitle}
+      >
         <div className="bubble-line bubble-line-translation">
           {translation ? (
             <InteractiveText text={translation} scramble={true} applyNumberWords={targetUsesNumberWords} lang={targetLang} />
@@ -325,13 +333,27 @@ const TranslatedBubble = ({
             <span style={{ opacity: 0.2 }}>...</span>
           )}
         </div>
-        {(isProblemTranslation || translationMeta?.quality === 'weak') && engineStatus === 'ready' && (
-          <TranslationStatusBar meta={translationMeta} compact />
-        )}
       </div>
     </div>
   );
 };
+
+const translatedBubblePropsEqual = (prev, next) =>
+  prev.id === next.id &&
+  prev.text === next.text &&
+  prev.lang === next.lang &&
+  prev.isFinal === next.isFinal &&
+  prev.forceTranslateKey === next.forceTranslateKey &&
+  prev.reverse === next.reverse &&
+  prev.isTailMovedSection === next.isTailMovedSection &&
+  prev.showTurnWordCount === next.showTurnWordCount &&
+  prev.turnWordCount === next.turnWordCount &&
+  prev.shouldPrefetch === next.shouldPrefetch &&
+  prev.isPinned === next.isPinned &&
+  prev.ttsMode === next.ttsMode &&
+  prev.playingUrl === next.playingUrl;
+
+const MemoTranslatedBubble = React.memo(TranslatedBubble, translatedBubblePropsEqual);
 
 export const TranscriptionBoard = ({
   captions,
@@ -346,6 +368,7 @@ export const TranscriptionBoard = ({
   const scrollAreaRef = useRef(null);
   const isScrolledUpRef = useRef(false);
   const scrollTimeoutRef = useRef(null);
+  const lastScrollKeyRef = useRef('');
   const [ttsMode, setTtsMode] = useState('manual');
   const [pinnedCaptions, setPinnedCaptions] = useState(() => {
     try {
@@ -423,11 +446,23 @@ export const TranscriptionBoard = ({
   };
 
   useEffect(() => {
-    if (!isScrolledUpRef.current) {
+    const lastCap = captions[captions.length - 1];
+    const count = captions.length;
+    const lastId = lastCap?.id || '';
+    const isFinal = lastCap?.isFinal !== false;
+    const scrollKey = `${count}|${lastId}|${isFinal ? 'final' : 'live'}`;
+
+    const prev = lastScrollKeyRef.current;
+    const [prevCountStr, prevId, prevFinalFlag] = prev.split('|');
+    const prevCount = parseInt(prevCountStr || '0', 10);
+    const countIncreased = count > prevCount;
+    const becameFinal = prevFinalFlag === 'live' && isFinal && prevId === lastId;
+
+    if (!isScrolledUpRef.current && (countIncreased || becameFinal)) {
       bottomRef.current?.scrollIntoView({ behavior: 'auto' });
     }
+    lastScrollKeyRef.current = scrollKey;
 
-    const lastCap = captions[captions.length - 1];
     if (lastCap && lastCap.text) {
       const words = lastCap.text.trim().split(/\s+/).length;
       if (words >= 40 && !warnedBubblesRef.current.has(lastCap.id)) {
@@ -582,7 +617,7 @@ export const TranscriptionBoard = ({
                 background: 'rgba(34, 197, 94, 0.1)',
                 ...getBubbleStyle(cap.text, true, cap.lang),
               }}>
-                <TranslatedBubble
+                <MemoTranslatedBubble
                   id={cap.id}
                   text={cap.text}
                   lang={cap.lang}
@@ -676,7 +711,7 @@ export const TranscriptionBoard = ({
             }}>
               
               <div style={{ maxHeight: isLongBubble && !isExpanded ? '5.5rem' : 'none', overflow: isLongBubble && !isExpanded ? 'hidden' : 'visible', transition: 'max-height 0.3s ease' }}>
-                <TranslatedBubble 
+                <MemoTranslatedBubble 
                   id={cap.id} text={cap.text} lang={cap.lang} playTTS={playTTS} stopTTS={stopTTS} playingUrl={playingUrl} prefetchTTS={prefetchTTS} 
                   reverse={cap.lang === 'es'} ttsMode={ttsMode} turnWordCount={turnWordCount} showTurnWordCount={showTurnWordCount} shouldPrefetch={i >= captions.length - 3} 
                   isPinned={false} onTogglePin={() => togglePin(cap)}
