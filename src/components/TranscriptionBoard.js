@@ -14,6 +14,7 @@ import {
 import { ScrambleText } from './ScrambleText';
 import { NewcomerIdleGuide } from './NewcomerIdleGuide';
 import { isTranslationPassthrough } from '../utils/translationQuality';
+import { TranslationStatusBar } from './TranslationStatusBar';
 
 // EL TABLERO DE TEXTO: Aquí es donde aparece todo lo que dicen en la llamada.
 // Muestra quién habla, lo traduce y te deja copiar los números con un clic.
@@ -183,7 +184,7 @@ const TranslatedBubble = ({
   isFinal = true,
 }) => {
   const { translationMood } = useSession();
-  const { translation, audioUrl, engineStatus, targetLang } = useTranslate(
+  const { translation, audioUrl, engineStatus, translationMeta, targetLang } = useTranslate(
     text,
     lang,
     prefetchTTS,
@@ -324,6 +325,9 @@ const TranslatedBubble = ({
             <span style={{ opacity: 0.2 }}>...</span>
           )}
         </div>
+        {(isProblemTranslation || translationMeta?.quality === 'weak') && engineStatus === 'ready' && (
+          <TranslationStatusBar meta={translationMeta} compact />
+        )}
       </div>
     </div>
   );

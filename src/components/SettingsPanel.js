@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { useSession } from '../contexts/SessionContext';
 import DeepgramKeyVault from './DeepgramKeyVault';
 import { TranslationKeysForm } from './TranslationKeysForm';
+import { TranslationStatusBar } from './TranslationStatusBar';
 import {
   loadPaneOrder,
   savePaneOrder,
@@ -56,7 +57,7 @@ export default function SettingsPanel({ open, onClose, initialSection = 'deepgra
         }}
       >
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <h3 style={{ margin: 0, fontSize: 14 }}>Settings [v4.53.0]</h3>
+          <h3 style={{ margin: 0, fontSize: 14 }}>Settings [v4.54.0]</h3>
           <button type="button" onClick={onClose} style={tabBtn}>✕</button>
         </div>
 
@@ -85,6 +86,7 @@ export default function SettingsPanel({ open, onClose, initialSection = 'deepgra
 
         {section === 'translation' && (
           <div style={{ marginTop: 12, display: 'flex', flexDirection: 'column', gap: 12 }}>
+            <TranslationStatusBar />
             <div>
               <div style={{ fontSize: 11, color: '#93c5fd', marginBottom: 6 }}>Translation mode</div>
               <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>

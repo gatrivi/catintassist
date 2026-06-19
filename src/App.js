@@ -464,7 +464,7 @@ const Dashboard = () => {
         </button>
         <span style={{ pointerEvents: "none", display: "flex", alignItems: "center", gap: "4px" }}>
           <CloudSyncIndicator />
-          v4.53.0 (DG Diagnose)
+          v4.54.0 (Trans Fix)
         </span>
       </div>
 

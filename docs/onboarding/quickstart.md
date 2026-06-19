@@ -45,6 +45,8 @@ Press the **red stop button** when the call ends.
 
 If your key is already in `.env` as `REACT_APP_DEEPGRAM_API_KEY`, you can skip this.
 
+**Production translation:** Settings → Translation → paste a **DeepL API key** for reliable EN↔ES (free tier works). Without it, free mirrors may fail or rate-limit.
+
 ## Layout (v4.52.0)
 
 Settings → **Layout** tab: swap interpret pane vs scoreboard when waiting for a call.

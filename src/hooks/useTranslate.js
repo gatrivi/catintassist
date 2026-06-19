@@ -47,9 +47,16 @@ const setCached = (text, langPair, result) => {
 
 const acceptTranslation = (source, result, sLang, tLang) => {
   const clean = (result || '').trim();
-  if (!clean || clean.length < 2) return '';
+  if (!clean || clean.length < 1) return '';
   if (isTranslationPassthrough(source, clean, sLang, tLang)) return '';
   return clean;
+};
+
+const emptyMeta = {
+  engineId: null,
+  quality: 'idle',
+  failures: [],
+  tried: [],
 };
 
 export const useTranslate = (
@@ -65,6 +72,7 @@ export const useTranslate = (
   const [audioUrl, setAudioUrl] = useState(null);
   const [isTranslating, setIsTranslating] = useState(false);
   const [engineStatus, setEngineStatus] = useState('idle');
+  const [translationMeta, setTranslationMeta] = useState(emptyMeta);
 
   const langPairRef = useRef(null);
   const prevTextRef = useRef('');
@@ -83,6 +91,7 @@ export const useTranslate = (
       setTranslation('');
       setAudioUrl(null);
       setEngineStatus('idle');
+      setTranslationMeta(emptyMeta);
       prevTextRef.current = '';
       return;
     }
@@ -103,7 +112,6 @@ export const useTranslate = (
       lastWordCountRef.current = 0;
     }
 
-    // Auto mode: only translate sealed bubbles or sentence-complete text.
     if (mood === 'auto') {
       const sealed = isFinal !== false;
       const complete = isSentenceComplete(normText);
@@ -119,7 +127,7 @@ export const useTranslate = (
 
     if (IS_TOO_LONG || IS_FILLER || IS_TOO_SHORT) {
       setEngineStatus(IS_TOO_LONG ? 'ready' : 'idle');
-      if (IS_TOO_LONG) setTranslation('(Text too long for direct translation [v4.50.0])');
+      if (IS_TOO_LONG) setTranslation('(Text too long for direct translation [v4.54.0])');
       return;
     }
 
@@ -164,7 +172,9 @@ export const useTranslate = (
         const cached = getCached(norm, langPair);
         if (cached) {
           const accepted = acceptTranslation(norm, cached, sLang, tLang);
-          if (accepted) return accepted;
+          if (accepted) {
+            return { text: accepted, engineId: 'cache', quality: 'ok', failures: [], tried: ['cache'] };
+          }
         }
 
         const cacheKey = `${langPair}:${norm}`;
@@ -176,14 +186,9 @@ export const useTranslate = (
               tLang,
               keys,
               signal,
-              acceptFn: (src, out) => acceptTranslation(src, out, sLang, tLang),
-              onEngineFail: (id, reason) => {
-                if (reason === 'throttled') {
-                  console.log(`[v4.50.0] ${id} throttled → next engine`);
-                }
-              },
+              acceptFn: acceptTranslation,
             });
-            if (res) setCached(norm, langPair, res);
+            if (res.text) setCached(norm, langPair, res.text);
             return res;
           }),
         );
@@ -191,18 +196,28 @@ export const useTranslate = (
 
       const translateSegments = async (segments) => {
         const results = [];
+        let lastMeta = emptyMeta;
         for (const segment of segments) {
-          if (signal.aborted) return '';
+          if (signal.aborted) return { text: '', meta: lastMeta };
           const res = await fetchChunk(segment);
-          if (!res) return '';
-          results.push(res);
+          lastMeta = {
+            engineId: res.engineId,
+            quality: res.quality,
+            failures: res.failures || [],
+            tried: res.tried || [],
+          };
+          if (!res.text) return { text: '', meta: lastMeta };
+          results.push(res.text);
         }
-        return results.join(' ').replace(/\s+/g, ' ').trim();
+        return {
+          text: results.join(' ').replace(/\s+/g, ' ').trim(),
+          meta: lastMeta,
+        };
       };
 
       try {
         const segments = splitTranslatableSegments(normText);
-        let final = await translateSegments(segments);
+        let { text: final, meta } = await translateSegments(segments);
 
         if (
           mood !== 'auto' &&
@@ -210,15 +225,30 @@ export const useTranslate = (
           segments.length > 1 &&
           !signal.aborted
         ) {
-          final = await fetchChunk(normText);
+          const res = await fetchChunk(normText);
+          final = res.text;
+          meta = {
+            engineId: res.engineId,
+            quality: res.quality,
+            failures: res.failures || [],
+            tried: res.tried || [],
+          };
         }
 
         if (signal.aborted) return;
 
-        if (final && final.length > 1 && !isTranslationPassthrough(normText, final, sLang, tLang)) {
+        setTranslationMeta(meta);
+
+        const passthrough = final && isTranslationPassthrough(normText, final, sLang, tLang);
+        const acceptable =
+          final &&
+          final.length >= 1 &&
+          (!passthrough || meta.quality === 'weak');
+
+        if (acceptable) {
           if (!langPairRef.current) langPairRef.current = langPair;
           setTranslation(final);
-          hasGoodTranslationRef.current = true;
+          hasGoodTranslationRef.current = meta.quality === 'ok';
           lastTranslatedTextRef.current = normText;
           lastWordCountRef.current = wordCount;
 
@@ -255,6 +285,7 @@ export const useTranslate = (
     audioUrl,
     isTranslating,
     engineStatus,
+    translationMeta,
     targetLang: (langPairRef.current || currentLangPair).split('-')[1],
   };
 };
