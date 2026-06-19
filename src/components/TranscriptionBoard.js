@@ -12,6 +12,7 @@ import {
   repairNYCZipNumbers,
 } from '../utils/sensitiveDataProtector';
 import { ScrambleText } from './ScrambleText';
+import { NewcomerIdleGuide } from './NewcomerIdleGuide';
 import { isTranslationPassthrough } from '../utils/translationQuality';
 
 // EL TABLERO DE TEXTO: Aquí es donde aparece todo lo que dicen en la llamada.
@@ -328,7 +329,15 @@ const TranslatedBubble = ({
   );
 };
 
-export const TranscriptionBoard = ({ captions, onClearAll, onReconnect, lastDataTime, connectionState = 'disconnected' }) => {
+export const TranscriptionBoard = ({
+  captions,
+  onClearAll,
+  onReconnect,
+  lastDataTime,
+  connectionState = 'disconnected',
+  audioAttached = false,
+  micTestMode = false,
+}) => {
   const bottomRef = useRef(null);
   const scrollAreaRef = useRef(null);
   const isScrolledUpRef = useRef(false);
@@ -603,12 +612,19 @@ export const TranscriptionBoard = ({ captions, onClearAll, onReconnect, lastData
         <div style={{ flex: '1 1 auto' }} />
         
         {captions.length === 0 && pinnedCaptions.length === 0 && (
-          <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', opacity: isZombieCall ? 0.55 : 0.2 }}>
-            <div style={{ fontFamily: 'var(--font-mono)', fontSize: '0.8rem', textAlign: 'center', padding: '0 1rem', color: isZombieCall ? '#fbbf24' : undefined }}>
-              {isZombieCall && connectionState !== 'connected'
-                ? '> RE-ATTACH_AUDIO — timer & transcript saved'
-                : isActive ? '> STANDBY_FOR_AUDIO...' : '> SYSTEM_IDLE'}
-            </div>
+          <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', opacity: isZombieCall ? 0.85 : 1 }}>
+            {isZombieCall && connectionState !== 'connected' ? (
+              <div style={{ fontFamily: 'var(--font-mono)', fontSize: '0.8rem', textAlign: 'center', padding: '0 1rem', color: '#fbbf24' }}>
+                Re-attach audio — your timer and transcript are saved. Press the green Re-attach button.
+              </div>
+            ) : (
+              <NewcomerIdleGuide
+                audioAttached={audioAttached}
+                micTestMode={micTestMode}
+                connectionState={connectionState}
+                isActive={isActive}
+              />
+            )}
           </div>
         )}
 

@@ -15,7 +15,7 @@ import { AppGuideButton } from './AppGuide';
 import { WorkspaceViewSwitcher } from './WorkspaceViewSwitcher';
 import { ConnectInterpretButton } from './ConnectInterpretButton';
 import { SlotMicroValue } from './SlotMicroValue';
-import { getRuntimeDeepgramKey, isValidDeepgramApiKey, isRememberExpired } from '../utils/deepgramRuntimeKey';
+import { hasConfiguredDeepgramKey, isRememberExpired } from '../utils/deepgramRuntimeKey';
 const CelebrationParticles = ({ type, label, coins, onDismiss }) => {
   const [isClosing, setIsClosing] = useState(false);
   const emojis = ['🪙', '🪙', '💸', '💵', '💰', '💎'];
@@ -163,7 +163,56 @@ const StateIndicators = ({ state, breakMinutes, isZombie, silenceCount }) => {
   );
 };
 
-const OFFCALL_STATUS_ROTATE_MS = 8000;
+const buildOffCallStatus = ({
+  settingsOpen,
+  vaultNeedsDecrypt,
+  apiKeyMissingNoVault,
+  vaultStatus,
+  connectionState,
+  connectionMessage,
+  apiKeyMissing,
+  isBreakActive,
+  isZombieCall,
+  audioAttached,
+  micTestMode,
+  slackText,
+}) => {
+  if (settingsOpen && vaultNeedsDecrypt) {
+    return 'Unlock Deepgram — enter password in Settings (gear, top-right)';
+  }
+  if (settingsOpen && apiKeyMissingNoVault) {
+    return 'Paste your Deepgram key in Settings (gear, top-right)';
+  }
+  if (vaultStatus === 'unlocking') return 'Unlocking key…';
+  if (connectionState === 'connecting') {
+    return connectionMessage || 'Connecting…';
+  }
+  if (connectionState === 'error') {
+    return `${connectionMessage || 'Something went wrong'} — try the green button again`;
+  }
+  if (isRememberExpired() && apiKeyMissing) {
+    return 'Password expired — open Settings (gear, top-right)';
+  }
+  if (vaultNeedsDecrypt) {
+    return 'Deepgram locked — open Settings or press Decrypt';
+  }
+  if (apiKeyMissingNoVault) {
+    return 'No Deepgram key yet — open Settings (gear, top-right)';
+  }
+  if (isBreakActive) {
+    return 'On break — press the green button when you return';
+  }
+  if (isZombieCall) {
+    return `Call still active — press Re-attach (timer saved) · ${slackText}`;
+  }
+  if (audioAttached) {
+    return 'Tab connected — press Start interpreting when the call begins';
+  }
+  const micHint = micTestMode
+    ? 'Mic mode on — press Click to connect tab (uses your microphone)'
+    : 'No tab yet? Press the mic button, then Click to connect tab';
+  return `Press Click to connect tab — pick the browser tab with the conversation · ${micHint}`;
+};
 
 const SessionControlsSticky = React.memo(({
   isActive,
@@ -222,48 +271,21 @@ const SessionControlsSticky = React.memo(({
 }) => {
   const showConnecting = isActive && connectionState !== 'connected';
   const slackText = `SLACK ${formatTime(silenceCount)}`;
-  const [statusRotate, setStatusRotate] = React.useState(0);
 
-  React.useEffect(() => {
-    if (isActive) return undefined;
-    const iv = setInterval(() => setStatusRotate((n) => n + 1), OFFCALL_STATUS_ROTATE_MS);
-    return () => clearInterval(iv);
-  }, [isActive]);
-
-  const offCallStatusText = (() => {
-    if (settingsOpen && vaultNeedsDecrypt) {
-      return '🔐 Unlock Deepgram — enter password in Settings (⚙)';
-    }
-    if (settingsOpen && apiKeyMissingNoVault) {
-      return '🔑 Setup Deepgram key in Settings (⚙)';
-    }
-    if (vaultStatus === 'unlocking') return '⏳ Decrypting key…';
-    if (connectionState === 'connecting') {
-      return connectionMessage || 'Connecting to Deepgram…';
-    }
-    if (connectionState === 'error') {
-      return `❌ ${connectionMessage || 'Transcription failed'} — retry CONNECT (no password if unlocked)`;
-    }
-    if (isRememberExpired() && apiKeyMissing) {
-      return '🔐 Password expired — open Settings (⚙)';
-    }
-    if (vaultNeedsDecrypt) {
-      return '🔐 Deepgram locked — open Settings (⚙) or press 🔒 Decrypt';
-    }
-    if (apiKeyMissingNoVault) return '🔑 No Deepgram key — open Settings (⚙)';
-    if (isBreakActive) return '☕ On break — press C or ▶ CALL START when you return';
-    if (isZombieCall) {
-      return `Press C or ▶ RE-ATTACH — call timer & transcript preserved · ${slackText}`;
-    }
-    if (audioAttached) {
-      return `Press C or ▶ CALL START when the call begins · ${slackText}`;
-    }
-    const msgs = [
-      `Press C or ▶ CONNECT to attach interpreting platform · ${slackText}`,
-      `or press M / 🎤 to interpret with your device microphone · ${slackText}`,
-    ];
-    return msgs[statusRotate % msgs.length];
-  })();
+  const offCallStatusText = buildOffCallStatus({
+    settingsOpen,
+    vaultNeedsDecrypt,
+    apiKeyMissingNoVault,
+    vaultStatus,
+    connectionState,
+    connectionMessage,
+    apiKeyMissing,
+    isBreakActive,
+    isZombieCall,
+    audioAttached,
+    micTestMode,
+    slackText,
+  });
 
   return (
     <div className="session-controls-sticky" style={undefined}>
@@ -1122,17 +1144,7 @@ export const DashboardHeader = ({
 
   // Sticky connect/stop bar — attach audio first, start call separately.
   const tabNeedsReconnect = !micTestMode && !tabStreamReady;
-  const hasEnvKey = isValidDeepgramApiKey(process.env.REACT_APP_DEEPGRAM_API_KEY);
-  const legacyKey = (() => {
-    try {
-      return localStorage.getItem('DEEPGRAM_API_KEY');
-    } catch (_) {
-      return null;
-    }
-  })();
-  const hasLegacyStoredKey = isValidDeepgramApiKey(legacyKey);
-  const hasRuntimeKey = isValidDeepgramApiKey(getRuntimeDeepgramKey());
-  const apiKeyMissing = !(hasRuntimeKey || hasEnvKey || hasLegacyStoredKey);
+  const apiKeyMissing = !hasConfiguredDeepgramKey();
 
   // Encrypted token presence (vault setup) exists even if the session key isn't unlocked yet.
   const encryptedKeySaved = (() => {
@@ -1155,46 +1167,39 @@ export const DashboardHeader = ({
     } catch (_) {}
   };
 
-  const connectRequireDoubleTapIndicator = apiKeyMissing
-    ? false
-    : tabNeedsReconnect && !isZombieCall;
+  const connectRequireDoubleTapIndicator = false;
 
   const connectLabel = vaultNeedsDecrypt
-    ? '🔒 Decrypt'
+    ? 'Decrypt'
     : apiKeyMissingNoVault
-      ? '🔑 Enter key'
+      ? 'Enter key'
     : isZombieCall
-    ? 'RE-ATTACH'
-    : tabNeedsReconnect
-      ? 'TAB RECONNECT'
-      : audioAttached
-        ? 'CALL START'
-        : 'CONNECT';
+    ? 'Re-attach'
+    : audioAttached
+        ? 'Start interpreting'
+        : 'Click to connect tab';
   const connectSingleTitle = isZombieCall
-    ? 'RE-ATTACH TO CALL'
+    ? 'Re-attach to your call (timer saved)'
     : vaultNeedsDecrypt
-      ? 'Decrypt (enter password to unlock Deepgram)'
+      ? 'Unlock Deepgram with your password'
       : apiKeyMissingNoVault
-        ? 'Enter key to unlock Deepgram'
-      : tabNeedsReconnect
-        ? 'ATTACH TAB (double-tap)'
-        : audioAttached
-          ? 'START CALL / TRANSCRIBE'
+        ? 'Enter your Deepgram key in Settings'
+      : audioAttached
+          ? 'Start interpreting — begin transcription'
           : micTestMode
-            ? 'CONNECT (MIC TEST)'
-            : 'CONNECT TO PLATFORM';
+            ? 'Connect using your microphone'
+            : 'Press here to connect to another browser tab where a conversation to interpret is happening';
   const connectDoubleTitle = micTestMode
-    ? 're-request microphone'
+    ? 'Pick a different microphone'
     : vaultNeedsDecrypt
-      ? 'Decrypt (enter password to unlock Deepgram)'
+      ? 'Unlock Deepgram with your password'
       : apiKeyMissingNoVault
-        ? 'Enter key to unlock Deepgram'
-      : 'attach another browser tab';
+        ? 'Enter your Deepgram key in Settings'
+      : 'Pick a different browser tab';
 
   const connectOnSingle = (() => {
     if (apiKeyMissing) return showKeyVault;
     if (isZombieCall) return onRecovery;
-    if (tabNeedsReconnect) return () => {}; // first tap arms double-tap UX
     if (!audioAttached) return onAttachAudio;
     return onStartCall;
   })();
@@ -1202,7 +1207,7 @@ export const DashboardHeader = ({
   const connectOnDouble = (() => {
     if (apiKeyMissing) return showKeyVault;
     if (isZombieCall) return onRecovery;
-    if (tabNeedsReconnect) return onAttachAudioFresh || onAttachAudio;
+    if (!audioAttached) return onAttachAudioFresh || onAttachAudio;
     return onConnectAnotherTab;
   })();
 
@@ -2269,7 +2274,7 @@ ${isInDeficit ? `⚠️ DEFICIT: Behind pace by ${Math.round(monthlyDeficitMins)
         connectOnSingle={connectOnSingle}
         connectOnDouble={connectOnDouble}
         requireDoubleTapIndicator={connectRequireDoubleTapIndicator}
-        pendingDoubleTapTitle="Tap again to attach"
+        pendingDoubleTapTitle="Tap again to pick tab"
         onArmDoubleTap={() => audioEngine.playWarningPing?.()}
 
         minutesSinceLastBreak={minutesSinceLastBreak}

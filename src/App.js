@@ -25,8 +25,10 @@ import { useAppUpdateCheck } from "./hooks/useAppUpdateCheck";
 import { UpdateAppBanner } from "./components/UpdateAppBanner";
 import { loadFile, generateObjectUrl } from "./utils/storage";
 import SettingsPanel from "./components/SettingsPanel";
+import { NewcomerIdleGuide } from "./components/NewcomerIdleGuide";
 import {
   getRuntimeDeepgramKey,
+  hasConfiguredDeepgramKey,
   isValidDeepgramApiKey,
   isRememberExpired,
 } from "./utils/deepgramRuntimeKey";
@@ -114,31 +116,14 @@ const Dashboard = () => {
     };
   }, []);
 
-  const hasEnvKey = isValidDeepgramApiKey(
-    process.env.REACT_APP_DEEPGRAM_API_KEY,
-  );
-  const legacyKey = (() => {
-    try {
-      return localStorage.getItem("DEEPGRAM_API_KEY");
-    } catch (_) {
-      return null;
-    }
-  })();
-  const hasLegacyStoredKey = isValidDeepgramApiKey(legacyKey);
   const hasRuntimeKey = isValidDeepgramApiKey(getRuntimeDeepgramKey());
-  const apiKeyMissing = !(hasRuntimeKey || hasEnvKey || hasLegacyStoredKey);
+  const apiKeyMissing = !hasConfiguredDeepgramKey();
 
   useEffect(() => {
     if (hasRuntimeKey) setSettingsOpen(false);
   }, [hasRuntimeKey]);
 
-  // UX: on every page load, assume tab capture needs a fresh user attach.
-  // This prevents zombie-call ambiguity after refresh/reopen.
-  useEffect(() => {
-    try {
-      sessionStorage.removeItem('catint_tab_stream_ok_v1');
-    } catch {}
-  }, []);
+  // UX: stale tab flag is cleared in useDeepgram when no live stream exists.
 
   const offCallWorkspace = isActive || isZombieCall ? null : workspaceView;
   const isSoundboardStudio = offCallWorkspace === "soundboard";
@@ -474,7 +459,7 @@ const Dashboard = () => {
         </button>
         <span style={{ pointerEvents: "none", display: "flex", alignItems: "center", gap: "4px" }}>
           <CloudSyncIndicator />
-          v4.50.0 (Full Stack)
+          v4.51.0 (Newcomer UX)
         </span>
       </div>
 
@@ -564,7 +549,25 @@ const Dashboard = () => {
       />
 
       {!(isActive || isZombieCall) && workspaceView === "scoreboard" && (
-        <main id="scoreboard-root" className="main-content view-scoreboard" />
+        <main id="scoreboard-root" className="main-content view-scoreboard">
+          <div
+            style={{
+              flex: 1,
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              padding: "1rem",
+              minHeight: 0,
+            }}
+          >
+            <NewcomerIdleGuide
+              audioAttached={audioAttached}
+              micTestMode={micTestMode}
+              connectionState={connectionState}
+              isActive={false}
+            />
+          </div>
+        </main>
       )}
 
       {isSoundboardStudio && (
@@ -594,6 +597,8 @@ const Dashboard = () => {
               isActive={isActive}
               isBreakActive={isBreakActive}
               connectionState={connectionState}
+              audioAttached={audioAttached}
+              micTestMode={micTestMode}
               onClearAll={clearCaptions}
               onReconnect={handleRecovery}
               lastDataTime={lastDataTime}

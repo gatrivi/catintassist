@@ -1,36 +1,55 @@
-# Onboarding Quickstart (v4.48.2)
+# CatIntAssist — How to use it (v4.51.0)
 
-## What this app expects
-- Deepgram STT (EN + ES)
-- Translation fallback(s)
-- Virtual mic / audio routing (tab or selected sink)
+**Welcome to CatIntAssist**, the cat's interpreter assistant.
+
+**Languages:** English ↔ Spanish (more coming soon).
+
+---
+
+## The three steps (that's it)
+
+### Step 1 — Connect to the conversation tab
+
+Press the **green button** that says **"Click to connect tab"**.
+
+Your browser will ask you to pick a tab. Choose the tab where the phone call or video chat is happening.
+
+If the browser asks, check **"Share audio"**.
+
+> In plain English: *Press here to connect to another browser tab where a conversation to interpret is happening.*
+
+### Step 2 — Start interpreting
+
+When the tab is connected, press the green button again. It will say **"Start interpreting"**.
+
+Now you will see live transcription and translation.
+
+### Step 3 — Stop when done
+
+Press the **red stop button** when the call ends.
+
+---
+
+## On a phone, or no tab to share?
+
+1. Tap the **mic button** (🎤) next to the green button.
+2. Then press **"Click to connect tab"** — it will use your microphone instead.
+
+---
+
+## First-time setup (one time only)
+
+1. Click the **gear** (top-right corner).
+2. Paste your **Deepgram API key**.
+3. Close Settings and follow the three steps above.
+
+If your key is already in `.env` as `REACT_APP_DEEPGRAM_API_KEY`, you can skip this.
+
+---
 
 ## Local dev
+
 1. `npm install`
-2. Configure `.env` (Deepgram + translation keys)
-3. `npm start` (Fast Refresh / HMR)
+2. Put keys in `.env`
+3. `npm start`
 4. Restart after `.env` changes
-
-## Controls you must recognize
-1. `Connect`
-   - Press to connect to the interpretation service.
-   - (Some versions) one click starts interpreting from your mic.
-   - Double click connects to another tab running the interpreting platform (Google Chrome preferred).
-2. `Hold`
-   - Starts the 15 minute hold policy timer.
-3. `Refresh interpretation stream`
-4. `Start break timer`
-
-## Mic Test (v4.48.2)
-🎤 next to `Connect`
-- ON = transcribe from your microphone (no tab picker)
-- OFF = normal tab audio capture
-
-## Sanity checks (fast)
-1. `Connect`
-2. Speak EN
-   - EN transcription lane should be white
-   - ES translation lane should be gray/italic
-3. Speak ES
-   - lanes swap by detected speaker language
-

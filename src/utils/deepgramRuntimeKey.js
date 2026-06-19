@@ -7,6 +7,21 @@ const THIRTY_DAYS_MS = 30 * 24 * 60 * 60 * 1000;
 
 export const getRuntimeDeepgramKey = () => runtimeDeepgramKey;
 
+/** Env key first (deploy/newcomer), then vault/session, then legacy localStorage. */
+export const getEffectiveDeepgramKey = () => {
+  const env = process.env.REACT_APP_DEEPGRAM_API_KEY;
+  if (isValidDeepgramApiKey(env)) return env.trim();
+  const runtime = getRuntimeDeepgramKey();
+  if (isValidDeepgramApiKey(runtime)) return runtime.trim();
+  try {
+    const legacy = localStorage.getItem('DEEPGRAM_API_KEY');
+    if (isValidDeepgramApiKey(legacy)) return legacy.trim();
+  } catch (_) {}
+  return null;
+};
+
+export const hasConfiguredDeepgramKey = () => Boolean(getEffectiveDeepgramKey());
+
 export const isValidDeepgramApiKey = (key) => {
   if (!key || typeof key !== 'string') return false;
   const k = key.trim();

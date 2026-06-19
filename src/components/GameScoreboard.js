@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { AppGuideButton } from './AppGuide';
 import { StatNumber } from './StatNumber';
 import { ConnectInterpretButton } from './ConnectInterpretButton';
-import { getRuntimeDeepgramKey, isValidDeepgramApiKey } from '../utils/deepgramRuntimeKey';
+import { hasConfiguredDeepgramKey } from '../utils/deepgramRuntimeKey';
 
 // ─── ScoreboardTooltip ────────────────────────────────────────────────────────
 // A lightweight 'toastie' popover for dynamic info on hover.
@@ -233,17 +233,7 @@ const DirectionalCue = ({
     connectProgress?.phase === 'connecting' &&
     !connectProgress?.transcriptReceived;
 
-  const hasEnvKey = isValidDeepgramApiKey(process.env.REACT_APP_DEEPGRAM_API_KEY);
-  const legacyKey = (() => {
-    try {
-      return localStorage.getItem('DEEPGRAM_API_KEY');
-    } catch (_) {
-      return null;
-    }
-  })();
-  const hasLegacyStoredKey = isValidDeepgramApiKey(legacyKey);
-  const hasRuntimeKey = isValidDeepgramApiKey(getRuntimeDeepgramKey());
-  const apiKeyMissing = !(hasRuntimeKey || hasEnvKey || hasLegacyStoredKey);
+  const apiKeyMissing = !hasConfiguredDeepgramKey();
 
   const h = new Date().getHours();
   const goalsMet = totalDailyMins >= (dailyGoal || 1);
@@ -276,20 +266,20 @@ const DirectionalCue = ({
   })();
 
   const requiredIdleText = isZombieCall
-    ? 'Call still active — press C or ▶ RE-ATTACH (timer saved)'
+    ? 'Call still active — press Re-attach (timer saved)'
     : apiKeyMissing
-      ? '🔑 Enter key to unlock Deepgram'
+      ? 'Enter your Deepgram key in Settings (gear, top-right)'
       : audioAttached
-        ? 'Tab hooked — press C or ▶ CALL START when call begins'
-        : 'Press C or ▶ CONNECT to attach interpreting platform';
+        ? 'Tab connected — press Start interpreting when the call begins'
+        : 'Press Click to connect tab — pick the browser tab with the conversation';
 
   const connectLabel = isZombieCall
-    ? 'RE-ATTACH'
+    ? 'Re-attach'
     : apiKeyMissing
-      ? '🔑 Enter key'
+      ? 'Enter key'
       : audioAttached
-        ? 'CALL START'
-        : 'CONNECT';
+        ? 'Start interpreting'
+        : 'Click to connect tab';
 
   const showKeyVault = () => {
     try {
@@ -321,8 +311,8 @@ const DirectionalCue = ({
         label={connectLabel}
         onSingle={handleSingle}
         onDouble={handleDouble}
-        singleTitle={connectLabel}
-        doubleTitle="attach another browser tab"
+        singleTitle="Press here to connect to another browser tab where a conversation to interpret is happening"
+        doubleTitle="Pick a different browser tab"
       />
 
       {showConnectChecklist ? (
