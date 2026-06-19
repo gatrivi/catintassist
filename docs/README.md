@@ -1,6 +1,10 @@
-# CatIntAssist Docs (v4.48.2)
+# CatIntAssist Docs (v4.56.0)
 
 This is the single source of truth for *documentation + onboarding*.
+
+## Agent handoff (outside models start here)
+- [`docs/handoff/README.md`](handoff/README.md): task specs, file boundaries, phased roadmap
+- [`docs/handoff/00_global_rules.md`](handoff/00_global_rules.md): hard constraints (80/20, stability, tests)
 
 ## Start Here
 - [`docs/onboarding/quickstart.md`](onboarding/quickstart.md): install, run locally, and dev/sanity checks
@@ -18,4 +22,3 @@ This is the single source of truth for *documentation + onboarding*.
 
 ## Archive (legacy / historical)
 - [`docs/archive/README.md`](archive/README.md): intentionally old docs and where they live
-

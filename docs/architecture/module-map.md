@@ -1,4 +1,6 @@
-## Interview Module Map (v4.48.9)
+## Interview Module Map (v4.56.0)
+
+**Agent handoff:** [`docs/handoff/README.md`](../handoff/README.md)
 
 ### How to use this doc
 Use it like a file-based “feature index”:
@@ -65,4 +67,22 @@ flowchart TD
 #### SilenceGuardian (runaway silent call reminder)
 - Responsibility: monitors `lastActivityTime` while active and plays tiered warnings; optionally auto-disconnects by moving the app into break state (based on silence thresholds).
 - Main file: [`src/components/SilenceGuardian.js`](src/components/SilenceGuardian.js)
+
+#### Number protection (pure utils)
+- Responsibility: lane-aware number words, phone/SSN grouping, overlap-safe digit sequences, NYC zip repair.
+- Main file: [`src/utils/sensitiveDataProtector.js`](src/utils/sensitiveDataProtector.js)
+- Handoff: [`docs/handoff/01_number_protection.md`](../handoff/01_number_protection.md)
+
+#### Medical term priority (stub v4.56)
+- Responsibility: score clinical tokens over generic homophones; post-process hook for STT bias.
+- Main file: [`src/utils/medicalTermLexicon.js`](src/utils/medicalTermLexicon.js)
+- Handoff: [`docs/handoff/02_medical_terms.md`](../handoff/02_medical_terms.md)
+
+#### Transcript corrections (stub v4.56, local-first)
+- Responsibility: store user corrections in `localStorage` (`catint_corrections_v1`); future STT/translate glossary.
+- Main file: [`src/utils/transcriptCorrections.js`](src/utils/transcriptCorrections.js)
+- Handoff: [`docs/handoff/04_transcript_corrections.md`](../handoff/04_transcript_corrections.md)
+
+#### Auth / DB (future)
+- Handoff only: [`docs/handoff/06_auth_db.md`](../handoff/06_auth_db.md)
 

@@ -464,7 +464,7 @@ const Dashboard = () => {
         </button>
         <span style={{ pointerEvents: "none", display: "flex", alignItems: "center", gap: "4px" }}>
           <CloudSyncIndicator />
-          v4.55.0 (Stable UI)
+          v4.56.0 (Handoff)
         </span>
       </div>
 
