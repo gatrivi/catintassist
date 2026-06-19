@@ -15,6 +15,7 @@ import { AppGuideButton } from './AppGuide';
 import { SettingsButton } from './SettingsButton';
 import { WorkspaceViewSwitcher } from './WorkspaceViewSwitcher';
 import { ConnectInterpretButton } from './ConnectInterpretButton';
+import { ConnectionDiagnosticsBar } from './ConnectionDiagnosticsBar';
 import { SlotMicroValue } from './SlotMicroValue';
 import { hasConfiguredDeepgramKey, isRememberExpired } from '../utils/deepgramRuntimeKey';
 const CelebrationParticles = ({ type, label, coins, onDismiss }) => {
@@ -227,6 +228,7 @@ const SessionControlsSticky = React.memo(({
   setMicTestMode,
   connectionState,
   connectionMessage,
+  connectProgress,
   apiKeyRejected,
   showEndDayButton,
   onEndDay,
@@ -497,26 +499,34 @@ const SessionControlsSticky = React.memo(({
           <span className="call-micro-bar-slot call-micro-bar-reserved" aria-hidden="true" />
         </div>
       ) : (
-        <div className="call-micro-bar-center off-call-status-bar" title="Connection status">
-          <span
-            className="call-micro-bar-slot call-micro-bar-status"
-            style={{
-              gridColumn: '1 / -1',
-              fontSize: '0.68rem',
-              fontWeight: 700,
-              color: isZombieCall
-                ? '#fbbf24'
-                : audioAttached
-                  ? '#34d399'
-                : connectionState === 'error'
-                  ? '#ef4444'
-                  : connectionState === 'connecting'
-                    ? '#f59e0b'
-                    : '#9dffed',
-            }}
-          >
-            {offCallStatusText}
-          </span>
+        <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', gap: '0.2rem' }}>
+          <div className="call-micro-bar-center off-call-status-bar" title="Connection status">
+            <span
+              className="call-micro-bar-slot call-micro-bar-status"
+              style={{
+                gridColumn: '1 / -1',
+                fontSize: '0.68rem',
+                fontWeight: 700,
+                color: isZombieCall
+                  ? '#fbbf24'
+                  : audioAttached
+                    ? '#34d399'
+                  : connectionState === 'error'
+                    ? '#ef4444'
+                    : connectionState === 'connecting'
+                      ? '#f59e0b'
+                      : '#9dffed',
+              }}
+            >
+              {offCallStatusText}
+            </span>
+          </div>
+          <ConnectionDiagnosticsBar
+            connectProgress={connectProgress}
+            connectionState={connectionState}
+            connectionMessage={connectionMessage}
+            compact
+          />
         </div>
       )}
 
@@ -2272,6 +2282,7 @@ ${isInDeficit ? `⚠️ DEFICIT: Behind pace by ${Math.round(monthlyDeficitMins)
         setMicTestMode={setMicTestMode}
         connectionState={connectionState}
         connectionMessage={connectionMessage}
+        connectProgress={connectProgress}
         apiKeyRejected={apiKeyRejected}
         settingsOpen={settingsOpen}
         vaultStatus={vaultStatus}

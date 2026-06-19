@@ -13,6 +13,11 @@ import {
   getEffectiveDeepgramKey,
   getDeepgramKeyInfo,
 } from "../utils/deepgramRuntimeKey";
+import {
+  classifyDeepgramClose,
+  buildFailureMessage,
+  FAILURE,
+} from "../utils/deepgramDiagnostics";
 
 const TAB_STREAM_READY_KEY = "catint_tab_stream_ok_v1";
 const readTabStreamReady = () => {
@@ -126,11 +131,21 @@ export const useDeepgram = () => {
   const [connectionMessage, setConnectionMessage] = useState("Disconnected");
   const [apiKeyRejected, setApiKeyRejected] = useState(false);
   const [connectProgress, setConnectProgress] = useState({
-    phase: "idle", // idle | connecting | ready | error
+    phase: "idle",
+    keyResolved: false,
+    keySource: "none",
+    keyMasked: "",
     audioStreamReady: false,
     socketsOpen: false,
+    socketEn: "pending",
+    socketEs: "pending",
+    socketEnClose: "",
+    socketEsClose: "",
     audioChunksSent: false,
     transcriptReceived: false,
+    lastCloseCode: null,
+    lastCloseReason: null,
+    failureCategory: null,
     lastUpdatedAt: 0,
     lastError: null,
   });
@@ -168,12 +183,24 @@ export const useDeepgram = () => {
   const reconnectAttemptsRef = useRef(0);
   const connectAttemptIdRef = useRef(0);
   const watchdogTimeoutRef = useRef(null);
+  const keepaliveIntervalRef = useRef(null);
+  const connectFailTimerRef = useRef(null);
   const connectFlagsRef = useRef({
     phase: "idle",
+    keyResolved: false,
+    keySource: "none",
+    keyMasked: "",
     audioStreamReady: false,
     socketsOpen: false,
+    socketEn: "pending",
+    socketEs: "pending",
+    socketEnClose: "",
+    socketEsClose: "",
     audioChunksSent: false,
     transcriptReceived: false,
+    lastCloseCode: null,
+    lastCloseReason: null,
+    failureCategory: null,
     lastUpdatedAt: 0,
     lastError: null,
   });
@@ -184,15 +211,48 @@ export const useDeepgram = () => {
   };
 
   const resetConnectProgress = () => {
+    const keyInfo = getDeepgramKeyInfo();
     syncConnectProgress({
       phase: "connecting",
+      keyResolved: !!keyInfo.key,
+      keySource: keyInfo.source,
+      keyMasked: keyInfo.masked,
       audioStreamReady: false,
       socketsOpen: false,
+      socketEn: "connecting",
+      socketEs: "pending",
+      socketEnClose: "",
+      socketEsClose: "",
       audioChunksSent: false,
       transcriptReceived: false,
+      lastCloseCode: null,
+      lastCloseReason: null,
+      failureCategory: null,
       lastError: null,
     });
   };
+
+  const clearKeepalive = useCallback(() => {
+    if (keepaliveIntervalRef.current) {
+      clearInterval(keepaliveIntervalRef.current);
+      keepaliveIntervalRef.current = null;
+    }
+  }, []);
+
+  const startKeepalive = useCallback(() => {
+    clearKeepalive();
+    keepaliveIntervalRef.current = setInterval(() => {
+      if (connectFlagsRef.current.audioChunksSent) {
+        clearKeepalive();
+        return;
+      }
+      const payload = JSON.stringify({ type: "KeepAlive" });
+      try {
+        if (socketRefEn.current?.readyState === 1) socketRefEn.current.send(payload);
+        if (socketRefEs.current?.readyState === 1) socketRefEs.current.send(payload);
+      } catch (_) {}
+    }, 4000);
+  }, [clearKeepalive]);
 
   const clearWatchdog = useCallback(() => {
     if (watchdogTimeoutRef.current) clearTimeout(watchdogTimeoutRef.current);
@@ -205,6 +265,11 @@ export const useDeepgram = () => {
   }, [isActive, isZombieCall]);
 
   const closeConnections = useCallback(() => {
+    clearKeepalive();
+    if (connectFailTimerRef.current) {
+      clearTimeout(connectFailTimerRef.current);
+      connectFailTimerRef.current = null;
+    }
     try {
       if (
         mediaRecorderRef.current &&
@@ -230,13 +295,23 @@ export const useDeepgram = () => {
     setApiKeyRejected(false);
     syncConnectProgress({
       phase: "idle",
+      keyResolved: false,
+      keySource: "none",
+      keyMasked: "",
       audioStreamReady: false,
       socketsOpen: false,
+      socketEn: "pending",
+      socketEs: "pending",
+      socketEnClose: "",
+      socketEsClose: "",
       audioChunksSent: false,
       transcriptReceived: false,
+      lastCloseCode: null,
+      lastCloseReason: null,
+      failureCategory: null,
       lastError: null,
     });
-  }, []);
+  }, [clearKeepalive]);
 
   const isLikelyApiKeyRejected = useCallback((text) => {
     const s = (text || "").toString().toLowerCase();
@@ -254,23 +329,70 @@ export const useDeepgram = () => {
   }, []);
 
   const failConnection = useCallback(
-    (message) => {
-      // Stop Deepgram reconnect attempts and prevent further state flips.
+    (message, extra = {}) => {
       isActiveRef.current = false;
       reconnectAttemptsRef.current = 0;
       clearWatchdog();
+      clearKeepalive();
+      if (connectFailTimerRef.current) {
+        clearTimeout(connectFailTimerRef.current);
+        connectFailTimerRef.current = null;
+      }
       try {
         if (overrideTimeoutRef.current) clearTimeout(overrideTimeoutRef.current);
       } catch {}
 
-      // closeConnections flips state to "disconnected"; we override right after.
-      closeConnections();
+      try {
+        if (mediaRecorderRef.current?.state !== "inactive") mediaRecorderRef.current.stop();
+      } catch (_) {}
+      mediaRecorderRef.current = null;
+      try {
+        socketRefEn.current?.close();
+      } catch (_) {}
+      try {
+        socketRefEs.current?.close();
+      } catch (_) {}
+      socketRefEn.current = null;
+      socketRefEs.current = null;
+
       setConnectionState("error");
       setConnectionMessage(message);
-      syncConnectProgress({ phase: "error", lastError: message });
-      if (isLikelyApiKeyRejected(message)) setApiKeyRejected(true);
+      syncConnectProgress({
+        phase: "error",
+        lastError: message,
+        ...extra,
+      });
+      const cat = extra.failureCategory;
+      if (cat === FAILURE.AUTH || isLikelyApiKeyRejected(message)) setApiKeyRejected(true);
     },
-    [clearWatchdog, closeConnections, isLikelyApiKeyRejected],
+    [clearWatchdog, clearKeepalive, isLikelyApiKeyRejected],
+  );
+
+  const scheduleConnectFail = useCallback(
+    (lang, code, reason) => {
+      if (connectFailTimerRef.current) return;
+      connectFailTimerRef.current = setTimeout(() => {
+        connectFailTimerRef.current = null;
+        if (connectFlagsRef.current.phase !== "connecting") return;
+        const keyInfo = getDeepgramKeyInfo();
+        const diag = classifyDeepgramClose(code, reason);
+        const msg = buildFailureMessage({
+          category: diag.category || FAILURE.UNKNOWN,
+          hint: diag.hint,
+          keySource: keyInfo.source,
+          keyMasked: keyInfo.masked,
+          socketLang: lang,
+        });
+        failConnection(msg, {
+          failureCategory: diag.category || FAILURE.UNKNOWN,
+          lastCloseCode: code,
+          lastCloseReason: reason,
+          [`socket${lang === "en" ? "En" : "Es"}`]: "error",
+          [`socket${lang === "en" ? "En" : "Es"}Close`]: `${code}${reason ? `: ${reason}` : ""}`,
+        });
+      }, 120);
+    },
+    [failConnection],
   );
 
   const stopStreamTracks = useCallback(() => {
@@ -318,85 +440,114 @@ export const useDeepgram = () => {
         const msg =
           "Deepgram API key is missing. Click the gear (top-right) → paste your key → try again.";
         setConnectionMessage(msg);
-        syncConnectProgress({ phase: "error", lastError: msg });
+        syncConnectProgress({
+          phase: "error",
+          lastError: msg,
+          failureCategory: FAILURE.AUTH,
+          keyResolved: false,
+        });
         return;
       }
 
       setConnectionState("connecting");
       setConnectionMessage("Initializing Sockets...");
 
-      const createSocket = (lang) => {
+      const tryStartStreaming = (stream) => {
+        if (
+          socketRefEn.current?.readyState !== 1 ||
+          socketRefEs.current?.readyState !== 1
+        ) {
+          return;
+        }
+        syncConnectProgress({
+          socketsOpen: true,
+          socketEn: "open",
+          socketEs: "open",
+          phase: "connecting",
+        });
+        startKeepalive();
+        const attemptId = connectAttemptIdRef.current;
+        clearWatchdog();
+        watchdogTimeoutRef.current = setTimeout(() => {
+          const stillSameAttempt = connectAttemptIdRef.current === attemptId;
+          if (!stillSameAttempt) return;
+          if (connectFlagsRef.current.audioChunksSent) return;
+          if (connectFlagsRef.current.transcriptReceived) return;
+          failConnection(
+            "TIMEOUT: Sockets open but no audio reached Deepgram. Check Share audio on tab, unmute call, or try mic mode.",
+            { failureCategory: FAILURE.TIMEOUT },
+          );
+        }, 12000);
+
+        setConnectionState("connected");
+        setConnectionMessage("Live");
+        try {
+          if (!mediaRecorderRef.current) {
+            mediaRecorderRef.current = new MediaRecorder(stream);
+            mediaRecorderRef.current.addEventListener("dataavailable", (e) => {
+              if (e.data.size > 0) {
+                let sentAny = false;
+                if (socketRefEn.current?.readyState === 1) {
+                  sentAny = true;
+                  socketRefEn.current.send(e.data);
+                }
+                if (socketRefEs.current?.readyState === 1) {
+                  sentAny = true;
+                  socketRefEs.current.send(e.data);
+                }
+                if (sentAny && !connectFlagsRef.current.audioChunksSent) {
+                  syncConnectProgress({ audioChunksSent: true });
+                  clearKeepalive();
+                  clearWatchdog();
+                }
+              }
+            });
+            mediaRecorderRef.current.start(250);
+          }
+        } catch (err) {
+          console.error(err);
+          failConnection(`MediaRecorder failed: ${err.message}`, {
+            failureCategory: FAILURE.AUDIO,
+          });
+        }
+      };
+
+      const createSocket = (lang, stream) => {
         const url = `wss://api.deepgram.com/v1/listen?model=nova-2&smart_format=true&filler_words=true&language=${lang}&interim_results=true&endpointing=300`;
         const ws = new WebSocket(url, ["token", API_KEY]);
+        const sk = lang === "en" ? "socketEn" : "socketEs";
+        const skClose = lang === "en" ? "socketEnClose" : "socketEsClose";
 
         ws.onopen = () => {
-          reconnectAttemptsRef.current = 0; // Reset on successful open
-          if (
-            socketRefEn.current?.readyState === 1 &&
-            socketRefEs.current?.readyState === 1
-          ) {
-            syncConnectProgress({ socketsOpen: true, phase: "connecting" });
-            // If sockets open but we never send audio, the connection is likely stale.
-            const attemptId = connectAttemptIdRef.current;
-            clearWatchdog();
-            watchdogTimeoutRef.current = setTimeout(() => {
-              const stillSameAttempt = connectAttemptIdRef.current === attemptId;
-              if (!stillSameAttempt) return;
-              if (connectFlagsRef.current.audioChunksSent) return;
-              // Only fail if we haven't received transcripts either (helps avoid false positives).
-              if (connectFlagsRef.current.transcriptReceived) return;
-              failConnection(
-                "Deepgram sockets opened, but audio did not reach Deepgram. This usually means the connection is stale. Press Connect again (or ZAP ⚡) to refresh."
-              );
-            }, 9000);
-
-            setConnectionState("connected");
-            setConnectionMessage("Live");
-            try {
-              if (!mediaRecorderRef.current) {
-                mediaRecorderRef.current = new MediaRecorder(stream);
-                mediaRecorderRef.current.addEventListener(
-                  "dataavailable",
-                  (e) => {
-                    if (e.data.size > 0) {
-                      let sentAny = false;
-                      if (socketRefEn.current?.readyState === 1) {
-                        sentAny = true;
-                        socketRefEn.current.send(e.data);
-                      }
-                      if (socketRefEs.current?.readyState === 1) {
-                        sentAny = true;
-                        socketRefEs.current.send(e.data);
-                      }
-                      if (sentAny && !connectFlagsRef.current.audioChunksSent) {
-                        syncConnectProgress({ audioChunksSent: true });
-                        clearWatchdog();
-                      }
-                    }
-                  },
-                );
-                mediaRecorderRef.current.start(250);
-              }
-            } catch (err) {
-              console.error(err);
-            }
+          reconnectAttemptsRef.current = 0;
+          syncConnectProgress({ [sk]: "open" });
+          if (lang === "en") {
+            syncConnectProgress({ socketEs: "connecting" });
+            socketRefEs.current = createSocket("es", stream);
           }
+          tryStartStreaming(stream);
         };
 
         ws.onmessage = (message) => {
-          const received = JSON.parse(message.data);
-          // Deepgram may send structured auth errors over the socket.
-          // If we detect "missing/invalid token", surface a targeted UX message.
-          if (received?.type === "error" || received?.error || received?.message) {
+          let received;
+          try {
+            received = JSON.parse(message.data);
+          } catch (_) {
+            return;
+          }
+          const errType = (received?.type || "").toString().toLowerCase();
+          if (errType === "error" || received?.error) {
             const errText =
               received?.error?.message ||
               received?.error?.code ||
-              received?.message ||
-              message?.data;
+              received?.description ||
+              JSON.stringify(received?.error || received);
             if (isLikelyApiKeyRejected(errText)) {
               const msg = deepgramKeyRejectedMessage();
-              setApiKeyRejected(true);
-              failConnection(msg);
+              failConnection(msg, {
+                failureCategory: FAILURE.AUTH,
+                [sk]: "error",
+              });
               return;
             }
           }
@@ -670,35 +821,46 @@ export const useDeepgram = () => {
           });
         };
 
-        ws.onclose = () => {
-          console.log(`[Deepgram] ${lang} Close`);
-          // AUTO-RECONNECT: Unless "Boom" (intentional stop), attempt to recover sockets if stream is still alive
+        ws.onclose = (event) => {
+          const code = event?.code;
+          const reason = event?.reason || "";
+          console.log(`[Deepgram] ${lang} Close`, code, reason);
+          syncConnectProgress({
+            [sk]: "error",
+            [skClose]: `${code}${reason ? `: ${reason}` : ""}`,
+            lastCloseCode: code,
+            lastCloseReason: reason,
+          });
+
+          if (connectFlagsRef.current.phase === "connecting") {
+            if (code !== 1000) {
+              scheduleConnectFail(lang, code, reason);
+            }
+            return;
+          }
+
           if (isActiveRef.current && reconnectAttemptsRef.current < 5) {
             reconnectAttemptsRef.current++;
             const delay = Math.pow(2, reconnectAttemptsRef.current) * 1000;
-            console.log(`[Deepgram] Reconnecting in ${delay}ms...`);
             setTimeout(() => {
               if (isActiveRef.current) {
-                if (lang === "en") socketRefEn.current = createSocket("en");
-                else socketRefEs.current = createSocket("es");
+                if (lang === "en") socketRefEn.current = createSocket("en", streamRef.current);
+                else socketRefEs.current = createSocket("es", streamRef.current);
               }
             }, delay);
           }
         };
+
         ws.onerror = () => {
-          // Only surface errors during an active connect attempt.
           if (connectFlagsRef.current.phase === "ready") return;
-          // If this is happening after we already attached audio, don't spam the user.
           if (connectFlagsRef.current.phase !== "connecting") return;
-          failConnection(
-            "Deepgram WebSocket failed — check network connection, then try again. (Not an API key error.)"
-          );
+          syncConnectProgress({ [sk]: "error" });
+          console.warn(`[Deepgram] ${lang} WebSocket error (awaiting close code…)`);
         };
         return ws;
       };
 
-      socketRefEn.current = createSocket("en");
-      socketRefEs.current = createSocket("es");
+      socketRefEn.current = createSocket("en", stream);
     },
     [
       isCallDetectionEnabled,
@@ -711,6 +873,12 @@ export const useDeepgram = () => {
       speechAutoConnect,
       isActive,
       isZombieCall,
+      failConnection,
+      scheduleConnectFail,
+      startKeepalive,
+      clearWatchdog,
+      clearKeepalive,
+      isLikelyApiKeyRejected,
     ],
   );
 

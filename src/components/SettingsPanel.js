@@ -56,7 +56,7 @@ export default function SettingsPanel({ open, onClose, initialSection = 'deepgra
         }}
       >
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <h3 style={{ margin: 0, fontSize: 14 }}>Settings [v4.52.0]</h3>
+          <h3 style={{ margin: 0, fontSize: 14 }}>Settings [v4.53.0]</h3>
           <button type="button" onClick={onClose} style={tabBtn}>✕</button>
         </div>
 

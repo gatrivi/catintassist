@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { AppGuideButton } from './AppGuide';
 import { SettingsButton } from './SettingsButton';
+import { ConnectionDiagnosticsBar } from './ConnectionDiagnosticsBar';
 import { StatNumber } from './StatNumber';
 import { ConnectInterpretButton } from './ConnectInterpretButton';
 import { hasConfiguredDeepgramKey } from '../utils/deepgramRuntimeKey';
@@ -149,52 +150,6 @@ const IDLE_CHECKLIST = [
   'After attach: status says CALL START — timer begins only then.',
 ];
 
-const ConnectingChecklist = ({ connectProgress }) => {
-  const s = connectProgress || {};
-  const step1 = !!s.audioStreamReady;
-  const step2 = !!s.socketsOpen;
-  const step3 = !!s.audioChunksSent;
-  const step4 = !!s.transcriptReceived;
-
-  const mk = (done, prevDone) => {
-    if (done) return { mark: '✓', color: '#34d399' };
-    if (prevDone) return { mark: '→', color: '#f59e0b' };
-    return { mark: '•', color: 'rgba(255,255,255,0.35)' };
-  };
-
-  const row1 = mk(step1, false);
-  const row2 = mk(step2, step1);
-  const row3 = mk(step3, step2);
-  const row4 = mk(step4, step3);
-
-  // Keep it short: only show transcript row once audio is definitely flowing.
-  return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.15rem' }}>
-      <div style={{ fontWeight: 900, fontSize: '0.7rem', color: '#f59e0b', lineHeight: 1.15 }}>
-        Connecting to Deepgram
-      </div>
-      <div style={{ display: 'flex', gap: '0.35rem', alignItems: 'center', fontSize: '0.7rem', fontWeight: 700 }}>
-        <span style={{ color: row1.color, fontFamily: 'var(--font-mono, monospace)' }}>{row1.mark}</span>
-        <span>1) Audio stream ready</span>
-      </div>
-      <div style={{ display: 'flex', gap: '0.35rem', alignItems: 'center', fontSize: '0.7rem', fontWeight: 700 }}>
-        <span style={{ color: row2.color, fontFamily: 'var(--font-mono, monospace)' }}>{row2.mark}</span>
-        <span>2) Deepgram sockets open</span>
-      </div>
-      <div style={{ display: 'flex', gap: '0.35rem', alignItems: 'center', fontSize: '0.7rem', fontWeight: 700 }}>
-        <span style={{ color: row3.color, fontFamily: 'var(--font-mono, monospace)' }}>{row3.mark}</span>
-        <span>3) Audio sending</span>
-      </div>
-      {step3 && (
-        <div style={{ display: 'flex', gap: '0.35rem', alignItems: 'center', fontSize: '0.7rem', fontWeight: 700 }}>
-          <span style={{ color: row4.color, fontFamily: 'var(--font-mono, monospace)' }}>{row4.mark}</span>
-          <span>4) Waiting for transcript</span>
-        </div>
-      )}
-    </div>
-  );
-};
-
 const DirectionalCue = ({
   connectionState,
   connectProgress,
@@ -316,8 +271,13 @@ const DirectionalCue = ({
         doubleTitle="Pick a different browser tab"
       />
 
-      {showConnectChecklist ? (
-        <ConnectingChecklist connectProgress={connectProgress} />
+      {showConnectChecklist || connectionState === 'error' ? (
+        <ConnectionDiagnosticsBar
+          connectProgress={connectProgress}
+          connectionState={connectionState}
+          connectionMessage={null}
+          compact
+        />
       ) : (
         <div style={{ color: idleSecondary.color, fontWeight: 600, fontSize: '0.7rem', lineHeight: 1.2 }}>
           {idleSecondary.label}: {idleSecondary.text}
