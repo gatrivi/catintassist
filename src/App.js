@@ -34,7 +34,7 @@ import {
   isRememberExpired,
 } from "./utils/deepgramRuntimeKey";
 import { APP_VERSION_LABEL } from "./constants/version";
-import { isPersonalDockEnabled } from "./utils/personalDock";
+import { isWellbeingDockEnabled } from "./utils/wellbeingDock";
 import "./index.css";
 
 const CloudSyncIndicator = () => {
@@ -98,7 +98,7 @@ const Dashboard = () => {
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [settingsSection, setSettingsSection] = useState("deepgram");
   const [paneOrder, setPaneOrder] = useState(loadPaneOrder);
-  const [showPersonalDock, setShowPersonalDock] = useState(isPersonalDockEnabled);
+  const [showWellbeingDock, setShowWellbeingDock] = useState(isWellbeingDockEnabled);
   const [, setRuntimeKeyTick] = useState(0);
   useEffect(() => {
     const onRuntime = () => setRuntimeKeyTick((t) => t + 1);
@@ -116,14 +116,16 @@ const Dashboard = () => {
     window.addEventListener("cat_show_deepgram_key_vault", onShowVault);
     window.addEventListener("cat_show_settings", onShowSettings);
     window.addEventListener("cat_pane_order_changed", onPaneOrder);
-    const onPersonalDock = () => setShowPersonalDock(isPersonalDockEnabled());
-    window.addEventListener("cat_personal_dock_changed", onPersonalDock);
+    const onWellbeingDock = () => setShowWellbeingDock(isWellbeingDockEnabled());
+    window.addEventListener("cat_wellbeing_dock_changed", onWellbeingDock);
+    window.addEventListener("cat_personal_dock_changed", onWellbeingDock);
     return () => {
       window.removeEventListener("cat_deepgram_runtime_key_changed", onRuntime);
       window.removeEventListener("cat_show_deepgram_key_vault", onShowVault);
       window.removeEventListener("cat_show_settings", onShowSettings);
       window.removeEventListener("cat_pane_order_changed", onPaneOrder);
-      window.removeEventListener("cat_personal_dock_changed", onPersonalDock);
+      window.removeEventListener("cat_wellbeing_dock_changed", onWellbeingDock);
+      window.removeEventListener("cat_personal_dock_changed", onWellbeingDock);
     };
   }, []);
 
@@ -149,6 +151,14 @@ const Dashboard = () => {
       saveWorkspaceView(next);
       return next;
     });
+  }, [isActive, isZombieCall]);
+
+  const exitSoundboardStudio = useCallback(() => {
+    if (isActive || isZombieCall) return;
+    markStudioHintSeen();
+    setShowStudioHint(false);
+    saveWorkspaceView("scoreboard");
+    setWorkspaceView("scoreboard");
   }, [isActive, isZombieCall]);
 
   useEffect(() => {
@@ -404,6 +414,18 @@ const Dashboard = () => {
     return () => clearInterval(iv);
   }, [isActive, isBreakActive, playCoin]);
 
+  // Escape exits Soundboard Studio when off-call (skip if editor modal open)
+  useEffect(() => {
+    if (!isSoundboardStudio || isActive || isZombieCall) return;
+    const onKey = (e) => {
+      if (e.key !== "Escape" || e.defaultPrevented) return;
+      if (document.querySelector(".sb-editor-overlay")) return;
+      exitSoundboardStudio();
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [isSoundboardStudio, isActive, isZombieCall, exitSoundboardStudio]);
+
   // Demo Scenario Trigger (Shift + D)
   useEffect(() => {
     const scenarios = ["call", "goal_hit", "break", "reset"];
@@ -562,6 +584,10 @@ const Dashboard = () => {
         onCycleWorkspace={cycleWorkspaceView}
         showStudioHint={showStudioHint}
         settingsOpen={settingsOpen}
+        onOpenSoundboard={() => {
+          saveWorkspaceView("soundboard");
+          setWorkspaceView("soundboard");
+        }}
       />
 
       {!(isActive || isZombieCall) && workspaceView === "scoreboard" && (
@@ -580,14 +606,31 @@ const Dashboard = () => {
             data-guide="soundboard-lab"
           >
             <div className="workspace-soundboard-head">
+              <button
+                type="button"
+                className="soundboard-hide-btn"
+                onClick={exitSoundboardStudio}
+                title="Back to scoreboard (Escape)"
+              >
+                ← Scoreboard
+              </button>
               <span className="workspace-soundboard-title">
                 Soundboard Studio
               </span>
               <span className="workspace-soundboard-hint">
                 Record · preview · health-check — off-call only
               </span>
+              <WorkspaceViewSwitcher
+                view={workspaceView}
+                onCycle={cycleWorkspaceView}
+                variant="inline"
+                showHint={false}
+              />
             </div>
-            <GreetingsPanel onEditModeChange={setIsEditingBg} />
+            <GreetingsPanel
+              onEditModeChange={setIsEditingBg}
+              onExitStudio={exitSoundboardStudio}
+            />
           </div>
         </main>
       )}
@@ -634,8 +677,8 @@ const Dashboard = () => {
         onUpdate={reloadToUpdate}
       />
 
-      <div className="habit-dock">
-        {showPersonalDock && (
+      <div className="wellbeing-dock habit-dock">
+        {showWellbeingDock && (
           <>
             <DeskExerciseWidget />
             <RosaryWidget />

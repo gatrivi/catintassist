@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react'
 import { useSession } from '../contexts/SessionContext';
 import { useProgressiveAudio } from '../hooks/useProgressiveAudio';
 import { useClickOutside } from '../hooks/useClickOutside';
+import { getNudgePresentation, recordNudgeShown, acknowledgeNudge } from '../utils/wellbeingNudges';
 
 const STORAGE_KEY = 'catint_chores_v1';
 const REMINDER_INTERVAL_MS = 10 * 60 * 1000;
@@ -79,10 +80,11 @@ export const ChoreTrackerWidget = () => {
       if (isActive) return;
       if (allDone) return;
       if (minsSinceLastChore >= REMINDER_THRESHOLD_MIN) {
+        const pres = getNudgePresentation('chores', '🧹 Quick chore break');
+        recordNudgeShown('chores');
         playWarningPing();
-        setToast('🧹 Chore check');
-        const t = setTimeout(() => setToast(null), 5000);
-        return () => clearTimeout(t);
+        setToast(pres.message);
+        if (!pres.persistent) setTimeout(() => setToast(null), pres.durationMs);
       }
     }, REMINDER_INTERVAL_MS);
     return () => clearInterval(iv);
@@ -95,8 +97,8 @@ export const ChoreTrackerWidget = () => {
     <div ref={containerRef} style={{ position: 'relative' }}>
       {/* Collapsed Pill */}
       <button
-        onClick={() => setIsOpen(o => !o)}
-        title="Chore Tracker"
+        onClick={() => { acknowledgeNudge('chores'); setIsOpen((o) => !o); }}
+        title="Wellbeing: chore break"
         style={{
           position: 'relative',
           width: '40px',

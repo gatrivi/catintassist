@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react'
 import { useSession } from '../contexts/SessionContext';
 import { useProgressiveAudio } from '../hooks/useProgressiveAudio';
 import { useClickOutside } from '../hooks/useClickOutside';
+import { getNudgePresentation, recordNudgeShown, acknowledgeNudge } from '../utils/wellbeingNudges';
 
 const STORAGE_KEY = 'catint_meals_v1';
 const REMINDER_INTERVAL_MS = 10 * 60 * 1000;
@@ -94,10 +95,11 @@ export const MealTrackerWidget = () => {
       if (isActive) return;
       if (allDone) return;
       if (minsSinceLastMeal >= REMINDER_THRESHOLD_MIN) {
+        const pres = getNudgePresentation('meals', '🍽️ Hydrate / eat something');
+        recordNudgeShown('meals');
         playWarningPing();
-        setToast('🍽️ Meal check');
-        const t = setTimeout(() => setToast(null), 5000);
-        return () => clearTimeout(t);
+        setToast(pres.message);
+        if (!pres.persistent) setTimeout(() => setToast(null), pres.durationMs);
       }
     }, REMINDER_INTERVAL_MS);
     return () => clearInterval(iv);
@@ -110,8 +112,8 @@ export const MealTrackerWidget = () => {
     <div ref={containerRef} style={{ position: 'relative' }}>
       {/* Collapsed Pill */}
       <button
-        onClick={() => setIsOpen(o => !o)}
-        title="Meal Tracker"
+        onClick={() => { acknowledgeNudge('meals'); setIsOpen((o) => !o); }}
+        title="Wellbeing: meals & hydration"
         style={{
           position: 'relative',
           width: '40px',

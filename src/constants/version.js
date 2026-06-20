@@ -1,3 +1,3 @@
 /** Single source of truth for app version (UI + package.json should match). */
-export const APP_VERSION = '4.57.0';
+export const APP_VERSION = '4.58.0';
 export const APP_VERSION_LABEL = `v${APP_VERSION} (Handoff)`;

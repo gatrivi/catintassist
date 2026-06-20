@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react'
 import { useSession } from '../contexts/SessionContext';
 import { useProgressiveAudio } from '../hooks/useProgressiveAudio';
 import { useClickOutside } from '../hooks/useClickOutside';
+import { getNudgePresentation, recordNudgeShown, acknowledgeNudge } from '../utils/wellbeingNudges';
 
 const STORAGE_KEY = 'catint_rosary_v1';
 const REMINDER_INTERVAL_MS = 10 * 60 * 1000;
@@ -93,10 +94,11 @@ export const RosaryWidget = () => {
       if (isActive) return;
       if (allDone) return;
       if (minsSinceLastPrayer >= REMINDER_THRESHOLD_MIN) {
+        const pres = getNudgePresentation('rosary', '📿 Pause for rosary');
+        recordNudgeShown('rosary');
         playWarningPing();
-        setToast('📿 Rosary time');
-        const t = setTimeout(() => setToast(null), 5000);
-        return () => clearTimeout(t);
+        setToast(pres.message);
+        if (!pres.persistent) setTimeout(() => setToast(null), pres.durationMs);
       }
     }, REMINDER_INTERVAL_MS);
     return () => clearInterval(iv);
@@ -110,8 +112,8 @@ export const RosaryWidget = () => {
     <div ref={containerRef} style={{ position: 'relative' }}>
       {/* Collapsed Pill */}
       <button
-        onClick={() => setIsOpen(o => !o)}
-        title="Rosary Tracker"
+        onClick={() => { acknowledgeNudge('rosary'); setIsOpen((o) => !o); }}
+        title="Wellbeing: rosary pause"
         style={{
           position: 'relative',
           width: '40px',

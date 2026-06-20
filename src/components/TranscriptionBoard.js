@@ -13,6 +13,7 @@ import {
 } from '../utils/sensitiveDataProtector';
 import { ScrambleText } from './ScrambleText';
 import { NewcomerIdleGuide } from './NewcomerIdleGuide';
+import { isNewcomerGuideDismissed } from '../utils/newcomerGuide';
 import { isTranslationStuckForRetranslate } from '../utils/translationQuality';
 
 // EL TABLERO DE TEXTO: Aquí es donde aparece todo lo que dicen en la llamada.
@@ -378,6 +379,7 @@ export const TranscriptionBoard = ({
     }
   });
   const [translationBumps, setTranslationBumps] = useState({});
+  const [newcomerSessionHidden, setNewcomerSessionHidden] = useState(false);
   const { playTTS, stopTTS, isPlaying, playingUrl, prefetchTTS } = useTTS();
   const { playWarningPing } = useProgressiveAudio();
   const { isActive, isZombieCall, lastCallSummary, setLastCallSummary } = useSession();
@@ -656,14 +658,15 @@ export const TranscriptionBoard = ({
               <div style={{ fontFamily: 'var(--font-mono)', fontSize: '0.8rem', textAlign: 'center', padding: '0 1rem', color: '#fbbf24' }}>
                 Re-attach audio — your timer and transcript are saved. Press the green Re-attach button.
               </div>
-            ) : (
+            ) : !newcomerSessionHidden && !isNewcomerGuideDismissed() ? (
               <NewcomerIdleGuide
                 audioAttached={audioAttached}
                 micTestMode={micTestMode}
                 connectionState={connectionState}
                 isActive={isActive}
+                onHideSession={() => setNewcomerSessionHidden(true)}
               />
-            )}
+            ) : null}
           </div>
         )}
 

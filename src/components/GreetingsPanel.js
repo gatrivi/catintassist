@@ -121,7 +121,7 @@ const getSetupStats = (blobs) => {
   return { saved, total, missing: total - saved };
 };
 
-export const GreetingsPanel = ({ onEditModeChange }) => {
+export const GreetingsPanel = ({ onEditModeChange, onExitStudio }) => {
   const { selectedSinkId, localVolume, sinkVolume, changeLocalVolume, changeSinkVolume, monitorMic, setMonitorMic, monitorVolume, setMonitorVolume, setSinkPlaybackActive } = useAudioSettings();
   const [mode, setMode] = useState('play'); // 'play' | 'settings'
   const [timeOfDay, setTimeOfDay] = useState('morning');
@@ -745,8 +745,13 @@ export const GreetingsPanel = ({ onEditModeChange }) => {
               {missingOnly ? 'Showing gaps' : 'Missing only'}
             </button>
             <button type="button" className="btn btn-primary" onClick={() => setMode('play')} style={{ padding: '0.3rem 0.75rem', borderRadius: '20px', fontSize: '0.78rem' }}>
-              Save & Back
+              Save & Play
             </button>
+            {onExitStudio && (
+              <button type="button" className="soundboard-hide-btn" onClick={onExitStudio}>
+                ← Scoreboard
+              </button>
+            )}
           </div>
         </div>
 
@@ -906,6 +911,11 @@ export const GreetingsPanel = ({ onEditModeChange }) => {
           <button type="button" className="sb-open-setup-btn" onClick={openSettings} title="Record clips, upload audio, button cover images">
             ⚙️ Setup
           </button>
+          {onExitStudio && (
+            <button type="button" className="soundboard-hide-btn" onClick={onExitStudio} title="Back to scoreboard (Escape)">
+              ← Scoreboard
+            </button>
+          )}
         </div>
       </div>
 

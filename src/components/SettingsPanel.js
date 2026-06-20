@@ -4,7 +4,8 @@ import DeepgramKeyVault from './DeepgramKeyVault';
 import { TranslationKeysForm } from './TranslationKeysForm';
 import { TranslationStatusBar } from './TranslationStatusBar';
 import { APP_VERSION_LABEL } from '../constants/version';
-import { isPersonalDockEnabled, setPersonalDockEnabled } from '../utils/personalDock';
+import { isWellbeingDockEnabled, setWellbeingDockEnabled } from '../utils/wellbeingDock';
+import { useTTS } from '../hooks/useTTS';
 import {
   loadPaneOrder,
   savePaneOrder,
@@ -25,7 +26,8 @@ export default function SettingsPanel({ open, onClose, initialSection = 'deepgra
   } = useSession();
   const [section, setSection] = useState(initialSection);
   const [paneOrder, setPaneOrder] = useState(loadPaneOrder);
-  const [personalDock, setPersonalDock] = useState(isPersonalDockEnabled);
+  const [personalDock, setPersonalDock] = useState(isWellbeingDockEnabled);
+  const { playTTS } = useTTS();
 
   useEffect(() => {
     if (open) setSection(initialSection);
@@ -133,13 +135,25 @@ export default function SettingsPanel({ open, onClose, initialSection = 'deepgra
                 type="checkbox"
                 checked={personalDock}
                 onChange={(e) => {
-                  setPersonalDockEnabled(e.target.checked);
+                  setWellbeingDockEnabled(e.target.checked);
                   setPersonalDock(e.target.checked);
-                  window.dispatchEvent(new CustomEvent('cat_personal_dock_changed'));
                 }}
               />
-              Show personal habit dock (Rosary, chores, meals)
+              Show interpreter wellbeing tools (desk breaks, hydration, pauses)
             </label>
+            <div style={{ marginTop: 14, paddingTop: 10, borderTop: '1px solid rgba(255,255,255,0.08)' }}>
+              <div style={{ fontSize: 11, color: '#93c5fd', marginBottom: 6 }}>TTS route test</div>
+              <button
+                type="button"
+                style={{ ...tabBtn, fontSize: 11 }}
+                onClick={() => playTTS('Prueba de audio para la llamada.', 'es')}
+              >
+                Test TTS route (ES sample)
+              </button>
+              <p style={{ fontSize: 10, color: 'rgba(255,255,255,0.5)', marginTop: 6 }}>
+                Plays through local speakers + virtual output (same path as bubble play). Inworld prefetch hooks here later.
+              </p>
+            </div>
           </div>
         )}
 

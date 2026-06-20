@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react'
 import { useSession } from '../contexts/SessionContext';
 import { useProgressiveAudio } from '../hooks/useProgressiveAudio';
 import { useClickOutside } from '../hooks/useClickOutside';
+import { getNudgePresentation, recordNudgeShown, acknowledgeNudge } from '../utils/wellbeingNudges';
 
 const STORAGE_KEY = 'catint_exercises_v1';
 const REMINDER_INTERVAL_MS = 10 * 60 * 1000; // 10 min check
@@ -100,10 +101,13 @@ export const DeskExerciseWidget = () => {
       if (isActive) return; // don't nag during calls
       if (allDone) return;
       if (minsSinceLastSet >= REMINDER_THRESHOLD_MIN) {
+        const pres = getNudgePresentation('desk', '🧘 Desk stretch break');
+        recordNudgeShown('desk');
         playWarningPing();
-        setToast('🧘 Desk set time');
-        const t = setTimeout(() => setToast(null), 5000);
-        return () => clearTimeout(t);
+        setToast(pres.message);
+        if (!pres.persistent) {
+          setTimeout(() => setToast(null), pres.durationMs);
+        }
       }
     }, REMINDER_INTERVAL_MS);
     return () => clearInterval(iv);
@@ -116,8 +120,11 @@ export const DeskExerciseWidget = () => {
     <div ref={containerRef} style={{ position: 'relative' }}>
       {/* Collapsed Pill */}
       <button
-        onClick={() => setIsOpen(o => !o)}
-        title="Desk Exercise Tracker"
+        onClick={() => {
+          acknowledgeNudge('desk');
+          setIsOpen((o) => !o);
+        }}
+        title="Wellbeing: desk stretches"
         style={{
           position: 'relative',
           width: '40px',

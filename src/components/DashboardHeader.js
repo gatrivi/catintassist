@@ -16,6 +16,8 @@ import { SettingsButton } from './SettingsButton';
 import { WorkspaceViewSwitcher } from './WorkspaceViewSwitcher';
 import { ConnectInterpretButton } from './ConnectInterpretButton';
 import { ConnectionDiagnosticsBar } from './ConnectionDiagnosticsBar';
+import { AudioRouteStatusBar } from './AudioRouteStatusBar';
+import { playTestToneLocal, playTestToneSink } from '../utils/audioSelfTest';
 import { SlotMicroValue } from './SlotMicroValue';
 import { hasConfiguredDeepgramKey, isRememberExpired } from '../utils/deepgramRuntimeKey';
 const CelebrationParticles = ({ type, label, coins, onDismiss }) => {
@@ -271,6 +273,11 @@ const SessionControlsSticky = React.memo(({
   setCallModeExpanded,
   isNotesOpen,
   setIsNotesOpen,
+
+  tabStreamReady = false,
+  lastDataTime = 0,
+  onOpenSoundboard,
+  onExpandAudioDevices,
 }) => {
   const showConnecting = isActive && connectionState !== 'connected';
   const slackText = `SLACK ${formatTime(silenceCount)}`;
@@ -292,6 +299,7 @@ const SessionControlsSticky = React.memo(({
 
   return (
     <div className="session-controls-sticky" style={undefined}>
+      <div className="session-controls-sticky-row" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.5rem', width: '100%' }}>
       <div style={{ display: 'flex', gap: '3px', alignItems: 'center', flexShrink: 0 }}>
         {!isActive && (
           <button
@@ -555,9 +563,33 @@ const SessionControlsSticky = React.memo(({
         >
           📝
         </button>
-        <AppGuideButton />
+        <AppGuideButton autoOpenIfNew />
         <SettingsButton />
       </div>
+      </div>
+      <AudioRouteStatusBar
+        micTestMode={micTestMode}
+        tabStreamReady={tabStreamReady}
+        audioAttached={audioAttached}
+        connectionState={connectionState}
+        connectProgress={connectProgress}
+        lastDataTime={lastDataTime}
+        isActive={isActive}
+        isZombieCall={isZombieCall}
+        onReconnectStream={onReconnectStream}
+        onOpenAudioSettings={onExpandAudioDevices}
+        onTestLocal={() => playTestToneLocal()}
+        onTestRoute={async () => {
+          const sinkId = localStorage.getItem('CATINTASSIST_SINK_ID');
+          if (!sinkId) {
+            onExpandAudioDevices?.();
+            return;
+          }
+          await playTestToneSink(sinkId);
+        }}
+        onOpenSoundboard={!isActive ? onOpenSoundboard : undefined}
+        compact
+      />
     </div>
   );
 });
@@ -585,6 +617,7 @@ export const DashboardHeader = ({
   audioAttached = false,
   apiKeyRejected = false,
   settingsOpen = false,
+  onOpenSoundboard,
 }) => {
   const { isActive, sessionSeconds, sessionEarnings, stats, updateStat, stopSession, endDay, RATE_PER_MINUTE, arsRate, setArsRate, isBreakActive, breakSeconds, startBreak, stopBreak, availSeconds, isEditingScoreboard, setIsEditingScoreboard, visibleCards, isNotesOpen, setIsNotesOpen, isToolbarVisible, setIsToolbarVisible, isHeatmapOpen, setIsHeatmapOpen, isZombieCall, isScoreboardHelpVisible, setIsScoreboardHelpVisible, isHold, setIsHold, holdSeconds, dailyTimeline, historyTimeline, dailyLog, lastActivityTime, lastEnglishActivityTime, isCallDetectionEnabled, setIsCallDetectionEnabled, callFocusMode, setCallFocusMode, minutesSinceLastBreak, requestHipaaDisconnectGrace, vaultStatus } = useSession();
 
@@ -611,6 +644,16 @@ export const DashboardHeader = ({
   const [hoveredTimelineEvent, setHoveredTimelineEvent] = useState(null);
   const [hoveredMetricTooltip, setHoveredMetricTooltip] = useState(null); // {x,y,placement,icon,heading,body,color}
   const [isZapping, setIsZapping] = useState(false);
+  const handleZap = useCallback(async () => {
+    setIsZapping(true);
+    try {
+      await onReconnectStream?.();
+    } finally {
+      setTimeout(() => setIsZapping(false), 1200);
+    }
+  }, [onReconnectStream]);
+
+  const weeklyGoalHours = Math.round((stats.goalMinutes * 5) / (60 * 22));
   const [scoreboardRoot, setScoreboardRoot] = useState(null);
 
   useEffect(() => {
@@ -1270,6 +1313,26 @@ export const DashboardHeader = ({
       {/* COLLAPSED VIEW (hidden when in compact call mode) */}
       {(!isActive || callModeExpanded) && isCollapsed && (
         <div className="condensed-header-card">
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', padding: '0.15rem 0.35rem 0', flexWrap: 'wrap' }}>
+            <button
+              type="button"
+              className="goal-weekly-pill"
+              onClick={() => setIsTodayDialOpen(true)}
+              title="Weekly commitment — open goal picker wheel"
+              style={{
+                background: 'rgba(139, 92, 246, 0.15)',
+                border: '1px solid rgba(167, 139, 250, 0.35)',
+                borderRadius: 6,
+                color: '#c4b5fd',
+                cursor: 'pointer',
+                fontSize: '0.65rem',
+                fontWeight: 800,
+                padding: '0.2rem 0.5rem',
+              }}
+            >
+              🎯 {weeklyGoalHours}h/wk goal
+            </button>
+          </div>
           
           {/* Full-width scoreboard (numbers / game flip) */}
           <div id="header-scoreboard-center" data-guide="scoreboard" className="condensed-scoreboard-panel">
@@ -2309,7 +2372,7 @@ ${isInDeficit ? `⚠️ DEFICIT: Behind pace by ${Math.round(monthlyDeficitMins)
         setIsHold={setIsHold}
         disableZap={false}
         isZapping={isZapping}
-        onReconnectStream={onReconnectStream}
+        onReconnectStream={handleZap}
 
         silenceCount={silenceCount}
         lastEnglishActivityTime={lastEnglishActivityTime}
@@ -2319,6 +2382,11 @@ ${isInDeficit ? `⚠️ DEFICIT: Behind pace by ${Math.round(monthlyDeficitMins)
         setCallModeExpanded={setCallModeExpanded}
         isNotesOpen={isNotesOpen}
         setIsNotesOpen={setIsNotesOpen}
+
+        tabStreamReady={tabStreamReady}
+        lastDataTime={lastDataTime}
+        onOpenSoundboard={onOpenSoundboard}
+        onExpandAudioDevices={() => setIsCollapsed(false)}
       />
 
       {!headerMinimal && !scoreboardFill && renderWorkspaceBody()}

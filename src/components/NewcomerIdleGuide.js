@@ -1,4 +1,5 @@
 import React from 'react';
+import { dismissNewcomerGuidePermanent } from '../utils/newcomerGuide';
 
 /**
  * Plain-language onboarding when the transcript area is empty.
@@ -9,6 +10,7 @@ export const NewcomerIdleGuide = ({
   micTestMode = false,
   connectionState = 'disconnected',
   isActive = false,
+  onHideSession,
 }) => {
   const step = isActive ? 3 : audioAttached ? 2 : 1;
   const connecting = connectionState === 'connecting';
@@ -23,6 +25,17 @@ export const NewcomerIdleGuide = ({
     color: step === n ? '#e2e8f0' : 'rgba(255,255,255,0.55)',
   });
 
+  const dismissBtn = {
+    background: 'transparent',
+    border: '1px solid rgba(255,255,255,0.15)',
+    borderRadius: 4,
+    color: 'rgba(255,255,255,0.65)',
+    cursor: 'pointer',
+    fontSize: '0.65rem',
+    fontWeight: 700,
+    padding: '0.2rem 0.45rem',
+  };
+
   return (
     <div
       style={{
@@ -31,6 +44,7 @@ export const NewcomerIdleGuide = ({
         padding: '1rem 1.25rem',
         textAlign: 'left',
         fontFamily: 'var(--font-mono, monospace)',
+        position: 'relative',
       }}
     >
       <div style={{ fontSize: '0.95rem', fontWeight: 800, color: '#fff', marginBottom: '0.35rem' }}>
@@ -90,6 +104,24 @@ export const NewcomerIdleGuide = ({
       >
         <strong>On a phone or no tab to share?</strong> Tap the mic button, then the green button.
         Your microphone will listen instead of another tab.
+      </div>
+
+      <div style={{ display: 'flex', gap: '0.4rem', marginTop: '0.75rem', flexWrap: 'wrap' }}>
+        {onHideSession && (
+          <button type="button" style={dismissBtn} onClick={onHideSession}>
+            Hide
+          </button>
+        )}
+        <button
+          type="button"
+          style={{ ...dismissBtn, borderColor: 'rgba(148,163,184,0.35)' }}
+          onClick={() => {
+            dismissNewcomerGuidePermanent();
+            onHideSession?.();
+          }}
+        >
+          Don&apos;t show again
+        </button>
       </div>
     </div>
   );

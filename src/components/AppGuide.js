@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useState } from 'react';
+import { isAppGuideDone, markAppGuideDone } from '../utils/appGuideStorage';
 
 const GUIDE_STEPS = [
   {
@@ -39,7 +40,7 @@ const GUIDE_STEPS = [
   {
     target: '[data-guide="scoreboard"]',
     title: '7 · Scoreboard & goals',
-    body: 'Track minutes, AR$ bounty, breaks, and pace. Flip to numbers with 123. Red drift label counts idle time off-call. Vignette color = call / break / idle.',
+    body: 'Track minutes, AR$ bounty, breaks, and pace. Tap 🎯 weekly goal pill for the commitment wheel. Vignette color = call / break / idle.',
   },
   {
     target: null,
@@ -88,10 +89,14 @@ const AppGuideOverlay = ({ onClose }) => {
     };
   }, [step, measureTarget]);
 
+  const finishGuide = () => {
+    markAppGuideDone();
+    onClose();
+  };
+
   const goNext = () => {
     if (isLast) {
-      try { localStorage.setItem('catint_guide_done', '1'); } catch (_) {}
-      onClose();
+      finishGuide();
       return;
     }
     setStep((s) => s + 1);
@@ -114,7 +119,7 @@ const AppGuideOverlay = ({ onClose }) => {
 
   return (
     <div className="app-guide-root" role="dialog" aria-modal="true" aria-label="App guide">
-      <button type="button" className="app-guide-backdrop" onClick={onClose} aria-label="Close guide" />
+      <button type="button" className="app-guide-backdrop" onClick={finishGuide} aria-label="Close guide" />
       {spot && (
         <div
           className="app-guide-spotlight"
@@ -135,7 +140,7 @@ const AppGuideOverlay = ({ onClose }) => {
         <h2 className="app-guide-title">{current.title}</h2>
         <p className="app-guide-body">{current.body}</p>
         <div className="app-guide-actions">
-          <button type="button" className="app-guide-btn ghost" onClick={onClose}>Skip</button>
+          <button type="button" className="app-guide-btn ghost" onClick={finishGuide}>Skip</button>
           {step > 0 && (
             <button type="button" className="app-guide-btn ghost" onClick={goPrev}>Back</button>
           )}
@@ -149,8 +154,14 @@ const AppGuideOverlay = ({ onClose }) => {
 };
 
 /** Help control for scoreboard / header (not the transcript footer). */
-export const AppGuideButton = () => {
+export const AppGuideButton = ({ autoOpenIfNew = false }) => {
   const [open, setOpen] = useState(false);
+
+  useEffect(() => {
+    if (autoOpenIfNew && !isAppGuideDone()) {
+      setOpen(true);
+    }
+  }, [autoOpenIfNew]);
 
   return (
     <>

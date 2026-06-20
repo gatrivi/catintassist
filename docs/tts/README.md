@@ -17,9 +17,10 @@ Success criteria:
    - selected sink (virtual mic)
 4. No cloud API key required
 
-## Integration back into CatIntAssist
-Replace `prefetchTTS` in `src/hooks/useTTS.js` with a fetch to the local TTS server,
-then keep existing dual-`<audio>` + `setSinkId` play path in `playTTS`.
+## Integration back into CatIntAssist (v4.58.0)
+- **Settings → Behavior → Test TTS route** — speaks a sample phrase via browser `SpeechSynthesis` through the same dual-audio path as bubble play (local + virtual sink).
+- Replace `prefetchTTS` in [`src/hooks/useTTS.js`](../../src/hooks/useTTS.js) with a fetch to the local TTS server when Inworld or self-hosted TTS returns.
+- Keep existing dual-`<audio>` + `setSinkId` play path in `playTTS`.
 
 Env:
 - `REACT_APP_TTS_URL=http://127.0.0.1:59125` (example)
