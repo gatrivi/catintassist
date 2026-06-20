@@ -867,7 +867,9 @@ export const DashboardHeader = ({
   const currentBounty = Math.max(0, dailyTargetArs - liveDailyArs);
   const arsPerSecond = (RATE_PER_MINUTE / 60) * arsRate;
   const sessionArsLive = Math.round(sessionEarnings * arsRate);
-  const todayArsLive = liveDailyArs + (isActive ? sessionArsLive : 0);
+  // liveDailyArs already includes the current call (totalDailyMins = dailyMinutes + unbankedMins),
+  // so this is the live "$ today" figure as-is — don't add sessionArsLive again or it double-counts.
+  const todayArsLive = liveDailyArs;
 
   const renderLiveArs = (discreteValue, size = 'lg', prefix = '$') =>
     isActive ? (
