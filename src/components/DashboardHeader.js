@@ -390,11 +390,7 @@ const SessionControlsSticky = React.memo(({
             <button
               id="header-zap-btn"
               className={`btn-emoji ${isZapping ? 'zap-active' : ''}`}
-              onClick={disableZap ? undefined : () => {
-                // ZAP is intentionally disabled (no effective behavior).
-                if (disableZap) return;
-                onReconnectStream();
-              }}
+              onClick={disableZap ? undefined : () => onReconnectStream()}
               disabled={disableZap}
               style={{
                 background: '#0ea5e9',
@@ -2311,7 +2307,7 @@ ${isInDeficit ? `⚠️ DEFICIT: Behind pace by ${Math.round(monthlyDeficitMins)
         handleStop={handleStop}
         isHold={isHold}
         setIsHold={setIsHold}
-        disableZap={true}
+        disableZap={false}
         isZapping={isZapping}
         onReconnectStream={onReconnectStream}
 

@@ -1,5 +1,6 @@
 import React from 'react';
 import { getTranslationEngineHealth } from '../utils/translationEngines';
+import { APP_VERSION } from '../constants/version';
 
 const REASON_LABEL = {
   rate_limit: 'rate limited (429)',
@@ -44,7 +45,7 @@ export const TranslationStatusBar = ({ meta = null, compact = false }) => {
       }}
     >
       <div style={{ fontWeight: 800, color: '#93c5fd', marginBottom: 4 }}>
-        Translation engines [v4.55.0]
+        Translation engines [v{APP_VERSION}]
       </div>
       <div>{keyLine}</div>
       <div style={{ marginTop: 2 }}>Chain: {chainLine}</div>

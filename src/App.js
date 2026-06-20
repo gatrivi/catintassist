@@ -33,6 +33,8 @@ import {
   isValidDeepgramApiKey,
   isRememberExpired,
 } from "./utils/deepgramRuntimeKey";
+import { APP_VERSION_LABEL } from "./constants/version";
+import { isPersonalDockEnabled } from "./utils/personalDock";
 import "./index.css";
 
 const CloudSyncIndicator = () => {
@@ -96,6 +98,7 @@ const Dashboard = () => {
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [settingsSection, setSettingsSection] = useState("deepgram");
   const [paneOrder, setPaneOrder] = useState(loadPaneOrder);
+  const [showPersonalDock, setShowPersonalDock] = useState(isPersonalDockEnabled);
   const [, setRuntimeKeyTick] = useState(0);
   useEffect(() => {
     const onRuntime = () => setRuntimeKeyTick((t) => t + 1);
@@ -113,11 +116,14 @@ const Dashboard = () => {
     window.addEventListener("cat_show_deepgram_key_vault", onShowVault);
     window.addEventListener("cat_show_settings", onShowSettings);
     window.addEventListener("cat_pane_order_changed", onPaneOrder);
+    const onPersonalDock = () => setShowPersonalDock(isPersonalDockEnabled());
+    window.addEventListener("cat_personal_dock_changed", onPersonalDock);
     return () => {
       window.removeEventListener("cat_deepgram_runtime_key_changed", onRuntime);
       window.removeEventListener("cat_show_deepgram_key_vault", onShowVault);
       window.removeEventListener("cat_show_settings", onShowSettings);
       window.removeEventListener("cat_pane_order_changed", onPaneOrder);
+      window.removeEventListener("cat_personal_dock_changed", onPersonalDock);
     };
   }, []);
 
@@ -430,17 +436,22 @@ const Dashboard = () => {
       <div
         style={{
           position: "fixed",
-          top: "1px",
-          right: "4px",
+          top: "4px",
+          right: "6px",
           zIndex: 10000,
-          fontSize: "0.55rem",
+          fontSize: "0.7rem",
           fontWeight: 900,
-          color: "rgba(255,255,255,0.2)",
+          color: "rgba(255,255,255,0.75)",
           textTransform: "uppercase",
           letterSpacing: "0.05em",
           display: "flex",
           alignItems: "center",
           gap: "4px",
+          background: "rgba(7, 14, 35, 0.65)",
+          border: "1px solid rgba(255,255,255,0.12)",
+          borderRadius: "6px",
+          padding: "2px 6px",
+          backdropFilter: "blur(6px)",
         }}
       >
         <button
@@ -464,7 +475,7 @@ const Dashboard = () => {
         </button>
         <span style={{ pointerEvents: "none", display: "flex", alignItems: "center", gap: "4px" }}>
           <CloudSyncIndicator />
-          v4.56.0 (Handoff)
+          {APP_VERSION_LABEL}
         </span>
       </div>
 
@@ -624,10 +635,14 @@ const Dashboard = () => {
       />
 
       <div className="habit-dock">
-        <DeskExerciseWidget />
-        <RosaryWidget />
-        <MealTrackerWidget />
-        <ChoreTrackerWidget />
+        {showPersonalDock && (
+          <>
+            <DeskExerciseWidget />
+            <RosaryWidget />
+            <MealTrackerWidget />
+            <ChoreTrackerWidget />
+          </>
+        )}
         {!(isActive || isZombieCall) && (
           <WorkspaceViewSwitcher
             view={workspaceView}

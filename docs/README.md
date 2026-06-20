@@ -1,4 +1,4 @@
-# CatIntAssist Docs (v4.56.0)
+# CatIntAssist Docs (v4.57.0)
 
 This is the single source of truth for *documentation + onboarding*.
 

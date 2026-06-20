@@ -369,7 +369,7 @@ export const hallucinationGuard = (text) => {
     !containsNumberSequence(text, 2)
   ) {
     // eslint-disable-next-line no-console
-    console.log('[PRUNED]', text, '→', cleaned.slice(0, 12).join(' '));
+    if (process.env.NODE_ENV !== 'production') console.log('[PRUNED]', text, '→', cleaned.slice(0, 12).join(' '));
     return `${cleaned.slice(0, 12).join(' ')}... [Stutter Pruned]`;
   }
 
@@ -398,7 +398,7 @@ export const removeOverlapPreservingDigitSequences = (base, addition) => {
     const overlapSlice = aWordsRaw.slice(0, bestOverlap);
     const overlapText = overlapSlice.join(' ');
     // eslint-disable-next-line no-console
-    console.log('[OVERLAP]', bestOverlap, 'words:', overlapText);
+    if (process.env.NODE_ENV !== 'production') console.log('[OVERLAP]', bestOverlap, 'words:', overlapText);
     if (/\d/.test(overlapText) || overlapSlice.some(isNumberLike)) {
       bestOverlap = 0;
     }

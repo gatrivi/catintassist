@@ -1,4 +1,4 @@
-# CatIntAssist — How to use it (v4.51.0)
+# CatIntAssist — How to use it (v4.57.0)
 
 **Welcome to CatIntAssist**, the cat's interpreter assistant.
 
@@ -43,7 +43,7 @@ Press the **red stop button** when the call ends.
 2. Paste your **Deepgram API key**.
 3. Close Settings and follow the three steps above.
 
-If your key is already in `.env` as `REACT_APP_DEEPGRAM_API_KEY`, you can skip this.
+If your key is already in `.env` as `REACT_APP_DEEPGRAM_API_KEY`, you can skip this. Copy `.env.example` to `.env` and paste your key.
 
 **Production translation:** Settings → Translation → paste a **DeepL API key** for reliable EN↔ES (free tier works). Without it, free mirrors may fail or rate-limit.
 
@@ -55,6 +55,6 @@ Default: interpret on top (80%), scoreboard below (20%).
 ---
 
 1. `npm install`
-2. Put keys in `.env`
+2. Copy `.env.example` to `.env` and add keys
 3. `npm start`
 4. Restart after `.env` changes

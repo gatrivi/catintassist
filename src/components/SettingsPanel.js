@@ -3,6 +3,8 @@ import { useSession } from '../contexts/SessionContext';
 import DeepgramKeyVault from './DeepgramKeyVault';
 import { TranslationKeysForm } from './TranslationKeysForm';
 import { TranslationStatusBar } from './TranslationStatusBar';
+import { APP_VERSION_LABEL } from '../constants/version';
+import { isPersonalDockEnabled, setPersonalDockEnabled } from '../utils/personalDock';
 import {
   loadPaneOrder,
   savePaneOrder,
@@ -23,6 +25,7 @@ export default function SettingsPanel({ open, onClose, initialSection = 'deepgra
   } = useSession();
   const [section, setSection] = useState(initialSection);
   const [paneOrder, setPaneOrder] = useState(loadPaneOrder);
+  const [personalDock, setPersonalDock] = useState(isPersonalDockEnabled);
 
   useEffect(() => {
     if (open) setSection(initialSection);
@@ -57,7 +60,7 @@ export default function SettingsPanel({ open, onClose, initialSection = 'deepgra
         }}
       >
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <h3 style={{ margin: 0, fontSize: 14 }}>Settings [v4.56.0]</h3>
+          <h3 style={{ margin: 0, fontSize: 14 }}>Settings [{APP_VERSION_LABEL}]</h3>
           <button type="button" onClick={onClose} style={tabBtn}>✕</button>
         </div>
 
@@ -125,6 +128,18 @@ export default function SettingsPanel({ open, onClose, initialSection = 'deepgra
             <p style={{ fontSize: 10, color: 'rgba(255,255,255,0.5)', marginTop: 6 }}>
               Requires audio attached. Trailing silence deducted on STOP if you forgot the button.
             </p>
+            <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12, cursor: 'pointer', marginTop: 14 }}>
+              <input
+                type="checkbox"
+                checked={personalDock}
+                onChange={(e) => {
+                  setPersonalDockEnabled(e.target.checked);
+                  setPersonalDock(e.target.checked);
+                  window.dispatchEvent(new CustomEvent('cat_personal_dock_changed'));
+                }}
+              />
+              Show personal habit dock (Rosary, chores, meals)
+            </label>
           </div>
         )}
 

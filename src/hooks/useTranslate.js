@@ -7,6 +7,7 @@ import {
 } from '../utils/translationQuality';
 import { translateWithFallback } from '../utils/translationEngines';
 import { dedupeInFlight, withTranslationSlot } from '../utils/translationRequestQueue';
+import { APP_VERSION } from '../constants/version';
 
 let TRANS_CACHE = {};
 
@@ -100,9 +101,17 @@ export const useTranslate = (
     const wordCount = normText.split(/\s+/).length;
     const force = forceTranslateKey > 0;
 
-    if (prevTextRef.current && !isIncrementalTranscriptGrowth(prevTextRef.current, normText)) {
+    const isSplitRewrite =
+      prevTextRef.current && !isIncrementalTranscriptGrowth(prevTextRef.current, normText);
+
+    if (isSplitRewrite) {
       lastTranslatedTextRef.current = '';
       lastWordCountRef.current = 0;
+      hasGoodTranslationRef.current = false;
+      // Bubble split: drop stale translation from the longer pre-split text.
+      setTranslation('');
+      setAudioUrl(null);
+      setTranslationMeta(emptyMeta);
     }
     prevTextRef.current = normText;
 
@@ -127,7 +136,7 @@ export const useTranslate = (
 
     if (IS_TOO_LONG || IS_FILLER || IS_TOO_SHORT) {
       setEngineStatus(IS_TOO_LONG ? 'ready' : 'idle');
-      if (IS_TOO_LONG) setTranslation('(Text too long for direct translation [v4.54.0])');
+      if (IS_TOO_LONG) setTranslation(`(Text too long for direct translation [v${APP_VERSION}])`);
       return;
     }
 

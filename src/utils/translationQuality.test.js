@@ -80,4 +80,11 @@ describe('isIncrementalTranscriptGrowth', () => {
     const short = 'Account indicated your policy for insurance premiums for your policy.';
     expect(isIncrementalTranscriptGrowth(long, short)).toBe(false);
   });
+
+  test('detects comma-chunk split (long breath → first chunk only)', () => {
+    const long =
+      'We need your member ID, date of birth, and the name on the account for verification today.';
+    const firstChunk = 'We need your member ID, date of birth,';
+    expect(isIncrementalTranscriptGrowth(long, firstChunk)).toBe(false);
+  });
 });
