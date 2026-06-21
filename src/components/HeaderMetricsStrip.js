@@ -1,4 +1,5 @@
 import React from 'react';
+import { WorkspaceViewSwitcher } from './WorkspaceViewSwitcher';
 
 /** Single 6px bar — no floating milestone labels (fits 180px header budget). */
 const CompactBar = ({ fill = 0, pending = null, color = '#a855f7', title, onMouseEnter, onMouseLeave }) => {
@@ -46,6 +47,11 @@ export const HeaderMetricsStrip = ({
   onToggleExpand,
   onBarHover,
   onBarLeave,
+  scoreView = 'game',
+  onScoreViewChange,
+  studioView = 'scoreboard',
+  onCycleWorkspace,
+  showStudioHint = false,
 }) => {
   const arsLabel = liveDailyArs >= 1000
     ? `AR$${Math.round(liveDailyArs / 1000)}k`
@@ -70,6 +76,53 @@ export const HeaderMetricsStrip = ({
           {expanded ? '▲ Less' : '▼ Metrics'}
         </button>
       </div>
+      {(onScoreViewChange || onCycleWorkspace) && (
+        <div className="header-metrics-quick-row">
+          {onScoreViewChange && (
+            <>
+              <button
+                type="button"
+                className={`header-metrics-quick-btn${scoreView === 'game' ? ' is-active' : ''}`}
+                onClick={() => onScoreViewChange('game')}
+                title="Game scoreboard (bounty HUD)"
+                aria-pressed={scoreView === 'game'}
+              >
+                🎮
+              </button>
+              <button
+                type="button"
+                className={`header-metrics-quick-btn${scoreView === 'numbers' ? ' is-active' : ''}`}
+                onClick={() => onScoreViewChange('numbers')}
+                title="Numbers grid (12 metrics)"
+                aria-pressed={scoreView === 'numbers'}
+              >
+                #
+              </button>
+            </>
+          )}
+          {onCycleWorkspace && (
+            <WorkspaceViewSwitcher
+              view={studioView}
+              onCycle={onCycleWorkspace}
+              variant="inline"
+              showHint={showStudioHint}
+            />
+          )}
+          <button
+            type="button"
+            className="header-metrics-quick-btn header-metrics-quick-btn--help"
+            data-guide="help"
+            onClick={() => {
+              try {
+                window.dispatchEvent(new CustomEvent('cat_open_app_guide'));
+              } catch (_) {}
+            }}
+            title="Help tour (EN / ES)"
+          >
+            ?
+          </button>
+        </div>
+      )}
       <div className="header-metrics-bars">
         <CompactBar
           fill={monthlyFill}

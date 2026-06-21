@@ -853,6 +853,20 @@ export const DashboardHeader = ({
     });
   }, []);
 
+  const expandOffCallMetrics = useCallback(() => {
+    setOffCallMetricsExpanded(true);
+    try {
+      localStorage.setItem(OFF_CALL_METRICS_EXPANDED_KEY, 'true');
+    } catch {
+      /* ignore */
+    }
+  }, []);
+
+  const handleQuickScoreView = useCallback((view) => {
+    setScoreView(view);
+    expandOffCallMetrics();
+  }, [expandOffCallMetrics]);
+
   useEffect(() => {
     const iv = setInterval(() => {
       setSilenceCount(Math.floor((Date.now() - lastActivityTime) / 1000));
@@ -868,8 +882,22 @@ export const DashboardHeader = ({
   useEffect(() => {
     const onPrepare = (e) => {
       const d = e.detail || {};
-      if (d.expandMetrics === true) setOffCallMetricsExpanded(true);
-      if (d.expandMetrics === false) setOffCallMetricsExpanded(false);
+      if (d.expandMetrics === true) {
+        setOffCallMetricsExpanded(true);
+        try {
+          localStorage.setItem(OFF_CALL_METRICS_EXPANDED_KEY, 'true');
+        } catch {
+          /* ignore */
+        }
+      }
+      if (d.expandMetrics === false) {
+        setOffCallMetricsExpanded(false);
+        try {
+          localStorage.setItem(OFF_CALL_METRICS_EXPANDED_KEY, 'false');
+        } catch {
+          /* ignore */
+        }
+      }
       if (d.scoreView === 'game' || d.scoreView === 'numbers') setScoreView(d.scoreView);
     };
     window.addEventListener('cat_guide_prepare_view', onPrepare);
@@ -1540,6 +1568,11 @@ export const DashboardHeader = ({
         onToggleExpand={toggleOffCallMetricsExpanded}
         onBarHover={showProgressBarTooltip}
         onBarLeave={hideMetricTooltip}
+        scoreView={scoreView}
+        onScoreViewChange={handleQuickScoreView}
+        studioView={studioView}
+        onCycleWorkspace={onCycleWorkspace}
+        showStudioHint={showStudioHint}
       />
     );
   };
