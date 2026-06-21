@@ -1,6 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { AppGuideButton } from './AppGuide';
 import { SettingsButton } from './SettingsButton';
+import { GridIcon, SunIcon, CalendarIcon } from './HeaderIcons';
+import {
+  IDLE_CHECKLIST,
+  IDLE_TIP_LEVEL_KEY,
+  IDLE_TIP_SNOOZE_UNTIL_KEY,
+  IDLE_TIPS,
+} from '../utils/offCallIdleMessages';
 import { ConnectionDiagnosticsBar } from './ConnectionDiagnosticsBar';
 import { StatNumber } from './StatNumber';
 import { ConnectInterpretButton } from './ConnectInterpretButton';
@@ -139,21 +146,6 @@ const EmojiRow = ({ emoji, emptyEmoji, value, unitValue, maxValue, color = '#fff
 
 // ─── DirectionalCue ──────────────────────────────────────────────────────────
 // Directional cue shown under the scoreboard header.
-const IDLE_TIPS = [
-  'At 9am the app auto-attaches your interpreting tab only if Auto-attach is enabled — watch the status bar above.',
-  'Press C or ▶ CONNECT to attach; press again (CALL START) when the patient connects.',
-  'Press M or 🎤 to use your device microphone instead of tab audio.',
-  'Double-tap CONNECT to re-open the browser tab picker (Chrome preferred).',
-  'Use Space/Alt+Space to toggle EN/ES detection while you wait.',
-  'Pin key details with 📍 so voicemail numbers stay visible.',
-  'Soundboard Studio (dock switch) — record greetings off-call only.',
-];
-
-const IDLE_CHECKLIST = [
-  '① CONNECT tab · ② CALL START when patient is on · ③ STOP when done',
-  'Status bar alternates connect vs mic tips until audio is attached.',
-  'After attach: status says CALL START — timer begins only then.',
-];
 
 const DirectionalCue = ({
   connectionState,
@@ -172,9 +164,6 @@ const DirectionalCue = ({
     const iv = setInterval(() => setRotateTick((n) => n + 1), 12000);
     return () => clearInterval(iv);
   }, []);
-
-  const IDLE_TIP_LEVEL_KEY = 'catint_idle_tip_level_v1';
-  const IDLE_TIP_SNOOZE_UNTIL_KEY = 'catint_idle_tip_snoozed_until_v1';
 
   const [idleLevel, setIdleLevel] = useState(() => {
     try {
@@ -556,7 +545,7 @@ export const GameScoreboard = ({
               background: tab === t ? 'rgba(255,255,255,0.1)' : 'transparent',
               color: tab === t ? '#fff' : 'rgba(255,255,255,0.35)',
               cursor: 'pointer', fontWeight: tab === t ? 700 : 400, textTransform: 'uppercase'
-            }}>{t === 'day' ? '☀️ Day' : '🗓️ Month'}</button>
+            }}>{t === 'day' ? <><SunIcon size={12} /> Day</> : <><CalendarIcon size={12} /> Month</>}</button>
           ))}
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
@@ -565,8 +554,8 @@ export const GameScoreboard = ({
           <button onClick={onSwitchToNumbers} style={{
             fontSize: '0.52rem', padding: '0.1rem 0.35rem', borderRadius: '3px',
             border: '1px solid rgba(255,255,255,0.1)', background: 'transparent',
-            color: 'rgba(255,255,255,0.25)', cursor: 'pointer'
-          }} title="Switch to number view">123</button>
+            color: 'rgba(255,255,255,0.45)', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: '3px'
+          }} title="Switch to number view"><GridIcon size={12} /> Grid</button>
         </div>
       </div>
 

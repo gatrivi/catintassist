@@ -1,4 +1,5 @@
 import React from 'react';
+import { StudioIcon } from './HeaderIcons';
 
 export const OFF_CALL_VIEWS = ['scoreboard', 'soundboard'];
 
@@ -6,36 +7,6 @@ const VIEW_META = {
   scoreboard: { label: 'Scoreboard', next: 'Soundboard Studio' },
   soundboard: { label: 'Soundboard Studio', next: 'Scoreboard' },
 };
-
-/** Art-deco studio icon — pyramid + tier lines; center gem marks soundboard mode. */
-const StudioIcon = ({ view }) => (
-  <svg width="22" height="22" viewBox="0 0 24 24" aria-hidden>
-    <path
-      d="M12 2 L20 8 L17 22 H7 L4 8 Z"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="1.2"
-      strokeLinejoin="miter"
-    />
-    <path
-      d="M8 10 H16 M9 14 H15 M10 18 H14"
-      stroke="currentColor"
-      strokeWidth="1"
-      strokeLinecap="square"
-      opacity={view === 'scoreboard' ? 1 : 0.35}
-    />
-    <circle
-      cx="12"
-      cy="7"
-      r="2.2"
-      fill={view === 'soundboard' ? 'currentColor' : 'none'}
-      stroke="currentColor"
-      strokeWidth="1"
-    />
-    <path d="M12 2 V5" stroke="currentColor" strokeWidth="0.8" opacity="0.5" />
-    <path d="M4 8 L7 10 M20 8 L17 10" stroke="currentColor" strokeWidth="0.8" opacity="0.45" />
-  </svg>
-);
 
 export const WorkspaceViewSwitcher = ({
   view = 'scoreboard',

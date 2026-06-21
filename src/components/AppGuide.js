@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useState } from 'react';
+import { HelpIcon } from './HeaderIcons';
 import { isAppGuideDone, markAppGuideDone } from '../utils/appGuideStorage';
 import { loadGuideLang, saveGuideLang } from '../utils/guideLangStorage';
 import { getGuideSteps, GUIDE_UI } from '../content/appGuideContent';
@@ -162,7 +163,7 @@ export const AppGuideButton = ({ className = '' }) => {
         title="Help tour — how to use CatIntAssist (EN/ES)"
         aria-label="Open app guide"
       >
-        ?
+        <HelpIcon size={14} />
       </button>
       {open && (
         <AppGuideOverlay

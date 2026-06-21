@@ -20,6 +20,8 @@ import {
   groupedLanguageOptions,
   getLangLabel,
 } from '../utils/languageConfig';
+import { DevSimulatePanel } from './DevSimulatePanel';
+import { isDevSimEnabled } from '../utils/devSimulateCaptions';
 
 const MOODS = ['auto', 'default', 'fast', 'chill'];
 const MOOD_LABELS = { auto: 'Trans Auto', default: 'Default', fast: 'Fast', chill: 'Chill' };
@@ -275,6 +277,7 @@ export default function SettingsPanel({ open, onClose, initialSection = 'deepgra
                 </button>
               </div>
             )}
+            {isDevSimEnabled() && <DevSimulatePanel />}
             <div style={{ marginTop: 14, paddingTop: 10, borderTop: '1px solid rgba(255,255,255,0.08)' }}>
               <div style={{ fontSize: 11, color: '#93c5fd', marginBottom: 6 }}>TTS route test</div>
               <button

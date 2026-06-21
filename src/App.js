@@ -20,6 +20,7 @@ import {
   markStudioHintSeen,
 } from "./components/WorkspaceViewSwitcher";
 import { useDeepgram } from "./hooks/useDeepgram";
+import { useDevSimulate } from "./hooks/useDevSimulate";
 import { useProgressiveAudio } from "./hooks/useProgressiveAudio";
 import { useAppUpdateCheck } from "./hooks/useAppUpdateCheck";
 import { UpdateAppBanner } from "./components/UpdateAppBanner";
@@ -80,6 +81,7 @@ const Dashboard = () => {
     setMicTestMode,
     tabStreamReady,
   } = useDeepgram();
+  useDevSimulate();
   const {
     isNotesOpen,
     setIsNotesOpen,

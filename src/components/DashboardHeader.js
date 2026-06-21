@@ -6,6 +6,33 @@ import { useRewardAudio } from '../hooks/useRewardAudio';
 import { useSession } from '../contexts/SessionContext';
 import { useAudioSettings } from '../contexts/AudioSettingsContext';
 import { formatTime } from './HeaderWidgets';
+import {
+  CoffeeIcon,
+  ChevronDownIcon,
+  ChevronUpIcon,
+  EditIcon,
+  FocusIcon,
+  FocusOffIcon,
+  GameIcon,
+  HelpIcon,
+  KeyIcon,
+  MicIcon,
+  MoonIcon,
+  NotesIcon,
+  PauseIcon,
+  SignalIcon,
+  SignalOffIcon,
+  StopIcon,
+  TargetIcon,
+  ToolsIcon,
+  ZapIcon,
+} from './HeaderIcons';
+import { buildHeaderStripMetrics } from '../utils/headerMetrics';
+import {
+  isIdleTipsMuted,
+  pickRotatingAdvice,
+  readIdleTipPrefs,
+} from '../utils/offCallIdleMessages';
 import { DialGoalSelector } from './DialGoalSelector';
 import { useProgressiveAudio } from '../hooks/useProgressiveAudio';
 import { MonthHeatmap } from './MonthHeatmap';
@@ -196,29 +223,8 @@ const buildOffCallStatus = ({
   micTestMode,
   slackText,
 }) => {
-  const IDLE_TIP_LEVEL_KEY = 'catint_idle_tip_level_v1';
-  const IDLE_TIP_SNOOZE_UNTIL_KEY = 'catint_idle_tip_snoozed_until_v1';
-  const OFF_CALL_ADVICE = [
-    'Tip: Press C or ▶ CONNECT to attach, then CALL START when the patient connects.',
-    'Tip: Press M or 🎤 for mic mode if tab audio is annoying/unavailable.',
-    'Tip: Double-tap CONNECT to re-open the browser tab picker (Chrome preferred).',
-    'Tip: Pin key details with 📍 so numbers stay visible while you wait.',
-    'Tip: Settings → Language to change transcription pair (default EN↔ES).',
-    'Tip: Space / Alt+Space force left/right STT lane (30s) — pair in Settings → Language.',
-    'Tip: Press ? or Take the tour in the welcome panel for the bilingual help guide.',
-  ];
-
-  const readIdlePref = () => {
-    try {
-      const level = localStorage.getItem(IDLE_TIP_LEVEL_KEY) || 'normal';
-      const snoozedUntil = Number(localStorage.getItem(IDLE_TIP_SNOOZE_UNTIL_KEY) || '0');
-      return { level, snoozedUntil };
-    } catch {
-      return { level: 'normal', snoozedUntil: 0 };
-    }
-  };
-  const { level: idleLevel, snoozedUntil } = readIdlePref();
-  const idleMuted = idleLevel === 'less' || snoozedUntil > Date.now();
+  const { level: idleLevel, snoozedUntil } = readIdleTipPrefs();
+  const idleMuted = isIdleTipsMuted({ level: idleLevel, snoozedUntil });
 
   if (settingsOpen && vaultNeedsDecrypt) {
     return 'Unlock Deepgram — enter password in Settings (gear, top-right)';
@@ -263,8 +269,7 @@ const buildOffCallStatus = ({
     : 'No tab yet? Press the mic button, then Click to connect tab';
   if (idleMuted) return `Ready — click to connect when you want · ${micHint}`;
 
-  const adviceIdx = Math.floor(Date.now() / 12000) % OFF_CALL_ADVICE.length;
-  return `${OFF_CALL_ADVICE[adviceIdx]} · ${micHint}`;
+  return `${pickRotatingAdvice()} · ${micHint}`;
 };
 
 const SessionControlsSticky = React.memo(({
@@ -375,7 +380,7 @@ const SessionControlsSticky = React.memo(({
             title={micTestMode ? 'Mic ON — Connect uses microphone (no tab picker)' : 'Mic OFF — Connect captures interpreter tab audio (Share audio)'}
             aria-pressed={micTestMode}
           >
-            🎤
+            <MicIcon size={14} />
           </button>
         )}
 
@@ -427,7 +432,7 @@ const SessionControlsSticky = React.memo(({
             }}
             title="Weekly hours commitment — tap to open goal picker wheel"
           >
-            🎯
+            <TargetIcon size={14} />
           </button>
         )}
 
@@ -474,7 +479,7 @@ const SessionControlsSticky = React.memo(({
               title="Deepgram Key Vault"
               aria-label="Deepgram Key Vault"
             >
-              🔑
+              <KeyIcon size={14} />
             </button>
           </>
         ) : (
@@ -487,7 +492,7 @@ const SessionControlsSticky = React.memo(({
               style={{ background: '#ef4444', color: '#fff', width: '30px', height: '30px' }}
               title="STOP / DISCONNECT"
             >
-              🛑
+              <StopIcon size={14} />
             </button>
             <button
               id="header-hold-btn"
@@ -502,7 +507,7 @@ const SessionControlsSticky = React.memo(({
                 border: '1px solid rgba(255,255,255,0.1)',
               }}
             >
-              {isHold ? 'H' : '⏸'}
+              {isHold ? 'H' : <PauseIcon size={14} />}
             </button>
             <button
               id="header-zap-btn"
@@ -517,7 +522,7 @@ const SessionControlsSticky = React.memo(({
               }}
               title={disableZap ? 'ZAP disabled' : 'ZAP - Reconnect Audio Stream'}
             >
-              ⚡
+              <ZapIcon size={14} />
             </button>
           </>
         )}
@@ -539,7 +544,14 @@ const SessionControlsSticky = React.memo(({
           disabled={isActive}
           title="BREAK"
         >
-          {shouldBreakNudge ? (breakNudgeStage >= 2 ? '☕ BREAK' : '☕ BREAK') : '☕'}
+          {shouldBreakNudge ? (
+            <span className="header-break-nudge">
+              <CoffeeIcon size={14} />
+              <span>BREAK</span>
+            </span>
+          ) : (
+            <CoffeeIcon size={14} />
+          )}
         </button>
 
         {showEndDayButton && (
@@ -550,7 +562,7 @@ const SessionControlsSticky = React.memo(({
             style={{ background: '#8b5cf6', color: '#fff', width: '30px', height: '30px' }}
             title="END DAY"
           >
-            🌙
+            <MoonIcon size={14} />
           </button>
         )}
       </div>
@@ -651,7 +663,7 @@ const SessionControlsSticky = React.memo(({
             style={{ width: '24px', height: '24px', fontSize: '0.7rem' }}
             title="Expand Header"
           >
-            🔼
+            <ChevronUpIcon size={14} />
           </button>
         )}
         {isActive && callModeExpanded && (
@@ -661,7 +673,7 @@ const SessionControlsSticky = React.memo(({
             style={{ width: '24px', height: '24px', fontSize: '0.7rem' }}
             title="Compact Header"
           >
-            🔽
+            <ChevronDownIcon size={14} />
           </button>
         )}
         <button
@@ -670,7 +682,7 @@ const SessionControlsSticky = React.memo(({
           style={{ opacity: isNotesOpen ? 1 : 0.45, width: '24px', height: '24px', fontSize: '0.75rem' }}
           title="Quick Notes"
         >
-          📝
+          <NotesIcon size={14} />
         </button>
         <AppGuideButton />
         <SettingsButton />
@@ -1540,54 +1552,38 @@ export const DashboardHeader = ({
     return () => window.removeEventListener('cat_demo_scenario', handleScenario);
   }, [onAttachAudio, onStartCall, audioAttached, onStopAudio, handleStop, handleStartBreak, stopBreak, stopSession, audioEngine]);
 
-  const renderOffCallCollapsedBody = () => {
-    const monthPct = ((stats.monthlyMinutes / (stats.goalMinutes || 1)) * 100).toFixed(1);
-    const stepFill = (stats.monthlyMinutes % 1375) / 1375;
-    const stepColor = stats.monthlyMinutes >= 11000 ? '#fcd34d' : (stats.monthlyMinutes >= 5500 ? '#a855f7' : '#3b82f6');
-    const dailyFill = Math.min(1, totalDailyMins / 480);
-    const dailyColor = stats.dailyMinutes >= 480 ? '#fcd34d' : (stats.dailyMinutes >= 350 ? '#c084fc' : '#60a5fa');
-    const monthlyColor = isMonthlyGoalMet ? '#10b981' : (isInDeficit ? '#f59e0b' : '#a855f7');
+  const renderHeaderMetricsStrip = (expandedFlag) => (
+    <HeaderMetricsStrip
+      {...buildHeaderStripMetrics({
+        stats,
+        totalDailyMins,
+        dailyGoal,
+        monthlyProgressRatio,
+        monthlyPendingRatio,
+        isMonthlyGoalMet,
+        isInDeficit,
+        currentIdx,
+        milestoneLabels,
+        liveDailyArs,
+      })}
+      expanded={expandedFlag}
+      onToggleExpand={toggleOffCallMetricsExpanded}
+      onBarHover={showProgressBarTooltip}
+      onBarLeave={hideMetricTooltip}
+      scoreView={scoreView}
+      onScoreViewChange={handleQuickScoreView}
+      studioView={studioView}
+      onCycleWorkspace={onCycleWorkspace}
+      showStudioHint={showStudioHint}
+    />
+  );
 
-    return (
-      <HeaderMetricsStrip
-        totalDailyMins={totalDailyMins}
-        dailyGoal={dailyGoal}
-        monthPct={monthPct}
-        liveDailyArs={liveDailyArs}
-        monthlyFill={monthlyProgressRatio}
-        monthlyPending={monthlyPendingRatio}
-        monthlyColor={monthlyColor}
-        monthlyTooltip={`Banked: ${Math.round(stats.monthlyMinutes)}m / ${Math.round(stats.goalMinutes)}m (${monthPct}%)`}
-        stepFill={stepFill}
-        stepColor={stepColor}
-        stepTooltip={`Step ${currentIdx + 1}/12 · ${Math.round(stats.monthlyMinutes % 1375)}m / 1375m · ${milestoneLabels[currentIdx]}`}
-        dailyFill={dailyFill}
-        dailyColor={dailyColor}
-        dailyTooltip={`Today: ${Math.round(totalDailyMins)}m banked · min ${Math.round(dailyGoal)}m · 480m focus`}
-        expanded={offCallMetricsExpanded}
-        onToggleExpand={toggleOffCallMetricsExpanded}
-        onBarHover={showProgressBarTooltip}
-        onBarLeave={hideMetricTooltip}
-        scoreView={scoreView}
-        onScoreViewChange={handleQuickScoreView}
-        studioView={studioView}
-        onCycleWorkspace={onCycleWorkspace}
-        showStudioHint={showStudioHint}
-      />
-    );
-  };
+  const renderOffCallCollapsedBody = () => renderHeaderMetricsStrip(false);
 
   const renderWorkspaceBody = () => (
       <div className={`dashboard-header-fill${offCallScoreboardView ? ' scoreboard-workspace scoreboard-workspace--header' : ''}`} data-guide={offCallScoreboardView ? 'scoreboard' : undefined}>
       <>
-      {offCallScoreboardView && offCallMetricsExpanded && (
-        <div className="header-metrics-strip-row" style={{ padding: '0 0.25rem 0.1rem' }}>
-          <span className="header-metrics-summary">Full metrics</span>
-          <button type="button" className="header-metrics-expand-btn" onClick={toggleOffCallMetricsExpanded}>
-            ▲ Less
-          </button>
-        </div>
-      )}
+      {offCallScoreboardView && offCallMetricsExpanded && renderHeaderMetricsStrip(true)}
       {/* COLLAPSED VIEW (hidden when in compact call mode) */}
       {(!isActive || callModeExpanded) && isCollapsed && (
         <div className="condensed-header-card">
@@ -1609,7 +1605,8 @@ export const DashboardHeader = ({
                 padding: '0.2rem 0.5rem',
               }}
             >
-              🎯 {weeklyGoalHours}h/wk goal
+              <TargetIcon size={12} />
+              <span>{weeklyGoalHours}h/wk goal</span>
             </button>
             )}
           </div>
@@ -1891,8 +1888,8 @@ export const DashboardHeader = ({
                     </div>
                     )}
                     <div id="cell-switch-game" className="metric-cell" style={{ cursor: 'pointer', background: 'rgba(255,255,255,0.04)', gridColumn: 'span 3', flexDirection: 'row', minHeight: '26px' }} onClick={() => setScoreView('game')} title="Switch back to gamified view">
-                      <span style={{ fontSize: '0.8rem', marginRight: '6px' }}>🎮</span>
-                      <div className="metric-cell-label" style={{ opacity: 0.8 }}>BACK TO GAME VIEW</div>
+                      <GameIcon size={14} />
+                      <div className="metric-cell-label" style={{ opacity: 0.8, marginLeft: '6px' }}>BACK TO GAME VIEW</div>
                     </div>
                     <div className="metric-cell metric-cell-studio" style={{ gridColumn: 'span 1', minHeight: '26px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '4px' }} title="Studio view switch">
                       {!isActive && onCycleWorkspace && (
@@ -2025,13 +2022,13 @@ export const DashboardHeader = ({
                     {id === 'minimal' ? 'Min' : id === 'standard' ? 'Std' : 'Full'}
                   </button>
                 ))}
-                <button id="header-notes-btn" className="btn-icon tiny-btn" onClick={() => setIsNotesOpen(!isNotesOpen)} style={{ opacity: isNotesOpen ? 1 : 0.3, width: '22px', height: '22px', fontSize: '0.8rem' }} title="Notes">📝</button>
-                <button id="header-tools-btn" className="btn-icon tiny-btn" onClick={toggleToolbar} style={{ opacity: isToolbarVisible ? 1 : 0.3, background: isToolbarVisible ? 'rgba(14,165,233,0.15)' : 'transparent', width: '22px', height: '22px', fontSize: '0.8rem' }} title="Show tools (notes + background)">🛠️</button>
-                <button id="header-help-btn" className="btn-icon tiny-btn" onClick={() => setIsScoreboardHelpVisible(!isScoreboardHelpVisible)} style={{ opacity: isScoreboardHelpVisible ? 1 : 0.3, background: isScoreboardHelpVisible ? 'rgba(59,130,246,0.15)' : 'transparent', width: '22px', height: '22px', fontSize: '0.8rem' }} title="Scoreboard help labels">❓</button>
-                <button id="header-edit-btn" className="btn-icon tiny-btn" onClick={() => { if(isCollapsed) setIsCollapsed(false); setIsEditingScoreboard(!isEditingScoreboard); }} style={{ opacity: isEditingScoreboard ? 1 : 0.3, width: '22px', height: '22px', fontSize: '0.8rem' }} title="Edit Grid">✏️</button>
-                <button id="header-expand-btn" className="btn-icon tiny-btn" onClick={() => setIsCollapsed(!isCollapsed)} style={{ width: '22px', height: '22px', fontSize: '0.8rem' }} title={isCollapsed ? "Expand HUD" : "Collapse HUD"}>{isCollapsed ? '🔼' : '▼'}</button>
-                <button id="header-calldetect-btn" className="btn-icon tiny-btn" onClick={() => setIsCallDetectionEnabled(!isCallDetectionEnabled)} style={{ opacity: isCallDetectionEnabled ? 1 : 0.3, background: isCallDetectionEnabled ? 'rgba(16,185,129,0.1)' : 'transparent', width: '22px', height: '22px', fontSize: '0.8rem' }} title="Call Detection">{isCallDetectionEnabled ? '📡' : '📵'}</button>
-                <button id="header-focus-btn" className="btn-icon tiny-btn" onClick={() => setCallFocusMode(!callFocusMode)} style={{ opacity: callFocusMode ? 1 : 0.3, background: callFocusMode ? 'rgba(16,185,129,0.1)' : 'transparent', width: '22px', height: '22px', fontSize: '0.8rem' }} title="Call Focus: auto-hide sidebars during calls">{callFocusMode ? '🎯' : '🔲'}</button>
+                <button id="header-notes-btn" className="btn-icon tiny-btn" onClick={() => setIsNotesOpen(!isNotesOpen)} style={{ opacity: isNotesOpen ? 1 : 0.3, width: '22px', height: '22px' }} title="Notes"><NotesIcon size={14} /></button>
+                <button id="header-tools-btn" className="btn-icon tiny-btn" onClick={toggleToolbar} style={{ opacity: isToolbarVisible ? 1 : 0.3, background: isToolbarVisible ? 'rgba(14,165,233,0.15)' : 'transparent', width: '22px', height: '22px' }} title="Show tools (notes + background)"><ToolsIcon size={14} /></button>
+                <button id="header-help-btn" className="btn-icon tiny-btn" onClick={() => setIsScoreboardHelpVisible(!isScoreboardHelpVisible)} style={{ opacity: isScoreboardHelpVisible ? 1 : 0.3, background: isScoreboardHelpVisible ? 'rgba(59,130,246,0.15)' : 'transparent', width: '22px', height: '22px' }} title="Scoreboard help labels"><HelpIcon size={14} /></button>
+                <button id="header-edit-btn" className="btn-icon tiny-btn" onClick={() => { if(isCollapsed) setIsCollapsed(false); setIsEditingScoreboard(!isEditingScoreboard); }} style={{ opacity: isEditingScoreboard ? 1 : 0.3, width: '22px', height: '22px' }} title="Edit Grid"><EditIcon size={14} /></button>
+                <button id="header-expand-btn" className="btn-icon tiny-btn" onClick={() => setIsCollapsed(!isCollapsed)} style={{ width: '22px', height: '22px' }} title={isCollapsed ? "Expand HUD" : "Collapse HUD"}>{isCollapsed ? <ChevronUpIcon size={14} /> : <ChevronDownIcon size={14} />}</button>
+                <button id="header-calldetect-btn" className="btn-icon tiny-btn" onClick={() => setIsCallDetectionEnabled(!isCallDetectionEnabled)} style={{ opacity: isCallDetectionEnabled ? 1 : 0.3, background: isCallDetectionEnabled ? 'rgba(16,185,129,0.1)' : 'transparent', width: '22px', height: '22px' }} title="Call Detection">{isCallDetectionEnabled ? <SignalIcon size={14} /> : <SignalOffIcon size={14} />}</button>
+                <button id="header-focus-btn" className="btn-icon tiny-btn" onClick={() => setCallFocusMode(!callFocusMode)} style={{ opacity: callFocusMode ? 1 : 0.3, background: callFocusMode ? 'rgba(16,185,129,0.1)' : 'transparent', width: '22px', height: '22px' }} title="Call Focus: auto-hide sidebars during calls">{callFocusMode ? <FocusIcon size={14} /> : <FocusOffIcon size={14} />}</button>
             </div>
           </div>
           </div>
@@ -2254,7 +2251,7 @@ export const DashboardHeader = ({
       )}
 
       {/* Progress bars */}
-      {dailyGoal > 0 && showProgressStack && (
+      {dailyGoal > 0 && showProgressStack && !offCallScoreboardView && (
         <div className="header-progress-stack" style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem', padding: '0.25rem 0.15rem 0.1rem' }}>
           {/* Monthly bar */}
           <div style={{ display: 'flex', flexDirection: 'column', gap: '0.15rem' }}>

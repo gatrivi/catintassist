@@ -8,6 +8,7 @@ import {
 import { translateWithFallback } from '../utils/translationEngines';
 import { dedupeInFlight, withTranslationSlot } from '../utils/translationRequestQueue';
 import { APP_VERSION } from '../constants/version';
+import { isDevSimEnabled } from '../utils/devSimulateCaptions';
 import {
   loadLanguagePair,
   normalizeLang,
@@ -80,7 +81,7 @@ export const useTranslate = (
   shouldPrefetch,
   mood = 'auto',
   forceTranslateKey = 0,
-  { isFinal = true } = {},
+  { isFinal = true, mockTranslation = null } = {},
 ) => {
   const [translation, setTranslation] = useState('');
   const [audioUrl, setAudioUrl] = useState(null);
@@ -117,6 +118,21 @@ export const useTranslate = (
       setEngineStatus('idle');
       setTranslationMeta(emptyMeta);
       prevTextRef.current = '';
+      return;
+    }
+
+    if (
+      mockTranslation != null &&
+      String(mockTranslation).trim() &&
+      isDevSimEnabled()
+    ) {
+      setTranslation(String(mockTranslation).trim());
+      setEngineStatus('ready');
+      setTranslationMeta({ engineId: 'dev-mock', quality: 'ok', failures: [], tried: ['dev-mock'] });
+      setIsTranslating(false);
+      prevTextRef.current = text.trim().replace(/\s+/g, ' ');
+      lastTranslatedTextRef.current = prevTextRef.current;
+      hasGoodTranslationRef.current = true;
       return;
     }
 
@@ -313,7 +329,7 @@ export const useTranslate = (
       if (debounceTimerRef.current) clearTimeout(debounceTimerRef.current);
       if (abortControllerRef.current) abortControllerRef.current.abort();
     };
-  }, [text, lang, shouldPrefetch, prefetchTTS, currentLangPair, mood, forceTranslateKey, isFinal, languagePair]);
+  }, [text, lang, shouldPrefetch, prefetchTTS, currentLangPair, mood, forceTranslateKey, isFinal, languagePair, mockTranslation]);
 
   return {
     translation,

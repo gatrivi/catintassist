@@ -196,6 +196,7 @@ const TranslatedBubble = ({
   isFinal = true,
   languagePair = null,
   protectionsActive = true,
+  mockTranslation = null,
 }) => {
   const { translationMood } = useSession();
   const { translation, audioUrl, engineStatus, translationMeta, targetLang } = useTranslate(
@@ -205,7 +206,7 @@ const TranslatedBubble = ({
     shouldPrefetch,
     translationMood,
     forceTranslateKey,
-    { isFinal },
+    { isFinal, mockTranslation },
   );
   const hasAutoPlayedRef = useRef(false);
 
@@ -672,6 +673,7 @@ export const TranscriptionBoard = ({
                   onManualRetranslate={() => bumpManualRetranslate(cap)}
                   languagePair={languagePair}
                   protectionsActive={protectionsActive}
+                  mockTranslation={cap._devMockTranslation}
                 />
                 <button
                   type="button"
@@ -754,6 +756,7 @@ export const TranscriptionBoard = ({
                   isFinal={cap.isFinal !== false}
                   languagePair={languagePair}
                   protectionsActive={protectionsActive}
+                  mockTranslation={cap._devMockTranslation}
                 />
               </div>
               
