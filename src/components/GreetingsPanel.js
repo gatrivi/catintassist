@@ -365,6 +365,9 @@ export const GreetingsPanel = ({ onEditModeChange, onExitStudio }) => {
 
   const handleClear = async (key) => {
     await deleteFile(key);
+    if (key === 'bg_app') {
+      window.dispatchEvent(new CustomEvent('cat_bg_changed'));
+    }
     setWaveforms((prev) => {
       const next = { ...prev };
       delete next[key];
@@ -757,7 +760,10 @@ export const GreetingsPanel = ({ onEditModeChange, onExitStudio }) => {
 
         <div id="settings-bg-app" className="sb-global-card sb-thumb-zone">
           <strong className="sb-zone-label">🖼️ Image only — app background</strong>
-          <p className="sb-zone-hint">Not a soundboard clip. Does not play on calls.</p>
+          <p className="sb-zone-hint">
+            Not a soundboard clip. Does not play on calls.
+            {!blobs.bg_app && ' Until you upload, stock photos from /bg rotate each visit.'}
+          </p>
           <div className="sb-thumb-row">
             <label className="sb-img-btn">
               Choose image

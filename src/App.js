@@ -24,6 +24,7 @@ import { useProgressiveAudio } from "./hooks/useProgressiveAudio";
 import { useAppUpdateCheck } from "./hooks/useAppUpdateCheck";
 import { UpdateAppBanner } from "./components/UpdateAppBanner";
 import { loadFile, generateObjectUrl } from "./utils/storage";
+import { resolveAppBackgroundPath } from "./utils/defaultBackgrounds";
 import SettingsPanel from "./components/SettingsPanel";
 import { OffCallWorkspace } from "./components/OffCallWorkspace";
 import {
@@ -173,9 +174,16 @@ const Dashboard = () => {
   }, [isActive, isZombieCall]);
 
   useEffect(() => {
+    let objectUrl = null;
     const applyBg = async () => {
       const bgApp = await loadFile("bg_app");
-      const url = bgApp ? generateObjectUrl(bgApp) : "/bg/default.svg";
+      if (objectUrl) {
+        URL.revokeObjectURL(objectUrl);
+        objectUrl = null;
+      }
+      const url = bgApp
+        ? (objectUrl = generateObjectUrl(bgApp))
+        : resolveAppBackgroundPath(null, { advance: true });
       document.body.style.backgroundImage = `url(${url})`;
       document.body.style.backgroundSize = "cover";
       document.body.style.backgroundPosition = "center";
@@ -184,7 +192,10 @@ const Dashboard = () => {
     applyBg();
 
     window.addEventListener("cat_bg_changed", applyBg);
-    return () => window.removeEventListener("cat_bg_changed", applyBg);
+    return () => {
+      window.removeEventListener("cat_bg_changed", applyBg);
+      if (objectUrl) URL.revokeObjectURL(objectUrl);
+    };
   }, []);
 
   // Matrix Mode Easter Egg
