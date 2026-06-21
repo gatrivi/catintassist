@@ -67,14 +67,14 @@ export const MonthHeatmap = () => {
     if (isFuture) return 'rgba(255,255,255,0.04)';
     if (mins === 0 && !isToday) return 'rgba(239,68,68,0.12)'; // worked nothing
     const ratio = requiredPerDay > 0 ? mins / requiredPerDay : 0;
-    if (isToday) return 'rgba(59,130,246,0.2)';
+    if (isToday) return 'rgba(239,68,68,0.2)';
     if (ratio >= 1)    return 'rgba(16,185,129,0.25)';  // hit goal — green
     if (ratio >= 0.6)  return 'rgba(245,158,11,0.2)';   // 60–99% — amber
     return 'rgba(239,68,68,0.18)';                       // <60% — red
   };
 
   const pebbleBorder = (mins, isToday, isFuture) => {
-    if (isToday) return '1px solid rgba(59,130,246,0.7)';
+    if (isToday) return '1px solid rgba(239,68,68,0.7)';
     if (isFuture) return '1px solid rgba(255,255,255,0.06)';
     const ratio = requiredPerDay > 0 ? mins / requiredPerDay : 0;
     if (mins === 0) return '1px solid rgba(239,68,68,0.2)';
@@ -245,7 +245,7 @@ export const MonthHeatmap = () => {
 
               if (editDay === d) {
                 return (
-                  <div key={d} style={{ borderRadius: '6px', border: '1px solid rgba(59,130,246,0.7)', background: 'rgba(59,130,246,0.15)', padding: '0.15rem', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.1rem' }}>
+                  <div key={d} style={{ borderRadius: '6px', border: '1px solid rgba(239,68,68,0.7)', background: 'rgba(239,68,68,0.15)', padding: '0.15rem', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.1rem' }}>
                     <span style={{ fontSize: '0.5rem', color: '#94a3b8' }}>{d}</span>
                     <input
                       ref={inputRef}

@@ -929,9 +929,9 @@ export const GreetingsPanel = ({ onEditModeChange, onExitStudio }) => {
         <div className="sb-vol-row">
           <span style={{ color: testMode ? '#f59e0b' : 'var(--text-muted)' }}>🔊 You (Local)</span>
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-            <input type="range" min="0" max="1" step="0.05" value={localVolume} onChange={(e) => changeLocalVolume(parseFloat(e.target.value))} style={{ width: '60px', accentColor: '#3b82f6' }} title="Your Speakers Volume" />
+            <input type="range" min="0" max="1" step="0.05" value={localVolume} onChange={(e) => changeLocalVolume(parseFloat(e.target.value))} style={{ width: '60px', accentColor: '#ef4444' }} title="Your Speakers Volume" />
             <div style={{ width: '30px', height: '6px', background: 'rgba(255,255,255,0.1)', borderRadius: '3px', overflow: 'hidden' }}>
-               <div style={{ width: playingKey ? `${localVolume * (40 + Math.random() * 60)}%` : '0%', height: '100%', background: testMode ? '#f59e0b' : '#3b82f6', transition: 'width 0.1s' }} />
+               <div style={{ width: playingKey ? `${localVolume * (40 + Math.random() * 60)}%` : '0%', height: '100%', background: testMode ? '#f59e0b' : '#ef4444', transition: 'width 0.1s' }} />
             </div>
           </div>
         </div>

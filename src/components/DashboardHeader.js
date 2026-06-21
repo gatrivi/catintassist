@@ -399,13 +399,13 @@ const SessionControlsSticky = React.memo(({
               letterSpacing: '0.04em',
               background:
                 sttLanguage === 'left'
-                  ? 'rgba(59, 130, 246, 0.25)'
+                  ? 'rgba(239, 68, 68, 0.25)'
                   : sttLanguage === 'right'
                     ? 'rgba(16, 185, 129, 0.25)'
                     : 'rgba(255,255,255,0.06)',
               border:
                 sttLanguage === 'left'
-                  ? '1px solid rgba(59, 130, 246, 0.55)'
+                  ? '1px solid rgba(239, 68, 68, 0.55)'
                   : sttLanguage === 'right'
                     ? '1px solid rgba(16, 185, 129, 0.55)'
                     : '1px solid rgba(255,255,255,0.1)',
@@ -515,7 +515,7 @@ const SessionControlsSticky = React.memo(({
               onClick={disableZap ? undefined : () => onReconnectStream()}
               disabled={disableZap}
               style={{
-                background: '#0ea5e9',
+                background: '#ef4444',
                 width: '30px',
                 height: '30px',
                 opacity: disableZap ? 0.25 : 1,
@@ -759,9 +759,9 @@ export const DashboardHeader = ({
   const showExpandedIncome = isComponentVisible('expanded_income_cards', visCtx) && !offCallScoreboardView;
   const showNumericGrid = isComponentVisible('scoreboard_numeric_grid', visCtx);
 
-  const helpStyle = isScoreboardHelpVisible ? { outline: '1px dashed #3b82f6', position: 'relative' } : {};
+  const helpStyle = isScoreboardHelpVisible ? { outline: '1px dashed #ef4444', position: 'relative' } : {};
   const HelpLabel = ({ text }) => isScoreboardHelpVisible ? (
-    <div style={{ position: 'absolute', top: '-8px', left: '4px', fontSize: '0.45rem', background: '#3b82f6', color: 'white', padding: '0 3px', borderRadius: '2px', zIndex: 100, pointerEvents: 'none', fontWeight: 'bold', textTransform: 'uppercase', boxShadow: '0 1px 3px rgba(0,0,0,0.3)' }}>{text}</div>
+    <div style={{ position: 'absolute', top: '-8px', left: '4px', fontSize: '0.45rem', background: '#ef4444', color: 'white', padding: '0 3px', borderRadius: '2px', zIndex: 100, pointerEvents: 'none', fontWeight: 'bold', textTransform: 'uppercase', boxShadow: '0 1px 3px rgba(0,0,0,0.3)' }}>{text}</div>
   ) : null;
   const MetricPct = ({ children }) => (
     <div className="metric-cell-pct">{children}</div>
@@ -973,7 +973,7 @@ export const DashboardHeader = ({
       const fillPct = Math.min(100, (dailyMins / (goalMins || 1)) * 100);
       return (
         <div style={{ position: 'absolute', inset: 0, background: 'rgba(255,255,255,0.05)' }}>
-           <div style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: `${fillPct}%`, background: dailyMins >= goalMins ? 'rgba(16, 185, 129, 0.4)' : 'rgba(59, 130, 246, 0.4)' }} />
+           <div style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: `${fillPct}%`, background: dailyMins >= goalMins ? 'rgba(16, 185, 129, 0.4)' : 'rgba(239, 68, 68, 0.4)' }} />
         </div>
       );
     }
@@ -998,7 +998,7 @@ export const DashboardHeader = ({
               style={{ 
                 position: 'absolute', left: `${s}%`, width: `${Math.max(0.5, e - s)}%`, 
                 top: 0, bottom: 0, 
-                background: evt.type === 'work' ? '#60a5fa' : (evt.type === 'break' ? '#fb923c' : 'transparent'),
+                background: evt.type === 'work' ? '#f87171' : (evt.type === 'break' ? '#fb923c' : 'transparent'),
                 opacity: 0.8,
                 zIndex: 10,
                 borderLeft: '1px solid rgba(255,255,255,0.2)'
@@ -1148,7 +1148,7 @@ export const DashboardHeader = ({
     1: {
       icon: '🕒',
       heading: 'MINS TODAY',
-      color: '#60a5fa',
+      color: '#f87171',
       body: 'Total minutes you have “banked” today so far (includes current call time). When this climbs toward your Daily Goal, your day quality and pacing stabilize.'
     },
     2: {
@@ -1659,8 +1659,8 @@ export const DashboardHeader = ({
                             onClick={() => applyScoreboardPreset(id)}
                             style={{
                               fontSize: '0.5rem', fontWeight: 700, padding: '1px 5px', borderRadius: 3, cursor: 'pointer',
-                              background: scoreboardPreset === id ? 'rgba(59,130,246,0.25)' : 'rgba(255,255,255,0.06)',
-                              border: scoreboardPreset === id ? '1px solid rgba(59,130,246,0.5)' : '1px solid rgba(255,255,255,0.1)',
+                              background: scoreboardPreset === id ? 'rgba(239,68,68,0.25)' : 'rgba(255,255,255,0.06)',
+                              border: scoreboardPreset === id ? '1px solid rgba(239,68,68,0.5)' : '1px solid rgba(255,255,255,0.1)',
                               color: scoreboardPreset === id ? '#93c5fd' : 'rgba(255,255,255,0.6)',
                             }}
                             title={`Apply ${label} scoreboard preset`}
@@ -1675,14 +1675,14 @@ export const DashboardHeader = ({
                     <div
                       className={`metric-cell ${isEditingScoreboard ? 'grid-edit-mode' : ''}`}
                       title="Minutes worked today (Click to toggle H:M)"
-                      style={{ position: 'relative', background: 'rgba(59,130,246,0.06)', cursor: 'pointer' }}
+                      style={{ position: 'relative', background: 'rgba(239,68,68,0.06)', cursor: 'pointer' }}
                       onClick={() => setShowAsHours(!showAsHours)}
                       onMouseEnter={(e) => showMetricTooltip(e, 1)}
                       onMouseLeave={hideMetricTooltip}
                     >
                       <MetricVisibilityToggle metricKey="m1" />
                       <HelpLabel text="1. MINS TODAY" />
-                      <div className="metric-cell-val" style={{ color: '#60a5fa' }}><StatNumber value={formatValue(totalDailyMins)} size="lg" format={false} /></div>
+                      <div className="metric-cell-val" style={{ color: '#f87171' }}><StatNumber value={formatValue(totalDailyMins)} size="lg" format={false} /></div>
                       <MetricPct>{metricPcts.minsToday}</MetricPct>
                       <div className="metric-cell-label">MINS TODAY</div>
                     </div>
@@ -1980,7 +1980,7 @@ export const DashboardHeader = ({
             {/* Rate Pills */}
             <div id="right-pills-vertical" style={{ display: 'flex', flexDirection: 'row', flexWrap: 'wrap', gap: '0.2rem', alignItems: 'center' }}>
               {callsToday > 0 ? (
-                <div id="pill-call-rate" className="metric-pill compact-pill" title={`CALL METRICS: You've taken ${callsToday} calls today. Your average call duration is ${avgCallMins} minutes per call.`} style={{ background: 'rgba(59,130,246,0.08)', border: '1px solid rgba(59,130,246,0.2)', padding: '0.05rem 0.15rem' }}>
+                <div id="pill-call-rate" className="metric-pill compact-pill" title={`CALL METRICS: You've taken ${callsToday} calls today. Your average call duration is ${avgCallMins} minutes per call.`} style={{ background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.2)', padding: '0.05rem 0.15rem' }}>
                   <span style={{ fontSize: '0.55rem', color: '#93c5fd', fontWeight: 700 }}>📞{callsToday}×{avgCallMins}m</span>
                 </div>
               ) : (
@@ -2015,7 +2015,7 @@ export const DashboardHeader = ({
                     style={{
                       height: '22px', fontSize: '0.45rem', fontWeight: 800, padding: '0 3px',
                       opacity: scoreboardPreset === id ? 1 : 0.4,
-                      background: scoreboardPreset === id ? 'rgba(59,130,246,0.2)' : 'transparent',
+                      background: scoreboardPreset === id ? 'rgba(239,68,68,0.2)' : 'transparent',
                     }}
                     title={`Scoreboard: ${label}`}
                   >
@@ -2023,8 +2023,8 @@ export const DashboardHeader = ({
                   </button>
                 ))}
                 <button id="header-notes-btn" className="btn-icon tiny-btn" onClick={() => setIsNotesOpen(!isNotesOpen)} style={{ opacity: isNotesOpen ? 1 : 0.3, width: '22px', height: '22px' }} title="Notes"><NotesIcon size={14} /></button>
-                <button id="header-tools-btn" className="btn-icon tiny-btn" onClick={toggleToolbar} style={{ opacity: isToolbarVisible ? 1 : 0.3, background: isToolbarVisible ? 'rgba(14,165,233,0.15)' : 'transparent', width: '22px', height: '22px' }} title="Show tools (notes + background)"><ToolsIcon size={14} /></button>
-                <button id="header-help-btn" className="btn-icon tiny-btn" onClick={() => setIsScoreboardHelpVisible(!isScoreboardHelpVisible)} style={{ opacity: isScoreboardHelpVisible ? 1 : 0.3, background: isScoreboardHelpVisible ? 'rgba(59,130,246,0.15)' : 'transparent', width: '22px', height: '22px' }} title="Scoreboard help labels"><HelpIcon size={14} /></button>
+                <button id="header-tools-btn" className="btn-icon tiny-btn" onClick={toggleToolbar} style={{ opacity: isToolbarVisible ? 1 : 0.3, background: isToolbarVisible ? 'rgba(239,68,68,0.15)' : 'transparent', width: '22px', height: '22px' }} title="Show tools (notes + background)"><ToolsIcon size={14} /></button>
+                <button id="header-help-btn" className="btn-icon tiny-btn" onClick={() => setIsScoreboardHelpVisible(!isScoreboardHelpVisible)} style={{ opacity: isScoreboardHelpVisible ? 1 : 0.3, background: isScoreboardHelpVisible ? 'rgba(239,68,68,0.15)' : 'transparent', width: '22px', height: '22px' }} title="Scoreboard help labels"><HelpIcon size={14} /></button>
                 <button id="header-edit-btn" className="btn-icon tiny-btn" onClick={() => { if(isCollapsed) setIsCollapsed(false); setIsEditingScoreboard(!isEditingScoreboard); }} style={{ opacity: isEditingScoreboard ? 1 : 0.3, width: '22px', height: '22px' }} title="Edit Grid"><EditIcon size={14} /></button>
                 <button id="header-expand-btn" className="btn-icon tiny-btn" onClick={() => setIsCollapsed(!isCollapsed)} style={{ width: '22px', height: '22px' }} title={isCollapsed ? "Expand HUD" : "Collapse HUD"}>{isCollapsed ? <ChevronUpIcon size={14} /> : <ChevronDownIcon size={14} />}</button>
                 <button id="header-calldetect-btn" className="btn-icon tiny-btn" onClick={() => setIsCallDetectionEnabled(!isCallDetectionEnabled)} style={{ opacity: isCallDetectionEnabled ? 1 : 0.3, background: isCallDetectionEnabled ? 'rgba(16,185,129,0.1)' : 'transparent', width: '22px', height: '22px' }} title="Call Detection">{isCallDetectionEnabled ? <SignalIcon size={14} /> : <SignalOffIcon size={14} />}</button>
@@ -2103,7 +2103,7 @@ export const DashboardHeader = ({
           <div style={{ display: 'flex', gap: '0.4rem', padding: '0.2rem 0', borderTop: '1px solid rgba(255,255,255,0.06)', borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
 
             {/* PACE ETA */}
-            <div className="income-card" style={{ flex: '1 1 0', minWidth: 0, background: 'rgba(59,130,246,0.06)' }}
+            <div className="income-card" style={{ flex: '1 1 0', minWidth: 0, background: 'rgba(239,68,68,0.06)' }}
               title={`PACE ETA: Predicts the exact clock time you will hit your daily goal if you maintain your current rate of earning minutes. Currently projecting ${pacePrediction.label}. ${pacePrediction.detail || ''}`}>
               <span className="income-label">🎯 PACE ETA</span>
               <span style={{ fontSize: '1rem', fontWeight: 800, color: pacePrediction.color }}>{pacePrediction.label}</span>
@@ -2111,7 +2111,7 @@ export const DashboardHeader = ({
             </div>
 
             {/* QUALITY */}
-            <div className="income-card" style={{ flex: '1 1 0', minWidth: 0, background: 'rgba(59,130,246,0.06)' }}
+            <div className="income-card" style={{ flex: '1 1 0', minWidth: 0, background: 'rgba(239,68,68,0.06)' }}
               title={qualityScore?.goalUnreachable
                 ? `DAY QUALITY: Goal (${Math.round(dailyGoal)}m) unreachable before midnight cutoff. Suggested adaptive realistic goal: ${qualityScore.suggestedGoal}m.`
                 : qualityScore ? `DAY QUALITY: ${qualityScore.pct}% of your ideal required pace for your current session window. Keep it near 100%!` : 'DAY QUALITY: Not enough data yet to calculate pacing quality.'}>
@@ -2135,7 +2135,7 @@ export const DashboardHeader = ({
             </div>
 
             {/* CALL RATE */}
-            <div className="income-card" style={{ flex: '1 1 0', minWidth: 0, background: 'rgba(59,130,246,0.06)' }}
+            <div className="income-card" style={{ flex: '1 1 0', minWidth: 0, background: 'rgba(239,68,68,0.06)' }}
               title={`CALLS: You have taken ${callsToday} calls today, with an average duration of ${avgCallMins} minutes each.`}>
               <span className="income-label">📞 CALLS</span>
               <span style={{ fontSize: '1rem', fontWeight: 800, color: callsToday > 0 ? '#93c5fd' : 'var(--text-muted)' }}>
@@ -2262,7 +2262,7 @@ export const DashboardHeader = ({
                   <>
                     <span 
                       title={`PRO LADDER: Step ${currentIdx+1} of 12. Next target is ${nextMilestone}m. Reaching this unlocks richer sounds and levels up your status!`}
-                      style={{ color: '#fff', background: 'rgba(59,130,246,0.3)', padding: '0.1rem 0.4rem', borderRadius: '4px', border: '1px solid rgba(59,130,246,0.4)', fontWeight: 800, cursor: 'help' }}>
+                      style={{ color: '#fff', background: 'rgba(239,68,68,0.3)', padding: '0.1rem 0.4rem', borderRadius: '4px', border: '1px solid rgba(239,68,68,0.4)', fontWeight: 800, cursor: 'help' }}>
                        🪜 {nextGoalLabel} ({nextMilestone}m)
                     </span>
                     <span 
@@ -2358,7 +2358,7 @@ ${isInDeficit ? `⚠️ DEFICIT: Behind pace by ${Math.round(monthlyDeficitMins)
                       title={`Shift Checkpoint: ${m}m. You are ${shiftsToNextMilestone} shifts (${minsToNextMilestone}m) away from the next Ladder Milestone (${nextMilestoneAbsolute}m).`}
                       style={{ 
                         position: 'absolute', left: `${ratio * 100}%`, top: 0, bottom: 0, width: '1px', 
-                        background: 'rgba(59,130,246,0.5)',
+                        background: 'rgba(239,68,68,0.5)',
                         pointerEvents: 'auto', cursor: 'help'
                       }}>
                     </div>
@@ -2421,7 +2421,7 @@ ${isInDeficit ? `⚠️ DEFICIT: Behind pace by ${Math.round(monthlyDeficitMins)
                 showProgressBarTooltip(e, {
                   icon: '🪜',
                   heading: 'WEEKLY LADDER',
-                  color: stats.monthlyMinutes >= 11000 ? '#fcd34d' : (stats.monthlyMinutes >= 5500 ? '#a855f7' : '#3b82f6'),
+                  color: stats.monthlyMinutes >= 11000 ? '#fcd34d' : (stats.monthlyMinutes >= 5500 ? '#a855f7' : '#ef4444'),
                   body: `Step: ${currentIdx + 1}/12.\n` +
                     `This sprint: ${Math.round(stats.monthlyMinutes % 1375)}m / 1375m.\n` +
                     `Current tier: ${milestoneLabels[currentIdx]}.`
@@ -2432,8 +2432,8 @@ ${isInDeficit ? `⚠️ DEFICIT: Behind pace by ${Math.round(monthlyDeficitMins)
               <div style={{ 
                 position: 'absolute', left: 0, top: 0, bottom: 0, 
                 width: `${((stats.monthlyMinutes % 1375) / 1375) * 100}%`, 
-                background: stats.monthlyMinutes >= 11000 ? '#fcd34d' : (stats.monthlyMinutes >= 5500 ? '#a855f7' : '#3b82f6'),
-                boxShadow: `0 0 10px ${stats.monthlyMinutes >= 11000 ? 'rgba(251,191,36,0.4)' : (stats.monthlyMinutes >= 5500 ? 'rgba(139,92,246,0.4)' : 'rgba(59,130,246,0.4)')}`,
+                background: stats.monthlyMinutes >= 11000 ? '#fcd34d' : (stats.monthlyMinutes >= 5500 ? '#a855f7' : '#ef4444'),
+                boxShadow: `0 0 10px ${stats.monthlyMinutes >= 11000 ? 'rgba(251,191,36,0.4)' : (stats.monthlyMinutes >= 5500 ? 'rgba(139,92,246,0.4)' : 'rgba(239,68,68,0.4)')}`,
                 transition: 'width 0.5s ease-out',
                 zIndex: 2
               }} />
@@ -2496,7 +2496,7 @@ ${isInDeficit ? `⚠️ DEFICIT: Behind pace by ${Math.round(monthlyDeficitMins)
                 showProgressBarTooltip(e, {
                   icon: '☀️',
                   heading: 'DAILY PROGRESS',
-                  color: stats.dailyMinutes >= 480 ? '#fcd34d' : (stats.dailyMinutes >= 350 ? '#c084fc' : '#60a5fa'),
+                  color: stats.dailyMinutes >= 480 ? '#fcd34d' : (stats.dailyMinutes >= 350 ? '#c084fc' : '#f87171'),
                   body: `Banked today: ${Math.round(stats.dailyMinutes)}m.\n` +
                     `Including current call: ${Math.round(totalDailyMins)}m / 480m.\n` +
                     `Min target: ${Math.round(dailyGoal)}m.`
@@ -2575,7 +2575,7 @@ ${isInDeficit ? `⚠️ DEFICIT: Behind pace by ${Math.round(monthlyDeficitMins)
                     transform: 'translateX(-50%) translateY(-20px)',
                     background: 'rgba(15, 23, 42, 0.95)',
                     backdropFilter: 'blur(10px)',
-                    border: `1px solid ${hoveredTimelineEvent.type === 'work' ? '#60a5fa' : '#fb923c'}`,
+                    border: `1px solid ${hoveredTimelineEvent.type === 'work' ? '#f87171' : '#fb923c'}`,
                     padding: '0.4rem 0.6rem',
                     borderRadius: '8px',
                     boxShadow: '0 10px 25px rgba(0,0,0,0.5)',
@@ -2586,7 +2586,7 @@ ${isInDeficit ? `⚠️ DEFICIT: Behind pace by ${Math.round(monthlyDeficitMins)
                     gap: '2px',
                     animation: 'slideUpBounce 0.2s cubic-bezier(0.17, 0.88, 0.32, 1.28) forwards'
                   }}>
-                    <div style={{ fontSize: '0.6rem', textTransform: 'uppercase', fontWeight: 900, color: hoveredTimelineEvent.type === 'work' ? '#60a5fa' : '#fb923c', letterSpacing: '0.05em' }}>
+                    <div style={{ fontSize: '0.6rem', textTransform: 'uppercase', fontWeight: 900, color: hoveredTimelineEvent.type === 'work' ? '#f87171' : '#fb923c', letterSpacing: '0.05em' }}>
                       {hoveredTimelineEvent.type} PERIOD
                     </div>
                     <div style={{ fontSize: '0.8rem', fontWeight: 700, color: '#fff', whiteSpace: 'nowrap' }}>

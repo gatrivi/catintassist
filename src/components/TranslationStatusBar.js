@@ -37,8 +37,8 @@ export const TranslationStatusBar = ({ meta = null, compact = false }) => {
       style={{
         padding: compact ? '0.35rem 0.5rem' : '0.5rem 0.65rem',
         borderRadius: 6,
-        background: 'rgba(59,130,246,0.06)',
-        border: '1px solid rgba(59,130,246,0.2)',
+        background: 'rgba(239,68,68,0.06)',
+        border: '1px solid rgba(239,68,68,0.2)',
         fontSize: compact ? '0.62rem' : '0.68rem',
         lineHeight: 1.4,
         color: 'rgba(255,255,255,0.85)',

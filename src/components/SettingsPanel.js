@@ -93,7 +93,7 @@ export default function SettingsPanel({ open, onClose, initialSection = 'deepgra
               key={id}
               type="button"
               onClick={() => setSection(id)}
-              style={{ ...tabBtn, background: section === id ? 'rgba(59,130,246,0.25)' : tabBtn.background }}
+              style={{ ...tabBtn, background: section === id ? 'rgba(239,68,68,0.25)' : tabBtn.background }}
             >
               {id === 'deepgram' ? 'Deepgram' : id === 'language' ? 'Language' : id === 'translation' ? 'Translation' : id === 'behavior' ? 'Behavior' : id === 'layout' ? 'Layout' : 'Display'}
             </button>
@@ -327,8 +327,8 @@ export default function SettingsPanel({ open, onClose, initialSection = 'deepgra
                           cursor: 'pointer',
                           padding: '2px 6px',
                           borderRadius: 4,
-                          background: componentVisibility[id] === mode ? 'rgba(59,130,246,0.2)' : 'rgba(255,255,255,0.04)',
-                          border: componentVisibility[id] === mode ? '1px solid rgba(59,130,246,0.4)' : '1px solid rgba(255,255,255,0.08)',
+                          background: componentVisibility[id] === mode ? 'rgba(239,68,68,0.2)' : 'rgba(255,255,255,0.04)',
+                          border: componentVisibility[id] === mode ? '1px solid rgba(239,68,68,0.4)' : '1px solid rgba(255,255,255,0.08)',
                         }}
                       >
                         <input

@@ -14,9 +14,9 @@ export const buildHeaderStripMetrics = ({
 }) => {
   const monthPct = ((stats.monthlyMinutes / (stats.goalMinutes || 1)) * 100).toFixed(1);
   const stepFill = (stats.monthlyMinutes % 1375) / 1375;
-  const stepColor = stats.monthlyMinutes >= 11000 ? '#fcd34d' : (stats.monthlyMinutes >= 5500 ? '#a855f7' : '#3b82f6');
+  const stepColor = stats.monthlyMinutes >= 11000 ? '#fcd34d' : (stats.monthlyMinutes >= 5500 ? '#a855f7' : '#ef4444');
   const dailyFill = Math.min(1, totalDailyMins / 480);
-  const dailyColor = stats.dailyMinutes >= 480 ? '#fcd34d' : (stats.dailyMinutes >= 350 ? '#c084fc' : '#60a5fa');
+  const dailyColor = stats.dailyMinutes >= 480 ? '#fcd34d' : (stats.dailyMinutes >= 350 ? '#c084fc' : '#f87171');
   const monthlyColor = isMonthlyGoalMet ? '#10b981' : (isInDeficit ? '#f59e0b' : '#a855f7');
 
   return {

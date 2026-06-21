@@ -14,7 +14,7 @@ export const UpdateAppBanner = ({ show, onDismiss, onUpdate }) => {
         bottom: '18px',
         zIndex: 10050,
         background: 'rgba(15, 23, 42, 0.92)',
-        border: '1px solid rgba(59, 130, 246, 0.35)',
+        border: '1px solid rgba(239, 68, 68, 0.35)',
         boxShadow: '0 12px 40px rgba(0,0,0,0.55)',
         borderRadius: 10,
         padding: '10px 12px',
@@ -25,7 +25,7 @@ export const UpdateAppBanner = ({ show, onDismiss, onUpdate }) => {
       }}
     >
       <div style={{ display: 'flex', flexDirection: 'column', gap: 2, minWidth: 0 }}>
-        <div style={{ fontWeight: 950, fontSize: '0.9rem', color: '#60a5fa' }}>
+        <div style={{ fontWeight: 950, fontSize: '0.9rem', color: '#f87171' }}>
           New version available
         </div>
         <div style={{ fontSize: '0.78rem', color: 'rgba(255,255,255,0.8)' }}>
@@ -39,7 +39,7 @@ export const UpdateAppBanner = ({ show, onDismiss, onUpdate }) => {
           style={{
             background: '#2563eb',
             color: '#fff',
-            border: '1px solid rgba(59, 130, 246, 0.6)',
+            border: '1px solid rgba(239, 68, 68, 0.6)',
             padding: '8px 10px',
             borderRadius: 8,
             fontWeight: 900,

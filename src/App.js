@@ -49,7 +49,7 @@ import "./index.css";
 const CloudSyncIndicator = () => {
   const { syncStatus } = useSession();
   const colors = {
-    syncing: "#3b82f6",
+    syncing: "#ef4444",
     synced: "#10b981",
     error: "#ef4444",
     idle: "transparent",
@@ -759,11 +759,11 @@ const Dashboard = () => {
             borderRadius: "20px",
             border: "1px solid rgba(255,255,255,0.1)",
             background: isNotesOpen
-              ? "rgba(14, 165, 233, 0.25)"
+              ? "rgba(244, 63, 94, 0.25)"
               : "rgba(7, 14, 35, 0.7)",
             backdropFilter: "blur(8px)",
             WebkitBackdropFilter: "blur(8px)",
-            color: isNotesOpen ? "#38bdf8" : "rgba(255,255,255,0.6)",
+            color: isNotesOpen ? "#f87171" : "rgba(255,255,255,0.6)",
             fontSize: "0.85rem",
             fontWeight: 800,
             cursor: "pointer",
@@ -771,7 +771,7 @@ const Dashboard = () => {
             alignItems: "center",
             justifyContent: "center",
             boxShadow: isNotesOpen
-              ? "0 0 12px rgba(14, 165, 233, 0.3)"
+              ? "0 0 12px rgba(244, 63, 94, 0.3)"
               : "0 2px 8px rgba(0,0,0,0.3)",
             transition: "all 0.3s ease",
             padding: 0,
