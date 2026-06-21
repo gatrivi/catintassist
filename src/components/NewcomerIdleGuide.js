@@ -1,6 +1,15 @@
-import React from 'react';
-import { dismissNewcomerGuidePermanent } from '../utils/newcomerGuide';
-
+import React, { useState, useEffect } from 'react';
+import {
+  dismissNewcomerGuidePermanent,
+  isNewcomerGuideSnoozed,
+  snoozeNewcomerGuide,
+  unsnoozeNewcomerGuide,
+} from '../utils/newcomerGuide';
+import {
+  loadLanguagePair,
+  getLangLabel,
+  LANG_PAIR_CHANGED_EVENT,
+} from '../utils/languageConfig';
 /**
  * Plain-language onboarding when the transcript area is empty.
  * Props drive which step is highlighted.
@@ -12,6 +21,20 @@ export const NewcomerIdleGuide = ({
   isActive = false,
   onHideSession,
 }) => {
+  const [snoozed, setSnoozed] = useState(() => isNewcomerGuideSnoozed());
+  const [languagePair, setLanguagePair] = useState(loadLanguagePair);
+  useEffect(() => {
+    const onPairChange = (e) => setLanguagePair(e.detail || loadLanguagePair());
+    window.addEventListener(LANG_PAIR_CHANGED_EVENT, onPairChange);
+    return () => window.removeEventListener(LANG_PAIR_CHANGED_EVENT, onPairChange);
+  }, []);
+  const disableOnboardingAnimations = (() => {
+    try {
+      return localStorage.getItem('catint_onboarding_anim_disabled_v1') === '1';
+    } catch {
+      return false;
+    }
+  })();
   const step = isActive ? 3 : audioAttached ? 2 : 1;
   const connecting = connectionState === 'connecting';
 
@@ -36,6 +59,55 @@ export const NewcomerIdleGuide = ({
     padding: '0.2rem 0.45rem',
   };
 
+  if (snoozed) {
+    return (
+      <div
+        style={{
+          maxWidth: '28rem',
+          margin: '0 auto',
+          padding: '0.75rem 1rem',
+          textAlign: 'left',
+          fontFamily: 'var(--font-mono, monospace)',
+          position: 'relative',
+          background: 'rgba(255,255,255,0.02)',
+          border: '1px solid rgba(255,255,255,0.08)',
+          borderRadius: 8,
+          animation: disableOnboardingAnimations ? 'none' : 'fadeSlideIn 0.18s ease-out',
+        }}
+      >
+        <div style={{ fontSize: '0.85rem', fontWeight: 900, color: '#e2e8f0' }}>
+          Need help connecting?
+        </div>
+        <div style={{ fontSize: '0.72rem', color: 'rgba(255,255,255,0.65)', marginTop: 4, lineHeight: 1.4 }}>
+          Onboarding is tucked away. Tap to show it again.
+        </div>
+        <div style={{ display: 'flex', gap: '0.4rem', marginTop: '0.65rem', flexWrap: 'wrap' }}>
+          <button
+            type="button"
+            style={{ ...dismissBtn, borderColor: 'rgba(56,189,248,0.35)', color: '#93c5fd' }}
+            onClick={() => {
+              unsnoozeNewcomerGuide();
+              setSnoozed(false);
+            }}
+          >
+            Show onboarding
+          </button>
+          <button
+            type="button"
+            style={{ ...dismissBtn, borderColor: 'rgba(148,163,184,0.35)' }}
+            onClick={() => {
+              dismissNewcomerGuidePermanent();
+              setSnoozed(false);
+              onHideSession?.();
+            }}
+          >
+            Don&apos;t show again
+          </button>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div
       style={{
@@ -53,12 +125,11 @@ export const NewcomerIdleGuide = ({
       <div style={{ fontSize: '0.75rem', color: 'rgba(255,255,255,0.65)', marginBottom: '0.85rem', lineHeight: 1.5 }}>
         The cat&apos;s interpreter assistant.
         <br />
-        Currently: <span style={{ color: '#93c5fd' }}>English</span>
+        Currently: <span style={{ color: '#93c5fd' }}>{getLangLabel(languagePair.left)}</span>
         {' '}&rarr;{' '}
-        <span style={{ color: '#6ee7b7' }}>Spanish</span>
+        <span style={{ color: '#6ee7b7' }}>{getLangLabel(languagePair.right)}</span>
         <br />
-        <span style={{ opacity: 0.7 }}>More languages coming soon.</span>
-      </div>
+        <span style={{ opacity: 0.7 }}>Change pair in Settings → Language.</span>      </div>
 
       <div style={{ display: 'flex', flexDirection: 'column', gap: '0.45rem' }}>
         <div style={stepStyle(1)}>
@@ -114,9 +185,20 @@ export const NewcomerIdleGuide = ({
         )}
         <button
           type="button"
+          style={{ ...dismissBtn, borderColor: 'rgba(56,189,248,0.35)', color: '#93c5fd' }}
+          onClick={() => {
+            snoozeNewcomerGuide();
+            setSnoozed(true);
+          }}
+        >
+          Later
+        </button>
+        <button
+          type="button"
           style={{ ...dismissBtn, borderColor: 'rgba(148,163,184,0.35)' }}
           onClick={() => {
             dismissNewcomerGuidePermanent();
+            setSnoozed(false);
             onHideSession?.();
           }}
         >

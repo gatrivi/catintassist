@@ -1,7 +1,10 @@
 import React, { useMemo } from 'react';
 import { useAudioSettings } from '../contexts/AudioSettingsContext';
 import { truncateDeviceLabel } from '../utils/audioSelfTest';
-
+import {
+  isComponentVisible,
+  useComponentVisibilityRefresh,
+} from '../utils/componentVisibility';
 const dotColor = (state) => {
   if (state === 'ok') return '#10b981';
   if (state === 'warn') return '#f59e0b';
@@ -40,9 +43,11 @@ export const AudioRouteStatusBar = ({
   onOpenSoundboard,
   compact = false,
 }) => {
-  const { inputDevices, outputDevices, selectedMicId, selectedSinkId } = useAudioSettings();
+  const { inputDevices, outputDevices, selectedMicId, selectedSinkId, micLevel, micStatus } = useAudioSettings();
+  useComponentVisibilityRefresh();
+  const showMicMeter = isComponentVisible('mic_meter_strip', { isActive, isZombieCall });
 
-  const micLabel = useMemo(() => {
+  const micDeviceLabel = useMemo(() => {
     const dev = inputDevices.find((d) => d.deviceId === selectedMicId);
     return truncateDeviceLabel(dev?.label || (selectedMicId ? 'Mic' : 'Default mic'));
   }, [inputDevices, selectedMicId]);
@@ -53,7 +58,7 @@ export const AudioRouteStatusBar = ({
   }, [outputDevices, selectedSinkId]);
 
   const inputText = micTestMode
-    ? `Mic: ${micLabel}`
+    ? `Mic: ${micDeviceLabel}`
     : tabStreamReady
       ? 'Tab: audio shared'
       : audioAttached
@@ -97,6 +102,20 @@ export const AudioRouteStatusBar = ({
     whiteSpace: 'nowrap',
   };
 
+  const micBarColor =
+    micStatus === 'clip' ? '#ef4444'
+      : micStatus === 'no-signal' ? '#f59e0b'
+        : micStatus === 'muted' ? '#94a3b8'
+          : micStatus === 'ok' ? '#10b981'
+            : 'rgba(255,255,255,0.35)';
+
+  const micStatusLabel =
+    micStatus === 'clip' ? 'CLIP'
+      : micStatus === 'no-signal' ? 'NO SIGNAL'
+        : micStatus === 'muted' ? 'MUTED'
+          : micStatus === 'ok' ? 'MIC OK'
+            : 'MIC —';
+
   return (
     <div
       className={`audio-route-status-bar${compact ? ' is-compact' : ''}`}
@@ -112,6 +131,38 @@ export const AudioRouteStatusBar = ({
         width: '100%',
       }}
     >
+      <button
+        type="button"
+        style={{ ...btn, display: 'flex', alignItems: 'center', gap: 6, minWidth: 90 }}
+        onClick={onOpenAudioSettings}
+        title={`Microphone level — ${micStatusLabel}`}
+      >
+        {showMicMeter && (
+        <span
+          style={{
+            display: 'inline-block',
+            width: 36,
+            height: 5,
+            borderRadius: 3,
+            background: 'rgba(255,255,255,0.12)',
+            overflow: 'hidden',
+            flexShrink: 0,
+          }}
+        >
+          <span
+            style={{
+              display: 'block',
+              height: '100%',
+              width: `${micLevel}%`,
+              background: micBarColor,
+              boxShadow: micStatus === 'ok' ? '0 0 6px rgba(16,185,129,0.5)' : 'none',
+              transition: 'width 0.08s ease-out',
+            }}
+          />
+        </span>
+        )}
+        <span style={{ color: micBarColor, fontWeight: 800, letterSpacing: '0.02em' }}>{micStatusLabel}</span>
+      </button>
       <button type="button" style={{ ...btn, display: 'flex', alignItems: 'center', gap: 4 }} onClick={onOpenAudioSettings} title="Input device / tab capture">
         <Dot state={inputState} title={inputText} />
         {inputText}

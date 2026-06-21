@@ -1,4 +1,4 @@
-# CatIntAssist Docs (v4.58.0)
+# CatIntAssist Docs (v4.60.0)
 
 This is the single source of truth for *documentation + onboarding*.
 
@@ -7,7 +7,9 @@ This is the single source of truth for *documentation + onboarding*.
 - [`docs/handoff/00_global_rules.md`](handoff/00_global_rules.md): hard constraints (80/20, stability, tests)
 
 ## Start Here
+- [`docs/ROADMAP.md`](ROADMAP.md): product phases 0–3, do-not-yet list, future inbox
 - [`docs/onboarding/quickstart.md`](onboarding/quickstart.md): install, run locally, and dev/sanity checks
+- [`docs/onboarding/advice.md`](onboarding/advice.md): the daily “what to click” advice checklist
 - [`docs/architecture/flow.md`](architecture/flow.md): end-to-end data flow + key state owners
 
 ## Main Feature Specs

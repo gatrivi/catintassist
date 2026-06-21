@@ -18,6 +18,15 @@ import {
   buildFailureMessage,
   FAILURE,
 } from "../utils/deepgramDiagnostics";
+import {
+  loadLanguagePair,
+  isEnEsProtectionMode,
+  usesMultiSocket,
+  laneSideForLang,
+  langForLaneSide,
+  normalizeLang,
+  LANG_PAIR_CHANGED_EVENT,
+} from "../utils/languageConfig";
 
 const TAB_STREAM_READY_KEY = "catint_tab_stream_ok_v1";
 const readTabStreamReady = () => {
@@ -49,27 +58,29 @@ const buildSealedBubble = (
   template,
   bubbleIdCounterRef,
   turnWordCount,
+  pair,
 ) => {
-  const lang = template.lang || "en";
+  const lang = template.lang || pair.left;
   const text = sealText(sentence, lang);
+  const side = laneSideForLang(lang, pair);
   return {
     ...template,
     id: `${Date.now()}-${++bubbleIdCounterRef.current}-s`,
     text,
     turnId: template.turnId,
     turnWordCount,
-    enFinalized: lang === "en" ? text : "",
-    esFinalized: lang === "es" ? text : "",
+    enFinalized: side === "en" ? text : "",
+    esFinalized: side === "es" ? text : "",
     enInterim: "",
     esInterim: "",
-    enFull: lang === "en" ? text : template.enFull,
-    esFull: lang === "es" ? text : template.esFull,
+    enFull: side === "en" ? text : template.enFull,
+    esFull: side === "es" ? text : template.esFull,
     isFinal: true,
   };
 };
 
 /** Seal comma chunks when a fragment exceeds word limit without sentence end */
-const peelCommaChunks = (text, template, bubbleIdCounterRef, turnWordsBase) => {
+const peelCommaChunks = (text, template, bubbleIdCounterRef, turnWordsBase, pair) => {
   const chunks = splitLongTextAtCommas(text, 40);
   if (!chunks.length) return { sealed: [], remainder: text };
 
@@ -77,7 +88,7 @@ const peelCommaChunks = (text, template, bubbleIdCounterRef, turnWordsBase) => {
   const sealed = chunks.map((chunk) => {
     const w = chunk.trim().split(/\s+/).filter(Boolean).length;
     acc += w;
-    return buildSealedBubble(chunk, template, bubbleIdCounterRef, acc);
+    return buildSealedBubble(chunk, template, bubbleIdCounterRef, acc, pair);
   });
   return { sealed, remainder: "" };
 };
@@ -155,6 +166,8 @@ export const useDeepgram = () => {
   const [tabStreamReady, setTabStreamReady] = useState(readTabStreamReady);
 
   const langModeRef = useRef("auto");
+  const languagePairRef = useRef(loadLanguagePair());
+  const reconnectStreamRef = useRef(null);
   const micTestModeRef = useRef(readMicTestMode());
   const streamSourceRef = useRef(null); // 'mic' | 'tab'
   const socketRefEn = useRef(null);
@@ -369,7 +382,7 @@ export const useDeepgram = () => {
   );
 
   const scheduleConnectFail = useCallback(
-    (lang, code, reason) => {
+    (lang, code, reason, socketSide = "En") => {
       if (connectFailTimerRef.current) return;
       connectFailTimerRef.current = setTimeout(() => {
         connectFailTimerRef.current = null;
@@ -387,8 +400,8 @@ export const useDeepgram = () => {
           failureCategory: diag.category || FAILURE.UNKNOWN,
           lastCloseCode: code,
           lastCloseReason: reason,
-          [`socket${lang === "en" ? "En" : "Es"}`]: "error",
-          [`socket${lang === "en" ? "En" : "Es"}Close`]: `${code}${reason ? `: ${reason}` : ""}`,
+          [`socket${socketSide}`]: "error",
+          [`socket${socketSide}Close`]: `${code}${reason ? `: ${reason}` : ""}`,
         });
       }, 120);
     },
@@ -452,17 +465,20 @@ export const useDeepgram = () => {
       setConnectionState("connecting");
       setConnectionMessage("Initializing Sockets...");
 
+      const pair = languagePairRef.current;
+      const multiMode = usesMultiSocket(pair);
+      const protectionsOn = isEnEsProtectionMode(pair);
+
       const tryStartStreaming = (stream) => {
-        if (
-          socketRefEn.current?.readyState !== 1 ||
-          socketRefEs.current?.readyState !== 1
-        ) {
-          return;
-        }
+        const socketsReady = multiMode
+          ? socketRefEn.current?.readyState === 1
+          : socketRefEn.current?.readyState === 1 &&
+            socketRefEs.current?.readyState === 1;
+        if (!socketsReady) return;
         syncConnectProgress({
           socketsOpen: true,
           socketEn: "open",
-          socketEs: "open",
+          socketEs: multiMode ? "skipped" : "open",
           phase: "connecting",
         });
         startKeepalive();
@@ -491,7 +507,7 @@ export const useDeepgram = () => {
                   sentAny = true;
                   socketRefEn.current.send(e.data);
                 }
-                if (socketRefEs.current?.readyState === 1) {
+                if (!multiMode && socketRefEs.current?.readyState === 1) {
                   sentAny = true;
                   socketRefEs.current.send(e.data);
                 }
@@ -512,18 +528,21 @@ export const useDeepgram = () => {
         }
       };
 
-      const createSocket = (lang, stream) => {
+      const createSocket = (lang, stream, { socketSide = "En", isFirst = false } = {}) => {
         const url = `wss://api.deepgram.com/v1/listen?model=nova-2&smart_format=true&filler_words=true&language=${lang}&interim_results=true&endpointing=300`;
         const ws = new WebSocket(url, ["token", API_KEY]);
-        const sk = lang === "en" ? "socketEn" : "socketEs";
-        const skClose = lang === "en" ? "socketEnClose" : "socketEsClose";
+        const sk = socketSide === "En" ? "socketEn" : "socketEs";
+        const skClose = socketSide === "En" ? "socketEnClose" : "socketEsClose";
 
         ws.onopen = () => {
           reconnectAttemptsRef.current = 0;
           syncConnectProgress({ [sk]: "open" });
-          if (lang === "en") {
+          if (isFirst && !multiMode) {
             syncConnectProgress({ socketEs: "connecting" });
-            socketRefEs.current = createSocket("es", stream);
+            socketRefEs.current = createSocket(pair.right, stream, {
+              socketSide: "Es",
+              isFirst: false,
+            });
           }
           tryStartStreaming(stream);
         };
@@ -557,6 +576,13 @@ export const useDeepgram = () => {
 
           const confidence = alt?.confidence || 0;
           const isFinal = received.is_final;
+          const socketLaneLang =
+            lang === "multi"
+              ? received.channel?.detected_language ||
+                alt?.languages?.[0] ||
+                pair.left
+              : lang;
+          const laneSide = laneSideForLang(socketLaneLang, pair);
 
           if (confidence > 0.4) {
             if (isActive) {
@@ -600,7 +626,6 @@ export const useDeepgram = () => {
 
           updateCaptions((prev) => {
             let last = prev[prev.length - 1];
-            // New bubble only after silence or at stream start — sentence splits handled below
             const isNewTurn = isSilentBreak || !last;
 
             if (isNewTurn) {
@@ -637,7 +662,8 @@ export const useDeepgram = () => {
               .map((c) => c.text || "")
               .join(" ");
             const currentFinalized =
-              (lang === "en" ? current.enFinalized : current.esFinalized) || "";
+              (laneSide === "en" ? current.enFinalized : current.esFinalized) ||
+              "";
             const baseContext = (historyText + " " + currentFinalized).trim();
 
             const cleaned = removeOverlapPreservingDigitSequences(
@@ -647,20 +673,25 @@ export const useDeepgram = () => {
             if (!cleaned.trim() && !isFinal) return prev;
 
             if (isFinal) {
-              if (lang === "en") {
-                current.enFinalized = hallucinationGuard(
-                  (current.enFinalized + " " + cleaned).trim(),
-                );
+              const merged = (
+                (laneSide === "en" ? current.enFinalized : current.esFinalized) +
+                " " +
+                cleaned
+              ).trim();
+              const finalized = protectionsOn
+                ? hallucinationGuard(merged)
+                : merged;
+              if (laneSide === "en") {
+                current.enFinalized = finalized;
                 current.enInterim = "";
               } else {
-                current.esFinalized = hallucinationGuard(
-                  (current.esFinalized + " " + cleaned).trim(),
-                );
+                current.esFinalized = finalized;
                 current.esInterim = "";
               }
+            } else if (laneSide === "en") {
+              current.enInterim = cleaned;
             } else {
-              if (lang === "en") current.enInterim = cleaned;
-              else current.esInterim = cleaned;
+              current.esInterim = cleaned;
             }
 
             const enFull = (
@@ -673,21 +704,26 @@ export const useDeepgram = () => {
               " " +
               current.esInterim
             ).trim();
-            const enW = enFull.split(/\s+/).filter(Boolean).length;
-            const esW = esFull.split(/\s+/).filter(Boolean).length;
+            const leftW = enFull.split(/\s+/).filter(Boolean).length;
+            const rightW = esFull.split(/\s+/).filter(Boolean).length;
 
-            let winner = "en";
-            if (esW >= enW + 2) winner = "es";
-            else if (enW >= esW + 2) winner = "en";
-            else winner = confidence > 0.8 && esW > 0 ? "es" : "en";
+            let winnerLang = langForLaneSide("en", pair);
+            if (rightW >= leftW + 2) winnerLang = langForLaneSide("es", pair);
+            else if (leftW >= rightW + 2) winnerLang = langForLaneSide("en", pair);
+            else {
+              winnerLang =
+                confidence > 0.8 && rightW > 0
+                  ? langForLaneSide("es", pair)
+                  : langForLaneSide("en", pair);
+            }
 
-            if (langModeRef.current !== "auto") winner = langModeRef.current;
+            const mode = langModeRef.current;
+            if (mode === "left") winnerLang = pair.left;
+            else if (mode === "right") winnerLang = pair.right;
 
-            // Non-doctor hold timer reset: reset only when English speech is detected.
-            // Throttle to avoid spamming updates during interim packets.
             if (
               isCallDetectionEnabled &&
-              winner === "en" &&
+              normalizeLang(winnerLang) === "en" &&
               confidence > 0.4 &&
               transcript &&
               transcript.trim().length > 0 &&
@@ -697,8 +733,9 @@ export const useDeepgram = () => {
               lastEnglishActivityPulseRef.current = now;
             }
 
-            current.lang = winner;
-            current.text = winner === "en" ? enFull : esFull;
+            const winSide = laneSideForLang(winnerLang, pair);
+            current.lang = winnerLang;
+            current.text = winSide === "en" ? enFull : esFull;
             current.enFull = enFull;
             current.esFull = esFull;
             current.isFinal = isFinal;
@@ -712,18 +749,11 @@ export const useDeepgram = () => {
             let newArr = [...prev];
             newArr[newArr.length - 1] = current;
 
-            // Finalize complete sentences, then comma-chunk long breathless runs
             if (isFinal && current.text?.trim()) {
-              // Preserve the previous bubble's id for the first sealed chunk.
-              // This prevents React from remounting the "before split" bubble,
-              // reducing the visible "dance" when the UI splits a long message.
               const originalLastId = last?.id;
               const { sentences, remainder: sentRemainder } =
                 peelCompleteSentences(current.text);
               let sealedAll = [];
-              // ALGO_SPLIT_FLAG: `tailText` is the exact string remainder selected
-              // to be shown AFTER the UI decides to "flow" into the next bubble.
-              // Everything in `sentences`/`sealedAll` is the part *not* moved.
               let tailText = sentRemainder;
 
               if (sentences.length > 0) {
@@ -736,20 +766,20 @@ export const useDeepgram = () => {
                     current,
                     bubbleIdCounterRef,
                     acc,
+                    pair,
                   );
                 });
                 turnWordsBaseRef.current = acc;
               }
 
               if (tailText?.trim()) {
-                // ALGO_SPLIT_FLAG: if tailText is still too long (comma chunking),
-                // peelCommaChunks further selects a chunk to become the remainder bubble.
                 const { sealed: commaSealed, remainder: commaRemainder } =
                   peelCommaChunks(
                     tailText,
                     current,
                     bubbleIdCounterRef,
                     turnWordsBaseRef.current,
+                    pair,
                   );
                 if (commaSealed.length) {
                   sealedAll = [...sealedAll, ...commaSealed];
@@ -764,14 +794,13 @@ export const useDeepgram = () => {
                 !sealedAll.length &&
                 current.text?.trim()
               ) {
-                // ALGO_SPLIT_FLAG: rare case where there were no sentence endings,
-                // so comma-chunking becomes the split selector.
                 const { sealed: commaOnly, remainder: commaRemainder } =
                   peelCommaChunks(
                     current.text,
                     current,
                     bubbleIdCounterRef,
                     turnWordsBaseRef.current,
+                    pair,
                   );
                 if (commaOnly.length) {
                   sealedAll = commaOnly;
@@ -787,28 +816,25 @@ export const useDeepgram = () => {
                 }
                 newArr = [...prev.slice(0, -1), ...sealedAll];
                 if (tailText?.trim()) {
-                  const lang = current.lang || "en";
-                  const formatted = sealText(tailText, lang);
-                  // ALGO_MOVED_SECTION: this `newArr.push` is the "to-be-flowed" remainder
-                  // that will show up as its own bubble (isFinal:false) in the UI.
-                  // Blue animation should be triggered for ONLY this remainder section,
-                  // not for the already sealed part (sealedAll).
+                  const winLang = current.lang || pair.left;
+                  const tailSide = laneSideForLang(winLang, pair);
+                  const formatted = sealText(tailText, winLang);
                   newArr.push({
                     ...current,
                     id: `${Date.now()}-${++bubbleIdCounterRef.current}`,
                     turnId: current.turnId,
                     turnWordCount: turnWordsBaseRef.current,
                     text: formatted,
-                    enFinalized: lang === "en" ? formatted : "",
-                    esFinalized: lang === "es" ? formatted : "",
-                    enInterim: lang === "en" ? current.enInterim : "",
-                    esInterim: lang === "es" ? current.esInterim : "",
+                    enFinalized: tailSide === "en" ? formatted : "",
+                    esFinalized: tailSide === "es" ? formatted : "",
+                    enInterim: tailSide === "en" ? current.enInterim : "",
+                    esInterim: tailSide === "es" ? current.esInterim : "",
                     enFull:
-                      lang === "en"
+                      tailSide === "en"
                         ? `${formatted} ${current.enInterim || ""}`.trim()
                         : current.enFull,
                     esFull:
-                      lang === "es"
+                      tailSide === "es"
                         ? `${formatted} ${current.esInterim || ""}`.trim()
                         : current.esFull,
                     isFinal: false,
@@ -834,7 +860,7 @@ export const useDeepgram = () => {
 
           if (connectFlagsRef.current.phase === "connecting") {
             if (code !== 1000) {
-              scheduleConnectFail(lang, code, reason);
+              scheduleConnectFail(lang, code, reason, socketSide);
             }
             return;
           }
@@ -842,10 +868,22 @@ export const useDeepgram = () => {
           if (isActiveRef.current && reconnectAttemptsRef.current < 5) {
             reconnectAttemptsRef.current++;
             const delay = Math.pow(2, reconnectAttemptsRef.current) * 1000;
+            const livePair = languagePairRef.current;
+            const liveMulti = usesMultiSocket(livePair);
             setTimeout(() => {
-              if (isActiveRef.current) {
-                if (lang === "en") socketRefEn.current = createSocket("en", streamRef.current);
-                else socketRefEs.current = createSocket("es", streamRef.current);
+              if (!isActiveRef.current) return;
+              if (socketSide === "En") {
+                socketRefEn.current = createSocket(
+                  liveMulti ? "multi" : livePair.left,
+                  streamRef.current,
+                  { socketSide: "En", isFirst: !liveMulti },
+                );
+              } else {
+                socketRefEs.current = createSocket(
+                  livePair.right,
+                  streamRef.current,
+                  { socketSide: "Es", isFirst: false },
+                );
               }
             }, delay);
           }
@@ -860,7 +898,11 @@ export const useDeepgram = () => {
         return ws;
       };
 
-      socketRefEn.current = createSocket("en", stream);
+      const firstLang = multiMode ? "multi" : pair.left;
+      socketRefEn.current = createSocket(firstLang, stream, {
+        socketSide: "En",
+        isFirst: true,
+      });
     },
     [
       isCallDetectionEnabled,
@@ -1048,7 +1090,7 @@ export const useDeepgram = () => {
 
   const toggleLanguage = useCallback(() => {
     setSttLanguage((prev) => {
-      const next = prev === "auto" ? "en" : prev === "en" ? "es" : "auto";
+      const next = prev === "auto" ? "left" : prev === "left" ? "right" : "auto";
       langModeRef.current = next;
       if (overrideTimeoutRef.current) clearTimeout(overrideTimeoutRef.current);
       if (next !== "auto") {
@@ -1059,6 +1101,19 @@ export const useDeepgram = () => {
       }
       return next;
     });
+  }, []);
+
+  reconnectStreamRef.current = reconnectStream;
+
+  useEffect(() => {
+    const onPairChange = (e) => {
+      languagePairRef.current = e.detail || loadLanguagePair();
+      if (isActiveRef.current && streamRef.current) {
+        reconnectStreamRef.current?.();
+      }
+    };
+    window.addEventListener(LANG_PAIR_CHANGED_EVENT, onPairChange);
+    return () => window.removeEventListener(LANG_PAIR_CHANGED_EVENT, onPairChange);
   }, []);
 
   return {

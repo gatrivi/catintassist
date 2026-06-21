@@ -4,6 +4,8 @@ import { useTTS } from '../hooks/useTTS';
 import { useTranslate } from '../hooks/useTranslate';
 import { useSession, safeSet } from '../contexts/SessionContext';
 import { useProgressiveAudio } from '../hooks/useProgressiveAudio';
+import { useAudioSettings } from '../contexts/AudioSettingsContext';
+import { truncateDeviceLabel } from '../utils/audioSelfTest';
 import { formatTranscriptForDisplay, isSpellingBlock } from '../utils/transcriptFormat';
 import {
   convertEnglishNumberWords,
@@ -15,15 +17,29 @@ import { ScrambleText } from './ScrambleText';
 import { NewcomerIdleGuide } from './NewcomerIdleGuide';
 import { isNewcomerGuideDismissed } from '../utils/newcomerGuide';
 import { isTranslationStuckForRetranslate } from '../utils/translationQuality';
+import {
+  isComponentVisible,
+  useComponentVisibilityRefresh,
+} from '../utils/componentVisibility';
+import {
+  loadLanguagePair,
+  isEnEsProtectionMode,
+  shouldReverseBubble,
+  isTailRemainderBubble,
+  normalizeLang,
+  LANG_PAIR_CHANGED_EVENT,
+} from '../utils/languageConfig';
 
 // EL TABLERO DE TEXTO: Aquí es donde aparece todo lo que dicen en la llamada.
 // Muestra quién habla, lo traduce y te deja copiar los números con un clic.
-const getBubbleStyle = (text, isCurrent, lang) => {
+const getBubbleStyle = (text, isCurrent, lang, pair) => {
   if (!text) return {};
   const wordCount = text.trim().split(/\s+/).length;
-  
-  let baseBorder = lang === 'es' ? 'rgba(16, 185, 129, 0.4)' : 'rgba(59, 130, 246, 0.4)';
-  let baseBg = lang === 'es' ? 'rgba(16, 185, 129, 0.03)' : 'rgba(59, 130, 246, 0.03)';
+  const p = pair || loadLanguagePair();
+  const isRight = normalizeLang(lang) === normalizeLang(p.right);
+
+  let baseBorder = isRight ? 'rgba(16, 185, 129, 0.4)' : 'rgba(59, 130, 246, 0.4)';
+  let baseBg = isRight ? 'rgba(16, 185, 129, 0.03)' : 'rgba(59, 130, 246, 0.03)';
 
   if (wordCount >= 40) {
     baseBorder = 'rgba(239, 68, 68, 0.6)';
@@ -36,19 +52,15 @@ const getBubbleStyle = (text, isCurrent, lang) => {
   return { borderLeft: `3px solid ${baseBorder}`, backgroundColor: baseBg };
 };
 
-const InteractiveText = ({ text, scramble = true, applyNumberWords = false, lang = 'en' }) => {
+const InteractiveText = ({ text, scramble = true, applyNumberWords = false, lang = 'en', protectionsActive = true }) => {
   if (!text) return null;
 
   const spelled = formatTranscriptForDisplay(text, lang);
-  const processedText = applyNumberWords ? convertEnglishNumberWords(spelled) : spelled;
+  const processedText = protectionsActive && applyNumberWords ? convertEnglishNumberWords(spelled) : spelled;
   const spellingLayout = isSpellingBlock(text);
 
-  // 2. GROUP PHONE NUMBERS / SSN: If we see 8-16 digits read out singly (with spaces), join and format them.
-  const groupedDigits = formatPhoneAndSSNDigits(processedText);
-  
-  // NYC ZIP REPAIR: In NYC, people often say "one hundred thirty four" for 10034.
-  // Deepgram might transcribe "New York 134". We fix it to "New York 10034".
-  const repairedText = repairNYCZipNumbers(groupedDigits);
+  const groupedDigits = protectionsActive ? formatPhoneAndSSNDigits(processedText) : processedText;
+  const repairedText = protectionsActive ? repairNYCZipNumbers(groupedDigits) : groupedDigits;
 
   // NÚMEROS MÁGICOS: Detectamos números de teléfono, años y códigos.
   // Los resaltamos para que puedas copiarlos rápido si haces clic.
@@ -182,6 +194,8 @@ const TranslatedBubble = ({
   onManualRetranslate,
   isTailMovedSection = false,
   isFinal = true,
+  languagePair = null,
+  protectionsActive = true,
 }) => {
   const { translationMood } = useSession();
   const { translation, audioUrl, engineStatus, translationMeta, targetLang } = useTranslate(
@@ -272,13 +286,10 @@ const TranslatedBubble = ({
   const isProblemTranslation = isTranslationStuck || isTranslationMissing;
   const showManualRetranslateBtn =
     !isPinned && engineStatus === 'ready' && isProblemTranslation && hasAutoRetranslated && !autoRetranslatePending;
-  // Pane contract (for outside agents/models):
-  // - left column is the EN/transcript lane
-  // - right column is the ES/translation lane
-  // `convertEnglishNumberWords` must ONLY run when the lane language truly starts with `en`.
-  // Bug example to avoid: Spanish "once" (meaning 11) must NOT be converted on the left EN lane.
-  const sourceUsesNumberWords = (lang || 'en').toLowerCase().startsWith('en');
-  const targetUsesNumberWords = (targetLang || 'en').toLowerCase().startsWith('en');
+  const sourceUsesNumberWords =
+    protectionsActive && normalizeLang(lang) === 'en';
+  const targetUsesNumberWords =
+    protectionsActive && normalizeLang(targetLang) === 'en';
   const translationFailed =
     engineStatus === 'ready' && !translation?.trim() && translationMeta?.quality === 'failed';
   const translationTitle = translationFailed
@@ -289,7 +300,7 @@ const TranslatedBubble = ({
     <div className={`translated-bubble-row${reverse ? ' is-reverse' : ''}`}>
       <div className="bubble-col bubble-col-source" style={{ textAlign: reverse ? 'right' : 'left', position: 'relative' }}>
         <div className={`bubble-line${tailBlueLocked ? ' is-tail-blue' : ''}`} style={{ color: transcriptColor }}>
-          <InteractiveText text={text} scramble={true} applyNumberWords={sourceUsesNumberWords} lang={lang} />
+          <InteractiveText text={text} scramble={true} applyNumberWords={sourceUsesNumberWords} lang={lang} protectionsActive={protectionsActive} />
         </div>
       </div>
 
@@ -327,7 +338,7 @@ const TranslatedBubble = ({
       >
         <div className="bubble-line bubble-line-translation">
           {translation ? (
-            <InteractiveText text={translation} scramble={true} applyNumberWords={targetUsesNumberWords} lang={targetLang} />
+            <InteractiveText text={translation} scramble={true} applyNumberWords={targetUsesNumberWords} lang={targetLang} protectionsActive={protectionsActive} />
           ) : engineStatus === 'ready' ? (
             <span style={{ opacity: 0.3, fontSize: '0.7rem' }}>⚠️ translation failed</span>
           ) : (
@@ -352,7 +363,10 @@ const translatedBubblePropsEqual = (prev, next) =>
   prev.shouldPrefetch === next.shouldPrefetch &&
   prev.isPinned === next.isPinned &&
   prev.ttsMode === next.ttsMode &&
-  prev.playingUrl === next.playingUrl;
+  prev.playingUrl === next.playingUrl &&
+  prev.protectionsActive === next.protectionsActive &&
+  prev.languagePair?.left === next.languagePair?.left &&
+  prev.languagePair?.right === next.languagePair?.right;
 
 const MemoTranslatedBubble = React.memo(TranslatedBubble, translatedBubblePropsEqual);
 
@@ -380,9 +394,21 @@ export const TranscriptionBoard = ({
   });
   const [translationBumps, setTranslationBumps] = useState({});
   const [newcomerSessionHidden, setNewcomerSessionHidden] = useState(false);
+  const [languagePair, setLanguagePair] = useState(loadLanguagePair);
+  const protectionsActive = isEnEsProtectionMode(languagePair);
   const { playTTS, stopTTS, isPlaying, playingUrl, prefetchTTS } = useTTS();
   const { playWarningPing } = useProgressiveAudio();
   const { isActive, isZombieCall, lastCallSummary, setLastCallSummary } = useSession();
+  useComponentVisibilityRefresh();
+  const showOffCallGuide = isComponentVisible('off_call_guide', { isActive, isZombieCall });
+  const { inputDevices, outputDevices, selectedMicId, selectedSinkId } = useAudioSettings();
+  const ioRouteHint = React.useMemo(() => {
+    const mic = inputDevices.find((d) => d.deviceId === selectedMicId);
+    const out = outputDevices.find((d) => d.deviceId === selectedSinkId);
+    const micLabel = truncateDeviceLabel(mic?.label || 'Default mic');
+    const outLabel = truncateDeviceLabel(out?.label || 'Default out');
+    return `🎤 ${micLabel} → 🔊 ${outLabel}`;
+  }, [inputDevices, outputDevices, selectedMicId, selectedSinkId]);
   const warnedBubblesRef = useRef(new Set());
   
   const [popover, setPopover] = useState({ show: false, x: 0, y: 0, text: '' });
@@ -402,6 +428,12 @@ export const TranscriptionBoard = ({
   useEffect(() => {
     safeSet('catint_pinned_msgs', JSON.stringify(pinnedCaptions));
   }, [pinnedCaptions]);
+
+  useEffect(() => {
+    const onPairChange = (e) => setLanguagePair(e.detail || loadLanguagePair());
+    window.addEventListener(LANG_PAIR_CHANGED_EVENT, onPairChange);
+    return () => window.removeEventListener(LANG_PAIR_CHANGED_EVENT, onPairChange);
+  }, []);
 
   // UX: new call start should clear pinned messages (without affecting transcript history).
   useEffect(() => {
@@ -562,6 +594,9 @@ export const TranscriptionBoard = ({
           <div style={{ fontSize: '0.75rem', opacity: 0.9, textAlign: 'center', maxWidth: '36rem' }}>
             Click here or press the yellow 🟡 button above. Transcript and call timer are preserved — no need to Stop.
           </div>
+          <div style={{ fontSize: '0.65rem', opacity: 0.85, textAlign: 'center' }}>
+            {ioRouteHint} · STT: {connectionState === 'connected' ? 'disconnected (re-attach tab)' : connectionState}
+          </div>
           <div style={{ fontSize: '0.7rem', marginTop: '4px', textDecoration: 'underline' }}>[RE-ATTACH AUDIO]</div>
         </div>
       )}
@@ -617,7 +652,7 @@ export const TranscriptionBoard = ({
                 marginTop: '0.35rem',
                 border: '1px solid var(--accent-primary)',
                 background: 'rgba(34, 197, 94, 0.1)',
-                ...getBubbleStyle(cap.text, true, cap.lang),
+                ...getBubbleStyle(cap.text, true, cap.lang, languagePair),
               }}>
                 <MemoTranslatedBubble
                   id={cap.id}
@@ -627,7 +662,7 @@ export const TranscriptionBoard = ({
                   stopTTS={stopTTS}
                   playingUrl={playingUrl}
                   prefetchTTS={prefetchTTS}
-                  reverse={cap.lang === 'es'}
+                  reverse={shouldReverseBubble(cap.lang, languagePair)}
                   ttsMode={ttsMode}
                   wordCount={cap.text.trim().split(/\s+/).length}
                   shouldPrefetch={false}
@@ -635,6 +670,8 @@ export const TranscriptionBoard = ({
                   onTogglePin={() => togglePin(cap)}
                   forceTranslateKey={translationBumps[cap.id] ?? 0}
                   onManualRetranslate={() => bumpManualRetranslate(cap)}
+                  languagePair={languagePair}
+                  protectionsActive={protectionsActive}
                 />
                 <button
                   type="button"
@@ -658,7 +695,7 @@ export const TranscriptionBoard = ({
               <div style={{ fontFamily: 'var(--font-mono)', fontSize: '0.8rem', textAlign: 'center', padding: '0 1rem', color: '#fbbf24' }}>
                 Re-attach audio — your timer and transcript are saved. Press the green Re-attach button.
               </div>
-            ) : !newcomerSessionHidden && !isNewcomerGuideDismissed() ? (
+            ) : showOffCallGuide && !newcomerSessionHidden && !isNewcomerGuideDismissed() ? (
               <NewcomerIdleGuide
                 audioAttached={audioAttached}
                 micTestMode={micTestMode}
@@ -692,36 +729,31 @@ export const TranscriptionBoard = ({
           // In `useDeepgram`, the remainder bubble is created with `isFinal:false`
           // but still filled with the lane's `*Finalized` content, while the interim is empty.
           // We use that to flash only the moved remainder text (not the earlier sealed part).
-          const isTailMovedSection =
-            cap.isFinal === false &&
-            ((cap.lang === 'en' && cap.enFinalized && !cap.enInterim) ||
-              (cap.lang === 'es' && cap.esFinalized && !cap.esInterim));
+          const isTailMovedSection = isTailRemainderBubble(cap, languagePair);
           
           return (
             <div
               key={cap.id || i}
               className={`transcript-bubble${isLive ? ' is-live' : ''}${isSplitContinuation ? ' is-flowed' : ''}`}
-              // UI_FLOW_ANIMATION_TRIGGER:
-              // `.transcript-bubble.is-flowed` in `index.css` is currently what "animates the flow".
-              // Once you wire blue-to-substring, this class should stop being used (or be text-only)
-              // to avoid bubble height jitter during reading.
               style={{
               opacity: isLive ? 0.6 : 1,
               marginTop: isSplitContinuation ? '0rem' : '0.25rem',
               border: '1px solid transparent',
-              background: getBubbleStyle(cap.text, isLive, cap.lang).backgroundColor,
-              ...getBubbleStyle(cap.text, isLive, cap.lang)
+              background: getBubbleStyle(cap.text, isLive, cap.lang, languagePair).backgroundColor,
+              ...getBubbleStyle(cap.text, isLive, cap.lang, languagePair)
             }}>
               
               <div style={{ maxHeight: isLongBubble && !isExpanded ? '5.5rem' : 'none', overflow: isLongBubble && !isExpanded ? 'hidden' : 'visible', transition: 'max-height 0.3s ease' }}>
                 <MemoTranslatedBubble 
                   id={cap.id} text={cap.text} lang={cap.lang} playTTS={playTTS} stopTTS={stopTTS} playingUrl={playingUrl} prefetchTTS={prefetchTTS} 
-                  reverse={cap.lang === 'es'} ttsMode={ttsMode} turnWordCount={turnWordCount} showTurnWordCount={showTurnWordCount} shouldPrefetch={i >= captions.length - 3} 
+                  reverse={shouldReverseBubble(cap.lang, languagePair)} ttsMode={ttsMode} turnWordCount={turnWordCount} showTurnWordCount={showTurnWordCount} shouldPrefetch={i >= captions.length - 3} 
                   isPinned={false} onTogglePin={() => togglePin(cap)}
                   forceTranslateKey={translationBumps[cap.id] ?? 0}
                   onManualRetranslate={() => bumpManualRetranslate(cap)}
                   isTailMovedSection={isTailMovedSection}
                   isFinal={cap.isFinal !== false}
+                  languagePair={languagePair}
+                  protectionsActive={protectionsActive}
                 />
               </div>
               

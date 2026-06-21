@@ -53,6 +53,14 @@ const AppGuideOverlay = ({ onClose }) => {
   const [step, setStep] = useState(0);
   const [spot, setSpot] = useState(null);
 
+  const disableOnboardingAnimations = (() => {
+    try {
+      return localStorage.getItem('catint_onboarding_anim_disabled_v1') === '1';
+    } catch {
+      return false;
+    }
+  })();
+
   const current = GUIDE_STEPS[step];
   const isLast = step >= GUIDE_STEPS.length - 1;
 
@@ -128,6 +136,7 @@ const AppGuideOverlay = ({ onClose }) => {
             left: spot.left,
             width: spot.width,
             height: spot.height,
+            animation: disableOnboardingAnimations ? 'none' : undefined,
           }}
         />
       )}

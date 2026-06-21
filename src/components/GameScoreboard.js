@@ -5,6 +5,11 @@ import { ConnectionDiagnosticsBar } from './ConnectionDiagnosticsBar';
 import { StatNumber } from './StatNumber';
 import { ConnectInterpretButton } from './ConnectInterpretButton';
 import { hasConfiguredDeepgramKey } from '../utils/deepgramRuntimeKey';
+import {
+  isComponentVisible,
+  shouldShowScoreboardConnect,
+  useComponentVisibilityRefresh,
+} from '../utils/componentVisibility';
 
 // ─── ScoreboardTooltip ────────────────────────────────────────────────────────
 // A lightweight 'toastie' popover for dynamic info on hover.
@@ -135,7 +140,7 @@ const EmojiRow = ({ emoji, emptyEmoji, value, unitValue, maxValue, color = '#fff
 // ─── DirectionalCue ──────────────────────────────────────────────────────────
 // Directional cue shown under the scoreboard header.
 const IDLE_TIPS = [
-  'At 9am the app auto-attaches your interpreting tab — watch the status bar above.',
+  'At 9am the app auto-attaches your interpreting tab only if Auto-attach is enabled — watch the status bar above.',
   'Press C or ▶ CONNECT to attach; press again (CALL START) when the patient connects.',
   'Press M or 🎤 to use your device microphone instead of tab audio.',
   'Double-tap CONNECT to re-open the browser tab picker (Chrome preferred).',
@@ -159,12 +164,41 @@ const DirectionalCue = ({
   onAttachAudio, onAttachAudioFresh, onStartCall,
   onRecovery, onConnectAnotherTab,
   shiftElapsedMins,
+  connectInHeader = false,
+  showConnectButton = true,
 }) => {
   const [rotateTick, setRotateTick] = useState(0);
   useEffect(() => {
     const iv = setInterval(() => setRotateTick((n) => n + 1), 12000);
     return () => clearInterval(iv);
   }, []);
+
+  const IDLE_TIP_LEVEL_KEY = 'catint_idle_tip_level_v1';
+  const IDLE_TIP_SNOOZE_UNTIL_KEY = 'catint_idle_tip_snoozed_until_v1';
+
+  const [idleLevel, setIdleLevel] = useState(() => {
+    try {
+      return localStorage.getItem(IDLE_TIP_LEVEL_KEY) || 'normal';
+    } catch {
+      return 'normal';
+    }
+  });
+  const [idleSnoozedUntil, setIdleSnoozedUntil] = useState(() => {
+    try {
+      return Number(localStorage.getItem(IDLE_TIP_SNOOZE_UNTIL_KEY) || '0');
+    } catch {
+      return 0;
+    }
+  });
+
+  useEffect(() => {
+    try {
+      localStorage.setItem(IDLE_TIP_LEVEL_KEY, idleLevel);
+      localStorage.setItem(IDLE_TIP_SNOOZE_UNTIL_KEY, String(idleSnoozedUntil));
+    } catch {}
+  }, [idleLevel, idleSnoozedUntil]);
+
+  const idleMuted = idleLevel === 'less' || idleSnoozedUntil > Date.now();
 
   const bucket = rotateTick % 3;
   const idleSecondary = (() => {
@@ -227,7 +261,9 @@ const DirectionalCue = ({
       ? 'Enter your Deepgram key in Settings (gear, top-right)'
       : audioAttached
         ? 'Tab connected — press Start interpreting when the call begins'
-        : 'Press Click to connect tab — pick the browser tab with the conversation';
+        : idleMuted
+          ? 'Ready — connect when you want'
+          : IDLE_TIPS[rotateTick % IDLE_TIPS.length];
 
   const connectLabel = isZombieCall
     ? 'Re-attach'
@@ -236,6 +272,21 @@ const DirectionalCue = ({
       : audioAttached
         ? 'Start interpreting'
         : 'Click to connect tab';
+
+  const compactTip = (() => {
+    if (isZombieCall) return 'Re-attach tab — timer saved';
+    if (apiKeyMissing) return 'Add Deepgram key in Settings (gear)';
+    if (audioAttached) return 'Tab connected — press Start when call begins';
+    return IDLE_TIPS[rotateTick % IDLE_TIPS.length];
+  })();
+
+  if (connectInHeader) {
+    return (
+      <div className="directional-cue-compact" title={compactTip}>
+        {compactTip}
+      </div>
+    );
+  }
 
   const showKeyVault = () => {
     try {
@@ -260,16 +311,82 @@ const DirectionalCue = ({
       <div style={{ color: '#10b981', fontWeight: 900, fontSize: '0.7rem', lineHeight: 1.2 }}>
         {requiredIdleText}
       </div>
+      {showConnectButton && !apiKeyMissing && !isZombieCall && !audioAttached && (
+        <div style={{ display: 'flex', gap: '0.35rem', alignItems: 'center', flexWrap: 'wrap' }}>
+          <button
+            type="button"
+            onClick={() => {
+              setIdleLevel('normal');
+              setIdleSnoozedUntil(Date.now() + 60 * 60 * 1000); // 60m
+            }}
+            style={{
+              background: 'rgba(255,255,255,0.06)',
+              border: '1px solid rgba(255,255,255,0.12)',
+              color: '#34d399',
+              borderRadius: 999,
+              padding: '0.1rem 0.35rem',
+              fontSize: '0.65rem',
+              fontWeight: 900,
+              cursor: 'pointer',
+            }}
+            title="Hide the idle guidance for a while."
+          >
+            Got it
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              setIdleLevel('normal');
+              setIdleSnoozedUntil(Date.now() + 10 * 60 * 1000); // 10m
+            }}
+            style={{
+              background: 'rgba(255,255,255,0.06)',
+              border: '1px solid rgba(255,255,255,0.12)',
+              color: '#7dd3fc',
+              borderRadius: 999,
+              padding: '0.1rem 0.35rem',
+              fontSize: '0.65rem',
+              fontWeight: 900,
+              cursor: 'pointer',
+            }}
+            title="Mute guidance briefly; you can still connect normally."
+          >
+            Remind later
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              setIdleLevel('less');
+              setIdleSnoozedUntil(Date.now() + 24 * 60 * 60 * 1000); // 24h
+            }}
+            style={{
+              background: 'rgba(255,255,255,0.06)',
+              border: '1px solid rgba(255,255,255,0.12)',
+              color: '#fbbf24',
+              borderRadius: 999,
+              padding: '0.1rem 0.35rem',
+              fontSize: '0.65rem',
+              fontWeight: 900,
+              cursor: 'pointer',
+            }}
+            title="Make the idle header shorter."
+          >
+            Show less
+          </button>
+        </div>
+      )}
 
-      <ConnectInterpretButton
-        size="idle"
-        flash={!audioAttached && !isZombieCall}
-        label={connectLabel}
-        onSingle={handleSingle}
-        onDouble={handleDouble}
-        singleTitle="Press here to connect to another browser tab where a conversation to interpret is happening"
-        doubleTitle="Pick a different browser tab"
-      />
+      {showConnectButton && (
+        <ConnectInterpretButton
+          size="idle"
+          flash={!audioAttached && !isZombieCall}
+          label={connectLabel}
+          onSingle={handleSingle}
+          onDouble={handleDouble}
+          singleTitle="Press here to connect to another browser tab where a conversation to interpret is happening"
+          doubleTitle="Pick a different browser tab"
+        />
+      )}
 
       {showConnectChecklist || connectionState === 'error' ? (
         <ConnectionDiagnosticsBar
@@ -383,12 +500,24 @@ export const GameScoreboard = ({
   audioAttached = false,
   onAttachAudio, onAttachAudioFresh, onStartCall,
   onRecovery, onConnectAnotherTab,
+  connectInHeader = false,
+  compactPane = false,
  }) => {
+  useComponentVisibilityRefresh();
+  const visCtx = { isActive, isZombieCall };
+  const showTips = !compactPane && isComponentVisible('directional_cue_tips', visCtx);
+  const showEmojiRows = !compactPane && isComponentVisible('scoreboard_emoji_rows', visCtx);
+  const showMomentum = !compactPane && isComponentVisible('scoreboard_momentum_bar', visCtx);
+  const showConnectButton = shouldShowScoreboardConnect(connectInHeader, visCtx);
+
   // Drift counter: how many seconds since last call ended (affects UI urgency)
   const [idleSecs, setIdleSecs] = useState(0);
   useEffect(() => {
-    if (isActive || isBreakActive) { setIdleSecs(0); return; }
-    const iv = setInterval(() => setIdleSecs(s => s + 1), 1000);
+    if (isActive || isBreakActive) {
+      setIdleSecs((s) => (s === 0 ? s : 0));
+      return undefined;
+    }
+    const iv = setInterval(() => setIdleSecs((s) => s + 1), 1000);
     return () => clearInterval(iv);
   }, [isActive, isBreakActive]);
 
@@ -415,7 +544,7 @@ export const GameScoreboard = ({
   const hudState = isActive ? 'call' : isBreakActive ? 'break' : 'avail';
 
   return (
-    <div className="scoreboard-grid" data-state={hudState}>
+    <div className={`scoreboard-grid${compactPane ? ' scoreboard-grid--compact-pane' : ''}`} data-state={hudState}>
       
       {/* AREA: top-bar */}
       <div style={{ gridArea: 'top-bar', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -459,34 +588,41 @@ export const GameScoreboard = ({
             <span style={{ marginLeft: 'auto', color: '#ef4444', fontWeight: 900 }}>{driftLabel}</span>
           )}
         </div>
-        <DirectionalCue 
-          pacePrediction={pacePrediction} dailyGoal={dailyGoal} 
-          totalDailyMins={totalDailyMins} breakLeft={breakLeft} 
-          qualityScore={qualityScore} cutoffWarning={cutoffWarning}
-          isActive={isActive} isBreakActive={isBreakActive}
-          isZombieCall={isZombieCall}
-          connectionState={connectionState}
-          connectProgress={connectProgress}
-          audioAttached={audioAttached}
-          onAttachAudio={onAttachAudio}
-          onAttachAudioFresh={onAttachAudioFresh}
-          onStartCall={onStartCall}
-          onRecovery={onRecovery}
-          onConnectAnotherTab={onConnectAnotherTab}
-          shiftElapsedMins={shiftElapsedMins}
-        />
+        {showTips && (
+          <DirectionalCue
+            pacePrediction={pacePrediction} dailyGoal={dailyGoal}
+            totalDailyMins={totalDailyMins} breakLeft={breakLeft}
+            qualityScore={qualityScore} cutoffWarning={cutoffWarning}
+            isActive={isActive} isBreakActive={isBreakActive}
+            isZombieCall={isZombieCall}
+            connectionState={connectionState}
+            connectProgress={connectProgress}
+            audioAttached={audioAttached}
+            onAttachAudio={onAttachAudio}
+            onAttachAudioFresh={onAttachAudioFresh}
+            onStartCall={onStartCall}
+            onRecovery={onRecovery}
+            onConnectAnotherTab={onConnectAnotherTab}
+            shiftElapsedMins={shiftElapsedMins}
+            connectInHeader={connectInHeader}
+            showConnectButton={showConnectButton}
+          />
+        )}
       </div>
 
       {/* AREA: timers */}
-      <div style={{ gridArea: 'timers' }}>
-        <MomentumBar
-          totalDailyMins={totalDailyMins} dailyGoal={dailyGoal}
-          shiftElapsedMins={shiftElapsedMins} isActive={isActive}
-          milestoneTargets={milestoneTargets}
-        />
-      </div>
+      {showMomentum && (
+        <div style={{ gridArea: 'timers' }}>
+          <MomentumBar
+            totalDailyMins={totalDailyMins} dailyGoal={dailyGoal}
+            shiftElapsedMins={shiftElapsedMins} isActive={isActive}
+            milestoneTargets={milestoneTargets}
+          />
+        </div>
+      )}
 
       {/* AREA: actions */}
+      {showEmojiRows && (
       <div style={{ gridArea: 'actions', display: 'flex', flexDirection: 'column', gap: '0.15rem' }}>
         {tab === 'day' ? (
           <>
@@ -598,6 +734,7 @@ export const GameScoreboard = ({
           </>
         )}
       </div>
+      )}
     </div>
   );
 };

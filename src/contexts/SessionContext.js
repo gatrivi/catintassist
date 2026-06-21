@@ -2,6 +2,13 @@ import React, { createContext, useContext, useState, useEffect, useRef, useCallb
 import { useRewardAudio } from '../hooks/useRewardAudio';
 import { set as idbSet, get as idbGet } from 'idb-keyval';
 import { getRuntimeDeepgramKey } from '../utils/deepgramRuntimeKey';
+import {
+  loadPreset,
+  loadVisibleMetrics,
+  savePreset,
+  saveVisibleMetrics,
+  getPresetConfig,
+} from '../utils/scoreboardLayout';
 
 const PURGE_KEYS_PREFIX = 'trans_cache:';
 
@@ -445,10 +452,21 @@ export const SessionProvider = ({ children }) => {
     return saved === null ? true : saved === 'true';
   });
 
+  const [autoAttachEnabled, setAutoAttachEnabled] = useState(() => {
+    const saved = localStorage.getItem('catint_auto_attach_enabled_v1');
+    return saved === '1';
+  });
+
   useEffect(() => { localStorage.setItem('catint_notes_open', JSON.stringify(isNotesOpen)); }, [isNotesOpen]);
   useEffect(() => { localStorage.setItem('catint_toolbar_visible', JSON.stringify(isToolbarVisible)); }, [isToolbarVisible]);
   useEffect(() => { localStorage.setItem('catint_call_detect', JSON.stringify(isCallDetectionEnabled)); }, [isCallDetectionEnabled]);
   useEffect(() => { localStorage.setItem('catint_call_focus', JSON.stringify(callFocusMode)); }, [callFocusMode]);
+  useEffect(() => {
+    localStorage.setItem(
+      'catint_auto_attach_enabled_v1',
+      autoAttachEnabled ? '1' : '0',
+    );
+  }, [autoAttachEnabled]);
 
   // Post-Call Summary: extract key data when a call ends
   const [lastCallSummary, setLastCallSummary] = useState(null);
@@ -483,6 +501,24 @@ export const SessionProvider = ({ children }) => {
   }, [visibleCards]);
 
   const toggleCard = (key) => setVisibleCards(v => ({ ...v, [key]: !v[key] }));
+
+  const [scoreboardPreset, setScoreboardPreset] = useState(() => loadPreset());
+  const [visibleMetrics, setVisibleMetrics] = useState(() => loadVisibleMetrics());
+
+  useEffect(() => {
+    saveVisibleMetrics(visibleMetrics);
+  }, [visibleMetrics]);
+
+  const toggleMetric = (key) => setVisibleMetrics(v => ({ ...v, [key]: !v[key] }));
+
+  const applyScoreboardPreset = useCallback((presetId) => {
+    const cfg = getPresetConfig(presetId);
+    if (!cfg) return;
+    setScoreboardPreset(presetId);
+    savePreset(presetId);
+    setVisibleCards(cfg.visibleCards);
+    setVisibleMetrics(cfg.visibleMetrics);
+  }, []);
 
   // GUARDAMOS TODO: daily log tracks minutes per calendar day for the heatmap.
   const [dailyLog, setDailyLog] = useState(() => {
@@ -917,6 +953,10 @@ export const SessionProvider = ({ children }) => {
     setIsEditingScoreboard,
     visibleCards,
     toggleCard,
+    visibleMetrics,
+    toggleMetric,
+    scoreboardPreset,
+    applyScoreboardPreset,
     isNotesOpen,
     setIsNotesOpen,
     isToolbarVisible,
@@ -946,6 +986,8 @@ export const SessionProvider = ({ children }) => {
     setIsScoreboardHelpVisible,
     isCallDetectionEnabled,
     setIsCallDetectionEnabled,
+    autoAttachEnabled,
+    setAutoAttachEnabled,
     callFocusMode,
     setCallFocusMode,
     lastCallSummary,

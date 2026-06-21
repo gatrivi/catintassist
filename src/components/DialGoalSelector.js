@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect, useMemo } from 'react';
 import { useProgressiveAudio } from '../hooks/useProgressiveAudio';
 
-export const DialGoalSelector = ({ ratePerMinute, arsRate, setArsRate, initialGoalMinutes, onSave, onCancel }) => {
+export const DialGoalSelector = ({ ratePerMinute, arsRate, setArsRate, initialGoalMinutes, onSave, onCancel, modal = false }) => {
   const audioEngine = useProgressiveAudio();
   
   // The user prioritizes "Weekly Hours" commitment.
@@ -75,9 +75,12 @@ export const DialGoalSelector = ({ ratePerMinute, arsRate, setArsRate, initialGo
 
   return (
     <div style={{
-      position: 'absolute', top: 'calc(100% + 5px)', left: '50%', transform: 'translateX(-50%)',
+      position: modal ? 'fixed' : 'absolute',
+      top: modal ? '50%' : 'calc(100% + 5px)',
+      left: modal ? '50%' : '50%',
+      transform: modal ? 'translate(-50%, -50%)' : 'translateX(-50%)',
       background: 'rgba(15, 23, 42, 0.98)', border: '1px solid rgba(139, 92, 246, 0.4)',
-      borderRadius: '12px', padding: '1rem', width: '95vw', maxWidth: '520px', zIndex: 9999,
+      borderRadius: '12px', padding: '1rem', width: '95vw', maxWidth: '520px', zIndex: modal ? 9999 : 9999,
       backdropFilter: 'blur(24px)', boxShadow: '0 12px 50px rgba(0,0,0,0.8)',
       display: 'flex', flexDirection: 'column', gap: '0.8rem'
     }}>

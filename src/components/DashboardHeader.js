@@ -5,7 +5,7 @@ import { LiveRollingNumber } from './LiveRollingNumber';
 import { useRewardAudio } from '../hooks/useRewardAudio';
 import { useSession } from '../contexts/SessionContext';
 import { useAudioSettings } from '../contexts/AudioSettingsContext';
-import { StopIcon, formatTime } from './HeaderWidgets';
+import { formatTime } from './HeaderWidgets';
 import { DialGoalSelector } from './DialGoalSelector';
 import { useProgressiveAudio } from '../hooks/useProgressiveAudio';
 import { MonthHeatmap } from './MonthHeatmap';
@@ -17,9 +17,23 @@ import { WorkspaceViewSwitcher } from './WorkspaceViewSwitcher';
 import { ConnectInterpretButton } from './ConnectInterpretButton';
 import { ConnectionDiagnosticsBar } from './ConnectionDiagnosticsBar';
 import { AudioRouteStatusBar } from './AudioRouteStatusBar';
+import { HeaderMetricsStrip } from './HeaderMetricsStrip';
 import { playTestToneLocal, playTestToneSink } from '../utils/audioSelfTest';
 import { SlotMicroValue } from './SlotMicroValue';
 import { hasConfiguredDeepgramKey, isRememberExpired } from '../utils/deepgramRuntimeKey';
+import { PRESET_LABELS, getPresetConfig } from '../utils/scoreboardLayout';
+import {
+  isComponentVisible,
+  shouldShowProgressStack,
+  useComponentVisibilityRefresh,
+} from '../utils/componentVisibility';
+import {
+  loadLanguagePair,
+  formatPairShort,
+  LANG_PAIR_CHANGED_EVENT,
+} from '../utils/languageConfig';
+
+const OFF_CALL_METRICS_EXPANDED_KEY = 'catint_off_call_metrics_expanded_v1';
 const CelebrationParticles = ({ type, label, coins, onDismiss }) => {
   const [isClosing, setIsClosing] = useState(false);
   const emojis = ['🪙', '🪙', '💸', '💵', '💰', '💎'];
@@ -178,9 +192,33 @@ const buildOffCallStatus = ({
   isBreakActive,
   isZombieCall,
   audioAttached,
+  tabStreamReady,
   micTestMode,
   slackText,
 }) => {
+  const IDLE_TIP_LEVEL_KEY = 'catint_idle_tip_level_v1';
+  const IDLE_TIP_SNOOZE_UNTIL_KEY = 'catint_idle_tip_snoozed_until_v1';
+  const OFF_CALL_ADVICE = [
+    'Tip: Press C or ▶ CONNECT to attach, then CALL START when the patient connects.',
+    'Tip: Press M or 🎤 for mic mode if tab audio is annoying/unavailable.',
+    'Tip: Double-tap CONNECT to re-open the browser tab picker (Chrome preferred).',
+    'Tip: Pin key details with 📍 so numbers stay visible while you wait.',
+    'Tip: Settings → Language to change transcription pair (default EN↔ES).',
+    'Tip: Space / Alt+Space force left/right STT lane (30s) — pair in Settings → Language.',
+  ];
+
+  const readIdlePref = () => {
+    try {
+      const level = localStorage.getItem(IDLE_TIP_LEVEL_KEY) || 'normal';
+      const snoozedUntil = Number(localStorage.getItem(IDLE_TIP_SNOOZE_UNTIL_KEY) || '0');
+      return { level, snoozedUntil };
+    } catch {
+      return { level: 'normal', snoozedUntil: 0 };
+    }
+  };
+  const { level: idleLevel, snoozedUntil } = readIdlePref();
+  const idleMuted = idleLevel === 'less' || snoozedUntil > Date.now();
+
   if (settingsOpen && vaultNeedsDecrypt) {
     return 'Unlock Deepgram — enter password in Settings (gear, top-right)';
   }
@@ -212,10 +250,20 @@ const buildOffCallStatus = ({
   if (audioAttached) {
     return 'Tab connected — press Start interpreting when the call begins';
   }
+
+  // Work-hours: if tab stream is detached, keep the user out of “blocked when call rings”.
+  const h = new Date().getHours();
+  const isWorkHours = h >= 9 && h < 18;
+  if (!micTestMode && !isZombieCall && !tabStreamReady && isWorkHours) {
+    return 'Tab disconnected — reconnect now to avoid missing the first lines';
+  }
   const micHint = micTestMode
     ? 'Mic mode on — press Click to connect tab (uses your microphone)'
     : 'No tab yet? Press the mic button, then Click to connect tab';
-  return `Press Click to connect tab — pick the browser tab with the conversation · ${micHint}`;
+  if (idleMuted) return `Ready — click to connect when you want · ${micHint}`;
+
+  const adviceIdx = Math.floor(Date.now() / 12000) % OFF_CALL_ADVICE.length;
+  return `${OFF_CALL_ADVICE[adviceIdx]} · ${micHint}`;
 };
 
 const SessionControlsSticky = React.memo(({
@@ -278,6 +326,12 @@ const SessionControlsSticky = React.memo(({
   lastDataTime = 0,
   onOpenSoundboard,
   onExpandAudioDevices,
+  onOpenGoalDial,
+
+  sttLanguage = 'auto',
+  onToggleLanguage,
+  onOpenLanguageSettings,
+  languagePairLabel,
 }) => {
   const showConnecting = isActive && connectionState !== 'connected';
   const slackText = `SLACK ${formatTime(silenceCount)}`;
@@ -293,6 +347,7 @@ const SessionControlsSticky = React.memo(({
     isBreakActive,
     isZombieCall,
     audioAttached,
+    tabStreamReady,
     micTestMode,
     slackText,
   });
@@ -319,6 +374,56 @@ const SessionControlsSticky = React.memo(({
             aria-pressed={micTestMode}
           >
             🎤
+          </button>
+        )}
+
+        {!isActive && onOpenLanguageSettings && (
+          <button
+            id="header-lang-pair-btn"
+            type="button"
+            className="btn-icon tiny-btn"
+            onClick={onOpenLanguageSettings}
+            style={{
+              height: '26px',
+              padding: '0 6px',
+              fontSize: '0.62rem',
+              fontWeight: 800,
+              letterSpacing: '0.04em',
+              background:
+                sttLanguage === 'left'
+                  ? 'rgba(59, 130, 246, 0.25)'
+                  : sttLanguage === 'right'
+                    ? 'rgba(16, 185, 129, 0.25)'
+                    : 'rgba(255,255,255,0.06)',
+              border:
+                sttLanguage === 'left'
+                  ? '1px solid rgba(59, 130, 246, 0.55)'
+                  : sttLanguage === 'right'
+                    ? '1px solid rgba(16, 185, 129, 0.55)'
+                    : '1px solid rgba(255,255,255,0.1)',
+            }}
+            title={`STT pair ${languagePairLabel || 'EN | ES'} · ${sttLanguage === 'auto' ? 'auto-detect' : sttLanguage === 'left' ? 'forcing left column' : 'forcing right column'} · Space/Alt+Space cycles · click for Settings → Language`}
+          >
+            {languagePairLabel || 'EN | ES'}
+          </button>
+        )}
+
+        {!isActive && onOpenGoalDial && (
+          <button
+            id="header-goal-btn"
+            type="button"
+            className="btn-icon tiny-btn"
+            onClick={onOpenGoalDial}
+            style={{
+              width: '26px',
+              height: '26px',
+              fontSize: '0.75rem',
+              background: 'rgba(139, 92, 246, 0.18)',
+              border: '1px solid rgba(167, 139, 250, 0.45)',
+            }}
+            title="Weekly hours commitment — tap to open goal picker wheel"
+          >
+            🎯
           </button>
         )}
 
@@ -619,16 +724,72 @@ export const DashboardHeader = ({
   settingsOpen = false,
   onOpenSoundboard,
 }) => {
-  const { isActive, sessionSeconds, sessionEarnings, stats, updateStat, stopSession, endDay, RATE_PER_MINUTE, arsRate, setArsRate, isBreakActive, breakSeconds, startBreak, stopBreak, availSeconds, isEditingScoreboard, setIsEditingScoreboard, visibleCards, isNotesOpen, setIsNotesOpen, isToolbarVisible, setIsToolbarVisible, isHeatmapOpen, setIsHeatmapOpen, isZombieCall, isScoreboardHelpVisible, setIsScoreboardHelpVisible, isHold, setIsHold, holdSeconds, dailyTimeline, historyTimeline, dailyLog, lastActivityTime, lastEnglishActivityTime, isCallDetectionEnabled, setIsCallDetectionEnabled, callFocusMode, setCallFocusMode, minutesSinceLastBreak, requestHipaaDisconnectGrace, vaultStatus } = useSession();
+  const { isActive, sessionSeconds, sessionEarnings, stats, updateStat, stopSession, endDay, RATE_PER_MINUTE, arsRate, setArsRate, isBreakActive, breakSeconds, startBreak, stopBreak, availSeconds, isEditingScoreboard, setIsEditingScoreboard, visibleCards, toggleCard, visibleMetrics, toggleMetric, scoreboardPreset, applyScoreboardPreset, isNotesOpen, setIsNotesOpen, isToolbarVisible, setIsToolbarVisible, isHeatmapOpen, setIsHeatmapOpen, isZombieCall, isScoreboardHelpVisible, setIsScoreboardHelpVisible, isHold, setIsHold, dailyTimeline, historyTimeline, dailyLog, lastActivityTime, lastEnglishActivityTime, isCallDetectionEnabled, setIsCallDetectionEnabled, callFocusMode, setCallFocusMode, minutesSinceLastBreak, requestHipaaDisconnectGrace, vaultStatus } = useSession();
 
   const headerMinimal = !isActive && offCallWorkspace === 'soundboard';
-  const scoreboardFill = !isActive && offCallWorkspace === 'scoreboard';
+  const offCallScoreboardView = !isActive && offCallWorkspace === 'scoreboard';
   const studioView = offCallWorkspace === 'soundboard' ? 'soundboard' : 'scoreboard';
+
+  useComponentVisibilityRefresh();
+  const visCtx = { isActive, isZombieCall };
+  const [languagePair, setLanguagePair] = useState(loadLanguagePair);
+  useEffect(() => {
+    const onPairChange = (e) => setLanguagePair(e.detail || loadLanguagePair());
+    window.addEventListener(LANG_PAIR_CHANGED_EVENT, onPairChange);
+    return () => window.removeEventListener(LANG_PAIR_CHANGED_EVENT, onPairChange);
+  }, []);
+  const languagePairLabel = formatPairShort(languagePair);
+  const showProgressStack = shouldShowProgressStack(scoreboardPreset, visCtx);
+  const showExpandedIncome = isComponentVisible('expanded_income_cards', visCtx) && !offCallScoreboardView;
+  const showNumericGrid = isComponentVisible('scoreboard_numeric_grid', visCtx);
 
   const helpStyle = isScoreboardHelpVisible ? { outline: '1px dashed #3b82f6', position: 'relative' } : {};
   const HelpLabel = ({ text }) => isScoreboardHelpVisible ? (
     <div style={{ position: 'absolute', top: '-8px', left: '4px', fontSize: '0.45rem', background: '#3b82f6', color: 'white', padding: '0 3px', borderRadius: '2px', zIndex: 100, pointerEvents: 'none', fontWeight: 'bold', textTransform: 'uppercase', boxShadow: '0 1px 3px rgba(0,0,0,0.3)' }}>{text}</div>
   ) : null;
+  const MetricPct = ({ children }) => (
+    <div className="metric-cell-pct">{children}</div>
+  );
+
+  const showMetric = (key) => isEditingScoreboard || visibleMetrics[key];
+
+  const MetricVisibilityToggle = ({ metricKey }) => isEditingScoreboard ? (
+    <button
+      type="button"
+      onClick={(e) => { e.stopPropagation(); toggleMetric(metricKey); }}
+      style={{
+        position: 'absolute', top: 2, right: 2, zIndex: 20,
+        background: 'rgba(0,0,0,0.65)', border: '1px solid rgba(255,255,255,0.25)',
+        borderRadius: 3, fontSize: '0.5rem', cursor: 'pointer', padding: '0 3px',
+        opacity: visibleMetrics[metricKey] ? 1 : 0.45,
+      }}
+      title={visibleMetrics[metricKey] ? 'Hide cell' : 'Show cell'}
+    >
+      {visibleMetrics[metricKey] ? '👁' : '🚫'}
+    </button>
+  ) : null;
+
+  const CardVisibilityToggle = ({ cardKey }) => isEditingScoreboard ? (
+    <button
+      type="button"
+      onClick={(e) => { e.stopPropagation(); toggleCard(cardKey); }}
+      style={{
+        position: 'absolute', top: 2, right: 2, zIndex: 20,
+        background: 'rgba(0,0,0,0.65)', border: '1px solid rgba(255,255,255,0.25)',
+        borderRadius: 3, fontSize: '0.5rem', cursor: 'pointer', padding: '0 3px',
+        opacity: visibleCards[cardKey] ? 1 : 0.45,
+      }}
+      title={visibleCards[cardKey] ? 'Hide card' : 'Show card'}
+    >
+      {visibleCards[cardKey] ? '👁' : '🚫'}
+    </button>
+  ) : null;
+
+  const toggleToolbar = useCallback(() => {
+    const next = !isToolbarVisible;
+    setIsToolbarVisible(next);
+    if (next) setIsNotesOpen(true);
+  }, [isToolbarVisible, setIsToolbarVisible, setIsNotesOpen]);
   const { outputDevices, inputDevices, selectedSinkId, selectedMicId, changeSinkId, changeMicId, fetchDevices } = useAudioSettings();
   const audioEngine = useProgressiveAudio();
   const { playChaChing } = useRewardAudio();
@@ -639,8 +800,17 @@ export const DashboardHeader = ({
   const [displayBounty, setDisplayBounty] = useState(0);
   const [isBountyAnimating, setIsBountyAnimating] = useState(false);
   const [timeEditMode, setTimeEditMode] = useState(null); // 'call' | 'break' | null
-  const [scoreView, setScoreView] = useState('numbers'); // 'game' | 'numbers'
+  const [scoreView, setScoreView] = useState(() => getPresetConfig(scoreboardPreset).scoreView || 'game'); // 'game' | 'numbers'
   const [silenceCount, setSilenceCount] = useState(0);
+
+  useEffect(() => {
+    const cfg = getPresetConfig(scoreboardPreset);
+    if (cfg?.scoreView) setScoreView(cfg.scoreView);
+  }, [scoreboardPreset]);
+
+  useEffect(() => {
+    if (isActive && scoreboardPreset === 'minimal') setIsCollapsed(true);
+  }, [isActive, scoreboardPreset]);
   const [hoveredTimelineEvent, setHoveredTimelineEvent] = useState(null);
   const [hoveredMetricTooltip, setHoveredMetricTooltip] = useState(null); // {x,y,placement,icon,heading,body,color}
   const [isZapping, setIsZapping] = useState(false);
@@ -654,30 +824,30 @@ export const DashboardHeader = ({
   }, [onReconnectStream]);
 
   const weeklyGoalHours = Math.round((stats.goalMinutes * 5) / (60 * 22));
-  const [scoreboardRoot, setScoreboardRoot] = useState(null);
-
-  useEffect(() => {
-    if (!scoreboardFill) {
-      setScoreboardRoot(null);
-      return undefined;
-    }
-    const attach = () => {
-      const el = document.getElementById('scoreboard-metrics-root');
-      if (el) setScoreboardRoot(el);
-    };
-    attach();
-    window.addEventListener('cat_scoreboard_metrics_ready', attach);
-    window.addEventListener('cat_pane_order_changed', attach);
-    return () => {
-      window.removeEventListener('cat_scoreboard_metrics_ready', attach);
-      window.removeEventListener('cat_pane_order_changed', attach);
-    };
-  }, [scoreboardFill]);
 
   const [showAsHours, setShowAsHours] = useState(false);
   const [rateView, setRateView] = useState('effective'); // 'effective' | 'active'
   const [overtimeMode, setOvertimeMode] = useState('tail'); // 'tail' | 'under'
   const [callModeExpanded, setCallModeExpanded] = useState(false); // User can pin full header during calls
+  const [offCallMetricsExpanded, setOffCallMetricsExpanded] = useState(() => {
+    try {
+      return localStorage.getItem(OFF_CALL_METRICS_EXPANDED_KEY) === 'true';
+    } catch {
+      return false;
+    }
+  });
+
+  const toggleOffCallMetricsExpanded = useCallback(() => {
+    setOffCallMetricsExpanded((prev) => {
+      const next = !prev;
+      try {
+        localStorage.setItem(OFF_CALL_METRICS_EXPANDED_KEY, next ? 'true' : 'false');
+      } catch {
+        /* ignore */
+      }
+      return next;
+    });
+  }, []);
 
   useEffect(() => {
     const iv = setInterval(() => {
@@ -1087,6 +1257,22 @@ export const DashboardHeader = ({
   const breakLeft = Math.max(0, breakLimit - breakUsed);
   const cashToTodayGoal = Math.max(0, dailyTargetArs - liveDailyArs);
 
+  const staminaRatioVal = totalDailyMins / Math.max(0.1, liveBreakMins);
+  const metricPcts = {
+    minsToday: dailyGoal > 0 ? `${((totalDailyMins / dailyGoal) * 100).toFixed(0)}% of goal` : '—',
+    leftToday: dailyGoal > 0 ? `${((Math.max(0, dailyGoal - totalDailyMins) / dailyGoal) * 100).toFixed(0)}% left` : '—',
+    todayGoal: '100% target',
+    arsToday: dailyTargetArs > 0 ? `${((todayArsLive / dailyTargetArs) * 100).toFixed(0)}% of tgt` : '—',
+    arsLeft: dailyTargetArs > 0 ? `${((cashToTodayGoal / dailyTargetArs) * 100).toFixed(0)}% left` : '—',
+    stamina: `${((staminaRatioVal / 5.3) * 100).toFixed(0)}% of 5.3x`,
+    arsMonth: monthlyTargetArs > 0 ? `${((monthlyArs / monthlyTargetArs) * 100).toFixed(0)}% of tgt` : '—',
+    arsLeftMonth: monthlyTargetArs > 0 ? `${((Math.max(0, monthlyTargetArs - monthlyArs) / monthlyTargetArs) * 100).toFixed(0)}% left` : '—',
+    offCall: (totalDailyMins + totalOffCallMins) > 0 ? `${((totalOffCallMins / (totalDailyMins + totalOffCallMins)) * 100).toFixed(0)}% off-call` : '—',
+    moAvg: baseYield > 0 ? `${((actualDailyAverage / baseYield) * 100).toFixed(0)}% vs pace` : '—',
+    silence: silenceCount > 30 ? `${Math.min(100, ((silenceCount / 600) * 100)).toFixed(0)}% of 10m` : '—',
+    currCall: isActive && dailyGoal > 0 ? `${(((sessionSeconds / 60) / dailyGoal) * 100).toFixed(0)}% of day` : '—',
+  };
+
   const formatHoursMins = (totalMins) => {
     const h = Math.floor(totalMins / 60);
     const m = Math.floor(totalMins % 60);
@@ -1284,6 +1470,10 @@ export const DashboardHeader = ({
       if (scenario === 'call') {
         if (audioAttached) onStartCall();
         else onAttachAudio?.();
+      } else if (scenario === 'ui_call') {
+        // Dev helper: start the “in call UI” without requiring real tab audio.
+        // (Captions will stay empty until real audio is attached.)
+        onStartCall?.();
       } else if (scenario === 'goal_hit') {
         handleStop();
         setTimeout(() => {
@@ -1307,13 +1497,54 @@ export const DashboardHeader = ({
     return () => window.removeEventListener('cat_demo_scenario', handleScenario);
   }, [onAttachAudio, onStartCall, audioAttached, onStopAudio, handleStop, handleStartBreak, stopBreak, stopSession, audioEngine]);
 
+  const renderOffCallCollapsedBody = () => {
+    const monthPct = ((stats.monthlyMinutes / (stats.goalMinutes || 1)) * 100).toFixed(1);
+    const stepFill = (stats.monthlyMinutes % 1375) / 1375;
+    const stepColor = stats.monthlyMinutes >= 11000 ? '#fcd34d' : (stats.monthlyMinutes >= 5500 ? '#a855f7' : '#3b82f6');
+    const dailyFill = Math.min(1, totalDailyMins / 480);
+    const dailyColor = stats.dailyMinutes >= 480 ? '#fcd34d' : (stats.dailyMinutes >= 350 ? '#c084fc' : '#60a5fa');
+    const monthlyColor = isMonthlyGoalMet ? '#10b981' : (isInDeficit ? '#f59e0b' : '#a855f7');
+
+    return (
+      <HeaderMetricsStrip
+        totalDailyMins={totalDailyMins}
+        dailyGoal={dailyGoal}
+        monthPct={monthPct}
+        liveDailyArs={liveDailyArs}
+        monthlyFill={monthlyProgressRatio}
+        monthlyPending={monthlyPendingRatio}
+        monthlyColor={monthlyColor}
+        monthlyTooltip={`Banked: ${Math.round(stats.monthlyMinutes)}m / ${Math.round(stats.goalMinutes)}m (${monthPct}%)`}
+        stepFill={stepFill}
+        stepColor={stepColor}
+        stepTooltip={`Step ${currentIdx + 1}/12 · ${Math.round(stats.monthlyMinutes % 1375)}m / 1375m · ${milestoneLabels[currentIdx]}`}
+        dailyFill={dailyFill}
+        dailyColor={dailyColor}
+        dailyTooltip={`Today: ${Math.round(totalDailyMins)}m banked · min ${Math.round(dailyGoal)}m · 480m focus`}
+        expanded={offCallMetricsExpanded}
+        onToggleExpand={toggleOffCallMetricsExpanded}
+        onBarHover={showProgressBarTooltip}
+        onBarLeave={hideMetricTooltip}
+      />
+    );
+  };
+
   const renderWorkspaceBody = () => (
-      <div className={`dashboard-header-fill${scoreboardFill ? ' scoreboard-workspace' : ''}`}>
+      <div className={`dashboard-header-fill${offCallScoreboardView ? ' scoreboard-workspace scoreboard-workspace--header' : ''}`} data-guide={offCallScoreboardView ? 'scoreboard' : undefined}>
       <>
+      {offCallScoreboardView && offCallMetricsExpanded && (
+        <div className="header-metrics-strip-row" style={{ padding: '0 0.25rem 0.1rem' }}>
+          <span className="header-metrics-summary">Full metrics</span>
+          <button type="button" className="header-metrics-expand-btn" onClick={toggleOffCallMetricsExpanded}>
+            ▲ Less
+          </button>
+        </div>
+      )}
       {/* COLLAPSED VIEW (hidden when in compact call mode) */}
       {(!isActive || callModeExpanded) && isCollapsed && (
         <div className="condensed-header-card">
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', padding: '0.15rem 0.35rem 0', flexWrap: 'wrap' }}>
+            {!offCallScoreboardView && (
             <button
               type="button"
               className="goal-weekly-pill"
@@ -1332,6 +1563,7 @@ export const DashboardHeader = ({
             >
               🎯 {weeklyGoalHours}h/wk goal
             </button>
+            )}
           </div>
           
           {/* Full-width scoreboard (numbers / game flip) */}
@@ -1364,12 +1596,37 @@ export const DashboardHeader = ({
                     milestoneTargets={milestoneTargets}
                     isEditingScoreboard={isEditingScoreboard}
                     getCompensatedLogOff={getCompensatedLogOff}
+                    connectInHeader={offCallScoreboardView}
+                    compactPane={offCallScoreboardView}
                   />
                 </div>
 
                 <div className="flip-back">
+                  {showNumericGrid ? (
                   <div id="numeric-metric-grid" className="metric-grid metric-grid--scoreboard">
+                    {isEditingScoreboard && (
+                      <div style={{ gridColumn: '1 / -1', display: 'flex', gap: '3px', flexWrap: 'wrap', padding: '2px 0', alignItems: 'center' }}>
+                        <span style={{ fontSize: '0.5rem', opacity: 0.5, marginRight: 4 }}>Preset:</span>
+                        {Object.entries(PRESET_LABELS).map(([id, label]) => (
+                          <button
+                            key={id}
+                            type="button"
+                            onClick={() => applyScoreboardPreset(id)}
+                            style={{
+                              fontSize: '0.5rem', fontWeight: 700, padding: '1px 5px', borderRadius: 3, cursor: 'pointer',
+                              background: scoreboardPreset === id ? 'rgba(59,130,246,0.25)' : 'rgba(255,255,255,0.06)',
+                              border: scoreboardPreset === id ? '1px solid rgba(59,130,246,0.5)' : '1px solid rgba(255,255,255,0.1)',
+                              color: scoreboardPreset === id ? '#93c5fd' : 'rgba(255,255,255,0.6)',
+                            }}
+                            title={`Apply ${label} scoreboard preset`}
+                          >
+                            {label}
+                          </button>
+                        ))}
+                      </div>
+                    )}
                     {/* 1. Mins worked today */}
+                    {showMetric('m1') && (
                     <div
                       className={`metric-cell ${isEditingScoreboard ? 'grid-edit-mode' : ''}`}
                       title="Minutes worked today (Click to toggle H:M)"
@@ -1378,11 +1635,15 @@ export const DashboardHeader = ({
                       onMouseEnter={(e) => showMetricTooltip(e, 1)}
                       onMouseLeave={hideMetricTooltip}
                     >
+                      <MetricVisibilityToggle metricKey="m1" />
                       <HelpLabel text="1. MINS TODAY" />
                       <div className="metric-cell-val" style={{ color: '#60a5fa' }}><StatNumber value={formatValue(totalDailyMins)} size="lg" format={false} /></div>
+                      <MetricPct>{metricPcts.minsToday}</MetricPct>
                       <div className="metric-cell-label">MINS TODAY</div>
                     </div>
+                    )}
 
+                    {showMetric('m2') && (
                     <div
                       className={`metric-cell ${isEditingScoreboard ? 'grid-edit-mode' : ''}`}
                       title="Minutes left for daily goal (Click to toggle H:M)"
@@ -1391,12 +1652,16 @@ export const DashboardHeader = ({
                       onMouseEnter={(e) => showMetricTooltip(e, 2)}
                       onMouseLeave={hideMetricTooltip}
                     >
+                      <MetricVisibilityToggle metricKey="m2" />
                       <HelpLabel text="2. LEFT TODAY" />
                       <div className="metric-cell-val" style={{ color: '#fca5a5' }}><StatNumber value={formatValue(Math.max(0, dailyGoal - totalDailyMins))} size="lg" format={false} /></div>
+                      <MetricPct>{metricPcts.leftToday}</MetricPct>
                       <div className="metric-cell-label">LEFT TODAY</div>
                     </div>
+                    )}
 
                     {/* 3. Goal mins */}
+                    {showMetric('m3') && (
                     <div
                       className={`metric-cell ${isEditingScoreboard ? 'grid-edit-mode' : ''}`}
                       title="Target goal minutes for today (Click to toggle H:M)"
@@ -1405,12 +1670,16 @@ export const DashboardHeader = ({
                       onMouseEnter={(e) => showMetricTooltip(e, 3)}
                       onMouseLeave={hideMetricTooltip}
                     >
+                      <MetricVisibilityToggle metricKey="m3" />
                       <HelpLabel text="3. TODAY GOAL" />
                       <div className="metric-cell-val"><StatNumber value={formatValue(dailyGoal)} size="lg" format={false} /></div>
+                      <MetricPct>{metricPcts.todayGoal}</MetricPct>
                       <div className="metric-cell-label">TODAY GOAL</div>
                     </div>
+                    )}
 
                     {/* 4. Money today */}
+                    {showMetric('m4') && (
                     <div
                       className={`metric-cell ${isEditingScoreboard ? 'grid-edit-mode' : ''}`}
                       title="Money earned today"
@@ -1418,12 +1687,16 @@ export const DashboardHeader = ({
                       onMouseEnter={(e) => showMetricTooltip(e, 4)}
                       onMouseLeave={hideMetricTooltip}
                     >
+                      <MetricVisibilityToggle metricKey="m4" />
                       <HelpLabel text="4. $ TODAY" />
                       <div className="metric-cell-val" style={{ color: '#34d399' }}>{renderLiveArs(todayArsLive, 'lg', '$')}</div>
+                      <MetricPct>{metricPcts.arsToday}</MetricPct>
                       <div className="metric-cell-label">$ TODAY</div>
                     </div>
+                    )}
 
                     {/* 5. Money to be made today */}
+                    {showMetric('m5') && (
                     <div
                       className={`metric-cell ${isEditingScoreboard ? 'grid-edit-mode' : ''}`}
                       title="Money remaining for today's goal"
@@ -1431,12 +1704,16 @@ export const DashboardHeader = ({
                       onMouseEnter={(e) => showMetricTooltip(e, 5)}
                       onMouseLeave={hideMetricTooltip}
                     >
+                      <MetricVisibilityToggle metricKey="m5" />
                       <HelpLabel text="5. $ LEFT TODAY" />
                       <div className="metric-cell-val" style={{ color: '#fcd34d' }}><StatNumber value={cashToTodayGoal} prefix="$" size="lg" /></div>
+                      <MetricPct>{metricPcts.arsLeft}</MetricPct>
                       <div className="metric-cell-label">$ LEFT TODAY</div>
                     </div>
+                    )}
 
                     {/* 6. Stamina Ratio (On-Call vs Break) */}
+                    {showMetric('m6') && (
                     <div
                       className={`metric-cell ${isEditingScoreboard ? 'grid-edit-mode' : ''}`}
                       title="STAMINA RATIO: Your on-call minutes divided by break minutes. Target is 5.3x (8h on / 90m off)."
@@ -1444,14 +1721,18 @@ export const DashboardHeader = ({
                       onMouseEnter={(e) => showMetricTooltip(e, 6)}
                       onMouseLeave={hideMetricTooltip}
                     >
+                      <MetricVisibilityToggle metricKey="m6" />
                       <HelpLabel text="6. STAMINA RATIO" />
                       <div className="metric-cell-val" style={{ color: (totalDailyMins / Math.max(0.1, liveBreakMins)) >= 5.3 ? '#c084fc' : '#9ca3af' }}>
                         {(totalDailyMins / Math.max(0.1, liveBreakMins)).toFixed(1)}x
                       </div>
+                      <MetricPct>{metricPcts.stamina}</MetricPct>
                       <div className="metric-cell-label">STAMINA RATIO</div>
                     </div>
+                    )}
 
                     {/* 7. Money month */}
+                    {showMetric('m7') && (
                     <div
                       className={`metric-cell ${isEditingScoreboard ? 'grid-edit-mode' : ''}`}
                       title="Money earned this month"
@@ -1459,12 +1740,16 @@ export const DashboardHeader = ({
                       onMouseEnter={(e) => showMetricTooltip(e, 7)}
                       onMouseLeave={hideMetricTooltip}
                     >
+                      <MetricVisibilityToggle metricKey="m7" />
                       <HelpLabel text="7. $ MONTH" />
                       <div className="metric-cell-val"><StatNumber value={monthlyArs} prefix="$" size="lg" /></div>
+                      <MetricPct>{metricPcts.arsMonth}</MetricPct>
                       <div className="metric-cell-label">$ MONTH</div>
                     </div>
+                    )}
 
                     {/* 8. Money left month */}
+                    {showMetric('m8') && (
                     <div
                       className={`metric-cell ${isEditingScoreboard ? 'grid-edit-mode' : ''}`}
                       title="Money remaining for monthly goal"
@@ -1472,12 +1757,16 @@ export const DashboardHeader = ({
                       onMouseEnter={(e) => showMetricTooltip(e, 8)}
                       onMouseLeave={hideMetricTooltip}
                     >
+                      <MetricVisibilityToggle metricKey="m8" />
                       <HelpLabel text="8. $ LEFT MONTH" />
                       <div className="metric-cell-val"><StatNumber value={Math.max(0, monthlyTargetArs - monthlyArs)} prefix="$" size="lg" /></div>
+                      <MetricPct>{metricPcts.arsLeftMonth}</MetricPct>
                       <div className="metric-cell-label">$ LEFT MONTH</div>
                     </div>
+                    )}
 
                     {/* 9. Off-call total today */}
+                    {showMetric('m9') && (
                     <div
                       className={`metric-cell ${isEditingScoreboard ? 'grid-edit-mode' : ''}`}
                       title="Total time spent off-call today (Click to toggle H:M)"
@@ -1486,12 +1775,16 @@ export const DashboardHeader = ({
                       onMouseEnter={(e) => showMetricTooltip(e, 9)}
                       onMouseLeave={hideMetricTooltip}
                     >
+                      <MetricVisibilityToggle metricKey="m9" />
                       <HelpLabel text="9. OFF CALL" />
                       <div className="metric-cell-val" style={{ color: '#fdba74' }}><StatNumber value={formatValue(totalOffCallMins)} size="lg" format={false} /></div>
+                      <MetricPct>{metricPcts.offCall}</MetricPct>
                       <div className="metric-cell-label">OFF CALL</div>
                     </div>
+                    )}
 
                     {/* 10. Avg so far mo */}
+                    {showMetric('m10') && (
                     <div
                       className={`metric-cell ${isEditingScoreboard ? 'grid-edit-mode' : ''}`}
                       title="Average minutes per day so far (Click to toggle H:M)"
@@ -1500,12 +1793,16 @@ export const DashboardHeader = ({
                       onMouseEnter={(e) => showMetricTooltip(e, 10)}
                       onMouseLeave={hideMetricTooltip}
                     >
+                      <MetricVisibilityToggle metricKey="m10" />
                       <HelpLabel text="10. MO AVG" />
                       <div className="metric-cell-val"><StatNumber value={formatValue(actualDailyAverage)} size="lg" format={false} /></div>
+                      <MetricPct>{metricPcts.moAvg}</MetricPct>
                       <div className="metric-cell-label">MO AVG</div>
                     </div>
+                    )}
 
                     {/* 11. Silence/Idle Timer */}
+                    {showMetric('m11') && (
                     <div
                       className={`metric-cell ${isEditingScoreboard ? 'grid-edit-mode' : ''}`}
                       title="Time since last audio activity (Reset by speech). In call, this tracks patient/user silence."
@@ -1513,6 +1810,7 @@ export const DashboardHeader = ({
                       onMouseEnter={(e) => showMetricTooltip(e, 11)}
                       onMouseLeave={hideMetricTooltip}
                     >
+                      <MetricVisibilityToggle metricKey="m11" />
                       <HelpLabel text="11. SILENCE" />
                       <div className="metric-watermark">{isActive ? '🔇' : '⏳'}</div>
                       <div className="metric-cell-val" style={{ color: silenceCount > 600 ? '#f87171' : 'white' }}>
@@ -1520,10 +1818,13 @@ export const DashboardHeader = ({
                           <StatNumber value={formatTime(silenceCount)} size="md" format={false} />
                         </div>
                       </div>
+                      <MetricPct>{metricPcts.silence}</MetricPct>
                       <div className="metric-cell-label">{isActive ? 'CALL SILENCE' : 'APP IDLE'}</div>
                     </div>
+                    )}
 
                     {/* 12. Current call min and cash */}
+                    {showMetric('m12') && (
                     <div
                       className={`metric-cell ${isEditingScoreboard ? 'grid-edit-mode' : ''}`}
                       title="Current call duration and unbanked cash"
@@ -1531,13 +1832,16 @@ export const DashboardHeader = ({
                       onMouseEnter={(e) => showMetricTooltip(e, 12)}
                       onMouseLeave={hideMetricTooltip}
                     >
+                      <MetricVisibilityToggle metricKey="m12" />
                       <HelpLabel text="12. CURR CALL" />
                       <div className="metric-cell-val" style={{ display: 'flex', gap: '0.2rem', alignItems: 'center' }}>
                         <StatNumber value={formatTime(sessionSeconds)} size="md" format={false} />
                         {renderSessionArs('lg', '$')}
                       </div>
+                      <MetricPct>{metricPcts.currCall}</MetricPct>
                       <div className="metric-cell-label">CURR CALL</div>
                     </div>
+                    )}
                     <div id="cell-switch-game" className="metric-cell" style={{ cursor: 'pointer', background: 'rgba(255,255,255,0.04)', gridColumn: 'span 3', flexDirection: 'row', minHeight: '26px' }} onClick={() => setScoreView('game')} title="Switch back to gamified view">
                       <span style={{ fontSize: '0.8rem', marginRight: '6px' }}>🎮</span>
                       <div className="metric-cell-label" style={{ opacity: 0.8 }}>BACK TO GAME VIEW</div>
@@ -1554,13 +1858,19 @@ export const DashboardHeader = ({
                       <AppGuideButton />
                     </div>
                   </div>
+                  ) : (
+                    <div style={{ padding: '0.5rem', fontSize: '0.6rem', opacity: 0.45, textAlign: 'center' }}>
+                      Number grid hidden — Settings → Display
+                    </div>
+                  )}
                 </div>
 
               </div>
             </div>
           </div>
 
-          {/* Slim toolbar under scoreboard (was left/right columns stealing width) */}
+          {/* Slim toolbar under scoreboard — hidden in portaled pane (sticky header owns controls) */}
+          {!offCallScoreboardView && (
           <div className="condensed-header-toolbar">
           <div id="controls-left-col" style={{ display: 'flex', flexDirection: 'row', flexWrap: 'wrap', gap: '0.35rem', alignItems: 'center' }}>
             <div id="connection-controls-horizontal" className={`${isActive ? 'active-working-state' : ''}`} style={{ display: 'flex', flexDirection: 'row', gap: '0.35rem', alignItems: 'center' }}>
@@ -1650,8 +1960,26 @@ export const DashboardHeader = ({
             </div>
 
             {/* Utility Tool Buttons - Consolidated Row */}
-            <div id="right-tool-vertical" style={{ display: 'flex', flexDirection: 'row', flexWrap: 'wrap', gap: '2px', marginTop: 'auto', justifyContent: 'center' }}>
+            <div id="right-tool-vertical" style={{ display: 'flex', flexDirection: 'row', flexWrap: 'wrap', gap: '2px', marginTop: 'auto', justifyContent: 'center', alignItems: 'center' }}>
+                {Object.entries(PRESET_LABELS).map(([id, label]) => (
+                  <button
+                    key={id}
+                    type="button"
+                    className="btn-icon tiny-btn"
+                    onClick={() => applyScoreboardPreset(id)}
+                    style={{
+                      height: '22px', fontSize: '0.45rem', fontWeight: 800, padding: '0 3px',
+                      opacity: scoreboardPreset === id ? 1 : 0.4,
+                      background: scoreboardPreset === id ? 'rgba(59,130,246,0.2)' : 'transparent',
+                    }}
+                    title={`Scoreboard: ${label}`}
+                  >
+                    {id === 'minimal' ? 'Min' : id === 'standard' ? 'Std' : 'Full'}
+                  </button>
+                ))}
                 <button id="header-notes-btn" className="btn-icon tiny-btn" onClick={() => setIsNotesOpen(!isNotesOpen)} style={{ opacity: isNotesOpen ? 1 : 0.3, width: '22px', height: '22px', fontSize: '0.8rem' }} title="Notes">📝</button>
+                <button id="header-tools-btn" className="btn-icon tiny-btn" onClick={toggleToolbar} style={{ opacity: isToolbarVisible ? 1 : 0.3, background: isToolbarVisible ? 'rgba(14,165,233,0.15)' : 'transparent', width: '22px', height: '22px', fontSize: '0.8rem' }} title="Show tools (notes + background)">🛠️</button>
+                <button id="header-help-btn" className="btn-icon tiny-btn" onClick={() => setIsScoreboardHelpVisible(!isScoreboardHelpVisible)} style={{ opacity: isScoreboardHelpVisible ? 1 : 0.3, background: isScoreboardHelpVisible ? 'rgba(59,130,246,0.15)' : 'transparent', width: '22px', height: '22px', fontSize: '0.8rem' }} title="Scoreboard help labels">❓</button>
                 <button id="header-edit-btn" className="btn-icon tiny-btn" onClick={() => { if(isCollapsed) setIsCollapsed(false); setIsEditingScoreboard(!isEditingScoreboard); }} style={{ opacity: isEditingScoreboard ? 1 : 0.3, width: '22px', height: '22px', fontSize: '0.8rem' }} title="Edit Grid">✏️</button>
                 <button id="header-expand-btn" className="btn-icon tiny-btn" onClick={() => setIsCollapsed(!isCollapsed)} style={{ width: '22px', height: '22px', fontSize: '0.8rem' }} title={isCollapsed ? "Expand HUD" : "Collapse HUD"}>{isCollapsed ? '🔼' : '▼'}</button>
                 <button id="header-calldetect-btn" className="btn-icon tiny-btn" onClick={() => setIsCallDetectionEnabled(!isCallDetectionEnabled)} style={{ opacity: isCallDetectionEnabled ? 1 : 0.3, background: isCallDetectionEnabled ? 'rgba(16,185,129,0.1)' : 'transparent', width: '22px', height: '22px', fontSize: '0.8rem' }} title="Call Detection">{isCallDetectionEnabled ? '📡' : '📵'}</button>
@@ -1659,12 +1987,13 @@ export const DashboardHeader = ({
             </div>
           </div>
           </div>
+          )}
         </div>
       )}
 
       {/* ── EXPANDED TWO-ROW DASHBOARD ── */}
-      {(!isActive || callModeExpanded) && !isCollapsed && (
-        <div className="income-dashboard">
+      {(!isActive || callModeExpanded) && !isCollapsed && showExpandedIncome && (
+        <div className={`income-dashboard${isActive ? ' income-dashboard--on-call' : ''}`}>
           
           {/* UPPER ROW: High-Level Progress & The Bounty */}
           <div className="dashboard-row dashboard-row-upper">
@@ -1691,7 +2020,8 @@ export const DashboardHeader = ({
 
             {/* Monthly Profit */}
             {(isEditingScoreboard || visibleCards.month) && (
-              <div className="income-card income-tier-1" style={{ flex: '1 1 0', minWidth: 0 }} title="MONTHLY PROFIT: Your total banked earnings for the month against your ultimate monthly target.">
+              <div className="income-card income-tier-1" style={{ flex: '1 1 0', minWidth: 0, position: 'relative' }} title="MONTHLY PROFIT: Your total banked earnings for the month against your ultimate monthly target.">
+                <CardVisibilityToggle cardKey="month" />
                 <span className="income-label">🗓️ MO.PROFIT</span>
                 <span className="income-ars" style={{ whiteSpace: 'nowrap', display: 'flex', alignItems: 'center', gap: '0.2rem' }}>
                   <span>🌊</span>
@@ -1706,7 +2036,8 @@ export const DashboardHeader = ({
 
             {/* Today's Shift Progress */}
             {(isEditingScoreboard || visibleCards.today) && (
-              <div className="income-card income-tier-2" style={{ flex: '1 1 0', minWidth: 0, cursor: 'pointer', ...helpStyle }} onClick={() => !isEditingScoreboard && setIsTodayDialOpen(true)} title="DAILY PROGRESS: Minutes banked today out of your total daily target minutes required based on your monthly pacing.">
+              <div className="income-card income-tier-2" style={{ flex: '1 1 0', minWidth: 0, cursor: 'pointer', position: 'relative', ...helpStyle }} onClick={() => !isEditingScoreboard && setIsTodayDialOpen(true)} title="DAILY PROGRESS: Minutes banked today out of your total daily target minutes required based on your monthly pacing.">
+                <CardVisibilityToggle cardKey="today" />
                 <HelpLabel text="Daily Mins" />
                 <span className="income-label">{activeDayEmoji} DAILY</span>
                 <span className="income-ars" style={{ whiteSpace: 'nowrap' }}>🌊{Math.round(stats.dailyMinutes)}m/🎯{Math.round(dailyGoal)}m</span>
@@ -1779,32 +2110,27 @@ export const DashboardHeader = ({
             </div>
 
             {/* BREAK BUDGET */}
-            <div className="income-card" style={{ flex: '1 1 0', minWidth: 0, background: breakLeft < 15 ? 'rgba(239,68,68,0.06)' : 'rgba(251,146,60,0.06)' }}
+            {(isEditingScoreboard || visibleCards.break) && (
+            <div className="income-card" style={{ flex: '1 1 0', minWidth: 0, position: 'relative', background: breakLeft < 15 ? 'rgba(239,68,68,0.06)' : 'rgba(251,146,60,0.06)' }}
               title={`BREAK BUDGET: You have ${Math.round(breakLeft)} minutes left of your ${breakLimit}-minute daily coffee break allowance.`}>
+              <CardVisibilityToggle cardKey="break" />
               <span className="income-label">☕ BREAK LEFT</span>
               <span style={{ fontSize: '1rem', fontWeight: 800, color: breakLeft < 15 ? '#ef4444' : breakLeft < 30 ? '#f59e0b' : '#6ee7b7' }}>
                 {Math.round(breakLeft)}m
               </span>
               <span style={{ fontSize: '0.5rem', opacity: 0.5 }}>of {breakLimit}m budget</span>
             </div>
+            )}
 
           </div>
 
-          {/* LOWER ROW: Interaction & Live Metrics */}
+          {/* LOWER ROW: Interaction & Live Metrics (no duplicate STOP/HOLD — sticky bar owns those) */}
           <div className="dashboard-row dashboard-row-lower">
             
             {/* Main Controls Group */}
-            <div style={{ display: 'flex', gap: '0.3rem', alignItems: 'center' }}>
-              <StateIndicators state={isActive ? 'call' : isBreakActive ? 'break' : 'avail'} breakMinutes={stats.dailyBreakMinutes || 0} />
-              {!isActive ? (
-                 null
-              ) : (
-                <div style={{ display: 'flex', gap: '0.3rem' }}>
-                  <button id="stop-btn" className="btn btn-danger" onClick={handleStop}><StopIcon /> STOP</button>
-                  <button id="header-hold-btn" className="btn" onClick={() => setIsHold(!isHold)} style={{ background: isHold ? '#f59e0b' : 'rgba(255,255,255,0.08)', border: isHold ? '1px solid #d97706' : '1px solid rgba(255,255,255,0.1)', color: isHold ? 'white' : 'inherit' }}>
-                    {isHold ? `⏸ HOLD ${formatTime(holdSeconds)}` : '⏸ HOLD'}
-                  </button>
-                </div>
+            <div className="header-utility-inline" style={{ display: 'flex', gap: '0.3rem', alignItems: 'center', flexWrap: 'wrap', minWidth: 0 }}>
+              {!isActive && (
+                <StateIndicators state={isBreakActive ? 'break' : 'avail'} breakMinutes={stats.dailyBreakMinutes || 0} />
               )}
               {isBreakActive ? (
                 <button id="stop-break-btn" className="btn" onClick={stopBreak} style={{ background: '#fb923c', color: 'white' }}>STOP BREAK</button>
@@ -1812,11 +2138,11 @@ export const DashboardHeader = ({
                 <button id="break-btn" className="btn" onClick={startBreak} disabled={isActive} style={{ opacity: isActive ? 0.3 : 1 }}>COFFEE</button>
               )}
               
-              <div className="header-utility-group" style={{ display: 'flex', gap: '0.2rem', alignItems: 'center', marginLeft: '0.4rem', paddingLeft: '0.4rem', borderLeft: '1px solid rgba(255,255,255,0.1)' }}>
+              <div className="header-utility-group" style={{ display: 'flex', gap: '0.2rem', alignItems: 'center', flexWrap: 'wrap' }}>
                 <button className="btn-icon-tiny" onClick={() => setTimeEditMode('call')} title="Edit call time">✏️📞</button>
                 <button className="btn-icon-tiny" onClick={() => setTimeEditMode('break')} title="Edit break time">✏️☕</button>
                 <button className={`btn-icon-tiny ${isNotesOpen ? 'active' : ''}`} onClick={() => setIsNotesOpen(!isNotesOpen)} title="Notes">📝</button>
-                <button className={`btn-icon-tiny ${isToolbarVisible ? 'active' : ''}`} onClick={() => setIsToolbarVisible(!isToolbarVisible)} title="Tools">🛠️</button>
+                <button className={`btn-icon-tiny ${isToolbarVisible ? 'active' : ''}`} onClick={toggleToolbar} title="Show tools (notes + background)">🛠️</button>
                 <button className={`btn-icon-tiny ${isEditingScoreboard ? 'active' : ''}`} onClick={() => setIsEditingScoreboard(!isEditingScoreboard)} title="Edit Grid">{isEditingScoreboard ? '💾' : '✏️'}</button>
                 <button className={`btn-icon-tiny ${isScoreboardHelpVisible ? 'active' : ''}`} onClick={() => setIsScoreboardHelpVisible(!isScoreboardHelpVisible)} title="Help">❓</button>
                 <button className="btn-icon-tiny" onClick={() => setIsHeatmapOpen(true)} title="Heatmap">📅</button>
@@ -1824,9 +2150,10 @@ export const DashboardHeader = ({
               </div>
             </div>
 
-            {/* Current Call (Live) */}
-            {(isEditingScoreboard || visibleCards.call) && (
-              <div className={`income-card ${isActive ? 'active' : ''}`} style={{ flex: '1 1 0', minWidth: 0, borderLeft: '1px solid rgba(255,255,255,0.1)', paddingLeft: '0.5rem', ...helpStyle }} title="CURRENT CALL: Active duration and unbanked earnings of the ongoing call.">
+            {/* Current Call (Live) — hidden during active call (sticky bar shows timer) */}
+            {(isEditingScoreboard || visibleCards.call) && !isActive && (
+              <div className={`income-card ${isActive ? 'active' : ''}`} style={{ flex: '1 1 0', minWidth: 0, position: 'relative', borderLeft: '1px solid rgba(255,255,255,0.1)', paddingLeft: '0.5rem', ...helpStyle }} title="CURRENT CALL: Active duration and unbanked earnings of the ongoing call.">
+                <CardVisibilityToggle cardKey="call" />
                 <HelpLabel text="Call" />
                 <span className="income-label" style={{ fontSize: '0.55rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                   <span>CALL ({formatTime(sessionSeconds)})</span>
@@ -1837,20 +2164,34 @@ export const DashboardHeader = ({
               </div>
             )}
 
-            {/* Audio Sinks */}
-            <div style={{ display: 'flex', gap: '0.2rem', alignItems: 'center', flexShrink: 1, minWidth: 0 }}>
-              <select className="btn" style={{ fontSize: '0.6rem', maxWidth: '80px', minWidth: '50px', flex: '1 1 0' }} value={selectedMicId} onChange={e => changeMicId(e.target.value)} onFocus={fetchDevices}>
+            {/* Audio Sinks — off-call only (I/O strip in sticky header during calls) */}
+            {!isActive && (
+            <div className="dashboard-audio-sinks" style={{ display: 'flex', gap: '0.2rem', alignItems: 'center', flexShrink: 1, minWidth: 0 }}>
+              <select
+                className="btn"
+                style={{ fontSize: '0.6rem', maxWidth: '80px', minWidth: '50px', flex: '1 1 0' }}
+                value={selectedMicId}
+                onChange={(e) => changeMicId(e.target.value)}
+                onFocus={() => fetchDevices({ requestMicPermissionForLabels: true })}
+              >
                 <option value="">🎤 Mic</option>
                 {inputDevices.map(d => <option key={d.deviceId} value={d.deviceId}>{d.label || `Mic ${d.deviceId.slice(0,5)}`}</option>)}
               </select>
-              <select className="btn" style={{ fontSize: '0.6rem', maxWidth: '80px', minWidth: '50px', flex: '1 1 0' }} value={selectedSinkId} onChange={e => changeSinkId(e.target.value)} onFocus={fetchDevices}>
+              <select
+                className="btn"
+                style={{ fontSize: '0.6rem', maxWidth: '80px', minWidth: '50px', flex: '1 1 0' }}
+                value={selectedSinkId}
+                onChange={(e) => changeSinkId(e.target.value)}
+                onFocus={() => fetchDevices({ requestMicPermissionForLabels: false })}
+              >
                 <option value="">🔊 Spk</option>
                 {outputDevices.map(d => <option key={d.deviceId} value={d.deviceId}>{d.label || `Spk ${d.deviceId.slice(0,5)}`}</option>)}
               </select>
             </div>
+            )}
 
             {/* Shift Recovery Stats */}
-            <div style={{ display: 'flex', gap: '0.4rem', alignItems: 'center', borderLeft: '1px solid rgba(255,255,255,0.1)', paddingLeft: '0.4rem', marginLeft: 'auto' }}>
+            <div className="dashboard-shift-stats" style={{ display: 'flex', gap: '0.4rem', alignItems: 'center', borderLeft: isActive ? 'none' : '1px solid rgba(255,255,255,0.1)', paddingLeft: isActive ? 0 : '0.4rem', marginLeft: isActive ? 0 : 'auto', flexWrap: 'wrap', minWidth: 0 }}>
               <div className="income-card" title="SHIFT LATE: Minutes past 9:00 AM you first connected today.">
                 <span className="income-label">🕒 LATE</span>
                 <span style={{ fontSize: '0.8rem', color: (stats.shiftStartSentiment || 0) > 30 ? '#ef4444' : '#6ee7b7' }}>{Math.round(stats.shiftStartSentiment || 0)}m</span>
@@ -1864,8 +2205,8 @@ export const DashboardHeader = ({
         </div>
       )}
 
-      {/* Progress bars (Always Visible) */}
-      {dailyGoal > 0 && (
+      {/* Progress bars */}
+      {dailyGoal > 0 && showProgressStack && (
         <div className="header-progress-stack" style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem', padding: '0.25rem 0.15rem 0.1rem' }}>
           {/* Monthly bar */}
           <div style={{ display: 'flex', flexDirection: 'column', gap: '0.15rem' }}>
@@ -2329,7 +2670,7 @@ ${isInDeficit ? `⚠️ DEFICIT: Behind pace by ${Math.round(monthlyDeficitMins)
 
   return (
     <>
-    <header className={`dashboard-header glass-panel${headerMinimal || scoreboardFill ? ' dashboard-header--controls-only' : ''}${headerMinimal ? ' dashboard-header--minimal' : ''}`} style={{ position: 'relative', zIndex: 100 }}>
+    <header className={`dashboard-header glass-panel${headerMinimal ? ' dashboard-header--minimal' : ''}${offCallScoreboardView ? ' dashboard-header--off-call-scoreboard' : ''}${offCallScoreboardView && offCallMetricsExpanded ? ' dashboard-header--metrics-expanded' : ''}`} style={{ position: 'relative', zIndex: 100 }}>
 
       <SessionControlsSticky
         isActive={isActive}
@@ -2387,19 +2728,41 @@ ${isInDeficit ? `⚠️ DEFICIT: Behind pace by ${Math.round(monthlyDeficitMins)
         lastDataTime={lastDataTime}
         onOpenSoundboard={onOpenSoundboard}
         onExpandAudioDevices={() => setIsCollapsed(false)}
+        onOpenGoalDial={() => setIsTodayDialOpen(true)}
+        sttLanguage={sttLanguage}
+        onToggleLanguage={onToggleLanguage}
+        onOpenLanguageSettings={() => {
+          try {
+            window.dispatchEvent(new CustomEvent('cat_show_language_settings'));
+          } catch (_) {}
+        }}
+        languagePairLabel={languagePairLabel}
       />
 
-      {!headerMinimal && !scoreboardFill && renderWorkspaceBody()}
+      {!headerMinimal && (
+        offCallScoreboardView && !offCallMetricsExpanded
+          ? renderOffCallCollapsedBody()
+          : renderWorkspaceBody()
+      )}
 
-      {isTodayDialOpen && (
-        <DialGoalSelector
-          ratePerMinute={RATE_PER_MINUTE}
-          arsRate={arsRate}
-          setArsRate={setArsRate}
-          initialGoalMinutes={stats.goalMinutes}
-          onSave={(m) => { updateStat('goalMinutes', m); setIsTodayDialOpen(false); }}
-          onCancel={() => setIsTodayDialOpen(false)}
-        />
+      {isTodayDialOpen && createPortal(
+        <>
+          <div
+            role="presentation"
+            onClick={() => setIsTodayDialOpen(false)}
+            style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.55)', zIndex: 9998 }}
+          />
+          <DialGoalSelector
+            modal
+            ratePerMinute={RATE_PER_MINUTE}
+            arsRate={arsRate}
+            setArsRate={setArsRate}
+            initialGoalMinutes={stats.goalMinutes}
+            onSave={(m) => { updateStat('goalMinutes', m); setIsTodayDialOpen(false); }}
+            onCancel={() => setIsTodayDialOpen(false)}
+          />
+        </>,
+        document.body
       )}
 
       {isHeatmapOpen && <MonthHeatmap />}
@@ -2463,7 +2826,6 @@ ${isInDeficit ? `⚠️ DEFICIT: Behind pace by ${Math.round(monthlyDeficitMins)
       document.body
     )}
 
-    {scoreboardFill && scoreboardRoot && createPortal(renderWorkspaceBody(), scoreboardRoot)}
     </>
   );
 };

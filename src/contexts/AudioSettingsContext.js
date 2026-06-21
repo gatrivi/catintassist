@@ -22,6 +22,10 @@ export const AudioSettingsProvider = ({ children }) => {
   // Hidden element: physical mic → virtual output (when mic is selected)
   const passthroughAudioRef = useRef(new Audio());
   const sinkPlaybackActiveRef = useRef(false);
+  const [micLevel, setMicLevel] = useState(0);
+  const [micStatus, setMicStatus] = useState('idle'); // idle | ok | no-signal | clip | muted
+  const micThrottleRef = useRef(0);
+  const micSilentSinceRef = useRef(0);
 
   /** Mute mic passthrough while soundboard/TTS plays to the same sink (avoids garbled mix). */
   const setSinkPlaybackActive = useCallback((active) => {
@@ -33,11 +37,11 @@ export const AudioSettingsProvider = ({ children }) => {
   }, []);
 
   // Fetch available devices
-  const fetchDevices = useCallback(async () => {
+  const fetchDevices = useCallback(async ({ requestMicPermissionForLabels = false } = {}) => {
     try {
       let devices = await navigator.mediaDevices.enumerateDevices();
       const needsPermission = devices.some(d => d.label === '' || d.label.toLowerCase() === 'speaker' || d.label.toLowerCase() === 'microphone');
-      if (needsPermission) {
+      if (needsPermission && requestMicPermissionForLabels) {
         try {
           const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
           stream.getTracks().forEach(t => t.stop());
@@ -59,9 +63,17 @@ export const AudioSettingsProvider = ({ children }) => {
   }, [selectedSinkId]);
 
   useEffect(() => {
-    fetchDevices();
-    navigator.mediaDevices.addEventListener('devicechange', fetchDevices);
-    return () => navigator.mediaDevices.removeEventListener('devicechange', fetchDevices);
+    fetchDevices({ requestMicPermissionForLabels: false });
+    const onDeviceChange = () => {
+      // Avoid triggering mic permission during casual device changes.
+      fetchDevices({ requestMicPermissionForLabels: false });
+    };
+    navigator.mediaDevices.addEventListener('devicechange', onDeviceChange);
+    return () => {
+      try {
+        navigator.mediaDevices.removeEventListener('devicechange', onDeviceChange);
+      } catch (_) {}
+    };
   }, [fetchDevices]);
 
   // Core Mixer Logic: If both Mic and Sink are selected, pipe them together.
@@ -111,6 +123,25 @@ export const AudioSettingsProvider = ({ children }) => {
               const micVol = Math.min(100, (avg / 60) * 100);
               const appVol = window.__CAT_AUDIO_VOL || 0;
               const vol = Math.min(100, micVol + appVol);
+
+              // Throttled React state + global ref for legacy top-mic-bar
+              const now = Date.now();
+              if (now - micThrottleRef.current > 100) {
+                micThrottleRef.current = now;
+                window.__CAT_MIC_LEVEL = vol;
+                setMicLevel(vol);
+                if (sinkPlaybackActiveRef.current) {
+                  setMicStatus('muted');
+                } else if (vol > 90) {
+                  setMicStatus('clip');
+                } else if (vol > 2) {
+                  micSilentSinceRef.current = 0;
+                  setMicStatus('ok');
+                } else {
+                  if (!micSilentSinceRef.current) micSilentSinceRef.current = now;
+                  setMicStatus(now - micSilentSinceRef.current > 3000 ? 'no-signal' : 'ok');
+                }
+              }
               
               const bar = document.getElementById('top-mic-bar');
               if (bar) {
@@ -139,9 +170,13 @@ export const AudioSettingsProvider = ({ children }) => {
           }
         } catch (e) {
           console.error("Failed to capture physical mic for passthrough", e);
+          setMicStatus('no-signal');
+          setMicLevel(0);
         }
       } else {
         passthroughAudioRef.current.srcObject = null;
+        setMicLevel(0);
+        setMicStatus('idle');
       }
     };
     
@@ -197,7 +232,7 @@ export const AudioSettingsProvider = ({ children }) => {
   };
 
   return (
-    <AudioSettingsContext.Provider value={{ outputDevices, inputDevices, selectedSinkId, selectedMicId, changeSinkId, changeMicId, fetchDevices, localVolume, sinkVolume, changeLocalVolume, changeSinkVolume, monitorMic, setMonitorMic, monitorVolume, setMonitorVolume, setSinkPlaybackActive }}>
+    <AudioSettingsContext.Provider value={{ outputDevices, inputDevices, selectedSinkId, selectedMicId, changeSinkId, changeMicId, fetchDevices, localVolume, sinkVolume, changeLocalVolume, changeSinkVolume, monitorMic, setMonitorMic, monitorVolume, setMonitorVolume, setSinkPlaybackActive, micLevel, micStatus }}>
       {children}
     </AudioSettingsContext.Provider>
   );

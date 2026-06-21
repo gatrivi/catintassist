@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useSession } from '../contexts/SessionContext';
 import { useProgressiveAudio } from '../hooks/useProgressiveAudio';
 import { safeSet } from '../contexts/SessionContext';
@@ -9,7 +9,7 @@ import { safeSet } from '../contexts/SessionContext';
  * for a sustained period while the session is active.
  */
 export const SilenceGuardian = ({ lastDataTime }) => {
-  const { isActive, lastActivityTime, stopSession, startBreak, isHold, holdSeconds } = useSession();
+  const { isActive, lastActivityTime, stopSession, startBreak, isHold } = useSession();
   const audioEngine = useProgressiveAudio();
   const [showWarning, setShowWarning] = useState(false);
   const [lastAlertTime, setLastAlertTime] = useState(0);
@@ -25,70 +25,74 @@ export const SilenceGuardian = ({ lastDataTime }) => {
   });
   const [showDisconnectTooltip, setShowDisconnectTooltip] = useState(false);
 
+  const alertedRef = useRef(alertedLevels);
+  const promptRef = useRef(promptCount);
+  const lastAlertRef = useRef(lastAlertTime);
+  alertedRef.current = alertedLevels;
+  promptRef.current = promptCount;
+  lastAlertRef.current = lastAlertTime;
+
   useEffect(() => {
     if (!isActive) {
-      setShowWarning(false);
-      setAlertedLevels({ 1: false, 2: false, 3: false });
-      setPromptCount(0);
-      setShowDisconnectTooltip(false);
+      setShowWarning((w) => (w ? false : w));
+      setAlertedLevels((prev) => (
+        prev[1] || prev[2] || prev[3] ? { 1: false, 2: false, 3: false } : prev
+      ));
+      setPromptCount((p) => (p ? 0 : p));
+      setShowDisconnectTooltip((d) => (d ? false : d));
       return;
     }
 
     const checkSilence = () => {
       const now = Date.now();
       const silenceSecs = (now - lastActivityTime) / 1000;
-      
-      // HOLD WARNING logic removed (unused showHoldWarning)
+      const levels = alertedRef.current;
+      const pc = promptRef.current;
 
-      // BYPASS: If on hold, do not play intrusive alerts or auto-disconnect
       if (isHold) {
-        if (showWarning) setShowWarning(false);
-        if (promptCount > 0) setPromptCount(0);
-        if (showDisconnectTooltip) setShowDisconnectTooltip(false);
+        setShowWarning((w) => (w ? false : w));
+        setPromptCount((p) => (p ? 0 : p));
+        setShowDisconnectTooltip((d) => (d ? false : d));
         return;
       }
 
-      // PRE-PROMPT AUDIO NUDGES (Keep tiered sounds but aligned with new thresholds)
-      if (silenceSecs >= 360 && !alertedLevels[3]) {
+      if (silenceSecs >= 360 && !levels[3]) {
         audioEngine.playWarningTiered(3);
-        setAlertedLevels(prev => ({ ...prev, 3: true }));
+        setAlertedLevels((prev) => ({ ...prev, 3: true }));
         setShowWarning(true);
         setPromptCount(3);
-      } else if (silenceSecs >= 240 && !alertedLevels[2]) {
+      } else if (silenceSecs >= 240 && !levels[2]) {
         audioEngine.playWarningTiered(2);
-        setAlertedLevels(prev => ({ ...prev, 2: true }));
+        setAlertedLevels((prev) => ({ ...prev, 2: true }));
         setShowWarning(true);
         setPromptCount(2);
-      } else if (silenceSecs >= 120 && !alertedLevels[1]) {
+      } else if (silenceSecs >= 120 && !levels[1]) {
         audioEngine.playWarningTiered(1);
-        setAlertedLevels(prev => ({ ...prev, 1: true }));
+        setAlertedLevels((prev) => ({ ...prev, 1: true }));
         setShowWarning(true);
         setPromptCount(1);
       }
 
-      // RESET ALERTS: if user speaks, reset alerted state
-      if (silenceSecs < 10 && (alertedLevels[1] || alertedLevels[2] || alertedLevels[3])) {
-        setAlertedLevels({ 1: false, 2: false, 3: false });
-        setPromptCount(0);
-        setShowWarning(false);
+      if (silenceSecs < 10 && (levels[1] || levels[2] || levels[3])) {
+        setAlertedLevels((prev) => (
+          prev[1] || prev[2] || prev[3] ? { 1: false, 2: false, 3: false } : prev
+        ));
+        setPromptCount((p) => (p ? 0 : p));
+        setShowWarning((w) => (w ? false : w));
       }
 
-      // AUTO-STOP LOGIC: If 3rd prompt is ignored for more than 1 minute (total 7m+ silence)
-      if (silenceSecs > 420 && promptCount >= 3) {
-        // Auto-correct to break
+      if (silenceSecs > 420 && pc >= 3) {
         stopSession();
         startBreak();
         setShowWarning(false);
         setPromptCount(0);
-        audioEngine.playWarningTiered(1); // Small sound to notify auto-stop
+        audioEngine.playWarningTiered(1);
       }
 
-      // Keep legacy 10m sound if everything else failed
       if (silenceSecs > 600) {
-        const timeSinceAlert = (now - lastAlertTime) / 1000;
+        const timeSinceAlert = (now - lastAlertRef.current) / 1000;
         if (timeSinceAlert > 180) {
           audioEngine.playWarningPing();
-          // Silence "ping" is your cue to disconnect and reset.
           if (!doNotShowDisconnectTooltip) setShowDisconnectTooltip(true);
           setLastAlertTime(now);
         }
@@ -100,17 +104,11 @@ export const SilenceGuardian = ({ lastDataTime }) => {
   }, [
     isActive,
     lastActivityTime,
-    lastAlertTime,
-    showWarning,
-    alertedLevels,
     audioEngine,
     isHold,
-    holdSeconds,
-    promptCount,
     startBreak,
     stopSession,
     doNotShowDisconnectTooltip,
-    showDisconnectTooltip
   ]);
 
   if (!isActive || isHold) return null;

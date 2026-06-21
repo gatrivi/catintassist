@@ -8,6 +8,12 @@ import {
 import { translateWithFallback } from '../utils/translationEngines';
 import { dedupeInFlight, withTranslationSlot } from '../utils/translationRequestQueue';
 import { APP_VERSION } from '../constants/version';
+import {
+  loadLanguagePair,
+  normalizeLang,
+  getOppositeLang,
+  LANG_PAIR_CHANGED_EVENT,
+} from '../utils/languageConfig';
 
 let TRANS_CACHE = {};
 
@@ -60,6 +66,13 @@ const emptyMeta = {
   tried: [],
 };
 
+/** Debounce ms for translation — 0 on bubble split so first chunk re-translates immediately. */
+export function resolveTranslateDebounceMs({ isSplitRewrite, forceTrigger, mood = 'auto' }) {
+  if (isSplitRewrite) return 0;
+  const debounceTimes = { auto: 800, fast: 300, default: 600, chill: 1000 };
+  return forceTrigger ? (mood === 'auto' ? 800 : 200) : debounceTimes[mood] || 600;
+}
+
 export const useTranslate = (
   text,
   lang,
@@ -82,9 +95,19 @@ export const useTranslate = (
   const debounceTimerRef = useRef(null);
   const abortControllerRef = useRef(null);
   const hasGoodTranslationRef = useRef(false);
+  const [languagePair, setLanguagePair] = useState(loadLanguagePair);
 
-  const sourceLang = (lang || 'en').toLowerCase().startsWith('es') ? 'es' : 'en';
-  const targetLang = sourceLang === 'en' ? 'es' : 'en';
+  useEffect(() => {
+    const onPairChange = (e) => {
+      setLanguagePair(e.detail || loadLanguagePair());
+      langPairRef.current = null;
+    };
+    window.addEventListener(LANG_PAIR_CHANGED_EVENT, onPairChange);
+    return () => window.removeEventListener(LANG_PAIR_CHANGED_EVENT, onPairChange);
+  }, []);
+
+  const sourceLang = normalizeLang(lang);
+  const targetLang = getOppositeLang(sourceLang, languagePair);
   const currentLangPair = `${sourceLang}-${targetLang}`;
 
   useEffect(() => {
@@ -124,13 +147,16 @@ export const useTranslate = (
     if (mood === 'auto') {
       const sealed = isFinal !== false;
       const complete = isSentenceComplete(normText);
-      if (!sealed && !complete) return;
+      if (!sealed && !complete && !isSplitRewrite) return;
       if (normText === lastTranslatedTextRef.current && hasGoodTranslationRef.current) return;
     }
 
     const wordDelta = Math.abs(wordCount - lastWordCountRef.current);
     const IS_FILLER =
-      /^bueno[.,!?]*$/i.test(normText) && wordDelta < 2 && lastTranslatedTextRef.current;
+      !isSplitRewrite &&
+      /^bueno[.,!?]*$/i.test(normText) &&
+      wordDelta < 2 &&
+      lastTranslatedTextRef.current;
     const IS_TOO_LONG = wordCount > 80;
     const IS_TOO_SHORT = normText.length < 2 && !/\d/.test(normText);
 
@@ -141,11 +167,12 @@ export const useTranslate = (
     }
 
     const hasPunctuation = /[.,?]/.test(normText);
-    const forceTrigger = mood === 'auto' ? isSentenceComplete(normText) : wordCount >= 10 || hasPunctuation;
+    const forceTrigger = mood === 'auto' ? (isSentenceComplete(normText) || isSplitRewrite) : wordCount >= 10 || hasPunctuation;
 
     if (normText.length < 3 && !/\w/.test(normText)) return;
 
     const shouldSkipDueToDelta =
+      !isSplitRewrite &&
       mood !== 'fast' &&
       mood !== 'auto' &&
       wordDelta < 2 &&
@@ -155,8 +182,7 @@ export const useTranslate = (
 
     if (shouldSkipDueToDelta) return;
 
-    const debounceTimes = { auto: 800, fast: 300, default: 600, chill: 1000 };
-    const waitTime = forceTrigger ? (mood === 'auto' ? 800 : 200) : debounceTimes[mood] || 600;
+    const waitTime = resolveTranslateDebounceMs({ isSplitRewrite, forceTrigger, mood });
 
     if (debounceTimerRef.current) clearTimeout(debounceTimerRef.current);
 
@@ -287,7 +313,7 @@ export const useTranslate = (
       if (debounceTimerRef.current) clearTimeout(debounceTimerRef.current);
       if (abortControllerRef.current) abortControllerRef.current.abort();
     };
-  }, [text, lang, shouldPrefetch, prefetchTTS, currentLangPair, mood, forceTranslateKey, isFinal]);
+  }, [text, lang, shouldPrefetch, prefetchTTS, currentLangPair, mood, forceTranslateKey, isFinal, languagePair]);
 
   return {
     translation,

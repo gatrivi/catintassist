@@ -30,6 +30,8 @@ CORE VALUES
 [x] maximising workspace and minimizing things that eat workspace is the rule. translation and transcription should take 80% of screen, scoreboard 20%. (v4.21.0) 
 
 CURRENT ISSUES
+Phased product plan: [`docs/ROADMAP.md`](docs/ROADMAP.md) (Phase 0 STT sweep → Phase 1 UX → Phase 2+ later)
+
 [x] Word count is now cumulative per turn: if user speaks more than 40 words and bubble splits, the count continues (v4.1.0)
 [x] 1. Digit grouping for phone numbers: automatic back-to-back digit grouping for better legibility (v4.1.0)
 [x] 2. keep track of how long ive been working wo breaks (v4.19.0)
@@ -37,8 +39,8 @@ CURRENT ISSUES
 [x] 4. pinned reference: color coded, no banner, subtle icon (v4.19.0)
 
 [ ] when speakers speaks too long, message is split, this is good as it makes for easier reading, but has two problems
-[] sometimes it seems that on message split the translation is garbled, an existing tranlsation destroyed. in general do not destroy transaltions
-[] when app window is refreshed during active call, although we are in call app is not connecte, so icon shouldn be red as in connected, but rather yellow or sth, and main view should remind user to click and get app connected to other tab again. otherwise i have to press disconnect recojnnect, and that meesses the call timer and i lose all translations. double jeopardy.
+[x] sometimes it seems that on message split the translation is garbled — v4.57 cleared stale text; v4.59.0 immediate re-translate on split (still watch in prod)
+[x] when app window is refreshed during active call — v4.20 zombie + v4.59.0 I/O hint in re-attach banner (still watch in prod)
 
 MAINVIEW (where transcription and translation happens)
 [x] space should be used as effectively as possible (v4.21.0: Call Mode auto-minimizes header to ~32px during calls; v4.22.0: Call Focus Mode auto-hides sidebars during calls for 100% transcription width)
@@ -50,7 +52,7 @@ SCOREBOARD GUIDELINES
 [x] Subtract break time from total of 90 per day.
 [x] keep track of how late i logged in compared to log in time of 9am
 [x] tell me how late i should stay after my shift end of 18hs to compensate (v4.19.0)
-[] Add little outlines and toggleable labels to every element in the scoreboard, so its easy to understand how they are organized and can be moved into a better manner. if you think a grid with a toggle to rearrange elements can be done, im ggame. specially see if such configurations can be saved in a way that you can read them so we can make them the default in the future.
+[] Add little outlines and toggleable labels to every element in the scoreboard — help toggle in condensed toolbar (v4.59.0); full grid rearrange still deferred
 
 TRANSLATION GUIDELINES
 [] a poor translation is better than no translation
@@ -75,15 +77,7 @@ good friday
   [] again, there must be simple ways to check the "legibility" of speech soundboard greetings. 
   [] i have used voicemod prerecorded greetings for a while with zero problems. when i have problems with voicemod greetings i can find out at once because when i myself hear them they suck. but here i hear them they sound fine but when i play them to the patient they very vocally express that they suck.
 
-[] expanded scoreboard is a mess
-  [] a key button never sued. 
-  [] auto mux en es also rarely used, also has no hide button
-  [] zap stream button does nothing
-  [] sound check bag min1 min 2 bill gem are overlapping current call and breakt time making it hard to read
-  [] the expand collapse and sabe button take their houwn v space, we cant afford to waste v space with a single button....
-  [] there is a bar that has livestream show tools auto off stop ai clear 40 word lomit. from all those show tools is the only one i actually use, and only for two reasons
-  [] to see sesion notes and write
-  [] to make background visible. backgrounds are invisible by default and become bisible when i press show tools.
+[x] expanded scoreboard de-clutter (v4.59.0): Show tools → notes+bg; inline utility row; hide dup STOP/mic during call; pct on all 12 grid cells
   [] soundboard still doesnt work. when i press a prerecorded greeting my patients scream in pain.
 
 
@@ -134,4 +128,8 @@ CURRENT INBOX
 - [x] Enhanced Filler Filter: strips um/uh/like/you know/bueno/pues from sentence starts, reducing reading fatigue (v4.22.0)
 - [x] v4.27.0: transcript white / translation gray; bubble splits on `. ! ?`; quick notes during call focus; sticky connect/stop; persistent pin section; EN-only number words (fixes ten/tenía)
 - [x] Shift attach split: auto-attach tab at 9am; CONNECT vs CALL START; off-call status bar; idle pane tips/checklist/metrics rotation; C/M hotkeys (v4.48.3)
+- [x] v4.57.0: version pill; Zap re-enabled; ErrorBoundary; translation split stale-clear; habit dock hidden by default
+- [x] v4.58.0: soundboard exit trap; I/O strip + audio self-test; goal wheel pill; wellbeing dock rebrand; onboarding dismiss
+- [x] v4.59.0: Show tools wires notes+bg_app; expanded scoreboard de-clutter; pct on all 12 grid metrics; help in condensed toolbar; split translate immediate; zombie banner I/O hint
+- [x] v4.60.0: docs/ROADMAP.md; persistent 🎯 goal wheel + portal; scoreboard presets (Min/Std/Full) + metric toggles; mic meter in I/O strip; bundled default bg fallback
 </details>

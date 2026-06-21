@@ -7,11 +7,19 @@ import { APP_VERSION_LABEL } from '../constants/version';
 import { isWellbeingDockEnabled, setWellbeingDockEnabled } from '../utils/wellbeingDock';
 import { useTTS } from '../hooks/useTTS';
 import {
-  loadPaneOrder,
-  savePaneOrder,
-  PANE_INTERPRET_TOP,
-  PANE_SCOREBOARD_TOP,
-} from '../utils/workspaceLayout';
+  COMPONENT_LABELS,
+  DEFAULT_COMPONENT_VISIBILITY,
+  VISIBILITY_MODES,
+  loadComponentVisibility,
+  saveComponentVisibility,
+} from '../utils/componentVisibility';
+import {
+  loadLanguagePair,
+  saveLanguagePair,
+  isEnEsProtectionMode,
+  groupedLanguageOptions,
+  getLangLabel,
+} from '../utils/languageConfig';
 
 const MOODS = ['auto', 'default', 'fast', 'chill'];
 const MOOD_LABELS = { auto: 'Trans Auto', default: 'Default', fast: 'Fast', chill: 'Chill' };
@@ -23,10 +31,21 @@ export default function SettingsPanel({ open, onClose, initialSection = 'deepgra
     speechAutoConnect,
     setSpeechAutoConnect,
     vaultStatus,
+    autoAttachEnabled,
+    setAutoAttachEnabled,
   } = useSession();
   const [section, setSection] = useState(initialSection);
-  const [paneOrder, setPaneOrder] = useState(loadPaneOrder);
   const [personalDock, setPersonalDock] = useState(isWellbeingDockEnabled);
+  const [componentVisibility, setComponentVisibility] = useState(loadComponentVisibility);
+  const [languagePair, setLanguagePair] = useState(loadLanguagePair);
+
+  const [disableOnboardingAnimations, setDisableOnboardingAnimations] = useState(() => {
+    try {
+      return localStorage.getItem('catint_onboarding_anim_disabled_v1') === '1';
+    } catch {
+      return false;
+    }
+  });
   const { playTTS } = useTTS();
 
   useEffect(() => {
@@ -67,14 +86,14 @@ export default function SettingsPanel({ open, onClose, initialSection = 'deepgra
         </div>
 
         <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap', marginTop: 10 }}>
-          {['deepgram', 'translation', 'behavior', 'layout'].map((id) => (
+          {['deepgram', 'language', 'translation', 'behavior', 'layout', 'display'].map((id) => (
             <button
               key={id}
               type="button"
               onClick={() => setSection(id)}
               style={{ ...tabBtn, background: section === id ? 'rgba(59,130,246,0.25)' : tabBtn.background }}
             >
-              {id === 'deepgram' ? 'Deepgram' : id === 'translation' ? 'Translation' : id === 'behavior' ? 'Behavior' : 'Layout'}
+              {id === 'deepgram' ? 'Deepgram' : id === 'language' ? 'Language' : id === 'translation' ? 'Translation' : id === 'behavior' ? 'Behavior' : id === 'layout' ? 'Layout' : 'Display'}
             </button>
           ))}
         </div>
@@ -86,6 +105,60 @@ export default function SettingsPanel({ open, onClose, initialSection = 'deepgra
         {section === 'deepgram' && (
           <div style={{ marginTop: 12 }}>
             <DeepgramKeyVault embedded />
+          </div>
+        )}
+
+        {section === 'language' && (
+          <div style={{ marginTop: 12, display: 'flex', flexDirection: 'column', gap: 12 }}>
+            <p style={{ fontSize: 10, color: 'rgba(255,255,255,0.55)', margin: 0, lineHeight: 1.45 }}>
+              Left column = patient / column 1. Right column = interpreter / column 2. Default EN↔ES.
+            </p>
+            <label style={{ fontSize: 11, color: '#93c5fd' }}>
+              Left column (patient)
+              <select
+                value={languagePair.left}
+                onChange={(e) => {
+                  const next = saveLanguagePair({ ...languagePair, left: e.target.value });
+                  setLanguagePair(next);
+                }}
+                style={{ display: 'block', width: '100%', marginTop: 4, padding: 6, background: '#0f172a', color: '#fff', border: '1px solid rgba(255,255,255,0.15)', borderRadius: 6 }}
+              >
+                {Object.entries(groupedLanguageOptions()).map(([group, items]) => (
+                  <optgroup key={group} label={group}>
+                    {items.map((item) => (
+                      <option key={item.code} value={item.code}>{item.label}</option>
+                    ))}
+                  </optgroup>
+                ))}
+              </select>
+            </label>
+            <label style={{ fontSize: 11, color: '#6ee7b7' }}>
+              Right column (interpreter)
+              <select
+                value={languagePair.right}
+                onChange={(e) => {
+                  const next = saveLanguagePair({ ...languagePair, right: e.target.value });
+                  setLanguagePair(next);
+                }}
+                style={{ display: 'block', width: '100%', marginTop: 4, padding: 6, background: '#0f172a', color: '#fff', border: '1px solid rgba(255,255,255,0.15)', borderRadius: 6 }}
+              >
+                {Object.entries(groupedLanguageOptions()).map(([group, items]) => (
+                  <optgroup key={group} label={group}>
+                    {items.map((item) => (
+                      <option key={item.code} value={item.code}>{item.label}</option>
+                    ))}
+                  </optgroup>
+                ))}
+              </select>
+            </label>
+            <p style={{ fontSize: 10, color: isEnEsProtectionMode(languagePair) ? 'rgba(16,185,129,0.85)' : '#fbbf24', margin: 0 }}>
+              {isEnEsProtectionMode(languagePair)
+                ? `Active pair: ${getLangLabel(languagePair.left)} ↔ ${getLangLabel(languagePair.right)} — US number/phone protections ON.`
+                : `Active pair: ${getLangLabel(languagePair.left)} ↔ ${getLangLabel(languagePair.right)} — US number/phone protections paused (EN↔ES only).`}
+            </p>
+            <p style={{ fontSize: 10, color: 'rgba(255,255,255,0.45)', margin: 0 }}>
+              Space / Alt+Space force left/right STT lane for 30s. Changes reconnect live audio if attached.
+            </p>
           </div>
         )}
 
@@ -141,6 +214,67 @@ export default function SettingsPanel({ open, onClose, initialSection = 'deepgra
               />
               Show interpreter wellbeing tools (desk breaks, hydration, pauses)
             </label>
+
+            <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12, cursor: 'pointer', marginTop: 14 }}>
+              <input
+                type="checkbox"
+                checked={disableOnboardingAnimations}
+                onChange={(e) => {
+                  const next = e.target.checked;
+                  setDisableOnboardingAnimations(next);
+                  try {
+                    localStorage.setItem('catint_onboarding_anim_disabled_v1', next ? '1' : '0');
+                  } catch {}
+                }}
+              />
+              Disable onboarding animations (guide spotlight only)
+            </label>
+
+            <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12, cursor: 'pointer', marginTop: 14 }}>
+              <input
+                type="checkbox"
+                checked={autoAttachEnabled}
+                onChange={(e) => setAutoAttachEnabled(e.target.checked)}
+              />
+              Auto-attach interpreting tab at/after 09:00 (Chrome)
+            </label>
+            <p style={{ fontSize: 10, color: 'rgba(255,255,255,0.5)', margin: '6px 0 0' }}>
+              OFF by default to avoid blocking browser permission dialogs on first use.
+            </p>
+
+            {process.env.NODE_ENV !== 'production' && (
+              <div style={{ marginTop: 14, paddingTop: 10, borderTop: '1px solid rgba(255,255,255,0.08)' }}>
+                <div style={{ fontSize: 11, color: '#93c5fd', marginBottom: 6 }}>Dev UI</div>
+                <button
+                  type="button"
+                  style={{ ...tabBtn, fontSize: 11, marginRight: 8 }}
+                  onClick={() => {
+                    try {
+                      window.dispatchEvent(
+                        new CustomEvent('cat_demo_scenario', { detail: 'ui_call' })
+                      );
+                    } catch (_) {}
+                  }}
+                  title="Start the call UI (no real audio capture). Dev only."
+                >
+                  UI In Call Mode (no audio)
+                </button>
+                <button
+                  type="button"
+                  style={{ ...tabBtn, fontSize: 11 }}
+                  onClick={() => {
+                    try {
+                      window.dispatchEvent(
+                        new CustomEvent('cat_demo_scenario', { detail: 'reset' })
+                      );
+                    } catch (_) {}
+                  }}
+                  title="Reset the demo call UI."
+                >
+                  Reset
+                </button>
+              </div>
+            )}
             <div style={{ marginTop: 14, paddingTop: 10, borderTop: '1px solid rgba(255,255,255,0.08)' }}>
               <div style={{ fontSize: 11, color: '#93c5fd', marginBottom: 6 }}>TTS route test</div>
               <button
@@ -158,35 +292,58 @@ export default function SettingsPanel({ open, onClose, initialSection = 'deepgra
         )}
 
         {section === 'layout' && (
+          <div style={{ marginTop: 12, fontSize: 12, color: 'rgba(255,255,255,0.65)', lineHeight: 1.45 }}>
+            Off-call layout: <strong style={{ color: '#93c5fd' }}>dashboard-header</strong> (scoreboard + progress) on top,
+            {' '}<strong style={{ color: '#93c5fd' }}>interpret pane</strong> below (~80% viewport).
+          </div>
+        )}
+
+        {section === 'display' && (
           <div style={{ marginTop: 12 }}>
-            <div style={{ fontSize: 11, color: '#93c5fd', marginBottom: 8 }}>
-              Which panel is on top when waiting for a call
+            <div style={{ fontSize: 11, color: '#93c5fd', marginBottom: 4 }}>
+              Component visibility [{APP_VERSION_LABEL}]
             </div>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-              <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12, cursor: 'pointer' }}>
-                <input
-                  type="radio"
-                  name="pane-order"
-                  checked={paneOrder === PANE_INTERPRET_TOP}
-                  onChange={() => {
-                    const next = savePaneOrder(PANE_INTERPRET_TOP);
-                    setPaneOrder(next);
-                  }}
-                />
-                Interpret pane on top (80%) — recommended
-              </label>
-              <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12, cursor: 'pointer' }}>
-                <input
-                  type="radio"
-                  name="pane-order"
-                  checked={paneOrder === PANE_SCOREBOARD_TOP}
-                  onChange={() => {
-                    const next = savePaneOrder(PANE_SCOREBOARD_TOP);
-                    setPaneOrder(next);
-                  }}
-                />
-                Scoreboard on top
-              </label>
+            <p style={{ fontSize: 10, color: 'rgba(255,255,255,0.5)', margin: '0 0 10px' }}>
+              Progress bars = monthly + daily timelines. Changes save instantly.
+            </p>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+              {Object.keys(DEFAULT_COMPONENT_VISIBILITY).map((id) => (
+                <div key={id} style={{ borderBottom: '1px solid rgba(255,255,255,0.06)', paddingBottom: 8 }}>
+                  <div style={{ fontSize: 11, fontWeight: 700, marginBottom: 4 }}>
+                    {COMPONENT_LABELS[id] || id}
+                  </div>
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4 }}>
+                    {VISIBILITY_MODES.map((mode) => (
+                      <label
+                        key={mode}
+                        style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: 4,
+                          fontSize: 10,
+                          cursor: 'pointer',
+                          padding: '2px 6px',
+                          borderRadius: 4,
+                          background: componentVisibility[id] === mode ? 'rgba(59,130,246,0.2)' : 'rgba(255,255,255,0.04)',
+                          border: componentVisibility[id] === mode ? '1px solid rgba(59,130,246,0.4)' : '1px solid rgba(255,255,255,0.08)',
+                        }}
+                      >
+                        <input
+                          type="radio"
+                          name={`vis-${id}`}
+                          checked={componentVisibility[id] === mode}
+                          onChange={() => {
+                            const next = saveComponentVisibility({ ...componentVisibility, [id]: mode });
+                            setComponentVisibility(next);
+                          }}
+                          style={{ margin: 0 }}
+                        />
+                        {mode === 'always' ? 'Always' : mode === 'on_call' ? 'On call' : mode === 'off_call' ? 'Off call' : 'Hidden'}
+                      </label>
+                    ))}
+                  </div>
+                </div>
+              ))}
             </div>
           </div>
         )}

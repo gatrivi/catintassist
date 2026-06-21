@@ -456,38 +456,187 @@ body {
   cursor: not-allowed;
 }
 
-/* Off-call: thin control bar in header; scoreboard body lives in <main> */
-.dashboard-header--controls-only {
-  flex-shrink: 0;
-  max-height: none;
-  overflow-y: visible;
+/* Off-call: header 20% / interpret 80% @ 900px; expanded header up to 38% */
+.app-container[data-off-call-view="scoreboard"] {
+  min-height: 0;
 }
 
-.main-content.view-scoreboard {
+.app-container[data-off-call-view="scoreboard"] > .dashboard-header.dashboard-header--off-call-scoreboard {
+  flex: 0 0 20%;
+  max-height: 20%;
+  min-height: 0;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.app-container[data-off-call-view="scoreboard"] > .dashboard-header.dashboard-header--off-call-scoreboard:not(.dashboard-header--metrics-expanded) {
+  overflow: hidden;
+}
+
+.app-container[data-off-call-view="scoreboard"] > .dashboard-header.dashboard-header--off-call-scoreboard.dashboard-header--metrics-expanded {
+  flex: 0 0 38%;
+  max-height: 38%;
+  overflow-y: auto;
+  overflow-x: hidden;
+}
+
+.app-container[data-off-call-view="scoreboard"] > #interpret-root {
+  flex: 1 1 80%;
+  min-height: 0;
+}
+
+.dashboard-header--off-call-scoreboard .session-controls-sticky {
+  flex-shrink: 0;
+}
+
+.dashboard-header--off-call-scoreboard .header-metrics-strip {
+  flex-shrink: 0;
+  padding: 0.1rem 0.25rem 0.15rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  min-height: 0;
+}
+
+.header-metrics-strip-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.35rem;
+  min-width: 0;
+}
+
+.header-metrics-summary {
+  font-size: 0.58rem;
+  font-weight: 700;
+  color: rgba(255, 255, 255, 0.75);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  min-width: 0;
+}
+
+.header-metrics-expand-btn {
+  flex-shrink: 0;
+  font-size: 0.52rem;
+  font-weight: 800;
+  padding: 0.12rem 0.4rem;
+  border-radius: 4px;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  background: rgba(255, 255, 255, 0.06);
+  color: rgba(255, 255, 255, 0.7);
+  cursor: pointer;
+}
+
+.header-metrics-expand-btn:hover {
+  background: rgba(59, 130, 246, 0.15);
+  border-color: rgba(59, 130, 246, 0.35);
+  color: #93c5fd;
+}
+
+.header-metrics-bars {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.header-metrics-bar {
+  cursor: help;
+}
+
+.header-metrics-bar-track {
+  height: 6px;
+  background: rgba(0, 0, 0, 0.45);
+  border-radius: 3px;
+  position: relative;
+  overflow: hidden;
+}
+
+.header-metrics-bar-pending {
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  background: rgba(249, 115, 22, 0.85);
+  z-index: 1;
+}
+
+.header-metrics-bar-fill {
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  z-index: 2;
+  transition: width 0.4s ease;
+}
+
+.dashboard-header--off-call-scoreboard .scoreboard-workspace--header {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+  display: flex;
+  flex-direction: column;
+  padding: 0.15rem 0.25rem;
+  gap: 0.15rem;
+}
+
+.dashboard-header--off-call-scoreboard .condensed-header-card {
+  flex: 0 0 auto;
+  min-height: 0;
+}
+
+.dashboard-header--off-call-scoreboard .scoreboard-flip-container {
+  min-height: 0;
+}
+
+.dashboard-header--off-call-scoreboard .scoreboard-grid--compact-pane {
+  grid-template-rows: auto auto;
+  grid-template-areas:
+    "top-bar"
+    "main-status";
+  padding: 0.12rem 0.25rem;
+  gap: 0.05rem;
+}
+
+.dashboard-header--off-call-scoreboard .scoreboard-grid--compact-pane [style*="grid-area: top-bar"],
+.dashboard-header--off-call-scoreboard .scoreboard-grid--compact-pane [style*="gridArea: 'top-bar'"] {
+  display: none;
+}
+
+.dashboard-header--off-call-scoreboard .header-progress-stack {
+  flex: 0 0 auto;
+  min-height: 0;
+}
+
+/* Legacy selector kept for non-app-container contexts */
+.dashboard-header--off-call-scoreboard {
+  min-height: 0;
+}
+
+.main-content.view-interpret {
   flex: 1;
   min-height: 0;
   display: flex;
   flex-direction: column;
   overflow: hidden;
+}
+
+#interpret-root {
   position: relative;
   z-index: 1;
 }
 
-/* Ensure scoreboard content never covers the always-needed connect/controls header. */
-#scoreboard-root {
-  position: relative;
-  z-index: 1;
-}
-
-.off-call-workspace {
+.interpret-workspace {
   flex: 1;
+  min-height: 0;
   display: flex;
   flex-direction: column;
-  min-height: 0;
 }
 
-.off-call-interpret-pane {
-  flex: 4;
+.interpret-pane {
+  flex: 1;
   min-height: 0;
   overflow: auto;
   display: flex;
@@ -496,14 +645,15 @@ body {
   padding: 0.5rem 1rem;
 }
 
-.off-call-scoreboard-pane {
-  flex: 1;
-  min-height: 0;
-  overflow: auto;
-}
-
-.off-call-workspace.pane-order-scoreboard-top {
-  flex-direction: column-reverse;
+.directional-cue-compact {
+  color: rgba(255, 255, 255, 0.55);
+  font-size: 0.58rem;
+  line-height: 1.25;
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  padding: 0.05rem 0;
 }
 
 .scoreboard-workspace {
@@ -1933,6 +2083,34 @@ body {
   border-bottom: 1px solid rgba(255,255,255,0.05);
   padding-bottom: 0.15rem;
   margin-bottom: 0.1rem;
+}
+
+.dashboard-row-lower {
+  row-gap: 0.35rem;
+}
+
+.income-dashboard--on-call .dashboard-row-lower .income-card {
+  flex: 1 1 80px;
+}
+
+.header-utility-inline,
+.dashboard-shift-stats,
+.dashboard-audio-sinks {
+  min-width: 0;
+}
+
+.metric-cell-pct {
+  font-size: 0.48rem;
+  opacity: 0.55;
+  line-height: 1.1;
+  margin-top: 1px;
+  letter-spacing: 0.02em;
+}
+
+.header-progress-stack {
+  position: relative;
+  z-index: 1;
+  clear: both;
 }
 
 .income-card {

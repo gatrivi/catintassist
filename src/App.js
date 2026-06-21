@@ -26,7 +26,6 @@ import { UpdateAppBanner } from "./components/UpdateAppBanner";
 import { loadFile, generateObjectUrl } from "./utils/storage";
 import SettingsPanel from "./components/SettingsPanel";
 import { OffCallWorkspace } from "./components/OffCallWorkspace";
-import { loadPaneOrder } from "./utils/workspaceLayout";
 import {
   getRuntimeDeepgramKey,
   hasConfiguredDeepgramKey,
@@ -35,6 +34,10 @@ import {
 } from "./utils/deepgramRuntimeKey";
 import { APP_VERSION_LABEL } from "./constants/version";
 import { isWellbeingDockEnabled } from "./utils/wellbeingDock";
+import {
+  isComponentVisible,
+  useComponentVisibilityRefresh,
+} from "./utils/componentVisibility";
 import "./index.css";
 
 const CloudSyncIndicator = () => {
@@ -85,6 +88,8 @@ const Dashboard = () => {
     clearZombieState,
     callFocusMode,
     stopBreak,
+    isToolbarVisible,
+    autoAttachEnabled,
   } = useSession();
   const { playCoin } = useProgressiveAudio();
   const { updateAvailable, latestVersionToken, dismissUpdate, reloadToUpdate } =
@@ -97,9 +102,12 @@ const Dashboard = () => {
 
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [settingsSection, setSettingsSection] = useState("deepgram");
-  const [paneOrder, setPaneOrder] = useState(loadPaneOrder);
   const [showWellbeingDock, setShowWellbeingDock] = useState(isWellbeingDockEnabled);
   const [, setRuntimeKeyTick] = useState(0);
+  useComponentVisibilityRefresh();
+  const showWellbeingWidgets =
+    showWellbeingDock &&
+    isComponentVisible('wellbeing_dock', { isActive, isZombieCall });
   useEffect(() => {
     const onRuntime = () => setRuntimeKeyTick((t) => t + 1);
     const onShowVault = () => {
@@ -110,12 +118,15 @@ const Dashboard = () => {
       setSettingsSection("deepgram");
       setSettingsOpen(true);
     };
-    const onPaneOrder = (e) => setPaneOrder(e.detail || loadPaneOrder());
+    const onShowLanguageSettings = () => {
+      setSettingsSection("language");
+      setSettingsOpen(true);
+    };
 
     window.addEventListener("cat_deepgram_runtime_key_changed", onRuntime);
     window.addEventListener("cat_show_deepgram_key_vault", onShowVault);
     window.addEventListener("cat_show_settings", onShowSettings);
-    window.addEventListener("cat_pane_order_changed", onPaneOrder);
+    window.addEventListener("cat_show_language_settings", onShowLanguageSettings);
     const onWellbeingDock = () => setShowWellbeingDock(isWellbeingDockEnabled());
     window.addEventListener("cat_wellbeing_dock_changed", onWellbeingDock);
     window.addEventListener("cat_personal_dock_changed", onWellbeingDock);
@@ -123,7 +134,7 @@ const Dashboard = () => {
       window.removeEventListener("cat_deepgram_runtime_key_changed", onRuntime);
       window.removeEventListener("cat_show_deepgram_key_vault", onShowVault);
       window.removeEventListener("cat_show_settings", onShowSettings);
-      window.removeEventListener("cat_pane_order_changed", onPaneOrder);
+      window.removeEventListener("cat_show_language_settings", onShowLanguageSettings);
       window.removeEventListener("cat_wellbeing_dock_changed", onWellbeingDock);
       window.removeEventListener("cat_personal_dock_changed", onWellbeingDock);
     };
@@ -164,17 +175,14 @@ const Dashboard = () => {
   useEffect(() => {
     const applyBg = async () => {
       const bgApp = await loadFile("bg_app");
-      if (bgApp) {
-        const url = generateObjectUrl(bgApp);
-        document.body.style.backgroundImage = `url(${url})`;
-        document.body.style.backgroundSize = "cover";
-        document.body.style.backgroundPosition = "center";
-        document.body.style.backgroundAttachment = "fixed";
-      }
+      const url = bgApp ? generateObjectUrl(bgApp) : "/bg/default.svg";
+      document.body.style.backgroundImage = `url(${url})`;
+      document.body.style.backgroundSize = "cover";
+      document.body.style.backgroundPosition = "center";
+      document.body.style.backgroundAttachment = "fixed";
     };
     applyBg();
 
-    // Listen for custom event when background changes in settings
     window.addEventListener("cat_bg_changed", applyBg);
     return () => window.removeEventListener("cat_bg_changed", applyBg);
   }, []);
@@ -312,6 +320,7 @@ const Dashboard = () => {
   // Auto-attach interpreting tab at/after 09:00 (once per day, off-call only).
   useEffect(() => {
     const tryAutoAttach = async () => {
+      if (!autoAttachEnabled) return;
       const now = new Date();
       if (now.getHours() < 9) return;
       if (isActive || isBreakActive || isZombieCall) return;
@@ -336,15 +345,15 @@ const Dashboard = () => {
     };
 
     tryAutoAttach();
-    const iv = setInterval(tryAutoAttach, 30000);
-    return () => clearInterval(iv);
+    // Single-shot attempt. No retry loops: browser tab-capture prompts are blocking.
+    return undefined;
   }, [
     isActive,
     isBreakActive,
     isZombieCall,
     audioAttached,
-    connectionState,
     startRecordingFresh,
+    autoAttachEnabled,
   ]);
 
   // Hotkeys: C = connect/attach or start call; M = mic test toggle.
@@ -592,7 +601,6 @@ const Dashboard = () => {
 
       {!(isActive || isZombieCall) && workspaceView === "scoreboard" && (
         <OffCallWorkspace
-          paneOrder={paneOrder}
           audioAttached={audioAttached}
           micTestMode={micTestMode}
           connectionState={connectionState}
@@ -650,7 +658,7 @@ const Dashboard = () => {
               lastDataTime={lastDataTime}
             />
           </div>
-          {isNotesOpen && !isEditingBg && (
+          {isNotesOpen && (!callFocusMode || isToolbarVisible) && !isEditingBg && (
             <div className="tools-column notes-open">
               <div
                 className="glass-panel tools-notes"
@@ -678,7 +686,7 @@ const Dashboard = () => {
       />
 
       <div className="wellbeing-dock habit-dock">
-        {showWellbeingDock && (
+        {showWellbeingWidgets && (
           <>
             <DeskExerciseWidget />
             <RosaryWidget />
@@ -686,14 +694,11 @@ const Dashboard = () => {
             <ChoreTrackerWidget />
           </>
         )}
-        {!(isActive || isZombieCall) && (
-          <WorkspaceViewSwitcher
-            view={workspaceView}
-            onCycle={cycleWorkspaceView}
-            variant="dock"
-            showHint={showStudioHint}
-          />
-        )}
+        {/*
+          Soundboard access is already provided by the top bar button
+          (`AudioRouteStatusBar`), so we intentionally remove the bottom
+          WorkspaceViewSwitcher pill to avoid duplicate CTAs.
+        */}
         <button
           data-guide="notes"
           onClick={() => setIsNotesOpen((o) => !o)}
