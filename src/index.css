@@ -3302,6 +3302,137 @@ body {
   border-color: #38bdf8;
 }
 
+.app-guide-card-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  margin-bottom: 0.35rem;
+}
+
+.app-guide-card-top .app-guide-progress {
+  margin-bottom: 0;
+  flex: 1;
+  flex-wrap: wrap;
+}
+
+.app-guide-lang-toggle {
+  font-size: 0.62rem;
+  font-weight: 800;
+  padding: 0.2rem 0.45rem;
+  border-radius: 4px;
+  border: 1px solid rgba(56, 189, 248, 0.45);
+  background: rgba(56, 189, 248, 0.12);
+  color: #93c5fd;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.app-guide-scoreboard-btn--pulse {
+  animation: guideBtnPulse 2.5s ease-in-out infinite;
+}
+
+@keyframes guideBtnPulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(56, 189, 248, 0); }
+  50% { box-shadow: 0 0 10px 2px rgba(56, 189, 248, 0.55); }
+}
+
+/* Session splash */
+.splash-screen {
+  position: fixed;
+  inset: 0;
+  z-index: 24000;
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+
+.splash-vignette {
+  position: absolute;
+  inset: 0;
+  background: rgba(2, 6, 23, 0.55);
+  box-shadow: inset 0 0 18vw rgba(16, 185, 129, 0.22);
+  animation: breatheGlow 4s ease-in-out infinite alternate;
+  pointer-events: none;
+}
+
+.splash-content {
+  position: relative;
+  z-index: 1;
+  text-align: center;
+  padding: 1.5rem;
+  max-width: 28rem;
+}
+
+.splash-title {
+  font-family: var(--font-mono, monospace);
+  font-size: clamp(1.4rem, 4vw, 2rem);
+  font-weight: 900;
+  color: #f8fafc;
+  margin: 0 0 0.75rem;
+  letter-spacing: 0.04em;
+  text-shadow: 0 2px 24px rgba(0, 0, 0, 0.8);
+}
+
+.splash-dedication {
+  font-size: 0.85rem;
+  color: rgba(226, 232, 240, 0.75);
+  margin: 0;
+  opacity: 0;
+  transform: translateY(8px);
+  transition: opacity 0.6s ease, transform 0.6s ease;
+  font-style: italic;
+}
+
+.splash-dedication.is-visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.splash-skip {
+  margin-top: 1.25rem;
+  font-size: 0.7rem;
+  font-weight: 700;
+  padding: 0.35rem 0.75rem;
+  border-radius: 6px;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  background: rgba(0, 0, 0, 0.35);
+  color: rgba(255, 255, 255, 0.75);
+  cursor: pointer;
+}
+
+/* Pane reveal after splash */
+.app-container:not(.app-shell-ready) .dashboard-header,
+.app-container:not(.app-shell-ready) #interpret-root,
+.app-container:not(.app-shell-ready) .main-content {
+  opacity: 0;
+  pointer-events: none;
+}
+
+.app-container.app-shell-ready .dashboard-header {
+  animation: shellRevealHeader 0.45s ease-out forwards;
+}
+
+.app-container.app-shell-ready #interpret-root,
+.app-container.app-shell-ready .main-content {
+  animation: shellRevealBody 0.5s ease-out 0.12s forwards;
+  opacity: 0;
+}
+
+@keyframes shellRevealHeader {
+  from { opacity: 0; transform: translateY(-10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes shellRevealBody {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
 /* ── Desk Exercise Widget ── */
 .rep-box:hover {
   border-color: rgba(255,255,255,0.4) !important;

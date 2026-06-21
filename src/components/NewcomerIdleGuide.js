@@ -178,6 +178,15 @@ export const NewcomerIdleGuide = ({
       </div>
 
       <div style={{ display: 'flex', gap: '0.4rem', marginTop: '0.75rem', flexWrap: 'wrap' }}>
+        <button
+          type="button"
+          style={{ ...dismissBtn, borderColor: 'rgba(16,185,129,0.45)', color: '#6ee7b7' }}
+          onClick={() => {
+            window.dispatchEvent(new CustomEvent('cat_open_app_guide'));
+          }}
+        >
+          Take the tour / Ver guía
+        </button>
         {onHideSession && (
           <button type="button" style={dismissBtn} onClick={onHideSession}>
             Hide

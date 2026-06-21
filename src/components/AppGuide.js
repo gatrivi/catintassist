@@ -1,55 +1,13 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { isAppGuideDone, markAppGuideDone } from '../utils/appGuideStorage';
+import { loadGuideLang, saveGuideLang } from '../utils/guideLangStorage';
+import { getGuideSteps, GUIDE_UI } from '../content/appGuideContent';
+import { useGuideHost } from '../contexts/GuideHostContext';
 
-const GUIDE_STEPS = [
-  {
-    target: null,
-    title: 'Welcome to CatIntAssist',
-    body: 'A real-time interpreter cockpit: live transcription, side-by-side translation, and a gamified earnings HUD. This tour takes ~60 seconds.',
-  },
-  {
-    target: '[data-guide="connect"]',
-    title: '1 · Connect to the call tab',
-    body: 'Press the green button. Pick the browser tab with your interpreter line and allow audio. The stream stays attached between calls so you rarely re-prompt.',
-  },
-  {
-    target: '[data-guide="transcript"]',
-    title: '2 · Live transcript + translation',
-    body: 'White text = what was said. Gray italic = translation. English stays left, Spanish stays right (auto-flips). Bubbles split at sentence endings (. ! ?).',
-  },
-  {
-    target: '[data-guide="bubble-rail"]',
-    title: '3 · Bubble rail (center)',
-    body: 'Three bars = translate → process → ready. Number = words in this speaking turn (one count per pause; orange at 34, red at 40). Triangle = play translation audio.',
-  },
-  {
-    target: '[data-guide="stop"]',
-    title: '4 · End the call',
-    body: 'Red stop is always in the sticky top bar. Banks minutes and earnings to your daily scoreboard. Use ⚡ Zap if audio stalls without hanging up.',
-  },
-  {
-    target: '[data-guide="notes"]',
-    title: '5 · Quick notes',
-    body: 'Opens the notes panel (works during calls). Jot names, numbers, and terms — auto-saves. Bottom dock is shifted left for Chrome split-pane.',
-  },
-  {
-    target: '[data-guide="pin"]',
-    title: '6 · Pin important lines',
-    body: 'Click 📍 on any bubble to pin voicemail or callouts to the top. Pins survive CLEAR LOG. Use COPY_PINNED in the footer to export.',
-  },
-  {
-    target: '[data-guide="scoreboard"]',
-    title: '7 · Scoreboard & goals',
-    body: 'Track minutes, AR$ bounty, breaks, and pace. Tap 🎯 weekly goal pill for the commitment wheel. Vignette color = call / break / idle.',
-  },
-  {
-    target: null,
-    title: '8 · Power tips & demo mode',
-    body: 'Space = force EN/ES detect (30s). Highlight text → Linguee lookup. Shift+D cycles demo scenarios (connect, goal, break, reset). Version tag top-right confirms your build.',
-  },
-];
-
-const AppGuideOverlay = ({ onClose }) => {
+const AppGuideOverlay = ({ onClose, lang, onLangChange }) => {
+  const { prepareGuideView } = useGuideHost();
+  const steps = getGuideSteps(lang);
+  const ui = GUIDE_UI[lang] || GUIDE_UI.en;
   const [step, setStep] = useState(0);
   const [spot, setSpot] = useState(null);
 
@@ -61,8 +19,14 @@ const AppGuideOverlay = ({ onClose }) => {
     }
   })();
 
-  const current = GUIDE_STEPS[step];
-  const isLast = step >= GUIDE_STEPS.length - 1;
+  const current = steps[step];
+  const isLast = step >= steps.length - 1;
+
+  useEffect(() => {
+    if (current?.viewAction) {
+      prepareGuideView(current.viewAction);
+    }
+  }, [step, current, prepareGuideView]);
 
   const measureTarget = useCallback(() => {
     if (!current?.target) {
@@ -85,19 +49,19 @@ const AppGuideOverlay = ({ onClose }) => {
   }, [current]);
 
   useEffect(() => {
-    measureTarget();
+    const t = setTimeout(measureTarget, 120);
     const onLayout = () => measureTarget();
     window.addEventListener('resize', onLayout);
     window.addEventListener('scroll', onLayout, true);
-    const t = setTimeout(measureTarget, 80);
     return () => {
+      clearTimeout(t);
       window.removeEventListener('resize', onLayout);
       window.removeEventListener('scroll', onLayout, true);
-      clearTimeout(t);
     };
-  }, [step, measureTarget]);
+  }, [step, measureTarget, lang]);
 
   const finishGuide = () => {
+    prepareGuideView({ workspace: 'scoreboard', closeSettings: true, expandMetrics: false });
     markAppGuideDone();
     onClose();
   };
@@ -112,9 +76,16 @@ const AppGuideOverlay = ({ onClose }) => {
 
   const goPrev = () => setStep((s) => Math.max(0, s - 1));
 
+  const toggleLang = () => {
+    const next = lang === 'en' ? 'es' : 'en';
+    saveGuideLang(next);
+    onLangChange(next);
+    setStep(0);
+  };
+
   const cardStyle = spot
     ? {
-        top: Math.min(spot.top + spot.height + 12, window.innerHeight - 200),
+        top: Math.min(spot.top + spot.height + 12, window.innerHeight - 220),
         left: Math.max(12, Math.min(spot.left, window.innerWidth - 320)),
         maxWidth: 'min(300px, calc(100vw - 24px))',
       }
@@ -141,20 +112,25 @@ const AppGuideOverlay = ({ onClose }) => {
         />
       )}
       <div className="app-guide-card" style={cardStyle}>
-        <div className="app-guide-progress">
-          {GUIDE_STEPS.map((_, i) => (
-            <span key={i} className={`app-guide-dot ${i === step ? 'active' : ''} ${i < step ? 'done' : ''}`} />
-          ))}
+        <div className="app-guide-card-top">
+          <div className="app-guide-progress">
+            {steps.map((_, i) => (
+              <span key={i} className={`app-guide-dot ${i === step ? 'active' : ''} ${i < step ? 'done' : ''}`} />
+            ))}
+          </div>
+          <button type="button" className="app-guide-lang-toggle" onClick={toggleLang} title="Switch guide language">
+            {ui.langToggle}
+          </button>
         </div>
         <h2 className="app-guide-title">{current.title}</h2>
         <p className="app-guide-body">{current.body}</p>
         <div className="app-guide-actions">
-          <button type="button" className="app-guide-btn ghost" onClick={finishGuide}>Skip</button>
+          <button type="button" className="app-guide-btn ghost" onClick={finishGuide}>{ui.skip}</button>
           {step > 0 && (
-            <button type="button" className="app-guide-btn ghost" onClick={goPrev}>Back</button>
+            <button type="button" className="app-guide-btn ghost" onClick={goPrev}>{ui.back}</button>
           )}
           <button type="button" className="app-guide-btn primary" onClick={goNext}>
-            {isLast ? 'Done' : 'Next'}
+            {isLast ? ui.done : ui.next}
           </button>
         </div>
       </div>
@@ -162,28 +138,39 @@ const AppGuideOverlay = ({ onClose }) => {
   );
 };
 
-/** Help control for scoreboard / header (not the transcript footer). */
-export const AppGuideButton = ({ autoOpenIfNew = false }) => {
+/** Help control — opens bilingual guided tour. */
+export const AppGuideButton = ({ className = '' }) => {
   const [open, setOpen] = useState(false);
+  const [lang, setLang] = useState(loadGuideLang);
+  const showPulse = !isAppGuideDone();
 
   useEffect(() => {
-    if (autoOpenIfNew && !isAppGuideDone()) {
+    const openGuide = () => {
+      setLang(loadGuideLang());
       setOpen(true);
-    }
-  }, [autoOpenIfNew]);
+    };
+    window.addEventListener('cat_open_app_guide', openGuide);
+    return () => window.removeEventListener('cat_open_app_guide', openGuide);
+  }, []);
 
   return (
     <>
       <button
         type="button"
-        className="app-guide-scoreboard-btn"
+        className={`app-guide-scoreboard-btn${showPulse ? ' app-guide-scoreboard-btn--pulse' : ''}${className ? ` ${className}` : ''}`}
         onClick={() => setOpen(true)}
-        title="How to use & test CatIntAssist"
+        title="Help tour — how to use CatIntAssist (EN/ES)"
         aria-label="Open app guide"
       >
         ?
       </button>
-      {open && <AppGuideOverlay onClose={() => setOpen(false)} />}
+      {open && (
+        <AppGuideOverlay
+          lang={lang}
+          onLangChange={setLang}
+          onClose={() => setOpen(false)}
+        />
+      )}
     </>
   );
 };

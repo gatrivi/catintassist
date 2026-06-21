@@ -50,6 +50,7 @@ export const WorkspaceViewSwitcher = ({
   return (
     <button
       type="button"
+      data-guide="workspace-switch"
       className={[
         'workspace-view-btn',
         `workspace-view-btn--${variant}`,

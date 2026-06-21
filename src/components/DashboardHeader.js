@@ -205,6 +205,7 @@ const buildOffCallStatus = ({
     'Tip: Pin key details with 📍 so numbers stay visible while you wait.',
     'Tip: Settings → Language to change transcription pair (default EN↔ES).',
     'Tip: Space / Alt+Space force left/right STT lane (30s) — pair in Settings → Language.',
+    'Tip: Press ? or Take the tour in the welcome panel for the bilingual help guide.',
   ];
 
   const readIdlePref = () => {
@@ -359,6 +360,7 @@ const SessionControlsSticky = React.memo(({
         {!isActive && (
           <button
             id="header-mic-test-btn"
+            data-guide="mic-test"
             type="button"
             className="btn-icon tiny-btn"
             onClick={() => setMicTestMode?.(!micTestMode)}
@@ -370,7 +372,7 @@ const SessionControlsSticky = React.memo(({
               border: micTestMode ? '1px solid rgba(245, 158, 11, 0.55)' : '1px solid rgba(255,255,255,0.1)',
               boxShadow: micTestMode ? '0 0 8px rgba(245, 158, 11, 0.35)' : 'none',
             }}
-            title={micTestMode ? 'Mic Test ON — Connect uses your microphone (no tab picker)' : 'Mic Test OFF — Connect captures interpreter tab audio'}
+            title={micTestMode ? 'Mic ON — Connect uses microphone (no tab picker)' : 'Mic OFF — Connect captures interpreter tab audio (Share audio)'}
             aria-pressed={micTestMode}
           >
             🎤
@@ -380,6 +382,7 @@ const SessionControlsSticky = React.memo(({
         {!isActive && onOpenLanguageSettings && (
           <button
             id="header-lang-pair-btn"
+            data-guide="language-pair"
             type="button"
             className="btn-icon tiny-btn"
             onClick={onOpenLanguageSettings}
@@ -411,6 +414,7 @@ const SessionControlsSticky = React.memo(({
         {!isActive && onOpenGoalDial && (
           <button
             id="header-goal-btn"
+            data-guide="goal-wheel"
             type="button"
             className="btn-icon tiny-btn"
             onClick={onOpenGoalDial}
@@ -668,7 +672,7 @@ const SessionControlsSticky = React.memo(({
         >
           📝
         </button>
-        <AppGuideButton autoOpenIfNew />
+        <AppGuideButton />
         <SettingsButton />
       </div>
       </div>
@@ -860,6 +864,17 @@ export const DashboardHeader = ({
   useEffect(() => {
     if (!isActive) setCallModeExpanded(false);
   }, [isActive]);
+
+  useEffect(() => {
+    const onPrepare = (e) => {
+      const d = e.detail || {};
+      if (d.expandMetrics === true) setOffCallMetricsExpanded(true);
+      if (d.expandMetrics === false) setOffCallMetricsExpanded(false);
+      if (d.scoreView === 'game' || d.scoreView === 'numbers') setScoreView(d.scoreView);
+    };
+    window.addEventListener('cat_guide_prepare_view', onPrepare);
+    return () => window.removeEventListener('cat_guide_prepare_view', onPrepare);
+  }, []);
 
   // Break nudges during idle (not on a call, not currently on break).
   // Stage thresholds are intentionally coarse to avoid spamming the UI.

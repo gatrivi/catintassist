@@ -79,6 +79,7 @@ export const ConnectInterpretButton = ({
   return (
     <button
       type="button"
+      data-guide="connect"
       onClick={handleClick}
       disabled={disabled}
       className={`connect-interpret-btn btn-primaryish ${flash || isPendingDoubleTap ? 'connect-interpret-flash' : ''}`}

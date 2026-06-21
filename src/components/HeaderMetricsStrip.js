@@ -63,8 +63,9 @@ export const HeaderMetricsStrip = ({
         <button
           type="button"
           className="header-metrics-expand-btn"
+          data-guide="metrics-expand"
           onClick={onToggleExpand}
-          title={expanded ? 'Hide detailed metrics' : 'Show scoreboard + progress labels'}
+          title={expanded ? 'Hide detailed scoreboard (game/numbers grid)' : 'Expand scoreboard — game view + 12-metric grid'}
         >
           {expanded ? '▲ Less' : '▼ Metrics'}
         </button>

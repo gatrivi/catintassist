@@ -27,6 +27,10 @@ import { loadFile, generateObjectUrl } from "./utils/storage";
 import { resolveAppBackgroundPath } from "./utils/defaultBackgrounds";
 import SettingsPanel from "./components/SettingsPanel";
 import { OffCallWorkspace } from "./components/OffCallWorkspace";
+import { SplashScreen } from "./components/SplashScreen";
+import { GuideHostProvider } from "./contexts/GuideHostContext";
+import { isSplashSeenThisSession } from "./utils/splashStorage";
+import { isAppGuideDone } from "./utils/appGuideStorage";
 import {
   getRuntimeDeepgramKey,
   hasConfiguredDeepgramKey,
@@ -105,6 +109,8 @@ const Dashboard = () => {
   const [settingsSection, setSettingsSection] = useState("deepgram");
   const [showWellbeingDock, setShowWellbeingDock] = useState(isWellbeingDockEnabled);
   const [, setRuntimeKeyTick] = useState(0);
+  const [shellReady, setShellReady] = useState(() => isSplashSeenThisSession());
+  const [showSplash, setShowSplash] = useState(() => !isSplashSeenThisSession());
   useComponentVisibilityRefresh();
   const showWellbeingWidgets =
     showWellbeingDock &&
@@ -172,6 +178,33 @@ const Dashboard = () => {
     saveWorkspaceView("scoreboard");
     setWorkspaceView("scoreboard");
   }, [isActive, isZombieCall]);
+
+  const prepareGuideView = useCallback((action = {}) => {
+    if (!action) return;
+    if (action.workspace && OFF_CALL_VIEWS.includes(action.workspace)) {
+      markStudioHintSeen();
+      setShowStudioHint(false);
+      saveWorkspaceView(action.workspace);
+      setWorkspaceView(action.workspace);
+    }
+    if (action.settingsSection) {
+      setSettingsSection(action.settingsSection);
+      setSettingsOpen(true);
+    } else if (action.closeSettings) {
+      setSettingsOpen(false);
+    }
+    window.dispatchEvent(new CustomEvent("cat_guide_prepare_view", { detail: action }));
+  }, []);
+
+  const handleSplashComplete = useCallback(() => {
+    setShowSplash(false);
+    setShellReady(true);
+    if (!isAppGuideDone()) {
+      setTimeout(() => {
+        window.dispatchEvent(new CustomEvent("cat_open_app_guide"));
+      }, 500);
+    }
+  }, []);
 
   useEffect(() => {
     let objectUrl = null;
@@ -468,14 +501,18 @@ const Dashboard = () => {
   }, []);
 
   return (
+    <GuideHostProvider prepareGuideView={prepareGuideView}>
     <div
-      className={`app-container ${stateClass}`}
+      className={`app-container ${stateClass}${shellReady ? " app-shell-ready" : ""}`}
       data-state={appState}
       data-call-mode={isActive || isZombieCall ? "true" : "false"}
       data-off-call-view={isActive || isZombieCall ? "call" : workspaceView}
     >
+      {showSplash && <SplashScreen onComplete={handleSplashComplete} />}
       {/* Version Tag - Always visible in the upper right */}
       <div
+        data-guide="version"
+        title="Build version — confirms you have the latest features"
         style={{
           position: "fixed",
           top: "4px",
@@ -502,7 +539,7 @@ const Dashboard = () => {
             setSettingsSection("deepgram");
             setSettingsOpen(true);
           }}
-          title="Settings"
+          title="Open Settings"
           style={{
             background: "transparent",
             border: "none",
@@ -743,6 +780,7 @@ const Dashboard = () => {
         </button>
       </div>
     </div>
+    </GuideHostProvider>
   );
 };
 
