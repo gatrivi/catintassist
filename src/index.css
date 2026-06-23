@@ -1692,6 +1692,84 @@ body {
   overflow-x: hidden;
 }
 
+/* Connection Diagnostics (v4.72.x hotfix)
+   Keeps the diagnostics UI bounded so it never covers transcription. */
+.connection-diagnostics-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.35rem 0.55rem;
+  border-radius: 999px;
+  background: rgba(239,68,68,0.08);
+  border: 1px solid rgba(239,68,68,0.35);
+  color: #fca5a5;
+  cursor: pointer;
+  font-size: 0.68rem;
+  font-weight: 900;
+  line-height: 1.1;
+  z-index: 240; /* below session-controls-sticky (z-index 250) */
+}
+
+.connection-diagnostics-chip.is-compact {
+  padding: 0.25rem 0.45rem;
+  font-size: 0.62rem;
+}
+
+.connection-diagnostics-chip:focus-visible {
+  outline: 2px solid rgba(239, 68, 68, 0.6);
+  outline-offset: 2px;
+}
+
+.connection-diagnostics-chip-details {
+  color: rgba(253, 230, 138, 0.95);
+}
+
+.connection-diagnostics-details {
+  max-width: min(320px, 92vw);
+  max-height: 35vh;
+  overflow-y: auto;
+  overflow-x: hidden;
+  z-index: 240; /* below session-controls-sticky (z-index 250) */
+}
+
+.connection-diagnostics-details.is-compact {
+  max-width: min(320px, 90vw);
+}
+
+.connection-diagnostics-close-btn {
+  border: none;
+  background: rgba(255,255,255,0.05);
+  color: rgba(255,255,255,0.7);
+  cursor: pointer;
+  width: 20px;
+  height: 20px;
+  border-radius: 6px;
+  font-weight: 900;
+  line-height: 20px;
+  padding: 0;
+}
+
+.connection-diagnostics-close-btn:hover {
+  background: rgba(255,255,255,0.1);
+  color: rgba(255,255,255,0.95);
+}
+
+@media (max-width: 600px) {
+  /* On narrow screens: bottom-sheet so it can't be a tall fixed card. */
+  .connection-diagnostics-details {
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    width: 100vw;
+    max-width: 100vw;
+    margin: 0;
+    border-radius: 12px 12px 0 0;
+    /* keep it scrollable */
+    -webkit-overflow-scrolling: touch;
+  }
+}
+
 /* Connect / stop — always visible while scrolling the header */
 .session-controls-sticky {
   position: sticky;
