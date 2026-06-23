@@ -9,11 +9,17 @@ import {
   importStorageBackup,
 } from '../utils/storage';
 import { bindAudioToSink, primePlaybackElements, rampVolume } from '../utils/audioRoute';
+import { analyzeBlobHealth, formatHealthDisplay, truncateDeviceLabel } from '../utils/audioSelfTest';
+import {
+  buildRouteFingerprint,
+  isManualCallOk,
+  loadManualCallOk,
+  setManualCallOk,
+  warnLegacyCallPathStorage,
+} from '../utils/routeVerification';
 import { useAudioSettings } from '../contexts/AudioSettingsContext';
 import AudioEditorPanel from './AudioEditorPanel';
 import { getRuntimeDeepgramKey } from '../utils/deepgramRuntimeKey';
-
-const CALL_PATH_STORAGE = 'catint_call_path_verified';
 
 const TIME_SLOTS = ['morning', 'afternoon', 'evening'];
 const TIME_SLOT_META = {
@@ -44,7 +50,15 @@ const getActionCompletion = (action, blobs) => {
 
 const isCallerReady = (score) => score !== undefined && score >= CALL_ROUTE_MIN_SCORE;
 
-const isCallPathReady = (verified, key) => !!verified[key];
+const isCallPathReady = (manualCallOk, clipKey, sinkId, micId) =>
+  isManualCallOk(manualCallOk, clipKey, sinkId, micId);
+
+const ROUTE_TEST_LABELS = {
+  sink_played: 'sink played',
+  manual_ok: 'CALL OK confirmed',
+  declined: 'declined',
+  fail: 'fail',
+};
 
 const buildWaveformPeaks = async (blob, bars = 56) => {
   const arrayBuffer = await blob.arrayBuffer();
@@ -122,12 +136,30 @@ const getSetupStats = (blobs) => {
 };
 
 export const GreetingsPanel = ({ onEditModeChange, onExitStudio }) => {
-  const { selectedSinkId, localVolume, sinkVolume, changeLocalVolume, changeSinkVolume, monitorMic, setMonitorMic, monitorVolume, setMonitorVolume, setSinkPlaybackActive } = useAudioSettings();
+  const {
+    selectedSinkId,
+    selectedMicId,
+    outputDevices,
+    inputDevices,
+    localVolume,
+    sinkVolume,
+    changeLocalVolume,
+    changeSinkVolume,
+    monitorMic,
+    setMonitorMic,
+    monitorVolume,
+    setMonitorVolume,
+    setSinkPlaybackActive,
+    sinkPlaybackActive,
+  } = useAudioSettings();
   const [mode, setMode] = useState('play'); // 'play' | 'settings'
   const [timeOfDay, setTimeOfDay] = useState('morning');
   const [blobs, setBlobs] = useState({});
   const [healthScores, setHealthScores] = useState(() => JSON.parse(localStorage.getItem('catint_audio_health')) || {});
-  const [callPathVerified, setCallPathVerified] = useState(() => JSON.parse(localStorage.getItem(CALL_PATH_STORAGE)) || {});
+  const [manualCallOk, setManualCallOkStore] = useState(() => loadManualCallOk());
+  const [pendingRouteConfirm, setPendingRouteConfirm] = useState(null);
+  const [lastRouteTest, setLastRouteTest] = useState(null);
+  const [routeDebugOpen, setRouteDebugOpen] = useState(false);
   const [isAnalyzing, setIsAnalyzing] = useState(null); // key of item being analyzed
   const [playingKey, setPlayingKey] = useState(null);
   const [playbackProgress, setPlaybackProgress] = useState(0);
@@ -255,6 +287,7 @@ export const GreetingsPanel = ({ onEditModeChange, onExitStudio }) => {
 
   useEffect(() => {
     reloadData();
+    warnLegacyCallPathStorage();
   }, []);
 
   useEffect(() => {
@@ -262,12 +295,47 @@ export const GreetingsPanel = ({ onEditModeChange, onExitStudio }) => {
     if (selectedSinkId) bindAudioToSink(audioRefSink.current, selectedSinkId);
   }, [selectedSinkId]);
 
-  const markCallPathVerified = (key) => {
-    setCallPathVerified((prev) => {
-      const next = { ...prev, [key]: Date.now() };
-      localStorage.setItem(CALL_PATH_STORAGE, JSON.stringify(next));
-      return next;
-    });
+  const sinkLabel = truncateDeviceLabel(
+    outputDevices.find((d) => d.deviceId === selectedSinkId)?.label || (selectedSinkId ? 'Virtual out' : 'Default out'),
+    18,
+  );
+  const micLabel = truncateDeviceLabel(
+    inputDevices.find((d) => d.deviceId === selectedMicId)?.label || (selectedMicId ? 'Mic' : 'Default mic'),
+    18,
+  );
+
+  const getRouteBadge = (clipKey) => {
+    if (isManualCallOk(manualCallOk, clipKey, selectedSinkId, selectedMicId)) {
+      return {
+        className: 'sb-call-ok',
+        label: 'CALL OK ✓',
+        title: 'Remote side confirmed clean audio manually',
+      };
+    }
+    const fp = buildRouteFingerprint(clipKey, selectedSinkId, selectedMicId);
+    if (pendingRouteConfirm?.clipKey === clipKey && pendingRouteConfirm?.fingerprint === fp) {
+      return {
+        className: 'sb-sink-played',
+        label: 'SINK PLAYED',
+        title: 'Browser played into selected sink — confirm remote heard it cleanly',
+      };
+    }
+    return null;
+  };
+
+  const confirmManualCallOk = () => {
+    if (!pendingRouteConfirm) return;
+    const { clipKey } = pendingRouteConfirm;
+    setManualCallOkStore((prev) => setManualCallOk(prev, clipKey, selectedSinkId, selectedMicId));
+    setPendingRouteConfirm(null);
+    setLastRouteTest({ clipKey, result: 'manual_ok', at: Date.now() });
+  };
+
+  const declineManualCallOk = () => {
+    if (!pendingRouteConfirm) return;
+    const { clipKey } = pendingRouteConfirm;
+    setPendingRouteConfirm(null);
+    setLastRouteTest({ clipKey, result: 'declined', at: Date.now() });
   };
 
   useEffect(() => {
@@ -317,7 +385,7 @@ export const GreetingsPanel = ({ onEditModeChange, onExitStudio }) => {
   const analyzeHealth = async (key) => {
     const blob = await loadFile(key);
     if (!blob) return;
-    
+
     const API_KEY =
       getRuntimeDeepgramKey() ||
       localStorage.getItem('DEEPGRAM_API_KEY') ||
@@ -326,42 +394,21 @@ export const GreetingsPanel = ({ onEditModeChange, onExitStudio }) => {
 
     setIsAnalyzing(key);
     try {
-      const res = await fetch('https://api.deepgram.com/v1/listen?model=nova-2&smart_format=true', {
-        method: 'POST',
-        headers: {
-          'Authorization': `Token ${API_KEY}`,
-          'Content-Type': blob.type || 'audio/webm'
-        },
-        body: blob
-      });
-      
-      if (!res.ok) throw new Error('Deepgram error');
-      const data = await res.json();
-      const conf = data.results?.channels?.[0]?.alternatives?.[0]?.confidence || 0;
-      const transcript = data.results?.channels?.[0]?.alternatives?.[0]?.transcript || '';
-      
-      // Heuristic: If it failed to transcribe anything but has confidence 0, it sucks
-      const finalScore = transcript.length < 3 ? 0.1 : conf;
-      
-      setHealthScores(prev => {
+      const finalScore = await analyzeBlobHealth(blob, API_KEY);
+      if (finalScore === null) return;
+      setHealthScores((prev) => {
         const next = { ...prev, [key]: finalScore };
         localStorage.setItem('catint_audio_health', JSON.stringify(next));
         return next;
       });
     } catch (e) {
-      console.warn("Health check failed:", e);
+      console.warn('Health check failed:', e);
     } finally {
       setIsAnalyzing(null);
     }
   };
 
-  const getHealthMeta = (score) => {
-    if (score === undefined) return null;
-    if (score >= 0.9) return { label: 'PEACHES 🍑', color: '#10b981', width: '100%' };
-    if (score >= 0.75) return { label: 'GOOD ✅', color: '#34d399', width: '75%' };
-    if (score >= 0.5) return { label: 'PASSING ⚠️', color: '#fbbf24', width: '50%' };
-    return { label: 'UNACCEPTABLE ⛔', color: '#ef4444', width: '25%' };
-  };
+  const getHealthMeta = (score) => formatHealthDisplay(score);
 
   const handleClear = async (key) => {
     await deleteFile(key);
@@ -451,8 +498,7 @@ export const GreetingsPanel = ({ onEditModeChange, onExitStudio }) => {
     animationRef.current = requestAnimationFrame(trackProgress);
   };
 
-  const clearPlaybackState = (opts = {}) => {
-    const { verifiedKey = null } = opts;
+  const clearPlaybackState = () => {
     setPlayingKey(null);
     setPlaybackProgress(0);
     window.__CAT_AUDIO_VOL = 0;
@@ -460,7 +506,6 @@ export const GreetingsPanel = ({ onEditModeChange, onExitStudio }) => {
     if (rampCancelRef.current) rampCancelRef.current();
     rampCancelRef.current = null;
     if (animationRef.current) cancelAnimationFrame(animationRef.current);
-    if (verifiedKey) markCallPathVerified(verifiedKey);
   };
 
   const openSettings = (focusKey = null) => {
@@ -532,14 +577,14 @@ export const GreetingsPanel = ({ onEditModeChange, onExitStudio }) => {
     if (sendToCaller && !bypassGate) {
       const score = healthScores[key];
       const healthOk = isCallerReady(score);
-      const callOk = isCallPathReady(callPathVerified, key);
+      const callOk = isCallPathReady(manualCallOk, key, selectedSinkId, selectedMicId);
       if (!healthOk || !callOk) {
         setSafetyNotice(
           !healthOk
             ? (score === undefined
               ? '⛔ Untested clip — health check in Setup first'
               : '⛔ Health gate — virtual mic blocked; local preview only')
-            : '📡 Run Call Test in Setup before firing to patient path'
+            : '📡 Run Call Test and confirm CALL OK before firing to patient path'
         );
         window.setTimeout(() => setSafetyNotice(''), 4500);
         sendToCaller = false;
@@ -557,6 +602,7 @@ export const GreetingsPanel = ({ onEditModeChange, onExitStudio }) => {
       const bound = await bindAudioToSink(audioRefSink.current, selectedSinkId);
       if (!bound) {
         if (callerOnly) {
+          setLastRouteTest({ clipKey: key, result: 'fail', at: Date.now() });
           setSafetyNotice('⚠️ Virtual mic route failed — pick VB-Cable in header Speaker');
           window.setTimeout(() => setSafetyNotice(''), 4500);
           return;
@@ -576,7 +622,12 @@ export const GreetingsPanel = ({ onEditModeChange, onExitStudio }) => {
     const onEnd = () => {
       if (ended) return;
       ended = true;
-      clearPlaybackState(wasCallTest && playSink ? { verifiedKey: key } : {});
+      clearPlaybackState();
+      if (wasCallTest && playSink) {
+        const fingerprint = buildRouteFingerprint(key, selectedSinkId, selectedMicId);
+        setPendingRouteConfirm({ clipKey: key, fingerprint, playedAt: Date.now() });
+        setLastRouteTest({ clipKey: key, result: 'sink_played', at: Date.now() });
+      }
     };
     audioRefLocal.current.onended = onEnd;
     audioRefSink.current.onended = onEnd;
@@ -603,6 +654,9 @@ export const GreetingsPanel = ({ onEditModeChange, onExitStudio }) => {
       );
     } catch (e) {
       console.error('Playback error:', e);
+      if (wasCallTest) {
+        setLastRouteTest({ clipKey: key, result: 'fail', at: Date.now() });
+      }
       clearPlaybackState();
     }
   };
@@ -610,6 +664,7 @@ export const GreetingsPanel = ({ onEditModeChange, onExitStudio }) => {
   const renderClipCard = (key, label, compact = false) => {
     const hasBlob = !!blobs[key];
     const health = getHealthMeta(healthScores[key]);
+    const routeBadge = getRouteBadge(key);
     return (
       <div
         key={key}
@@ -632,8 +687,10 @@ export const GreetingsPanel = ({ onEditModeChange, onExitStudio }) => {
             <span className={`sb-clip-status ${hasBlob ? 'sb-clip-status--saved' : 'sb-clip-status--missing'}`}>
               {hasBlob ? 'SAVED' : 'MISSING'}
             </span>
-            {hasBlob && isCallPathReady(callPathVerified, key) && (
-              <span className="sb-call-ok">CALL OK</span>
+            {routeBadge && (
+              <span className={routeBadge.className} title={routeBadge.title}>
+                {routeBadge.label}
+              </span>
             )}
           </div>
         </div>
@@ -666,7 +723,7 @@ export const GreetingsPanel = ({ onEditModeChange, onExitStudio }) => {
                 className="sb-btn sb-btn--call"
                 onClick={() => playAudioBlock(key, true, { bypassGate: true, callerOnly: true })}
                 disabled={!selectedSinkId}
-                title={selectedSinkId ? 'Route to VB-Cable — verify via WhatsApp voice note, then marks CALL OK' : 'Pick VB-Cable in header Speaker first'}
+                title={selectedSinkId ? 'Route clip to virtual sink — confirm on remote side before CALL OK' : 'Pick VB-Cable in header Speaker first'}
               >
                 📡
               </button>
@@ -726,6 +783,19 @@ export const GreetingsPanel = ({ onEditModeChange, onExitStudio }) => {
     return (
       <div className="sb-setup glass-panel" style={{ border: 'none' }}>
         {editorOverlay}
+        {pendingRouteConfirm && (
+          <div className="sb-route-confirm">
+            <span>Did remote side hear it cleanly? ({pendingRouteConfirm.clipKey})</span>
+            <div className="sb-route-confirm-actions">
+              <button type="button" className="sb-btn sb-btn--call" onClick={confirmManualCallOk}>
+                Yes, mark CALL OK
+              </button>
+              <button type="button" className="sb-filter-chip" onClick={declineManualCallOk}>
+                No
+              </button>
+            </div>
+          </div>
+        )}
         <div className="sb-setup-head">
           <span className="sb-setup-title">⚙️ Setup Soundboard</span>
           <div className="sb-setup-actions">
@@ -897,6 +967,20 @@ export const GreetingsPanel = ({ onEditModeChange, onExitStudio }) => {
         </div>
       )}
 
+      {pendingRouteConfirm && (
+        <div className="sb-route-confirm">
+          <span>Did remote side hear it cleanly? ({pendingRouteConfirm.clipKey})</span>
+          <div className="sb-route-confirm-actions">
+            <button type="button" className="sb-btn sb-btn--call" onClick={confirmManualCallOk}>
+              Yes, mark CALL OK
+            </button>
+            <button type="button" className="sb-filter-chip" onClick={declineManualCallOk}>
+              No
+            </button>
+          </div>
+        </div>
+      )}
+
       <div className="sb-play-head">
         <div style={{ display: 'flex', flexDirection: 'column', gap: '0.1rem' }}>
           <span className={`sb-play-title ${testMode ? 'is-test' : ''}`}>Soundboard · {timeOfDay}</span>
@@ -966,13 +1050,39 @@ export const GreetingsPanel = ({ onEditModeChange, onExitStudio }) => {
           )}
         </div>
       </div>
+
+      <div className="sb-route-debug">
+        <button
+          type="button"
+          className="sb-route-debug-toggle"
+          onClick={() => setRouteDebugOpen((v) => !v)}
+          aria-expanded={routeDebugOpen}
+        >
+          {routeDebugOpen ? '▾' : '▸'} Route debug
+        </button>
+        {routeDebugOpen && (
+          <div className="sb-route-debug-body">
+            <div>Sink: {sinkLabel}</div>
+            <div>Mic: {micLabel}</div>
+            <div>Test mode: {testMode ? 'ON' : 'OFF'}</div>
+            <div>Passthrough: {sinkPlaybackActive ? 'MUTED' : 'OPEN'}</div>
+            <div>
+              Last route test:{' '}
+              {lastRouteTest
+                ? `${ROUTE_TEST_LABELS[lastRouteTest.result] || lastRouteTest.result} (${lastRouteTest.clipKey})`
+                : '—'}
+            </div>
+          </div>
+        )}
+      </div>
       
       <div className="sb-grid">
         {ACTIONS.map((action) => {
           const activeKey = action.dynamic ? `${action.id}_${timeOfDay}` : action.id;
           const hasAudio = !!blobs[activeKey];
           const callerBlocked = hasAudio && !testMode && (
-            !isCallerReady(healthScores[activeKey]) || !isCallPathReady(callPathVerified, activeKey)
+            !isCallerReady(healthScores[activeKey]) ||
+            !isCallPathReady(manualCallOk, activeKey, selectedSinkId, selectedMicId)
           );
           const bgImage = blobs[`url_thumb_${action.id}`] ? `url(${blobs[`url_thumb_${action.id}`]})` : 'none';
           const isItPlaying = playingKey === activeKey;
@@ -1005,7 +1115,7 @@ export const GreetingsPanel = ({ onEditModeChange, onExitStudio }) => {
               style={{ backgroundImage: bgImage !== 'none' ? bgImage : undefined }}
               title={
                 callerBlocked
-                  ? 'Blocked from virtual mic — local preview only (Setup → Call Test or 🧪 Test Mode)'
+                  ? 'Blocked from virtual mic — local preview only (Setup → Call Test + confirm CALL OK, or 🧪 Test Mode)'
                   : 'Play clip'
               }
             >

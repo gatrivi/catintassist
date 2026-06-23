@@ -1,4 +1,4 @@
-import { classifyHealthScore, truncateDeviceLabel, createTestToneUrl } from './audioSelfTest';
+import { classifyHealthScore, formatHealthDisplay, truncateDeviceLabel, createTestToneUrl } from './audioSelfTest';
 
 describe('audioSelfTest', () => {
   test('classifyHealthScore peaches at high confidence', () => {
@@ -7,6 +7,12 @@ describe('audioSelfTest', () => {
 
   test('truncateDeviceLabel shortens long names', () => {
     expect(truncateDeviceLabel('Very Long Device Name Here', 10).length).toBeLessThanOrEqual(10);
+  });
+
+  test('formatHealthDisplay adds emoji tiers', () => {
+    expect(formatHealthDisplay(0.95)?.label).toContain('PEACHES');
+    expect(formatHealthDisplay(0.1)?.label).toContain('UNACCEPTABLE');
+    expect(formatHealthDisplay(undefined)).toBeNull();
   });
 
   test('createTestToneUrl builds wav buffer', () => {

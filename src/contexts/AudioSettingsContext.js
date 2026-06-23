@@ -22,6 +22,7 @@ export const AudioSettingsProvider = ({ children }) => {
   // Hidden element: physical mic → virtual output (when mic is selected)
   const passthroughAudioRef = useRef(new Audio());
   const sinkPlaybackActiveRef = useRef(false);
+  const [sinkPlaybackActive, setSinkPlaybackActiveState] = useState(false);
   const [micLevel, setMicLevel] = useState(0);
   const [micStatus, setMicStatus] = useState('idle'); // idle | ok | no-signal | clip | muted
   const micThrottleRef = useRef(0);
@@ -30,6 +31,7 @@ export const AudioSettingsProvider = ({ children }) => {
   /** Mute mic passthrough while soundboard/TTS plays to the same sink (avoids garbled mix). */
   const setSinkPlaybackActive = useCallback((active) => {
     sinkPlaybackActiveRef.current = active;
+    setSinkPlaybackActiveState(active);
     const el = passthroughAudioRef.current;
     if (!el) return;
     el.volume = active ? 0 : 1;
@@ -232,7 +234,7 @@ export const AudioSettingsProvider = ({ children }) => {
   };
 
   return (
-    <AudioSettingsContext.Provider value={{ outputDevices, inputDevices, selectedSinkId, selectedMicId, changeSinkId, changeMicId, fetchDevices, localVolume, sinkVolume, changeLocalVolume, changeSinkVolume, monitorMic, setMonitorMic, monitorVolume, setMonitorVolume, setSinkPlaybackActive, micLevel, micStatus }}>
+    <AudioSettingsContext.Provider value={{ outputDevices, inputDevices, selectedSinkId, selectedMicId, changeSinkId, changeMicId, fetchDevices, localVolume, sinkVolume, changeLocalVolume, changeSinkVolume, monitorMic, setMonitorMic, monitorVolume, setMonitorVolume, setSinkPlaybackActive, sinkPlaybackActive, micLevel, micStatus }}>
       {children}
     </AudioSettingsContext.Provider>
   );

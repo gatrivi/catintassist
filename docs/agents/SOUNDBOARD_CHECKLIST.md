@@ -22,7 +22,7 @@ Updated: v4.45.0 · See `00_PORTFOLIO.md` for interview priorities.
 | `CALL_PATH_TEST` — Explicit “hear what patient hears” button | `DONE` | v4.38, Setup → 📡 Call Test (sink only) |
 | `LOCAL_PREVIEW_ISOLATION` — Preview does not hit default sink | `DONE` | v4.38, local element only |
 | `CLIP_WAVEFORM` — Static waveform on saved clips | `DONE` | v4.39, Setup rows + play progress tint |
-| `CALL_PATH_AUTO_VERIFY` — Call Test marks CALL OK; play blocks mic without it | `DONE` | v4.47 |
+| `CALL_PATH_AUTO_VERIFY` — Manual confirm + fingerprinted CALL OK | `PARTIAL` | v4.71 — no auto-verify; sink+mic+clip fingerprint |
 | `PASSTHROUGH_MUTE_ON_CLIP` — Mic passthrough muted during sink playback | `DONE` | v4.47, fixes garbled mix |
 
 ## Pass B — Daily use polish

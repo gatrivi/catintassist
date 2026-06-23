@@ -25,7 +25,6 @@ import {
   loadLanguagePair,
   isEnEsProtectionMode,
   shouldReverseBubble,
-  isTailRemainderBubble,
   normalizeLang,
   LANG_PAIR_CHANGED_EVENT,
 } from '../utils/languageConfig';
@@ -216,7 +215,14 @@ const TranslatedBubble = ({
   const [tailBlueLocked, setTailBlueLocked] = useState(false);
 
   useEffect(() => {
-    if (!isTailMovedSection) return;
+    if (!isTailMovedSection) {
+      if (tailLockTimerRef.current) {
+        clearTimeout(tailLockTimerRef.current);
+        tailLockTimerRef.current = null;
+      }
+      setTailBlueLocked(false);
+      return;
+    }
 
     setTailBlueLocked(true);
     if (tailLockTimerRef.current) {
@@ -731,7 +737,7 @@ export const TranscriptionBoard = ({
           // In `useDeepgram`, the remainder bubble is created with `isFinal:false`
           // but still filled with the lane's `*Finalized` content, while the interim is empty.
           // We use that to flash only the moved remainder text (not the earlier sealed part).
-          const isTailMovedSection = isTailRemainderBubble(cap, languagePair);
+          const isTailMovedSection = Boolean(cap.isTailMovedSection);
           
           return (
             <div

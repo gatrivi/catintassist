@@ -78,6 +78,24 @@ export const classifyHealthScore = (score) => {
   return { label: 'UNACCEPTABLE', color: '#ef4444', width: '25%' };
 };
 
+const HEALTH_EMOJI = {
+  PEACHES: ' 🍑',
+  GOOD: ' ✅',
+  PASSING: ' ⚠️',
+  UNACCEPTABLE: ' ⛔',
+};
+
+/** UI label with emoji — single display source for GreetingsPanel. */
+export const formatHealthDisplay = (score) => {
+  if (score === undefined || score === null) return null;
+  const base = classifyHealthScore(score);
+  if (base.label === 'UNTESTED') return null;
+  return {
+    ...base,
+    label: `${base.label}${HEALTH_EMOJI[base.label] || ''}`,
+  };
+};
+
 export const analyzeBlobHealth = async (blob, apiKey) => {
   if (!blob || !apiKey) return null;
   const res = await fetch('https://api.deepgram.com/v1/listen?model=nova-2&smart_format=true', {

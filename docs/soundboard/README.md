@@ -1,41 +1,59 @@
-# Soundboard (v4.58.0)
+# Soundboard (v4.71.0)
 
 ## What it is
-Pre-recorded greetings + an audio "legibility health" gate so patient playback stays safe.
+Pre-recorded greetings + clip legibility health (Deepgram) + **manual** route attestation before patient-path playback.
 
-## AUDIO HEALTH (AI audit)
-On upload/record, the audio is sent to Deepgram:
-- If Deepgram confidently transcribes it → status **PEACHES**
-- If it fails → status **UNACCEPTABLE**
+## AUDIO HEALTH (clip QA only)
+On upload/record, audio is sent to Deepgram. Score tiers:
 
-UX:
-- Each greeting button shows a micro-health bar (RED to GREEN)
-- Health bars are visible in both **Settings** and **Play Mode**
+| Score | Label |
+|-------|--------|
+| untested | UNTESTED |
+| >= 0.9 | PEACHES |
+| >= 0.75 | GOOD |
+| >= 0.5 | PASSING |
+| < 0.5 | UNACCEPTABLE |
 
-## Playback & safety
-- **Anti-Scream Ramp**: ramps volume over ~50ms (no instant 100% hit)
-- **Test Mode**: blocks playback to the Virtual Mic / Caller so you can verify locally
-- **Mic Monitor**: verify physical recording path before committing
+Health proves **source clip legibility**, not that the patient path works.
 
-## Navigation (v4.58.0)
-Soundboard Studio is a full-pane workspace (off-call only).
-- **← Scoreboard** in studio header, play view, and setup view
-- **Escape** returns to scoreboard (when editor modal is closed)
-- Dock pyramid still cycles workspaces
-- Setup **Save & Play** returns to play mode only — not scoreboard
+## Route verification (v4.71.0)
+Patient-path unlock requires **manual CALL OK** — not auto-proof when the browser finishes playing.
 
-## Roadmap checklist (safety first)
+| Badge | Meaning |
+|-------|---------|
+| SINK PLAYED | Browser played clip into selected virtual sink; awaiting your confirm |
+| CALL OK ✓ | You attested remote side heard it cleanly |
+
+Proof is stored per fingerprint: **clipKey + sinkId + micDeviceId**. Changing VB-Cable or mic invalidates prior proofs.
+
+Flow:
+1. Off-call → Soundboard Studio
+2. Setup → record/upload → health bar
+3. Preview locally (▶) with 🧪 Test Mode if needed
+4. 📡 Call Test → routes to virtual sink only
+5. Confirm: *Did remote side hear it cleanly?* → **Yes, mark CALL OK**
+6. Play mode (Test Mode off) → virtual mic only if health + manual CALL OK pass
+
+Header **Test local** / **Test route** = quick tone checks without a clip.
+
+## Playback and safety
+- **Anti-Scream Ramp**: ~50ms volume ramp
+- **Test Mode**: blocks virtual mic; local speakers only
+- **Mic Monitor**: verify recording path before long takes
+- **Route debug** strip: sink, mic, test mode, passthrough mute state, last route test
+
+## Navigation
+Soundboard Studio is off-call only.
+- **← Scoreboard** in studio header
+- **Escape** returns to scoreboard (when editor modal closed)
+
+## Roadmap
 - `VIRTUAL_MIC_ROUTE` — reliable audio to patient path (**PARTIAL**)
-
-How to verify
-1. Off-call → open Soundboard Studio
-2. Setup → record/upload → wait for health bar
-3. Preview locally with Test mode on
-4. Header **Test route** for quick sink check without a live call
+- Voicemod prerecorded greetings remain safe fallback until routing is proven
 
 ## Known issues
-- Patient-side playback routing still unreliable — use local/test mode for QA
-- Crackles may appear under high STT load
+- Patient-side routing still unreliable under some STT load
+- `CALL OK` is human attestation, not automated remote verification
 
 ## FAQ
-- If you hear the peep beep: silence reminder for disconnect-after-call (billing safety).
+- Peep beep after call: silence reminder for disconnect-after-call (billing safety).

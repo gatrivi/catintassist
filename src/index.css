@@ -1149,6 +1149,63 @@ body {
   letter-spacing: 0.03em;
 }
 
+.sb-sink-played {
+  font-size: 0.55rem;
+  font-weight: 800;
+  color: #fbbf24;
+  letter-spacing: 0.03em;
+}
+
+.sb-route-confirm {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  font-size: 0.68rem;
+  font-weight: 700;
+  color: #fde68a;
+  background: rgba(245, 158, 11, 0.12);
+  border: 1px solid rgba(245, 158, 11, 0.35);
+  border-radius: 6px;
+  padding: 0.4rem 0.55rem;
+  margin-bottom: 0.35rem;
+}
+
+.sb-route-confirm-actions {
+  display: flex;
+  gap: 0.35rem;
+  flex-wrap: wrap;
+}
+
+.sb-route-debug {
+  margin: 0.25rem 0 0.35rem;
+  font-family: var(--font-mono, monospace);
+  font-size: 0.58rem;
+}
+
+.sb-route-debug-toggle {
+  background: transparent;
+  border: none;
+  color: rgba(255, 255, 255, 0.45);
+  cursor: pointer;
+  font-size: 0.58rem;
+  font-weight: 700;
+  padding: 0.1rem 0;
+}
+
+.sb-route-debug-body {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  margin-top: 0.2rem;
+  padding: 0.35rem 0.45rem;
+  border-radius: 4px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  color: rgba(255, 255, 255, 0.65);
+}
+
 .sb-health-pill {
   cursor: pointer;
   display: flex;

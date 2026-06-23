@@ -1,15 +1,6 @@
 import { useState, useRef, useEffect, useCallback } from "react";
 import { useSession } from "../contexts/SessionContext";
 import {
-  applyTranscriptFormatting,
-  splitLongTextAtCommas,
-  peelCompleteSentences,
-} from "../utils/transcriptFormat";
-import {
-  hallucinationGuard,
-  removeOverlapPreservingDigitSequences,
-} from "../utils/sensitiveDataProtector";
-import {
   getEffectiveDeepgramKey,
   getDeepgramKeyInfo,
 } from "../utils/deepgramRuntimeKey";
@@ -23,10 +14,18 @@ import {
   isEnEsProtectionMode,
   usesMultiSocket,
   laneSideForLang,
-  langForLaneSide,
   normalizeLang,
   LANG_PAIR_CHANGED_EVENT,
 } from "../utils/languageConfig";
+import {
+  INTERIM_THROTTLE_MS,
+  mergeCaptionsForUi,
+  splitCaptionRows,
+  initEngineFromPersisted,
+  reduceTranscriptEvent,
+  shouldFlushImmediately,
+  createCaptionEngineState,
+} from "../utils/captionEngine";
 
 const TAB_STREAM_READY_KEY = "catint_tab_stream_ok_v1";
 const readTabStreamReady = () => {
@@ -49,48 +48,6 @@ const deepgramKeyRejectedMessage = () => {
     return `Deepgram rejected stored key (${masked}) — update in Settings.`;
   }
   return "Deepgram API key is missing or invalid — open Settings (gear) and paste your key.";
-};
-
-const sealText = (raw, lang) => applyTranscriptFormatting(raw.trim(), lang);
-
-const buildSealedBubble = (
-  sentence,
-  template,
-  bubbleIdCounterRef,
-  turnWordCount,
-  pair,
-) => {
-  const lang = template.lang || pair.left;
-  const text = sealText(sentence, lang);
-  const side = laneSideForLang(lang, pair);
-  return {
-    ...template,
-    id: `${Date.now()}-${++bubbleIdCounterRef.current}-s`,
-    text,
-    turnId: template.turnId,
-    turnWordCount,
-    enFinalized: side === "en" ? text : "",
-    esFinalized: side === "es" ? text : "",
-    enInterim: "",
-    esInterim: "",
-    enFull: side === "en" ? text : template.enFull,
-    esFull: side === "es" ? text : template.esFull,
-    isFinal: true,
-  };
-};
-
-/** Seal comma chunks when a fragment exceeds word limit without sentence end */
-const peelCommaChunks = (text, template, bubbleIdCounterRef, turnWordsBase, pair) => {
-  const chunks = splitLongTextAtCommas(text, 40);
-  if (!chunks.length) return { sealed: [], remainder: text };
-
-  let acc = turnWordsBase;
-  const sealed = chunks.map((chunk) => {
-    const w = chunk.trim().split(/\s+/).filter(Boolean).length;
-    acc += w;
-    return buildSealedBubble(chunk, template, bubbleIdCounterRef, acc, pair);
-  });
-  return { sealed, remainder: "" };
 };
 
 const MIC_TEST_KEY = "catint_mic_test_mode_v1";
@@ -175,6 +132,9 @@ export const useDeepgram = () => {
   const mediaRecorderRef = useRef(null);
   const streamRef = useRef(null);
   const isActiveRef = useRef(false);
+  const captionEngineRef = useRef(createCaptionEngineState());
+  const interimFlushTimerRef = useRef(null);
+  const captionsHydratedRef = useRef(false);
 
   // After refresh there is no live MediaStream — clear stale tab-ready flag.
   useEffect(() => {
@@ -192,6 +152,7 @@ export const useDeepgram = () => {
   const turnWordsBaseRef = useRef(0); // words already sealed in the current silence-to-silence turn
   const currentTurnIdRef = useRef(null);
   const bubbleIdCounterRef = useRef(0);
+  const lastBubbleStartedRef = useRef(0);
   const overrideTimeoutRef = useRef(null);
   const reconnectAttemptsRef = useRef(0);
   const connectAttemptIdRef = useRef(0);
@@ -222,6 +183,37 @@ export const useDeepgram = () => {
     connectFlagsRef.current = { ...connectFlagsRef.current, ...patch, lastUpdatedAt: Date.now() };
     setConnectProgress(connectFlagsRef.current);
   };
+
+  const resetCaptionEngine = useCallback(() => {
+    captionEngineRef.current = createCaptionEngineState();
+    if (interimFlushTimerRef.current) {
+      clearTimeout(interimFlushTimerRef.current);
+      interimFlushTimerRef.current = null;
+    }
+  }, []);
+
+  const flushCaptionsToSession = useCallback(() => {
+    updateCaptions(mergeCaptionsForUi(captionEngineRef.current));
+  }, [updateCaptions]);
+
+  const scheduleInterimFlush = useCallback(() => {
+    if (interimFlushTimerRef.current) return;
+    interimFlushTimerRef.current = setTimeout(() => {
+      interimFlushTimerRef.current = null;
+      flushCaptionsToSession();
+    }, INTERIM_THROTTLE_MS);
+  }, [flushCaptionsToSession]);
+
+  useEffect(() => {
+    if (captions.length > 0 && !captionsHydratedRef.current) {
+      captionsHydratedRef.current = true;
+      captionEngineRef.current = initEngineFromPersisted(captions);
+    }
+    if (captions.length === 0 && captionsHydratedRef.current) {
+      resetCaptionEngine();
+      captionsHydratedRef.current = false;
+    }
+  }, [captions, resetCaptionEngine]);
 
   const resetConnectProgress = () => {
     const keyInfo = getDeepgramKeyInfo();
@@ -576,6 +568,8 @@ export const useDeepgram = () => {
 
           const confidence = alt?.confidence || 0;
           const isFinal = received.is_final;
+          const speechFinal = received.speech_final;
+          const startTime = received.start ?? 0;
           const socketLaneLang =
             lang === "multi"
               ? received.channel?.detected_language ||
@@ -624,227 +618,54 @@ export const useDeepgram = () => {
 
           if (!shouldCaptureCaptionsRef.current) return;
 
-          updateCaptions((prev) => {
-            let last = prev[prev.length - 1];
-            const isNewTurn = isSilentBreak || !last;
-
-            if (isNewTurn) {
-              const lastCreationTime = last
-                ? parseInt(last.id.split("-")[0])
-                : 0;
-              if (now - lastCreationTime < 400 && !isSilentBreak) {
-                // Skip redundant split
-              } else {
-                if (isSilentBreak || !last) {
-                  turnWordsBaseRef.current = 0;
-                  currentTurnIdRef.current = `turn-${now}`;
-                } else if (!currentTurnIdRef.current) {
-                  currentTurnIdRef.current = last.turnId || `turn-${now}`;
-                }
-
-                last = {
-                  id: `${Date.now()}-${++bubbleIdCounterRef.current}`,
-                  enFinalized: "",
-                  enInterim: "",
-                  esFinalized: "",
-                  esInterim: "",
-                  turnId: currentTurnIdRef.current,
-                  turnWordCount: turnWordsBaseRef.current,
-                  isSplit: !isSilentBreak,
-                };
-                prev = [...prev, last];
-              }
-            }
-
-            const current = { ...last };
-            const historyText = prev
-              .slice(-4, -1)
-              .map((c) => c.text || "")
-              .join(" ");
-            const currentFinalized =
-              (laneSide === "en" ? current.enFinalized : current.esFinalized) ||
-              "";
-            const baseContext = (historyText + " " + currentFinalized).trim();
-
-            const cleaned = removeOverlapPreservingDigitSequences(
-              baseContext,
+          const merged = mergeCaptionsForUi(captionEngineRef.current);
+          const newArr = reduceTranscriptEvent(
+            merged,
+            {
               transcript,
-            );
-            if (!cleaned.trim() && !isFinal) return prev;
+              isFinal,
+              speechFinal,
+              confidence,
+              laneSide,
+              channelKey: lang,
+              startTime,
+              now,
+              isSilentBreak,
+              protectionsOn,
+              langMode: langModeRef.current,
+              pair,
+            },
+            {
+              turnWordsBaseRef,
+              currentTurnIdRef,
+              bubbleIdCounterRef,
+              lastBubbleStartedRef,
+            },
+          );
+          captionEngineRef.current = splitCaptionRows(newArr);
 
-            if (isFinal) {
-              const merged = (
-                (laneSide === "en" ? current.enFinalized : current.esFinalized) +
-                " " +
-                cleaned
-              ).trim();
-              const finalized = protectionsOn
-                ? hallucinationGuard(merged)
-                : merged;
-              if (laneSide === "en") {
-                current.enFinalized = finalized;
-                current.enInterim = "";
-              } else {
-                current.esFinalized = finalized;
-                current.esInterim = "";
-              }
-            } else if (laneSide === "en") {
-              current.enInterim = cleaned;
-            } else {
-              current.esInterim = cleaned;
+          if (shouldFlushImmediately(isFinal, speechFinal)) {
+            if (interimFlushTimerRef.current) {
+              clearTimeout(interimFlushTimerRef.current);
+              interimFlushTimerRef.current = null;
             }
+            flushCaptionsToSession();
+          } else {
+            scheduleInterimFlush();
+          }
 
-            const enFull = (
-              current.enFinalized +
-              " " +
-              current.enInterim
-            ).trim();
-            const esFull = (
-              current.esFinalized +
-              " " +
-              current.esInterim
-            ).trim();
-            const leftW = enFull.split(/\s+/).filter(Boolean).length;
-            const rightW = esFull.split(/\s+/).filter(Boolean).length;
-
-            let winnerLang = langForLaneSide("en", pair);
-            if (rightW >= leftW + 2) winnerLang = langForLaneSide("es", pair);
-            else if (leftW >= rightW + 2) winnerLang = langForLaneSide("en", pair);
-            else {
-              winnerLang =
-                confidence > 0.8 && rightW > 0
-                  ? langForLaneSide("es", pair)
-                  : langForLaneSide("en", pair);
-            }
-
-            const mode = langModeRef.current;
-            if (mode === "left") winnerLang = pair.left;
-            else if (mode === "right") winnerLang = pair.right;
-
-            if (
-              isCallDetectionEnabled &&
-              normalizeLang(winnerLang) === "en" &&
-              confidence > 0.4 &&
-              transcript &&
-              transcript.trim().length > 0 &&
-              now - lastEnglishActivityPulseRef.current > 500
-            ) {
-              updateEnglishActivity();
-              lastEnglishActivityPulseRef.current = now;
-            }
-
-            const winSide = laneSideForLang(winnerLang, pair);
-            current.lang = winnerLang;
-            current.text = winSide === "en" ? enFull : esFull;
-            current.enFull = enFull;
-            current.esFull = esFull;
-            current.isFinal = isFinal;
-            const currentWords = current.text
-              .split(/\s+/)
-              .filter(Boolean).length;
-            current.turnId =
-              current.turnId || currentTurnIdRef.current || `turn-${now}`;
-            current.turnWordCount = turnWordsBaseRef.current + currentWords;
-
-            let newArr = [...prev];
-            newArr[newArr.length - 1] = current;
-
-            if (isFinal && current.text?.trim()) {
-              const originalLastId = last?.id;
-              const { sentences, remainder: sentRemainder } =
-                peelCompleteSentences(current.text);
-              let sealedAll = [];
-              let tailText = sentRemainder;
-
-              if (sentences.length > 0) {
-                let acc = turnWordsBaseRef.current;
-                sealedAll = sentences.map((sent) => {
-                  const w = sent.trim().split(/\s+/).filter(Boolean).length;
-                  acc += w;
-                  return buildSealedBubble(
-                    sent,
-                    current,
-                    bubbleIdCounterRef,
-                    acc,
-                    pair,
-                  );
-                });
-                turnWordsBaseRef.current = acc;
-              }
-
-              if (tailText?.trim()) {
-                const { sealed: commaSealed, remainder: commaRemainder } =
-                  peelCommaChunks(
-                    tailText,
-                    current,
-                    bubbleIdCounterRef,
-                    turnWordsBaseRef.current,
-                    pair,
-                  );
-                if (commaSealed.length) {
-                  sealedAll = [...sealedAll, ...commaSealed];
-                  turnWordsBaseRef.current =
-                    commaSealed[commaSealed.length - 1].turnWordCount;
-                  tailText = commaRemainder;
-                }
-              }
-
-              if (
-                !sentences.length &&
-                !sealedAll.length &&
-                current.text?.trim()
-              ) {
-                const { sealed: commaOnly, remainder: commaRemainder } =
-                  peelCommaChunks(
-                    current.text,
-                    current,
-                    bubbleIdCounterRef,
-                    turnWordsBaseRef.current,
-                    pair,
-                  );
-                if (commaOnly.length) {
-                  sealedAll = commaOnly;
-                  turnWordsBaseRef.current =
-                    commaOnly[commaOnly.length - 1].turnWordCount;
-                  tailText = commaRemainder;
-                }
-              }
-
-              if (sealedAll.length > 0) {
-                if (sealedAll[0] && originalLastId) {
-                  sealedAll[0] = { ...sealedAll[0], id: originalLastId };
-                }
-                newArr = [...prev.slice(0, -1), ...sealedAll];
-                if (tailText?.trim()) {
-                  const winLang = current.lang || pair.left;
-                  const tailSide = laneSideForLang(winLang, pair);
-                  const formatted = sealText(tailText, winLang);
-                  newArr.push({
-                    ...current,
-                    id: `${Date.now()}-${++bubbleIdCounterRef.current}`,
-                    turnId: current.turnId,
-                    turnWordCount: turnWordsBaseRef.current,
-                    text: formatted,
-                    enFinalized: tailSide === "en" ? formatted : "",
-                    esFinalized: tailSide === "es" ? formatted : "",
-                    enInterim: tailSide === "en" ? current.enInterim : "",
-                    esInterim: tailSide === "es" ? current.esInterim : "",
-                    enFull:
-                      tailSide === "en"
-                        ? `${formatted} ${current.enInterim || ""}`.trim()
-                        : current.enFull,
-                    esFull:
-                      tailSide === "es"
-                        ? `${formatted} ${current.esInterim || ""}`.trim()
-                        : current.esFull,
-                    isFinal: false,
-                  });
-                }
-              }
-            }
-
-            return newArr.slice(-150);
-          });
+          const lastRow = newArr[newArr.length - 1];
+          if (
+            isCallDetectionEnabled &&
+            lastRow &&
+            normalizeLang(lastRow.lang) === "en" &&
+            confidence > 0.4 &&
+            lastRow.text?.trim() &&
+            now - lastEnglishActivityPulseRef.current > 500
+          ) {
+            updateEnglishActivity();
+            lastEnglishActivityPulseRef.current = now;
+          }
         };
 
         ws.onclose = (event) => {
@@ -907,7 +728,8 @@ export const useDeepgram = () => {
     [
       isCallDetectionEnabled,
       updateActivity,
-      updateCaptions,
+      flushCaptionsToSession,
+      scheduleInterimFlush,
       updateEnglishActivity,
       requestHoldIntent,
       notifySpeechDuringCall,
@@ -931,8 +753,11 @@ export const useDeepgram = () => {
     closeConnections();
     // HIPAA grace: do not destroy transcription/translation immediately;
     // defer to SessionContext finalizer (15s leeway for quick reconnect).
-    if (!hipaaGraceActiveRef?.current) clearCaptions();
-  }, [closeConnections, clearCaptions, hipaaGraceActiveRef]);
+    if (!hipaaGraceActiveRef?.current) {
+      resetCaptionEngine();
+      clearCaptions();
+    }
+  }, [closeConnections, clearCaptions, hipaaGraceActiveRef, resetCaptionEngine]);
 
   const stopRecordingRef = useRef(stopRecording);
   stopRecordingRef.current = stopRecording;
