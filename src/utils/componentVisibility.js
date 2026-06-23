@@ -41,8 +41,8 @@ export const DEFAULT_COMPONENT_VISIBILITY = {
   [COMPONENT_IDS.connect_button_scoreboard]: 'hidden',
   [COMPONENT_IDS.expanded_income_cards]: 'off_call',
   [COMPONENT_IDS.mic_meter_strip]: 'always',
-  [COMPONENT_IDS.off_call_guide]: 'off_call',
-  [COMPONENT_IDS.wellbeing_dock]: 'off_call',
+  [COMPONENT_IDS.off_call_guide]: 'hidden',
+  [COMPONENT_IDS.wellbeing_dock]: 'hidden',
 };
 
 const dispatchChanged = () => {

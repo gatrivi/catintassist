@@ -358,6 +358,31 @@ const SessionControlsSticky = React.memo(({
     slackText,
   });
 
+  const longPressRef = useRef(null);
+  const didLongPressRef = useRef(false);
+
+  const startPress = () => {
+    didLongPressRef.current = false;
+    longPressRef.current = setTimeout(() => {
+      didLongPressRef.current = true;
+      onOpenLanguageSettings?.();
+    }, 450);
+  };
+
+  const endPress = () => {
+    clearTimeout(longPressRef.current);
+  };
+
+  const handleLangClick = () => {
+    if (didLongPressRef.current) return;
+    onToggleLanguage?.();
+  };
+
+  const sttModeSuffix =
+    sttLanguage === 'left' ? '· L' : sttLanguage === 'right' ? '· R' : '· A';
+  const langPairShort = (languagePairLabel || 'EN|ES').replace(/\s+/g, '');
+  const langBtnTitle = `STT ${langPairShort} · ${sttLanguage === 'auto' ? 'auto-detect' : sttLanguage === 'left' ? 'forcing left column' : 'forcing right column'} · Tap: cycle STT · Hold: pair settings`;
+
   return (
     <div className="session-controls-sticky" style={undefined}>
       <div className="session-controls-sticky-row" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.5rem', width: '100%' }}>
@@ -384,13 +409,17 @@ const SessionControlsSticky = React.memo(({
           </button>
         )}
 
-        {!isActive && onOpenLanguageSettings && (
+        {onToggleLanguage && (
           <button
             id="header-lang-pair-btn"
             data-guide="language-pair"
             type="button"
             className="btn-icon tiny-btn"
-            onClick={onOpenLanguageSettings}
+            onPointerDown={startPress}
+            onPointerUp={endPress}
+            onPointerCancel={endPress}
+            onPointerLeave={endPress}
+            onClick={handleLangClick}
             style={{
               height: '26px',
               padding: '0 6px',
@@ -410,9 +439,10 @@ const SessionControlsSticky = React.memo(({
                     ? '1px solid rgba(16, 185, 129, 0.55)'
                     : '1px solid rgba(255,255,255,0.1)',
             }}
-            title={`STT pair ${languagePairLabel || 'EN | ES'} · ${sttLanguage === 'auto' ? 'auto-detect' : sttLanguage === 'left' ? 'forcing left column' : 'forcing right column'} · Space/Alt+Space cycles · click for Settings → Language`}
+            title={langBtnTitle}
           >
-            {languagePairLabel || 'EN | ES'}
+            <span className="lang-btn-pair">{langPairShort}</span>
+            <span className="lang-btn-mode"> {sttModeSuffix}</span>
           </button>
         )}
 
@@ -684,8 +714,8 @@ const SessionControlsSticky = React.memo(({
         >
           <NotesIcon size={14} />
         </button>
-        <AppGuideButton />
         <SettingsButton />
+        <AppGuideButton />
       </div>
       </div>
       <AudioRouteStatusBar

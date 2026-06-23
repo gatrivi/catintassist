@@ -2001,6 +2001,21 @@ body {
 
 .transcript-bubble.is-live {
   overflow: visible;
+  animation: none !important;
+}
+
+#header-lang-pair-btn {
+  touch-action: manipulation;
+  user-select: none;
+  min-width: 44px;
+  min-height: 26px;
+  flex-shrink: 0;
+}
+
+@media (max-width: 420px) {
+  #header-lang-pair-btn .lang-btn-mode {
+    display: none;
+  }
 }
 
 .phone-number {

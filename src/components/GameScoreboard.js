@@ -549,8 +549,8 @@ export const GameScoreboard = ({
           ))}
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
-          <AppGuideButton />
           <SettingsButton />
+          <AppGuideButton />
           <button onClick={onSwitchToNumbers} style={{
             fontSize: '0.52rem', padding: '0.1rem 0.35rem', borderRadius: '3px',
             border: '1px solid rgba(255,255,255,0.1)', background: 'transparent',
