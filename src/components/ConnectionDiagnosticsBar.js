@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { FAILURE } from '../utils/deepgramDiagnostics';
 
 const mk = (done, active, failed) => {
@@ -17,7 +17,11 @@ const CATEGORY_LABEL = {
   [FAILURE.UNKNOWN]: 'Unknown',
 };
 
-/** Step-by-step Deepgram connect diagnostics — always visible when connecting or error. */
+/**
+ * Deepgram connect diagnostics:
+ * - Default is a single-line chip (never impacts header layout height).
+ * - Full rows render only in an absolutely-positioned tooltip/popover on demand.
+ */
 export const ConnectionDiagnosticsBar = ({
   connectProgress,
   connectionState,
@@ -29,37 +33,23 @@ export const ConnectionDiagnosticsBar = ({
   const isError = connectionState === 'error' || s.phase === 'error';
   const hasFailureDetailsText = !!(connectionMessage || s.lastError);
 
-  // If the app is not actively connecting and not in an error state, we must not
-  // keep the full diagnostics expanded.
+  const pinnedRef = useRef(false);
   const [detailsOpen, setDetailsOpen] = useState(false);
   useEffect(() => {
-    if (!isConnecting && !isError) setDetailsOpen(false);
+    // Close when we return to ready/idle: no connecting/error + no failure text.
+    const shouldStayVisible = isConnecting || isError;
+    if (!shouldStayVisible) {
+      pinnedRef.current = false;
+      setDetailsOpen(false);
+    }
   }, [isConnecting, isError]);
-
-  const failureHeadline = useMemo(() => {
-    if (!isError) return 'Connection failed';
-    return 'Connection failed';
-  }, [isError]);
 
   const catLabel = useMemo(() => {
     const cat = s.failureCategory;
     return cat ? CATEGORY_LABEL[cat] || cat : null;
   }, [s.failureCategory]);
 
-  // Render decision:
-  // - connecting: show the full compact diagnostics card
-  // - error + not user-opened: show a small chip
-  // - user-opened: show full bounded details
-  const shouldShowChip = !detailsOpen && isError;
-  const shouldShowStaleChip = !detailsOpen && !isConnecting && !isError && hasFailureDetailsText;
-
-  const shouldShowDetails =
-    detailsOpen &&
-    // When open, show details only if the bar still has something meaningful to show.
-    (isError || isConnecting || hasFailureDetailsText);
-
   const shouldShowAnything = isConnecting || isError || hasFailureDetailsText;
-
   if (!shouldShowAnything) return null;
 
   const step1 = !!s.keyResolved;
@@ -69,6 +59,25 @@ export const ConnectionDiagnosticsBar = ({
   const step4 = !!s.audioChunksSent;
   const step5 = !!s.transcriptReceived;
   const failed = isError;
+
+  const socketOk = step2a || step2b;
+  const isFailureLike = isError || hasFailureDetailsText;
+  const markForChip = isFailureLike
+    ? { mark: '×', color: '#ef4444' }
+    : isConnecting
+      ? { mark: '→', color: '#f59e0b' }
+      : { mark: '•', color: 'rgba(255,255,255,0.35)' };
+  const chipMainLabel = isFailureLike ? (compact ? 'Conn failed' : 'Connection failed') : 'Connecting…';
+  const chipStateClass = isFailureLike ? ' is-failed' : isConnecting ? ' is-connecting' : '';
+  const showInlineChecks = compact && (isError || hasFailureDetailsText);
+
+  const openDetails = (pinned) => {
+    if (pinned) pinnedRef.current = true;
+    setDetailsOpen(true);
+  };
+  const closeDetailsIfUnpinned = () => {
+    if (!pinnedRef.current) setDetailsOpen(false);
+  };
 
   const rows = [
     {
@@ -96,87 +105,91 @@ export const ConnectionDiagnosticsBar = ({
       ...mk(step5, step4 && !step5, false),
     },
   ];
-  // Collapsed failure chip:
-  // - prevents the full card from staying open and covering transcription
-  // - full details open only after user taps "Details"
-  if (shouldShowChip || shouldShowStaleChip) {
-    const title = catLabel ? `Connection failed [${catLabel}]` : 'Connection failed';
-    return (
-      <button
-        type="button"
-        className={`connection-diagnostics-chip${compact ? ' is-compact' : ''}`}
-        title={title}
-        onClick={() => setDetailsOpen(true)}
-      >
-        <span className="connection-diagnostics-chip-main">Connection failed</span>
-        <span className="connection-diagnostics-chip-details">· Details</span>
-      </button>
-    );
-  }
 
-  if (!shouldShowDetails && !isConnecting) {
-    // No active connection UI and details aren't open.
-    return null;
-  }
+
+  const detailsTitle = failed ? 'Connection failed' : 'Connecting to Deepgram…';
+  const detailsTitleWithCat = catLabel ? `${detailsTitle} [${catLabel}]` : detailsTitle;
 
   return (
-    <div
-      className={`connection-diagnostics-details${compact ? ' is-compact' : ''}${detailsOpen ? ' is-open' : ''}`}
-      style={{
-        marginTop: compact ? 0 : '0.25rem',
-        padding: compact ? '0.35rem 0.5rem' : '0.45rem 0.6rem',
-        borderRadius: 10,
-        background: failed ? 'rgba(239,68,68,0.08)' : 'rgba(245,158,11,0.06)',
-        border: `1px solid ${failed ? 'rgba(239,68,68,0.35)' : 'rgba(245,158,11,0.25)'}`,
-        fontSize: compact ? '0.62rem' : '0.68rem',
-        lineHeight: 1.35,
-      }}
-    >
-      <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 8 }}>
-        <div style={{ fontWeight: 900, color: failed ? '#fca5a5' : '#fcd34d', marginBottom: 4 }}>
-          {failed ? failureHeadline : 'Connecting to Deepgram…'}
-          {catLabel && (
-            <span style={{ marginLeft: 6, color: '#f87171', fontWeight: 800 }}>
-              [{catLabel}]
+    <div className="connection-diagnostics-wrap">
+      <button
+        type="button"
+        className={`connection-diagnostics-chip${compact ? ' is-compact' : ''}${chipStateClass}`}
+        title={detailsTitleWithCat}
+        aria-expanded={detailsOpen}
+        aria-label={detailsTitleWithCat}
+        onClick={() => openDetails(true)} // click/tap pins the popover
+        onMouseEnter={() => openDetails(false)}
+        onMouseLeave={closeDetailsIfUnpinned}
+        onFocus={() => openDetails(false)}
+        onBlur={closeDetailsIfUnpinned}
+      >
+        <span className="connection-diagnostics-chip-main">
+          <span className="connection-diagnostics-chip-mark" style={{ color: markForChip.color }}>
+            {markForChip.mark}
+          </span>
+          <span className="connection-diagnostics-chip-label">{chipMainLabel}</span>
+          {showInlineChecks && (
+            <span className="connection-diagnostics-chip-checks">
+              <span className={`connection-diagnostics-chip-check${step1 ? ' is-ok' : ''}`}>
+                {step1 ? '✓' : '×'} key
+              </span>
+              <span className="connection-diagnostics-chip-check-sep">·</span>
+              <span className={`connection-diagnostics-chip-check${socketOk ? ' is-ok' : ''}`}>
+                {socketOk ? '✓' : '×'} socket
+              </span>
             </span>
           )}
-        </div>
-        {detailsOpen && (
-          <button
-            type="button"
-            className="connection-diagnostics-close-btn"
-            onClick={() => setDetailsOpen(false)}
-            aria-label="Hide diagnostics details"
-            title="Hide diagnostics"
-          >
-            ×
-          </button>
-        )}
-      </div>
-      {rows.map((row) => (
-        <div key={row.label} style={{ display: 'flex', gap: '0.35rem', alignItems: 'flex-start' }}>
-          <span style={{ color: row.color, fontFamily: 'var(--font-mono, monospace)', flexShrink: 0 }}>
-            {row.mark}
-          </span>
-          <span style={{ color: 'rgba(255,255,255,0.85)' }}>{row.label}</span>
-        </div>
-      ))}
-      {(connectionMessage || s.lastError) && (
+          <span className="connection-diagnostics-chip-details">· Details</span>
+        </span>
+      </button>
+
+      {detailsOpen && (
         <div
-          style={{
-            marginTop: 6,
-            paddingTop: 4,
-            borderTop: '1px solid rgba(255,255,255,0.08)',
-            color: failed ? '#fecaca' : 'rgba(255,255,255,0.7)',
-            fontSize: '0.62rem',
-          }}
+          className={`connection-diagnostics-details${compact ? ' is-compact' : ''}${failed ? ' is-failed' : ''}`}
+          role="tooltip"
+          aria-label={detailsTitleWithCat}
         >
-          {connectionMessage || s.lastError}
-          {s.lastCloseCode != null && (
-            <span style={{ display: 'block', opacity: 0.75, marginTop: 2 }}>
-              WS close {s.lastCloseCode}
-              {s.lastCloseReason ? `: ${s.lastCloseReason}` : ''}
-            </span>
+          <div className="connection-diagnostics-details-head">
+            <div className="connection-diagnostics-details-head-title">
+              {detailsTitle}
+              {catLabel && <span className="connection-diagnostics-details-cat">[{catLabel}]</span>}
+            </div>
+            <button
+              type="button"
+              className="connection-diagnostics-close-btn"
+              onClick={() => {
+                pinnedRef.current = false;
+                setDetailsOpen(false);
+              }}
+              aria-label="Hide diagnostics details"
+              title="Hide diagnostics"
+            >
+              ×
+            </button>
+          </div>
+
+          <div className="connection-diagnostics-details-rows">
+            {rows.map((row) => (
+              <div key={row.label} className="connection-diagnostics-details-row">
+                <span className="connection-diagnostics-details-row-mark" style={{ color: row.color }}>
+                  {row.mark}
+                </span>
+                <span className="connection-diagnostics-details-row-label">{row.label}</span>
+              </div>
+            ))}
+          </div>
+
+          {(connectionMessage || s.lastError) && (
+            <div className="connection-diagnostics-details-error">
+              {connectionMessage || s.lastError}
+              {s.lastCloseCode != null && (
+                <span className="connection-diagnostics-details-ws">
+                  WS close {s.lastCloseCode}
+                  {s.lastCloseReason ? `: ${s.lastCloseReason}` : ''}
+                </span>
+              )}
+            </div>
           )}
         </div>
       )}
