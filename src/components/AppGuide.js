@@ -64,6 +64,7 @@ const AppGuideOverlay = ({ onClose, lang, onLangChange }) => {
   const finishGuide = () => {
     prepareGuideView({ workspace: 'scoreboard', closeSettings: true, expandMetrics: false });
     markAppGuideDone();
+    window.dispatchEvent(new CustomEvent('cat_guide_overlay_closed'));
     onClose();
   };
 
@@ -169,7 +170,10 @@ export const AppGuideButton = ({ className = '' }) => {
         <AppGuideOverlay
           lang={lang}
           onLangChange={setLang}
-          onClose={() => setOpen(false)}
+          onClose={() => {
+            window.dispatchEvent(new CustomEvent('cat_guide_overlay_closed'));
+            setOpen(false);
+          }}
         />
       )}
     </>

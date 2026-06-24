@@ -185,12 +185,41 @@ const Dashboard = () => {
   const handleSplashComplete = useCallback(() => {
     setShowSplash(false);
     setShellReady(true);
+    // Block tour until STT can work — one modal at a time.
+    if (!hasConfiguredDeepgramKey()) {
+      setSettingsSection("deepgram");
+      setSettingsOpen(true);
+      return;
+    }
     if (!isAppGuideDone()) {
       setTimeout(() => {
         window.dispatchEvent(new CustomEvent("cat_open_app_guide"));
       }, 500);
     }
   }, []);
+
+  const [guideOverlayOpen, setGuideOverlayOpen] = useState(false);
+  useEffect(() => {
+    const onOpen = () => setGuideOverlayOpen(true);
+    const onClose = () => setGuideOverlayOpen(false);
+    window.addEventListener("cat_open_app_guide", onOpen);
+    window.addEventListener("cat_guide_overlay_closed", onClose);
+    return () => {
+      window.removeEventListener("cat_open_app_guide", onOpen);
+      window.removeEventListener("cat_guide_overlay_closed", onClose);
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!shellReady || showSplash || isActive || isZombieCall) return;
+    if (!hasConfiguredDeepgramKey()) {
+      setSettingsSection("deepgram");
+      setSettingsOpen(true);
+    }
+  }, [shellReady, showSplash, isActive, isZombieCall]);
+
+  const blockSecondaryChrome =
+    showSplash || !shellReady || settingsOpen || guideOverlayOpen;
 
   useEffect(() => {
     let objectUrl = null;
@@ -547,7 +576,7 @@ const Dashboard = () => {
         initialSection={settingsSection}
       />
 
-      {apiKeyMissing && !isActive && !isZombieCall && settingsOpen === false && (
+      {apiKeyMissing && !isActive && !isZombieCall && !blockSecondaryChrome && (
         <div
           style={{
             position: "fixed",
@@ -710,7 +739,7 @@ const Dashboard = () => {
       )}
 
       <UpdateAppBanner
-        show={updateAvailable}
+        show={updateAvailable && shellReady && !blockSecondaryChrome && isAppGuideDone() && hasConfiguredDeepgramKey()}
         latestVersionToken={latestVersionToken}
         onDismiss={dismissUpdate}
         onUpdate={reloadToUpdate}
