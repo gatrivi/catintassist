@@ -81,9 +81,9 @@ describe('translationEngines v4.54', () => {
     expect(result.text.length).toBeGreaterThan(0);
   });
 
-  test('translateWithFallback retries free engines when chain was empty', async () => {
-    blacklistEngine('google_gtx', 60000);
-    blacklistEngine('mymemory', 60000);
+  test('translateWithFallback retries free engines when chain was empty (transient only)', async () => {
+    blacklistEngine('google_gtx', 60000, 'cors_or_network');
+    blacklistEngine('mymemory', 60000, 'cors_or_network');
     expect(buildEngineChain('en', 'es', {})).toEqual([]);
 
     global.fetch = jest.fn().mockResolvedValue({
@@ -100,5 +100,23 @@ describe('translationEngines v4.54', () => {
 
     expect(result.quality).toBe('ok');
     expect(result.text).toBe('Hola');
+  });
+
+  test('translateWithFallback does not retry rate-limited engines', async () => {
+    blacklistEngine('google_gtx', 60000, 'rate_limit');
+    blacklistEngine('mymemory', 60000, 'rate_limit');
+    expect(buildEngineChain('en', 'es', {})).toEqual([]);
+
+    global.fetch = jest.fn();
+
+    const result = await translateWithFallback({
+      text: 'Hello',
+      sLang: 'en',
+      tLang: 'es',
+      keys: {},
+    });
+
+    expect(global.fetch).not.toHaveBeenCalled();
+    expect(result.quality).toBe('failed');
   });
 });

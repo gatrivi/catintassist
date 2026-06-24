@@ -1,8 +1,9 @@
-/** Ordered translation engine chain with rate-limit fallback — v4.72.4 */
+/** Ordered translation engine chain with rate-limit fallback — v4.72.6 */
 
 const BLACKBOX = {};
 const BLACKBOX_TTL = 86400000; // 24h
 const BLACKBOX_TTLS = {};
+const BLACKBOX_REASONS = {};
 const SESSION_BLACKLIST_KEY = 'catint_trans_engine_blacklist_v1';
 const LOGGED_FAILS = new Set();
 
@@ -24,23 +25,53 @@ const writeSessionBlacklist = (map) => {
   } catch (_) {}
 };
 
+const sessionEntryUntil = (entry) => {
+  if (!entry) return 0;
+  if (typeof entry === 'number') return entry;
+  return entry.until || 0;
+};
+
 export const isEngineBlocked = (id) => {
   const memTtl = BLACKBOX_TTLS[id] || BLACKBOX_TTL;
   if (BLACKBOX[id] && Date.now() - BLACKBOX[id] < memTtl) return true;
   const session = readSessionBlacklist();
-  const until = session[id];
-  return until && Date.now() < until;
+  const until = sessionEntryUntil(session[id]);
+  return until > Date.now();
 };
 
 const FREE_ENGINES = new Set(['google_gtx', 'mymemory']);
-const FREE_ENGINE_BLACKLIST_MS = 10 * 60 * 1000; // 10m — network blips shouldn't kill free tier all day
+const FREE_ENGINE_BLACKLIST_MS = 10 * 60 * 1000; // 10m — network blips
+const RATE_LIMIT_BLACKLIST_MS = 30 * 60 * 1000; // 30m — don't hammer 429 APIs
 
-export const blacklistEngine = (id, ttlMs) => {
-  const effectiveTtl = ttlMs ?? (FREE_ENGINES.has(id) ? FREE_ENGINE_BLACKLIST_MS : BLACKBOX_TTL);
+export const blacklistEngine = (id, ttlMs, reason = 'error') => {
+  const rateLimited = reason === 'rate_limit';
+  const effectiveTtl =
+    ttlMs ??
+    (rateLimited
+      ? RATE_LIMIT_BLACKLIST_MS
+      : FREE_ENGINES.has(id)
+        ? FREE_ENGINE_BLACKLIST_MS
+        : BLACKBOX_TTL);
   BLACKBOX[id] = Date.now();
   BLACKBOX_TTLS[id] = effectiveTtl;
+  BLACKBOX_REASONS[id] = reason;
   const session = readSessionBlacklist();
-  session[id] = Date.now() + effectiveTtl;
+  session[id] = { until: Date.now() + effectiveTtl, reason };
+  writeSessionBlacklist(session);
+};
+
+/** Clear only transient blocks (network blips) — keep rate_limit cooldowns. */
+export const clearTransientEngineBlacklist = () => {
+  const session = readSessionBlacklist();
+  Object.keys(session).forEach((id) => {
+    const entry = session[id];
+    const reason = typeof entry === 'object' ? entry.reason : 'error';
+    if (reason === 'rate_limit') return;
+    delete session[id];
+    delete BLACKBOX[id];
+    delete BLACKBOX_TTLS[id];
+    delete BLACKBOX_REASONS[id];
+  });
   writeSessionBlacklist(session);
 };
 
@@ -50,6 +81,7 @@ export const clearSessionEngineBlacklist = () => {
   } catch (_) {}
   Object.keys(BLACKBOX).forEach((k) => delete BLACKBOX[k]);
   Object.keys(BLACKBOX_TTLS).forEach((k) => delete BLACKBOX_TTLS[k]);
+  Object.keys(BLACKBOX_REASONS).forEach((k) => delete BLACKBOX_REASONS[k]);
 };
 
 export const isRateLimitError = (err, body = '') => {
@@ -204,8 +236,9 @@ export const buildEngineChain = (sLang, tLang, keys, { forceFree = false } = {})
   if (keys.DEEPL) chain.push('deepl');
   if (keys.OPENAI) chain.push('openai');
   chain.push('google_gtx', 'mymemory');
-  if (forceFree) return chain.filter((id) => FREE_ENGINES.has(id));
-  return chain.filter((id) => !isEngineBlocked(id));
+  let candidates = chain;
+  if (forceFree) candidates = chain.filter((id) => FREE_ENGINES.has(id));
+  return candidates.filter((id) => !isEngineBlocked(id));
 };
 
 const FAILED = { text: '', engineId: null, quality: 'failed', failures: [], tried: [] };
@@ -222,9 +255,9 @@ export const translateWithFallback = async ({
 }) => {
   const fetchers = buildFetchers(sLang, tLang, keys, signal);
   let chain = buildEngineChain(sLang, tLang, keys);
-  // All engines paused (e.g. transient network errors) — retry free tier once.
+  // All engines paused — retry only transient (non-429) blocks on free tier.
   if (chain.length === 0) {
-    clearSessionEngineBlacklist();
+    clearTransientEngineBlacklist();
     chain = buildEngineChain(sLang, tLang, keys, { forceFree: true });
   }
   const failures = [];
@@ -270,7 +303,7 @@ export const translateWithFallback = async ({
       logEngineFailOnce(id, reason);
       onEngineFail?.(id, reason);
       if (isRateLimitError(e) || isBrowserFetchError(e)) {
-        blacklistEngine(id);
+        blacklistEngine(id, undefined, reason);
       }
     }
   }

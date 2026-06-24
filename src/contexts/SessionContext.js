@@ -1,7 +1,6 @@
 import React, { createContext, useContext, useState, useEffect, useRef, useCallback } from 'react';
 import { useRewardAudio } from '../hooks/useRewardAudio';
 import { set as idbSet, get as idbGet } from 'idb-keyval';
-import { getRuntimeDeepgramKey } from '../utils/deepgramRuntimeKey';
 import {
   loadPreset,
   loadVisibleMetrics,
@@ -322,73 +321,6 @@ export const SessionProvider = ({ children }) => {
   useEffect(() => {
     safeLocalStorageSet('catintassist_stats', JSON.stringify(stats));
   }, [stats]);
-
-  // CLOUD SYNC: Zero-auth syncing via ntfy.sh
-  const [syncStatus, setSyncStatus] = useState('idle');
-  const syncIdRef = useRef(null);
-
-  useEffect(() => {
-    const computeSyncId = () => {
-      const key = getRuntimeDeepgramKey() || localStorage.getItem('DEEPGRAM_API_KEY');
-      if (key && key.length > 10) {
-        // Simple hash to create a unique topic
-        let hash = 0;
-        for (let i = 0; i < key.length; i++) {
-          hash = ((hash << 5) - hash) + key.charCodeAt(i);
-        }
-        syncIdRef.current = `catint_sync_${Math.abs(hash).toString(36)}`;
-      }
-    };
-    computeSyncId();
-    window.addEventListener('cat_deepgram_runtime_key_changed', computeSyncId);
-    return () => window.removeEventListener('cat_deepgram_runtime_key_changed', computeSyncId);
-  }, []);
-
-  const pushState = useCallback(async (forceStats = null) => {
-    if (!syncIdRef.current) return;
-    try {
-      const payload = {
-        stats: forceStats || stats,
-        isActive,
-        isBreakActive,
-        lastUpdate: Date.now()
-      };
-      setSyncStatus('syncing');
-      await fetch(`https://ntfy.sh/${syncIdRef.current}`, {
-        method: 'POST',
-        body: JSON.stringify(payload),
-        headers: { 'Title': 'App State Sync', 'Tags': 'gear' }
-      });
-      setSyncStatus('synced');
-    } catch (e) {
-      setSyncStatus('error');
-    }
-  }, [stats, isActive, isBreakActive]);
-
-  // Pull state on mount or when API key is found
-  useEffect(() => {
-    if (!syncIdRef.current) return;
-    const pull = async () => {
-      try {
-        const res = await fetch(`https://ntfy.sh/${syncIdRef.current}/json?poll=1&limit=1`);
-        const data = await res.json();
-        if (data && data.length > 0) {
-          const remote = JSON.parse(data[0].message);
-          // Only hydrate if remote is newer and local is empty/smaller
-          if (remote.stats && stats.dailyMinutes === 0) {
-            setStats(prev => ({ ...prev, ...remote.stats }));
-          }
-        }
-      } catch (e) {}
-    };
-    pull();
-  }, [syncIdRef.current]); // eslint-disable-line
-
-  // Periodic push
-  useEffect(() => {
-    const iv = setInterval(() => pushState(), 60000);
-    return () => clearInterval(iv);
-  }, [pushState]);
 
   const [holdIntentAt, setHoldIntentAt] = useState(0);
 
@@ -1000,8 +932,6 @@ export const SessionProvider = ({ children }) => {
     getCompensatedLogOff,
     minutesSinceLastBreak,
     historyTimeline,
-    syncStatus,
-    pushState,
     dailyGoal: (() => {
       const now = new Date();
       const year = now.getFullYear(), month = now.getMonth(), currentDay = now.getDate();

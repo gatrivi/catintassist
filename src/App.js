@@ -46,22 +46,6 @@ import {
 } from "./utils/componentVisibility";
 import "./index.css";
 
-const CloudSyncIndicator = () => {
-  const { syncStatus } = useSession();
-  const colors = {
-    syncing: "#ef4444",
-    synced: "#10b981",
-    error: "#ef4444",
-    idle: "transparent",
-  };
-  const label = { syncing: "☁️...", synced: "☁️ ok", error: "☁️ !", idle: "" };
-  return (
-    <span style={{ color: colors[syncStatus], transition: "color 0.3s" }}>
-      {label[syncStatus]}
-    </span>
-  );
-};
-
 const Dashboard = () => {
   const {
     startRecording,
@@ -554,10 +538,7 @@ const Dashboard = () => {
         >
           ⚙
         </button>
-        <span style={{ pointerEvents: "none", display: "flex", alignItems: "center", gap: "4px" }}>
-          <CloudSyncIndicator />
-          {APP_VERSION_LABEL}
-        </span>
+        <span style={{ pointerEvents: "none" }}>{APP_VERSION_LABEL}</span>
       </div>
 
       <SettingsPanel
