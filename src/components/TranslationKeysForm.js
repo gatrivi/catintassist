@@ -2,10 +2,15 @@ import React, { useState } from 'react';
 
 const DEEPL_KEY = 'DEEPL_API_KEY';
 const OPENAI_KEY = 'OPENAI_API_KEY';
+const AZURE_KEY = 'AZURE_TRANSLATOR_KEY';
+const AZURE_REGION_KEY = 'AZURE_TRANSLATOR_REGION';
+const DEFAULT_AZURE_REGION = 'brazilsouth';
 
 export const TranslationKeysForm = () => {
   const [deepl, setDeepl] = useState('');
   const [openai, setOpenai] = useState('');
+  const [azure, setAzure] = useState('');
+  const [azureRegion, setAzureRegion] = useState('');
   const [saved, setSaved] = useState(false);
 
   const hasDeepl = (() => {
@@ -23,13 +28,32 @@ export const TranslationKeysForm = () => {
     }
   })();
 
+  const hasAzure = (() => {
+    try {
+      return !!localStorage.getItem(AZURE_KEY);
+    } catch {
+      return false;
+    }
+  })();
+  const savedAzureRegion = (() => {
+    try {
+      return localStorage.getItem(AZURE_REGION_KEY) || DEFAULT_AZURE_REGION;
+    } catch {
+      return DEFAULT_AZURE_REGION;
+    }
+  })();
+
   const save = (e) => {
     e.preventDefault();
     try {
       if (deepl.trim()) localStorage.setItem(DEEPL_KEY, deepl.trim());
       if (openai.trim()) localStorage.setItem(OPENAI_KEY, openai.trim());
+      if (azure.trim()) localStorage.setItem(AZURE_KEY, azure.trim());
+      if (azureRegion.trim()) localStorage.setItem(AZURE_REGION_KEY, azureRegion.trim());
       setDeepl('');
       setOpenai('');
+      setAzure('');
+      setAzureRegion('');
       setSaved(true);
       setTimeout(() => setSaved(false), 1500);
     } catch (_) {}
@@ -46,7 +70,7 @@ export const TranslationKeysForm = () => {
   return (
     <form onSubmit={save} style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
       <p style={{ margin: 0, fontSize: 11, color: 'rgba(255,255,255,0.65)' }}>
-        Optional — used before free tiers when translation API throttles.
+        Optional — REACT_APP_* env vars override (same as Deepgram). Form is fallback only.
       </p>
       <label style={{ fontSize: 11, color: '#93c5fd' }}>DeepL API Key {hasDeepl ? '• saved' : ''}</label>
       <input
@@ -74,6 +98,31 @@ export const TranslationKeysForm = () => {
           Clear OpenAI
         </button>
       )}
+      <label style={{ fontSize: 11, color: '#93c5fd' }}>
+        Azure Translator Key {hasAzure ? '• saved' : ''}
+      </label>
+      <input
+        type="password"
+        value={azure}
+        onChange={(e) => setAzure(e.target.value)}
+        placeholder={hasAzure ? '••••••••' : 'Azure subscription key'}
+        style={inputStyle}
+      />
+      {hasAzure && (
+        <button type="button" onClick={() => clearKey(AZURE_KEY)} style={clearBtn}>
+          Clear Azure
+        </button>
+      )}
+      <label style={{ fontSize: 11, color: '#93c5fd' }}>
+        Azure Region {hasAzure ? `• ${savedAzureRegion}` : ''}
+      </label>
+      <input
+        type="text"
+        value={azureRegion}
+        onChange={(e) => setAzureRegion(e.target.value)}
+        placeholder={savedAzureRegion}
+        style={inputStyle}
+      />
       <button type="submit" style={saveBtn}>{saved ? 'Saved' : 'Save keys'}</button>
     </form>
   );

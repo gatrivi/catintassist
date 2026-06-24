@@ -6,6 +6,7 @@ import {
   isSentenceComplete,
 } from '../utils/translationQuality';
 import { translateWithFallback } from '../utils/translationEngines';
+import { getTranslationApiKeys } from '../utils/translationRuntimeKeys';
 import { dedupeInFlight, withTranslationSlot } from '../utils/translationRequestQueue';
 import { APP_VERSION } from '../constants/version';
 import { isDevSimEnabled } from '../utils/devSimulateCaptions';
@@ -214,10 +215,7 @@ export const useTranslate = (
       setIsTranslating(true);
       setEngineStatus('translating');
 
-      const keys = {
-        DEEPL: localStorage.getItem('DEEPL_API_KEY'),
-        OPENAI: localStorage.getItem('OPENAI_API_KEY'),
-      };
+      const keys = getTranslationApiKeys();
 
       const fetchChunk = async (chunk) => {
         const norm = chunk.trim().replace(/\s+/g, ' ');

@@ -12,6 +12,7 @@ const REASON_LABEL = {
 
 const ENGINE_LABEL = {
   deepl: 'DeepL',
+  azure: 'Azure',
   openai: 'OpenAI',
   google_gtx: 'Google (free)',
   mymemory: 'MyMemory (free)',
@@ -23,9 +24,15 @@ export const TranslationStatusBar = ({ meta = null, compact = false }) => {
   const last = meta || health.lastAttempt;
   const { keys, chain, blocked } = health;
 
+  const keyLabel = (name, has, source) => {
+    if (!has) return `no ${name} key`;
+    return source === 'env' ? `${name} key (env)` : `${name} key saved`;
+  };
+
   const keyLine = [
-    keys.deepl ? 'DeepL key saved' : 'no DeepL key',
-    keys.openai ? 'OpenAI key saved' : 'no OpenAI key',
+    keyLabel('DeepL', keys.deepl, keys.sources?.deepl),
+    keyLabel('Azure', keys.azure, keys.sources?.azure),
+    keyLabel('OpenAI', keys.openai, keys.sources?.openai),
   ].join(' · ');
 
   const chainLine = chain.length
@@ -54,9 +61,9 @@ export const TranslationStatusBar = ({ meta = null, compact = false }) => {
           Paused: {blocked.map((id) => ENGINE_LABEL[id] || id).join(', ')}
         </div>
       )}
-      {!keys.deepl && !keys.openai && (
+      {!keys.deepl && !keys.azure && !keys.openai && (
         <div style={{ marginTop: 4, color: '#fcd34d' }}>
-          Tip: add a DeepL key below for reliable translations on production.
+          Tip: add Azure or DeepL key below for reliable translations on production.
         </div>
       )}
       {last && (

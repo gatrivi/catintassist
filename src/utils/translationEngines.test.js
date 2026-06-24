@@ -20,6 +20,39 @@ describe('translationEngines v4.54', () => {
     expect(chain).toEqual(['google_gtx', 'mymemory']);
   });
 
+  test('buildEngineChain puts azure after deepl when both keys present', () => {
+    const chain = buildEngineChain('en', 'es', { DEEPL: 'x', AZURE: 'x' });
+    expect(chain.indexOf('deepl')).toBeLessThan(chain.indexOf('azure'));
+    expect(chain).toContain('azure');
+  });
+
+  test('translateWithFallback uses azure when configured', async () => {
+    global.fetch = jest.fn().mockResolvedValue({
+      ok: true,
+      json: async () => [{ translations: [{ text: 'Hola mundo', to: 'es' }] }],
+    });
+
+    const result = await translateWithFallback({
+      text: 'Hello world',
+      sLang: 'en',
+      tLang: 'es',
+      keys: { AZURE: 'test-key', AZURE_REGION: 'brazilsouth' },
+    });
+
+    expect(result.quality).toBe('ok');
+    expect(result.text).toBe('Hola mundo');
+    expect(result.engineId).toBe('azure');
+    expect(global.fetch).toHaveBeenCalledWith(
+      expect.stringContaining('api.cognitive.microsofttranslator.com'),
+      expect.objectContaining({
+        headers: expect.objectContaining({
+          'Ocp-Apim-Subscription-Key': 'test-key',
+          'Ocp-Apim-Subscription-Region': 'brazilsouth',
+        }),
+      }),
+    );
+  });
+
   test('isBrowserFetchError detects Failed to fetch', () => {
     expect(isBrowserFetchError(new TypeError('Failed to fetch'))).toBe(true);
   });

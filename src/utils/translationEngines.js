@@ -1,4 +1,9 @@
-/** Ordered translation engine chain with rate-limit fallback — v4.72.6 */
+/** Ordered translation engine chain with rate-limit fallback — v4.73.1 */
+
+import { getTranslationApiKeys, getTranslationKeyStatus } from './translationRuntimeKeys';
+
+const AZURE_TRANSLATE_URL = 'https://api.cognitive.microsofttranslator.com/translate';
+const DEFAULT_AZURE_REGION = 'brazilsouth';
 
 const BLACKBOX = {};
 const BLACKBOX_TTL = 86400000; // 24h
@@ -136,23 +141,13 @@ export const sanitizeEngineResponse = (input) => {
   return input.trim();
 };
 
-export const getTranslationKeyStatus = () => {
-  let deepl = false;
-  let openai = false;
-  try {
-    deepl = !!localStorage.getItem('DEEPL_API_KEY');
-    openai = !!localStorage.getItem('OPENAI_API_KEY');
-  } catch (_) {}
-  return { deepl, openai };
-};
+export { getTranslationKeyStatus } from './translationRuntimeKeys';
 
 export const getTranslationEngineHealth = () => {
   const keys = getTranslationKeyStatus();
-  const chain = buildEngineChain('en', 'es', {
-    DEEPL: keys.deepl ? 'x' : '',
-    OPENAI: keys.openai ? 'x' : '',
-  });
-  const blocked = ['deepl', 'openai', 'google_gtx', 'mymemory'].filter((id) =>
+  const apiKeys = getTranslationApiKeys();
+  const chain = buildEngineChain('en', 'es', apiKeys);
+  const blocked = ['deepl', 'azure', 'openai', 'google_gtx', 'mymemory'].filter((id) =>
     isEngineBlocked(id),
   );
   return { keys, chain, blocked, lastAttempt: lastTranslationAttempt };
@@ -177,6 +172,24 @@ const buildFetchers = (sLang, tLang, keys, signal) => ({
     if (!r.ok) throw new Error(`deepl ${r.status}`);
     const d = await r.json();
     return d.translations?.[0]?.text;
+  },
+  azure: async (text) => {
+    if (!keys.AZURE) throw new Error('no key');
+    const region = keys.AZURE_REGION || DEFAULT_AZURE_REGION;
+    const url = `${AZURE_TRANSLATE_URL}?api-version=3.0&from=${sLang}&to=${tLang}`;
+    const r = await fetch(url, {
+      method: 'POST',
+      signal,
+      headers: {
+        'Ocp-Apim-Subscription-Key': keys.AZURE,
+        'Ocp-Apim-Subscription-Region': region,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify([{ Text: text }]),
+    });
+    if (!r.ok) throw new Error(`azure ${r.status}`);
+    const d = await r.json();
+    return d?.[0]?.translations?.[0]?.text;
   },
   openai: async (text) => {
     if (!keys.OPENAI) throw new Error('no key');
@@ -234,6 +247,7 @@ const buildFetchers = (sLang, tLang, keys, signal) => ({
 export const buildEngineChain = (sLang, tLang, keys, { forceFree = false } = {}) => {
   const chain = [];
   if (keys.DEEPL) chain.push('deepl');
+  if (keys.AZURE) chain.push('azure');
   if (keys.OPENAI) chain.push('openai');
   chain.push('google_gtx', 'mymemory');
   let candidates = chain;
