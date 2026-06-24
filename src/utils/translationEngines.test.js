@@ -58,4 +58,47 @@ describe('translationEngines v4.54', () => {
     expect(result.text).toBe('No.');
     expect(result.engineId).toBe('google_gtx');
   });
+
+  test('translateWithFallback weak accept on long passthrough when all reject', async () => {
+    const longEn =
+      'Your call may be recorded for quality assurance and training purposes thank you for holding';
+    const echoed = longEn;
+
+    global.fetch = jest.fn().mockResolvedValue({
+      ok: true,
+      json: async () => [[['echo', echoed, null, null]]],
+    });
+
+    const result = await translateWithFallback({
+      text: longEn,
+      sLang: 'en',
+      tLang: 'es',
+      keys: {},
+      acceptFn: () => '',
+    });
+
+    expect(result.quality).toBe('weak');
+    expect(result.text.length).toBeGreaterThan(0);
+  });
+
+  test('translateWithFallback retries free engines when chain was empty', async () => {
+    blacklistEngine('google_gtx', 60000);
+    blacklistEngine('mymemory', 60000);
+    expect(buildEngineChain('en', 'es', {})).toEqual([]);
+
+    global.fetch = jest.fn().mockResolvedValue({
+      ok: true,
+      json: async () => [[['Hola', 'Hola', null, null]]],
+    });
+
+    const result = await translateWithFallback({
+      text: 'Hello',
+      sLang: 'en',
+      tLang: 'es',
+      keys: {},
+    });
+
+    expect(result.quality).toBe('ok');
+    expect(result.text).toBe('Hola');
+  });
 });

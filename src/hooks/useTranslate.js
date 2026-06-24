@@ -151,6 +151,7 @@ export const useTranslate = (
       setTranslation('');
       setAudioUrl(null);
       setTranslationMeta(emptyMeta);
+      setEngineStatus('translating');
     }
     prevTextRef.current = normText;
 
@@ -311,6 +312,9 @@ export const useTranslate = (
           if (!lastTranslatedTextRef.current || lastTranslatedTextRef.current !== normText) {
             setTranslation('');
             hasGoodTranslationRef.current = false;
+          }
+          if (!final) {
+            setTranslationMeta((prev) => ({ ...prev, quality: 'failed' }));
           }
           lastTranslatedTextRef.current = normText;
           lastWordCountRef.current = wordCount;

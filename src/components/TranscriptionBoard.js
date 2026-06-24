@@ -51,21 +51,32 @@ const getBubbleStyle = (text, isCurrent, lang, pair) => {
   return { borderLeft: `3px solid ${baseBorder}`, backgroundColor: baseBg };
 };
 
-const InteractiveText = ({ text, scramble = true, applyNumberWords = false, lang = 'en', protectionsActive = true }) => {
+const processDisplayText = (raw, lang, applyNumberWords, protectionsActive) => {
+  const spelled = formatTranscriptForDisplay(raw, lang);
+  const processedText = protectionsActive && applyNumberWords ? convertEnglishNumberWords(spelled) : spelled;
+  const groupedDigits = protectionsActive ? formatPhoneAndSSNDigits(processedText) : processedText;
+  return protectionsActive ? repairNYCZipNumbers(groupedDigits) : groupedDigits;
+};
+
+const InteractiveText = ({
+  text,
+  scramble = true,
+  applyNumberWords = false,
+  lang = 'en',
+  protectionsActive = true,
+  tailPreviewText = null,
+}) => {
   if (!text) return null;
 
-  const spelled = formatTranscriptForDisplay(text, lang);
-  const processedText = protectionsActive && applyNumberWords ? convertEnglishNumberWords(spelled) : spelled;
+  const processedText = formatTranscriptForDisplay(text, lang);
   const spellingLayout = isSpellingBlock(text);
-
-  const groupedDigits = protectionsActive ? formatPhoneAndSSNDigits(processedText) : processedText;
-  const repairedText = protectionsActive ? repairNYCZipNumbers(groupedDigits) : groupedDigits;
+  const repairedText = processDisplayText(text, lang, applyNumberWords, protectionsActive);
+  const previewProcessed = tailPreviewText
+    ? processDisplayText(tailPreviewText, lang, applyNumberWords, protectionsActive)
+    : null;
 
   // NÚMEROS MÁGICOS: Detectamos números de teléfono, años y códigos.
-  // Los resaltamos para que puedas copiarlos rápido si haces clic.
   const numRegex = getNumberHighlightRegex();
-
-  const parts = repairedText.split(numRegex);
 
   const handleCopy = (num) => {
     const clean = num.trim();
@@ -73,8 +84,8 @@ const InteractiveText = ({ text, scramble = true, applyNumberWords = false, lang
     navigator.clipboard.writeText(clean);
   };
 
-  const renderPart = (p, i) => {
-    const partKey = `${i}`;
+  const renderPart = (p, i, keyPrefix = '') => {
+    const partKey = `${keyPrefix}${i}`;
     if (p && p.match(numRegex)) {
       return (
         <span
@@ -91,6 +102,11 @@ const InteractiveText = ({ text, scramble = true, applyNumberWords = false, lang
     return scramble ? <ScrambleText key={partKey} value={p} /> : <span key={partKey}>{p}</span>;
   };
 
+  const renderSegment = (segment, keyPrefix = '') => {
+    if (!segment) return null;
+    return segment.split(numRegex).map((p, i) => renderPart(p, i, keyPrefix));
+  };
+
   if (spellingLayout && processedText.includes('\n')) {
     return (
       <span className="bubble-spelling-lines" style={{ whiteSpace: 'pre-line', lineHeight: 1.35 }}>
@@ -103,11 +119,21 @@ const InteractiveText = ({ text, scramble = true, applyNumberWords = false, lang
     );
   }
 
-  return (
-    <>
-      {parts.map((p, i) => renderPart(p, i))}
-    </>
-  );
+  if (previewProcessed && repairedText.includes(previewProcessed)) {
+    const idx = repairedText.indexOf(previewProcessed);
+    const before = repairedText.slice(0, idx);
+    const highlight = previewProcessed;
+    const after = repairedText.slice(idx + previewProcessed.length);
+    return (
+      <>
+        {renderSegment(before, 'pre-')}
+        <span className="transcript-tail-preview">{renderSegment(highlight, 'tail-')}</span>
+        {renderSegment(after, 'post-')}
+      </>
+    );
+  }
+
+  return <>{renderSegment(repairedText)}</>;
 };
 
 /** Compact T/P/R + word count + play — one line, ~6ch wide (split-pane friendly). */
@@ -191,7 +217,7 @@ const TranslatedBubble = ({
   onTogglePin,
   forceTranslateKey = 0,
   onManualRetranslate,
-  isTailMovedSection = false,
+  tailPreviewText = null,
   isFinal = true,
   languagePair = null,
   protectionsActive = true,
@@ -208,40 +234,6 @@ const TranslatedBubble = ({
     { isFinal, mockTranslation },
   );
   const hasAutoPlayedRef = useRef(false);
-
-  // Tail highlight occasionally flashes and disappears due to rapid interim flag flips.
-  // We lock the blue class for a short window to match the flowed/move cue duration.
-  const tailLockTimerRef = useRef(null);
-  const [tailBlueLocked, setTailBlueLocked] = useState(false);
-
-  useEffect(() => {
-    if (!isTailMovedSection) {
-      if (tailLockTimerRef.current) {
-        clearTimeout(tailLockTimerRef.current);
-        tailLockTimerRef.current = null;
-      }
-      setTailBlueLocked(false);
-      return;
-    }
-
-    setTailBlueLocked(true);
-    if (tailLockTimerRef.current) {
-      clearTimeout(tailLockTimerRef.current);
-    }
-    tailLockTimerRef.current = setTimeout(() => {
-      setTailBlueLocked(false);
-    }, 350);
-
-    return () => {
-      if (tailLockTimerRef.current) clearTimeout(tailLockTimerRef.current);
-    };
-  }, [isTailMovedSection, id]);
-
-  useEffect(() => {
-    return () => {
-      if (tailLockTimerRef.current) clearTimeout(tailLockTimerRef.current);
-    };
-  }, []);
 
   useEffect(() => {
     if (ttsMode === 'auto' && translation && audioUrl && !hasAutoPlayedRef.current) {
@@ -297,6 +289,8 @@ const TranslatedBubble = ({
     protectionsActive && normalizeLang(lang) === 'en';
   const targetUsesNumberWords =
     protectionsActive && normalizeLang(targetLang) === 'en';
+  const sourceScramble = !isFinal;
+  const targetScramble = !isFinal;
   const translationFailed =
     engineStatus === 'ready' && !translation?.trim() && translationMeta?.quality === 'failed';
   const translationTitle = translationFailed
@@ -306,8 +300,15 @@ const TranslatedBubble = ({
   return (
     <div className={`translated-bubble-row${reverse ? ' is-reverse' : ''}`}>
       <div className="bubble-col bubble-col-source" style={{ textAlign: reverse ? 'right' : 'left', position: 'relative' }}>
-        <div className={`bubble-line${tailBlueLocked ? ' is-tail-blue' : ''}`} style={{ color: transcriptColor }}>
-          <InteractiveText text={text} scramble={true} applyNumberWords={sourceUsesNumberWords} lang={lang} protectionsActive={protectionsActive} />
+        <div className="bubble-line" style={{ color: transcriptColor }}>
+          <InteractiveText
+            text={text}
+            scramble={sourceScramble}
+            applyNumberWords={sourceUsesNumberWords}
+            lang={lang}
+            protectionsActive={protectionsActive}
+            tailPreviewText={tailPreviewText}
+          />
         </div>
       </div>
 
@@ -345,9 +346,13 @@ const TranslatedBubble = ({
       >
         <div className="bubble-line bubble-line-translation">
           {translation ? (
-            <InteractiveText text={translation} scramble={true} applyNumberWords={targetUsesNumberWords} lang={targetLang} protectionsActive={protectionsActive} />
-          ) : engineStatus === 'ready' ? (
+            <InteractiveText text={translation} scramble={targetScramble} applyNumberWords={targetUsesNumberWords} lang={targetLang} protectionsActive={protectionsActive} />
+          ) : translationFailed ? (
             <span style={{ opacity: 0.3, fontSize: '0.7rem' }}>⚠️ translation failed</span>
+          ) : autoRetranslatePending || engineStatus === 'translating' ? (
+            <span style={{ opacity: 0.2 }}>...</span>
+          ) : engineStatus === 'ready' ? (
+            <span style={{ opacity: 0.25, fontSize: '0.7rem' }}>…</span>
           ) : (
             <span style={{ opacity: 0.2 }}>...</span>
           )}
@@ -362,9 +367,9 @@ const translatedBubblePropsEqual = (prev, next) =>
   prev.text === next.text &&
   prev.lang === next.lang &&
   prev.isFinal === next.isFinal &&
+  prev.tailPreviewText === next.tailPreviewText &&
   prev.forceTranslateKey === next.forceTranslateKey &&
   prev.reverse === next.reverse &&
-  prev.isTailMovedSection === next.isTailMovedSection &&
   prev.showTurnWordCount === next.showTurnWordCount &&
   prev.turnWordCount === next.turnWordCount &&
   prev.shouldPrefetch === next.shouldPrefetch &&
@@ -733,16 +738,11 @@ export const TranscriptionBoard = ({
           const isLive = cap.isFinal === false;
           const isLongBubble = wordCount > 50 && !isLive;
           const isExpanded = expandedIds.has(cap.id);
-          // ALGO_MOVED_SECTION (tailText remainder bubble):
-          // In `useDeepgram`, the remainder bubble is created with `isFinal:false`
-          // but still filled with the lane's `*Finalized` content, while the interim is empty.
-          // We use that to flash only the moved remainder text (not the earlier sealed part).
-          const isTailMovedSection = Boolean(cap.isTailMovedSection);
-          
+
           return (
             <div
               key={cap.id || i}
-              className={`transcript-bubble${isLive ? ' is-live' : ''}${isSplitContinuation ? ' is-flowed' : ''}`}
+              className={`transcript-bubble${isLive ? ' is-live' : ' is-sealed'}${isSplitContinuation ? ' is-flowed' : ''}`}
               style={{
               opacity: isLive ? 0.6 : 1,
               marginTop: isSplitContinuation ? '0rem' : '0.25rem',
@@ -758,7 +758,7 @@ export const TranscriptionBoard = ({
                   isPinned={false} onTogglePin={() => togglePin(cap)}
                   forceTranslateKey={translationBumps[cap.id] ?? 0}
                   onManualRetranslate={() => bumpManualRetranslate(cap)}
-                  isTailMovedSection={isTailMovedSection}
+                  tailPreviewText={cap.tailPreviewText || null}
                   isFinal={cap.isFinal !== false}
                   languagePair={languagePair}
                   protectionsActive={protectionsActive}

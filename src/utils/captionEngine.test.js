@@ -10,6 +10,29 @@ import {
   shouldFlushImmediately,
 } from "./captionEngine";
 
+const makeCtx = () => ({
+  turnWordsBaseRef: { current: 0 },
+  currentTurnIdRef: { current: null },
+  bubbleIdCounterRef: { current: 0 },
+  lastBubbleStartedRef: { current: 0 },
+});
+
+const makeEvent = (overrides = {}) => ({
+  transcript: "hello",
+  isFinal: false,
+  speechFinal: false,
+  confidence: 0.95,
+  laneSide: "en",
+  channelKey: "en",
+  startTime: 2.5,
+  now: Date.now(),
+  isSilentBreak: true,
+  protectionsOn: false,
+  langMode: "auto",
+  pair: { left: "en", right: "es" },
+  ...overrides,
+});
+
 describe("captionEngine", () => {
   test("buildStableCaptionId encodes channel start and final flag", () => {
     expect(buildStableCaptionId("en", 1.23, false)).toBe("dg-en-1.23-i");
@@ -33,101 +56,132 @@ describe("captionEngine", () => {
   });
 
   test("reduceTranscriptEvent appends interim live draft without sealing", () => {
-    const pair = { left: "en", right: "es" };
-    const turnWordsBaseRef = { current: 0 };
-    const currentTurnIdRef = { current: null };
-    const bubbleIdCounterRef = { current: 0 };
-    const lastBubbleStartedRef = { current: 0 };
+    const ctx = makeCtx();
     const now = Date.now();
 
-    const next = reduceTranscriptEvent(
-      [],
-      {
-        transcript: "hello there",
-        isFinal: false,
-        speechFinal: false,
-        confidence: 0.95,
-        laneSide: "en",
-        channelKey: "en",
-        startTime: 2.5,
-        now,
-        isSilentBreak: true,
-        protectionsOn: true,
-        langMode: "auto",
-        pair,
-      },
-      { turnWordsBaseRef, currentTurnIdRef, bubbleIdCounterRef, lastBubbleStartedRef },
-    );
+    const next = reduceTranscriptEvent([], makeEvent({ transcript: "hello there", now }), ctx);
 
     expect(next).toHaveLength(1);
     expect(next[0].isFinal).toBe(false);
     expect(next[0].id).toBe(buildStableCaptionId("en", 2.5, false));
-    expect(next[0].isTailMovedSection).toBe(false);
+    expect(next[0].tailPreviewText).toBeNull();
     expect(next[0].text).toMatch(/hello/i);
   });
 
-  test("final event seals and creates explicit tail remainder bubble", () => {
-    const pair = { left: "en", right: "es" };
-    const turnWordsBaseRef = { current: 0 };
-    const currentTurnIdRef = { current: null };
-    const bubbleIdCounterRef = { current: 0 };
-    const lastBubbleStartedRef = { current: 0 };
+  test("final event seals and creates tail row with tailPreviewText reusing live draft id", () => {
+    const ctx = makeCtx();
     const now1 = Date.now();
     const now2 = now1 + 500;
 
-    // 1) Interim draft
     const interim = reduceTranscriptEvent(
       [],
-      {
-        transcript: "hello",
-        isFinal: false,
-        speechFinal: false,
-        confidence: 0.95,
-        laneSide: "en",
-        channelKey: "en",
-        startTime: 2.5,
-        now: now1,
-        isSilentBreak: true,
-        protectionsOn: false,
-        langMode: "auto",
-        pair,
-      },
-      { turnWordsBaseRef, currentTurnIdRef, bubbleIdCounterRef, lastBubbleStartedRef },
+      makeEvent({ transcript: "hello", now: now1 }),
+      ctx,
     );
 
     const interimId = interim[0].id;
-    expect(interim[0].isTailMovedSection).toBe(false);
+    expect(interim[0].tailPreviewText).toBeNull();
 
-    // 2) Final: one sealed sentence + tail remainder
     const finalRows = reduceTranscriptEvent(
       interim,
-      {
+      makeEvent({
         transcript: "Hello. tail",
         isFinal: true,
-        speechFinal: false,
-        confidence: 0.95,
-        laneSide: "en",
-        channelKey: "en",
-        startTime: 2.5,
         now: now2,
         isSilentBreak: false,
-        protectionsOn: false,
-        langMode: "auto",
-        pair,
-      },
-      { turnWordsBaseRef, currentTurnIdRef, bubbleIdCounterRef, lastBubbleStartedRef },
+      }),
+      ctx,
     );
 
     const tailRow = finalRows.find((r) => r.isFinal === false);
     const sealedRows = finalRows.filter((r) => r.isFinal === true);
 
     expect(sealedRows.length).toBeGreaterThan(0);
-    expect(sealedRows.every((r) => r.isTailMovedSection === false)).toBe(true);
+    expect(sealedRows.every((r) => !r.tailPreviewText)).toBe(true);
     expect(tailRow).toBeTruthy();
-    expect(tailRow.isTailMovedSection).toBe(true);
-    expect(tailRow.tailMovedFromId).toBe(interimId);
-    expect(tailRow.id).not.toBe(interimId);
-    expect(tailRow.id).toMatch(/-tail-\d+$/);
+    expect(tailRow.tailPreviewText).toBe("tail");
+    expect(tailRow.id).toBe(interimId);
+  });
+
+  test("tail preview clears on next interim update", () => {
+    const ctx = makeCtx();
+    const now1 = Date.now();
+    const now2 = now1 + 500;
+    const now3 = now2 + 200;
+
+    const interim = reduceTranscriptEvent([], makeEvent({ transcript: "hello", now: now1 }), ctx);
+    const finalRows = reduceTranscriptEvent(
+      interim,
+      makeEvent({
+        transcript: "Hello. tail",
+        isFinal: true,
+        now: now2,
+        isSilentBreak: false,
+      }),
+      ctx,
+    );
+
+    const tailRow = finalRows.find((r) => r.isFinal === false);
+    expect(tailRow.tailPreviewText).toBe("tail");
+
+    const afterInterim = reduceTranscriptEvent(
+      finalRows,
+      makeEvent({
+        transcript: " tail more",
+        isFinal: false,
+        now: now3,
+        isSilentBreak: false,
+      }),
+      ctx,
+    );
+
+    const liveRow = afterInterim.find((r) => r.isFinal === false);
+    expect(liveRow?.tailPreviewText).toBeNull();
+  });
+
+  test("finalized rows stay immutable across interim updates", () => {
+    const ctx = makeCtx();
+    const now1 = Date.now();
+    const now2 = now1 + 500;
+    const now3 = now2 + 200;
+
+    const interim = reduceTranscriptEvent([], makeEvent({ transcript: "hello", now: now1 }), ctx);
+    const finalRows = reduceTranscriptEvent(
+      interim,
+      makeEvent({
+        transcript: "Hello. tail",
+        isFinal: true,
+        now: now2,
+        isSilentBreak: false,
+      }),
+      ctx,
+    );
+
+    const sealedSnapshot = finalRows
+      .filter((r) => r.isFinal === true)
+      .map((r) => ({ id: r.id, text: r.text }));
+
+    const afterInterim = reduceTranscriptEvent(
+      finalRows,
+      makeEvent({
+        transcript: " more words",
+        isFinal: false,
+        now: now3,
+        isSilentBreak: false,
+      }),
+      ctx,
+    );
+
+    const sealedAfter = afterInterim.filter((r) => r.isFinal === true);
+    expect(sealedAfter).toHaveLength(sealedSnapshot.length);
+    sealedSnapshot.forEach((snap, idx) => {
+      expect(sealedAfter[idx].id).toBe(snap.id);
+      expect(sealedAfter[idx].text).toBe(snap.text);
+    });
+
+    const liveAfter = afterInterim.find((r) => r.isFinal === false);
+    expect(liveAfter).toBeTruthy();
+    expect(liveAfter.text).not.toBe(finalRows.find((r) => r.isFinal === false)?.text);
   });
 
   test("shouldFlushImmediately true for is_final or speech_final", () => {

@@ -2286,6 +2286,17 @@ body {
   animation: none !important;
 }
 
+.transcript-bubble.is-sealed {
+  animation: none !important;
+}
+
+/* Tail rollover preview — substring highlight only, no animation */
+.transcript-tail-preview {
+  color: rgba(125, 211, 252, 0.98);
+  background: rgba(56, 189, 248, 0.12);
+  border-radius: 2px;
+}
+
 #header-lang-pair-btn {
   touch-action: manipulation;
   user-select: none;

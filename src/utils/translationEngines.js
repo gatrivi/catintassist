@@ -1,9 +1,8 @@
-/** Ordered translation engine chain with rate-limit fallback — v4.54.0 */
-
-import { isTranslationPassthrough } from './translationQuality';
+/** Ordered translation engine chain with rate-limit fallback — v4.72.4 */
 
 const BLACKBOX = {};
 const BLACKBOX_TTL = 86400000; // 24h
+const BLACKBOX_TTLS = {};
 const SESSION_BLACKLIST_KEY = 'catint_trans_engine_blacklist_v1';
 const LOGGED_FAILS = new Set();
 
@@ -26,17 +25,31 @@ const writeSessionBlacklist = (map) => {
 };
 
 export const isEngineBlocked = (id) => {
-  if (BLACKBOX[id] && Date.now() - BLACKBOX[id] < BLACKBOX_TTL) return true;
+  const memTtl = BLACKBOX_TTLS[id] || BLACKBOX_TTL;
+  if (BLACKBOX[id] && Date.now() - BLACKBOX[id] < memTtl) return true;
   const session = readSessionBlacklist();
   const until = session[id];
   return until && Date.now() < until;
 };
 
-export const blacklistEngine = (id, ttlMs = BLACKBOX_TTL) => {
+const FREE_ENGINES = new Set(['google_gtx', 'mymemory']);
+const FREE_ENGINE_BLACKLIST_MS = 10 * 60 * 1000; // 10m — network blips shouldn't kill free tier all day
+
+export const blacklistEngine = (id, ttlMs) => {
+  const effectiveTtl = ttlMs ?? (FREE_ENGINES.has(id) ? FREE_ENGINE_BLACKLIST_MS : BLACKBOX_TTL);
   BLACKBOX[id] = Date.now();
+  BLACKBOX_TTLS[id] = effectiveTtl;
   const session = readSessionBlacklist();
-  session[id] = Date.now() + ttlMs;
+  session[id] = Date.now() + effectiveTtl;
   writeSessionBlacklist(session);
+};
+
+export const clearSessionEngineBlacklist = () => {
+  try {
+    sessionStorage.removeItem(SESSION_BLACKLIST_KEY);
+  } catch (_) {}
+  Object.keys(BLACKBOX).forEach((k) => delete BLACKBOX[k]);
+  Object.keys(BLACKBOX_TTLS).forEach((k) => delete BLACKBOX_TTLS[k]);
 };
 
 export const isRateLimitError = (err, body = '') => {
@@ -186,11 +199,12 @@ const buildFetchers = (sLang, tLang, keys, signal) => ({
 });
 
 /** Browser-safe chain — lingva removed (CORS blocked on custom domains). */
-export const buildEngineChain = (sLang, tLang, keys) => {
+export const buildEngineChain = (sLang, tLang, keys, { forceFree = false } = {}) => {
   const chain = [];
   if (keys.DEEPL) chain.push('deepl');
   if (keys.OPENAI) chain.push('openai');
   chain.push('google_gtx', 'mymemory');
+  if (forceFree) return chain.filter((id) => FREE_ENGINES.has(id));
   return chain.filter((id) => !isEngineBlocked(id));
 };
 
@@ -207,11 +221,16 @@ export const translateWithFallback = async ({
   timeoutMs = 4000,
 }) => {
   const fetchers = buildFetchers(sLang, tLang, keys, signal);
-  const chain = buildEngineChain(sLang, tLang, keys);
+  let chain = buildEngineChain(sLang, tLang, keys);
+  // All engines paused (e.g. transient network errors) — retry free tier once.
+  if (chain.length === 0) {
+    clearSessionEngineBlacklist();
+    chain = buildEngineChain(sLang, tLang, keys, { forceFree: true });
+  }
   const failures = [];
   const tried = [];
-  const wordCount = (text || '').trim().split(/\s+/).filter(Boolean).length;
   let lastWeak = null;
+  let lastAnyClean = null;
 
   for (let i = 0; i < chain.length; i += 1) {
     const id = chain[i];
@@ -228,6 +247,7 @@ export const translateWithFallback = async ({
       const raw = await Promise.race([fetchers[id](text), timer]);
       const clean = sanitizeEngineResponse(String(raw || ''));
       if (!clean) continue;
+      lastAnyClean = { text: clean, engineId: id };
 
       const accepted = acceptFn ? acceptFn(text, clean, sLang, tLang) : clean;
       if (accepted) {
@@ -236,8 +256,8 @@ export const translateWithFallback = async ({
         return result;
       }
 
-      const passthrough = isTranslationPassthrough(text, clean, sLang, tLang);
-      if (passthrough && isLast && wordCount <= 4 && clean.length >= 1) {
+      // Poor translation beats none — last engine keeps whatever it returned.
+      if (isLast && clean.length >= 1) {
         lastWeak = { text: clean, engineId: id, quality: 'weak', failures, tried };
       }
     } catch (e) {
@@ -258,6 +278,18 @@ export const translateWithFallback = async ({
   if (lastWeak) {
     lastTranslationAttempt = lastWeak;
     return lastWeak;
+  }
+
+  if (lastAnyClean?.text) {
+    const fallback = {
+      text: lastAnyClean.text,
+      engineId: lastAnyClean.engineId,
+      quality: 'weak',
+      failures,
+      tried,
+    };
+    lastTranslationAttempt = fallback;
+    return fallback;
   }
 
   const result = { ...FAILED, failures, tried };

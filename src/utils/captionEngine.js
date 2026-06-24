@@ -73,7 +73,6 @@ const buildSealedBubble = (
     enFull: side === "en" ? text : template.enFull,
     esFull: side === "es" ? text : template.esFull,
     isFinal: true,
-    isTailMovedSection: false,
   };
 };
 
@@ -153,7 +152,7 @@ export const reduceTranscriptEvent = (prev, event, ctx) => {
         turnId: currentTurnIdRef.current,
         turnWordCount: turnWordsBaseRef.current,
         isSplit: !isSilentBreak,
-        isTailMovedSection: false,
+        tailPreviewText: null,
         isFinal: false,
       };
       prev = [...prev, last];
@@ -216,6 +215,9 @@ export const reduceTranscriptEvent = (prev, event, ctx) => {
   current.enFull = enFull;
   current.esFull = esFull;
   current.isFinal = shouldFinalize;
+  if (!shouldFinalize) {
+    current.tailPreviewText = null;
+  }
   const currentWords = current.text.split(/\s+/).filter(Boolean).length;
   current.turnId = current.turnId || currentTurnIdRef.current || `turn-${now}`;
   current.turnWordCount = turnWordsBaseRef.current + currentWords;
@@ -283,27 +285,31 @@ export const reduceTranscriptEvent = (prev, event, ctx) => {
     }
 
     if (sealedAll.length > 0) {
-      if (sealedAll[0] && originalLastId) {
+      const hasTail = Boolean(tailText?.trim());
+      if (hasTail && sealedAll[0]?.id === originalLastId) {
+        sealedAll[0] = {
+          ...sealedAll[0],
+          id: `${buildStableCaptionId(channelKey, startTime, true)}-s0-${++bubbleIdCounterRef.current}`,
+        };
+      } else if (sealedAll[0] && originalLastId && !hasTail) {
         sealedAll[0] = { ...sealedAll[0], id: originalLastId };
       }
       newArr = [...prev.slice(0, -1), ...sealedAll];
-      if (tailText?.trim()) {
+      if (hasTail) {
         const winLang = current.lang || pair.left;
         const tailSide = laneSideForLang(winLang, pair);
         const formatted = sealText(tailText, winLang);
         newArr.push({
           ...current,
-          id: `${buildStableCaptionId(channelKey, startTime, false)}-tail-${++bubbleIdCounterRef.current}`,
+          id: originalLastId,
           turnId: current.turnId,
           turnWordCount: turnWordsBaseRef.current,
           text: formatted,
+          tailPreviewText: tailText.trim(),
           enFinalized: tailSide === "en" ? formatted : "",
           esFinalized: tailSide === "es" ? formatted : "",
           enInterim: tailSide === "en" ? current.enInterim : "",
           esInterim: tailSide === "es" ? current.esInterim : "",
-          isTailMovedSection: true,
-          tailMovedFromId: current.id,
-          tailMovedAt: now,
           enFull:
             tailSide === "en"
               ? `${formatted} ${current.enInterim || ""}`.trim()
