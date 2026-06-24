@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { FAILURE } from '../utils/deepgramDiagnostics';
+import { getDeepgramKeyInfo } from '../utils/deepgramRuntimeKey';
 
 const mk = (done, active, failed) => {
   if (failed) return { mark: '✗', color: '#ef4444' };
@@ -29,6 +30,16 @@ export const ConnectionDiagnosticsBar = ({
   compact = false,
 }) => {
   const s = connectProgress || {};
+  const [, setKeyTick] = useState(0);
+  useEffect(() => {
+    const bump = () => setKeyTick((t) => t + 1);
+    window.addEventListener('cat_deepgram_runtime_key_changed', bump);
+    return () => window.removeEventListener('cat_deepgram_runtime_key_changed', bump);
+  }, []);
+  const liveKey = getDeepgramKeyInfo();
+  const keyResolved = Boolean(liveKey.key);
+  const keySource = liveKey.source || s.keySource || '?';
+  const keyMasked = liveKey.masked || s.keyMasked || '';
   const isConnecting = connectionState === 'connecting' || s.phase === 'connecting';
   const isError = connectionState === 'error' || s.phase === 'error';
   const hasFailureDetailsText = !!(connectionMessage || s.lastError);
@@ -52,7 +63,7 @@ export const ConnectionDiagnosticsBar = ({
   const shouldShowAnything = isConnecting || isError || hasFailureDetailsText;
   if (!shouldShowAnything) return null;
 
-  const step1 = !!s.keyResolved;
+  const step1 = keyResolved;
   const step2a = s.socketEn === 'open';
   const step2b = s.socketEs === 'open';
   const step3 = !!s.audioStreamReady;
@@ -81,7 +92,7 @@ export const ConnectionDiagnosticsBar = ({
 
   const rows = [
     {
-      label: `API key (${s.keySource || '?'} ${s.keyMasked || ''})`.trim(),
+      label: `API key (${keySource} ${keyMasked})`.trim(),
       ...mk(step1, !step1 && s.phase === 'connecting', failed && !step1),
     },
     {

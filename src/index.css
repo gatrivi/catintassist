@@ -181,6 +181,29 @@ body {
   position: relative;
 }
 
+/* Version pill — visible but never steals header clicks (v4.73.3) */
+.app-version-pill {
+  position: fixed;
+  top: 4px;
+  right: 6px;
+  z-index: 40;
+  pointer-events: none;
+  font-size: 0.62rem;
+  font-weight: 900;
+  color: rgba(255, 255, 255, 0.7);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  background: rgba(7, 14, 35, 0.55);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 6px;
+  padding: 2px 6px;
+  backdrop-filter: blur(6px);
+  max-width: min(42vw, 11rem);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 /* ── CALL MODE: Maximize transcription workspace ───────────────────────────── */
 .app-container[data-call-mode="true"] {
   padding: 0;
@@ -1685,6 +1708,7 @@ body {
   flex-direction: column;
   gap: 0.25rem;
   padding: 0.25rem;
+  padding-right: calc(0.5rem + min(42vw, 11rem));
   min-width: 0;
   flex-shrink: 0;  /* Header takes its natural height; main-content gets the rest */
   max-height: min(42vh, 320px);
@@ -1797,7 +1821,8 @@ body {
 .connection-diagnostics-details {
   position: absolute;
   top: calc(100% + 4px);
-  right: 0;
+  left: 0;
+  right: auto;
 
   max-width: min(320px, 92vw);
   max-height: 35vh;

@@ -524,50 +524,13 @@ const Dashboard = () => {
       data-off-call-view={isActive || isZombieCall ? "call" : workspaceView}
     >
       {showSplash && <SplashScreen onComplete={handleSplashComplete} />}
-      {/* Version Tag - Always visible in the upper right */}
+      {/* Version tag — display only; settings gear lives in header (pointer-events: none so it never blocks clicks). */}
       <div
         data-guide="version"
-        title="Build version — confirms you have the latest features"
-        style={{
-          position: "fixed",
-          top: "4px",
-          right: "6px",
-          zIndex: 10000,
-          fontSize: "0.7rem",
-          fontWeight: 900,
-          color: "rgba(255,255,255,0.75)",
-          textTransform: "uppercase",
-          letterSpacing: "0.05em",
-          display: "flex",
-          alignItems: "center",
-          gap: "4px",
-          background: "rgba(7, 14, 35, 0.65)",
-          border: "1px solid rgba(255,255,255,0.12)",
-          borderRadius: "6px",
-          padding: "2px 6px",
-          backdropFilter: "blur(6px)",
-        }}
+        className="app-version-pill"
+        title={`Build ${APP_VERSION_LABEL}`}
       >
-        <button
-          type="button"
-          onClick={() => {
-            setSettingsSection("deepgram");
-            setSettingsOpen(true);
-          }}
-          title="Open Settings"
-          style={{
-            background: "transparent",
-            border: "none",
-            cursor: "pointer",
-            fontSize: "0.65rem",
-            padding: 0,
-            opacity: 0.45,
-            lineHeight: 1,
-          }}
-        >
-          ⚙
-        </button>
-        <span style={{ pointerEvents: "none" }}>{APP_VERSION_LABEL}</span>
+        {APP_VERSION_LABEL}
       </div>
 
       <SettingsPanel

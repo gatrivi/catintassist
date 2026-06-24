@@ -188,6 +188,15 @@ export const useDeepgram = () => {
     setConnectProgress(connectFlagsRef.current);
   };
 
+  const patchKeyProgress = useCallback(() => {
+    const keyInfo = getDeepgramKeyInfo();
+    syncConnectProgress({
+      keyResolved: !!keyInfo.key,
+      keySource: keyInfo.source,
+      keyMasked: keyInfo.masked,
+    });
+  }, []);
+
   const resetCaptionEngine = useCallback(() => {
     captionEngineRef.current = createCaptionEngineState();
     turnWordsBaseRef.current = 0;
@@ -281,6 +290,21 @@ export const useDeepgram = () => {
     shouldCaptureCaptionsRef.current = !!(isActive || isZombieCall);
   }, [isActive, isZombieCall]);
 
+  useEffect(() => {
+    const onKeyChange = () => {
+      const keyInfo = getDeepgramKeyInfo();
+      syncConnectProgress({
+        keyResolved: !!keyInfo.key,
+        keySource: keyInfo.source,
+        keyMasked: keyInfo.masked,
+      });
+      if (keyInfo.key) setApiKeyRejected(false);
+    };
+    window.addEventListener("cat_deepgram_runtime_key_changed", onKeyChange);
+    patchKeyProgress();
+    return () => window.removeEventListener("cat_deepgram_runtime_key_changed", onKeyChange);
+  }, [patchKeyProgress]);
+
   const closeConnections = useCallback(() => {
     clearKeepalive();
     if (connectFailTimerRef.current) {
@@ -310,11 +334,12 @@ export const useDeepgram = () => {
     setConnectionState("disconnected");
     setConnectionMessage("Disconnected");
     setApiKeyRejected(false);
+    const keyInfo = getDeepgramKeyInfo();
     syncConnectProgress({
       phase: "idle",
-      keyResolved: false,
-      keySource: "none",
-      keyMasked: "",
+      keyResolved: !!keyInfo.key,
+      keySource: keyInfo.source,
+      keyMasked: keyInfo.masked,
       audioStreamReady: false,
       socketsOpen: false,
       socketEn: "pending",
@@ -374,12 +399,16 @@ export const useDeepgram = () => {
 
       setConnectionState("error");
       setConnectionMessage(message);
+      const keyInfo = getDeepgramKeyInfo();
+      const cat = extra.failureCategory;
       syncConnectProgress({
         phase: "error",
         lastError: message,
+        keyResolved: cat === FAILURE.AUTH ? false : !!keyInfo.key,
+        keySource: keyInfo.source,
+        keyMasked: keyInfo.masked,
         ...extra,
       });
-      const cat = extra.failureCategory;
       if (cat === FAILURE.AUTH || isLikelyApiKeyRejected(message)) setApiKeyRejected(true);
     },
     [clearWatchdog, clearKeepalive, isLikelyApiKeyRejected],
