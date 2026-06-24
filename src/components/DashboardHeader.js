@@ -685,7 +685,16 @@ const SessionControlsSticky = React.memo(({
         </div>
       )}
 
-      <div style={{ display: 'flex', gap: '3px', alignItems: 'center', flexShrink: 0 }}>
+      <div
+        style={{
+          display: 'flex',
+          gap: '3px',
+          alignItems: 'center',
+          flexShrink: 0,
+          position: 'relative',
+          zIndex: 320, // ensure gear/help stay above diagnostics chip
+        }}
+      >
         {isActive && !callModeExpanded && (
           <button
             className="btn-icon tiny-btn"

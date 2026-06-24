@@ -80,7 +80,9 @@ export const ConnectionDiagnosticsBar = ({
       : { mark: '•', color: 'rgba(255,255,255,0.35)' };
   const chipMainLabel = isFailureLike ? (compact ? 'Conn failed' : 'Connection failed') : 'Connecting…';
   const chipStateClass = isFailureLike ? ' is-failed' : isConnecting ? ' is-connecting' : '';
-  const showInlineChecks = compact && (isError || hasFailureDetailsText);
+  // In compact header mode the chip must never steal layout space.
+  // Full step-by-step checks live only in the hover/focus/click tooltip.
+  const showInlineChecks = false;
 
   const openDetails = (pinned) => {
     if (pinned) pinnedRef.current = true;
@@ -125,7 +127,7 @@ export const ConnectionDiagnosticsBar = ({
     <div className="connection-diagnostics-wrap">
       <button
         type="button"
-        className={`connection-diagnostics-chip${compact ? ' is-compact' : ''}${chipStateClass}`}
+        className={`connection-diagnostics-bar connection-diagnostics-chip${compact ? ' is-compact' : ''}${chipStateClass}`}
         title={detailsTitleWithCat}
         aria-expanded={detailsOpen}
         aria-label={detailsTitleWithCat}
