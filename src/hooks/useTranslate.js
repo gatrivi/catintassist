@@ -313,7 +313,7 @@ export const useTranslate = (
             setTranslation('');
             hasGoodTranslationRef.current = false;
           }
-          if (!final) {
+          if (isFinal !== false && !final) {
             setTranslationMeta((prev) => ({ ...prev, quality: 'failed' }));
           }
           lastTranslatedTextRef.current = normText;

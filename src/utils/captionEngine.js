@@ -32,6 +32,21 @@ export const mergeCaptionsForUi = (state) => {
   return merged.slice(-CAPTION_ROW_LIMIT);
 };
 
+/** Cheap equality — skip React flush when live row unchanged. */
+export const captionsSnapshotEqual = (a, b) => {
+  if (a === b) return true;
+  if (!Array.isArray(a) || !Array.isArray(b) || a.length !== b.length) return false;
+  for (let i = 0; i < a.length; i += 1) {
+    const x = a[i];
+    const y = b[i];
+    if (x?.id !== y?.id) return false;
+    if (x?.text !== y?.text) return false;
+    if (x?.isFinal !== y?.isFinal) return false;
+    if (x?.tailPreviewText !== y?.tailPreviewText) return false;
+  }
+  return true;
+};
+
 export const splitCaptionRows = (rows) => {
   if (!rows?.length) return createCaptionEngineState();
   const last = rows[rows.length - 1];
@@ -134,7 +149,9 @@ export const reduceTranscriptEvent = (prev, event, ctx) => {
 
   if (isNewTurn) {
     const lastStarted = lastBubbleStartedRef?.current || 0;
-    if (!(now - lastStarted < 400 && !isSilentBreak)) {
+    // Never skip the first bubble — empty prev left `last` undefined and broke STT.
+    const debounceNewBubble = last && now - lastStarted < 400 && !isSilentBreak;
+    if (!debounceNewBubble) {
       if (lastBubbleStartedRef) lastBubbleStartedRef.current = now;
       if (isSilentBreak || !last) {
         turnWordsBaseRef.current = 0;
@@ -158,6 +175,11 @@ export const reduceTranscriptEvent = (prev, event, ctx) => {
       prev = [...prev, last];
     }
   }
+
+  if (!last && prev.length > 0) {
+    last = prev[prev.length - 1];
+  }
+  if (!last) return prev;
 
   const current = { ...last };
   const historyText = prev

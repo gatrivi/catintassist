@@ -219,6 +219,7 @@ const TranslatedBubble = ({
   onManualRetranslate,
   tailPreviewText = null,
   isFinal = true,
+  allowAutoRetranslate = true,
   languagePair = null,
   protectionsActive = true,
   mockTranslation = null,
@@ -259,7 +260,10 @@ const TranslatedBubble = ({
   // UX: if a message is clearly "untranslated", we should just try again,
   // and only show a ↻ button as a fallback.
   const shouldAutoRetranslate =
-    !isPinned && engineStatus === 'ready' && (isTranslationStuck || isTranslationMissing);
+    allowAutoRetranslate &&
+    !isPinned &&
+    engineStatus === 'ready' &&
+    (isTranslationStuck || isTranslationMissing);
   const [autoRetranslatePending, setAutoRetranslatePending] = useState(false);
   const [hasAutoRetranslated, setHasAutoRetranslated] = useState(false);
 
@@ -369,6 +373,7 @@ const translatedBubblePropsEqual = (prev, next) =>
   prev.isFinal === next.isFinal &&
   prev.tailPreviewText === next.tailPreviewText &&
   prev.forceTranslateKey === next.forceTranslateKey &&
+  prev.allowAutoRetranslate === next.allowAutoRetranslate &&
   prev.reverse === next.reverse &&
   prev.showTurnWordCount === next.showTurnWordCount &&
   prev.turnWordCount === next.turnWordCount &&
@@ -760,6 +765,7 @@ export const TranscriptionBoard = ({
                   onManualRetranslate={() => bumpManualRetranslate(cap)}
                   tailPreviewText={cap.tailPreviewText || null}
                   isFinal={cap.isFinal !== false}
+                  allowAutoRetranslate={i >= captions.length - 2}
                   languagePair={languagePair}
                   protectionsActive={protectionsActive}
                   mockTranslation={cap._devMockTranslation}

@@ -25,7 +25,10 @@ import {
   reduceTranscriptEvent,
   shouldFlushImmediately,
   createCaptionEngineState,
+  captionsSnapshotEqual,
 } from "../utils/captionEngine";
+
+const CAPTIONS_CLEARED_EVENT = "catint_captions_cleared";
 
 const TAB_STREAM_READY_KEY = "catint_tab_stream_ok_v1";
 const readTabStreamReady = () => {
@@ -87,6 +90,7 @@ export const useDeepgram = () => {
     captions,
     updateCaptions,
     clearCaptions,
+    isCaptionsLoaded,
     isActive,
     isZombieCall,
     hipaaGraceActiveRef,
@@ -186,14 +190,19 @@ export const useDeepgram = () => {
 
   const resetCaptionEngine = useCallback(() => {
     captionEngineRef.current = createCaptionEngineState();
+    turnWordsBaseRef.current = 0;
+    currentTurnIdRef.current = null;
+    lastBubbleStartedRef.current = 0;
     if (interimFlushTimerRef.current) {
       clearTimeout(interimFlushTimerRef.current);
       interimFlushTimerRef.current = null;
     }
+    captionsHydratedRef.current = false;
   }, []);
 
   const flushCaptionsToSession = useCallback(() => {
-    updateCaptions(mergeCaptionsForUi(captionEngineRef.current));
+    const next = mergeCaptionsForUi(captionEngineRef.current);
+    updateCaptions((prev) => (captionsSnapshotEqual(prev, next) ? prev : next));
   }, [updateCaptions]);
 
   const scheduleInterimFlush = useCallback(() => {
@@ -204,16 +213,19 @@ export const useDeepgram = () => {
     }, INTERIM_THROTTLE_MS);
   }, [flushCaptionsToSession]);
 
+  // Hydrate engine once after IDB load — never re-sync on every flush (caused desync loops).
   useEffect(() => {
-    if (captions.length > 0 && !captionsHydratedRef.current) {
-      captionsHydratedRef.current = true;
-      captionEngineRef.current = initEngineFromPersisted(captions);
-    }
-    if (captions.length === 0 && captionsHydratedRef.current) {
-      resetCaptionEngine();
-      captionsHydratedRef.current = false;
-    }
-  }, [captions, resetCaptionEngine]);
+    if (!isCaptionsLoaded || captionsHydratedRef.current) return;
+    if (captions.length === 0) return;
+    captionsHydratedRef.current = true;
+    captionEngineRef.current = initEngineFromPersisted(captions);
+  }, [isCaptionsLoaded, captions]);
+
+  useEffect(() => {
+    const onCleared = () => resetCaptionEngine();
+    window.addEventListener(CAPTIONS_CLEARED_EVENT, onCleared);
+    return () => window.removeEventListener(CAPTIONS_CLEARED_EVENT, onCleared);
+  }, [resetCaptionEngine]);
 
   const resetConnectProgress = () => {
     const keyInfo = getDeepgramKeyInfo();

@@ -194,7 +194,8 @@ export const SessionProvider = ({ children }) => {
     const loadCaptions = async () => {
       try {
         const saved = await idbGet('catint_captions_v2');
-        if (saved && Array.isArray(saved)) {
+        // Don't stomp live STT captions if audio connected before IDB finished loading.
+        if (saved && Array.isArray(saved) && captionsRef.current.length === 0) {
           setCaptions(saved);
         }
       } catch (e) {
@@ -227,6 +228,9 @@ export const SessionProvider = ({ children }) => {
 
   const clearCaptions = useCallback(async () => {
     setCaptions([]);
+    try {
+      window.dispatchEvent(new CustomEvent('catint_captions_cleared'));
+    } catch (_) {}
     try {
       await idbSet('catint_captions_v2', []);
     } catch (e) {}

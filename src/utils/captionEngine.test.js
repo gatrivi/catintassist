@@ -8,6 +8,7 @@ import {
   initEngineFromPersisted,
   reduceTranscriptEvent,
   shouldFlushImmediately,
+  captionsSnapshotEqual,
 } from "./captionEngine";
 
 const makeCtx = () => ({
@@ -201,5 +202,25 @@ describe("captionEngine", () => {
     }));
     const merged = mergeCaptionsForUi({ finals, liveDraft: null });
     expect(merged).toHaveLength(CAPTION_ROW_LIMIT);
+  });
+
+  test("rapid interim within 400ms on empty prev still opens first bubble", () => {
+    const ctx = makeCtx();
+    ctx.lastBubbleStartedRef.current = Date.now();
+    const now = Date.now() + 50;
+    const next = reduceTranscriptEvent(
+      [],
+      makeEvent({ transcript: "hello", now, isSilentBreak: false }),
+      ctx,
+    );
+    expect(next).toHaveLength(1);
+    expect(next[0].text).toMatch(/hello/i);
+  });
+
+  test("captionsSnapshotEqual detects live text change", () => {
+    const a = [{ id: "1", text: "hi", isFinal: false }];
+    const b = [{ id: "1", text: "hi there", isFinal: false }];
+    expect(captionsSnapshotEqual(a, a)).toBe(true);
+    expect(captionsSnapshotEqual(a, b)).toBe(false);
   });
 });
