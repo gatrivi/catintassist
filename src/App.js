@@ -455,7 +455,7 @@ const Dashboard = () => {
         ? "0 0 8px #f59e0b"
         : "0 0 8px #10b981";
 
-  // Off-call minute chime: progressively deeper each minute
+  // Off-call idle tick: progressively deeper, but less frequent/less annoying
   const idleMinuteCountRef = useRef(0);
   useEffect(() => {
     if (isActive || isBreakActive) {
@@ -465,7 +465,7 @@ const Dashboard = () => {
     const iv = setInterval(() => {
       idleMinuteCountRef.current += 1;
       playCoin(idleMinuteCountRef.current);
-    }, 60000);
+    }, 90000);
     return () => clearInterval(iv);
   }, [isActive, isBreakActive, playCoin]);
 

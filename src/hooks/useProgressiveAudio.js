@@ -2,6 +2,7 @@ import { useCallback, useRef, useMemo, useState } from 'react';
 
 export const useProgressiveAudio = () => {
   const audioCtxRef = useRef(null);
+  const audioFailedRef = useRef(false);
   const [isMuted, setIsMuted] = useState(localStorage.getItem('AUDIO_MUTED') === 'true');
 
   const toggleMute = useCallback(() => {
@@ -14,11 +15,24 @@ export const useProgressiveAudio = () => {
 
   const initAudio = useCallback(() => {
     if (typeof window === 'undefined') return;
-    if (!audioCtxRef.current || audioCtxRef.current.state === 'closed') {
-      audioCtxRef.current = new (window.AudioContext || window.webkitAudioContext)();
-    }
-    if (audioCtxRef.current.state === 'suspended') {
-      audioCtxRef.current.resume();
+    if (audioFailedRef.current) return;
+    try {
+      if (!audioCtxRef.current || audioCtxRef.current.state === 'closed') {
+        const Ctx = window.AudioContext || window.webkitAudioContext;
+        if (!Ctx) {
+          audioFailedRef.current = true;
+          return;
+        }
+        audioCtxRef.current = new Ctx();
+      }
+      if (audioCtxRef.current?.state === 'suspended') {
+        // Resume can be rejected by autoplay policy; swallow to avoid
+        // breaking unrelated runtime work (like STT).
+        audioCtxRef.current.resume?.().catch(() => {});
+      }
+    } catch (e) {
+      audioFailedRef.current = true;
+      // Don't spam console; this is expected on some environments.
     }
   }, []);
 
@@ -56,37 +70,36 @@ export const useProgressiveAudio = () => {
     const ctx = audioCtxRef.current;
     const t = ctx.currentTime;
 
-    // Warm Bronze Synthesis (Lower frequencies, Triangle waves for harmonics)
-    // 800Hz - 1100Hz range is "heavy", 2000Hz+ is "beepy"
-    // As minuteCount grows, frequencies drop for a progressively deeper chime.
-    const baseFreqs = [820, 1150, 1420];
+    // Warm Bronze Synthesis (Lower frequencies, triangle waves for harmonics)
+    // Keep it audible but deliberately soft + short so the off-call tick isn't annoying.
+    const baseFreqs = [780, 1060]; // fewer harmonics = less "beepiness"
     const fullness = Math.min(1, minuteCount / 60);
     const depthShift = Math.min(1, Math.max(0, (minuteCount - 1) / 30));
     const frequencies = baseFreqs.map(f => f * (1 - depthShift * 0.35));
 
     const filter = ctx.createBiquadFilter();
     filter.type = 'lowpass';
-    filter.frequency.setValueAtTime(1200 + (fullness * 2000), t); // Muffled for Cloth, opens for Pile
-    filter.Q.setValueAtTime(0.3, t);
+    filter.frequency.setValueAtTime(950 + (fullness * 900), t); // more muffled overall
+    filter.Q.setValueAtTime(0.25, t);
 
     frequencies.forEach((f, idx) => {
       const osc = ctx.createOscillator();
       osc.type = 'triangle'; // Warm harmonics
       osc.frequency.setValueAtTime(f, t);
-      osc.frequency.exponentialRampToValueAtTime(f * 0.98, t + 0.1); // Subtle mechanical de-tuning
+      osc.frequency.exponentialRampToValueAtTime(f * 0.985, t + 0.08); // subtle mechanical de-tuning
       
-      const decay = (minuteCount === 1 ? 0.08 : 0.12 + (fullness * 0.3));
-      const gain = createGain(ctx, 0.08, decay, t);
+      const decay = minuteCount === 1 ? 0.06 : 0.085 + (fullness * 0.12); // shorter
+      const gain = createGain(ctx, 0.045, decay, t); // softer
       osc.connect(filter); filter.connect(gain); gain.connect(ctx.destination);
-      osc.start(t); osc.stop(t + decay + 0.05);
+      osc.start(t); osc.stop(t + decay + 0.025);
     });
 
     // Soft "thud" attack (Low-passed noise)
-    const attackBuf = ctx.createBuffer(1, ctx.sampleRate * 0.015, ctx.sampleRate);
+    const attackBuf = ctx.createBuffer(1, ctx.sampleRate * 0.012, ctx.sampleRate);
     const attackD = attackBuf.getChannelData(0);
     for(let i=0; i<attackD.length; i++) attackD[i] = Math.random() * 2 - 1;
     const attack = ctx.createBufferSource(); attack.buffer = attackBuf;
-    const attackGain = createGain(ctx, 0.1, 0.015, t);
+    const attackGain = createGain(ctx, 0.06, 0.012, t);
     const attackFilter = ctx.createBiquadFilter(); attackFilter.type = 'lowpass'; attackFilter.frequency.value = 400;
     attack.connect(attackFilter); attackFilter.connect(attackGain); attackGain.connect(ctx.destination);
     attack.start(t);
@@ -168,7 +181,7 @@ export const useProgressiveAudio = () => {
 
   const stopAll = useCallback(() => {
     if (audioCtxRef.current && audioCtxRef.current.state !== 'closed') {
-      audioCtxRef.current.suspend().catch(() => {});
+      audioCtxRef.current.suspend?.().catch(() => {});
     }
   }, []);
 
