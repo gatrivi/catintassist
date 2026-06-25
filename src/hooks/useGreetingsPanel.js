@@ -208,14 +208,20 @@ export function useGreetingsPanel(onEditModeChange) {
       mediaRecorderRef.current = mediaRecorder;
       audioChunksRef.current = [];
 
+      // CPU hotfix: throttle level sampling to ~10 FPS.
+      let lastSampleAt = 0;
       const updateLevel = () => {
         if (!mediaRecorderRef.current || mediaRecorderRef.current.state !== 'recording') return;
-        analyser.getByteFrequencyData(dataArray);
-        let sum = 0;
-        for (let i = 0; i < dataArray.length; i++) sum += dataArray[i];
-        const width = Math.min(100, Math.max(0, (sum / dataArray.length / 100) * 100)) || (sum > 0 ? 2 : 0);
-        const bar = document.getElementById('record-vol-bar') || document.getElementById('editor-record-vol-bar');
-        if (bar) bar.style.width = `${width}%`;
+        const now = performance.now();
+        if (now - lastSampleAt >= 100) {
+          lastSampleAt = now;
+          analyser.getByteFrequencyData(dataArray);
+          let sum = 0;
+          for (let i = 0; i < dataArray.length; i++) sum += dataArray[i];
+          const width = Math.min(100, Math.max(0, (sum / dataArray.length / 100) * 100)) || (sum > 0 ? 2 : 0);
+          const bar = document.getElementById('record-vol-bar') || document.getElementById('editor-record-vol-bar');
+          if (bar) bar.style.width = `${width}%`;
+        }
         requestAnimationFrame(updateLevel);
       };
 

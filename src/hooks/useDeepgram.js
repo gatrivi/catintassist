@@ -138,6 +138,7 @@ export const useDeepgram = () => {
   const isActiveRef = useRef(false);
   const captionEngineRef = useRef(createCaptionEngineState());
   const interimFlushTimerRef = useRef(null);
+  const lastInterimAtRef = useRef(0);
   const captionsHydratedRef = useRef(false);
 
   // After refresh there is no live MediaStream — clear stale tab-ready flag.
@@ -607,6 +608,17 @@ export const useDeepgram = () => {
           const transcript = alt?.transcript;
           if (!transcript || transcript.trim().length === 0) return;
 
+          // CPU triage counters for the STT caption hot path. Expose via `window.__ciaPerf`.
+          const perf =
+            typeof window !== "undefined"
+              ? (window.__ciaPerf ??= {
+                  deepgramMessages: 0,
+                  captionMs: 0,
+                  captionSlow: 0,
+                })
+              : null;
+          if (perf) perf.deepgramMessages += 1;
+
           const confidence = alt?.confidence || 0;
           const isFinal = received.is_final;
           const speechFinal = received.speech_final;
@@ -659,7 +671,16 @@ export const useDeepgram = () => {
 
           if (!shouldCaptureCaptionsRef.current) return;
 
+          // Throttle interim transcript processing: final/speech-final always processed.
+          const isFinalish = !!isFinal || !!speechFinal;
+          if (!isFinalish) {
+            const nowPerf = performance.now();
+            if (nowPerf - lastInterimAtRef.current < 200) return;
+            lastInterimAtRef.current = nowPerf;
+          }
+
           const merged = mergeCaptionsForUi(captionEngineRef.current);
+          const t0 = performance.now();
           const newArr = reduceTranscriptEvent(
             merged,
             {
@@ -684,6 +705,18 @@ export const useDeepgram = () => {
             },
           );
           captionEngineRef.current = splitCaptionRows(newArr);
+          const dt = performance.now() - t0;
+          if (perf) {
+            perf.captionMs += dt;
+            if (dt > 8) {
+              perf.captionSlow += 1;
+              console.warn("[captionEngine slow]", {
+                ms: dt.toFixed(2),
+                transcriptLength: transcript.length,
+                isFinal,
+              });
+            }
+          }
 
           if (shouldFlushImmediately(isFinal, speechFinal)) {
             if (interimFlushTimerRef.current) {
