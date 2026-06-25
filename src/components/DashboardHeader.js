@@ -1293,6 +1293,34 @@ export const DashboardHeader = ({
     const placement = rect.top < 160 ? 'below' : 'above';
     const x = rect.left + rect.width / 2;
     const y = placement === 'above' ? rect.top : rect.bottom;
+
+    // #region agent log: UI tooltip placement (HUI2)
+    if (heading === 'MONTHLY PROGRESS' && typeof window !== 'undefined') {
+      fetch('http://127.0.0.1:7891/ingest/e6c8e207-e5e1-4e11-b95a-baa54d11271a', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-Debug-Session-Id': '2c9b00'
+        },
+        body: JSON.stringify({
+          sessionId: '2c9b00',
+          location: 'DashboardHeader.js:showProgressBarTooltip',
+          message: 'MONTHLY PROGRESS tooltip placement',
+          hypothesisId: 'HUI2',
+          runId: 'ui-collision-verify',
+          timestamp: Date.now(),
+          data: {
+            placement,
+            rectTop: rect.top,
+            rectBottom: rect.bottom,
+            x,
+            y
+          }
+        })
+      }).catch(() => {});
+    }
+    // #endregion agent log
+
     setHoveredMetricTooltip({ x, y, placement, icon, heading, color, body });
   }, []);
 
