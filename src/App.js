@@ -1,6 +1,7 @@
 import React, { useEffect, useState, useCallback, useRef } from "react";
 import { SessionProvider, useSession } from "./contexts/SessionContext";
 import { AudioSettingsProvider } from "./contexts/AudioSettingsContext";
+import { AuthProvider } from "./contexts/AuthContext";
 import { DashboardHeader } from "./components/DashboardHeader";
 import { TranscriptionBoard } from "./components/TranscriptionBoard";
 import { GreetingsPanel } from "./components/GreetingsPanel";
@@ -761,11 +762,13 @@ const Dashboard = () => {
 
 function App() {
   return (
-    <AudioSettingsProvider>
-      <SessionProvider>
-        <Dashboard />
-      </SessionProvider>
-    </AudioSettingsProvider>
+    <AuthProvider>
+      <AudioSettingsProvider>
+        <SessionProvider>
+          <Dashboard />
+        </SessionProvider>
+      </AudioSettingsProvider>
+    </AuthProvider>
   );
 }
 

@@ -22,6 +22,8 @@ import {
 } from '../utils/languageConfig';
 import { DevSimulatePanel } from './DevSimulatePanel';
 import { isDevSimEnabled } from '../utils/devSimulateCaptions';
+import { AuthPanel } from './AuthPanel';
+import { useAuth } from '../contexts/AuthContext';
 
 const MOODS = ['auto', 'default', 'fast', 'chill'];
 const MOOD_LABELS = { auto: 'Trans Auto', default: 'Default', fast: 'Fast', chill: 'Chill' };
@@ -49,6 +51,7 @@ export default function SettingsPanel({ open, onClose, initialSection = 'deepgra
     }
   });
   const { playTTS } = useTTS();
+  const { user: authUser } = useAuth();
 
   useEffect(() => {
     if (open) setSection(initialSection);
@@ -88,20 +91,41 @@ export default function SettingsPanel({ open, onClose, initialSection = 'deepgra
         </div>
 
         <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap', marginTop: 10 }}>
-          {['deepgram', 'language', 'translation', 'behavior', 'layout', 'display'].map((id) => (
+          {['account', 'deepgram', 'language', 'translation', 'behavior', 'layout', 'display'].map((id) => (
             <button
               key={id}
               type="button"
               onClick={() => setSection(id)}
               style={{ ...tabBtn, background: section === id ? 'rgba(239,68,68,0.25)' : tabBtn.background }}
             >
-              {id === 'deepgram' ? 'Deepgram' : id === 'language' ? 'Language' : id === 'translation' ? 'Translation' : id === 'behavior' ? 'Behavior' : id === 'layout' ? 'Layout' : 'Display'}
+              {id === 'account'
+                ? (authUser ? 'Account ✓' : 'Account')
+                : id === 'deepgram'
+                  ? 'Deepgram'
+                  : id === 'language'
+                    ? 'Language'
+                    : id === 'translation'
+                      ? 'Translation'
+                      : id === 'behavior'
+                        ? 'Behavior'
+                        : id === 'layout'
+                          ? 'Layout'
+                          : 'Display'}
             </button>
           ))}
         </div>
 
         {vaultStatus === 'unlocking' && (
           <p style={{ color: '#f59e0b', fontSize: 11, marginTop: 8 }}>⏳ Decrypting key…</p>
+        )}
+
+        {section === 'account' && (
+          <div style={{ marginTop: 12 }}>
+            <p style={{ fontSize: 10, color: 'rgba(255,255,255,0.55)', margin: '0 0 10px', lineHeight: 1.45 }}>
+              v1 cloud sync: UI prefs + soundboard text only. No transcripts, stats, or API keys.
+            </p>
+            <AuthPanel />
+          </div>
         )}
 
         {section === 'deepgram' && (
