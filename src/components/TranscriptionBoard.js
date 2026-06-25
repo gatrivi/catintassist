@@ -431,6 +431,8 @@ export const TranscriptionBoard = ({
   const lastBoardLastCapLenRef = useRef(null);
   const lastTurnMetaLogAtRef = useRef(0);
   const lastScrollIntoViewLogAtRef = useRef(0);
+  const lastKeyChurnLogAtRef = useRef(0);
+  const prevCapSnapshotRef = useRef(null);
   
   const [popover, setPopover] = useState({ show: false, x: 0, y: 0, text: '' });
   const popoverTimerRef = useRef(null);
@@ -522,6 +524,55 @@ export const TranscriptionBoard = ({
     const prevCount = parseInt(prevCountStr || '0', 10);
     const countIncreased = count > prevCount;
     const becameFinal = prevFinalFlag === 'live' && isFinal && prevId === lastId;
+
+    // #region agent log: key churn (H8) to validate “disappear/reappear” causality.
+    // React remount/jitter almost always happens when `key` changes.
+    // We probe `cap.id` changes at the rendered indices.
+    const nowMs = Date.now();
+    if (typeof window !== 'undefined' && nowMs - lastKeyChurnLogAtRef.current > 1000) {
+      const prevSnap = prevCapSnapshotRef.current;
+      const newSnap = captions.map((c) => ({ id: c.id || '', isFinal: c.isFinal !== false, turnId: c.turnId || '' })).slice(0, 12);
+      if (prevSnap && prevSnap.ids && prevSnap.ids.length > 0) {
+        let mismatches = 0;
+        const diffs = [];
+        const lim = Math.min(prevSnap.ids.length, newSnap.length);
+        for (let i = 0; i < lim; i++) {
+          const a = prevSnap.ids[i];
+          const b = newSnap[i];
+          if (!a) continue;
+          if (a.id !== b.id || a.isFinal !== b.isFinal) {
+            mismatches++;
+            if (diffs.length < 4) {
+              diffs.push({
+                idx: i,
+                from: a.id,
+                to: b.id,
+                fromIsFinal: a.isFinal,
+                toIsFinal: b.isFinal,
+              });
+            }
+          }
+        }
+        if (mismatches > 0) {
+          lastKeyChurnLogAtRef.current = nowMs;
+          fetch('http://127.0.0.1:7891/ingest/e6c8e207-e5e1-4e11-b95a-baa54d11271a', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'X-Debug-Session-Id': '2c9b00' },
+            body: JSON.stringify({
+              sessionId: '2c9b00',
+              runId: 'key-churn-probe',
+              hypothesisId: 'H8',
+              location: 'TranscriptionBoard.js:captions-effect:key-churn',
+              message: 'Rendered cap.id key churn between updates',
+              timestamp: Date.now(),
+              data: { captionsLen: count, mismatches, diffs },
+            }),
+          }).catch(() => {});
+        }
+      }
+      prevCapSnapshotRef.current = { ids: newSnap };
+    }
+    // #endregion agent log
 
     if (!isScrolledUpRef.current && (countIncreased || becameFinal)) {
       bottomRef.current?.scrollIntoView({ behavior: 'auto' });
