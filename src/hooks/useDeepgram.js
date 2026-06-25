@@ -434,6 +434,37 @@ export const useDeepgram = () => {
         if (connectFlagsRef.current.phase !== "connecting") return;
         const keyInfo = getDeepgramKeyInfo();
         const diag = classifyDeepgramClose(code, reason);
+
+        // #region agent log: deepgram close classification (HDEEP)
+        try {
+          if (typeof window !== "undefined") {
+            fetch('http://127.0.0.1:7891/ingest/e6c8e207-e5e1-4e11-b95a-baa54d11271a', {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                'X-Debug-Session-Id': '2c9b00'
+              },
+              body: JSON.stringify({
+                sessionId: '2c9b00',
+                runId: 'deepgram-handshake-debug',
+                hypothesisId: 'HDEEP',
+                location: 'useDeepgram.js:scheduleConnectFail',
+                message: 'deepgram close event classified',
+                timestamp: Date.now(),
+                data: {
+                  code: String(code ?? ''),
+                  reason: (reason ?? '').toString().slice(0, 120),
+                  socketSide,
+                  failureCategory: diag.category,
+                  keySource: keyInfo.source,
+                  keyMasked: keyInfo.masked
+                }
+              })
+            }).catch(() => {});
+          }
+        } catch {}
+        // #endregion agent log
+
         const msg = buildFailureMessage({
           category: diag.category || FAILURE.UNKNOWN,
           hint: diag.hint,
