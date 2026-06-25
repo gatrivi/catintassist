@@ -430,6 +430,7 @@ export const TranscriptionBoard = ({
   const lastBoardLogAtRef = useRef(0);
   const lastBoardLastCapLenRef = useRef(null);
   const lastTurnMetaLogAtRef = useRef(0);
+  const lastScrollIntoViewLogAtRef = useRef(0);
   
   const [popover, setPopover] = useState({ show: false, x: 0, y: 0, text: '' });
   const popoverTimerRef = useRef(null);
@@ -524,6 +525,29 @@ export const TranscriptionBoard = ({
 
     if (!isScrolledUpRef.current && (countIncreased || becameFinal)) {
       bottomRef.current?.scrollIntoView({ behavior: 'auto' });
+
+      // #region agent log: auto-scroll jitter probe (H5)
+      const nowMs = Date.now();
+      if (nowMs - lastScrollIntoViewLogAtRef.current > 1000 && typeof window !== 'undefined') {
+        lastScrollIntoViewLogAtRef.current = nowMs;
+        const scrollTop = scrollAreaRef.current?.scrollTop ?? null;
+        const scrollH = scrollAreaRef.current?.scrollHeight ?? null;
+        const clientH = scrollAreaRef.current?.clientHeight ?? null;
+        fetch('http://127.0.0.1:7891/ingest/e6c8e207-e5e1-4e11-b95a-baa54d11271a', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'X-Debug-Session-Id': '2c9b00' },
+          body: JSON.stringify({
+            sessionId: '2c9b00',
+            runId: 'deep-survey-jitter',
+            hypothesisId: 'H5',
+            location: 'TranscriptionBoard.js:auto-scroll',
+            message: 'auto scrollIntoView fired',
+            timestamp: Date.now(),
+            data: { captionsLen: count, scrollTop, scrollH, clientH }
+          })
+        }).catch(() => {});
+      }
+      // #endregion agent log
     }
     lastScrollKeyRef.current = scrollKey;
 
