@@ -1,6 +1,6 @@
 {
   "name": "catintassist",
-  "version": "4.73.5",
+  "version": "4.73.6",
   "private": true,
   "dependencies": {
     "@testing-library/dom": "^10.4.1",

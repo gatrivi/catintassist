@@ -2342,19 +2342,6 @@ ${isInDeficit ? `⚠️ DEFICIT: Behind pace by ${Math.round(monthlyDeficitMins)
               }
               onMouseLeave={hideMetricTooltip}
             >
-              <div style={{ position: 'absolute', inset: 0, pointerEvents: 'none', zIndex: 11 }}>
-                {[5500, 11000, 16500].map((m, i) => {
-                  const ratio = m / 16500;
-                  const labels = ['MIN GOAL', 'GOOD', 'EXCELLENT'];
-                  return (
-                    <div key={`lbl-${m}`} style={{ position: 'absolute', left: `${ratio * 100}%`, top: '-11px' }}>
-                      <span style={{ position: 'absolute', left: '-50%', transform: 'translateX(-50%)', background: 'rgba(0,0,0,0.6)', padding: '1px 4px', borderRadius: '4px', fontSize: '0.45rem', fontWeight: 800, color: 'rgba(255,255,255,0.9)', whiteSpace: 'nowrap' }}>
-                        {labels[i]}
-                      </span>
-                    </div>
-                  );
-                })}
-              </div>
               <div style={{ height: '7px', background: 'rgba(0,0,0,0.5)', borderRadius: '4px', position: 'relative', overflow: 'hidden' }}>
               <div style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: `${monthlyPendingRatio * 100}%`, backgroundColor: '#f97316', opacity: 0.9, transition: 'width 1s linear', zIndex: 1, boxShadow: unbankedMins > 0 ? '0 0 10px #f97316' : 'none' }} />
               <div style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: `${monthlyProgressRatio * 100}%`, backgroundColor: isMonthlyGoalMet ? '#10b981' : '#a855f7', transition: 'width 1s cubic-bezier(0.34, 1.56, 0.64, 1)', zIndex: 2 }} />
