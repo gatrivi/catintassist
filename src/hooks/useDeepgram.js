@@ -139,6 +139,9 @@ export const useDeepgram = () => {
   const captionEngineRef = useRef(createCaptionEngineState());
   const interimFlushTimerRef = useRef(null);
   const lastInterimAtRef = useRef(0);
+  const lastTranscriptLenRef = useRef(null);
+  const lastCharChurnLogAtRef = useRef(0);
+  const lastFlushLogAtRef = useRef(0);
   const captionsHydratedRef = useRef(false);
 
   // After refresh there is no live MediaStream — clear stale tab-ready flag.
@@ -212,6 +215,14 @@ export const useDeepgram = () => {
 
   const flushCaptionsToSession = useCallback(() => {
     const next = mergeCaptionsForUi(captionEngineRef.current);
+    // #region agent log: flush cadence into React (H3)
+    const nowMs = Date.now();
+    const shouldLogFlush = nowMs - lastFlushLogAtRef.current > 1000;
+    if (shouldLogFlush && typeof window !== "undefined") {
+      lastFlushLogAtRef.current = nowMs;
+      fetch('http://127.0.0.1:7891/ingest/e6c8e207-e5e1-4e11-b95a-baa54d11271a',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'2c9b00'},body:JSON.stringify({sessionId:'2c9b00',runId:'deep-survey-1',hypothesisId:'H3',location:'useDeepgram.js:flushCaptionsToSession',message:'flush captions into React',data:{captionsNextLen:next?.length ?? 0},timestamp:Date.now()})}).catch(()=>{});
+    }
+    // #endregion agent log
     updateCaptions((prev) => (captionsSnapshotEqual(prev, next) ? prev : next));
   }, [updateCaptions]);
 
@@ -623,6 +634,27 @@ export const useDeepgram = () => {
           const isFinal = received.is_final;
           const speechFinal = received.speech_final;
           const startTime = received.start ?? 0;
+          const transcriptLen = transcript.length;
+          const prevTranscriptLen = lastTranscriptLenRef.current;
+          const deltaLen = prevTranscriptLen === null || prevTranscriptLen === undefined ? null : transcriptLen - prevTranscriptLen;
+          lastTranscriptLenRef.current = transcriptLen;
+
+          // #region agent log: interim char-churn cadence (H2)
+          // Detect “one char at a time” interim churn by length delta.
+          if (
+            !isFinal &&
+            !speechFinal &&
+            (deltaLen === null || Math.abs(deltaLen) <= 2) &&
+            typeof window !== "undefined" &&
+            lastCharChurnLogAtRef.current !== undefined
+          ) {
+            const nowLog = performance.now();
+            if (nowLog - lastCharChurnLogAtRef.current > 1000) {
+              lastCharChurnLogAtRef.current = nowLog;
+              fetch('http://127.0.0.1:7891/ingest/e6c8e207-e5e1-4e11-b95a-baa54d11271a',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'2c9b00'},body:JSON.stringify({sessionId:'2c9b00',runId:'pre-char-churn',hypothesisId:'H2',location:'useDeepgram.js:ws.onmessage',message:'interim char churn',data:{isInterim:true,transcriptLen,deltaLen},timestamp:Date.now()})}).catch(()=>{});
+            }
+          }
+          // #endregion agent log
           const socketLaneLang =
             lang === "multi"
               ? received.channel?.detected_language ||

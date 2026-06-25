@@ -427,6 +427,9 @@ export const TranscriptionBoard = ({
     return `🎤 ${micLabel} → 🔊 ${outLabel}`;
   }, [inputDevices, outputDevices, selectedMicId, selectedSinkId]);
   const warnedBubblesRef = useRef(new Set());
+  const lastBoardLogAtRef = useRef(0);
+  const lastBoardLastCapLenRef = useRef(null);
+  const lastTurnMetaLogAtRef = useRef(0);
   
   const [popover, setPopover] = useState({ show: false, x: 0, y: 0, text: '' });
   const popoverTimerRef = useRef(null);
@@ -466,6 +469,7 @@ export const TranscriptionBoard = ({
 
   /** One word count per silence-to-silence turn — show only on the last bubble of that turn. */
   const turnDisplayMeta = useMemo(() => {
+    const tMeta0 = performance.now();
     const lastIndexByTurn = {};
     const maxCountByTurn = {};
     captions.forEach((cap, i) => {
@@ -474,6 +478,15 @@ export const TranscriptionBoard = ({
       const tc = cap.turnWordCount ?? 0;
       if (tc > (maxCountByTurn[tid] ?? 0)) maxCountByTurn[tid] = tc;
     });
+    const dtMeta = performance.now() - tMeta0;
+    const nowMs = Date.now();
+    const shouldLogMeta = dtMeta > 8 && captions.length > 0 && nowMs - lastTurnMetaLogAtRef.current > 1000;
+    if (shouldLogMeta && typeof window !== 'undefined') {
+      // #region agent log: turnDisplayMeta cost (H4)
+      lastTurnMetaLogAtRef.current = nowMs;
+      fetch('http://127.0.0.1:7891/ingest/e6c8e207-e5e1-4e11-b95a-baa54d11271a',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'2c9b00'},body:JSON.stringify({sessionId:'2c9b00',runId:'deep-survey-1',hypothesisId:'H4',location:'TranscriptionBoard.js:turnDisplayMeta',message:'captions.forEach turnDisplayMeta cost',data:{captionsLen:captions.length,dtMeta},timestamp:Date.now()})}).catch(()=>{});
+      // #endregion agent log
+    }
     return { lastIndexByTurn, maxCountByTurn };
   }, [captions]);
 
@@ -515,7 +528,26 @@ export const TranscriptionBoard = ({
     lastScrollKeyRef.current = scrollKey;
 
     if (lastCap && lastCap.text) {
+      const lastLen = lastCap.text.length;
+      const prevLen = lastBoardLastCapLenRef.current;
+      const deltaLenBoard = prevLen === null || prevLen === undefined ? null : lastLen - prevLen;
+      lastBoardLastCapLenRef.current = lastLen;
+
+      const tWords0 = performance.now();
       const words = lastCap.text.trim().split(/\s+/).length;
+      const dtWords = performance.now() - tWords0;
+
+      // #region agent log: transcription board word-split cost + char churn (H1/H2)
+      const nowMs = Date.now();
+      const shouldLog =
+        (deltaLenBoard !== null && Math.abs(deltaLenBoard) <= 1 && nowMs - lastBoardLogAtRef.current > 1000) ||
+        dtWords > 8;
+      if (shouldLog) {
+        lastBoardLogAtRef.current = nowMs;
+        fetch('http://127.0.0.1:7891/ingest/e6c8e207-e5e1-4e11-b95a-baa54d11271a',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'2c9b00'},body:JSON.stringify({sessionId:'2c9b00',runId:'deep-survey-1',hypothesisId:'H1',location:'TranscriptionBoard.js:captions-effect',message:'board word split / char churn',data:{captionsLen:count,isFinal,lastLen,deltaLenBoard,dtWords},timestamp:Date.now()})}).catch(()=>{});
+      }
+      // #endregion agent log
+
       if (words >= 40 && !warnedBubblesRef.current.has(lastCap.id)) {
         playWarningPing();
         warnedBubblesRef.current.add(lastCap.id);
