@@ -2692,30 +2692,6 @@ ${isInDeficit ? `⚠️ DEFICIT: Behind pace by ${Math.round(monthlyDeficitMins)
               <div 
                 title={`Progress: ${liveDailyArs.toLocaleString('es-AR')} / ${dailyTargetArs.toLocaleString('es-AR')} ARS. Each notch = 1 hour of shift (9 AM - 6 PM).`}
                 style={{ position: 'absolute', inset: 0, display: 'flex', pointerEvents: 'auto', zIndex: 11, cursor: 'help' }}>
-                
-                {/* Banked Money Label */}
-                <div style={{ 
-                  position: 'absolute', left: '0.4rem', top: '-11px', 
-                  fontSize: '0.48rem', fontWeight: 900, 
-                  color: '#fff', textShadow: '0 0 8px rgba(16,185,129,0.8)',
-                  background: 'rgba(16,185,129,0.3)', padding: '0 0.3rem', 
-                  borderRadius: '2px', border: '1px solid rgba(16,185,129,0.4)',
-                  pointerEvents: 'none', letterSpacing: '0.04em'
-                }}>
-                  BANKED: AR${liveDailyArs.toLocaleString('es-AR')}
-                </div>
-                
-                {/* Est Max Label */}
-                <div style={{ 
-                  position: 'absolute', right: '0.4rem', top: '-11px', 
-                  fontSize: '0.48rem', fontWeight: 700, 
-                  color: 'rgba(255,255,255,0.6)', 
-                  background: 'rgba(0,0,0,0.4)', padding: '0 0.3rem', 
-                  borderRadius: '2px', border: '1px solid rgba(255,255,255,0.1)',
-                  pointerEvents: 'none', letterSpacing: '0.02em'
-                }}>
-                  EST. MAX: AR${Math.round((stats.dailyMinutes + Math.max(0, DAILY_SHIFT_END - currentTime) * 35) * RATE_PER_MINUTE * arsRate).toLocaleString('es-AR')}
-                </div>
 
                 {Array.from({ length: 9 }).map((_, i) => (
                   <div key={i} style={{ flex: 1, borderRight: i < 8 ? '1px solid rgba(255,255,255,0.15)' : 'none' }} />

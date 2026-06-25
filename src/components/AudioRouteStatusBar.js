@@ -121,6 +121,8 @@ export const AudioRouteStatusBar = ({
       className={`audio-route-status-bar${compact ? ' is-compact' : ''}`}
       style={{
         display: 'flex',
+        flex: 1,
+        minWidth: 0,
         flexWrap: 'wrap',
         alignItems: 'center',
         gap: '0.35rem 0.5rem',
