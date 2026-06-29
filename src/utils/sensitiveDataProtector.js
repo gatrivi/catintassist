@@ -110,6 +110,75 @@ export const getNumberHighlightRegex = () =>
   new RegExp(NUMBER_HIGHLIGHT_REGEX.source, 'g');
 
 // ---------------------------------------------------------------------------
+// CRITICAL MEDICAL/ADMIN DATA PROTECTION (pure regex + helpers)
+// ---------------------------------------------------------------------------
+
+const EN_DATE_CUE_RE =
+  /\b(date|when|scheduled|schedule|appointment|appt|follow[- ]?up|rescheduled|booked|due)\b/i;
+
+const ES_DATE_CUE_RE =
+  /\b(fecha|cu[aá]ndo|programad[oa]|agendad[oa]|turno|cita|control|seguimiento|reprogramad[oa]|vence)\b/i;
+
+const MONTH_RE =
+  /\b(jan(?:uary)?|feb(?:ruary)?|mar(?:ch)?|apr(?:il)?|june?|july?|aug(?:ust)?|sept?(?:ember)?|oct(?:ober)?|nov(?:ember)?|dec(?:ember)?|enero|febrero|marzo|abril|junio|julio|agosto|septiembre|setiembre|octubre|noviembre|diciembre)\b/i;
+
+const MAY_DATE_RE =
+  /\bmay\s+(?:\d{1,2}|first|second|third|fourth|fifth|sixth|seventh|eighth|ninth|tenth|eleventh|twelfth|thirteenth|fourteenth|fifteenth|sixteenth|seventeenth|eighteenth|nineteenth|twentieth|twenty[-\s]first|twenty[-\s]second|twenty[-\s]third|thirtieth|thirty[-\s]first)\b/i;
+
+const WEEKDAY_RE =
+  /\b(monday|tuesday|wednesday|thursday|friday|saturday|sunday|lunes|martes|mi[eé]rcoles|jueves|viernes|s[aá]bado|domingo)\b/i;
+
+const ORDINAL_RE =
+  /\b(first|second|third|fourth|fifth|sixth|seventh|eighth|ninth|tenth|eleventh|twelfth|thirteenth|fourteenth|fifteenth|sixteenth|seventeenth|eighteenth|nineteenth|twentieth|twenty[-\s]first|twenty[-\s]second|twenty[-\s]third|thirtieth|thirty[-\s]first|primero|segunda?|tercero|cuarto|quinto|sexto|s[eé]ptimo|octavo|noveno|d[eé]cimo)\b/i;
+
+const NUMERIC_DATE_RE = /\b\d{1,2}[/-]\d{1,2}(?:[/-]\d{2,4})?\b/;
+
+const CLOCK_TIME_RE =
+  /\b\d{1,2}(?::\d{2})?\s*(?:a\.?m\.?|p\.?m\.?|am|pm)\b/i;
+
+const MED_CUE_RE =
+  /\b(medication|medicine|med|dose|dosage|prescription|prescribed|pharmacy|pill|tablet|capsule|insulin|medicamento|medicina|dosis|receta|recetad[oa]|farmacia|pastilla|comprimido|c[aá]psula|insulina)\b/i;
+
+const DOSAGE_RE =
+  /\b\d+(?:[.,]\d+)?\s*(?:mg|mcg|g|ml|cc|iu|units?|mEq|milligrams?|micrograms?|grams?|milliliters?|miligramos?|microgramos?|gramos?|mililitros?|unidades?)\b/i;
+
+const FREQUENCY_RE =
+  /\b(once|twice|daily|nightly|every|per day|a day|bid|tid|qid|prn|una vez|dos veces|diari[oa]|cada|por d[ií]a|por noche)\b/i;
+
+const PRICE_CUE_RE =
+  /\b(price|cost|costs|charge|fee|pay|paid|payment|copay|co-pay|consultation|procedure|medication|medicine|cuesta|costo|precio|pagar|pag[oó]|cobran|consulta|procedimiento|medicamento|medicina|copago|coaseguro)\b/i;
+
+const MONEY_RE =
+  /(?:[$€£]\s*\d+(?:[.,]\d{2})?|\b\d+(?:[.,]\d{2})?\s*(?:dollars?|pesos?|usd|ars|copay|co-pay|copago|coaseguro)\b)/i;
+
+export const hasCriticalDataCue = (text) => {
+  if (!text) return false;
+  return (
+    EN_DATE_CUE_RE.test(text) ||
+    ES_DATE_CUE_RE.test(text) ||
+    MED_CUE_RE.test(text) ||
+    PRICE_CUE_RE.test(text)
+  );
+};
+
+export const containsCriticalData = (text) => {
+  if (!text) return false;
+
+  return (
+    NUMERIC_DATE_RE.test(text) ||
+    CLOCK_TIME_RE.test(text) ||
+    MONTH_RE.test(text) ||
+    MAY_DATE_RE.test(text) ||
+    WEEKDAY_RE.test(text) ||
+    ORDINAL_RE.test(text) ||
+    DOSAGE_RE.test(text) ||
+    MONEY_RE.test(text) ||
+    (MED_CUE_RE.test(text) && FREQUENCY_RE.test(text)) ||
+    (PRICE_CUE_RE.test(text) && /\d/.test(text))
+  );
+};
+
+// ---------------------------------------------------------------------------
 // CONTEXT SENTINELS
 // ---------------------------------------------------------------------------
 // Detects "about to spell something" contexts so downstream STT logic can
@@ -117,7 +186,7 @@ export const getNumberHighlightRegex = () =>
 // emails, and addresses.
 //
 // Returns an object:
-//   { mode: 'spelling' | 'email' | 'ssn' | 'phone' | 'address' | null,
+//   { mode: 'spelling' | 'email' | 'ssn' | 'phone' | 'address' | 'date' | 'medication' | 'dosage' | 'price' | null,
 //     lang: 'en' | 'es' }
 //
 // Call this BEFORE convertEnglishNumberWords or formatPhoneAndSSNDigits.
@@ -168,6 +237,16 @@ const EN_SENTINELS = {
     /\bdrive\b/i,
     /\broad\b/i,
   ],
+  date: [
+    EN_DATE_CUE_RE,
+    MONTH_RE,
+    WEEKDAY_RE,
+    NUMERIC_DATE_RE,
+    CLOCK_TIME_RE,
+  ],
+  medication: [MED_CUE_RE],
+  dosage: [MED_CUE_RE, DOSAGE_RE, FREQUENCY_RE],
+  price: [PRICE_CUE_RE, MONEY_RE],
 };
 
 const ES_SENTINELS = {
@@ -201,6 +280,16 @@ const ES_SENTINELS = {
     /\bapartamento\b/i,
     /\bpiso\b/i,
   ],
+  date: [
+    ES_DATE_CUE_RE,
+    MONTH_RE,
+    WEEKDAY_RE,
+    NUMERIC_DATE_RE,
+    CLOCK_TIME_RE,
+  ],
+  medication: [MED_CUE_RE],
+  dosage: [MED_CUE_RE, DOSAGE_RE, FREQUENCY_RE],
+  price: [PRICE_CUE_RE, MONEY_RE],
 };
 
 export const detectSentinelContext = (text, lang = 'en') => {
@@ -350,11 +439,27 @@ export const hallucinationGuard = (text) => {
     const norm = normalize(word);
     const pair = i > 0 ? normalize(words[i - 1] + word) : '';
 
-    if (norm === lastWord && norm.length > 1 && !isNumberLike(word)) continue;
+    const localWindow = words
+      .slice(Math.max(0, i - 4), i + 5)
+      .join(' ');
+    const pairWindow = words
+      .slice(Math.max(0, i - 5), i + 6)
+      .join(' ');
+
+    if (
+      norm === lastWord &&
+      norm.length > 1 &&
+      !isNumberLike(word) &&
+      !containsCriticalData(localWindow) &&
+      !hasCriticalDataCue(localWindow)
+    )
+      continue;
     if (
       pair === lastPair &&
       pair.length > 4 &&
-      !containsNumberSequence(words.slice(i - 1, i + 1).join(' '))
+      !containsNumberSequence(words.slice(i - 1, i + 1).join(' ')) &&
+      !containsCriticalData(pairWindow) &&
+      !hasCriticalDataCue(pairWindow)
     )
       continue;
 
@@ -366,7 +471,8 @@ export const hallucinationGuard = (text) => {
   if (
     words.length > 15 &&
     cleaned.length < words.length * 0.5 &&
-    !containsNumberSequence(text, 2)
+    !containsNumberSequence(text, 2) &&
+    !containsCriticalData(text)
   ) {
     // eslint-disable-next-line no-console
     if (process.env.NODE_ENV !== 'production') console.log('[PRUNED]', text, '→', cleaned.slice(0, 12).join(' '));
@@ -397,9 +503,20 @@ export const removeOverlapPreservingDigitSequences = (base, addition) => {
   if (bestOverlap > 0) {
     const overlapSlice = aWordsRaw.slice(0, bestOverlap);
     const overlapText = overlapSlice.join(' ');
+    const boundaryText = [
+      base.trim().split(/\s+/).slice(-10).join(' '),
+      aWordsRaw
+        .slice(0, Math.min(aWordsRaw.length, bestOverlap + 8))
+        .join(' '),
+    ].join(' ');
     // eslint-disable-next-line no-console
     if (process.env.NODE_ENV !== 'production') console.log('[OVERLAP]', bestOverlap, 'words:', overlapText);
-    if (/\d/.test(overlapText) || overlapSlice.some(isNumberLike)) {
+    if (
+      /\d/.test(overlapText) ||
+      overlapSlice.some(isNumberLike) ||
+      containsCriticalData(overlapText) ||
+      containsCriticalData(boundaryText)
+    ) {
       bestOverlap = 0;
     }
   }

@@ -9,6 +9,8 @@ import {
   removeOverlapPreservingDigitSequences,
   detectSentinelContext,
   looksLikeAddressFragment,
+  containsCriticalData,
+  hasCriticalDataCue,
   containsNumberSequence,
   isNumberLike,
   cleanFillerWords,
@@ -136,6 +138,48 @@ describe('detectSentinelContext', () => {
 });
 
 // ---------------------------------------------------------------------------
+// critical medical/admin data protection
+// ---------------------------------------------------------------------------
+describe('critical medical/admin data protection', () => {
+  test('detects appointment date cue', () => {
+    expect(hasCriticalDataCue('scheduled for June first')).toBe(true);
+    expect(containsCriticalData('scheduled for June first')).toBe(true);
+  });
+
+  test('detects numeric appointment date and time', () => {
+    expect(
+      containsCriticalData('appointment is on 06/14 at 9:30 AM')
+    ).toBe(true);
+  });
+
+  test('detects medication dosage', () => {
+    expect(containsCriticalData('take metformin 500 mg twice daily')).toBe(true);
+  });
+
+  test('detects medication price', () => {
+    expect(containsCriticalData('the medication costs $45')).toBe(true);
+  });
+
+  test('detects consultation price', () => {
+    expect(containsCriticalData('the consultation is 120 dollars')).toBe(true);
+  });
+
+  test('detects Spanish appointment date', () => {
+    expect(containsCriticalData('el turno es el 14 de junio')).toBe(true);
+  });
+
+  test('detects Spanish medication dosage', () => {
+    expect(
+      containsCriticalData('tome metformina 500 mg dos veces al día')
+    ).toBe(true);
+  });
+
+  test('detects Spanish consultation price', () => {
+    expect(containsCriticalData('la consulta cuesta 12000 pesos')).toBe(true);
+  });
+});
+
+// ---------------------------------------------------------------------------
 // looksLikeAddressFragment
 // ---------------------------------------------------------------------------
 describe('looksLikeAddressFragment', () => {
@@ -203,6 +247,24 @@ describe('removeOverlapPreservingDigitSequences', () => {
     const addition = '212 555 0100';
     // "212" overlaps but contains digits → overlap is zeroed out
     expect(removeOverlapPreservingDigitSequences(base, addition)).toBe('212 555 0100');
+  });
+
+  test('preserves overlap when critical date data is present', () => {
+    const base = 'the appointment is scheduled for';
+    const addition = 'scheduled for June first';
+    expect(removeOverlapPreservingDigitSequences(base, addition)).toBe(addition);
+  });
+
+  test('preserves overlap when critical medication dosage is present', () => {
+    const base = 'take metformin';
+    const addition = 'metformin 500 mg twice daily';
+    expect(removeOverlapPreservingDigitSequences(base, addition)).toBe(addition);
+  });
+
+  test('preserves overlap when critical price data is present', () => {
+    const base = 'the consultation costs';
+    const addition = 'costs 120 dollars';
+    expect(removeOverlapPreservingDigitSequences(base, addition)).toBe(addition);
   });
 
   test('handles empty addition', () => {

@@ -52,6 +52,27 @@ export const ConnectInterpretButton = ({
     const last = lastClickAtRef.current;
     const isDouble = last && (now - last) <= DOUBLE_TAP_MS;
 
+    // #region agent log: connect/tap handler invoked (H5)
+    if (typeof window !== "undefined") {
+      fetch('http://127.0.0.1:7815/ingest/d4621a1a-f688-4c75-8b4e-0dd09e3263ee', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-Debug-Session-Id': '749b6a',
+        },
+        body: JSON.stringify({
+          sessionId: '749b6a',
+          runId: 'mobile-pre1',
+          hypothesisId: 'H5',
+          location: 'ConnectInterpretButton.js:handleClick',
+          message: 'connect button handler invoked',
+          data: { requireDoubleTapIndicator, size, label: label?.toString?.().slice(0, 80) ?? label, isDouble },
+          timestamp: Date.now(),
+        }),
+      }).catch(() => {});
+    }
+    // #endregion agent log
+
     if (isDouble) {
       lastClickAtRef.current = 0;
       setIsPendingDoubleTap(false);

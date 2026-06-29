@@ -337,6 +337,27 @@ const Dashboard = () => {
   // Step 1: attach audio only (no call timer, no transcript capture).
   const handleAttachAudio = useCallback(
     async (fresh = false) => {
+      // #region agent log: handleAttachAudio (H1)
+      if (typeof window !== "undefined") {
+        fetch('http://127.0.0.1:7815/ingest/d4621a1a-f688-4c75-8b4e-0dd09e3263ee', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'X-Debug-Session-Id': '749b6a',
+          },
+          body: JSON.stringify({
+            sessionId: '749b6a',
+            runId: 'mobile-pre1',
+            hypothesisId: 'H1',
+            location: 'App.js:handleAttachAudio',
+            message: 'user initiated audio attach',
+            data: { fresh, micTestMode, tabStreamReady, connectionState, audioAttached },
+            timestamp: Date.now(),
+          }),
+        }).catch(() => {});
+      }
+      // #endregion agent log
+
       // HIPAA: cancel any pending disconnect grace when user reconnects.
       cancelHipaaDisconnectGrace?.();
       if (isBreakActive) stopBreak();
@@ -348,6 +369,27 @@ const Dashboard = () => {
   // Step 2: start call timer + transcription UI (audio should already be attached).
   const handleStartCall = useCallback(
     (isRecovery = false) => {
+      // #region agent log: handleStartCall (H3)
+      if (typeof window !== "undefined") {
+        fetch('http://127.0.0.1:7815/ingest/d4621a1a-f688-4c75-8b4e-0dd09e3263ee', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'X-Debug-Session-Id': '749b6a',
+          },
+          body: JSON.stringify({
+            sessionId: '749b6a',
+            runId: 'mobile-pre1',
+            hypothesisId: 'H3',
+            location: 'App.js:handleStartCall',
+            message: 'user initiated call start (startSession)',
+            data: { isRecovery, micTestMode, tabStreamReady, connectionState, audioAttached, preIsActive: isActive },
+            timestamp: Date.now(),
+          }),
+        }).catch(() => {});
+      }
+      // #endregion agent log
+
       // HIPAA: cancel any pending disconnect grace when starting/resuming a call.
       cancelHipaaDisconnectGrace?.();
       if (isBreakActive) stopBreak();
