@@ -107,6 +107,17 @@ const acquireAudioStream = async (useMic) => {
   return navigator.mediaDevices.getDisplayMedia({ video: true, audio: true });
 };
 
+// Heuristic: only auto-switch to mic mode on small screens to avoid surprising desktop users.
+const isLikelyMobile = () => {
+  try {
+    const w = typeof window !== "undefined" ? window.innerWidth : 9999;
+    const ua = typeof navigator !== "undefined" ? navigator.userAgent || "" : "";
+    return w <= 600 || /Android|iPhone|iPad|iPod/i.test(ua);
+  } catch (_) {
+    return false;
+  }
+};
+
 export const useDeepgram = () => {
   const {
     updateActivity,
@@ -578,6 +589,30 @@ export const useDeepgram = () => {
     },
     [stopStreamTracks],
   );
+
+  // Mobile UX: if the user selected a physical mic device, default to mic-mode STT.
+  // This keeps the green Connect button and the actual audio route in sync.
+  useEffect(() => {
+    const ensureMicModeForMobile = () => {
+      if (!isLikelyMobile()) return;
+      try {
+        const micId = localStorage.getItem(MIC_DEVICE_KEY);
+        if (micId && !micTestModeRef.current) setMicTestMode(true);
+      } catch (_) {}
+    };
+
+    const onMicDeviceChanged = (e) => {
+      const deviceId = e?.detail?.deviceId ?? "";
+      if (!deviceId) return;
+      if (!isLikelyMobile()) return;
+      if (micTestModeRef.current) return;
+      setMicTestMode(true);
+    };
+
+    ensureMicModeForMobile();
+    window.addEventListener("catint_mic_device_changed", onMicDeviceChanged);
+    return () => window.removeEventListener("catint_mic_device_changed", onMicDeviceChanged);
+  }, [setMicTestMode]);
 
   const startDeepgram = useCallback(
     (stream) => {

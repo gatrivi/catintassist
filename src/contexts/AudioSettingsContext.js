@@ -231,6 +231,11 @@ export const AudioSettingsProvider = ({ children }) => {
   const changeMicId = (deviceId) => {
     setSelectedMicId(deviceId);
     localStorage.setItem('CATINTASSIST_MIC_ID', deviceId);
+    try {
+      window.dispatchEvent(
+        new CustomEvent('catint_mic_device_changed', { detail: { deviceId } }),
+      );
+    } catch (_) {}
   };
 
   return (

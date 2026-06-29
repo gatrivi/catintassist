@@ -1548,7 +1548,9 @@ export const DashboardHeader = ({
     ? 'Re-attach'
     : audioAttached
         ? 'Start interpreting'
-        : 'Click to connect tab';
+        : micTestMode
+          ? 'Connect microphone'
+          : 'Click to connect tab';
   const connectSingleTitle = isZombieCall
     ? 'Re-attach to your call (timer saved)'
     : vaultNeedsDecrypt
