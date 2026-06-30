@@ -395,7 +395,7 @@ const SessionControlsSticky = React.memo(({
 
   return (
     <>
-      <div className="session-controls-sticky-row" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.5rem', width: '100%' }}>
+      <div className="session-controls-sticky-row">
       <div style={{ display: 'flex', gap: '3px', alignItems: 'center', flexShrink: 0 }}>
         {!isActive && (
           <button

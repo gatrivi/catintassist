@@ -1277,3 +1277,4 @@
 {"sessionId":"2c9b00","runId":"pre-char-churn","hypothesisId":"H2","location":"useDeepgram.js:ws.onmessage","message":"interim char churn","data":{"isInterim":true,"transcriptLen":33,"deltaLen":0},"timestamp":1782764872939}
 {"sessionId":"2c9b00","runId":"pre-char-churn","hypothesisId":"H2","location":"useDeepgram.js:ws.onmessage","message":"interim char churn","data":{"isInterim":true,"transcriptLen":33,"deltaLen":0},"timestamp":1782764882054}
 {"sessionId":"2c9b00","runId":"pre-char-churn","hypothesisId":"H2","location":"useDeepgram.js:ws.onmessage","message":"interim char churn","data":{"isInterim":true,"transcriptLen":42,"deltaLen":0},"timestamp":1782764889487}
+{"sessionId":"2c9b00","runId":"scramble-jitter-probe","hypothesisId":"H7","location":"ScrambleText.js:useEffect","message":"ScrambleText effect trigger cadence","timestamp":1782854684200,"data":{"eventsTotal":1,"targetLen":27,"displayedLen":0,"deltaLen":27}}
