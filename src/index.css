@@ -17,14 +17,14 @@
   --font-mono: 'JetBrains Mono', 'Fira Code', monospace;
 
   /* Ambient Glow Variables */
-  --glow-1: rgba(239, 68, 68, 0.15);
-  --glow-2: rgba(16, 185, 129, 0.1);
+  --glow-1: rgba(59, 130, 246, 0.16);
+  --glow-2: rgba(56, 189, 248, 0.10);
   --glow-speed: 8s;
 }
 
 [data-state="call"] {
-  --glow-1: rgba(16, 185, 129, 0.25);
-  --glow-2: rgba(52, 211, 153, 0.15);
+  --glow-1: rgba(59, 130, 246, 0.28);
+  --glow-2: rgba(56, 189, 248, 0.18);
   --glow-speed: 4s;
 }
 
@@ -181,12 +181,9 @@ body {
   position: relative;
 }
 
-/* Version pill — visible but never steals header clicks (v4.73.4) */
+/* Version pill — inside `dashboard-header` (never steals header clicks) */
 .app-version-pill {
-  position: fixed;
-  top: 4px;
-  right: 6px;
-  z-index: 40;
+  position: relative;
   pointer-events: none;
   font-size: 0.62rem;
   font-weight: 900;
@@ -1708,12 +1705,11 @@ body {
   flex-direction: column;
   gap: 0.25rem;
   padding: 0.25rem;
-  padding-right: calc(0.5rem + min(42vw, 11rem));
   min-width: 0;
   flex-shrink: 0;  /* Header takes its natural height; main-content gets the rest */
   max-height: min(42vh, 320px);
   overflow-y: auto;
-  overflow-x: hidden;
+  overflow-x: visible;
 }
 
 /* Connection Diagnostics (v4.72.x hotfix)
@@ -1967,7 +1963,14 @@ body {
   box-sizing: border-box;
   gap: 0.15rem;
   padding: 4px 6px;
-  margin: -0.25rem -0.25rem 0.15rem;
+  /* Make the sticky bar span the full header width.
+     - Header left padding is 0.25rem (from `padding: 0.25rem`)
+     - Header right padding is `calc(0.5rem + min(42vw, 11rem))` (from `padding-right`)
+     We cancel only those paddings so the bar fills the header border box without over-shooting. */
+  margin-top: -0.25rem;
+  margin-bottom: 0.15rem;
+  margin-left: -0.25rem;
+  margin-right: calc(-0.5rem - min(42vw, 11rem));
   background: rgba(12, 12, 18, 0.96);
   border-bottom: 1px solid rgba(255, 255, 255, 0.08);
   backdrop-filter: blur(10px);
@@ -1977,6 +1980,23 @@ body {
 
 .session-controls-sticky-row {
   width: 100%;
+  /* Sticky bar moved here after removing `.session-controls-sticky` wrapper.
+     Keep layout direction controlled by inline styles; only apply "chrome". */
+  position: sticky;
+  top: 0;
+  z-index: 250;
+  box-sizing: border-box;
+  padding: 4px 6px;
+  margin-top: 0;
+  margin-bottom: 0.15rem;
+  margin-left: 0;
+  margin-right: 0;
+  background: rgba(12, 12, 18, 0.96);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  flex-shrink: 0;
+  overflow: visible;
 }
 
 @keyframes connectInterpretFlash {
@@ -2208,6 +2228,8 @@ body {
   padding: 0;
   background: transparent;
   transition: background 0.2s, transform 0.1s;
+  color: rgba(226,232,240,0.95);
+  line-height: 1;
 }
 
 .btn-emoji:hover {
@@ -3021,6 +3043,8 @@ body {
   display: flex;
   align-items: center;
   justify-content: center;
+  color: rgba(226,232,240,0.95);
+  line-height: 1;
 }
 .btn-icon:hover { background: rgba(255,255,255,0.08); }
 /* ── COIN RAIN ANIMATIONS ── */

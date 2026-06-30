@@ -276,6 +276,7 @@ const SessionControlsSticky = React.memo(({
   isActive,
   isBreakActive,
   isZombieCall,
+  versionLabel = "",
   apiKeyMissing,
   vaultNeedsDecrypt,
   apiKeyMissingNoVault = false,
@@ -329,10 +330,18 @@ const SessionControlsSticky = React.memo(({
   setIsNotesOpen,
 
   tabStreamReady = false,
+  cableStreamReady = false,
   lastDataTime = 0,
   onOpenSoundboard,
   onExpandAudioDevices,
   onOpenGoalDial,
+
+  // Audio route UX props (passed into AudioRouteStatusBar)
+  configuredAudioSourceMode = "tab",
+  attachedAudioSourceMode = "tab",
+  virtualCableFailure = null,
+  onReconnectAudioSource,
+  onSwitchToTabShare,
 
   sttLanguage = 'auto',
   onToggleLanguage,
@@ -340,6 +349,7 @@ const SessionControlsSticky = React.memo(({
   languagePairLabel,
 }) => {
   const showConnecting = isActive && connectionState !== 'connected';
+  const isConnectionError = connectionState === 'error';
   const slackText = `SLACK ${formatTime(silenceCount)}`;
 
   const offCallStatusText = buildOffCallStatus({
@@ -384,7 +394,7 @@ const SessionControlsSticky = React.memo(({
   const langBtnTitle = `STT ${langPairShort} · ${sttLanguage === 'auto' ? 'auto-detect' : sttLanguage === 'left' ? 'forcing left column' : 'forcing right column'} · Tap: cycle STT · Hold: pair settings`;
 
   return (
-    <div className="session-controls-sticky" style={undefined}>
+    <>
       <div className="session-controls-sticky-row" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.5rem', width: '100%' }}>
       <div style={{ display: 'flex', gap: '3px', alignItems: 'center', flexShrink: 0 }}>
         {!isActive && (
@@ -398,9 +408,21 @@ const SessionControlsSticky = React.memo(({
               width: '26px',
               height: '26px',
               fontSize: '0.7rem',
-              background: micTestMode ? 'rgba(245, 158, 11, 0.25)' : 'rgba(255,255,255,0.06)',
-              border: micTestMode ? '1px solid rgba(245, 158, 11, 0.55)' : '1px solid rgba(255,255,255,0.1)',
-              boxShadow: micTestMode ? '0 0 8px rgba(245, 158, 11, 0.35)' : 'none',
+              background: isConnectionError
+                ? 'rgba(239, 68, 68, 0.25)'
+                : micTestMode
+                  ? 'rgba(245, 158, 11, 0.25)'
+                  : 'rgba(255,255,255,0.06)',
+              border: isConnectionError
+                ? '1px solid rgba(239, 68, 68, 0.55)'
+                : micTestMode
+                  ? '1px solid rgba(245, 158, 11, 0.55)'
+                  : '1px solid rgba(255,255,255,0.1)',
+              boxShadow: isConnectionError
+                ? '0 0 10px rgba(239, 68, 68, 0.35)'
+                : micTestMode
+                  ? '0 0 8px rgba(245, 158, 11, 0.35)'
+                  : 'none',
             }}
             title={micTestMode ? 'Mic ON — Connect uses microphone (no tab picker)' : 'Mic OFF — Connect captures interpreter tab audio (Share audio)'}
             aria-pressed={micTestMode}
@@ -426,14 +448,16 @@ const SessionControlsSticky = React.memo(({
               fontSize: '0.62rem',
               fontWeight: 800,
               letterSpacing: '0.04em',
-              background:
-                sttLanguage === 'left'
+              background: isConnectionError
+                ? 'rgba(239, 68, 68, 0.25)'
+                : sttLanguage === 'left'
                   ? 'rgba(239, 68, 68, 0.25)'
                   : sttLanguage === 'right'
                     ? 'rgba(16, 185, 129, 0.25)'
                     : 'rgba(255,255,255,0.06)',
-              border:
-                sttLanguage === 'left'
+              border: isConnectionError
+                ? '1px solid rgba(239, 68, 68, 0.55)'
+                : sttLanguage === 'left'
                   ? '1px solid rgba(239, 68, 68, 0.55)'
                   : sttLanguage === 'right'
                     ? '1px solid rgba(16, 185, 129, 0.55)'
@@ -457,8 +481,12 @@ const SessionControlsSticky = React.memo(({
               width: '26px',
               height: '26px',
               fontSize: '0.75rem',
-              background: 'rgba(139, 92, 246, 0.18)',
-              border: '1px solid rgba(167, 139, 250, 0.45)',
+              background: isConnectionError
+                ? 'rgba(239, 68, 68, 0.22)'
+                : 'rgba(139, 92, 246, 0.18)',
+              border: isConnectionError
+                ? '1px solid rgba(239, 68, 68, 0.55)'
+                : '1px solid rgba(167, 139, 250, 0.45)',
             }}
             title="Weekly hours commitment — tap to open goal picker wheel"
           >
@@ -695,6 +723,27 @@ const SessionControlsSticky = React.memo(({
           zIndex: 320, // ensure gear/help stay above diagnostics chip
         }}
       >
+        {versionLabel && (
+          <button
+            id="header-app-icon-btn"
+            type="button"
+            data-guide="version"
+            className="btn-icon tiny-btn app-version-icon"
+            title={`Build: ${versionLabel}`}
+            style={{
+              width: '22px',
+              height: '22px',
+              fontSize: '0.65rem',
+              opacity: 0.95,
+              background: 'rgba(59,130,246,0.12)',
+              border: '1px solid rgba(59,130,246,0.35)',
+              color: 'rgba(226,232,240,0.95)',
+            }}
+            aria-label={`Build version: ${versionLabel}`}
+          >
+            ⧉
+          </button>
+        )}
         {isActive && !callModeExpanded && (
           <button
             className="btn-icon tiny-btn"
@@ -730,6 +779,10 @@ const SessionControlsSticky = React.memo(({
       <AudioRouteStatusBar
         micTestMode={micTestMode}
         tabStreamReady={tabStreamReady}
+        cableStreamReady={cableStreamReady}
+        configuredAudioSourceMode={configuredAudioSourceMode}
+        attachedAudioSourceMode={attachedAudioSourceMode}
+        virtualCableFailure={virtualCableFailure}
         audioAttached={audioAttached}
         connectionState={connectionState}
         connectProgress={connectProgress}
@@ -737,6 +790,8 @@ const SessionControlsSticky = React.memo(({
         isActive={isActive}
         isZombieCall={isZombieCall}
         onReconnectStream={onReconnectStream}
+        onReconnectAudioSource={onReconnectAudioSource}
+        onSwitchToTabShare={onSwitchToTabShare}
         onOpenAudioSettings={onExpandAudioDevices}
         onTestLocal={() => playTestToneLocal()}
         onTestRoute={async () => {
@@ -750,7 +805,7 @@ const SessionControlsSticky = React.memo(({
         onOpenSoundboard={!isActive ? onOpenSoundboard : undefined}
         compact
       />
-    </div>
+    </>
   );
 });
 
@@ -760,6 +815,7 @@ export const DashboardHeader = ({
   onStartCall,
   onStopAudio,
   onReconnectStream,
+  versionLabel = "",
   sttLanguage,
   onToggleLanguage,
   onRecovery,
@@ -774,10 +830,16 @@ export const DashboardHeader = ({
   showStudioHint = false,
   onConnectAnotherTab,
   tabStreamReady = false,
+  cableStreamReady = false,
+  configuredAudioSourceMode = "tab",
+  attachedAudioSourceMode = "tab",
+  virtualCableFailure = null,
   audioAttached = false,
   apiKeyRejected = false,
   settingsOpen = false,
   onOpenSoundboard,
+  onReconnectAudioSource,
+  onSwitchToTabShare,
 }) => {
   const { isActive, sessionSeconds, sessionEarnings, stats, updateStat, stopSession, endDay, RATE_PER_MINUTE, arsRate, setArsRate, isBreakActive, breakSeconds, startBreak, stopBreak, availSeconds, isEditingScoreboard, setIsEditingScoreboard, visibleCards, toggleCard, visibleMetrics, toggleMetric, scoreboardPreset, applyScoreboardPreset, isNotesOpen, setIsNotesOpen, isToolbarVisible, setIsToolbarVisible, isHeatmapOpen, setIsHeatmapOpen, isZombieCall, isScoreboardHelpVisible, setIsScoreboardHelpVisible, isHold, setIsHold, dailyTimeline, historyTimeline, dailyLog, lastActivityTime, lastEnglishActivityTime, isCallDetectionEnabled, setIsCallDetectionEnabled, callFocusMode, setCallFocusMode, minutesSinceLastBreak, requestHipaaDisconnectGrace, vaultStatus } = useSession();
 
@@ -1514,7 +1576,12 @@ export const DashboardHeader = ({
   const rateOf = (view) => view === 'effective' ? effectiveRateArsHr : activeRateArsHr;
 
   // Sticky connect/stop bar — attach audio first, start call separately.
-  const tabNeedsReconnect = !micTestMode && !tabStreamReady;
+  // Sticky connect “flash” helper: for virtual cable we treat `cableStreamReady`
+  // as the attach condition; for tab share we keep the legacy `tabStreamReady`.
+  const tabNeedsReconnect =
+    configuredAudioSourceMode === "virtualCable"
+      ? !cableStreamReady
+      : !micTestMode && !tabStreamReady;
   const apiKeyMissing = !hasConfiguredDeepgramKey();
 
   // Encrypted token presence (vault setup) exists even if the session key isn't unlocked yet.
@@ -1550,7 +1617,9 @@ export const DashboardHeader = ({
         ? 'Start interpreting'
         : micTestMode
           ? 'Connect microphone'
-          : 'Click to connect tab';
+          : configuredAudioSourceMode === "virtualCable"
+            ? 'Click to connect cable'
+            : 'Click to connect tab';
   const connectSingleTitle = isZombieCall
     ? 'Re-attach to your call (timer saved)'
     : vaultNeedsDecrypt
@@ -1561,14 +1630,18 @@ export const DashboardHeader = ({
           ? 'Start interpreting — begin transcription'
           : micTestMode
             ? 'Connect using your microphone'
-            : 'Press here to connect to another browser tab where a conversation to interpret is happening';
+            : configuredAudioSourceMode === "virtualCable"
+              ? 'Press here to connect to the selected virtual cable input (VB-CABLE / Voicemeeter)'
+              : 'Press here to connect to another browser tab where a conversation to interpret is happening';
   const connectDoubleTitle = micTestMode
     ? 'Pick a different microphone'
     : vaultNeedsDecrypt
       ? 'Unlock Deepgram with your password'
       : apiKeyMissingNoVault
         ? 'Enter your Deepgram key in Settings'
-      : 'Pick a different browser tab';
+      : configuredAudioSourceMode === "virtualCable"
+        ? 'Pick a different virtual cable input'
+        : 'Pick a different browser tab';
 
   const connectOnSingle = (() => {
     if (apiKeyMissing) return showKeyVault;
@@ -2748,7 +2821,6 @@ ${isInDeficit ? `⚠️ DEFICIT: Behind pace by ${Math.round(monthlyDeficitMins)
   return (
     <>
     <header className={`dashboard-header glass-panel${headerMinimal ? ' dashboard-header--minimal' : ''}${offCallScoreboardView ? ' dashboard-header--off-call-scoreboard' : ''}${offCallScoreboardView && offCallMetricsExpanded ? ' dashboard-header--metrics-expanded' : ''}`} style={{ position: 'relative', zIndex: 100 }}>
-
       <SessionControlsSticky
         isActive={isActive}
         isBreakActive={isBreakActive}
@@ -2802,18 +2874,25 @@ ${isInDeficit ? `⚠️ DEFICIT: Behind pace by ${Math.round(monthlyDeficitMins)
         setIsNotesOpen={setIsNotesOpen}
 
         tabStreamReady={tabStreamReady}
+        cableStreamReady={cableStreamReady}
         lastDataTime={lastDataTime}
         onOpenSoundboard={onOpenSoundboard}
         onExpandAudioDevices={() => setIsCollapsed(false)}
         onOpenGoalDial={() => setIsTodayDialOpen(true)}
         sttLanguage={sttLanguage}
         onToggleLanguage={onToggleLanguage}
+        configuredAudioSourceMode={configuredAudioSourceMode}
+        attachedAudioSourceMode={attachedAudioSourceMode}
+        virtualCableFailure={virtualCableFailure}
+        onReconnectAudioSource={onReconnectAudioSource}
+        onSwitchToTabShare={onSwitchToTabShare}
         onOpenLanguageSettings={() => {
           try {
             window.dispatchEvent(new CustomEvent('cat_show_language_settings'));
           } catch (_) {}
         }}
         languagePairLabel={languagePairLabel}
+        versionLabel={versionLabel}
       />
 
       {!headerMinimal && (

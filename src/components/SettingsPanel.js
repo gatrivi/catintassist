@@ -24,6 +24,7 @@ import { DevSimulatePanel } from './DevSimulatePanel';
 import { isDevSimEnabled } from '../utils/devSimulateCaptions';
 import { AuthPanel } from './AuthPanel';
 import { useAuth } from '../contexts/AuthContext';
+import { useAudioSource } from '../hooks/useAudioSource';
 
 const MOODS = ['auto', 'default', 'fast', 'chill'];
 const MOOD_LABELS = { auto: 'Trans Auto', default: 'Default', fast: 'Fast', chill: 'Chill' };
@@ -41,7 +42,22 @@ export default function SettingsPanel({ open, onClose, initialSection = 'deepgra
   const [section, setSection] = useState(initialSection);
   const [personalDock, setPersonalDock] = useState(isWellbeingDockEnabled);
   const [componentVisibility, setComponentVisibility] = useState(loadComponentVisibility);
+  const [showVersionBadge, setShowVersionBadge] = useState(() => {
+    try {
+      return localStorage.getItem('catint_show_version_badge_v1') !== '0';
+    } catch {
+      return true;
+    }
+  });
   const [languagePair, setLanguagePair] = useState(loadLanguagePair);
+  const {
+    currentSourceMode,
+    switchAudioSourceMode,
+    availableInputDevices,
+    selectedInputDeviceId,
+    refreshInputDevices,
+    refreshSelectedDeviceId,
+  } = useAudioSource();
 
   const [disableOnboardingAnimations, setDisableOnboardingAnimations] = useState(() => {
     try {
@@ -91,7 +107,7 @@ export default function SettingsPanel({ open, onClose, initialSection = 'deepgra
         </div>
 
         <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap', marginTop: 10 }}>
-          {['account', 'deepgram', 'language', 'translation', 'behavior', 'layout', 'display'].map((id) => (
+          {['account', 'deepgram', 'language', 'translation', 'behavior', 'layout', 'display', 'audio'].map((id) => (
             <button
               key={id}
               type="button"
@@ -110,7 +126,9 @@ export default function SettingsPanel({ open, onClose, initialSection = 'deepgra
                         ? 'Behavior'
                         : id === 'layout'
                           ? 'Layout'
-                          : 'Display'}
+                          : id === 'audio'
+                            ? 'Audio'
+                            : 'Display'}
             </button>
           ))}
         </div>
@@ -330,6 +348,38 @@ export default function SettingsPanel({ open, onClose, initialSection = 'deepgra
             <div style={{ fontSize: 11, color: '#93c5fd', marginBottom: 4 }}>
               Component visibility [{APP_VERSION_LABEL}]
             </div>
+            <label
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: 8,
+                fontSize: 10,
+                color: '#93c5fd',
+                cursor: 'pointer',
+                marginBottom: 10,
+              }}
+            >
+              <input
+                type="checkbox"
+                checked={showVersionBadge}
+                onChange={(e) => {
+                  const enabled = e.target.checked;
+                  setShowVersionBadge(enabled);
+                  try {
+                    localStorage.setItem('catint_show_version_badge_v1', enabled ? '1' : '0');
+                  } catch (_) {}
+                  try {
+                    window.dispatchEvent(
+                      new CustomEvent('catint_show_version_badge_changed', {
+                        detail: { enabled },
+                      })
+                    );
+                  } catch (_) {}
+                }}
+                style={{ margin: 0 }}
+              />
+              Show build version badge (debug)
+            </label>
             <p style={{ fontSize: 10, color: 'rgba(255,255,255,0.5)', margin: '0 0 10px' }}>
               Progress bars = monthly + daily timelines. Changes save instantly.
             </p>
@@ -372,6 +422,95 @@ export default function SettingsPanel({ open, onClose, initialSection = 'deepgra
                 </div>
               ))}
             </div>
+          </div>
+        )}
+
+        {section === 'audio' && (
+          <div style={{ marginTop: 12, display: 'flex', flexDirection: 'column', gap: 12 }}>
+            <p style={{ fontSize: 10, color: 'rgba(255,255,255,0.55)', margin: 0, lineHeight: 1.45 }}>
+              Choose how CatIntAssist captures <strong>interpreter audio</strong> for STT.
+              Default is Tab share to preserve your current working setup.
+            </p>
+            <p style={{ fontSize: 10, color: 'rgba(255,255,255,0.45)', margin: 0, lineHeight: 1.45 }}>
+              This setting does <strong>not</strong> affect TTS playback routing.
+              It only changes what browser listens to for transcripts.
+            </p>
+
+            <div>
+              <div style={{ fontSize: 11, color: '#93c5fd', marginBottom: 6, fontWeight: 700 }}>
+                Audio source
+              </div>
+              <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                <button
+                  type="button"
+                  onClick={() => switchAudioSourceMode('tab')}
+                  style={{
+                    ...tabBtn,
+                    background: currentSourceMode === 'tab' ? 'rgba(59,130,246,0.25)' : tabBtn.background,
+                    borderColor: currentSourceMode === 'tab' ? 'rgba(59,130,246,0.55)' : 'rgba(255,255,255,0.10)',
+                  }}
+                  aria-pressed={currentSourceMode === 'tab'}
+                >
+                  Tab share
+                </button>
+                <button
+                  type="button"
+                  onClick={() => switchAudioSourceMode('virtualCable')}
+                  style={{
+                    ...tabBtn,
+                    background: currentSourceMode === 'virtualCable' ? 'rgba(245,158,11,0.20)' : tabBtn.background,
+                    borderColor: currentSourceMode === 'virtualCable' ? 'rgba(245,158,11,0.55)' : 'rgba(255,255,255,0.10)',
+                  }}
+                  aria-pressed={currentSourceMode === 'virtualCable'}
+                >
+                  Virtual cable
+                </button>
+              </div>
+            </div>
+
+            {currentSourceMode === 'virtualCable' && (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                <label style={{ fontSize: 11, color: '#6ee7b7' }}>
+                  Virtual audio input (STT source)
+                  <select
+                    value={selectedInputDeviceId}
+                    onChange={(e) => refreshSelectedDeviceId(e.target.value)}
+                    onFocus={() => refreshInputDevices()}
+                    style={{
+                      display: 'block',
+                      width: '100%',
+                      marginTop: 4,
+                      padding: 6,
+                      background: '#0f172a',
+                      color: '#fff',
+                      border: '1px solid rgba(255,255,255,0.15)',
+                      borderRadius: 6,
+                      maxHeight: 130,
+                      overflowY: 'auto',
+                    }}
+                  >
+                    <option value="">Default (let browser pick)</option>
+                    {availableInputDevices.map((d) => (
+                      <option key={d.deviceId} value={d.deviceId}>
+                        {d.label || `Input ${d.deviceId.slice(0, 5)}`}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <p style={{ fontSize: 10, color: 'rgba(255,255,255,0.50)', margin: 0, lineHeight: 1.45 }}>
+                  Choose <strong>CABLE Output</strong> / <strong>Voicemeeter Output</strong>, not <strong>CABLE Input</strong>.
+                  (It acts like a microphone, but it should carry your interpreter-tab audio.)
+                  If device labels are blank, CatIntAssist will request temporary audio permission.
+                </p>
+                <button
+                  type="button"
+                  style={{ ...tabBtn, fontSize: 11, marginTop: 2, width: 'fit-content' }}
+                  onClick={refreshInputDevices}
+                >
+                  Refresh devices
+                </button>
+              </div>
+            )}
           </div>
         )}
       </div>

@@ -54,7 +54,7 @@ export const ConnectInterpretButton = ({
 
     // #region agent log: connect/tap handler invoked (H5)
     if (typeof window !== "undefined") {
-      fetch('http://127.0.0.1:7815/ingest/d4621a1a-f688-4c75-8b4e-0dd09e3263ee', {
+      fetch('http://127.0.0.1:7891/ingest/e6c8e207-e5e1-4e11-b95a-baa54d11271a', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

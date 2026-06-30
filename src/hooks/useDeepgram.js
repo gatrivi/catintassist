@@ -10,6 +10,14 @@ import {
   FAILURE,
 } from "../utils/deepgramDiagnostics";
 import {
+  AUDIO_SOURCE_MODE_TAB,
+  AUDIO_SOURCE_MODE_VIRTUAL_CABLE,
+  readAudioSourceMode,
+  readSelectedVirtualCableInputDeviceId,
+  buildVirtualCableGetUserMediaConstraints,
+  buildVirtualCableFailureUiState,
+} from "../utils/audioSourceManager";
+import {
   loadLanguagePair,
   isEnEsProtectionMode,
   usesMultiSocket,
@@ -64,35 +72,34 @@ const readMicTestMode = () => {
   }
 };
 
-/** Tab capture vs physical mic — mic mode skips getDisplayMedia picker. */
-const acquireAudioStream = async (useMic) => {
+const acquireAudioStreamForSource = async (source) => {
   let micIdPresent = false;
   try {
     micIdPresent = !!localStorage.getItem(MIC_DEVICE_KEY);
   } catch (_) {}
 
-  // #region agent log: acquireAudioStream branch (H1)
+  // #region agent log: acquireAudioStreamForSource branch (H1)
   if (typeof window !== "undefined") {
-    fetch('http://127.0.0.1:7815/ingest/d4621a1a-f688-4c75-8b4e-0dd09e3263ee', {
+    fetch('http://127.0.0.1:7891/ingest/e6c8e207-e5e1-4e11-b95a-baa54d11271a', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
         'X-Debug-Session-Id': '749b6a',
       },
       body: JSON.stringify({
-        sessionId: '749b6a',
+        sessionId: 'mobile-pre1',
         runId: 'mobile-pre1',
         hypothesisId: 'H1',
-        location: 'useDeepgram.js:acquireAudioStream',
-        message: 'select audio source (mic vs tab)',
-        data: { useMic, micIdPresent, isSecureContext: window.isSecureContext },
+        location: 'useDeepgram.js:acquireAudioStreamForSource',
+        message: 'select audio source (mic vs tab vs virtual cable)',
+        data: { source, micIdPresent, isSecureContext: window.isSecureContext },
         timestamp: Date.now(),
       }),
     }).catch(() => {});
   }
   // #endregion agent log
 
-  if (useMic) {
+  if (source === "mic") {
     const micId = localStorage.getItem(MIC_DEVICE_KEY);
     const audio = micId
       ? {
@@ -104,6 +111,14 @@ const acquireAudioStream = async (useMic) => {
       : true;
     return navigator.mediaDevices.getUserMedia({ audio });
   }
+
+  if (source === "virtualCable") {
+    const deviceId = readSelectedVirtualCableInputDeviceId();
+    const constraints = buildVirtualCableGetUserMediaConstraints(deviceId);
+    return navigator.mediaDevices.getUserMedia(constraints);
+  }
+
+  // Default: existing tab-share capture.
   return navigator.mediaDevices.getDisplayMedia({ video: true, audio: true });
 };
 
@@ -162,6 +177,9 @@ export const useDeepgram = () => {
   const [lastDataTime, setLastDataTime] = useState(0);
   const [micTestMode, setMicTestModeState] = useState(readMicTestMode);
   const [tabStreamReady, setTabStreamReady] = useState(readTabStreamReady);
+  const [cableStreamReady, setCableStreamReady] = useState(false);
+  const [attachedAudioSourceMode, setAttachedAudioSourceMode] = useState("tab"); // 'tab' | 'mic' | 'virtualCable'
+  const [virtualCableFailure, setVirtualCableFailure] = useState(null); // { message, suggestedActionLabel }
 
   const langModeRef = useRef("auto");
   const languagePairRef = useRef(loadLanguagePair());
@@ -185,6 +203,9 @@ export const useDeepgram = () => {
   useEffect(() => {
     if (!streamRef.current?.active) {
       setTabStreamReady(false);
+      setCableStreamReady(false);
+      setAttachedAudioSourceMode("tab");
+      setVirtualCableFailure(null);
       try {
         sessionStorage.removeItem(TAB_STREAM_READY_KEY);
       } catch (_) {}
@@ -194,7 +215,7 @@ export const useDeepgram = () => {
   // #region agent log: useDeepgram init evidence (H6)
   useEffect(() => {
     if (typeof window === "undefined") return;
-    fetch('http://127.0.0.1:7815/ingest/d4621a1a-f688-4c75-8b4e-0dd09e3263ee', {
+    fetch('http://127.0.0.1:7891/ingest/e6c8e207-e5e1-4e11-b95a-baa54d11271a', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -566,6 +587,8 @@ export const useDeepgram = () => {
     streamRef.current = null;
     streamSourceRef.current = null;
     setTabStreamReady(false);
+    setCableStreamReady(false);
+    setAttachedAudioSourceMode("tab");
     try {
       sessionStorage.setItem(TAB_STREAM_READY_KEY, "0");
     } catch {}
@@ -660,7 +683,7 @@ export const useDeepgram = () => {
           if (connectFlagsRef.current.transcriptReceived) return;
           // #region agent log: watchdog timeout no audio (H4)
           if (typeof window !== "undefined") {
-            fetch('http://127.0.0.1:7815/ingest/d4621a1a-f688-4c75-8b4e-0dd09e3263ee', {
+            fetch('http://127.0.0.1:7891/ingest/e6c8e207-e5e1-4e11-b95a-baa54d11271a', {
               method: 'POST',
               headers: {
                 'Content-Type': 'application/json',
@@ -710,7 +733,7 @@ export const useDeepgram = () => {
                 if (sentAny && !connectFlagsRef.current.audioChunksSent) {
                   // #region agent log: first audio chunk sent (H4)
                   if (typeof window !== "undefined") {
-                    fetch('http://127.0.0.1:7815/ingest/d4621a1a-f688-4c75-8b4e-0dd09e3263ee', {
+                      fetch('http://127.0.0.1:7891/ingest/e6c8e207-e5e1-4e11-b95a-baa54d11271a', {
                       method: 'POST',
                       headers: {
                         'Content-Type': 'application/json',
@@ -744,7 +767,7 @@ export const useDeepgram = () => {
 
             // #region agent log: MediaRecorder started (H4)
             if (typeof window !== "undefined") {
-              fetch('http://127.0.0.1:7815/ingest/d4621a1a-f688-4c75-8b4e-0dd09e3263ee', {
+              fetch('http://127.0.0.1:7891/ingest/e6c8e207-e5e1-4e11-b95a-baa54d11271a', {
                 method: 'POST',
                 headers: {
                   'Content-Type': 'application/json',
@@ -907,7 +930,7 @@ export const useDeepgram = () => {
             if (!didLogCaptureGateWhileNotActiveRef.current && typeof window !== "undefined") {
               didLogCaptureGateWhileNotActiveRef.current = true;
               // #region agent log: transcript received but captions gated (H3)
-              fetch('http://127.0.0.1:7815/ingest/d4621a1a-f688-4c75-8b4e-0dd09e3263ee', {
+              fetch('http://127.0.0.1:7891/ingest/e6c8e207-e5e1-4e11-b95a-baa54d11271a', {
                 method: 'POST',
                 headers: {
                   'Content-Type': 'application/json',
@@ -1107,6 +1130,9 @@ export const useDeepgram = () => {
   const bindStreamLifecycle = useCallback((stream, source) => {
     streamSourceRef.current = source;
     const onStreamEnded = () => {
+      // Safe-switch guard: only stop the active Deepgram pipeline
+      // if the ended tracks belong to the current MediaStream.
+      if (streamRef.current !== stream) return;
       streamRef.current = null;
       streamSourceRef.current = null;
       stopRecordingRef.current();
@@ -1128,7 +1154,7 @@ export const useDeepgram = () => {
 
       // #region agent log: beginStream track counts (H2)
       if (typeof window !== "undefined") {
-        fetch('http://127.0.0.1:7815/ingest/d4621a1a-f688-4c75-8b4e-0dd09e3263ee', {
+        fetch('http://127.0.0.1:7891/ingest/e6c8e207-e5e1-4e11-b95a-baa54d11271a', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -1165,15 +1191,26 @@ export const useDeepgram = () => {
       }
       streamRef.current = stream;
       isActiveRef.current = true;
+      setAttachedAudioSourceMode(source);
       bindStreamLifecycle(stream, source);
       syncConnectProgress({ audioStreamReady: true, phase: "connecting" });
       startDeepgram(stream);
+      // Source-specific “audio attached” flags (used by UI).
       if (source === "tab") {
         setTabStreamReady(true);
+        setCableStreamReady(false);
         try {
           sessionStorage.setItem(TAB_STREAM_READY_KEY, "1");
         } catch {}
+      } else if (source === "virtualCable") {
+        setTabStreamReady(false);
+        setCableStreamReady(true);
+      } else {
+        // Physical mic: keep this legacy behavior.
+        setTabStreamReady(false);
+        setCableStreamReady(false);
       }
+      setVirtualCableFailure(null);
       return true;
     },
     [bindStreamLifecycle, startDeepgram],
@@ -1185,12 +1222,14 @@ export const useDeepgram = () => {
       resetConnectProgress();
       clearWatchdog();
       setConnectionState("connecting");
-      const useMic = micTestModeRef.current;
-      const source = useMic ? "mic" : "tab";
+      const configuredMode = readAudioSourceMode();
+      const useVirtualCable = configuredMode === AUDIO_SOURCE_MODE_VIRTUAL_CABLE;
+      const source = useVirtualCable ? "virtualCable" : micTestModeRef.current ? "mic" : "tab";
+      const useMic = source === "mic";
 
       // #region agent log: startRecording chosen source (H1)
       if (typeof window !== "undefined") {
-        fetch('http://127.0.0.1:7815/ingest/d4621a1a-f688-4c75-8b4e-0dd09e3263ee', {
+        fetch('http://127.0.0.1:7891/ingest/e6c8e207-e5e1-4e11-b95a-baa54d11271a', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -1224,7 +1263,11 @@ export const useDeepgram = () => {
         streamSourceRef.current === source
       ) {
         setConnectionMessage(
-          useMic ? "Reusing Microphone..." : "Reusing Tab Audio...",
+          source === "virtualCable"
+            ? "Reusing Virtual Cable..."
+            : useMic
+              ? "Reusing Microphone..."
+              : "Reusing Tab Audio...",
         );
         isActiveRef.current = true;
         startDeepgram(streamRef.current);
@@ -1232,9 +1275,13 @@ export const useDeepgram = () => {
       }
 
       setConnectionMessage(
-        useMic ? "Requesting Microphone..." : "Requesting Tab Audio...",
+        source === "virtualCable"
+          ? "Requesting Virtual Cable..."
+          : useMic
+            ? "Requesting Microphone..."
+            : "Requesting Tab Audio...",
       );
-      const stream = await acquireAudioStream(useMic);
+      const stream = await acquireAudioStreamForSource(source);
       const ok = beginStream(stream, source);
       if (!ok && source === "tab" && !micTestModeRef.current && hasSelectedMicDevice()) {
         // Tab capture didn't yield usable audio — switch to mic mode so `audioAttached` can unblock STT.
@@ -1243,13 +1290,21 @@ export const useDeepgram = () => {
         resetConnectProgress();
         clearWatchdog();
         setMicTestMode(true);
-        const micStream = await acquireAudioStream(true);
+        const micStream = await acquireAudioStreamForSource("mic");
         return beginStream(micStream, "mic");
       }
       return ok;
     } catch (err) {
       console.error(err);
-      if (!micTestModeRef.current && hasSelectedMicDevice()) {
+      const configuredMode = readAudioSourceMode();
+      const attemptedSource =
+        configuredMode === AUDIO_SOURCE_MODE_VIRTUAL_CABLE
+          ? "virtualCable"
+          : micTestModeRef.current
+            ? "mic"
+            : "tab";
+
+      if (attemptedSource === "tab" && !micTestModeRef.current && hasSelectedMicDevice()) {
         // Tab capture failed on mobile (picker blocked / rejected / no-audio stream).
         // Fall back to selected mic and set mic mode so the app unblocks transcription.
         try {
@@ -1258,13 +1313,22 @@ export const useDeepgram = () => {
           resetConnectProgress();
           clearWatchdog();
           setMicTestMode(true);
-          const micStream = await acquireAudioStream(true);
+          const micStream = await acquireAudioStreamForSource("mic");
           const ok = beginStream(micStream, "mic");
           return ok;
         } catch (_) {
           // Fall through to original tab error below.
         }
       }
+      if (attemptedSource === "virtualCable") {
+        const ui = buildVirtualCableFailureUiState(err);
+        setVirtualCableFailure(ui);
+        setConnectionState("error");
+        setConnectionMessage(ui.message);
+        syncConnectProgress({ phase: "error", lastError: ui.message });
+        return false;
+      }
+
       const msg = micTestModeRef.current
         ? "Microphone access was denied. Please allow microphone permissions and press Connect again."
         : "Tab sharing was cancelled. Please start tab sharing again and press Connect again.";
@@ -1280,8 +1344,14 @@ export const useDeepgram = () => {
     try {
       connectAttemptIdRef.current += 1;
       clearWatchdog();
-      const useMic = micTestModeRef.current;
-      const source = useMic ? "mic" : "tab";
+      const configuredMode = readAudioSourceMode();
+      const useVirtualCable = configuredMode === AUDIO_SOURCE_MODE_VIRTUAL_CABLE;
+      const source = useVirtualCable
+        ? "virtualCable"
+        : micTestModeRef.current
+          ? "mic"
+          : "tab";
+      const useMic = source === "mic";
       closeConnections();
       stopStreamTracks();
       resetConnectProgress();
@@ -1289,7 +1359,9 @@ export const useDeepgram = () => {
       setConnectionMessage(
         useMic
           ? "Requesting Microphone (fresh)..."
-          : "Requesting Tab Audio (fresh)...",
+          : source === "virtualCable"
+            ? "Requesting Virtual Cable (fresh)..."
+            : "Requesting Tab Audio (fresh)...",
       );
       if (source === "tab") {
         // Force "tab needs reconnect" UX until we successfully reacquire a stream.
@@ -1297,12 +1369,18 @@ export const useDeepgram = () => {
         try {
           sessionStorage.setItem(TAB_STREAM_READY_KEY, "0");
         } catch {}
+      } else if (source === "virtualCable") {
+        setCableStreamReady(false);
       }
 
       setConnectionMessage(
-        useMic ? "Requesting Microphone..." : "Requesting Tab Audio...",
+        source === "virtualCable"
+          ? "Requesting Virtual Cable..."
+          : useMic
+            ? "Requesting Microphone..."
+            : "Requesting Tab Audio...",
       );
-      const stream = await acquireAudioStream(useMic);
+      const stream = await acquireAudioStreamForSource(source);
       const ok = beginStream(stream, source);
       if (!ok && source === "tab" && !micTestModeRef.current && hasSelectedMicDevice()) {
         // Tab capture didn't yield usable audio — switch to mic mode so `audioAttached` can unblock STT.
@@ -1311,13 +1389,21 @@ export const useDeepgram = () => {
         resetConnectProgress();
         clearWatchdog();
         setMicTestMode(true);
-        const micStream = await acquireAudioStream(true);
+        const micStream = await acquireAudioStreamForSource("mic");
         return beginStream(micStream, "mic");
       }
       return ok;
     } catch (err) {
       console.error(err);
-      if (!micTestModeRef.current && hasSelectedMicDevice()) {
+      const configuredMode = readAudioSourceMode();
+      const attemptedSource =
+        configuredMode === AUDIO_SOURCE_MODE_VIRTUAL_CABLE
+          ? "virtualCable"
+          : micTestModeRef.current
+            ? "mic"
+            : "tab";
+
+      if (attemptedSource === "tab" && !micTestModeRef.current && hasSelectedMicDevice()) {
         // Tab capture failed on mobile (picker blocked / rejected / no-audio stream).
         // Fall back to selected mic and set mic mode so the app unblocks transcription.
         try {
@@ -1326,13 +1412,22 @@ export const useDeepgram = () => {
           resetConnectProgress();
           clearWatchdog();
           setMicTestMode(true);
-          const micStream = await acquireAudioStream(true);
+          const micStream = await acquireAudioStreamForSource("mic");
           const ok = beginStream(micStream, "mic");
           return ok;
         } catch (_) {
           // Fall through to original tab error below.
         }
       }
+      if (attemptedSource === "virtualCable") {
+        const ui = buildVirtualCableFailureUiState(err);
+        setVirtualCableFailure(ui);
+        setConnectionState("error");
+        setConnectionMessage(ui.message);
+        syncConnectProgress({ phase: "error", lastError: ui.message });
+        return false;
+      }
+
       const msg = micTestModeRef.current
         ? "Microphone access was denied. Please allow microphone permissions and press Connect again."
         : "Tab sharing was cancelled. Please start tab sharing again and press Connect again.";
@@ -1342,6 +1437,72 @@ export const useDeepgram = () => {
       return false;
     }
   }, [beginStream, closeConnections, stopStreamTracks, clearWatchdog, setMicTestMode]);
+
+  /**
+   * Safe in-call audio source switching:
+   * - Acquire the NEW stream first.
+   * - Only if acquisition succeeds do we swap deepgram sockets/MediaRecorder.
+   * - If virtual cable fails, the old working stream keeps running.
+   *
+   * This avoids the “stop audio first, then fail” transcript loss risk.
+   */
+  const switchAudioSourceModeSafely = useCallback(
+    async (requestedMode) => {
+      const targetSource =
+        requestedMode === AUDIO_SOURCE_MODE_VIRTUAL_CABLE
+          ? "virtualCable"
+          : "tab";
+
+      const oldStream = streamRef.current;
+      const oldSource = streamSourceRef.current;
+
+      if (oldStream?.active && oldSource === targetSource) return true;
+
+      // Clear warning only if we’re trying another route.
+      if (targetSource !== "virtualCable") setVirtualCableFailure(null);
+
+      let newStream;
+      try {
+        newStream = await acquireAudioStreamForSource(targetSource);
+      } catch (err) {
+        if (targetSource === "virtualCable") {
+          setVirtualCableFailure(buildVirtualCableFailureUiState(err));
+        }
+        return false;
+      }
+
+      // Validate audio tracks exist before swapping deepgram.
+      const audioTrackCount = newStream.getAudioTracks?.().length ?? 0;
+      if (audioTrackCount === 0) {
+        try {
+          newStream.getTracks?.().forEach((t) => t.stop());
+        } catch (_) {}
+        if (targetSource === "virtualCable") {
+          setVirtualCableFailure(
+            buildVirtualCableFailureUiState(new Error("No audio tracks detected")),
+          );
+        }
+        return false;
+      }
+
+      // Swap: close old deepgram pipeline and start the new one.
+      // Then stop the old MediaStream tracks after the new pipeline is running.
+      closeConnections();
+      const ok = beginStream(newStream, targetSource);
+      if (!ok) return false;
+
+      try {
+        oldStream?.getTracks?.().forEach((t) => {
+          try {
+            t.stop();
+          } catch (_) {}
+        });
+      } catch (_) {}
+
+      return true;
+    },
+    [beginStream, closeConnections],
+  );
 
   const reconnectStream = useCallback(() => {
     connectAttemptIdRef.current += 1;
@@ -1392,6 +1553,7 @@ export const useDeepgram = () => {
   return {
     startRecording,
     startRecordingFresh,
+    switchAudioSourceModeSafely,
     stopRecording,
     reconnectStream,
     captions,
@@ -1406,5 +1568,8 @@ export const useDeepgram = () => {
     micTestMode,
     setMicTestMode,
     tabStreamReady,
+    cableStreamReady,
+    attachedAudioSourceMode,
+    virtualCableFailure,
   };
 };

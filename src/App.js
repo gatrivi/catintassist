@@ -21,6 +21,7 @@ import {
   markStudioHintSeen,
 } from "./components/WorkspaceViewSwitcher";
 import { useDeepgram } from "./hooks/useDeepgram";
+import { useAudioSource } from "./hooks/useAudioSource";
 import { useDevSimulate } from "./hooks/useDevSimulate";
 import { useProgressiveAudio } from "./hooks/useProgressiveAudio";
 import { useAppUpdateCheck } from "./hooks/useAppUpdateCheck";
@@ -65,8 +66,16 @@ const Dashboard = () => {
     micTestMode,
     setMicTestMode,
     tabStreamReady,
+    cableStreamReady,
+    attachedAudioSourceMode,
+    virtualCableFailure,
+    switchAudioSourceModeSafely,
   } = useDeepgram();
   useDevSimulate();
+  const {
+    currentSourceMode: configuredAudioSourceMode,
+    switchAudioSourceMode,
+  } = useAudioSource();
   const {
     isNotesOpen,
     setIsNotesOpen,
@@ -98,7 +107,49 @@ const Dashboard = () => {
   const [, setRuntimeKeyTick] = useState(0);
   const [shellReady, setShellReady] = useState(() => isSplashSeenThisSession());
   const [showSplash, setShowSplash] = useState(() => !isSplashSeenThisSession());
+  const [showVersionBadge, setShowVersionBadge] = useState(() => {
+    try {
+      return localStorage.getItem('catint_show_version_badge_v1') !== '0';
+    } catch {
+      return true;
+    }
+  });
   useComponentVisibilityRefresh();
+
+  useEffect(() => {
+    const onToggle = (e) => {
+      const enabled = e?.detail?.enabled;
+      if (typeof enabled === 'boolean') setShowVersionBadge(enabled);
+    };
+    window.addEventListener('catint_show_version_badge_changed', onToggle);
+    return () => window.removeEventListener('catint_show_version_badge_changed', onToggle);
+  }, []);
+
+  useEffect(() => {
+    // #region agent log: ingest reachability ping (H2/H3)
+    if (typeof window !== "undefined") {
+      fetch(
+        "http://127.0.0.1:7891/ingest/e6c8e207-e5e1-4e11-b95a-baa54d11271a",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "X-Debug-Session-Id": "919050",
+          },
+          body: JSON.stringify({
+            sessionId: "919050",
+            runId: "startup-ingest-ping",
+            hypothesisId: "H_ingest_reachability",
+            location: "App.js:Dashboard(useEffect startup ping)",
+            message: "startup ping: should reach local ingest",
+            data: { port: 7891, host: "127.0.0.1" },
+            timestamp: Date.now(),
+          }),
+        }
+      ).catch(() => {});
+    }
+    // #endregion
+  }, []);
   const showWellbeingWidgets =
     showWellbeingDock &&
     isComponentVisible('wellbeing_dock', { isActive, isZombieCall });
@@ -330,16 +381,17 @@ const Dashboard = () => {
           ? "break"
           : "avail";
 
-  // Audio attached = sockets live + tab stream (or mic test mode).
+  // Audio attached = sockets live + tab stream / mic test / virtual cable.
   const audioAttached =
-    connectionState === "connected" && (micTestMode || tabStreamReady);
+    connectionState === "connected" &&
+    (micTestMode || tabStreamReady || cableStreamReady);
 
   // Step 1: attach audio only (no call timer, no transcript capture).
   const handleAttachAudio = useCallback(
     async (fresh = false) => {
       // #region agent log: handleAttachAudio (H1)
       if (typeof window !== "undefined") {
-        fetch('http://127.0.0.1:7815/ingest/d4621a1a-f688-4c75-8b4e-0dd09e3263ee', {
+        fetch('http://127.0.0.1:7891/ingest/e6c8e207-e5e1-4e11-b95a-baa54d11271a', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -371,7 +423,7 @@ const Dashboard = () => {
     (isRecovery = false) => {
       // #region agent log: handleStartCall (H3)
       if (typeof window !== "undefined") {
-        fetch('http://127.0.0.1:7815/ingest/d4621a1a-f688-4c75-8b4e-0dd09e3263ee', {
+        fetch('http://127.0.0.1:7891/ingest/e6c8e207-e5e1-4e11-b95a-baa54d11271a', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -497,16 +549,20 @@ const Dashboard = () => {
 
   // Micro-break nudge: top bar color shifts when working too long without a break
   const micBarColor =
-    isZombieCall && connectionState !== "connected"
+    connectionState === "error"
+      ? "#ef4444"
+      : isZombieCall && connectionState !== "connected"
       ? "#f59e0b"
       : isActive && minutesSinceLastBreak > 110
-        ? "#ef4444"
+        ? "#f59e0b"
         : isActive && minutesSinceLastBreak > 90
           ? "#f59e0b"
           : "#10b981";
   const micBarShadow =
-    isZombieCall && connectionState !== "connected"
-      ? "0 0 8px #f59e0b"
+    connectionState === "error"
+      ? "0 0 8px #ef4444"
+      : isZombieCall && connectionState !== "connected"
+        ? "0 0 8px #f59e0b"
       : isActive && minutesSinceLastBreak > 90
         ? "0 0 8px #f59e0b"
         : "0 0 8px #10b981";
@@ -567,14 +623,6 @@ const Dashboard = () => {
       data-off-call-view={isActive || isZombieCall ? "call" : workspaceView}
     >
       {showSplash && <SplashScreen onComplete={handleSplashComplete} />}
-      {/* Version tag — display only; settings gear lives in header (pointer-events: none so it never blocks clicks). */}
-      <div
-        data-guide="version"
-        className="app-version-pill"
-        title={`Build ${APP_VERSION_LABEL}`}
-      >
-        {APP_VERSION_LABEL}
-      </div>
 
       <SettingsPanel
         open={settingsOpen}
@@ -637,6 +685,7 @@ const Dashboard = () => {
       <SilenceGuardian lastDataTime={lastDataTime} />
 
       <DashboardHeader
+        versionLabel={showVersionBadge ? APP_VERSION_LABEL : ''}
         onAttachAudio={() => handleAttachAudio(false)}
         onAttachAudioFresh={() => handleAttachAudio(true)}
         onStartCall={() => handleStartCall(false)}
@@ -655,6 +704,17 @@ const Dashboard = () => {
         micTestMode={micTestMode}
         setMicTestMode={setMicTestMode}
         tabStreamReady={tabStreamReady}
+        cableStreamReady={cableStreamReady}
+        configuredAudioSourceMode={configuredAudioSourceMode}
+        attachedAudioSourceMode={attachedAudioSourceMode}
+        virtualCableFailure={virtualCableFailure}
+        onReconnectAudioSource={() => switchAudioSourceModeSafely?.(configuredAudioSourceMode)}
+        onSwitchToTabShare={async () => {
+          try {
+            switchAudioSourceMode("tab");
+          } catch (_) {}
+          return switchAudioSourceModeSafely?.("tab");
+        }}
         offCallWorkspace={offCallWorkspace}
         onCycleWorkspace={cycleWorkspaceView}
         showStudioHint={showStudioHint}
