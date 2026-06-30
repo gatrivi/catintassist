@@ -50,7 +50,12 @@ const AppGuideOverlay = ({ onClose, lang, onLangChange }) => {
   }, [current]);
 
   useEffect(() => {
-    const t = setTimeout(measureTarget, 120);
+    // Compact layout + sticky/overflow changes can reflow after initial paint.
+    // Measure twice (timeout + next animation frame) so the spotlight aligns with the target.
+    const t = setTimeout(() => {
+      measureTarget();
+      requestAnimationFrame(() => measureTarget());
+    }, 180);
     const onLayout = () => measureTarget();
     window.addEventListener('resize', onLayout);
     window.addEventListener('scroll', onLayout, true);

@@ -1712,6 +1712,35 @@ body {
   overflow-x: visible;
 }
 
+/* AudioRouteStatusBar compact strip + More panel (v4.74.5 compact header) */
+.audio-route-status-bar {
+  overflow-x: visible;
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.audio-route-status-main {
+  flex: 1;
+  min-width: 0;
+  white-space: nowrap;
+}
+
+.audio-route-more-panel {
+  display: flex;
+  align-items: center;
+  flex-wrap: nowrap;
+  overflow: visible;
+  gap: 0.35rem;
+  flex-shrink: 0;
+}
+
+/* Only show "More" button on <=700px (CSS controls panel visibility too). */
+#audio-route-more-btn {
+  display: none;
+}
+
 /* Connection Diagnostics (v4.72.x hotfix)
    Keeps the diagnostics UI bounded so it never covers transcription. */
 .connection-diagnostics-wrap {
@@ -1948,6 +1977,89 @@ body {
     left: 0;
     right: 0;
     max-width: 100vw;
+  }
+}
+
+@media (max-width: 700px) {
+  /* Compact header budget: keep header short but never clip More panel when open. */
+  .dashboard-header {
+    max-height: 72px;
+    overflow-y: visible;
+    overflow-x: visible;
+    padding: 2px 6px;
+    gap: 0.15rem;
+  }
+
+  /* Critical: if More panel is open, allow header to grow. */
+  .dashboard-header:has(.audio-route-status-bar[data-more-open="true"]) {
+    max-height: none;
+    overflow-y: visible;
+  }
+
+  /* Sticky strip should be tighter in compact mode. */
+  .session-controls-sticky-row {
+    padding: 2px 4px;
+    margin-bottom: 0.1rem;
+    gap: 0.35rem;
+  }
+
+  /* Prevent metrics/progress expansion from forcing extra rows. */
+  .header-metrics-strip {
+    display: none !important;
+  }
+  .header-progress-stack {
+    display: none !important;
+  }
+  .header-metrics-expand-btn {
+    display: none !important;
+  }
+
+  /* Keep diagnostics compact: hide expanded details (actions live under More). */
+  .connection-diagnostics-details {
+    display: none !important;
+  }
+
+  /* Off-call scoreboard header body increases height; hide in compact. */
+  .dashboard-header--off-call-scoreboard .scoreboard-workspace--header {
+    display: none !important;
+  }
+
+  /* AudioRouteStatusBar: single-line main strip; More panel overlays below. */
+  .audio-route-status-bar {
+    position: relative;
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.15rem;
+    overflow: visible;
+  }
+  .audio-route-status-main {
+    display: flex;
+    flex-wrap: nowrap !important;
+    white-space: nowrap;
+    overflow: hidden;
+  }
+
+  /* More panel hidden unless explicitly opened. */
+  .audio-route-more-panel {
+    display: none;
+    position: absolute;
+    left: 0;
+    right: 0;
+    top: calc(100% + 4px);
+    z-index: 260;
+    background: rgba(12, 12, 18, 0.96);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+    padding: 4px 6px;
+    border-radius: 0 0 10px 10px;
+  }
+  .audio-route-status-bar[data-more-open="true"] .audio-route-more-panel {
+    display: flex;
+  }
+
+  /* Show "More" button only in compact widths. */
+  #audio-route-more-btn {
+    display: inline-flex;
   }
 }
 

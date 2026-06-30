@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useState } from 'react';
 import { useAudioSettings } from '../contexts/AudioSettingsContext';
 import { truncateDeviceLabel } from '../utils/audioSelfTest';
 import {
@@ -49,6 +49,7 @@ export const AudioRouteStatusBar = ({
   onOpenSoundboard,
   compact = false,
 }) => {
+  const [isMoreOpen, setIsMoreOpen] = useState(false);
   const { inputDevices, outputDevices, selectedMicId, selectedSinkId, micLevel, micStatus } = useAudioSettings();
   useComponentVisibilityRefresh();
   const showMicMeter = isComponentVisible('mic_meter_strip', { isActive, isZombieCall });
@@ -144,160 +145,235 @@ export const AudioRouteStatusBar = ({
   return (
     <div
       className={`audio-route-status-bar${compact ? ' is-compact' : ''}`}
+      data-more-open={isMoreOpen ? 'true' : 'false'}
       style={{
         display: 'flex',
         flex: 1,
         minWidth: 0,
-        flexWrap: 'wrap',
-        alignItems: 'center',
-        gap: '0.35rem 0.5rem',
+        gap: compact ? '0.15rem' : '0.25rem',
         padding: compact ? '0.2rem 0.35rem' : '0.25rem 0.45rem',
         borderTop: '1px solid rgba(255,255,255,0.06)',
         fontSize: compact ? '0.62rem' : '0.68rem',
         fontFamily: 'var(--font-mono, monospace)',
         width: '100%',
+        overflow: 'visible',
       }}
     >
-      <button
-        id="audio-route-mic-settings-btn"
-        type="button"
-        style={{ ...btn, display: 'flex', alignItems: 'center', gap: 6, minWidth: 90 }}
-        onClick={onOpenAudioSettings}
-        title={`Microphone level — ${micStatusLabel}`}
-      >
-        {showMicMeter && (
-        <span
-          style={{
-            display: 'inline-block',
-            width: 36,
-            height: 5,
-            borderRadius: 3,
-            background: 'rgba(255,255,255,0.12)',
-            overflow: 'hidden',
-            flexShrink: 0,
-          }}
+      <div className="audio-route-status-main" style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', flexWrap: 'nowrap', overflow: 'hidden', minWidth: 0, flex: 1 }}>
+        <button
+          id="audio-route-input-device-btn"
+          type="button"
+          style={{ ...btn, display: 'flex', alignItems: 'center', gap: 4, overflow: 'hidden' }}
+          onClick={onOpenAudioSettings}
+          title="Input device / tab capture"
         >
+          <Dot state={inputState} title={inputText} />
           <span
             style={{
               display: 'block',
-              height: '100%',
-              width: `${micLevel}%`,
-              background: micBarColor,
-              boxShadow: micStatus === 'ok' ? '0 0 6px rgba(16,185,129,0.5)' : 'none',
-              transition: 'width 0.08s ease-out',
+              flex: 1,
+              minWidth: 0,
+              overflow: 'hidden',
+              whiteSpace: 'nowrap',
+              textOverflow: 'ellipsis',
             }}
-          />
-        </span>
+          >
+            {inputText}
+          </span>
+        </button>
+
+        {virtualCableFailure && (
+          <span
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: 6,
+              border: '1px solid rgba(245,158,11,0.35)',
+              background: 'rgba(245,158,11,0.12)',
+              padding: '0.12rem 0.35rem',
+              borderRadius: 4,
+              flexShrink: 0,
+            }}
+            title={virtualCableFailure.message}
+          >
+            <span style={{ color: '#f59e0b', fontWeight: 900 }}>⚠</span>
+            <span style={{ color: 'rgba(226,232,240,0.95)', fontWeight: 800, fontSize: '0.62rem' }}>Cable failed</span>
+          </span>
         )}
-        <span style={{ color: micBarColor, fontWeight: 800, letterSpacing: '0.02em' }}>{micStatusLabel}</span>
-      </button>
-      <button id="audio-route-input-device-btn" type="button" style={{ ...btn, display: 'flex', alignItems: 'center', gap: 4 }} onClick={onOpenAudioSettings} title="Input device / tab capture">
-        <Dot state={inputState} title={inputText} />
-        {inputText}
-      </button>
-      {virtualCableFailure && (
+
+        {!virtualCableFailure && isModeMismatch && onReconnectAudioSource && (
+          <button
+            type="button"
+            id="audio-route-reconnect-audio-btn"
+            style={{
+              ...btn,
+              borderColor: isDeepgramError ? 'rgba(239,68,68,0.55)' : '#0ea5e9',
+              color: isDeepgramError ? '#fecaca' : '#7dd3fc',
+              boxShadow: isDeepgramError ? '0 0 10px rgba(239,68,68,0.35)' : undefined,
+            }}
+            onClick={onReconnectAudioSource}
+            title="Reconnect audio source to the selected mode"
+          >
+            ↻ Reconnect
+          </button>
+        )}
+
+        <button
+          id="audio-route-output-btn"
+          type="button"
+          style={{ ...btn, display: 'flex', alignItems: 'center', gap: 4, overflow: 'hidden' }}
+          onClick={onOpenAudioSettings}
+          title="Output / virtual mic route"
+        >
+          <Dot state={outState} title={`Out: ${outLabel}`} />
+          <span
+            style={{
+              display: 'block',
+              flex: 1,
+              minWidth: 0,
+              overflow: 'hidden',
+              whiteSpace: 'nowrap',
+              textOverflow: 'ellipsis',
+            }}
+          >
+            Out: {outLabel}
+          </span>
+        </button>
+
         <span
+          id="audio-route-stt-summary"
           style={{
             display: 'flex',
             alignItems: 'center',
-            gap: 6,
-            border: '1px solid rgba(245,158,11,0.35)',
-            background: 'rgba(245,158,11,0.12)',
-            padding: '0.12rem 0.35rem',
-            borderRadius: 4,
+            gap: 4,
+            opacity: 0.9,
+            minWidth: 0,
+            overflow: 'hidden',
+            whiteSpace: 'nowrap',
+            textOverflow: 'ellipsis',
           }}
-          title={virtualCableFailure.message}
+          title={`Deepgram EN ${enOk ? 'open' : '—'} · ES ${esOk ? 'open' : '—'}`}
         >
-          <span style={{ color: '#f59e0b', fontWeight: 900 }}>⚠</span>
-              <span style={{ color: 'rgba(226,232,240,0.95)', fontWeight: 800, fontSize: '0.62rem' }}>
-            Cable failed
-          </span>
-          {onSwitchToTabShare && (
-            <button
-              type="button"
-              id="audio-route-tab-share-btn"
-              onClick={onSwitchToTabShare}
-              style={{
-                ...btn,
-                fontSize: compact ? '0.6rem' : '0.62rem',
-                padding: '0.14rem 0.35rem',
-                borderColor: 'rgba(245,158,11,0.45)',
-                color: '#fcd34d',
-              }}
-              title={virtualCableFailure.suggestedActionLabel}
-            >
-              Tab share
-            </button>
-          )}
+          <Dot state={sttState === 'idle' ? 'idle' : sttState} title="Deepgram STT" />
+          STT {enOk && esOk ? 'EN·ES' : connectionState}
+          {stale && !critical && <span style={{ color: '#f59e0b' }}> stale</span>}
+          {critical && <span style={{ color: '#ef4444' }}> no data</span>}
         </span>
-      )}
-      {!virtualCableFailure && isModeMismatch && onReconnectAudioSource && (
+
+        {isZombieCall && (
+          <span style={{ color: '#fbbf24', fontWeight: 800, whiteSpace: 'nowrap' }}>Re-attach tab</span>
+        )}
+
         <button
-          type="button"
-          id="audio-route-reconnect-audio-btn"
-          style={{
-            ...btn,
-            borderColor: isDeepgramError ? 'rgba(239,68,68,0.55)' : '#0ea5e9',
-            color: isDeepgramError ? '#fecaca' : '#7dd3fc',
-            boxShadow: isDeepgramError ? '0 0 10px rgba(239,68,68,0.35)' : undefined,
-          }}
-          onClick={onReconnectAudioSource}
-          title="Reconnect audio source to the selected mode"
-        >
-          ↻ Reconnect
-        </button>
-      )}
-      <button
-        id="audio-route-output-btn"
-        type="button"
-        style={{ ...btn, display: 'flex', alignItems: 'center', gap: 4 }}
-        onClick={onOpenAudioSettings}
-        title="Output / virtual mic route"
-      >
-        <Dot state={outState} title={`Out: ${outLabel}`} />
-        Out: {outLabel}
-      </button>
-      <span style={{ display: 'flex', alignItems: 'center', gap: 4, opacity: 0.9 }} title={`Deepgram EN ${enOk ? 'open' : '—'} · ES ${esOk ? 'open' : '—'}`}>
-        <Dot state={sttState === 'idle' ? 'idle' : sttState} title="Deepgram STT" />
-        STT {enOk && esOk ? 'EN·ES' : connectionState}
-        {stale && !critical && <span style={{ color: '#f59e0b' }}> stale</span>}
-        {critical && <span style={{ color: '#ef4444' }}> no data</span>}
-      </span>
-      {isZombieCall && (
-        <span style={{ color: '#fbbf24', fontWeight: 800 }}>Re-attach tab</span>
-      )}
-      <span style={{ flex: 1, minWidth: 8 }} />
-      {onTestLocal && (
-        <button id="audio-route-test-local-btn" type="button" style={btn} onClick={onTestLocal} title="Play test tone on local speakers">
-          Test local
-        </button>
-      )}
-      {onTestRoute && (
-        <button id="audio-route-test-route-btn" type="button" style={btn} onClick={onTestRoute} title="Play test tone through virtual output">
-          Test route
-        </button>
-      )}
-      {onOpenSoundboard && !isActive && (
-        <button id="audio-route-soundboard-btn" type="button" style={btn} onClick={onOpenSoundboard} title="Full greeting health check">
-          Soundboard
-        </button>
-      )}
-      {(stale || critical) && onReconnectStream && (
-        <button
-          id="audio-route-zap-btn"
+          id="audio-route-more-btn"
           type="button"
           style={{
             ...btn,
-            borderColor: isDeepgramError ? 'rgba(239,68,68,0.55)' : '#0ea5e9',
-            color: isDeepgramError ? '#fecaca' : '#7dd3fc',
-            boxShadow: isDeepgramError ? '0 0 10px rgba(239,68,68,0.35)' : undefined,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            padding: '0.12rem 0.35rem',
+            flexShrink: 0,
           }}
-          onClick={onReconnectStream}
-          title="Zap — reconnect audio stream"
+          onClick={() => setIsMoreOpen((v) => !v)}
+          title="More audio route controls"
+          aria-label="More audio route controls"
         >
-          ⚡ Zap
+          More
         </button>
-      )}
+
+        <span style={{ flex: 1, minWidth: 8 }} />
+
+        {(stale || critical) && onReconnectStream && (
+          <button
+            id="audio-route-zap-btn"
+            type="button"
+            style={{
+              ...btn,
+              borderColor: isDeepgramError ? 'rgba(239,68,68,0.55)' : '#0ea5e9',
+              color: isDeepgramError ? '#fecaca' : '#7dd3fc',
+              boxShadow: isDeepgramError ? '0 0 10px rgba(239,68,68,0.35)' : undefined,
+            }}
+            onClick={onReconnectStream}
+            title="Zap — reconnect audio stream"
+          >
+            ⚡ Zap
+          </button>
+        )}
+      </div>
+
+      <div className="audio-route-more-panel" style={{ alignItems: 'center', gap: '0.35rem', flexWrap: 'nowrap', overflow: 'visible' }}>
+        <button
+          id="audio-route-mic-settings-btn"
+          type="button"
+          style={{ ...btn, display: 'flex', alignItems: 'center', gap: 6, minWidth: 110 }}
+          onClick={onOpenAudioSettings}
+          title={`Microphone level — ${micStatusLabel}`}
+        >
+          {showMicMeter && (
+            <span
+              style={{
+                display: 'inline-block',
+                width: 36,
+                height: 5,
+                borderRadius: 3,
+                background: 'rgba(255,255,255,0.12)',
+                overflow: 'hidden',
+                flexShrink: 0,
+              }}
+            >
+              <span
+                style={{
+                  display: 'block',
+                  height: '100%',
+                  width: `${micLevel}%`,
+                  background: micBarColor,
+                  boxShadow: micStatus === 'ok' ? '0 0 6px rgba(16,185,129,0.5)' : 'none',
+                  transition: 'width 0.08s ease-out',
+                }}
+              />
+            </span>
+          )}
+          <span style={{ color: micBarColor, fontWeight: 800, letterSpacing: '0.02em' }}>{micStatusLabel}</span>
+        </button>
+
+        {virtualCableFailure && onSwitchToTabShare && (
+          <button
+            type="button"
+            id="audio-route-tab-share-btn"
+            onClick={onSwitchToTabShare}
+            style={{
+              ...btn,
+              fontSize: compact ? '0.6rem' : '0.62rem',
+              padding: '0.14rem 0.35rem',
+              borderColor: 'rgba(245,158,11,0.45)',
+              color: '#fcd34d',
+              flexShrink: 0,
+            }}
+            title={virtualCableFailure.suggestedActionLabel}
+          >
+            Tab share
+          </button>
+        )}
+
+        {onTestLocal && (
+          <button id="audio-route-test-local-btn" type="button" style={btn} onClick={onTestLocal} title="Play test tone on local speakers">
+            Test local
+          </button>
+        )}
+
+        {onTestRoute && (
+          <button id="audio-route-test-route-btn" type="button" style={btn} onClick={onTestRoute} title="Play test tone through virtual output">
+            Test route
+          </button>
+        )}
+
+        {onOpenSoundboard && !isActive && (
+          <button id="audio-route-soundboard-btn" type="button" style={btn} onClick={onOpenSoundboard} title="Full greeting health check">
+            Soundboard
+          </button>
+        )}
+      </div>
     </div>
   );
 };
