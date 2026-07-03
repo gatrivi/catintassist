@@ -1,4 +1,4 @@
-## Interview Module Map (v4.56.0)
+## Interview Module Map (v4.76.0)
 
 **Agent handoff:** [`docs/handoff/README.md`](../handoff/README.md)
 
@@ -78,10 +78,24 @@ flowchart TD
 - Main file: [`src/utils/medicalTermLexicon.js`](src/utils/medicalTermLexicon.js)
 - Handoff: [`docs/handoff/02_medical_terms.md`](../handoff/02_medical_terms.md)
 
-#### Transcript corrections (stub v4.56, local-first)
-- Responsibility: store user corrections in `localStorage` (`catint_corrections_v1`); future STT/translate glossary.
-- Main file: [`src/utils/transcriptCorrections.js`](src/utils/transcriptCorrections.js)
+#### Transcript corrections (v4.76.0, local-first)
+- Responsibility: user edits bubble source/translation; STT phrase replace + glossary override before translate; `localStorage` `catint_corrections_v1`.
+- Main files:
+  - [`src/utils/transcriptCorrections.js`](src/utils/transcriptCorrections.js)
+  - [`src/components/BubbleCorrectionEditor.js`](src/components/BubbleCorrectionEditor.js)
+  - [`src/components/TranscriptionBoard.js`](src/components/TranscriptionBoard.js) (wiring)
+  - [`src/hooks/useTranslate.js`](src/hooks/useTranslate.js) (glossary + STT apply)
+- User guide: [`docs/transcription-pane/corrections.md`](../transcription-pane/corrections.md)
 - Handoff: [`docs/handoff/04_transcript_corrections.md`](../handoff/04_transcript_corrections.md)
+
+#### ElementHint tooltips (v4.75.5)
+- Responsibility: rich hover tooltips with copyable CSS selector for header/scoreboard chrome.
+- Main file: [`src/components/ElementHint.js`](src/components/ElementHint.js)
+- Doc: [`docs/development/element-hint.md`](../development/element-hint.md)
+
+#### Transcript format + copy chips (v4.75.6)
+- Responsibility: consolidate spelling blocks, extract copyable names/entities for chip row.
+- Main file: [`src/utils/transcriptFormat.js`](src/utils/transcriptFormat.js)
 
 #### Auth / DB (future)
 - Handoff only: [`docs/handoff/06_auth_db.md`](../handoff/06_auth_db.md)

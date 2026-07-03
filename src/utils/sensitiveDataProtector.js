@@ -95,6 +95,46 @@ export const formatPhoneAndSSNDigits = (text) => {
   });
 };
 
+// ---------------------------------------------------------------------------
+// Stitch back-to-back single-digit tokens (phone/SSN dictation)
+// ---------------------------------------------------------------------------
+// Industry pattern: collapse "5 5 5 1 2 3 4" → "5551234" BEFORE phone grouping.
+// Only joins tokens that are exactly one digit; skips address-like context.
+// ---------------------------------------------------------------------------
+
+const SINGLE_DIGIT_RUN_RE = /\b\d(?:[\s,.-]+\d)+\b/g;
+
+export const stitchSingleDigitSequences = (text, { minDigits = 2 } = {}) => {
+  if (!text) return text;
+  return text.replace(SINGLE_DIGIT_RUN_RE, (match, offset, full) => {
+    const parts = match.split(/[\s,.\-]+/).filter(Boolean);
+    if (parts.length < minDigits || !parts.every((p) => /^\d$/.test(p))) return match;
+
+    const before = full.slice(Math.max(0, offset - 40), offset);
+    const after = full.slice(offset + match.length, offset + match.length + 40);
+    if (looksLikeAddressFragment(before, after)) return match;
+
+    const trailingPunct = match.match(/[,.]$/)?.[0] || '';
+    return parts.join('') + trailingPunct;
+  });
+};
+
+/** Display pipeline order (transcript + translation panes). */
+export const applyDisplayProtections = (text, lang = 'en', { applyNumberWords = true } = {}) => {
+  if (!text) return text;
+  let out = text;
+  if (applyNumberWords) out = convertEnglishNumberWords(out, lang);
+  out = stitchSingleDigitSequences(out);
+  out = formatPhoneAndSSNDigits(out);
+  out = repairNYCZipNumbers(out);
+  return out;
+};
+
+export const copyableDigits = (value) => {
+  const digits = String(value || '').replace(/\D/g, '');
+  return digits || String(value || '').trim();
+};
+
 // NYC ZIP REPAIR — unchanged from v4.27
 export const repairNYCZipNumbers = (text) => {
   if (!text) return text;

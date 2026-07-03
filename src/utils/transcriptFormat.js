@@ -109,6 +109,59 @@ export const formatSpellingText = (text, lang = 'en') => {
   return parts.filter(Boolean).join('\n');
 };
 
+/** Collapse spelled segments into one string (e.g. S+M+I+T+H → SMITH). */
+export const consolidateSpelling = (text, lang = 'en') => {
+  if (!text || !isSpellingBlock(text)) return null;
+
+  const parts = text.split(/,\s*/).map((p) => formatSpellingSegment(p, lang));
+  const chars = parts.map((line) => {
+    const ch = line.match(/^([A-Za-z0-9@.]+)/);
+    if (ch) return ch[1];
+    return line.trim().charAt(0).toUpperCase();
+  });
+
+  const joined = chars.join('');
+  return joined.length >= 2 ? joined : null;
+};
+
+const NAME_CUE_PATTERNS = [
+  /\b(?:my|patient(?:'s)?)\s+name\s+is\s+([A-Za-zÁÉÍÓÚáéíóúñÑ][\w'.-]*(?:\s+[A-Za-zÁÉÍÓÚáéíóúñÑ][\w'.-]*){0,2})/gi,
+  /\b(?:called|call me)\s+([A-Za-zÁÉÍÓÚáéíóúñÑ][\w'.-]*(?:\s+[A-Za-zÁÉÍÓÚáéíóúñÑ][\w'.-]*){0,2})/gi,
+  /\b(?:this is|I am|I'm)\s+([A-Za-zÁÉÍÓÚáéíóúñÑ][\w'.-]*(?:\s+[A-Za-zÁÉÍÓÚáéíóúñÑ][\w'.-]*){0,2})/gi,
+  /\b(?:me llamo|soy el|soy la|se llama)\s+([A-Za-zÁÉÍÓÚáéíóúñÑ][\w'.-]*(?:\s+[A-Za-zÁÉÍÓÚáéíóúñÑ][\w'.-]*){0,2})/gi,
+  /\bDr\.?\s+([A-Za-z][\w'.-]*(?:\s+[A-Za-z][\w'.-]*){0,1})/gi,
+];
+
+/** Proper-name candidates for one-click copy chips. */
+export const extractCopyableNames = (text) => {
+  if (!text) return [];
+  const seen = new Set();
+  const names = [];
+
+  NAME_CUE_PATTERNS.forEach((re) => {
+    re.lastIndex = 0;
+    let m;
+    while ((m = re.exec(text))) {
+      const value = m[1].trim().replace(/\s+/g, ' ');
+      const key = value.toLowerCase();
+      if (value.length < 2 || seen.has(key)) continue;
+      seen.add(key);
+      names.push({ kind: 'name', label: 'Name', value });
+    }
+  });
+
+  return names;
+};
+
+/** Spelling consolidation + name cues → copy chip payloads. */
+export const collectCopyableEntities = (text, lang = 'en') => {
+  const entities = [];
+  const spelled = consolidateSpelling(text, lang);
+  if (spelled) entities.push({ kind: 'spelling', label: 'Spelled', value: spelled });
+  extractCopyableNames(text).forEach((n) => entities.push(n));
+  return entities;
+};
+
 /** Split leading complete sentences (ends with . ! ?) from trailing fragment. */
 export const peelCompleteSentences = (text) => {
   const sentences = [];

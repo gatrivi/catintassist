@@ -1,53 +1,54 @@
-# Handoff: Transcript Corrections (Teach the App)
+# Handoff: Transcript Corrections — **SHIPPED v4.76.0**
+
+**User guide:** [`docs/transcription-pane/corrections.md`](../transcription-pane/corrections.md)
 
 ## Problem
-STT mishears; bad transcription → bad translation. User wants to **write over** wrong text so the app learns and protects future calls.
+STT mishears; bad transcription → bad translation. User writes over wrong text; app learns locally.
 
-Legacy note: `docs/agents/09_FUTURE.MD` — user clicks wrong word, writes correct one, feeds shared dictionary.
-
-## Phase 1 — local only (no login)
-Storage key: `catint_corrections_v1`  
-API: `src/utils/transcriptCorrections.js`
+## Shipped (v4.76.0)
+| Piece | File |
+|-------|------|
+| Floating editor (no row height change) | `src/components/BubbleCorrectionEditor.js` |
+| STT + glossary store | `src/utils/transcriptCorrections.js` |
+| Bubble UI (double-click / ✎) | `src/components/TranscriptionBoard.js` |
+| Apply before translate | `src/hooks/useTranslate.js` |
 
 ```mermaid
 flowchart LR
-  userEdit[User edits bubble text] --> store[localStorage corrections]
-  store --> sttHook[Future: bias similar STT]
-  store --> transHook[Future: glossary in useTranslate]
+  userEdit[User edits bubble] --> store[localStorage catint_corrections_v1]
+  store --> sttApply[applySttCorrections]
+  store --> glossary[findGlossaryTranslation]
+  sttApply --> display[TranscriptionBoard]
+  sttApply --> translate[useTranslate]
+  glossary --> translate
 ```
 
-## Stub API (v4.56)
+## API
 | Function | Purpose |
 |----------|---------|
-| `loadCorrections()` | Read all entries |
-| `saveCorrection({ sourceHeard, corrected, lang, createdAt })` | Upsert by normalized key |
-| `findCorrection(text, lang)` | Exact normalized match |
-| `exportCorrections()` | JSON string for backup |
-| `importCorrections(json)` | Merge import |
+| `saveCorrection({ sourceHeard, corrected, lang, kind, targetLang? })` | STT or glossary upsert |
+| `findCorrection(text, lang)` | Exact STT match |
+| `findGlossaryTranslation(source, sLang, tLang)` | Exact glossary match |
+| `applySttCorrections(text, lang)` | Phrase replace (longest first) |
+| `exportCorrections()` / `importCorrections(json)` | Backup / merge |
 
-Match strategy: normalized exact first; fuzzy matching documented for Phase 2.
+## Acceptance ✅
+- [x] UI: double-click / ✎ on source + translation columns
+- [x] Modal overlay — row height unchanged
+- [x] Source save → update caption + re-translate
+- [x] Translation save → user override + glossary
+- [x] Persists across refresh (captions + localStorage)
+- [x] Tests: `transcriptCorrections.test.js`
 
-## UI (Phase 2 agent — not in v4.56)
-- Trigger: double-click or pencil on **source column** in `TranscriptionBoard.js`
-- **Must not change row height** — modal or absolute overlay, not inline expanding panel
-- On save: update bubble text, re-trigger translation, optionally auto-pin corrected bubble
-- Block overlap logic from overwriting pinned/corrected text
+## Not done (later)
+- [ ] Deepgram keyword bias (`useDeepgram.js`)
+- [ ] Partial glossary / fuzzy match
+- [ ] DB sync → [`06_auth_db.md`](06_auth_db.md)
+- [ ] Block overlap logic from overwriting `userCorrected` bubbles
 
-## Touch only (Phase 2 UI)
-- `src/components/TranscriptionBoard.js`
-- `src/utils/transcriptCorrections.js`
-- `src/hooks/useDeepgram.js` (optional STT bias hook)
-- `src/hooks/useTranslate.js` (glossary injection before translate)
+## Touch only (future work)
+- `src/hooks/useDeepgram.js` — STT bias hook
+- `src/utils/transcriptCorrections.js` — fuzzy / partial glossary
 
-## Do not touch
-- v4.55 scroll/memo/stability behavior without explicit task
-
-## Acceptance
-- Stub tests pass
-- UI agent: correction persists across refresh; translation re-runs with corrected source
-- Export/import round-trip works
-
-## Phase
-1. **v4.56:** stub + tests
-2. **Next:** correction UI + wire `findCorrection` into translate path
-3. **Later:** sync to DB (`06_auth_db.md`)
+## Do not touch without reason
+- v4.55 scroll/memo/stability behavior in `TranscriptionBoard.js`

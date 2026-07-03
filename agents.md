@@ -1,6 +1,6 @@
 cats interpreter assistant app
 
-Docs index: `docs/README.md`
+Docs index: `docs/README.md` · **What's new:** `docs/CHANGELOG.md` · **Corrections:** `docs/transcription-pane/corrections.md`
 
 ## Handoff (outside agents)
 Open tasks + file boundaries: [`docs/handoff/README.md`](docs/handoff/README.md). Read [`docs/handoff/00_global_rules.md`](docs/handoff/00_global_rules.md) once.
@@ -132,4 +132,8 @@ CURRENT INBOX
 - [x] v4.58.0: soundboard exit trap; I/O strip + audio self-test; goal wheel pill; wellbeing dock rebrand; onboarding dismiss
 - [x] v4.59.0: Show tools wires notes+bg_app; expanded scoreboard de-clutter; pct on all 12 grid metrics; help in condensed toolbar; split translate immediate; zombie banner I/O hint
 - [x] v4.60.0: docs/ROADMAP.md; persistent 🎯 goal wheel + portal; scoreboard presets (Min/Std/Full) + metric toggles; mic meter in I/O strip; bundled default bg fallback
+- [x] v4.75.5: ElementHint tooltips — name + copy selector on header/scoreboard chrome (`docs/development/element-hint.md`)
+- [x] v4.75.6: CopyChip rows for names/spelled text; digit stitch for phone copy (`transcriptFormat.js`)
+- [x] v4.75.7–v4.75.8: blue tail stability; debug ingest strip; render tighten
+- [x] v4.76.0: bubble corrections — double-click/✎ fix transcription or translation, teach STT + glossary (`docs/transcription-pane/corrections.md`)
 </details>

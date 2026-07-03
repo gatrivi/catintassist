@@ -32,6 +32,7 @@ import SettingsPanel from "./components/SettingsPanel";
 import { OffCallWorkspace } from "./components/OffCallWorkspace";
 import { SplashScreen } from "./components/SplashScreen";
 import { GuideHostProvider } from "./contexts/GuideHostContext";
+import { ElementHintProvider } from "./components/ElementHint";
 import { isSplashSeenThisSession } from "./utils/splashStorage";
 import { isAppGuideDone } from "./utils/appGuideStorage";
 import {
@@ -131,31 +132,6 @@ const Dashboard = () => {
     return () => window.removeEventListener('catint_show_version_badge_changed', onToggle);
   }, []);
 
-  useEffect(() => {
-    // #region agent log: ingest reachability ping (H2/H3)
-    if (typeof window !== "undefined") {
-      fetch(
-        "http://127.0.0.1:7891/ingest/e6c8e207-e5e1-4e11-b95a-baa54d11271a",
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            "X-Debug-Session-Id": "919050",
-          },
-          body: JSON.stringify({
-            sessionId: "919050",
-            runId: "startup-ingest-ping",
-            hypothesisId: "H_ingest_reachability",
-            location: "App.js:Dashboard(useEffect startup ping)",
-            message: "startup ping: should reach local ingest",
-            data: { port: 7891, host: "127.0.0.1" },
-            timestamp: Date.now(),
-          }),
-        }
-      ).catch(() => {});
-    }
-    // #endregion
-  }, []);
   const showWellbeingWidgets =
     showWellbeingDock &&
     isComponentVisible('wellbeing_dock', { isActive, isZombieCall });
@@ -395,28 +371,6 @@ const Dashboard = () => {
   // Step 1: attach audio only (no call timer, no transcript capture).
   const handleAttachAudio = useCallback(
     async (fresh = false) => {
-      // #region agent log: handleAttachAudio (H1)
-      if (typeof window !== "undefined") {
-        fetch('http://127.0.0.1:7891/ingest/e6c8e207-e5e1-4e11-b95a-baa54d11271a', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'X-Debug-Session-Id': '749b6a',
-          },
-          body: JSON.stringify({
-            sessionId: '749b6a',
-            runId: 'mobile-pre1',
-            hypothesisId: 'H1',
-            location: 'App.js:handleAttachAudio',
-            message: 'user initiated audio attach',
-            data: { fresh, micTestMode, tabStreamReady, connectionState, audioAttached },
-            timestamp: Date.now(),
-          }),
-        }).catch(() => {});
-      }
-      // #endregion agent log
-
-      // HIPAA: cancel any pending disconnect grace when user reconnects.
       cancelHipaaDisconnectGrace?.();
       if (isBreakActive) stopBreak();
       return fresh ? startRecordingFresh() : startRecording();
@@ -427,28 +381,6 @@ const Dashboard = () => {
   // Step 2: start call timer + transcription UI (audio should already be attached).
   const handleStartCall = useCallback(
     (isRecovery = false) => {
-      // #region agent log: handleStartCall (H3)
-      if (typeof window !== "undefined") {
-        fetch('http://127.0.0.1:7891/ingest/e6c8e207-e5e1-4e11-b95a-baa54d11271a', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'X-Debug-Session-Id': '749b6a',
-          },
-          body: JSON.stringify({
-            sessionId: '749b6a',
-            runId: 'mobile-pre1',
-            hypothesisId: 'H3',
-            location: 'App.js:handleStartCall',
-            message: 'user initiated call start (startSession)',
-            data: { isRecovery, micTestMode, tabStreamReady, connectionState, audioAttached, preIsActive: isActive },
-            timestamp: Date.now(),
-          }),
-        }).catch(() => {});
-      }
-      // #endregion agent log
-
-      // HIPAA: cancel any pending disconnect grace when starting/resuming a call.
       cancelHipaaDisconnectGrace?.();
       if (isBreakActive) stopBreak();
       if (isRecovery) clearZombieState();
@@ -621,6 +553,7 @@ const Dashboard = () => {
   }, []);
 
   return (
+    <ElementHintProvider>
     <GuideHostProvider prepareGuideView={prepareGuideView}>
     <div
       className={`app-container ${stateClass}${shellReady ? " app-shell-ready" : ""}`}
@@ -849,6 +782,7 @@ const Dashboard = () => {
       </div>
     </div>
     </GuideHostProvider>
+    </ElementHintProvider>
   );
 };
 

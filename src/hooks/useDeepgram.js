@@ -10,7 +10,6 @@ import {
   FAILURE,
 } from "../utils/deepgramDiagnostics";
 import {
-  AUDIO_SOURCE_MODE_TAB,
   AUDIO_SOURCE_MODE_VIRTUAL_CABLE,
   readAudioSourceMode,
   readSelectedVirtualCableInputDeviceId,
@@ -78,26 +77,6 @@ const acquireAudioStreamForSource = async (source) => {
     micIdPresent = !!localStorage.getItem(MIC_DEVICE_KEY);
   } catch (_) {}
 
-  // #region agent log: acquireAudioStreamForSource branch (H1)
-  if (typeof window !== "undefined") {
-    fetch('http://127.0.0.1:7891/ingest/e6c8e207-e5e1-4e11-b95a-baa54d11271a', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'X-Debug-Session-Id': '749b6a',
-      },
-      body: JSON.stringify({
-        sessionId: 'mobile-pre1',
-        runId: 'mobile-pre1',
-        hypothesisId: 'H1',
-        location: 'useDeepgram.js:acquireAudioStreamForSource',
-        message: 'select audio source (mic vs tab vs virtual cable)',
-        data: { source, micIdPresent, isSecureContext: window.isSecureContext },
-        timestamp: Date.now(),
-      }),
-    }).catch(() => {});
-  }
-  // #endregion agent log
 
   if (source === "mic") {
     const micId = localStorage.getItem(MIC_DEVICE_KEY);
@@ -194,9 +173,6 @@ export const useDeepgram = () => {
   const captionEngineRef = useRef(createCaptionEngineState());
   const interimFlushTimerRef = useRef(null);
   const lastInterimAtRef = useRef(0);
-  const lastTranscriptLenRef = useRef(null);
-  const lastCharChurnLogAtRef = useRef(0);
-  const lastFlushLogAtRef = useRef(0);
   const captionsHydratedRef = useRef(false);
 
   // After refresh there is no live MediaStream — clear stale tab-ready flag.
@@ -210,28 +186,6 @@ export const useDeepgram = () => {
         sessionStorage.removeItem(TAB_STREAM_READY_KEY);
       } catch (_) {}
     }
-  }, []);
-
-  // #region agent log: useDeepgram init evidence (H6)
-  useEffect(() => {
-    if (typeof window === "undefined") return;
-    fetch('http://127.0.0.1:7891/ingest/e6c8e207-e5e1-4e11-b95a-baa54d11271a', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'X-Debug-Session-Id': '749b6a',
-      },
-      body: JSON.stringify({
-        sessionId: '749b6a',
-        runId: 'mobile-pre1',
-        hypothesisId: 'H6',
-        location: 'useDeepgram.js:mount',
-        message: 'useDeepgram initialized',
-        data: { micTestModeState: micTestMode, tabStreamReadyState: tabStreamReady, isActive, isZombieCall },
-        timestamp: Date.now(),
-      }),
-    }).catch(() => {});
-    // #endregion agent log
   }, []);
 
   const shouldCaptureCaptionsRef = useRef(false);
@@ -296,14 +250,7 @@ export const useDeepgram = () => {
 
   const flushCaptionsToSession = useCallback(() => {
     const next = mergeCaptionsForUi(captionEngineRef.current);
-    // #region agent log: flush cadence into React (H3)
-    const nowMs = Date.now();
-    const shouldLogFlush = nowMs - lastFlushLogAtRef.current > 1000;
-    if (shouldLogFlush && typeof window !== "undefined") {
-      lastFlushLogAtRef.current = nowMs;
-      fetch('http://127.0.0.1:7891/ingest/e6c8e207-e5e1-4e11-b95a-baa54d11271a',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'2c9b00'},body:JSON.stringify({sessionId:'2c9b00',runId:'deep-survey-1',hypothesisId:'H3',location:'useDeepgram.js:flushCaptionsToSession',message:'flush captions into React',data:{captionsNextLen:next?.length ?? 0},timestamp:Date.now()})}).catch(()=>{});
-    }
-    // #endregion agent log
+
     updateCaptions((prev) => (captionsSnapshotEqual(prev, next) ? prev : next));
   }, [updateCaptions]);
 
@@ -525,35 +472,6 @@ export const useDeepgram = () => {
         const keyInfo = getDeepgramKeyInfo();
         const diag = classifyDeepgramClose(code, reason);
 
-        // #region agent log: deepgram close classification (HDEEP)
-        try {
-          if (typeof window !== "undefined") {
-            fetch('http://127.0.0.1:7891/ingest/e6c8e207-e5e1-4e11-b95a-baa54d11271a', {
-              method: 'POST',
-              headers: {
-                'Content-Type': 'application/json',
-                'X-Debug-Session-Id': '2c9b00'
-              },
-              body: JSON.stringify({
-                sessionId: '2c9b00',
-                runId: 'deepgram-handshake-debug',
-                hypothesisId: 'HDEEP',
-                location: 'useDeepgram.js:scheduleConnectFail',
-                message: 'deepgram close event classified',
-                timestamp: Date.now(),
-                data: {
-                  code: String(code ?? ''),
-                  reason: (reason ?? '').toString().slice(0, 120),
-                  socketSide,
-                  failureCategory: diag.category,
-                  keySource: keyInfo.source,
-                  keyMasked: keyInfo.masked
-                }
-              })
-            }).catch(() => {});
-          }
-        } catch {}
-        // #endregion agent log
 
         const msg = buildFailureMessage({
           category: diag.category || FAILURE.UNKNOWN,
@@ -681,33 +599,7 @@ export const useDeepgram = () => {
           if (!stillSameAttempt) return;
           if (connectFlagsRef.current.audioChunksSent) return;
           if (connectFlagsRef.current.transcriptReceived) return;
-          // #region agent log: watchdog timeout no audio (H4)
-          if (typeof window !== "undefined") {
-            fetch('http://127.0.0.1:7891/ingest/e6c8e207-e5e1-4e11-b95a-baa54d11271a', {
-              method: 'POST',
-              headers: {
-                'Content-Type': 'application/json',
-                'X-Debug-Session-Id': '749b6a',
-              },
-              body: JSON.stringify({
-                sessionId: '749b6a',
-                runId: 'mobile-pre1',
-                hypothesisId: 'H4',
-                location: 'useDeepgram.js:watchdogTimeout',
-                message: 'timeout: sockets open but no audio chunks reached Deepgram',
-                data: {
-                  attemptId,
-                  audioChunksSent: connectFlagsRef.current.audioChunksSent,
-                  transcriptReceived: connectFlagsRef.current.transcriptReceived,
-                  socketEnReady: socketRefEn.current?.readyState,
-                  socketEsReady: socketRefEs.current?.readyState,
-                  streamSource: streamSourceRef.current,
-                },
-                timestamp: Date.now(),
-              }),
-            }).catch(() => {});
-          }
-          // #endregion agent log
+
           failConnection(
             "TIMEOUT: Sockets open but no audio reached Deepgram. Check Share audio on tab, unmute call, or try mic mode.",
             { failureCategory: FAILURE.TIMEOUT },
@@ -731,32 +623,7 @@ export const useDeepgram = () => {
                   socketRefEs.current.send(e.data);
                 }
                 if (sentAny && !connectFlagsRef.current.audioChunksSent) {
-                  // #region agent log: first audio chunk sent (H4)
-                  if (typeof window !== "undefined") {
-                      fetch('http://127.0.0.1:7891/ingest/e6c8e207-e5e1-4e11-b95a-baa54d11271a', {
-                      method: 'POST',
-                      headers: {
-                        'Content-Type': 'application/json',
-                        'X-Debug-Session-Id': '749b6a',
-                      },
-                      body: JSON.stringify({
-                        sessionId: '749b6a',
-                        runId: 'mobile-pre1',
-                        hypothesisId: 'H4',
-                        location: 'useDeepgram.js:MediaRecorder.dataavailable',
-                        message: 'first non-empty audio chunk sent to Deepgram socket',
-                        data: {
-                          chunkSize: e.data.size,
-                          socketEnReady: socketRefEn.current?.readyState,
-                          socketEsReady: socketRefEs.current?.readyState,
-                          multiMode,
-                          streamSource: streamSourceRef.current,
-                        },
-                        timestamp: Date.now(),
-                      }),
-                    }).catch(() => {});
-                  }
-                  // #endregion agent log
+
                   syncConnectProgress({ audioChunksSent: true });
                   clearKeepalive();
                   clearWatchdog();
@@ -765,30 +632,6 @@ export const useDeepgram = () => {
             });
             mediaRecorderRef.current.start(250);
 
-            // #region agent log: MediaRecorder started (H4)
-            if (typeof window !== "undefined") {
-              fetch('http://127.0.0.1:7891/ingest/e6c8e207-e5e1-4e11-b95a-baa54d11271a', {
-                method: 'POST',
-                headers: {
-                  'Content-Type': 'application/json',
-                  'X-Debug-Session-Id': '749b6a',
-                },
-                body: JSON.stringify({
-                  sessionId: '749b6a',
-                  runId: 'mobile-pre1',
-                  hypothesisId: 'H4',
-                  location: 'useDeepgram.js:MediaRecorder.start',
-                  message: 'MediaRecorder created and started',
-                  data: {
-                    streamAudioTrackCount: stream.getAudioTracks().length,
-                    mimeType: mediaRecorderRef.current?.mimeType || null,
-                    streamSource: streamSourceRef.current,
-                  },
-                  timestamp: Date.now(),
-                }),
-              }).catch(() => {});
-            }
-            // #endregion agent log
           }
         } catch (err) {
           console.error(err);
@@ -859,27 +702,7 @@ export const useDeepgram = () => {
           const isFinal = received.is_final;
           const speechFinal = received.speech_final;
           const startTime = received.start ?? 0;
-          const transcriptLen = transcript.length;
-          const prevTranscriptLen = lastTranscriptLenRef.current;
-          const deltaLen = prevTranscriptLen === null || prevTranscriptLen === undefined ? null : transcriptLen - prevTranscriptLen;
-          lastTranscriptLenRef.current = transcriptLen;
 
-          // #region agent log: interim char-churn cadence (H2)
-          // Detect “one char at a time” interim churn by length delta.
-          if (
-            !isFinal &&
-            !speechFinal &&
-            (deltaLen === null || Math.abs(deltaLen) <= 2) &&
-            typeof window !== "undefined" &&
-            lastCharChurnLogAtRef.current !== undefined
-          ) {
-            const nowLog = performance.now();
-            if (nowLog - lastCharChurnLogAtRef.current > 1000) {
-              lastCharChurnLogAtRef.current = nowLog;
-              fetch('http://127.0.0.1:7891/ingest/e6c8e207-e5e1-4e11-b95a-baa54d11271a',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'2c9b00'},body:JSON.stringify({sessionId:'2c9b00',runId:'pre-char-churn',hypothesisId:'H2',location:'useDeepgram.js:ws.onmessage',message:'interim char churn',data:{isInterim:true,transcriptLen,deltaLen},timestamp:Date.now()})}).catch(()=>{});
-            }
-          }
-          // #endregion agent log
           const socketLaneLang =
             lang === "multi"
               ? received.channel?.detected_language ||
@@ -929,35 +752,7 @@ export const useDeepgram = () => {
           if (!shouldCaptureCaptionsRef.current) {
             if (!didLogCaptureGateWhileNotActiveRef.current && typeof window !== "undefined") {
               didLogCaptureGateWhileNotActiveRef.current = true;
-              // #region agent log: transcript received but captions gated (H3)
-              fetch('http://127.0.0.1:7891/ingest/e6c8e207-e5e1-4e11-b95a-baa54d11271a', {
-                method: 'POST',
-                headers: {
-                  'Content-Type': 'application/json',
-                  'X-Debug-Session-Id': '749b6a',
-                },
-                body: JSON.stringify({
-                  sessionId: '749b6a',
-                  runId: 'mobile-pre1',
-                  hypothesisId: 'H3',
-                  location: 'useDeepgram.js:ws.onmessage:captureGate',
-                  message: 'transcript arrived but captions were not captured (session not active)',
-                  data: {
-                    isActive,
-                    isZombieCall,
-                    connectPhase: connectFlagsRef.current.phase,
-                    audioChunksSent: connectFlagsRef.current.audioChunksSent,
-                    transcriptLen,
-                    isFinal,
-                    speechFinal,
-                    confidence,
-                    laneSide,
-                    streamSource: streamSourceRef.current,
-                  },
-                  timestamp: Date.now(),
-                }),
-              }).catch(() => {});
-              // #endregion agent log
+
             }
             return;
           }
@@ -1152,26 +947,6 @@ export const useDeepgram = () => {
       const audioTrackCount = stream.getAudioTracks().length;
       const videoTrackCount = stream.getVideoTracks?.().length ?? 0;
 
-      // #region agent log: beginStream track counts (H2)
-      if (typeof window !== "undefined") {
-        fetch('http://127.0.0.1:7891/ingest/e6c8e207-e5e1-4e11-b95a-baa54d11271a', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'X-Debug-Session-Id': '749b6a',
-          },
-          body: JSON.stringify({
-            sessionId: '749b6a',
-            runId: 'mobile-pre1',
-            hypothesisId: 'H2',
-            location: 'useDeepgram.js:beginStream',
-            message: 'validate stream has audio tracks',
-            data: { source, audioTrackCount, videoTrackCount },
-            timestamp: Date.now(),
-          }),
-        }).catch(() => {});
-      }
-      // #endregion agent log
 
       if (audioTrackCount === 0) {
         setConnectionState("error");
@@ -1227,33 +1002,6 @@ export const useDeepgram = () => {
       const source = useVirtualCable ? "virtualCable" : micTestModeRef.current ? "mic" : "tab";
       const useMic = source === "mic";
 
-      // #region agent log: startRecording chosen source (H1)
-      if (typeof window !== "undefined") {
-        fetch('http://127.0.0.1:7891/ingest/e6c8e207-e5e1-4e11-b95a-baa54d11271a', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'X-Debug-Session-Id': '749b6a',
-          },
-          body: JSON.stringify({
-            sessionId: '749b6a',
-            runId: 'mobile-pre1',
-            hypothesisId: 'H1',
-            location: 'useDeepgram.js:startRecording',
-            message: 'startRecording decides mic vs tab source',
-            data: {
-              attemptId: connectAttemptIdRef.current,
-              useMic,
-              source,
-              micTestModeState: micTestMode,
-              tabStreamReady,
-              streamSourceBefore: streamSourceRef.current,
-            },
-            timestamp: Date.now(),
-          }),
-        }).catch(() => {});
-      }
-      // #endregion agent log
 
       // REUSE EXISTING STREAM IF AVAILABLE AND ACTIVE (same source type)
       if (

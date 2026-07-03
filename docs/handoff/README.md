@@ -1,11 +1,16 @@
-# Agent Handoff Index (v4.56.0)
+# Agent Handoff Index (v4.76.0)
 
 **Read first:** [`00_global_rules.md`](00_global_rules.md)
 
 Outside agents: pick **one** spec below. Do not re-read the whole repo.
 
 ## Current app version
-Top-right must show **v4.56.0 (Handoff)** after this ship.
+Top-right must show **v4.76.0** after this ship.
+
+## What's new (docs)
+- [`docs/transcription-pane/corrections.md`](../transcription-pane/corrections.md) — bubble teach feature
+- [`docs/CHANGELOG.md`](../CHANGELOG.md) — v4.75.5–v4.76.0 notes
+- [`docs/development/element-hint.md`](../development/element-hint.md) — tooltip system
 
 ## How to work
 1. Read global rules + your task spec
@@ -21,7 +26,7 @@ Top-right must show **v4.56.0 (Handoff)** after this ship.
 | 1 | Number protection | [`01_number_protection.md`](01_number_protection.md) | `src/utils/sensitiveDataProtector.js` |
 | 2 | UI cleanup | [`05_ui_cleanup.md`](05_ui_cleanup.md) | `src/index.css`, header components |
 | 3 | Medical term priority | [`02_medical_terms.md`](02_medical_terms.md) | `src/utils/medicalTermLexicon.js` |
-| 4 | Transcript corrections | [`04_transcript_corrections.md`](04_transcript_corrections.md) | `src/utils/transcriptCorrections.js` |
+| 4 | Transcript corrections | [`04_transcript_corrections.md`](04_transcript_corrections.md) | **SHIPPED v4.76.0** — [`corrections.md`](../transcription-pane/corrections.md) |
 | 5 | Scoreboard polish | [`03_scoreboard.md`](03_scoreboard.md) | `GameScoreboard.js`, `DashboardHeader.js` |
 | 6 | Auth + DB (future) | [`06_auth_db.md`](06_auth_db.md) | read only until approved |
 

@@ -34,6 +34,7 @@ import {
   readIdleTipPrefs,
 } from '../utils/offCallIdleMessages';
 import { DialGoalSelector } from './DialGoalSelector';
+import { ElementHintTarget, useElementHint, buildHintPayload } from './ElementHint';
 import { useProgressiveAudio } from '../hooks/useProgressiveAudio';
 import { MonthHeatmap } from './MonthHeatmap';
 import { TimeEditModal } from './TimeEditModal';
@@ -389,8 +390,6 @@ const SessionControlsSticky = React.memo(({
     onToggleLanguage?.();
   };
 
-  const sttModeSuffix =
-    sttLanguage === 'left' ? '· L' : sttLanguage === 'right' ? '· R' : '· A';
   const langPairShort = (languagePairLabel || 'EN|ES').replace(/\s+/g, '');
   const langBtnTitle = `STT ${langPairShort} · ${sttLanguage === 'auto' ? 'auto-detect' : sttLanguage === 'left' ? 'forcing left column' : 'forcing right column'} · Tap: cycle STT · Hold: pair settings`;
 
@@ -398,11 +397,16 @@ const SessionControlsSticky = React.memo(({
     <>
       <div className="session-controls-sticky-row">
       <div className="session-controls-left-cluster" style={{ display: 'flex', gap: '3px', alignItems: 'center', flexShrink: 0 }}>
+        <ElementHintTarget
+          elementId="header-app-logo-btn"
+          heading="App logo"
+          body={`CatIntAssist build info. Version: ${APP_VERSION_LABEL}`}
+          color="#a855f7"
+        >
         <button
           id="header-app-logo-btn"
           type="button"
           className="btn-icon tiny-btn app-logo-btn"
-          title={`CatIntAssist · ${APP_VERSION_LABEL}`}
           aria-label={`CatIntAssist ${APP_VERSION_LABEL}`}
         >
           <img
@@ -413,6 +417,7 @@ const SessionControlsSticky = React.memo(({
             height={22}
           />
         </button>
+        </ElementHintTarget>
 
         {!isActive ? (
           <>
@@ -430,6 +435,13 @@ const SessionControlsSticky = React.memo(({
               doubleTitle={connectDoubleTitle}
             />
 
+            <ElementHintTarget
+              elementId="header-mic-test-btn"
+              guideKey="mic-test"
+              heading="Mic test mode"
+              body="Mic ON: Connect uses your microphone (no tab picker). Mic OFF: Connect captures interpreter tab audio (Share audio)."
+              color="#f59e0b"
+            >
             <button
               id="header-mic-test-btn"
             data-guide="mic-test"
@@ -461,8 +473,16 @@ const SessionControlsSticky = React.memo(({
           >
             <MicIcon size={14} />
           </button>
+            </ElementHintTarget>
 
         {onToggleLanguage && (
+          <ElementHintTarget
+            elementId="header-lang-pair-btn"
+            guideKey="language-pair"
+            heading="Language pair / STT mode"
+            body={langBtnTitle}
+            color="#34d399"
+          >
           <button
             id="header-lang-pair-btn"
             data-guide="language-pair"
@@ -498,9 +518,17 @@ const SessionControlsSticky = React.memo(({
           >
             {langPairShort}
           </button>
+          </ElementHintTarget>
         )}
 
         {!isActive && onOpenGoalDial && (
+          <ElementHintTarget
+            elementId="header-goal-btn"
+            guideKey="goal-wheel"
+            heading="Weekly goal wheel"
+            body="Weekly hours commitment — tap to open goal picker wheel."
+            color="#a855f7"
+          >
           <button
             id="header-goal-btn"
             data-guide="goal-wheel"
@@ -522,8 +550,15 @@ const SessionControlsSticky = React.memo(({
           >
             <TargetIcon size={14} />
           </button>
+          </ElementHintTarget>
         )}
 
+            <ElementHintTarget
+              elementId="header-key-vault-btn"
+              heading="Deepgram key vault"
+              body="Open settings to manage your Deepgram API key (encrypted vault)."
+              color="#10b981"
+            >
             <button
               id="header-key-vault-btn"
               type="button"
@@ -553,9 +588,17 @@ const SessionControlsSticky = React.memo(({
             >
               <KeyIcon size={14} />
             </button>
+            </ElementHintTarget>
           </>
         ) : (
           <>
+            <ElementHintTarget
+              elementId="header-stop-btn"
+              guideKey="stop"
+              heading="Stop / disconnect"
+              body="End the current interpretation session and disconnect Deepgram."
+              color="#ef4444"
+            >
             <button
               id="header-stop-btn"
               data-guide="stop"
@@ -566,6 +609,13 @@ const SessionControlsSticky = React.memo(({
             >
               <StopIcon size={14} />
             </button>
+            </ElementHintTarget>
+            <ElementHintTarget
+              elementId="header-hold-btn"
+              heading="Hold"
+              body="Pause interpretation without ending the call. Shows H when hold is active."
+              color="#f59e0b"
+            >
             <button
               id="header-hold-btn"
               className="btn btn-condensed"
@@ -581,6 +631,13 @@ const SessionControlsSticky = React.memo(({
             >
               {isHold ? 'H' : <PauseIcon size={14} />}
             </button>
+            </ElementHintTarget>
+            <ElementHintTarget
+              elementId="header-zap-btn"
+              heading="Zap reconnect"
+              body={disableZap ? 'ZAP disabled — stream is healthy.' : 'Force-reconnect the audio stream when STT goes stale.'}
+              color="#ef4444"
+            >
             <button
               id="header-zap-btn"
               className={`btn-emoji ${isZapping ? 'zap-active' : ''}`}
@@ -596,9 +653,16 @@ const SessionControlsSticky = React.memo(({
             >
               <ZapIcon size={14} />
             </button>
+            </ElementHintTarget>
           </>
         )}
 
+        <ElementHintTarget
+          elementId="header-break-btn"
+          heading="Break"
+          body="Start or end a break. Disabled during active calls. Orange nudge after 90m without break."
+          color="#fb923c"
+        >
         <button
           id="header-break-btn"
           className="btn-emoji"
@@ -625,8 +689,15 @@ const SessionControlsSticky = React.memo(({
             <CoffeeIcon size={14} />
           )}
         </button>
+        </ElementHintTarget>
 
         {showEndDayButton && (
+          <ElementHintTarget
+            elementId="header-end-day-btn"
+            heading="End day"
+            body="Close out the work day and reset daily tracking."
+            color="#8b5cf6"
+          >
           <button
             id="header-end-day-btn"
             className="btn-emoji"
@@ -636,6 +707,7 @@ const SessionControlsSticky = React.memo(({
           >
             <MoonIcon size={14} />
           </button>
+          </ElementHintTarget>
         )}
       </div>
 
@@ -738,7 +810,14 @@ const SessionControlsSticky = React.memo(({
         }}
       >
         {isActive && !callModeExpanded && (
+          <ElementHintTarget
+            elementId="header-expand-btn"
+            heading="Expand header"
+            body="Show full header controls during an active call."
+            color="#94a3b8"
+          >
           <button
+            id="header-expand-btn"
             className="btn-icon tiny-btn"
             onClick={() => setCallModeExpanded(true)}
             style={{ width: '24px', height: '24px', fontSize: '0.7rem' }}
@@ -746,9 +825,17 @@ const SessionControlsSticky = React.memo(({
           >
             <ChevronUpIcon size={14} />
           </button>
+          </ElementHintTarget>
         )}
         {isActive && callModeExpanded && (
+          <ElementHintTarget
+            elementId="header-compact-btn"
+            heading="Compact header"
+            body="Minimize header to maximize transcription space during calls."
+            color="#94a3b8"
+          >
           <button
+            id="header-compact-btn"
             className="btn-icon tiny-btn"
             onClick={() => setCallModeExpanded(false)}
             style={{ width: '24px', height: '24px', fontSize: '0.7rem' }}
@@ -756,8 +843,17 @@ const SessionControlsSticky = React.memo(({
           >
             <ChevronDownIcon size={14} />
           </button>
+          </ElementHintTarget>
         )}
+        <ElementHintTarget
+          elementId="header-notes-btn"
+          guideKey="notes"
+          heading="Quick notes"
+          body="Toggle the quick notes sidebar for jotting during calls."
+          color="#f43f5e"
+        >
         <button
+          id="header-notes-btn"
           className="btn-icon tiny-btn"
           onClick={() => setIsNotesOpen(!isNotesOpen)}
           style={{ opacity: isNotesOpen ? 1 : 0.45, width: '24px', height: '24px', fontSize: '0.75rem' }}
@@ -765,6 +861,7 @@ const SessionControlsSticky = React.memo(({
         >
           <NotesIcon size={14} />
         </button>
+        </ElementHintTarget>
         <SettingsButton />
         <AppGuideButton />
       </div>
@@ -923,7 +1020,7 @@ export const DashboardHeader = ({
     if (isActive && scoreboardPreset === 'minimal') setIsCollapsed(true);
   }, [isActive, scoreboardPreset]);
   const [hoveredTimelineEvent, setHoveredTimelineEvent] = useState(null);
-  const [hoveredMetricTooltip, setHoveredMetricTooltip] = useState(null); // {x,y,placement,icon,heading,body,color}
+  const { show: showElementHint, hide: hideElementHint } = useElementHint();
   const [isZapping, setIsZapping] = useState(false);
   const handleZap = useCallback(async () => {
     setIsZapping(true);
@@ -1319,66 +1416,43 @@ export const DashboardHeader = ({
     if (!d) return;
     const rect = e.currentTarget.getBoundingClientRect();
     const placement = rect.top < 160 ? 'below' : 'above';
-    // If the card is too close to the top, show it under the cell instead of above it.
     const y = placement === 'above' ? rect.top : rect.bottom;
     const x = rect.left + rect.width / 2;
-    // Debug: confirms hover events + placement coords.
-    if (process.env.NODE_ENV !== 'production') {
-      // eslint-disable-next-line no-console
-      console.log('[MetricTooltip] enter', { metricKey, placement, x, y });
-    }
-    setHoveredMetricTooltip({
+    showElementHint(buildHintPayload({
+      elementId: `metric-m${metricKey}`,
+      heading: d.heading,
+      body: d.body,
+      icon: d.icon,
+      color: d.color,
       x,
       y,
       placement,
-      ...d
-    });
-  }, [metricTooltipData]);
+    }));
+  }, [metricTooltipData, showElementHint]);
 
   const hideMetricTooltip = useCallback(() => {
-    if (process.env.NODE_ENV !== 'production') {
-      // eslint-disable-next-line no-console
-      console.log('[MetricTooltip] leave');
-    }
-    setHoveredMetricTooltip(null);
-  }, []);
+    hideElementHint();
+  }, [hideElementHint]);
 
-  // Progress-bar hover tooltip (uses the same portal renderer as metric cards)
-  const showProgressBarTooltip = useCallback((e, { icon, heading, color, body }) => {
+  // Progress-bar hover tooltip (ElementHint — same renderer as metric cards)
+  const showProgressBarTooltip = useCallback((e, { icon, heading, color, body, elementId, guideKey }) => {
     const rect = e.currentTarget.getBoundingClientRect();
     const placement = rect.top < 160 ? 'below' : 'above';
     const x = rect.left + rect.width / 2;
     const y = placement === 'above' ? rect.top : rect.bottom;
 
-    // #region agent log: UI tooltip placement (HUI2)
-    if (heading === 'MONTHLY PROGRESS' && typeof window !== 'undefined') {
-      fetch('http://127.0.0.1:7891/ingest/e6c8e207-e5e1-4e11-b95a-baa54d11271a', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'X-Debug-Session-Id': '2c9b00'
-        },
-        body: JSON.stringify({
-          sessionId: '2c9b00',
-          location: 'DashboardHeader.js:showProgressBarTooltip',
-          message: 'MONTHLY PROGRESS tooltip placement',
-          hypothesisId: 'HUI2',
-          runId: 'ui-collision-verify',
-          timestamp: Date.now(),
-          data: {
-            placement,
-            rectTop: rect.top,
-            rectBottom: rect.bottom,
-            x,
-            y
-          }
-        })
-      }).catch(() => {});
-    }
-    // #endregion agent log
-
-    setHoveredMetricTooltip({ x, y, placement, icon, heading, color, body });
-  }, []);
+    showElementHint(buildHintPayload({
+      elementId,
+      guideKey,
+      heading,
+      body,
+      icon,
+      color,
+      x,
+      y,
+      placement,
+    }));
+  }, [showElementHint]);
 
   useEffect(() => {
     if (Math.abs(displayBounty - currentBounty) > 1) {
@@ -1809,6 +1883,7 @@ export const DashboardHeader = ({
                     {/* 1. Mins worked today */}
                     {showMetric('m1') && (
                     <div
+                      id="metric-m1"
                       className={`metric-cell ${isEditingScoreboard ? 'grid-edit-mode' : ''}`}
                       title="Minutes worked today (Click to toggle H:M)"
                       style={{ position: 'relative', background: 'rgba(239,68,68,0.06)', cursor: 'pointer' }}
@@ -1826,6 +1901,7 @@ export const DashboardHeader = ({
 
                     {showMetric('m2') && (
                     <div
+                      id="metric-m2"
                       className={`metric-cell ${isEditingScoreboard ? 'grid-edit-mode' : ''}`}
                       title="Minutes left for daily goal (Click to toggle H:M)"
                       style={{ position: 'relative', background: 'rgba(239,68,68,0.04)', cursor: 'pointer' }}
@@ -1844,6 +1920,7 @@ export const DashboardHeader = ({
                     {/* 3. Goal mins */}
                     {showMetric('m3') && (
                     <div
+                      id="metric-m3"
                       className={`metric-cell ${isEditingScoreboard ? 'grid-edit-mode' : ''}`}
                       title="Target goal minutes for today (Click to toggle H:M)"
                       style={{ position: 'relative', background: 'rgba(52,211,153,0.04)', cursor: 'pointer' }}
@@ -1862,6 +1939,7 @@ export const DashboardHeader = ({
                     {/* 4. Money today */}
                     {showMetric('m4') && (
                     <div
+                      id="metric-m4"
                       className={`metric-cell ${isEditingScoreboard ? 'grid-edit-mode' : ''}`}
                       title="Money earned today"
                       style={{ position: 'relative', background: 'rgba(16,185,129,0.06)' }}
@@ -1879,6 +1957,7 @@ export const DashboardHeader = ({
                     {/* 5. Money to be made today */}
                     {showMetric('m5') && (
                     <div
+                      id="metric-m5"
                       className={`metric-cell ${isEditingScoreboard ? 'grid-edit-mode' : ''}`}
                       title="Money remaining for today's goal"
                       style={{ position: 'relative', background: 'rgba(245,158,11,0.04)' }}
@@ -1896,6 +1975,7 @@ export const DashboardHeader = ({
                     {/* 6. Stamina Ratio (On-Call vs Break) */}
                     {showMetric('m6') && (
                     <div
+                      id="metric-m6"
                       className={`metric-cell ${isEditingScoreboard ? 'grid-edit-mode' : ''}`}
                       title="STAMINA RATIO: Your on-call minutes divided by break minutes. Target is 5.3x (8h on / 90m off)."
                       style={{ position: 'relative', background: 'rgba(168,85,247,0.04)' }}
@@ -1915,6 +1995,7 @@ export const DashboardHeader = ({
                     {/* 7. Money month */}
                     {showMetric('m7') && (
                     <div
+                      id="metric-m7"
                       className={`metric-cell ${isEditingScoreboard ? 'grid-edit-mode' : ''}`}
                       title="Money earned this month"
                       style={{ position: 'relative' }}
@@ -1932,6 +2013,7 @@ export const DashboardHeader = ({
                     {/* 8. Money left month */}
                     {showMetric('m8') && (
                     <div
+                      id="metric-m8"
                       className={`metric-cell ${isEditingScoreboard ? 'grid-edit-mode' : ''}`}
                       title="Money remaining for monthly goal"
                       style={{ position: 'relative' }}
@@ -1949,6 +2031,7 @@ export const DashboardHeader = ({
                     {/* 9. Off-call total today */}
                     {showMetric('m9') && (
                     <div
+                      id="metric-m9"
                       className={`metric-cell ${isEditingScoreboard ? 'grid-edit-mode' : ''}`}
                       title="Total time spent off-call today (Click to toggle H:M)"
                       style={{ position: 'relative', background: 'rgba(251,146,60,0.06)', cursor: 'pointer' }}
@@ -1967,6 +2050,7 @@ export const DashboardHeader = ({
                     {/* 10. Avg so far mo */}
                     {showMetric('m10') && (
                     <div
+                      id="metric-m10"
                       className={`metric-cell ${isEditingScoreboard ? 'grid-edit-mode' : ''}`}
                       title="Average minutes per day so far (Click to toggle H:M)"
                       style={{ position: 'relative', background: 'rgba(139,92,246,0.04)', cursor: 'pointer' }}
@@ -1985,6 +2069,7 @@ export const DashboardHeader = ({
                     {/* 11. Silence/Idle Timer */}
                     {showMetric('m11') && (
                     <div
+                      id="metric-m11"
                       className={`metric-cell ${isEditingScoreboard ? 'grid-edit-mode' : ''}`}
                       title="Time since last audio activity (Reset by speech). In call, this tracks patient/user silence."
                       style={{ position: 'relative', background: isActive ? 'rgba(239,68,68,0.06)' : 'rgba(255,255,255,0.04)' }}
@@ -2007,6 +2092,7 @@ export const DashboardHeader = ({
                     {/* 12. Current call min and cash */}
                     {showMetric('m12') && (
                     <div
+                      id="metric-m12"
                       className={`metric-cell ${isEditingScoreboard ? 'grid-edit-mode' : ''}`}
                       title="Current call duration and unbanked cash"
                       style={{ position: 'relative', background: isActive ? 'rgba(16,185,129,0.1)' : 'rgba(255,255,255,0.02)', border: isActive ? '1px solid rgba(16,185,129,0.3)' : 'none' }}
@@ -2926,55 +3012,6 @@ ${isInDeficit ? `⚠️ DEFICIT: Behind pace by ${Math.round(monthlyDeficitMins)
         />
       )}
     </header>
-
-    {/* Metric hover tooltip: portal to body avoids clipping/transform stacking issues */}
-    {hoveredMetricTooltip && createPortal(
-      <div
-        style={{
-          position: 'fixed',
-          left: hoveredMetricTooltip.x,
-          top: hoveredMetricTooltip.y,
-          transform: hoveredMetricTooltip.placement === 'above'
-            ? 'translate(-50%, calc(-100% - 10px))'
-            : 'translate(-50%, 10px)',
-          background: 'rgba(2, 6, 23, 0.70)',
-          backdropFilter: 'blur(12px)',
-          WebkitBackdropFilter: 'blur(12px)',
-          border: `1px solid rgba(255,255,255,0.14)`,
-          boxShadow: '0 8px 24px rgba(0,0,0,0.55), 0 0 0 1px rgba(255,255,255,0.06) inset',
-          borderRadius: '10px',
-          padding: '0.45rem 0.6rem',
-          zIndex: 1200,
-          pointerEvents: 'none',
-          maxWidth: '280px',
-          minWidth: '220px'
-        }}
-      >
-        <div
-          style={{
-            position: 'absolute',
-            top: -1,
-            left: -1,
-            right: -1,
-            height: '3px',
-            borderTopLeftRadius: '10px',
-            borderTopRightRadius: '10px',
-            background: hoveredMetricTooltip.color,
-            opacity: 0.95
-          }}
-        />
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', marginBottom: '0.2rem' }}>
-          <span style={{ fontSize: '0.95rem', lineHeight: 1, color: hoveredMetricTooltip.color }}>{hoveredMetricTooltip.icon}</span>
-          <span style={{ fontSize: '0.62rem', fontWeight: 900, color: '#fff', textTransform: 'uppercase', letterSpacing: '0.06em' }}>
-            {hoveredMetricTooltip.heading}
-          </span>
-        </div>
-        <div style={{ fontSize: '0.62rem', lineHeight: 1.25, color: 'rgba(255,255,255,0.82)', whiteSpace: 'pre-line' }}>
-          {hoveredMetricTooltip.body}
-        </div>
-      </div>,
-      document.body
-    )}
 
     </>
   );

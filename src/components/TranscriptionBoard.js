@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 import { useTTS } from '../hooks/useTTS';
 import { useTranslate } from '../hooks/useTranslate';
@@ -6,12 +6,11 @@ import { useSession, safeSet } from '../contexts/SessionContext';
 import { useProgressiveAudio } from '../hooks/useProgressiveAudio';
 import { useAudioSettings } from '../contexts/AudioSettingsContext';
 import { truncateDeviceLabel } from '../utils/audioSelfTest';
-import { formatTranscriptForDisplay, isSpellingBlock } from '../utils/transcriptFormat';
+import { formatTranscriptForDisplay, isSpellingBlock, collectCopyableEntities } from '../utils/transcriptFormat';
 import {
-  convertEnglishNumberWords,
-  formatPhoneAndSSNDigits,
-  getNumberHighlightRegex,
-  repairNYCZipNumbers,
+  applyDisplayProtections,
+  copyableDigits,
+  NUMBER_HIGHLIGHT_REGEX,
 } from '../utils/sensitiveDataProtector';
 import { ScrambleText } from './ScrambleText';
 import { NewcomerIdleGuide } from './NewcomerIdleGuide';
@@ -26,8 +25,16 @@ import {
   isEnEsProtectionMode,
   shouldReverseBubble,
   normalizeLang,
+  getOppositeLang,
   LANG_PAIR_CHANGED_EVENT,
 } from '../utils/languageConfig';
+import { BubbleCorrectionEditor } from './BubbleCorrectionEditor';
+import {
+  saveCorrection,
+  applySttCorrections,
+  CORRECTION_KIND,
+  CORRECTIONS_CHANGED_EVENT,
+} from '../utils/transcriptCorrections';
 
 // EL TABLERO DE TEXTO: Aquí es donde aparece todo lo que dicen en la llamada.
 // Muestra quién habla, lo traduce y te deja copiar los números con un clic.
@@ -53,9 +60,55 @@ const getBubbleStyle = (text, isCurrent, lang, pair) => {
 
 const processDisplayText = (raw, lang, applyNumberWords, protectionsActive) => {
   const spelled = formatTranscriptForDisplay(raw, lang);
-  const processedText = protectionsActive && applyNumberWords ? convertEnglishNumberWords(spelled) : spelled;
-  const groupedDigits = protectionsActive ? formatPhoneAndSSNDigits(processedText) : processedText;
-  return protectionsActive ? repairNYCZipNumbers(groupedDigits) : groupedDigits;
+  if (!protectionsActive) return spelled;
+  return applyDisplayProtections(spelled, lang, { applyNumberWords });
+};
+
+/** Stable regex for number split — avoid new RegExp() every render. */
+const splitDisplaySegments = (segment) => {
+  if (!segment) return [];
+  return segment.split(NUMBER_HIGHLIGHT_REGEX);
+};
+
+/** Blue tail slice — same pipeline for bubble text + tailPreviewText. */
+const resolveTailHighlight = (repairedText, rawText, tailPreviewText, lang, applyNumberWords, protectionsActive) => {
+  if (!tailPreviewText?.trim() || !repairedText) return null;
+
+  const processedTail = processDisplayText(tailPreviewText, lang, applyNumberWords, protectionsActive);
+  let idx = repairedText.indexOf(processedTail);
+
+  // Fallback when sealed bubble text diverges slightly from raw tail preview.
+  if (idx < 0 && rawText?.trim().endsWith(tailPreviewText.trim())) {
+    idx = Math.max(0, repairedText.length - processedTail.length);
+  }
+  if (idx < 0) return null;
+
+  const highlight = repairedText.slice(idx, idx + processedTail.length);
+  return {
+    before: repairedText.slice(0, idx),
+    highlight,
+    after: repairedText.slice(idx + highlight.length),
+  };
+};
+
+/** One-click copy chip for names, spelled text, etc. */
+const CopyChip = ({ value, label, kind = 'default' }) => {
+  if (!value) return null;
+  return (
+    <button
+      type="button"
+      className={`copy-chip copy-chip--${kind}`}
+      onClick={(e) => {
+        e.stopPropagation();
+        navigator.clipboard.writeText(value);
+      }}
+      title={`Click to copy ${label}: ${value}`}
+    >
+      <span className="copy-chip-kind">{label}</span>
+      <span className="copy-chip-value">{value}</span>
+      <span className="copy-chip-icon" aria-hidden>⎘</span>
+    </button>
+  );
 };
 
 const InteractiveText = ({
@@ -66,77 +119,93 @@ const InteractiveText = ({
   protectionsActive = true,
   tailPreviewText = null,
 }) => {
-  if (!text) return null;
+  const processedText = useMemo(() => (text ? formatTranscriptForDisplay(text, lang) : ''), [text, lang]);
+  const spellingLayout = useMemo(() => Boolean(text && isSpellingBlock(text)), [text]);
+  const copyEntities = useMemo(() => (text ? collectCopyableEntities(text, lang) : []), [text, lang]);
+  const repairedText = useMemo(
+    () => (text ? processDisplayText(text, lang, applyNumberWords, protectionsActive) : ''),
+    [text, lang, applyNumberWords, protectionsActive],
+  );
+  const tailSlice = useMemo(
+    () => (text ? resolveTailHighlight(repairedText, text, tailPreviewText, lang, applyNumberWords, protectionsActive) : null),
+    [repairedText, text, tailPreviewText, lang, applyNumberWords, protectionsActive],
+  );
 
-  const processedText = formatTranscriptForDisplay(text, lang);
-  const spellingLayout = isSpellingBlock(text);
-  const repairedText = processDisplayText(text, lang, applyNumberWords, protectionsActive);
-  const previewProcessed = tailPreviewText
-    ? processDisplayText(tailPreviewText, lang, applyNumberWords, protectionsActive)
-    : null;
-
-  // NÚMEROS MÁGICOS: Detectamos números de teléfono, años y códigos.
-  const numRegex = getNumberHighlightRegex();
-
-  const handleCopy = (num) => {
-    const clean = num.trim();
+  const handleCopy = useCallback((num) => {
+    const clean = copyableDigits(num);
     if (!clean) return;
     navigator.clipboard.writeText(clean);
-  };
+  }, []);
 
-  const renderPart = (p, i, keyPrefix = '') => {
+  const renderPart = useCallback((p, i, keyPrefix = '', forcePlain = false) => {
     const partKey = `${keyPrefix}${i}`;
-    if (p && p.match(numRegex)) {
+    const useScramble = scramble && !forcePlain;
+    if (p && p.match(NUMBER_HIGHLIGHT_REGEX)) {
       return (
         <span
           key={partKey}
           className="phone-number highlight-number"
           onClick={(e) => { e.stopPropagation(); handleCopy(p); }}
-          title={`Click to copy number: ${p}`}
+          title={`Click to copy: ${copyableDigits(p)}`}
           style={{ cursor: 'copy', backgroundColor: 'rgba(252, 211, 77, 0.1)', color: '#fcd34d', padding: '0 2px', borderRadius: '2px', fontWeight: 600, display: 'inline' }}
         >
-          {scramble ? <ScrambleText value={p} /> : p}
+          {useScramble ? <ScrambleText value={p} /> : p}
         </span>
       );
     }
-    return scramble ? <ScrambleText key={partKey} value={p} /> : <span key={partKey}>{p}</span>;
-  };
+    return useScramble ? <ScrambleText key={partKey} value={p} /> : <span key={partKey}>{p}</span>;
+  }, [scramble, handleCopy]);
 
-  const renderSegment = (segment, keyPrefix = '') => {
+  const renderSegment = useCallback((segment, keyPrefix = '', forcePlain = false) => {
     if (!segment) return null;
-    return segment.split(numRegex).map((p, i) => renderPart(p, i, keyPrefix));
-  };
+    return splitDisplaySegments(segment).map((p, i) => renderPart(p, i, keyPrefix, forcePlain));
+  }, [renderPart]);
+
+  if (!text) return null;
+
+  const chipRow = copyEntities.length > 0 ? (
+    <span className="copy-chip-row">
+      {copyEntities.map((ent) => (
+        <CopyChip key={`${ent.kind}-${ent.value}`} value={ent.value} label={ent.label} kind={ent.kind} />
+      ))}
+    </span>
+  ) : null;
 
   if (spellingLayout && processedText.includes('\n')) {
     return (
-      <span className="bubble-spelling-lines" style={{ whiteSpace: 'pre-line', lineHeight: 1.35 }}>
-        {processedText.split('\n').map((line, li) => (
-          <span key={li} style={{ display: 'block', fontFamily: 'var(--font-mono)', fontWeight: 700 }}>
-            {scramble ? <ScrambleText value={line} /> : line}
-          </span>
-        ))}
-      </span>
-    );
-  }
-
-  if (previewProcessed && repairedText.includes(previewProcessed)) {
-    const idx = repairedText.indexOf(previewProcessed);
-    const before = repairedText.slice(0, idx);
-    const highlight = previewProcessed;
-    const after = repairedText.slice(idx + previewProcessed.length);
-    return (
       <>
-        {renderSegment(before, 'pre-')}
-        <span className="transcript-tail-preview">{renderSegment(highlight, 'tail-')}</span>
-        {renderSegment(after, 'post-')}
+        {chipRow}
+        <span className="bubble-spelling-lines" style={{ whiteSpace: 'pre-line', lineHeight: 1.35 }}>
+          {processedText.split('\n').map((line, li) => (
+            <span key={li} style={{ display: 'block', fontFamily: 'var(--font-mono)', fontWeight: 700 }}>
+              {scramble ? <ScrambleText value={line} /> : line}
+            </span>
+          ))}
+        </span>
       </>
     );
   }
 
-  return <>{renderSegment(repairedText)}</>;
+  if (tailSlice) {
+    return (
+      <>
+        {chipRow}
+        {renderSegment(tailSlice.before, 'pre-')}
+        <span className="transcript-tail-preview">{renderSegment(tailSlice.highlight, 'tail-', true)}</span>
+        {renderSegment(tailSlice.after, 'post-')}
+      </>
+    );
+  }
+
+  return (
+    <>
+      {chipRow}
+      {renderSegment(repairedText)}
+    </>
+  );
 };
 
-/** Compact T/P/R + word count + play — one line, ~6ch wide (split-pane friendly). */
+const MemoInteractiveText = React.memo(InteractiveText);
 const BubbleRail = ({
   engineStatus,
   turnWordCount,
@@ -223,16 +292,28 @@ const TranslatedBubble = ({
   languagePair = null,
   protectionsActive = true,
   mockTranslation = null,
+  userCorrected = false,
+  userTranslationOverride = null,
+  onEditSource,
+  onEditTranslation,
+  canEdit = true,
+  correctionsRev = 0,
 }) => {
   const { translationMood } = useSession();
+  const displaySourceText = useMemo(() => {
+    if (userCorrected) return text;
+    return applySttCorrections(text, lang);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [text, lang, userCorrected, correctionsRev]);
+
   const { translation, audioUrl, engineStatus, translationMeta, targetLang } = useTranslate(
-    text,
+    displaySourceText,
     lang,
     prefetchTTS,
     shouldPrefetch,
     translationMood,
     forceTranslateKey,
-    { isFinal, mockTranslation },
+    { isFinal, mockTranslation, userTranslationOverride },
   );
   const hasAutoPlayedRef = useRef(false);
 
@@ -249,7 +330,7 @@ const TranslatedBubble = ({
   const translationColor = '#a1a1aa';
 
   const isTranslationStuck = isTranslationStuckForRetranslate(
-    text,
+    displaySourceText,
     translation,
     lang,
     targetLang,
@@ -289,6 +370,9 @@ const TranslatedBubble = ({
   const isProblemTranslation = isTranslationStuck || isTranslationMissing;
   const showManualRetranslateBtn =
     !isPinned && engineStatus === 'ready' && isProblemTranslation && hasAutoRetranslated && !autoRetranslatePending;
+  const showEdit = canEdit && isFinal && onEditSource;
+  const openSourceEdit = () => onEditSource?.(displaySourceText);
+  const openTranslationEdit = () => onEditTranslation?.(translation || userTranslationOverride || '');
   const sourceUsesNumberWords =
     protectionsActive && normalizeLang(lang) === 'en';
   const targetUsesNumberWords =
@@ -302,11 +386,15 @@ const TranslatedBubble = ({
     : undefined;
 
   return (
-    <div className={`translated-bubble-row${reverse ? ' is-reverse' : ''}`}>
-      <div className="bubble-col bubble-col-source" style={{ textAlign: reverse ? 'right' : 'left', position: 'relative' }}>
+    <div className={`translated-bubble-row${reverse ? ' is-reverse' : ''}${userCorrected || userTranslationOverride ? ' is-user-corrected' : ''}`}>
+      <div
+        className={`bubble-col bubble-col-source${showEdit ? ' bubble-col--editable' : ''}`}
+        style={{ textAlign: reverse ? 'right' : 'left', position: 'relative' }}
+        onDoubleClick={showEdit ? openSourceEdit : undefined}
+      >
         <div className="bubble-line" style={{ color: transcriptColor }}>
-          <InteractiveText
-            text={text}
+          <MemoInteractiveText
+            text={displaySourceText}
             scramble={sourceScramble}
             applyNumberWords={sourceUsesNumberWords}
             lang={lang}
@@ -314,6 +402,17 @@ const TranslatedBubble = ({
             tailPreviewText={tailPreviewText}
           />
         </div>
+        {showEdit && (
+          <button
+            type="button"
+            className="bubble-edit-btn"
+            onClick={openSourceEdit}
+            title="Fix transcription (double-click)"
+            aria-label="Fix transcription"
+          >
+            ✎
+          </button>
+        )}
       </div>
 
       <div
@@ -344,13 +443,14 @@ const TranslatedBubble = ({
       </div>
 
       <div
-        className="bubble-col bubble-col-translation"
+        className={`bubble-col bubble-col-translation${showEdit ? ' bubble-col--editable' : ''}`}
         style={{ color: translationColor, textAlign: 'left', position: 'relative' }}
         title={translationTitle}
+        onDoubleClick={showEdit ? openTranslationEdit : undefined}
       >
         <div className="bubble-line bubble-line-translation">
           {translation ? (
-            <InteractiveText text={translation} scramble={targetScramble} applyNumberWords={targetUsesNumberWords} lang={targetLang} protectionsActive={protectionsActive} />
+            <MemoInteractiveText text={translation} scramble={targetScramble} applyNumberWords={targetUsesNumberWords} lang={targetLang} protectionsActive={protectionsActive} />
           ) : translationFailed ? (
             <span style={{ opacity: 0.3, fontSize: '0.7rem' }}>⚠️ translation failed</span>
           ) : autoRetranslatePending || engineStatus === 'translating' ? (
@@ -361,6 +461,17 @@ const TranslatedBubble = ({
             <span style={{ opacity: 0.2 }}>...</span>
           )}
         </div>
+        {showEdit && (
+          <button
+            type="button"
+            className="bubble-edit-btn bubble-edit-btn--translation"
+            onClick={openTranslationEdit}
+            title="Fix translation (double-click)"
+            aria-label="Fix translation"
+          >
+            ✎
+          </button>
+        )}
       </div>
     </div>
   );
@@ -382,6 +493,10 @@ const translatedBubblePropsEqual = (prev, next) =>
   prev.ttsMode === next.ttsMode &&
   prev.playingUrl === next.playingUrl &&
   prev.protectionsActive === next.protectionsActive &&
+  prev.userCorrected === next.userCorrected &&
+  prev.userTranslationOverride === next.userTranslationOverride &&
+  prev.canEdit === next.canEdit &&
+  prev.correctionsRev === next.correctionsRev &&
   prev.languagePair?.left === next.languagePair?.left &&
   prev.languagePair?.right === next.languagePair?.right;
 
@@ -415,7 +530,7 @@ export const TranscriptionBoard = ({
   const protectionsActive = isEnEsProtectionMode(languagePair);
   const { playTTS, stopTTS, isPlaying, playingUrl, prefetchTTS } = useTTS();
   const { playWarningPing } = useProgressiveAudio();
-  const { isActive, isZombieCall, lastCallSummary, setLastCallSummary } = useSession();
+  const { isActive, isZombieCall, lastCallSummary, setLastCallSummary, updateCaptions } = useSession();
   useComponentVisibilityRefresh();
   const showOffCallGuide = isComponentVisible('off_call_guide', { isActive, isZombieCall });
   const { inputDevices, outputDevices, selectedMicId, selectedSinkId } = useAudioSettings();
@@ -427,15 +542,84 @@ export const TranscriptionBoard = ({
     return `🎤 ${micLabel} → 🔊 ${outLabel}`;
   }, [inputDevices, outputDevices, selectedMicId, selectedSinkId]);
   const warnedBubblesRef = useRef(new Set());
-  const lastBoardLogAtRef = useRef(0);
-  const lastBoardLastCapLenRef = useRef(null);
-  const lastTurnMetaLogAtRef = useRef(0);
-  const lastScrollIntoViewLogAtRef = useRef(0);
-  const lastKeyChurnLogAtRef = useRef(0);
-  const prevCapSnapshotRef = useRef(null);
-  
   const [popover, setPopover] = useState({ show: false, x: 0, y: 0, text: '' });
   const popoverTimerRef = useRef(null);
+  const [correctionsRev, setCorrectionsRev] = useState(0);
+  const [correctionEditor, setCorrectionEditor] = useState(null);
+
+  useEffect(() => {
+    const onCorrections = () => setCorrectionsRev((n) => n + 1);
+    window.addEventListener(CORRECTIONS_CHANGED_EVENT, onCorrections);
+    return () => window.removeEventListener(CORRECTIONS_CHANGED_EVENT, onCorrections);
+  }, []);
+
+  const openCorrectionEditor = useCallback((cap, field, draft, extra = {}) => {
+    const sourceLang = normalizeLang(cap.lang);
+    const targetLang = getOppositeLang(sourceLang, languagePair);
+    setCorrectionEditor({
+      capId: cap.id,
+      field,
+      draft: draft || '',
+      sttHeard: extra.sttHeard ?? cap.sttHeard ?? cap.text ?? '',
+      sourceLang,
+      targetLang,
+      sourceText: cap.text || '',
+    });
+  }, [languagePair]);
+
+  const closeCorrectionEditor = useCallback(() => setCorrectionEditor(null), []);
+
+  const handleCorrectionSave = useCallback(() => {
+    if (!correctionEditor) return;
+    const { capId, field, draft, sttHeard, sourceLang, targetLang, sourceText } = correctionEditor;
+    const trimmed = (draft || '').trim();
+    if (!trimmed) return;
+
+    if (field === 'source') {
+      saveCorrection({
+        sourceHeard: sttHeard,
+        corrected: trimmed,
+        lang: sourceLang,
+        kind: CORRECTION_KIND.STT,
+      });
+      updateCaptions((prev) =>
+        prev.map((c) =>
+          c.id === capId
+            ? {
+                ...c,
+                text: trimmed,
+                userCorrected: true,
+                sttHeard,
+                userTranslationOverride: null,
+              }
+            : c,
+        ),
+      );
+      setTranslationBumps((prev) => ({ ...prev, [capId]: (prev[capId] ?? 0) + 1 }));
+    } else {
+      saveCorrection({
+        sourceHeard: sourceText,
+        corrected: trimmed,
+        lang: sourceLang,
+        targetLang,
+        kind: CORRECTION_KIND.GLOSSARY,
+      });
+      updateCaptions((prev) =>
+        prev.map((c) => (c.id === capId ? { ...c, userTranslationOverride: trimmed } : c)),
+      );
+    }
+    setCorrectionEditor(null);
+  }, [correctionEditor, updateCaptions]);
+
+  const makeEditHandlers = useCallback(
+    (cap) => ({
+      onEditSource: (displayText) =>
+        openCorrectionEditor(cap, 'source', displayText, { sttHeard: cap.sttHeard || cap.text }),
+      onEditTranslation: (currentTranslation) =>
+        openCorrectionEditor(cap, 'translation', currentTranslation || cap.userTranslationOverride || ''),
+    }),
+    [openCorrectionEditor],
+  );
   
   // Smart Bubble Compression: auto-collapse long bubbles to reduce reading fatigue
   const [expandedIds, setExpandedIds] = useState(new Set());
@@ -472,7 +656,6 @@ export const TranscriptionBoard = ({
 
   /** One word count per silence-to-silence turn — show only on the last bubble of that turn. */
   const turnDisplayMeta = useMemo(() => {
-    const tMeta0 = performance.now();
     const lastIndexByTurn = {};
     const maxCountByTurn = {};
     captions.forEach((cap, i) => {
@@ -481,15 +664,6 @@ export const TranscriptionBoard = ({
       const tc = cap.turnWordCount ?? 0;
       if (tc > (maxCountByTurn[tid] ?? 0)) maxCountByTurn[tid] = tc;
     });
-    const dtMeta = performance.now() - tMeta0;
-    const nowMs = Date.now();
-    const shouldLogMeta = dtMeta > 8 && captions.length > 0 && nowMs - lastTurnMetaLogAtRef.current > 1000;
-    if (shouldLogMeta && typeof window !== 'undefined') {
-      // #region agent log: turnDisplayMeta cost (H4)
-      lastTurnMetaLogAtRef.current = nowMs;
-      fetch('http://127.0.0.1:7891/ingest/e6c8e207-e5e1-4e11-b95a-baa54d11271a',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'2c9b00'},body:JSON.stringify({sessionId:'2c9b00',runId:'deep-survey-1',hypothesisId:'H4',location:'TranscriptionBoard.js:turnDisplayMeta',message:'captions.forEach turnDisplayMeta cost',data:{captionsLen:captions.length,dtMeta},timestamp:Date.now()})}).catch(()=>{});
-      // #endregion agent log
-    }
     return { lastIndexByTurn, maxCountByTurn };
   }, [captions]);
 
@@ -525,103 +699,13 @@ export const TranscriptionBoard = ({
     const countIncreased = count > prevCount;
     const becameFinal = prevFinalFlag === 'live' && isFinal && prevId === lastId;
 
-    // #region agent log: key churn (H8) to validate “disappear/reappear” causality.
-    // React remount/jitter almost always happens when `key` changes.
-    // We probe `cap.id` changes at the rendered indices.
-    const nowMs = Date.now();
-    if (typeof window !== 'undefined' && nowMs - lastKeyChurnLogAtRef.current > 1000) {
-      const prevSnap = prevCapSnapshotRef.current;
-      const newSnap = captions.map((c) => ({ id: c.id || '', isFinal: c.isFinal !== false, turnId: c.turnId || '' })).slice(0, 12);
-      if (prevSnap && prevSnap.ids && prevSnap.ids.length > 0) {
-        let mismatches = 0;
-        const diffs = [];
-        const lim = Math.min(prevSnap.ids.length, newSnap.length);
-        for (let i = 0; i < lim; i++) {
-          const a = prevSnap.ids[i];
-          const b = newSnap[i];
-          if (!a) continue;
-          if (a.id !== b.id || a.isFinal !== b.isFinal) {
-            mismatches++;
-            if (diffs.length < 4) {
-              diffs.push({
-                idx: i,
-                from: a.id,
-                to: b.id,
-                fromIsFinal: a.isFinal,
-                toIsFinal: b.isFinal,
-              });
-            }
-          }
-        }
-        if (mismatches > 0) {
-          lastKeyChurnLogAtRef.current = nowMs;
-          fetch('http://127.0.0.1:7891/ingest/e6c8e207-e5e1-4e11-b95a-baa54d11271a', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json', 'X-Debug-Session-Id': '2c9b00' },
-            body: JSON.stringify({
-              sessionId: '2c9b00',
-              runId: 'key-churn-probe',
-              hypothesisId: 'H8',
-              location: 'TranscriptionBoard.js:captions-effect:key-churn',
-              message: 'Rendered cap.id key churn between updates',
-              timestamp: Date.now(),
-              data: { captionsLen: count, mismatches, diffs },
-            }),
-          }).catch(() => {});
-        }
-      }
-      prevCapSnapshotRef.current = { ids: newSnap };
-    }
-    // #endregion agent log
-
     if (!isScrolledUpRef.current && (countIncreased || becameFinal)) {
       bottomRef.current?.scrollIntoView({ behavior: 'auto' });
-
-      // #region agent log: auto-scroll jitter probe (H5)
-      const nowMs = Date.now();
-      if (nowMs - lastScrollIntoViewLogAtRef.current > 1000 && typeof window !== 'undefined') {
-        lastScrollIntoViewLogAtRef.current = nowMs;
-        const scrollTop = scrollAreaRef.current?.scrollTop ?? null;
-        const scrollH = scrollAreaRef.current?.scrollHeight ?? null;
-        const clientH = scrollAreaRef.current?.clientHeight ?? null;
-        fetch('http://127.0.0.1:7891/ingest/e6c8e207-e5e1-4e11-b95a-baa54d11271a', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json', 'X-Debug-Session-Id': '2c9b00' },
-          body: JSON.stringify({
-            sessionId: '2c9b00',
-            runId: 'deep-survey-jitter',
-            hypothesisId: 'H5',
-            location: 'TranscriptionBoard.js:auto-scroll',
-            message: 'auto scrollIntoView fired',
-            timestamp: Date.now(),
-            data: { captionsLen: count, scrollTop, scrollH, clientH }
-          })
-        }).catch(() => {});
-      }
-      // #endregion agent log
     }
     lastScrollKeyRef.current = scrollKey;
 
     if (lastCap && lastCap.text) {
-      const lastLen = lastCap.text.length;
-      const prevLen = lastBoardLastCapLenRef.current;
-      const deltaLenBoard = prevLen === null || prevLen === undefined ? null : lastLen - prevLen;
-      lastBoardLastCapLenRef.current = lastLen;
-
-      const tWords0 = performance.now();
       const words = lastCap.text.trim().split(/\s+/).length;
-      const dtWords = performance.now() - tWords0;
-
-      // #region agent log: transcription board word-split cost + char churn (H1/H2)
-      const nowMs = Date.now();
-      const shouldLog =
-        (deltaLenBoard !== null && Math.abs(deltaLenBoard) <= 1 && nowMs - lastBoardLogAtRef.current > 1000) ||
-        dtWords > 8;
-      if (shouldLog) {
-        lastBoardLogAtRef.current = nowMs;
-        fetch('http://127.0.0.1:7891/ingest/e6c8e207-e5e1-4e11-b95a-baa54d11271a',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'2c9b00'},body:JSON.stringify({sessionId:'2c9b00',runId:'deep-survey-1',hypothesisId:'H1',location:'TranscriptionBoard.js:captions-effect',message:'board word split / char churn',data:{captionsLen:count,isFinal,lastLen,deltaLenBoard,dtWords},timestamp:Date.now()})}).catch(()=>{});
-      }
-      // #endregion agent log
 
       if (words >= 40 && !warnedBubblesRef.current.has(lastCap.id)) {
         playWarningPing();
@@ -797,6 +881,11 @@ export const TranscriptionBoard = ({
                   languagePair={languagePair}
                   protectionsActive={protectionsActive}
                   mockTranslation={cap._devMockTranslation}
+                  userCorrected={Boolean(cap.userCorrected)}
+                  userTranslationOverride={cap.userTranslationOverride || null}
+                  canEdit={cap.isFinal !== false}
+                  correctionsRev={correctionsRev}
+                  {...makeEditHandlers(cap)}
                 />
                 <button
                   type="button"
@@ -850,17 +939,18 @@ export const TranscriptionBoard = ({
           const isLive = cap.isFinal === false;
           const isLongBubble = wordCount > 50 && !isLive;
           const isExpanded = expandedIds.has(cap.id);
+          const bubbleStyle = getBubbleStyle(cap.text, isLive, cap.lang, languagePair);
 
           return (
             <div
               key={cap.id || i}
-              className={`transcript-bubble${isLive ? ' is-live' : ' is-sealed'}${isSplitContinuation ? ' is-flowed' : ''}`}
+              className={`transcript-bubble${isLive ? ' is-live' : ' is-sealed'}${isSplitContinuation ? ' is-flowed' : ''}${cap.userCorrected || cap.userTranslationOverride ? ' is-user-corrected' : ''}`}
               style={{
               opacity: isLive ? 0.6 : 1,
               marginTop: isSplitContinuation ? '0rem' : '0.25rem',
               border: '1px solid transparent',
-              background: getBubbleStyle(cap.text, isLive, cap.lang, languagePair).backgroundColor,
-              ...getBubbleStyle(cap.text, isLive, cap.lang, languagePair)
+              background: bubbleStyle.backgroundColor,
+              ...bubbleStyle
             }}>
               
               <div style={{ maxHeight: isLongBubble && !isExpanded ? '5.5rem' : 'none', overflow: isLongBubble && !isExpanded ? 'hidden' : 'visible', transition: 'max-height 0.3s ease' }}>
@@ -876,6 +966,11 @@ export const TranscriptionBoard = ({
                   languagePair={languagePair}
                   protectionsActive={protectionsActive}
                   mockTranslation={cap._devMockTranslation}
+                  userCorrected={Boolean(cap.userCorrected)}
+                  userTranslationOverride={cap.userTranslationOverride || null}
+                  canEdit={!isLive}
+                  correctionsRev={correctionsRev}
+                  {...makeEditHandlers(cap)}
                 />
               </div>
               
@@ -899,6 +994,17 @@ export const TranscriptionBoard = ({
         })}
         <div id="scroll-bottom-anchor" ref={bottomRef} style={{ height: '48px', flexShrink: 0, pointerEvents: 'none' }} />
       </div>
+
+      <BubbleCorrectionEditor
+        open={Boolean(correctionEditor)}
+        field={correctionEditor?.field || 'source'}
+        draft={correctionEditor?.draft || ''}
+        sourceLang={correctionEditor?.sourceLang || 'en'}
+        targetLang={correctionEditor?.targetLang}
+        onDraftChange={(v) => setCorrectionEditor((prev) => (prev ? { ...prev, draft: v } : prev))}
+        onSave={handleCorrectionSave}
+        onCancel={closeCorrectionEditor}
+      />
 
       {/* Simplified Footer Toolbar */}
       <div className="transcription-footer" data-guide="pin" style={{ 

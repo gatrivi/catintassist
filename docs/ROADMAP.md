@@ -42,6 +42,9 @@ Prod verification checklist:
 | 🎯 goal wheel always in toolbar | **Shipped v4.60.0** | [`onboarding/advice.md`](onboarding/advice.md) |
 | Mic meter in I/O strip (OK / MUTED / NO SIGNAL / CLIP) | **Shipped v4.60.0** | [`AudioRouteStatusBar.js`](../src/components/AudioRouteStatusBar.js) |
 | Default bundled background | **Shipped v4.60.0** | `public/bg/default.svg` |
+| ElementHint tooltips (copy selector) | **Shipped v4.75.5** | [`development/element-hint.md`](development/element-hint.md) |
+| Copy chips + digit stitch | **Shipped v4.75.6** | [`transcription-pane/README.md`](transcription-pane/README.md) |
+| Transcript corrections (teach STT + glossary) | **Shipped v4.76.0** | [`transcription-pane/corrections.md`](transcription-pane/corrections.md) |
 
 **Presets (900×600):**
 - **Minimal:** bounty, mins today, break left, connect
@@ -130,14 +133,14 @@ Visual mic bars (Phase 1) use AnalyserNode only — **zero STT tokens**.
 
 From [`archive/future.md`](archive/future.md) + AGENTS soundscape:
 
-- [ ] Click bad translation → user correction → shared glossary (needs DB Phase 2)
+- [x] Click bad translation → user correction → local glossary (**v4.76.0** — DB sync Phase 2)
 - [ ] Connect sound: purse opening
 - [ ] Every minute: coin earn sound (richer each minute)
 - [ ] Call end: coin stack crash into purse
 - [ ] Soundboard: health bar per greeting; Deepgram legibility audit in studio
 - [ ] Medical terms glossary ([`handoff/02_medical_terms.md`](handoff/02_medical_terms.md))
-- [ ] Transcript corrections UI ([`handoff/04_transcript_corrections.md`](handoff/04_transcript_corrections.md))
+- [ ] Transcript corrections: Deepgram bias + partial glossary (UI shipped v4.76.0)
 
 ---
 
-*Edit this file by hand. Version anchor: v4.60.0*
+*Edit this file by hand. Version anchor: v4.76.0*

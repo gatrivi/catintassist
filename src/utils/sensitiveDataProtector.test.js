@@ -4,6 +4,9 @@
 import {
   convertEnglishNumberWords,
   formatPhoneAndSSNDigits,
+  stitchSingleDigitSequences,
+  applyDisplayProtections,
+  copyableDigits,
   repairNYCZipNumbers,
   hallucinationGuard,
   removeOverlapPreservingDigitSequences,
@@ -76,6 +79,45 @@ describe('formatPhoneAndSSNDigits — SSN vs phone', () => {
 
   test('leaves short digit runs alone (< 8 digits)', () => {
     expect(formatPhoneAndSSNDigits('Room 1234')).toBe('Room 1234');
+  });
+});
+
+// ---------------------------------------------------------------------------
+// stitchSingleDigitSequences
+// ---------------------------------------------------------------------------
+describe('stitchSingleDigitSequences', () => {
+  test('collapses spaced single digits', () => {
+    expect(stitchSingleDigitSequences('call 5 5 5 1 2 3 4')).toBe('call 5551234');
+  });
+
+  test('collapses after number-word conversion path', () => {
+    const converted = convertEnglishNumberWords('nine one one', 'en');
+    expect(stitchSingleDigitSequences(converted)).toBe('911');
+  });
+
+  test('does not collapse multi-digit tokens', () => {
+    expect(stitchSingleDigitSequences('Room 12 34')).toBe('Room 12 34');
+  });
+
+  test('leaves short non-sequence alone', () => {
+    expect(stitchSingleDigitSequences('floor 3')).toBe('floor 3');
+  });
+});
+
+describe('applyDisplayProtections', () => {
+  test('stitches then formats phone dictation', () => {
+    expect(applyDisplayProtections('two one two five five five zero one zero zero', 'en'))
+      .toBe('212-555-0100');
+  });
+
+  test('preserves EN once', () => {
+    expect(applyDisplayProtections('Once a week', 'en')).toBe('Once a week');
+  });
+});
+
+describe('copyableDigits', () => {
+  test('strips non-digits for clipboard', () => {
+    expect(copyableDigits('212-555-0100')).toBe('2125550100');
   });
 });
 

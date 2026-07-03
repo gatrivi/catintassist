@@ -1,5 +1,6 @@
 import React from 'react';
 import { StudioIcon } from './HeaderIcons';
+import { ElementHintTarget } from './ElementHint';
 
 export const OFF_CALL_VIEWS = ['scoreboard', 'soundboard'];
 
@@ -18,9 +19,23 @@ export const WorkspaceViewSwitcher = ({
   const meta = VIEW_META[view] || VIEW_META.scoreboard;
   const hintActive = showHint && view === 'scoreboard' && !disabled;
 
+  const titleText = disabled
+    ? 'Studio switch — off-call only'
+    : hintActive
+      ? `Try Soundboard Studio · ${meta.next}`
+      : `${meta.label} · click → ${meta.next}`;
+
   return (
+    <ElementHintTarget
+      elementId="header-workspace-switch-btn"
+      guideKey="workspace-switch"
+      heading={meta.label}
+      body={titleText}
+      color="#8b5cf6"
+    >
     <button
       type="button"
+      id="header-workspace-switch-btn"
       data-guide="workspace-switch"
       className={[
         'workspace-view-btn',
@@ -30,17 +45,12 @@ export const WorkspaceViewSwitcher = ({
       ].filter(Boolean).join(' ')}
       onClick={onCycle}
       disabled={disabled}
-      title={
-        disabled
-          ? 'Studio switch — off-call only'
-          : hintActive
-            ? `Try Soundboard Studio · ${meta.next}`
-            : `${meta.label} · click → ${meta.next}`
-      }
+      title={titleText}
       aria-label={`Workspace: ${meta.label}. Switch to ${meta.next}.`}
     >
       <StudioIcon view={view} />
     </button>
+    </ElementHintTarget>
   );
 };
 

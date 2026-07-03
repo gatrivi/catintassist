@@ -5,6 +5,7 @@ import {
   isIncrementalTranscriptGrowth,
   isSentenceComplete,
 } from '../utils/translationQuality';
+import { applySttCorrections, findGlossaryTranslation, CORRECTIONS_CHANGED_EVENT } from '../utils/transcriptCorrections';
 import { translateWithFallback } from '../utils/translationEngines';
 import { getTranslationApiKeys } from '../utils/translationRuntimeKeys';
 import { dedupeInFlight, withTranslationSlot } from '../utils/translationRequestQueue';
@@ -82,7 +83,7 @@ export const useTranslate = (
   shouldPrefetch,
   mood = 'auto',
   forceTranslateKey = 0,
-  { isFinal = true, mockTranslation = null } = {},
+  { isFinal = true, mockTranslation = null, userTranslationOverride = null } = {},
 ) => {
   const [translation, setTranslation] = useState('');
   const [audioUrl, setAudioUrl] = useState(null);
@@ -98,6 +99,13 @@ export const useTranslate = (
   const abortControllerRef = useRef(null);
   const hasGoodTranslationRef = useRef(false);
   const [languagePair, setLanguagePair] = useState(loadLanguagePair);
+  const [correctionsRev, setCorrectionsRev] = useState(0);
+
+  useEffect(() => {
+    const onCorrections = () => setCorrectionsRev((n) => n + 1);
+    window.addEventListener(CORRECTIONS_CHANGED_EVENT, onCorrections);
+    return () => window.removeEventListener(CORRECTIONS_CHANGED_EVENT, onCorrections);
+  }, []);
 
   useEffect(() => {
     const onPairChange = (e) => {
@@ -140,6 +148,18 @@ export const useTranslate = (
     const normText = text.trim().replace(/\s+/g, ' ');
     const wordCount = normText.split(/\s+/).length;
     const force = forceTranslateKey > 0;
+
+    const override = (userTranslationOverride || '').trim();
+    if (override) {
+      setTranslation(override);
+      setEngineStatus('ready');
+      setTranslationMeta({ engineId: 'user', quality: 'ok', failures: [], tried: ['user-override'] });
+      setIsTranslating(false);
+      prevTextRef.current = normText;
+      lastTranslatedTextRef.current = normText;
+      hasGoodTranslationRef.current = true;
+      return;
+    }
 
     const isSplitRewrite =
       prevTextRef.current && !isIncrementalTranscriptGrowth(prevTextRef.current, normText);
@@ -212,6 +232,19 @@ export const useTranslate = (
       const langPair = langPairRef.current || currentLangPair;
       const [sLang, tLang] = langPair.split('-');
 
+      const sourceForTranslate = applySttCorrections(normText, sLang);
+      const glossaryHit = findGlossaryTranslation(sourceForTranslate, sLang, tLang);
+      if (glossaryHit?.corrected) {
+        setTranslation(glossaryHit.corrected);
+        setTranslationMeta({ engineId: 'glossary', quality: 'ok', failures: [], tried: ['glossary'] });
+        setIsTranslating(false);
+        setEngineStatus('ready');
+        hasGoodTranslationRef.current = true;
+        lastTranslatedTextRef.current = normText;
+        lastWordCountRef.current = wordCount;
+        return;
+      }
+
       setIsTranslating(true);
       setEngineStatus('translating');
 
@@ -266,16 +299,16 @@ export const useTranslate = (
       };
 
       try {
-        const segments = splitTranslatableSegments(normText);
+        const segments = splitTranslatableSegments(sourceForTranslate);
         let { text: final, meta } = await translateSegments(segments);
 
         if (
           mood !== 'auto' &&
-          (!final || isTranslationPassthrough(normText, final, sLang, tLang)) &&
+          (!final || isTranslationPassthrough(sourceForTranslate, final, sLang, tLang)) &&
           segments.length > 1 &&
           !signal.aborted
         ) {
-          const res = await fetchChunk(normText);
+          const res = await fetchChunk(sourceForTranslate);
           final = res.text;
           meta = {
             engineId: res.engineId,
@@ -289,7 +322,7 @@ export const useTranslate = (
 
         setTranslationMeta(meta);
 
-        const passthrough = final && isTranslationPassthrough(normText, final, sLang, tLang);
+        const passthrough = final && isTranslationPassthrough(sourceForTranslate, final, sLang, tLang);
         const acceptable =
           final &&
           final.length >= 1 &&
@@ -331,7 +364,7 @@ export const useTranslate = (
       if (debounceTimerRef.current) clearTimeout(debounceTimerRef.current);
       if (abortControllerRef.current) abortControllerRef.current.abort();
     };
-  }, [text, lang, shouldPrefetch, prefetchTTS, currentLangPair, mood, forceTranslateKey, isFinal, languagePair, mockTranslation]);
+  }, [text, lang, shouldPrefetch, prefetchTTS, currentLangPair, mood, forceTranslateKey, isFinal, languagePair, mockTranslation, userTranslationOverride, correctionsRev]);
 
   return {
     translation,

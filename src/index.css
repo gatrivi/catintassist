@@ -1921,6 +1921,89 @@ body {
   font-size: 0.62rem;
 }
 
+/* ElementHint — rich tooltip w/ copyable selector (v4.75.5) */
+.element-hint-panel {
+  background: rgba(2, 6, 23, 0.78);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.55), 0 0 0 1px rgba(255, 255, 255, 0.06) inset;
+  border-radius: 10px;
+  padding: 0.45rem 0.55rem;
+  max-width: 300px;
+  min-width: 220px;
+}
+.element-hint-accent {
+  position: absolute;
+  top: -1px;
+  left: -1px;
+  right: -1px;
+  height: 3px;
+  border-top-left-radius: 10px;
+  border-top-right-radius: 10px;
+  opacity: 0.95;
+}
+.element-hint-head {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  margin-bottom: 0.2rem;
+}
+.element-hint-icon {
+  font-size: 0.95rem;
+  line-height: 1;
+}
+.element-hint-heading {
+  font-size: 0.62rem;
+  font-weight: 900;
+  color: #fff;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+.element-hint-selector-row {
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+  margin-bottom: 0.25rem;
+}
+.element-hint-selector {
+  flex: 1;
+  min-width: 0;
+  font-size: 0.58rem;
+  font-family: var(--font-mono, monospace);
+  color: #93c5fd;
+  background: rgba(59, 130, 246, 0.12);
+  border: 1px solid rgba(59, 130, 246, 0.25);
+  border-radius: 4px;
+  padding: 0.12rem 0.3rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.element-hint-copy-btn {
+  flex-shrink: 0;
+  width: 22px;
+  height: 22px;
+  border-radius: 4px;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  background: rgba(255, 255, 255, 0.08);
+  color: #e2e8f0;
+  font-size: 0.72rem;
+  line-height: 1;
+  cursor: pointer;
+  padding: 0;
+}
+.element-hint-copy-btn:hover {
+  background: rgba(59, 130, 246, 0.25);
+  border-color: rgba(59, 130, 246, 0.45);
+}
+.element-hint-body {
+  font-size: 0.62rem;
+  line-height: 1.3;
+  color: rgba(255, 255, 255, 0.82);
+  white-space: pre-line;
+}
+
 /* Compact chip layout hotfix (v4.73.4):
    Force a tiny, single-line chip so diagnostics never overlaps header right controls. */
 .connection-diagnostics-bar.is-compact {
@@ -2521,24 +2604,6 @@ body {
   border-left-color: var(--accent-primary);
 }
 
-/* The actual "tailText moved remainder" feedback: text-only, no height/layout impact. */
-.bubble-line.is-tail-blue {
-  animation: tailBlueFlash 0.16s ease-out 0s both;
-  color: rgba(125, 211, 252, 0.98) !important;
-}
-
-@keyframes tailBlueFlash {
-  0% {
-    text-shadow: none;
-  }
-  50% {
-    text-shadow: 0 0 10px rgba(56, 189, 248, 0.7);
-  }
-  100% {
-    text-shadow: none;
-  }
-}
-
 .transcript-bubble.is-live {
   overflow: visible;
   animation: none !important;
@@ -2548,11 +2613,12 @@ body {
   animation: none !important;
 }
 
-/* Tail rollover preview — substring highlight only, no animation */
+/* Tail rollover preview — stable blue, no scramble animation on highlight */
 .transcript-tail-preview {
   color: rgba(125, 211, 252, 0.98);
   background: rgba(56, 189, 248, 0.12);
   border-radius: 2px;
+  animation: none;
 }
 
 #header-lang-pair-btn {
@@ -2592,6 +2658,59 @@ body {
   transform: scale(0.95);
   background: var(--success);
   color: white;
+}
+
+/* Copy chips — names, spelled text (v4.75.6) */
+.copy-chip-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem;
+  margin-bottom: 0.35rem;
+}
+.copy-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0.12rem 0.4rem;
+  border-radius: 5px;
+  border: 1px solid rgba(56, 189, 248, 0.35);
+  background: rgba(56, 189, 248, 0.12);
+  color: #e0f2fe;
+  font-size: 0.68rem;
+  font-weight: 700;
+  cursor: copy;
+  line-height: 1.2;
+  max-width: 100%;
+}
+.copy-chip--spelling {
+  border-color: rgba(167, 139, 250, 0.45);
+  background: rgba(139, 92, 246, 0.15);
+  color: #ede9fe;
+}
+.copy-chip--name {
+  border-color: rgba(52, 211, 153, 0.4);
+  background: rgba(16, 185, 129, 0.12);
+  color: #d1fae5;
+}
+.copy-chip-kind {
+  font-size: 0.55rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  opacity: 0.75;
+}
+.copy-chip-value {
+  font-family: var(--font-mono, monospace);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 18ch;
+}
+.copy-chip-icon {
+  opacity: 0.7;
+  font-size: 0.65rem;
+}
+.copy-chip:hover {
+  filter: brightness(1.12);
 }
 
 /* Note Pad */
@@ -3736,6 +3855,145 @@ body {
   font-style: italic;
   color: #a1a1aa;
   text-align: left;
+}
+
+/* Bubble correction editor — floating overlay, no row height change */
+.bubble-correction-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 12000;
+  background: rgba(0, 0, 0, 0.55);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+}
+
+.bubble-correction-panel {
+  width: min(520px, 96vw);
+  background: #18181b;
+  border: 1px solid #3f3f46;
+  border-radius: 8px;
+  padding: 0.75rem 0.85rem;
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.45);
+}
+
+.bubble-correction-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 0.35rem;
+}
+
+.bubble-correction-title {
+  font-weight: 700;
+  font-size: 0.85rem;
+  color: #f4f4f5;
+}
+
+.bubble-correction-lang {
+  font-size: 0.65rem;
+  color: #a1a1aa;
+  font-family: var(--font-mono, monospace);
+}
+
+.bubble-correction-hint {
+  margin: 0 0 0.5rem;
+  font-size: 0.7rem;
+  color: #a1a1aa;
+  line-height: 1.35;
+}
+
+.bubble-correction-input {
+  width: 100%;
+  box-sizing: border-box;
+  min-height: 5.5rem;
+  resize: vertical;
+  background: #09090b;
+  color: #fafafa;
+  border: 1px solid #3f3f46;
+  border-radius: 6px;
+  padding: 0.5rem 0.6rem;
+  font-size: 0.85rem;
+  line-height: 1.35;
+  font-family: inherit;
+}
+
+.bubble-correction-input:focus {
+  outline: none;
+  border-color: #22c55e;
+  box-shadow: 0 0 0 1px rgba(34, 197, 94, 0.35);
+}
+
+.bubble-correction-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.5rem;
+  margin-top: 0.55rem;
+}
+
+.bubble-correction-btn {
+  border: 1px solid #3f3f46;
+  background: #27272a;
+  color: #e4e4e7;
+  border-radius: 5px;
+  padding: 0.3rem 0.65rem;
+  font-size: 0.72rem;
+  cursor: pointer;
+}
+
+.bubble-correction-btn--save {
+  background: rgba(34, 197, 94, 0.18);
+  border-color: rgba(34, 197, 94, 0.45);
+  color: #86efac;
+}
+
+.bubble-correction-kbd {
+  display: block;
+  margin-top: 0.4rem;
+  font-size: 0.6rem;
+  color: #71717a;
+  text-align: right;
+}
+
+.bubble-col--editable {
+  cursor: text;
+}
+
+.bubble-edit-btn {
+  position: absolute;
+  top: 0;
+  right: 0;
+  z-index: 8;
+  opacity: 0;
+  border: none;
+  background: rgba(24, 24, 27, 0.85);
+  color: #a1a1aa;
+  font-size: 0.7rem;
+  line-height: 1;
+  padding: 0.15rem 0.3rem;
+  border-radius: 3px;
+  cursor: pointer;
+  transition: opacity 0.12s ease;
+}
+
+.bubble-edit-btn--translation {
+  right: auto;
+  left: 0;
+}
+
+.bubble-col--editable:hover .bubble-edit-btn,
+.transcript-bubble:hover .bubble-edit-btn {
+  opacity: 0.85;
+}
+
+.transcript-bubble.is-user-corrected {
+  box-shadow: inset 2px 0 0 rgba(34, 197, 94, 0.55);
+}
+
+.translated-bubble-row.is-user-corrected .bubble-line-translation {
+  color: #bbf7d0;
 }
 
 /* Pin — ghost by default; bigger glass hit on row hover (left edge, clear of ES column) */

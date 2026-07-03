@@ -1,4 +1,4 @@
-# Transcription Pane (v4.48.2)
+# Transcription Pane (v4.76.0)
 
 ## 1) The one table to memorize (columns are fixed)
 Columns never swap.
@@ -44,17 +44,34 @@ Planned fix direction (documented):
 Mic Test mode persists in `localStorage` (`catint_mic_test_mode_v1`).
 
 ## 7) Key files (when debugging layout)
-- `src/components/TranscriptionBoard.js` (bubbles + columns)
+- `src/components/TranscriptionBoard.js` (bubbles + columns + corrections UI)
+- `src/components/BubbleCorrectionEditor.js` (floating fix panel)
+- `src/utils/transcriptCorrections.js` (STT + glossary store)
 - `src/hooks/useDeepgram.js` (captions, `lang`, dual sockets, tie-break)
-- `src/hooks/useTranslate.js` (per-bubble translation)
+- `src/hooks/useTranslate.js` (per-bubble translation + glossary)
+- `src/utils/transcriptFormat.js` (copy chips, spelled names)
+- `src/utils/sensitiveDataProtector.js` (numbers, digit stitch)
 
-## 8) Quick self-test (Mic Test)
+## 8) Copy chips + numbers (v4.75.6+)
+- Names / spelled text: `CopyChip` row above bubble when detected
+- Click highlighted number → copies digits only (no spaces)
+- `stitchSingleDigitSequences()` groups 9–10 digit phone runs
+
+## 9) Teach corrections (v4.76.0) — **read this**
+Full guide: [`corrections.md`](corrections.md)
+
+TLDR:
+- Double-click white column → fix transcription → future phrases auto-correct
+- Double-click gray column → fix translation → exact sentence uses your text next time
+- ✎ on hover · Ctrl+Enter save · green edge = user-corrected
+
+## 10) Quick self-test (Mic Test)
 1. `npm start` → localhost:3000
 2. 🎤 on → Connect → allow mic
 3. Speak English → white EN left, gray ES right
 4. Speak Spanish → gray EN left, white ES right
 
-## 9) Zero-waste main view (UI constraints)
+## 11) Zero-waste main view (UI constraints)
 Goals:
 - Flush alignment: transcription bubbles reach the bottom of the screen.
 - Chrome buffer: keep a ~24px (1 line) safety spacer at the absolute bottom to prevent UI labels from hiding the latest line.

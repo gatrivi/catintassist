@@ -1,6 +1,7 @@
 import React, { useMemo, useState, useEffect } from 'react';
 import { useAudioSettings } from '../contexts/AudioSettingsContext';
 import { truncateDeviceLabel } from '../utils/audioSelfTest';
+import { ElementHintTarget } from './ElementHint';
 import {
   isComponentVisible,
   useComponentVisibilityRefresh,
@@ -253,6 +254,12 @@ export const AudioRouteStatusBar = ({
         </span>
 
         {onOpenSoundboard && !isActive && (
+          <ElementHintTarget
+            elementId="audio-route-soundboard-btn"
+            heading="Soundboard Studio"
+            body={soundboardOpen ? 'Hide Soundboard Studio panel.' : 'Record greetings, health check, route test.'}
+            color="#a855f7"
+          >
           <button
             id="audio-route-soundboard-btn"
             type="button"
@@ -263,6 +270,7 @@ export const AudioRouteStatusBar = ({
           >
             {soundboardOpen ? 'Soundboard ✓' : 'Soundboard'}
           </button>
+          </ElementHintTarget>
         )}
 
         {virtualCableFailure && (
@@ -291,6 +299,12 @@ export const AudioRouteStatusBar = ({
           <span style={{ color: '#fbbf24', fontWeight: 800, fontSize: '0.62rem' }}>Re-attach</span>
         )}
 
+        <ElementHintTarget
+          elementId="audio-route-more-btn"
+          heading="More audio tools"
+          body="Expand: mic meter, test local speakers, test VB-Cable route."
+          color="#64748b"
+        >
         <button
           id="audio-route-more-btn"
           type="button"
@@ -301,6 +315,7 @@ export const AudioRouteStatusBar = ({
         >
           {isMoreOpen ? 'Less' : 'More'}
         </button>
+        </ElementHintTarget>
 
         {(stale || critical) && onReconnectStream && (
           <button
@@ -354,12 +369,25 @@ export const AudioRouteStatusBar = ({
           )}
 
           {onTestLocal && (
+            <ElementHintTarget
+              elementId="audio-route-test-local-btn"
+              heading="Test local"
+              body="Play a test tone on your speakers only (not through VB-Cable)."
+              color="#38bdf8"
+            >
             <button id="audio-route-test-local-btn" type="button" style={btn} onClick={onTestLocal} title="Test tone on your speakers only">
               Test local
             </button>
+            </ElementHintTarget>
           )}
 
           {onTestRoute && (
+            <ElementHintTarget
+              elementId="audio-route-test-route-btn"
+              heading="Test route"
+              body="Play tone through VB-Cable — same path patients hear greetings."
+              color="#34d399"
+            >
             <button
               id="audio-route-test-route-btn"
               type="button"
@@ -369,6 +397,7 @@ export const AudioRouteStatusBar = ({
             >
               Test VB out
             </button>
+            </ElementHintTarget>
           )}
         </div>
       )}
