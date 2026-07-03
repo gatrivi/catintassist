@@ -485,7 +485,8 @@ body {
   flex: 0 0 20%;
   max-height: 20%;
   min-height: 0;
-  overflow: hidden;
+  overflow-x: auto;
+  overflow-y: hidden;
   display: flex;
   flex-direction: column;
 }
@@ -503,6 +504,21 @@ body {
 
 .app-container[data-off-call-view="scoreboard"] > #interpret-root {
   flex: 1 1 80%;
+  min-height: 0;
+}
+
+.app-container[data-off-call-view="soundboard"] {
+  min-height: 0;
+}
+
+.app-container[data-off-call-view="soundboard"] > .dashboard-header.dashboard-header--minimal {
+  flex-shrink: 0;
+  max-height: none;
+  overflow: visible;
+}
+
+.app-container[data-off-call-view="soundboard"] > .main-content.view-soundboard {
+  flex: 1 1 auto;
   min-height: 0;
 }
 
@@ -827,6 +843,7 @@ body {
 .main-content.view-soundboard {
   display: flex;
   flex-direction: column;
+  flex: 1 1 auto;
   min-height: 0;
 }
 
@@ -1712,33 +1729,148 @@ body {
   overflow-x: visible;
 }
 
-/* AudioRouteStatusBar compact strip + More panel (v4.74.5 compact header) */
+/* AudioRouteStatusBar — device pickers + soundboard (v4.75.1) */
 .audio-route-status-bar {
-  overflow-x: visible;
+  overflow-x: auto;
+  overflow-y: visible;
   display: flex;
-  flex-direction: row;
-  align-items: center;
-  justify-content: space-between;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 0.2rem;
+  width: 100%;
+  flex-shrink: 0;
 }
 
 .audio-route-status-main {
-  flex: 1;
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.25rem;
   min-width: 0;
+  width: 100%;
+}
+
+.audio-route-device-pick {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.15rem;
+  flex-shrink: 0;
+}
+
+.audio-route-device-pick-label {
+  font-size: 0.65rem;
+  line-height: 1;
+  opacity: 0.85;
+}
+
+.audio-route-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 0.6rem;
+  font-weight: 700;
+  color: rgba(255, 255, 255, 0.55);
   white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.audio-route-soundboard-btn {
+  background: rgba(212, 175, 55, 0.18);
+  border: 1px solid rgba(212, 175, 55, 0.45);
+  border-radius: 4px;
+  color: #fde68a;
+  cursor: pointer;
+  font-size: 0.65rem;
+  font-weight: 900;
+  padding: 0.18rem 0.5rem;
+  min-height: 24px;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.audio-route-soundboard-btn:hover {
+  background: rgba(212, 175, 55, 0.28);
+}
+
+.audio-route-soundboard-btn.is-open {
+  background: rgba(212, 175, 55, 0.32);
+  border-color: rgba(252, 211, 77, 0.75);
+  color: #fff;
+  box-shadow: 0 0 10px rgba(212, 175, 55, 0.35);
+}
+
+.audio-route-select,
+.audio-route-select option {
+  background-color: #0f172a;
+  color: #e2e8f0;
+  color-scheme: dark;
+}
+
+.app-logo-btn {
+  padding: 0;
+  width: 26px;
+  height: 26px;
+  overflow: hidden;
+  border-radius: 50%;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.app-logo-img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  object-fit: cover;
+  animation: appLogoSpin 60s linear infinite;
+}
+
+@keyframes appLogoSpin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+.session-controls-left-cluster {
+  flex-shrink: 0;
+}
+
+.audio-route-warn-chip {
+  font-size: 0.6rem;
+  font-weight: 800;
+  color: #f59e0b;
+  border: 1px solid rgba(245, 158, 11, 0.35);
+  background: rgba(245, 158, 11, 0.12);
+  padding: 0.1rem 0.35rem;
+  border-radius: 4px;
+  flex-shrink: 0;
 }
 
 .audio-route-more-panel {
   display: flex;
   align-items: center;
-  flex-wrap: nowrap;
-  overflow: visible;
+  flex-wrap: wrap;
   gap: 0.35rem;
-  flex-shrink: 0;
+  padding: 0.15rem 0;
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
 }
 
-/* Only show "More" button on <=700px (CSS controls panel visibility too). */
+.audio-route-mic-meter {
+  display: inline-block;
+  width: 36px;
+  height: 5px;
+  border-radius: 3px;
+  background: rgba(255, 255, 255, 0.12);
+  overflow: hidden;
+}
+
+.audio-route-mic-meter-fill {
+  display: block;
+  height: 100%;
+  transition: width 0.08s ease-out;
+}
+
 #audio-route-more-btn {
-  display: none;
+  display: inline-flex;
 }
 
 /* Connection Diagnostics (v4.72.x hotfix)
@@ -1982,12 +2114,17 @@ body {
 
 @media (max-width: 700px) {
   /* Compact header budget: keep header short but never clip More panel when open. */
-  .dashboard-header {
+  .dashboard-header:not(.dashboard-header--minimal) {
     max-height: 72px;
     overflow-y: visible;
     overflow-x: visible;
     padding: 2px 6px;
     gap: 0.15rem;
+  }
+
+  .dashboard-header--minimal {
+    max-height: none;
+    overflow: visible;
   }
 
   /* Critical: if More panel is open, allow header to grow. */
@@ -2024,42 +2161,9 @@ body {
     display: none !important;
   }
 
-  /* AudioRouteStatusBar: single-line main strip; More panel overlays below. */
-  .audio-route-status-bar {
-    position: relative;
-    flex-direction: row;
-    align-items: center;
-    justify-content: space-between;
-    gap: 0.15rem;
-    overflow: visible;
-  }
+  /* AudioRouteStatusBar: allow wrap on narrow headers */
   .audio-route-status-main {
-    display: flex;
-    flex-wrap: nowrap !important;
-    white-space: nowrap;
-    overflow: hidden;
-  }
-
-  /* More panel hidden unless explicitly opened. */
-  .audio-route-more-panel {
-    display: none;
-    position: absolute;
-    left: 0;
-    right: 0;
-    top: calc(100% + 4px);
-    z-index: 260;
-    background: rgba(12, 12, 18, 0.96);
-    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
-    padding: 4px 6px;
-    border-radius: 0 0 10px 10px;
-  }
-  .audio-route-status-bar[data-more-open="true"] .audio-route-more-panel {
-    display: flex;
-  }
-
-  /* Show "More" button only in compact widths. */
-  #audio-route-more-btn {
-    display: inline-flex;
+    flex-wrap: wrap !important;
   }
 }
 
@@ -2158,6 +2262,7 @@ body {
 }
 
 .soundboard-hide-btn {
+  display: none !important; /* v4.75.3: Soundboard toggle + Escape exit studio */
   flex-shrink: 0;
   padding: 0.45rem 0.65rem;
   border: 2px solid #ef4444;
@@ -4027,5 +4132,76 @@ body {
   z-index: 1000;
   animation: slideInDown 0.4s ease-out, zombiePulse 2s infinite;
   transition: all 0.2s ease;
+}
+
+/* On-call soundboard quick-fire strip (v4.75.0) */
+.on-call-soundboard-strip {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.25rem 0.4rem;
+  margin: 0 0.25rem 0.2rem;
+  background: rgba(7, 14, 35, 0.75);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 6px;
+  flex-wrap: wrap;
+  min-height: 28px;
+}
+
+.on-call-sb-toggle {
+  font-size: 0.65rem;
+  font-weight: 700;
+  color: rgba(255, 255, 255, 0.55);
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  padding: 0.15rem 0.3rem;
+  white-space: nowrap;
+}
+
+.on-call-sb-buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem;
+  flex: 1;
+  min-width: 0;
+}
+
+.on-call-sb-btn {
+  font-size: 0.62rem;
+  font-weight: 700;
+  padding: 0.2rem 0.45rem;
+  border-radius: 4px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: rgba(255, 255, 255, 0.06);
+  color: rgba(255, 255, 255, 0.85);
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.on-call-sb-btn.is-playing {
+  border-color: rgba(16, 185, 129, 0.5);
+  background: rgba(16, 185, 129, 0.15);
+}
+
+.on-call-sb-btn.is-missing {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+
+.on-call-sb-btn.is-blocked:not(:disabled) {
+  border-color: rgba(245, 158, 11, 0.4);
+}
+
+.on-call-sb-lang {
+  font-size: 0.55rem;
+  opacity: 0.6;
+  margin-right: 0.2rem;
+}
+
+.on-call-sb-notice {
+  font-size: 0.6rem;
+  color: #f59e0b;
+  white-space: nowrap;
 }
 

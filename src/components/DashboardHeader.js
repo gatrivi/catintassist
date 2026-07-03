@@ -46,6 +46,7 @@ import { ConnectionDiagnosticsBar } from './ConnectionDiagnosticsBar';
 import { AudioRouteStatusBar } from './AudioRouteStatusBar';
 import { HeaderMetricsStrip } from './HeaderMetricsStrip';
 import { playTestToneLocal, playTestToneSink } from '../utils/audioSelfTest';
+import { APP_VERSION_LABEL } from '../constants/version';
 import { SlotMicroValue } from './SlotMicroValue';
 import { hasConfiguredDeepgramKey, isRememberExpired } from '../utils/deepgramRuntimeKey';
 import { PRESET_LABELS, getPresetConfig } from '../utils/scoreboardLayout';
@@ -333,7 +334,7 @@ const SessionControlsSticky = React.memo(({
   cableStreamReady = false,
   lastDataTime = 0,
   onOpenSoundboard,
-  onExpandAudioDevices,
+  soundboardOpen = false,
   onOpenGoalDial,
 
   // Audio route UX props (passed into AudioRouteStatusBar)
@@ -396,10 +397,41 @@ const SessionControlsSticky = React.memo(({
   return (
     <>
       <div className="session-controls-sticky-row">
-      <div style={{ display: 'flex', gap: '3px', alignItems: 'center', flexShrink: 0 }}>
-        {!isActive && (
-          <button
-            id="header-mic-test-btn"
+      <div className="session-controls-left-cluster" style={{ display: 'flex', gap: '3px', alignItems: 'center', flexShrink: 0 }}>
+        <button
+          id="header-app-logo-btn"
+          type="button"
+          className="btn-icon tiny-btn app-logo-btn"
+          title={`CatIntAssist · ${APP_VERSION_LABEL}`}
+          aria-label={`CatIntAssist ${APP_VERSION_LABEL}`}
+        >
+          <img
+            className="app-logo-img"
+            src={`${process.env.PUBLIC_URL || ''}/favicon-96x96.png`}
+            alt=""
+            width={22}
+            height={22}
+          />
+        </button>
+
+        {!isActive ? (
+          <>
+            <ConnectInterpretButton
+              onSingle={connectOnSingle}
+              onDouble={connectOnDouble}
+              flash={connectFlash}
+              disabled={false}
+              size="top"
+              label={connectLabel}
+              requireDoubleTapIndicator={requireDoubleTapIndicator}
+              onArmDoubleTap={onArmDoubleTap}
+              pendingDoubleTapTitle={pendingDoubleTapTitle}
+              singleTitle={connectSingleTitle}
+              doubleTitle={connectDoubleTitle}
+            />
+
+            <button
+              id="header-mic-test-btn"
             data-guide="mic-test"
             type="button"
             className="btn-icon tiny-btn"
@@ -429,7 +461,6 @@ const SessionControlsSticky = React.memo(({
           >
             <MicIcon size={14} />
           </button>
-        )}
 
         {onToggleLanguage && (
           <button
@@ -465,8 +496,7 @@ const SessionControlsSticky = React.memo(({
             }}
             title={langBtnTitle}
           >
-            <span className="lang-btn-pair">{langPairShort}</span>
-            <span className="lang-btn-mode"> {sttModeSuffix}</span>
+            {langPairShort}
           </button>
         )}
 
@@ -493,22 +523,6 @@ const SessionControlsSticky = React.memo(({
             <TargetIcon size={14} />
           </button>
         )}
-
-        {!isActive ? (
-          <>
-            <ConnectInterpretButton
-              onSingle={connectOnSingle}
-              onDouble={connectOnDouble}
-              flash={connectFlash}
-              disabled={false}
-              size="top"
-              label={connectLabel}
-              requireDoubleTapIndicator={requireDoubleTapIndicator}
-              onArmDoubleTap={onArmDoubleTap}
-              pendingDoubleTapTitle={pendingDoubleTapTitle}
-              singleTitle={connectSingleTitle}
-              doubleTitle={connectDoubleTitle}
-            />
 
             <button
               id="header-key-vault-btn"
@@ -723,27 +737,6 @@ const SessionControlsSticky = React.memo(({
           zIndex: 320, // ensure gear/help stay above diagnostics chip
         }}
       >
-        {versionLabel && (
-          <button
-            id="header-app-icon-btn"
-            type="button"
-            data-guide="version"
-            className="btn-icon tiny-btn app-version-icon"
-            title={`Build: ${versionLabel}`}
-            style={{
-              width: '22px',
-              height: '22px',
-              fontSize: '0.65rem',
-              opacity: 0.95,
-              background: 'rgba(59,130,246,0.12)',
-              border: '1px solid rgba(59,130,246,0.35)',
-              color: 'rgba(226,232,240,0.95)',
-            }}
-            aria-label={`Build version: ${versionLabel}`}
-          >
-            ⧉
-          </button>
-        )}
         {isActive && !callModeExpanded && (
           <button
             className="btn-icon tiny-btn"
@@ -792,17 +785,17 @@ const SessionControlsSticky = React.memo(({
         onReconnectStream={onReconnectStream}
         onReconnectAudioSource={onReconnectAudioSource}
         onSwitchToTabShare={onSwitchToTabShare}
-        onOpenAudioSettings={onExpandAudioDevices}
         onTestLocal={() => playTestToneLocal()}
         onTestRoute={async () => {
           const sinkId = localStorage.getItem('CATINTASSIST_SINK_ID');
           if (!sinkId) {
-            onExpandAudioDevices?.();
+            document.getElementById('audio-route-sink-select')?.focus();
             return;
           }
           await playTestToneSink(sinkId);
         }}
         onOpenSoundboard={!isActive ? onOpenSoundboard : undefined}
+        soundboardOpen={soundboardOpen}
         compact
       />
     </>
@@ -838,6 +831,7 @@ export const DashboardHeader = ({
   apiKeyRejected = false,
   settingsOpen = false,
   onOpenSoundboard,
+  soundboardOpen = false,
   onReconnectAudioSource,
   onSwitchToTabShare,
 }) => {
@@ -2877,7 +2871,7 @@ ${isInDeficit ? `⚠️ DEFICIT: Behind pace by ${Math.round(monthlyDeficitMins)
         cableStreamReady={cableStreamReady}
         lastDataTime={lastDataTime}
         onOpenSoundboard={onOpenSoundboard}
-        onExpandAudioDevices={() => setIsCollapsed(false)}
+        soundboardOpen={soundboardOpen}
         onOpenGoalDial={() => setIsTodayDialOpen(true)}
         sttLanguage={sttLanguage}
         onToggleLanguage={onToggleLanguage}

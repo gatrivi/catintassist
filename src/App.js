@@ -5,6 +5,7 @@ import { AuthProvider } from "./contexts/AuthContext";
 import { DashboardHeader } from "./components/DashboardHeader";
 import { TranscriptionBoard } from "./components/TranscriptionBoard";
 import { GreetingsPanel } from "./components/GreetingsPanel";
+import OnCallSoundboardStrip from "./components/OnCallSoundboardStrip";
 import { NotePad } from "./components/NotePad";
 import { DictionaryTool } from "./components/DictionaryTool";
 import { SilenceGuardian } from "./components/SilenceGuardian";
@@ -13,7 +14,6 @@ import { RosaryWidget } from "./components/RosaryWidget";
 import { MealTrackerWidget } from "./components/MealTrackerWidget";
 import { ChoreTrackerWidget } from "./components/ChoreTrackerWidget";
 import {
-  WorkspaceViewSwitcher,
   OFF_CALL_VIEWS,
   loadWorkspaceView,
   saveWorkspaceView,
@@ -41,6 +41,7 @@ import {
   isRememberExpired,
 } from "./utils/deepgramRuntimeKey";
 import { APP_VERSION_LABEL } from "./constants/version";
+import { setSttActive } from "./utils/routeDiagnostics";
 import { isWellbeingDockEnabled } from "./utils/wellbeingDock";
 import {
   isComponentVisible,
@@ -115,6 +116,11 @@ const Dashboard = () => {
     }
   });
   useComponentVisibilityRefresh();
+
+  useEffect(() => {
+    setSttActive(connectionState === "connected");
+    return () => setSttActive(false);
+  }, [connectionState]);
 
   useEffect(() => {
     const onToggle = (e) => {
@@ -720,9 +726,14 @@ const Dashboard = () => {
         showStudioHint={showStudioHint}
         settingsOpen={settingsOpen}
         onOpenSoundboard={() => {
-          saveWorkspaceView("soundboard");
-          setWorkspaceView("soundboard");
+          if (workspaceView === "soundboard") {
+            exitSoundboardStudio();
+          } else {
+            saveWorkspaceView("soundboard");
+            setWorkspaceView("soundboard");
+          }
         }}
+        soundboardOpen={isSoundboardStudio}
       />
 
       {!(isActive || isZombieCall) && workspaceView === "scoreboard" && (
@@ -739,28 +750,6 @@ const Dashboard = () => {
             className="workspace-soundboard-pane glass-panel"
             data-guide="soundboard-lab"
           >
-            <div className="workspace-soundboard-head">
-              <button
-                type="button"
-                className="soundboard-hide-btn"
-                onClick={exitSoundboardStudio}
-                title="Back to scoreboard (Escape)"
-              >
-                ← Scoreboard
-              </button>
-              <span className="workspace-soundboard-title">
-                Soundboard Studio
-              </span>
-              <span className="workspace-soundboard-hint">
-                Record · preview · health-check — off-call only
-              </span>
-              <WorkspaceViewSwitcher
-                view={workspaceView}
-                onCycle={cycleWorkspaceView}
-                variant="inline"
-                showHint={false}
-              />
-            </div>
             <GreetingsPanel
               onEditModeChange={setIsEditingBg}
               onExitStudio={exitSoundboardStudio}
@@ -771,6 +760,7 @@ const Dashboard = () => {
 
       {(isActive || isZombieCall || hipaaGraceActive) && (
         <main className={`main-content ${isNotesOpen ? "notes-open" : ""}`}>
+          {(isActive || isZombieCall) && <OnCallSoundboardStrip />}
           <div className="transcription-pane" data-guide="transcript">
             <TranscriptionBoard
               captions={captions}

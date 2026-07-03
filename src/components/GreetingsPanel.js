@@ -9,6 +9,14 @@ import {
   importStorageBackup,
 } from '../utils/storage';
 import { bindAudioToSink, primePlaybackElements, rampVolume } from '../utils/audioRoute';
+import { readRouteModePreference, ROUTE_MODE } from '../utils/audioRoutePassthrough';
+import {
+  logRouteEvent,
+  assessSttLoadRisk,
+  getRouteDiagnostics,
+  formatRouteDiagLine,
+  ROUTE_EVENT,
+} from '../utils/routeDiagnostics';
 import { analyzeBlobHealth, formatHealthDisplay, truncateDeviceLabel } from '../utils/audioSelfTest';
 import {
   buildRouteFingerprint,
@@ -151,6 +159,8 @@ export const GreetingsPanel = ({ onEditModeChange, onExitStudio }) => {
     setMonitorVolume,
     setSinkPlaybackActive,
     sinkPlaybackActive,
+    playClipToSink,
+    stopClipToSink,
   } = useAudioSettings();
   const [mode, setMode] = useState('play'); // 'play' | 'settings'
   const [timeOfDay, setTimeOfDay] = useState('morning');
@@ -425,7 +435,10 @@ export const GreetingsPanel = ({ onEditModeChange, onExitStudio }) => {
 
   const startRecording = async (key) => {
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const constraints = selectedMicId
+        ? { audio: { deviceId: { exact: selectedMicId } } }
+        : { audio: true };
+      const stream = await navigator.mediaDevices.getUserMedia(constraints);
       // Use higher bitrate and webm/opus for better reliability
       const options = { mimeType: 'audio/webm;codecs=opus', audioBitsPerSecond: 128000 };
       const mediaRecorder = new MediaRecorder(stream, MediaRecorder.isTypeSupported(options.mimeType) ? options : undefined);
@@ -502,7 +515,10 @@ export const GreetingsPanel = ({ onEditModeChange, onExitStudio }) => {
     setPlayingKey(null);
     setPlaybackProgress(0);
     window.__CAT_AUDIO_VOL = 0;
+    stopClipToSink();
     setSinkPlaybackActive(false);
+    audioRefSink.current.pause();
+    audioRefLocal.current.pause();
     if (rampCancelRef.current) rampCancelRef.current();
     rampCancelRef.current = null;
     if (animationRef.current) cancelAnimationFrame(animationRef.current);
@@ -594,12 +610,30 @@ export const GreetingsPanel = ({ onEditModeChange, onExitStudio }) => {
     let playLocal = !callerOnly;
     let playSink = sendToCaller;
     callerRouteRef.current = playSink;
+    const routeMode = readRouteModePreference();
+    const usePassthrough = playSink && routeMode === ROUTE_MODE.PASSTHROUGH;
+
+    logRouteEvent(ROUTE_EVENT.PLAY_START, {
+      clipKey: key,
+      routeMode: usePassthrough ? ROUTE_MODE.PASSTHROUGH : ROUTE_MODE.DUAL_ELEMENT,
+      playSink,
+      testMode,
+    });
+    const sttRisk = assessSttLoadRisk({
+      sttActive: undefined,
+      routeMode: usePassthrough ? ROUTE_MODE.PASSTHROUGH : ROUTE_MODE.DUAL_ELEMENT,
+      sinkBound: !!selectedSinkId,
+    });
+    if (sttRisk.risky) {
+      logRouteEvent(ROUTE_EVENT.STT_LOAD_WARN, { clipKey: key, reason: sttRisk.reason });
+    }
 
     const url = blobs[`url_${key}`] || generateObjectUrl(blob);
     primePlaybackElements(audioRefLocal.current, audioRefSink.current);
 
-    if (playSink && selectedSinkId) {
+    if (playSink && selectedSinkId && !usePassthrough) {
       const bound = await bindAudioToSink(audioRefSink.current, selectedSinkId);
+      logRouteEvent(ROUTE_EVENT.SINK_BIND, { clipKey: key, ok: bound, routeMode: ROUTE_MODE.DUAL_ELEMENT });
       if (!bound) {
         if (callerOnly) {
           setLastRouteTest({ clipKey: key, result: 'fail', at: Date.now() });
@@ -614,8 +648,12 @@ export const GreetingsPanel = ({ onEditModeChange, onExitStudio }) => {
       }
     }
 
-    audioRefLocal.current.src = url;
-    audioRefSink.current.src = url;
+    if (playLocal) {
+      audioRefLocal.current.src = url;
+    }
+    if (playSink && !usePassthrough) {
+      audioRefSink.current.src = url;
+    }
 
     const wasCallTest = callerOnly;
     let ended = false;
@@ -623,6 +661,7 @@ export const GreetingsPanel = ({ onEditModeChange, onExitStudio }) => {
       if (ended) return;
       ended = true;
       clearPlaybackState();
+      logRouteEvent(ROUTE_EVENT.PLAY_END, { clipKey: key });
       if (wasCallTest && playSink) {
         const fingerprint = buildRouteFingerprint(key, selectedSinkId, selectedMicId);
         setPendingRouteConfirm({ clipKey: key, fingerprint, playedAt: Date.now() });
@@ -635,25 +674,62 @@ export const GreetingsPanel = ({ onEditModeChange, onExitStudio }) => {
     if (animationRef.current) cancelAnimationFrame(animationRef.current);
     animationRef.current = requestAnimationFrame(trackProgress);
 
-    if (playSink) setSinkPlaybackActive(true);
+    if (playSink && !usePassthrough) setSinkPlaybackActive(true);
     setPlayingKey(key);
 
     try {
       const plays = [];
       if (playLocal) plays.push(audioRefLocal.current.play());
-      if (playSink) plays.push(audioRefSink.current.play());
-      if (!plays.length) plays.push(audioRefLocal.current.play());
+
+      if (playSink && usePassthrough) {
+        plays.push(
+          playClipToSink(blob, sinkVolume, {
+            clipKey: key,
+            onProgress: (p) => {
+              if (!playLocal) setPlaybackProgress(p);
+            },
+          }).then(async (pt) => {
+            if (!pt.ok) {
+              logRouteEvent(ROUTE_EVENT.FALLBACK_DUAL, { clipKey: key, reason: pt.reason });
+              const bound = await bindAudioToSink(audioRefSink.current, selectedSinkId);
+              logRouteEvent(ROUTE_EVENT.SINK_BIND, { clipKey: key, ok: bound, routeMode: ROUTE_MODE.DUAL_ELEMENT });
+              if (bound) {
+                audioRefSink.current.src = url;
+                setSinkPlaybackActive(true);
+                await audioRefSink.current.play();
+                if (rampCancelRef.current) rampCancelRef.current();
+                rampCancelRef.current = rampVolume(null, audioRefSink.current, 0, sinkVolume);
+              } else {
+                setSafetyNotice('⚠️ Passthrough + dual route failed — local only');
+                window.setTimeout(() => setSafetyNotice(''), 4500);
+              }
+            } else if (!playLocal) {
+              onEnd();
+            }
+          }),
+        );
+      } else if (playSink) {
+        plays.push(audioRefSink.current.play());
+      }
+
+      if (!plays.length && playLocal) plays.push(audioRefLocal.current.play());
       await Promise.all(plays);
 
-      if (rampCancelRef.current) rampCancelRef.current();
-      rampCancelRef.current = rampVolume(
-        playLocal ? audioRefLocal.current : null,
-        playSink ? audioRefSink.current : null,
-        playLocal ? localVolume : 0,
-        playSink ? sinkVolume : 0
-      );
+      if (playSink && !usePassthrough) {
+        if (rampCancelRef.current) rampCancelRef.current();
+        rampCancelRef.current = rampVolume(
+          playLocal ? audioRefLocal.current : null,
+          playSink ? audioRefSink.current : null,
+          playLocal ? localVolume : 0,
+          playSink ? sinkVolume : 0,
+        );
+      } else if (playLocal) {
+        if (rampCancelRef.current) rampCancelRef.current();
+        rampCancelRef.current = rampVolume(audioRefLocal.current, null, localVolume, 0);
+      }
     } catch (e) {
       console.error('Playback error:', e);
+      logRouteEvent(ROUTE_EVENT.PLAY_FAIL, { clipKey: key, reason: e?.message });
       if (wasCallTest) {
         setLastRouteTest({ clipKey: key, result: 'fail', at: Date.now() });
       }
@@ -1062,15 +1138,23 @@ export const GreetingsPanel = ({ onEditModeChange, onExitStudio }) => {
         </button>
         {routeDebugOpen && (
           <div className="sb-route-debug-body">
+            <div>Route mode: {readRouteModePreference()}</div>
+            <div>STT active: {typeof window !== 'undefined' && window.__CAT_STT_ACTIVE ? 'YES' : 'no'}</div>
             <div>Sink: {sinkLabel}</div>
             <div>Mic: {micLabel}</div>
             <div>Test mode: {testMode ? 'ON' : 'OFF'}</div>
-            <div>Passthrough: {sinkPlaybackActive ? 'MUTED' : 'OPEN'}</div>
+            <div>Passthrough: {sinkPlaybackActive ? 'MUTED/CLIP' : 'OPEN'}</div>
             <div>
               Last route test:{' '}
               {lastRouteTest
                 ? `${ROUTE_TEST_LABELS[lastRouteTest.result] || lastRouteTest.result} (${lastRouteTest.clipKey})`
                 : '—'}
+            </div>
+            <div className="sb-route-diag-log" style={{ marginTop: '0.35rem', fontSize: '0.65rem', opacity: 0.85, maxHeight: '72px', overflow: 'auto' }}>
+              {getRouteDiagnostics().slice(0, 6).map((e, i) => (
+                <div key={i}>{formatRouteDiagLine(e)}</div>
+              ))}
+              {!getRouteDiagnostics().length && <div>— no route events yet —</div>}
             </div>
           </div>
         )}

@@ -1,3 +1,3 @@
 /** Single source of truth for app version (UI + package.json should match). */
-export const APP_VERSION = '4.74.5';
-export const APP_VERSION_LABEL = `v${APP_VERSION} - sticky width + icon centering`;
+export const APP_VERSION = '4.75.4';
+export const APP_VERSION_LABEL = `v${APP_VERSION} - soundboard header cleanup`;

@@ -1,7 +1,18 @@
-# Soundboard (v4.71.0)
+# Soundboard (v4.75.0)
 
 ## What it is
-Pre-recorded greetings + clip legibility health (Deepgram) + **manual** route attestation before patient-path playback.
+Pre-recorded greetings + clip legibility health (Deepgram) + **manual** route attestation + **passthrough injection** routing to patient path.
+
+## Routing (v4.75.0)
+
+**Default: passthrough injection** — clip plays through the same VB-Cable element as live mic (see [`voicemod-comparison.md`](voicemod-comparison.md)).
+
+| Mode | Key | When |
+|------|-----|------|
+| Passthrough (default) | `CATINT_ROUTE_MODE=passthrough` | Clip replaces mic stream on passthrough element |
+| Dual element (legacy) | `CATINT_ROUTE_MODE=dual_element` | Separate sink `Audio` element — use for A/B only |
+
+On-call **Greetings** strip (collapsible above transcript) fires 7 high-use slots when health + CALL OK pass.
 
 ## AUDIO HEALTH (clip QA only)
 On upload/record, audio is sent to Deepgram. Score tiers:
@@ -32,27 +43,29 @@ Flow:
 3. Preview locally (▶) with 🧪 Test Mode if needed
 4. 📡 Call Test → routes to virtual sink only
 5. Confirm: *Did remote side hear it cleanly?* → **Yes, mark CALL OK**
-6. Play mode (Test Mode off) → virtual mic only if health + manual CALL OK pass
+6. Play mode or on-call strip → virtual mic only if health + manual CALL OK pass
 
 Header **Test local** / **Test route** = quick tone checks without a clip.
 
 ## Playback and safety
+- **Passthrough inject**: same VB-Cable path as live mic (v4.75.0)
 - **Anti-Scream Ramp**: ~50ms volume ramp
 - **Test Mode**: blocks virtual mic; local speakers only
 - **Mic Monitor**: verify recording path before long takes
-- **Route debug** strip: sink, mic, test mode, passthrough mute state, last route test
+- **Route debug** strip: mode, STT active, sink, mic, passthrough state, route event log
 
 ## Navigation
-Soundboard Studio is off-call only.
-- **← Scoreboard** in studio header
-- **Escape** returns to scoreboard (when editor modal closed)
+- **Studio**: off-call only — pyramid / Soundboard button
+- **On-call strip**: `▾ Greetings` above transcript during active call
+- **← Scoreboard** / **Escape** exits studio
 
-## Roadmap
-- `VIRTUAL_MIC_ROUTE` — reliable audio to patient path (**PARTIAL**)
-- Voicemod prerecorded greetings remain safe fallback until routing is proven
+## Diagnostics
+- `window.__CAT_STT_ACTIVE` — Deepgram connected
+- `window.__CAT_ROUTE_DIAG` — last 40 route events
+- Route debug panel in Play mode
 
 ## Known issues
-- Patient-side routing still unreliable under some STT load
+- Verify passthrough routing on your call stack before retiring Voicemod
 - `CALL OK` is human attestation, not automated remote verification
 
 ## FAQ

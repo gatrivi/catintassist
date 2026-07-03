@@ -1,13 +1,15 @@
 import { useState, useRef } from 'react';
 import { useAudioSettings } from '../contexts/AudioSettingsContext';
 import { bindAudioToSink, primePlaybackElements } from '../utils/audioRoute';
+import { readRouteModePreference, ROUTE_MODE } from '../utils/audioRoutePassthrough';
+import { logRouteEvent, ROUTE_EVENT } from '../utils/routeDiagnostics';
 
 export const useTTS = () => {
   const [isPlaying, setIsPlaying] = useState(false);
   const [playingUrl, setPlayingUrl] = useState(null);
   const activeAudioLocalRef = useRef(null);
   const activeAudioSinkRef = useRef(null);
-  const { selectedSinkId, localVolume, sinkVolume, setSinkPlaybackActive } = useAudioSettings();
+  const { selectedSinkId, localVolume, sinkVolume, setSinkPlaybackActive, playClipToSink, stopClipToSink } = useAudioSettings();
 
   const stopTTS = () => {
     if (activeAudioLocalRef.current) {
@@ -18,6 +20,7 @@ export const useTTS = () => {
       activeAudioSinkRef.current.pause();
       activeAudioSinkRef.current = null;
     }
+    stopClipToSink();
     window.__CAT_AUDIO_VOL = 0;
     setSinkPlaybackActive(false);
     setIsPlaying(false);
@@ -58,18 +61,40 @@ export const useTTS = () => {
       
       setPlayingUrl(audioUrl);
       
-      // AUDIO DOBLE: Hacemos que el sonido suene en dos lados.
-      // Uno para tus OÍDOS (auriculares) y otro para el CABLE VIRTUAL (la llamada).
       const audioLocal = new Audio(audioUrl);
       const audioSink = new Audio(audioUrl);
       primePlaybackElements(audioLocal, audioSink);
       activeAudioLocalRef.current = audioLocal;
       activeAudioSinkRef.current = audioSink;
 
-      if (selectedSinkId) await bindAudioToSink(audioSink, selectedSinkId);
+      const routeMode = readRouteModePreference();
+      const usePassthrough = selectedSinkId && routeMode === ROUTE_MODE.PASSTHROUGH;
+      let sinkViaPassthrough = false;
+
+      logRouteEvent(ROUTE_EVENT.PLAY_START, {
+        clipKey: 'tts',
+        routeMode: usePassthrough ? ROUTE_MODE.PASSTHROUGH : ROUTE_MODE.DUAL_ELEMENT,
+      });
+
+      if (usePassthrough) {
+        const resp = await fetch(audioUrl);
+        const blob = await resp.blob();
+        const pt = await playClipToSink(blob, sinkVolume, { clipKey: 'tts' });
+        if (pt.ok) {
+          sinkViaPassthrough = true;
+        } else {
+          logRouteEvent(ROUTE_EVENT.FALLBACK_DUAL, { clipKey: 'tts', reason: pt.reason });
+          await bindAudioToSink(audioSink, selectedSinkId);
+          setSinkPlaybackActive(true);
+          audioSink.src = audioUrl;
+        }
+      } else if (selectedSinkId) {
+        await bindAudioToSink(audioSink, selectedSinkId);
+        setSinkPlaybackActive(true);
+        audioSink.src = audioUrl;
+      }
+
       audioLocal.src = audioUrl;
-      audioSink.src = audioUrl;
-      if (selectedSinkId) setSinkPlaybackActive(true);
       
       const ttsTimer = setInterval(() => {
         if (!activeAudioLocalRef.current) {
@@ -82,20 +107,22 @@ export const useTTS = () => {
       audioLocal.onended = () => {
         clearInterval(ttsTimer);
         window.__CAT_AUDIO_VOL = 0;
+        stopClipToSink();
+        setSinkPlaybackActive(false);
         setIsPlaying(false);
         setPlayingUrl(null);
         activeAudioLocalRef.current = null;
         activeAudioSinkRef.current = null;
       };
       audioSink.onended = () => {};
-      
-      audioLocal.play().catch(e => {
+
+      audioLocal.play().catch((e) => {
         clearInterval(ttsTimer);
         window.__CAT_AUDIO_VOL = 0;
-        console.error("Local play error:", e);
+        console.error('Local play error:', e);
       });
-      if (selectedSinkId) {
-        audioSink.play().catch(e => console.error("Sink play error:", e));
+      if (selectedSinkId && !sinkViaPassthrough) {
+        audioSink.play().catch((e) => console.error('Sink play error:', e));
       }
     } catch (err) {
       window.__CAT_AUDIO_VOL = 0;

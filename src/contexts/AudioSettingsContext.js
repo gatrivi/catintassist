@@ -1,4 +1,11 @@
 import React, { createContext, useContext, useState, useEffect, useRef, useCallback } from 'react';
+import {
+  decodeBlobToBuffer,
+  playBufferViaPassthrough,
+  readRouteModePreference,
+  ROUTE_MODE,
+} from '../utils/audioRoutePassthrough';
+import { logRouteEvent, ROUTE_EVENT } from '../utils/routeDiagnostics';
 
 const AudioSettingsContext = createContext();
 
@@ -21,6 +28,8 @@ export const AudioSettingsProvider = ({ children }) => {
   
   // Hidden element: physical mic → virtual output (when mic is selected)
   const passthroughAudioRef = useRef(new Audio());
+  const micStreamRef = useRef(null);
+  const clipPlaybackStopRef = useRef(null);
   const sinkPlaybackActiveRef = useRef(false);
   const [sinkPlaybackActive, setSinkPlaybackActiveState] = useState(false);
   const [micLevel, setMicLevel] = useState(0);
@@ -97,10 +106,13 @@ export const AudioSettingsProvider = ({ children }) => {
              audio: { deviceId: { exact: selectedMicId }, echoCancellation: false, noiseSuppression: false, autoGainControl: false } 
           });
           if (isMounted) {
-            passthroughAudioRef.current.srcObject = stream;
-            passthroughAudioRef.current.volume = sinkPlaybackActiveRef.current ? 0 : 1;
-            passthroughAudioRef.current.muted = sinkPlaybackActiveRef.current;
-            passthroughAudioRef.current.play().catch(e => console.error(e));
+            micStreamRef.current = stream;
+            if (!clipPlaybackStopRef.current) {
+              passthroughAudioRef.current.srcObject = stream;
+              passthroughAudioRef.current.volume = sinkPlaybackActiveRef.current ? 0 : 1;
+              passthroughAudioRef.current.muted = sinkPlaybackActiveRef.current;
+              passthroughAudioRef.current.play().catch(e => console.error(e));
+            }
             
             // Attach visualizer without React state to avoid massive re-renders
             const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
@@ -176,7 +188,10 @@ export const AudioSettingsProvider = ({ children }) => {
           setMicLevel(0);
         }
       } else {
-        passthroughAudioRef.current.srcObject = null;
+        micStreamRef.current = null;
+        if (!clipPlaybackStopRef.current) {
+          passthroughAudioRef.current.srcObject = null;
+        }
         setMicLevel(0);
         setMicStatus('idle');
       }
@@ -188,9 +203,94 @@ export const AudioSettingsProvider = ({ children }) => {
     return () => {
       isMounted = false;
       if (stream) stream.getTracks().forEach(t => t.stop());
-      currentPipeline.srcObject = null;
+      micStreamRef.current = null;
+      if (!clipPlaybackStopRef.current) {
+        currentPipeline.srcObject = null;
+      }
     };
   }, [selectedMicId, selectedSinkId]);
+
+  /** Stop passthrough clip playback and restore live mic stream. */
+  const stopClipToSink = useCallback(() => {
+    if (clipPlaybackStopRef.current) {
+      clipPlaybackStopRef.current();
+      clipPlaybackStopRef.current = null;
+    }
+    sinkPlaybackActiveRef.current = false;
+    setSinkPlaybackActiveState(false);
+    const el = passthroughAudioRef.current;
+    const mic = micStreamRef.current;
+    if (el && mic) {
+      el.srcObject = mic;
+      el.volume = 1;
+      el.muted = false;
+      el.play().catch(() => {});
+    }
+    logRouteEvent(ROUTE_EVENT.PASSTHROUGH_RESTORE, { routeMode: ROUTE_MODE.PASSTHROUGH });
+  }, []);
+
+  /**
+   * Route clip through passthrough element (same VB-Cable path as live mic).
+   * @returns {Promise<{ ok: boolean, mode?: string, reason?: string }>}
+   */
+  const playClipToSink = useCallback(async (blob, volume = 1, { clipKey, onProgress } = {}) => {
+    if (!blob || !selectedSinkId) {
+      return { ok: false, reason: 'no_sink_or_blob' };
+    }
+    stopClipToSink();
+
+    const el = passthroughAudioRef.current;
+    const savedMic = micStreamRef.current;
+
+    try {
+      const { ctx, buffer } = await decodeBlobToBuffer(blob);
+      sinkPlaybackActiveRef.current = true;
+      setSinkPlaybackActiveState(true);
+
+      const session = playBufferViaPassthrough(el, buffer, ctx, {
+        volume,
+        sinkId: selectedSinkId,
+        savedSrcObject: savedMic,
+        onProgress,
+      });
+      clipPlaybackStopRef.current = session.stop;
+
+      logRouteEvent(ROUTE_EVENT.PASSTHROUGH_INJECT, {
+        clipKey,
+        routeMode: ROUTE_MODE.PASSTHROUGH,
+        sinkId: selectedSinkId,
+      });
+
+      await session.promise;
+
+      clipPlaybackStopRef.current = null;
+      sinkPlaybackActiveRef.current = false;
+      setSinkPlaybackActiveState(false);
+      if (el && savedMic) {
+        el.srcObject = savedMic;
+        el.volume = 1;
+        el.muted = false;
+        el.play().catch(() => {});
+      }
+      logRouteEvent(ROUTE_EVENT.PLAY_END, { clipKey, routeMode: ROUTE_MODE.PASSTHROUGH });
+      return { ok: true, mode: ROUTE_MODE.PASSTHROUGH };
+    } catch (err) {
+      console.error('playClipToSink failed:', err);
+      clipPlaybackStopRef.current = null;
+      sinkPlaybackActiveRef.current = false;
+      setSinkPlaybackActiveState(false);
+      if (el && savedMic) {
+        el.srcObject = savedMic;
+        el.play().catch(() => {});
+      }
+      logRouteEvent(ROUTE_EVENT.PLAY_FAIL, {
+        clipKey,
+        routeMode: ROUTE_MODE.PASSTHROUGH,
+        reason: err?.message || 'unknown',
+      });
+      return { ok: false, reason: err?.message || 'play_failed', mode: ROUTE_MODE.PASSTHROUGH };
+    }
+  }, [selectedSinkId, stopClipToSink]);
 
   // Mic Monitor: hear your own voice through local speakers
   useEffect(() => {
@@ -239,7 +339,30 @@ export const AudioSettingsProvider = ({ children }) => {
   };
 
   return (
-    <AudioSettingsContext.Provider value={{ outputDevices, inputDevices, selectedSinkId, selectedMicId, changeSinkId, changeMicId, fetchDevices, localVolume, sinkVolume, changeLocalVolume, changeSinkVolume, monitorMic, setMonitorMic, monitorVolume, setMonitorVolume, setSinkPlaybackActive, sinkPlaybackActive, micLevel, micStatus }}>
+    <AudioSettingsContext.Provider value={{
+      outputDevices,
+      inputDevices,
+      selectedSinkId,
+      selectedMicId,
+      changeSinkId,
+      changeMicId,
+      fetchDevices,
+      localVolume,
+      sinkVolume,
+      changeLocalVolume,
+      changeSinkVolume,
+      monitorMic,
+      setMonitorMic,
+      monitorVolume,
+      setMonitorVolume,
+      setSinkPlaybackActive,
+      sinkPlaybackActive,
+      micLevel,
+      micStatus,
+      playClipToSink,
+      stopClipToSink,
+      routeModePreference: readRouteModePreference(),
+    }}>
       {children}
     </AudioSettingsContext.Provider>
   );

@@ -76,15 +76,15 @@ Follow [`handoff/06_auth_db.md`](handoff/06_auth_db.md):
 
 ---
 
-## Phase 2 — Soundboard production (later)
+## Phase 2 — Soundboard production (v4.75.0)
 
-From [`soundboard/README.md`](soundboard/README.md):
+From [`soundboard/README.md`](soundboard/README.md) + [`voicemod-comparison.md`](soundboard/voicemod-comparison.md):
 
-- Health gate (Deepgram legibility) = **QA only** today
-- **`VIRTUAL_MIC_ROUTE` = PARTIAL** — patient path unreliable; crackles under STT load
-- **Safe:** local preview, Test mode, header Test route, health bars in studio
-- **Not safe for prod calls:** firing greetings to patient path
-- **Fallback:** Voicemod prerecorded greetings until route fixed
+- **Passthrough injection** (default) — clip via same element as live mic
+- **On-call Greetings strip** — quick-fire when health + CALL OK pass
+- **Route diagnostics** — `__CAT_ROUTE_DIAG`, STT-active flag, Route debug panel
+- **Dual-element** — legacy fallback (`CATINT_ROUTE_MODE=dual_element`)
+- **Still verify** on your call stack before retiring Voicemod
 
 ---
 
@@ -111,14 +111,14 @@ Visual mic bars (Phase 1) use AnalyserNode only — **zero STT tokens**.
 | b | Goal wheel | Persistent 🎯 in toolbar + portal modal |
 | c | DB + bg | Default bg bundled; DB when multi-device needed |
 | d | STT stability | Phase 0 checklist above |
-| e | Soundboard on calls | **No** until VIRTUAL_MIC_ROUTE fixed |
+| e | Soundboard on calls | **On-call strip** — passthrough route; verify vs Voicemod |
 | f | Interpreter mic | Visual meter now; transcribe Phase 3 only |
 
 ---
 
 ## Do not do yet
 
-- Soundboard greetings to **patient path** in production calls
+- Soundboard greetings on calls — **passthrough route v4.75.0**; verify patient audio before retiring Voicemod
 - Always-on interpreter mic Deepgram socket
 - Full scoreboard drag-and-drop rearrange (until presets work at 900×600)
 - Moving API keys server-side without explicit approval
