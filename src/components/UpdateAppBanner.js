@@ -36,7 +36,9 @@ export const UpdateAppBanner = ({ show, onDismiss, onUpdate }) => {
 
       <div style={{ display: 'flex', gap: 8, marginLeft: 'auto', flexShrink: 0 }}>
         <button
+          type="button"
           onClick={onUpdate}
+          aria-label="Update app to latest version"
           style={{
             background: '#2563eb',
             color: '#fff',
@@ -52,7 +54,9 @@ export const UpdateAppBanner = ({ show, onDismiss, onUpdate }) => {
         </button>
 
         <button
+          type="button"
           onClick={onDismiss}
+          aria-label="Dismiss update notification"
           style={{
             background: 'transparent',
             color: 'rgba(255,255,255,0.75)',

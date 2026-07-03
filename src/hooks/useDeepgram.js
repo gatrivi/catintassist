@@ -794,7 +794,7 @@ export const useDeepgram = () => {
           const dt = performance.now() - t0;
           if (perf) {
             perf.captionMs += dt;
-            if (dt > 8) {
+            if (dt > 8 && process.env.NODE_ENV !== "production") {
               perf.captionSlow += 1;
               console.warn("[captionEngine slow]", {
                 ms: dt.toFixed(2),
@@ -831,7 +831,9 @@ export const useDeepgram = () => {
         ws.onclose = (event) => {
           const code = event?.code;
           const reason = event?.reason || "";
-          console.log(`[Deepgram] ${lang} Close`, code, reason);
+          if (process.env.NODE_ENV !== "production") {
+            console.log(`[Deepgram] ${lang} Close`, code, reason);
+          }
           syncConnectProgress({
             [sk]: "error",
             [skClose]: `${code}${reason ? `: ${reason}` : ""}`,

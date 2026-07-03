@@ -4463,3 +4463,43 @@ body {
   white-space: nowrap;
 }
 
+/* a11y: skip link (visible on focus) */
+.skip-to-main {
+  position: fixed;
+  left: 0.5rem;
+  top: -3rem;
+  z-index: 20000;
+  padding: 0.4rem 0.65rem;
+  background: #0ea5e9;
+  color: #fff;
+  font-size: 0.75rem;
+  font-weight: 700;
+  border-radius: 6px;
+  text-decoration: none;
+  transition: top 0.15s ease;
+}
+
+.skip-to-main:focus {
+  top: 0.5rem;
+  outline: 2px solid #fff;
+  outline-offset: 2px;
+}
+
+.transcription-footer-status {
+  font-size: 0.6rem;
+  color: #86efac;
+  opacity: 0.9;
+}
+
+/* WCAG 2.3.3 — respect reduced motion */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+

@@ -1,4 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
+import { prefersReducedMotion } from '../utils/motionPreference';
 
 /** Longest shared prefix between two strings. */
 const commonPrefixLen = (a, b) => {
@@ -34,6 +35,13 @@ export const ScrambleText = ({
       displayedRef.current = '';
       setDisplayed('');
       if (spanRef.current) spanRef.current.textContent = '';
+      return undefined;
+    }
+
+    if (prefersReducedMotion()) {
+      displayedRef.current = target;
+      setDisplayed(target);
+      if (spanRef.current) spanRef.current.textContent = target;
       return undefined;
     }
 

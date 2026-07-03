@@ -4,6 +4,13 @@
 
 ---
 
+## v4.77.0 — Production readiness (a11y + PWA)
+- Fixed broken PWA manifest (missing icon 404s)
+- Clear-log confirm; footer a11y; skip-to-transcript link
+- Reduced-motion support (CSS + ScrambleText)
+- Modal focus trap; dev-only Deepgram console noise
+- Docs: [`development/production-readiness.md`](development/production-readiness.md)
+
 ## v4.76.0 — Bubble corrections (teach STT + glossary)
 - Double-click / ✎ on source or translation → floating editor → **Save & teach**
 - STT corrections auto-replace misheard phrases; glossary skips API for exact sentences

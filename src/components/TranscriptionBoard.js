@@ -546,6 +546,7 @@ export const TranscriptionBoard = ({
   const popoverTimerRef = useRef(null);
   const [correctionsRev, setCorrectionsRev] = useState(0);
   const [correctionEditor, setCorrectionEditor] = useState(null);
+  const [footerStatus, setFooterStatus] = useState('');
 
   useEffect(() => {
     const onCorrections = () => setCorrectionsRev((n) => n + 1);
@@ -620,6 +621,29 @@ export const TranscriptionBoard = ({
     }),
     [openCorrectionEditor],
   );
+
+  const handleClearLog = useCallback(() => {
+    const ok = window.confirm(
+      'Clear transcript log? Pinned messages stay. This cannot be undone.',
+    );
+    if (!ok) return;
+    onClearAll?.();
+    setFooterStatus('Transcript cleared');
+    setTimeout(() => setFooterStatus(''), 2500);
+  }, [onClearAll]);
+
+  const handleCopyPinned = useCallback(() => {
+    const pinnedText = pinnedCaptions
+      .map((c) => `[${(c.lang || 'en').toUpperCase()}] ${c.text}`)
+      .join('\n---\n');
+    navigator.clipboard.writeText(pinnedText).then(
+      () => {
+        setFooterStatus(`Copied ${pinnedCaptions.length} pinned message(s)`);
+        setTimeout(() => setFooterStatus(''), 2500);
+      },
+      () => setFooterStatus('Copy failed — check browser permissions'),
+    );
+  }, [pinnedCaptions]);
   
   // Smart Bubble Compression: auto-collapse long bubbles to reduce reading fatigue
   const [expandedIds, setExpandedIds] = useState(new Set());
@@ -834,7 +858,7 @@ export const TranscriptionBoard = ({
               )}
             </div>
           </div>
-          <button onClick={() => setLastCallSummary(null)} style={{ background: 'transparent', border: 'none', color: 'rgba(255,255,255,0.5)', cursor: 'pointer', fontSize: '1rem', padding: '0 4px' }} title="Dismiss">✕</button>
+          <button onClick={() => setLastCallSummary(null)} type="button" aria-label="Dismiss call summary" style={{ background: 'transparent', border: 'none', color: 'rgba(255,255,255,0.5)', cursor: 'pointer', fontSize: '1rem', padding: '0 4px' }} title="Dismiss">✕</button>
         </div>
       )}
 
@@ -1011,28 +1035,54 @@ export const TranscriptionBoard = ({
         display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '4px 8px',
         borderTop: '1px solid #18181b', background: 'var(--panel-bg)', fontFamily: 'var(--font-mono, monospace)', fontSize: '0.65rem'
       }}>
-        <div style={{ display: 'flex', gap: '8px' }}>
-          <button onClick={() => setTtsMode(m => m === 'manual' ? 'auto' : 'manual')} style={{ background: 'transparent', color: ttsMode === 'auto' ? 'var(--accent-primary)' : '#fff', border: 'none', cursor: 'pointer' }}>
+        <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+          <button
+            type="button"
+            onClick={() => setTtsMode(m => m === 'manual' ? 'auto' : 'manual')}
+            aria-pressed={ttsMode === 'auto'}
+            aria-label={ttsMode === 'auto' ? 'TTS auto-play on' : 'TTS auto-play off'}
+            title={ttsMode === 'auto' ? 'Auto-play translation audio' : 'Manual TTS only'}
+            style={{ background: 'transparent', color: ttsMode === 'auto' ? 'var(--accent-primary)' : '#fff', border: 'none', cursor: 'pointer' }}
+          >
             TTS:{ttsMode === 'auto' ? 'AUTO' : 'OFF'}
           </button>
           {pinnedCaptions.length > 0 && (
             <button
-              onClick={() => {
-                const pinnedText = pinnedCaptions
-                  .map((c) => `[${(c.lang || 'en').toUpperCase()}] ${c.text}`)
-                  .join('\n---\n');
-                navigator.clipboard.writeText(pinnedText);
-              }}
+              type="button"
+              onClick={handleCopyPinned}
               style={{ background: 'transparent', color: '#34d399', border: 'none', cursor: 'pointer' }}
-              title={`Copy ${pinnedCaptions.length} pinned message(s)`}
+              title={`Copy ${pinnedCaptions.length} pinned message(s) to clipboard`}
+              aria-label={`Copy ${pinnedCaptions.length} pinned messages`}
             >
               📋 COPY_PINNED({pinnedCaptions.length})
             </button>
           )}
+          {footerStatus && (
+            <span className="transcription-footer-status" role="status" aria-live="polite">
+              {footerStatus}
+            </span>
+          )}
         </div>
         <div style={{ display: 'flex', gap: '8px' }}>
-          <button onClick={onClearAll} style={{ background: 'transparent', color: '#fff', border: 'none', cursor: 'pointer' }}>[CLEAR_LOG]</button>
-          <button onClick={stopTTS} disabled={!isPlaying} style={{ background: 'transparent', color: isPlaying ? 'var(--danger)' : '#333', border: 'none', cursor: 'pointer' }}>[STOP_AI]</button>
+          <button
+            type="button"
+            onClick={handleClearLog}
+            aria-label="Clear transcript log"
+            title="Clear transcript (pinned messages kept)"
+            style={{ background: 'transparent', color: '#fff', border: 'none', cursor: 'pointer' }}
+          >
+            [CLEAR_LOG]
+          </button>
+          <button
+            type="button"
+            onClick={stopTTS}
+            disabled={!isPlaying}
+            aria-label="Stop AI voice playback"
+            title="Stop text-to-speech"
+            style={{ background: 'transparent', color: isPlaying ? 'var(--danger)' : '#333', border: 'none', cursor: isPlaying ? 'pointer' : 'default' }}
+          >
+            [STOP_AI]
+          </button>
         </div>
       </div>
     </div>

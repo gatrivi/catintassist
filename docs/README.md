@@ -3,7 +3,7 @@
 This is the single source of truth for *documentation + onboarding*.
 
 ## What's new
-- **v4.76.0** — [`transcription-pane/corrections.md`](transcription-pane/corrections.md) — fix mistranscription/translation, teach the app
+- **v4.77.0** — [`development/production-readiness.md`](development/production-readiness.md) — a11y/PWA audit fixes
 - **v4.75.5+** — [`development/element-hint.md`](development/element-hint.md) — rich tooltips with copy selector
 - **Recent releases** — [`CHANGELOG.md`](CHANGELOG.md)
 
@@ -28,6 +28,7 @@ This is the single source of truth for *documentation + onboarding*.
 ## Maintenance / Agent Rules
 - [`docs/cursor-agent/README.md`](cursor-agent/README.md): Cursor agent “touch only these files” guidance
 - [`docs/CHANGELOG.md`](CHANGELOG.md): recent version notes
+- [`docs/development/production-readiness.md`](development/production-readiness.md): sellable-app audit checklist
 
 ## Archive (legacy / historical)
 - [`docs/archive/README.md`](archive/README.md): intentionally old docs and where they live

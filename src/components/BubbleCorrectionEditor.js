@@ -12,6 +12,7 @@ export const BubbleCorrectionEditor = ({
   onCancel,
 }) => {
   const textareaRef = useRef(null);
+  const panelRef = useRef(null);
 
   useEffect(() => {
     if (!open) return;
@@ -21,6 +22,24 @@ export const BubbleCorrectionEditor = ({
     }, 30);
     return () => clearTimeout(t);
   }, [open, field]);
+
+  const trapFocus = (e) => {
+    if (e.key !== 'Tab' || !panelRef.current) return;
+    const nodes = panelRef.current.querySelectorAll(
+      'button:not([disabled]), textarea:not([disabled]), [href], input:not([disabled])',
+    );
+    if (!nodes.length) return;
+    const list = Array.from(nodes);
+    const first = list[0];
+    const last = list[list.length - 1];
+    if (e.shiftKey && document.activeElement === first) {
+      e.preventDefault();
+      last.focus();
+    } else if (!e.shiftKey && document.activeElement === last) {
+      e.preventDefault();
+      first.focus();
+    }
+  };
 
   if (!open) return null;
 
@@ -33,9 +52,12 @@ export const BubbleCorrectionEditor = ({
   return (
     <div className="bubble-correction-backdrop" onClick={onCancel} role="presentation">
       <div
+        ref={panelRef}
         className="bubble-correction-panel"
         onClick={(e) => e.stopPropagation()}
+        onKeyDown={trapFocus}
         role="dialog"
+        aria-modal="true"
         aria-label={title}
       >
         <div className="bubble-correction-head">

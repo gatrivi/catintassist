@@ -623,6 +623,10 @@ const Dashboard = () => {
 
       <SilenceGuardian lastDataTime={lastDataTime} />
 
+      <a href="#main-transcript" className="skip-to-main">
+        Skip to transcript
+      </a>
+
       <DashboardHeader
         versionLabel={showVersionBadge ? APP_VERSION_LABEL : ''}
         onAttachAudio={() => handleAttachAudio(false)}
@@ -692,7 +696,7 @@ const Dashboard = () => {
       )}
 
       {(isActive || isZombieCall || hipaaGraceActive) && (
-        <main className={`main-content ${isNotesOpen ? "notes-open" : ""}`}>
+        <main id="main-transcript" className={`main-content ${isNotesOpen ? "notes-open" : ""}`}>
           {(isActive || isZombieCall) && <OnCallSoundboardStrip />}
           <div className="transcription-pane" data-guide="transcript">
             <TranscriptionBoard
