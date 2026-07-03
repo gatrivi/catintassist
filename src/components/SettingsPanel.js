@@ -23,6 +23,7 @@ import {
 import { DevSimulatePanel } from './DevSimulatePanel';
 import { isDevSimEnabled } from '../utils/devSimulateCaptions';
 import { AuthPanel } from './AuthPanel';
+import { CorrectionsBackupPanel } from './CorrectionsBackupPanel';
 import { useAuth } from '../contexts/AuthContext';
 import { useAudioSource } from '../hooks/useAudioSource';
 
@@ -107,7 +108,7 @@ export default function SettingsPanel({ open, onClose, initialSection = 'deepgra
         </div>
 
         <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap', marginTop: 10 }}>
-          {['account', 'deepgram', 'language', 'translation', 'behavior', 'layout', 'display', 'audio'].map((id) => (
+          {['account', 'deepgram', 'language', 'translation', 'behavior', 'data', 'layout', 'display', 'audio'].map((id) => (
             <button
               key={id}
               type="button"
@@ -124,7 +125,9 @@ export default function SettingsPanel({ open, onClose, initialSection = 'deepgra
                       ? 'Translation'
                       : id === 'behavior'
                         ? 'Behavior'
-                        : id === 'layout'
+                        : id === 'data'
+                          ? 'Data'
+                          : id === 'layout'
                           ? 'Layout'
                           : id === 'audio'
                             ? 'Audio'
@@ -333,6 +336,16 @@ export default function SettingsPanel({ open, onClose, initialSection = 'deepgra
                 Plays through local speakers + virtual output (same path as bubble play). Inworld prefetch hooks here later.
               </p>
             </div>
+          </div>
+        )}
+
+        {section === 'data' && (
+          <div style={{ marginTop: 12 }}>
+            <div style={{ fontSize: 11, color: '#93c5fd', marginBottom: 8 }}>Taught corrections</div>
+            <CorrectionsBackupPanel />
+            <p style={{ fontSize: 10, color: 'rgba(255,255,255,0.45)', marginTop: 14, lineHeight: 1.45 }}>
+              Compliance notes: <code>docs/compliance/operational-notes.md</code>
+            </p>
           </div>
         )}
 

@@ -4,6 +4,12 @@
 
 ---
 
+## v4.78.0 — Corrections backup + export pack
+- Settings → **Data** tab: export/import/clear taught corrections
+- `exports/audio-greeting-editor/` — spin-off waveform editor (documented)
+- Compliance docs: `docs/compliance/`
+- Tests for exported `audioEditorCore`
+
 ## v4.77.0 — Production readiness (a11y + PWA)
 - Fixed broken PWA manifest (missing icon 404s)
 - Clear-log confirm; footer a11y; skip-to-transcript link

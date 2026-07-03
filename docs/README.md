@@ -3,7 +3,8 @@
 This is the single source of truth for *documentation + onboarding*.
 
 ## What's new
-- **v4.77.0** — [`development/production-readiness.md`](development/production-readiness.md) — a11y/PWA audit fixes
+- **Latest overnight report:** [`OVERNIGHT_REPORT.md`](OVERNIGHT_REPORT.md)
+- **v4.78.0** — Settings → Data (corrections backup) + [`exports/audio-greeting-editor/`](../exports/audio-greeting-editor/README.md)
 - **v4.75.5+** — [`development/element-hint.md`](development/element-hint.md) — rich tooltips with copy selector
 - **Recent releases** — [`CHANGELOG.md`](CHANGELOG.md)
 
@@ -29,6 +30,11 @@ This is the single source of truth for *documentation + onboarding*.
 - [`docs/cursor-agent/README.md`](cursor-agent/README.md): Cursor agent “touch only these files” guidance
 - [`docs/CHANGELOG.md`](CHANGELOG.md): recent version notes
 - [`docs/development/production-readiness.md`](development/production-readiness.md): sellable-app audit checklist
+- [`docs/compliance/operational-notes.md`](compliance/operational-notes.md): PHI + operator checklist (not legal advice)
 
 ## Archive (legacy / historical)
 - [`docs/archive/README.md`](archive/README.md): intentionally old docs and where they live
+
+## Reusable exports (spin-off code)
+- [`exports/README.md`](../exports/README.md): copy-paste packs for other apps
+- [`exports/audio-greeting-editor/README.md`](../exports/audio-greeting-editor/README.md): waveform editor + silence trim + re-record

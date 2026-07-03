@@ -30,8 +30,8 @@
 
 | Item | Notes |
 |------|-------|
-| **Privacy / terms / HIPAA disclaimer** | No legal pages yet — required for B2B sale |
-| **API keys in localStorage** | Document risk; client-side keys are user-brought-your-own |
+| **Privacy / terms / HIPAA disclaimer** | Operational notes added — [`compliance/operational-notes.md`](../compliance/operational-notes.md) (not legal advice) |
+| **API keys in localStorage** | Documented — [`compliance/api-keys.md`](../compliance/api-keys.md) |
 | **Soundboard patient audio** | Verify passthrough on prod stack ([`soundboard/README.md`](../soundboard/README.md)) |
 | **Phase 0 STT checklist** | [`ROADMAP.md`](../ROADMAP.md) — split translate, zombie re-attach |
 
@@ -41,7 +41,7 @@
 |------|-------|
 | More `ElementHint` coverage on transcript footer | Terminal labels kept; hints via hover |
 | `main` landmark on soundboard view | Only call view has `#main-transcript` today |
-| Corrections export UI in Settings | API exists; no button yet |
+| Corrections export UI in Settings | **Shipped v4.78.0** — Settings → Data |
 | E2E smoke test (Playwright) | Manual sanity at 900×600 still primary |
 
 ## P2 — later

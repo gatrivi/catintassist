@@ -1,3 +1,3 @@
 /** Single source of truth for app version (UI + package.json should match). */
-export const APP_VERSION = '4.77.0';
-export const APP_VERSION_LABEL = `v${APP_VERSION} - production a11y + PWA manifest fix`;
+export const APP_VERSION = '4.78.0';
+export const APP_VERSION_LABEL = `v${APP_VERSION} - corrections backup UI + audio editor export`;

@@ -136,4 +136,6 @@ CURRENT INBOX
 - [x] v4.75.6: CopyChip rows for names/spelled text; digit stitch for phone copy (`transcriptFormat.js`)
 - [x] v4.75.7–v4.75.8: blue tail stability; debug ingest strip; render tighten
 - [x] v4.76.0: bubble corrections — double-click/✎ fix transcription or translation, teach STT + glossary (`docs/transcription-pane/corrections.md`)
+- [x] v4.77.0: production a11y — PWA manifest, clear-log confirm, skip link, reduced motion
+- [x] v4.78.0: audio editor export pack (`exports/audio-greeting-editor/`); Settings → Data corrections backup; compliance docs
 </details>
