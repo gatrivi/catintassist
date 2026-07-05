@@ -99,6 +99,45 @@ const Dashboard = () => {
     useAppUpdateCheck();
   const [isEditingBg, setIsEditingBg] = useState(false);
   const [workspaceView, setWorkspaceView] = useState(loadWorkspaceView);
+  const resetUiState = useCallback(() => {
+    // UI-only reset: do NOT touch Deepgram/API keys or transcripts.
+    try {
+      localStorage.setItem('catint_active', 'false');
+    } catch {}
+
+    [
+      'catint_workspace_view',
+      'catint_workspace_initialized',
+      'catint_studio_hint_seen',
+      'catint_break',
+      'catint_hold',
+    ].forEach((k) => {
+      try {
+        localStorage.removeItem(k);
+      } catch {}
+    });
+
+    try {
+      // Ensure immediate UI mode switches before reload.
+      window.dispatchEvent(new CustomEvent('catint_ui_reset_started'));
+    } catch {}
+
+    try {
+      window.location.reload();
+    } catch {
+      // In case reload is blocked, at least clear zombie UI locally.
+      clearZombieState?.();
+    }
+  }, [clearZombieState]);
+
+  // Dev helper (and troubleshooting) for persisted runtime-state mess.
+  useEffect(() => {
+    try {
+      window.catintResetUiState = resetUiState;
+    } catch {
+      // ignore
+    }
+  }, [resetUiState]);
   const [showStudioHint, setShowStudioHint] = useState(
     () => !hasSeenStudioHint(),
   );
@@ -697,7 +736,7 @@ const Dashboard = () => {
 
       {(isActive || isZombieCall || hipaaGraceActive) && (
         <main id="main-transcript" className={`main-content ${isNotesOpen ? "notes-open" : ""}`}>
-          {(isActive || isZombieCall) && <OnCallSoundboardStrip />}
+          {isActive && <OnCallSoundboardStrip />}
           <div className="transcription-pane" data-guide="transcript">
             <TranscriptionBoard
               captions={captions}
@@ -711,7 +750,7 @@ const Dashboard = () => {
               lastDataTime={lastDataTime}
             />
           </div>
-          {isNotesOpen && (!callFocusMode || isToolbarVisible) && !isEditingBg && (
+          {isNotesOpen && !isEditingBg && (
             <div className="tools-column notes-open">
               <div
                 className="glass-panel tools-notes"

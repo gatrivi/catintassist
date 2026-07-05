@@ -397,6 +397,37 @@ export default function SettingsPanel({ open, onClose, initialSection = 'deepgra
               Progress bars = monthly + daily timelines. Changes save instantly.
             </p>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+              <div style={{ border: '1px solid rgba(239,68,68,0.25)', borderRadius: 8, padding: 10, background: 'rgba(239,68,68,0.05)' }}>
+                <div style={{ fontSize: 11, fontWeight: 900, color: '#fca5a5', marginBottom: 6 }}>
+                  Reset UI state (v{APP_VERSION_LABEL})
+                </div>
+                <div style={{ fontSize: 10, color: 'rgba(255,255,255,0.55)', lineHeight: 1.45, marginBottom: 8 }}>
+                  Clears persisted UI/layout flags only (prevents zombie-call / wrong off-call workspace on reload). Does not clear Deepgram keys or transcripts.
+                </div>
+                <button
+                  type="button"
+                  onClick={() => {
+                    try {
+                      if (typeof window.catintResetUiState === 'function') window.catintResetUiState();
+                    } catch {}
+                  }}
+                  style={{
+                    width: '100%',
+                    padding: '8px 10px',
+                    borderRadius: 8,
+                    border: '1px solid rgba(239,68,68,0.45)',
+                    background: 'rgba(239,68,68,0.15)',
+                    color: '#fca5a5',
+                    cursor: 'pointer',
+                    fontSize: 11,
+                    fontWeight: 900,
+                  }}
+                  title="Clears UI-only localStorage flags and reloads the app"
+                >
+                  Reset UI state
+                </button>
+              </div>
+
               {Object.keys(DEFAULT_COMPONENT_VISIBILITY).map((id) => (
                 <div key={id} style={{ borderBottom: '1px solid rgba(255,255,255,0.06)', paddingBottom: 8 }}>
                   <div style={{ fontSize: 11, fontWeight: 700, marginBottom: 4 }}>
