@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useRef } from 'react';
 import { PlayIcon } from './HeaderWidgets';
+import { MicIcon } from './HeaderIcons';
 import { ElementHintTarget } from './ElementHint';
 
 const DOUBLE_TAP_MS = 280;
@@ -83,6 +84,10 @@ export const ConnectInterpretButton = ({
         : `${singleTitle || label} (double tap: ${doubleTitle})`)
     : (singleTitle || label);
 
+  const lower = String(label || singleTitle || doubleTitle || '').toLowerCase();
+  const isMicConnect = lower.includes('microphon');
+  const ButtonIcon = isMicConnect ? MicIcon : PlayIcon;
+
   return (
     <ElementHintTarget
       elementId="header-connect-btn"
@@ -113,9 +118,8 @@ export const ConnectInterpretButton = ({
     >
       <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem' }}>
         <span aria-hidden style={{ display: 'inline-flex', transform: 'translateY(-0.5px)' }}>
-          <PlayIcon />
+          <ButtonIcon />
         </span>
-        <span>{isPendingDoubleTap ? pendingDoubleTapTitle : label}</span>
       </span>
     </button>
     </ElementHintTarget>

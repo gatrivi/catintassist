@@ -3,7 +3,9 @@ import { FAILURE } from '../utils/deepgramDiagnostics';
 import { getDeepgramKeyInfo } from '../utils/deepgramRuntimeKey';
 
 const mk = (done, active, failed) => {
-  if (failed) return { mark: '✗', color: '#ef4444' };
+  // Important: failure must not look like "the whole app is useless".
+  // Keep the meaning as "something failed, diagnostics available".
+  if (failed) return { mark: '!', color: '#ef4444' };
   if (done) return { mark: '✓', color: '#34d399' };
   if (active) return { mark: '→', color: '#f59e0b' };
   return { mark: '•', color: 'rgba(255,255,255,0.35)' };
@@ -74,11 +76,13 @@ export const ConnectionDiagnosticsBar = ({
   const socketOk = step2a || step2b;
   const isFailureLike = isError || hasFailureDetailsText;
   const markForChip = isFailureLike
-    ? { mark: '×', color: '#ef4444' }
+    ? { mark: '!', color: '#ef4444' }
     : isConnecting
       ? { mark: '→', color: '#f59e0b' }
       : { mark: '•', color: 'rgba(255,255,255,0.35)' };
-  const chipMainLabel = isFailureLike ? (compact ? 'Conn failed' : 'Connection failed') : 'Connecting…';
+  const chipMainLabel = isFailureLike
+    ? (compact ? 'Deepgram down' : 'Deepgram down: transcription unavailable')
+    : 'Connecting…';
   const chipStateClass = isFailureLike ? ' is-failed' : isConnecting ? ' is-connecting' : '';
   // In compact header mode the chip must never steal layout space.
   // Full step-by-step checks live only in the hover/focus/click tooltip.
@@ -120,8 +124,28 @@ export const ConnectionDiagnosticsBar = ({
   ];
 
 
-  const detailsTitle = failed ? 'Connection failed' : 'Connecting to Deepgram…';
+  const detailsTitle = failed
+    ? 'Deepgram failure: transcription unavailable'
+    : 'Connecting to Deepgram…';
   const detailsTitleWithCat = catLabel ? `${detailsTitle} [${catLabel}]` : detailsTitle;
+
+  let actionNow = null;
+  if (failed) {
+    // Keep this brutally direct so you can get back to work fast.
+    if (s.failureCategory === FAILURE.AUTH) {
+      actionNow = 'Fix API key / auth: paste correct Deepgram key, then try again (Zap if stuck).';
+    } else if (s.failureCategory === FAILURE.QUOTA) {
+      actionNow = 'Fix quota/billing: verify plan quota is available, then try again (Zap if stuck).';
+    } else if (s.failureCategory === FAILURE.NETWORK) {
+      actionNow = 'Fix network/firewall: allow Deepgram WebSocket + outbound, then try again (Zap if stuck).';
+    } else if (s.failureCategory === FAILURE.AUDIO) {
+      actionNow = 'Fix audio stream: ensure tab audio is shared, mic perms OK, then try again (Zap if stuck).';
+    } else if (s.failureCategory === FAILURE.TIMEOUT) {
+      actionNow = 'Fix timeout: make sure audio is being sent (tab/mic), then try again (Zap if stuck).';
+    } else {
+      actionNow = 'Deepgram is not reachable right now: try Zap, then check API key, network, and audio permissions.';
+    }
+  }
 
   return (
     <div className="connection-diagnostics-wrap">
@@ -192,6 +216,12 @@ export const ConnectionDiagnosticsBar = ({
               </div>
             ))}
           </div>
+
+          {failed && actionNow && (
+            <div className="connection-diagnostics-details-action">
+              <strong>Do this now:</strong> {actionNow}
+            </div>
+          )}
 
           {(connectionMessage || s.lastError) && (
             <div className="connection-diagnostics-details-error">

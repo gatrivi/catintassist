@@ -29,8 +29,22 @@ export const OffCallWorkspace = ({
             onHideSession={() => setSessionHidden(true)}
           />
         ) : (
-          <div style={{ padding: '1.5rem', textAlign: 'center', opacity: 0.45, fontSize: '0.75rem' }}>
-            Ready — connect tab to begin.
+          <div style={{ padding: '1.5rem', textAlign: 'center', opacity: 0.75, fontSize: '0.78rem', lineHeight: 1.35 }}>
+            {connectionState === 'error' ? (
+              <>
+                Deepgram isn't working right now (engine for interpretation).
+                <div style={{ opacity: 0.95, marginTop: '0.5rem' }}>
+                  Do this now: Zap → check API key/auth → allow Deepgram WebSocket + tab audio → try again.
+                </div>
+              </>
+            ) : (
+              <>
+                Press the green button to connect the {micTestMode ? 'microphone' : 'browser tab'}.
+                <div style={{ opacity: 0.95, marginTop: '0.5rem' }}>
+                  Then press it again to start interpreting.
+                </div>
+              </>
+            )}
           </div>
         )}
       </div>
