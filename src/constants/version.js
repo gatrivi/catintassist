@@ -1,3 +1,3 @@
 /** Single source of truth for app version (UI + package.json should match). */
-export const APP_VERSION = '4.79.4';
-export const APP_VERSION_LABEL = `v${APP_VERSION} - stable live transcript tail`;
+export const APP_VERSION = '4.79.6';
+export const APP_VERSION_LABEL = `v${APP_VERSION} - compact call chrome`;

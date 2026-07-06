@@ -49,7 +49,7 @@ export function OnCallSoundboardStrip({ collapsed: collapsedProp, onToggleCollap
     stopClipToSink,
   } = useAudioSettings();
 
-  const [collapsed, setCollapsed] = useState(collapsedProp ?? false);
+  const [collapsed, setCollapsed] = useState(collapsedProp ?? true);
   const [blobs, setBlobs] = useState({});
   const [healthScores] = useState(() => {
     try {

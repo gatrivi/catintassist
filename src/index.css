@@ -462,6 +462,17 @@ body {
   overflow: hidden;
 }
 
+#main-transcript:not(.notes-open) > .on-call-soundboard-strip {
+  flex: 0 0 auto;
+  max-height: 34px;
+  overflow: hidden;
+}
+
+#main-transcript:not(.notes-open) > .transcription-pane {
+  flex: 1 1 auto;
+  min-height: 0;
+}
+
 #main-transcript.notes-open > .transcription-pane {
   grid-column: 1;
   grid-row: 2;
@@ -1914,6 +1925,14 @@ body {
   box-shadow: 0 0 10px rgba(212, 175, 55, 0.35);
 }
 
+.audio-route-soundboard-btn.is-disabled,
+.audio-route-disabled-control:disabled {
+  opacity: 0.32;
+  filter: grayscale(1);
+  cursor: not-allowed;
+  box-shadow: none;
+}
+
 .audio-route-select,
 .audio-route-select option {
   background-color: #0f172a;
@@ -2978,6 +2997,23 @@ body:has(.app-container[data-call-mode="true"]) .element-hint-panel {
 /* Show toggle button only on narrow/mobile screens */
 @media (max-width: 600px) {
   #layout-toggle-btn { display: block !important; }
+
+  #header-connect-btn,
+  #header-stop-btn,
+  #header-mic-test-btn,
+  #header-hold-btn,
+  #quick-notes-btn,
+  .bubble-rail-play,
+  .transcription-footer button {
+    min-width: 44px !important;
+    min-height: 44px !important;
+  }
+
+  .audio-route-status-main button,
+  .audio-route-more-panel button,
+  .audio-route-select {
+    min-height: 36px;
+  }
 
   /* mode 0 — Transcript focus: header ~40%, main ~60% */
   .app-container.layout-transcription {
@@ -4201,6 +4237,35 @@ body:has(.app-container[data-call-mode="true"]) .element-hint-panel {
   transition: opacity 120ms ease;
 }
 
+.confidence-word--low {
+  text-decoration: underline dotted rgba(250, 204, 21, 0.85);
+  text-underline-offset: 0.16em;
+}
+
+.zombie-reattach-banner {
+  top: 0.4rem !important;
+  left: 0.5rem !important;
+  right: 0.5rem !important;
+  min-height: 34px !important;
+  padding: 0.25rem 0.45rem !important;
+  flex-direction: row !important;
+  gap: 0.55rem !important;
+  border-radius: 6px !important;
+  border-width: 1px !important;
+  background: rgba(245, 158, 11, 0.92) !important;
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.35) !important;
+  animation: none !important;
+}
+
+.zombie-reattach-banner > div {
+  font-size: 0.72rem !important;
+}
+
+.zombie-reattach-banner > div:nth-child(2),
+.zombie-reattach-banner > div:nth-child(3) {
+  display: none !important;
+}
+
 .transcript-bubble.is-live {
   transition: opacity 120ms ease, min-height 120ms ease;
 }
@@ -4757,6 +4822,9 @@ body:has(.app-container[data-call-mode="true"]) .element-hint-panel {
   border-radius: 6px;
   flex-wrap: wrap;
   min-height: 28px;
+  flex: 0 0 auto;
+  max-height: 34px;
+  overflow: hidden;
 }
 
 .on-call-sb-toggle {

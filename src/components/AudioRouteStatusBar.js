@@ -115,6 +115,7 @@ export const AudioRouteStatusBar = ({
     attachedAudioSourceMode === 'virtualCable' ? 'virtualCable' : 'tab';
   const isModeMismatch =
     isActive && configuredAudioSourceMode !== attachedSettingsMode;
+  const mobileMicMode = micTestMode;
 
   const sttInLabel = isMicAttached
     ? 'Mic STT'
@@ -257,16 +258,17 @@ export const AudioRouteStatusBar = ({
           <ElementHintTarget
             elementId="audio-route-soundboard-btn"
             heading="Soundboard Studio"
-            body={soundboardOpen ? 'Hide Soundboard Studio panel.' : 'Record greetings, health check, route test.'}
+            body={mobileMicMode ? 'Disabled in local mic mode. Soundboard needs a patient audio route.' : soundboardOpen ? 'Hide Soundboard Studio panel.' : 'Record greetings, health check, route test.'}
             color="#a855f7"
           >
           <button
             id="audio-route-soundboard-btn"
             type="button"
-            className={`audio-route-soundboard-btn${soundboardOpen ? ' is-open' : ''}`}
-            onClick={onOpenSoundboard}
+            className={`audio-route-soundboard-btn${soundboardOpen ? ' is-open' : ''}${mobileMicMode ? ' is-disabled' : ''}`}
+            onClick={mobileMicMode ? undefined : onOpenSoundboard}
+            disabled={mobileMicMode}
             aria-pressed={soundboardOpen}
-            title={soundboardOpen ? 'Hide Soundboard Studio' : 'Soundboard Studio — record greetings, health check, route test'}
+            title={mobileMicMode ? 'Disabled in local mic mode: no patient audio route' : soundboardOpen ? 'Hide Soundboard Studio' : 'Soundboard Studio - record greetings, health check, route test'}
           >
             {soundboardOpen ? 'Soundboard ✓' : 'Soundboard'}
           </button>
@@ -385,15 +387,17 @@ export const AudioRouteStatusBar = ({
             <ElementHintTarget
               elementId="audio-route-test-route-btn"
               heading="Test route"
-              body="Play tone through VB-Cable — same path patients hear greetings."
+              body={mobileMicMode ? 'Disabled in local mic mode. VB-Cable route is not used.' : 'Play tone through VB-Cable - same path patients hear greetings.'}
               color="#34d399"
             >
             <button
               id="audio-route-test-route-btn"
               type="button"
               style={btn}
-              onClick={onTestRoute}
-              title="Test tone through VB-Cable output — same path patients hear greetings"
+              onClick={mobileMicMode ? undefined : onTestRoute}
+              disabled={mobileMicMode}
+              className={mobileMicMode ? 'audio-route-disabled-control' : undefined}
+              title={mobileMicMode ? 'Disabled in local mic mode: VB-Cable route not used' : 'Test tone through VB-Cable output - same path patients hear greetings'}
             >
               Test VB out
             </button>

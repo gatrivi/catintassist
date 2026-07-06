@@ -206,7 +206,7 @@ const InteractiveText = ({
       return (
         <span
           key={`word-${idx}`}
-          className="confidence-word"
+          className={`confidence-word${Number.isFinite(meta?.confidence) && meta.confidence < 0.7 ? ' confidence-word--low' : ''}`}
           style={{ opacity }}
           title={title}
         >
@@ -1181,7 +1181,7 @@ export const TranscriptionBoard = ({
             className="transcript-audio-safe"
             title="Transcript audio is manual only. Messages never auto-play."
           >
-            TTS:MANUAL
+            Audio: manual
           </span>
           {pinnedCaptions.length > 0 && (
             <button
@@ -1208,7 +1208,7 @@ export const TranscriptionBoard = ({
             title="Clear transcript (pinned messages kept)"
             style={{ background: 'transparent', color: '#fff', border: 'none', cursor: 'pointer' }}
           >
-            [CLEAR_LOG]
+            Clear log
           </button>
           <button
             type="button"
@@ -1218,7 +1218,7 @@ export const TranscriptionBoard = ({
             title="Stop text-to-speech"
             style={{ background: 'transparent', color: isPlaying ? 'var(--danger)' : '#333', border: 'none', cursor: isPlaying ? 'pointer' : 'default' }}
           >
-            [STOP_AI]
+            Stop voice
           </button>
         </div>
       </div>
