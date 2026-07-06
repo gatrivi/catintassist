@@ -4,6 +4,7 @@ import {
   getEffectiveDeepgramKey,
   getDeepgramKeyInfo,
 } from "../utils/deepgramRuntimeKey";
+import { notifyDeepgramKeyNeeded } from "../utils/deepgramSettingsPrompt";
 import {
   classifyDeepgramClose,
   buildFailureMessage,
@@ -566,8 +567,9 @@ export const useDeepgram = () => {
       if (!API_KEY) {
         setConnectionState("error");
         const msg =
-          "Deepgram API key is missing. Click the gear (top-right) → paste your key → try again.";
+          "Deepgram API key is missing. Open Settings (gear) → Deepgram, or set REACT_APP_DEEPGRAM_API_KEY on Vercel and redeploy.";
         setConnectionMessage(msg);
+        notifyDeepgramKeyNeeded("connect");
         syncConnectProgress({
           phase: "error",
           lastError: msg,

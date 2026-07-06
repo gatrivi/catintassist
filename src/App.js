@@ -40,7 +40,9 @@ import {
   hasConfiguredDeepgramKey,
   isValidDeepgramApiKey,
   isRememberExpired,
+  needsUserSuppliedDeepgramKey,
 } from "./utils/deepgramRuntimeKey";
+import { getDeepgramBlockReason, getDeepgramSettingsPrompt } from "./utils/deepgramSettingsPrompt";
 import { applyThemePalette, loadThemePalette } from "./utils/themePalette";
 import { APP_VERSION_LABEL } from "./constants/version";
 import { setSttActive } from "./utils/routeDiagnostics";
@@ -151,6 +153,9 @@ const Dashboard = () => {
 
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [settingsSection, setSettingsSection] = useState("deepgram");
+  const [settingsOpenReason, setSettingsOpenReason] = useState(null);
+  const [settingsOpenTrigger, setSettingsOpenTrigger] = useState("general");
+  const [deepgramKeyNotice, setDeepgramKeyNotice] = useState("");
   const [showWellbeingDock, setShowWellbeingDock] = useState(isWellbeingDockEnabled);
   const [quickNotesNotice, setQuickNotesNotice] = useState("");
   const [, setRuntimeKeyTick] = useState(0);
@@ -221,17 +226,16 @@ const Dashboard = () => {
   }, [hipaaGraceActive, isActive, isEditingBg, isNotesOpen, isZombieCall, workspaceView]);
   useEffect(() => {
     const onRuntime = () => setRuntimeKeyTick((t) => t + 1);
-    const onShowVault = () => {
-      setSettingsSection("deepgram");
+    const applySettingsOpen = (detail = {}) => {
+      setSettingsSection(detail.section || "deepgram");
+      setSettingsOpenReason(detail.reason || null);
+      setSettingsOpenTrigger(detail.trigger || "general");
       setSettingsOpen(true);
     };
-    const onShowSettings = () => {
-      setSettingsSection("deepgram");
-      setSettingsOpen(true);
-    };
-    const onShowLanguageSettings = () => {
-      setSettingsSection("language");
-      setSettingsOpen(true);
+    const onShowVault = (e) => applySettingsOpen({ section: "deepgram", ...e?.detail });
+    const onShowSettings = (e) => applySettingsOpen({ section: "deepgram", ...e?.detail });
+    const onShowLanguageSettings = (e) => {
+      applySettingsOpen({ section: "language", reason: null, trigger: "general", ...e?.detail });
     };
 
     window.addEventListener("cat_deepgram_runtime_key_changed", onRuntime);
@@ -241,6 +245,15 @@ const Dashboard = () => {
     const onWellbeingDock = () => setShowWellbeingDock(isWellbeingDockEnabled());
     window.addEventListener("cat_wellbeing_dock_changed", onWellbeingDock);
     window.addEventListener("cat_personal_dock_changed", onWellbeingDock);
+    const onKeyNeeded = (e) => {
+      const trigger = e?.detail?.trigger || "connect";
+      const prompt = getDeepgramSettingsPrompt(e?.detail?.reason, trigger);
+      setDeepgramKeyNotice(
+        prompt?.body || "Deepgram key missing — open Settings (gear) to paste your key.",
+      );
+      window.setTimeout(() => setDeepgramKeyNotice(""), 8000);
+    };
+    window.addEventListener("cat_deepgram_key_needed", onKeyNeeded);
     return () => {
       window.removeEventListener("cat_deepgram_runtime_key_changed", onRuntime);
       window.removeEventListener("cat_show_deepgram_key_vault", onShowVault);
@@ -248,14 +261,18 @@ const Dashboard = () => {
       window.removeEventListener("cat_show_language_settings", onShowLanguageSettings);
       window.removeEventListener("cat_wellbeing_dock_changed", onWellbeingDock);
       window.removeEventListener("cat_personal_dock_changed", onWellbeingDock);
+      window.removeEventListener("cat_deepgram_key_needed", onKeyNeeded);
     };
   }, []);
 
   const hasRuntimeKey = isValidDeepgramApiKey(getRuntimeDeepgramKey());
-  const apiKeyMissing = !hasConfiguredDeepgramKey();
+  const apiKeyMissing = needsUserSuppliedDeepgramKey();
 
   useEffect(() => {
-    if (hasRuntimeKey) setSettingsOpen(false);
+    if (hasRuntimeKey) {
+      setSettingsOpen(false);
+      setSettingsOpenReason(null);
+    }
   }, [hasRuntimeKey]);
 
   // UX: stale tab flag is cleared in useDeepgram when no live stream exists.
@@ -303,12 +320,8 @@ const Dashboard = () => {
   const handleSplashComplete = useCallback(() => {
     setShowSplash(false);
     setShellReady(true);
-    // Block tour until STT can work — one modal at a time.
-    if (!hasConfiguredDeepgramKey()) {
-      setSettingsSection("deepgram");
-      setSettingsOpen(true);
-      return;
-    }
+    // No forced Settings takeover — bottom banner nudges; user opens when ready.
+    if (!hasConfiguredDeepgramKey()) return;
     if (!isAppGuideDone()) {
       setTimeout(() => {
         window.dispatchEvent(new CustomEvent("cat_open_app_guide"));
@@ -327,14 +340,6 @@ const Dashboard = () => {
       window.removeEventListener("cat_guide_overlay_closed", onClose);
     };
   }, []);
-
-  useEffect(() => {
-    if (!shellReady || showSplash || isActive || isZombieCall) return;
-    if (!hasConfiguredDeepgramKey()) {
-      setSettingsSection("deepgram");
-      setSettingsOpen(true);
-    }
-  }, [shellReady, showSplash, isActive, isZombieCall]);
 
   const blockSecondaryChrome =
     showSplash || !shellReady || settingsOpen || guideOverlayOpen;
@@ -688,9 +693,47 @@ const Dashboard = () => {
 
       <SettingsPanel
         open={settingsOpen}
-        onClose={() => setSettingsOpen(false)}
+        onClose={() => {
+          setSettingsOpen(false);
+          setSettingsOpenReason(null);
+        }}
         initialSection={settingsSection}
+        openReason={settingsOpenReason}
+        openTrigger={settingsOpenTrigger}
       />
+
+      {deepgramKeyNotice && !isActive && !isZombieCall && (
+        <div
+          role="status"
+          style={{
+            position: "fixed",
+            bottom: 48,
+            left: "50%",
+            transform: "translateX(-50%)",
+            zIndex: 99991,
+            background: "rgba(15,23,42,0.95)",
+            border: "1px solid rgba(245,158,11,0.45)",
+            borderRadius: 8,
+            padding: "8px 14px",
+            fontSize: "0.72rem",
+            color: "#fde68a",
+            maxWidth: "min(420px, 92vw)",
+            lineHeight: 1.4,
+            cursor: "pointer",
+          }}
+          onClick={() => {
+            setSettingsSection("deepgram");
+            setSettingsOpenReason(getDeepgramBlockReason() || "no_key");
+            setSettingsOpenTrigger("connect");
+            setSettingsOpen(true);
+          }}
+        >
+          {deepgramKeyNotice}
+          <span style={{ display: "block", marginTop: 4, color: "#93c5fd", fontSize: "0.65rem" }}>
+            Tap to open Settings → Deepgram
+          </span>
+        </div>
+      )}
 
       {apiKeyMissing && !isActive && !isZombieCall && !blockSecondaryChrome && (
         <div
@@ -710,12 +753,14 @@ const Dashboard = () => {
           }}
           onClick={() => {
             setSettingsSection("deepgram");
+            setSettingsOpenReason(getDeepgramBlockReason() || "no_key");
+            setSettingsOpenTrigger("banner");
             setSettingsOpen(true);
           }}
         >
           {isRememberExpired()
             ? "🔐 Password expired — open Settings (⚙)"
-            : "🔑 Deepgram key needed — open Settings (⚙)"}
+            : "🔑 No STT key in this build — paste in Settings (⚙) or set REACT_APP_DEEPGRAM_API_KEY on Vercel + redeploy"}
         </div>
       )}
 

@@ -57,6 +57,13 @@ export const hasConflictingDeepgramKeys = () => {
 
 export const hasConfiguredDeepgramKey = () => Boolean(getEffectiveDeepgramKey());
 
+/** True when CRA baked REACT_APP_DEEPGRAM_API_KEY into this build (Vercel deploy-time). */
+export const hasBundledDeepgramKey = () =>
+  isValidDeepgramApiKey(process.env.REACT_APP_DEEPGRAM_API_KEY);
+
+/** User must paste/unlock a key — false when env/runtime/legacy already works. */
+export const needsUserSuppliedDeepgramKey = () => !hasConfiguredDeepgramKey();
+
 export const isValidDeepgramApiKey = (key) => {
   if (!key || typeof key !== 'string') return false;
   const k = key.trim();

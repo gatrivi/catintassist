@@ -5,6 +5,7 @@ import {
   clearRememberedKey,
   getDeepgramKeyInfo,
   hasConflictingDeepgramKeys,
+  hasBundledDeepgramKey,
 } from "../utils/deepgramRuntimeKey";
 
 // ==========================================
@@ -183,6 +184,12 @@ export default function DeepgramKeyVault({ embedded = false }) {
 
         <p style={{ marginTop: 10, color: "rgba(255,255,255,0.75)", fontSize: 12 }}>
           Paste your Deepgram API key. Unlock remembered for 30 days on this device.
+        </p>
+
+        <p style={{ marginTop: 6, fontSize: 10, color: hasBundledDeepgramKey() ? '#86efac' : '#fbbf24' }}>
+          {hasBundledDeepgramKey()
+            ? 'Build key: configured via REACT_APP_DEEPGRAM_API_KEY (this deploy).'
+            : 'Build key: not in this bundle — set REACT_APP_DEEPGRAM_API_KEY on Vercel (Production) and redeploy, or paste your own key below.'}
         </p>
 
         {keyInfo.key && (

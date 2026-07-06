@@ -49,7 +49,8 @@ import { HeaderMetricsStrip } from './HeaderMetricsStrip';
 import { playTestToneLocal, playTestToneSink } from '../utils/audioSelfTest';
 import { APP_VERSION_LABEL } from '../constants/version';
 import { SlotMicroValue } from './SlotMicroValue';
-import { hasConfiguredDeepgramKey, isRememberExpired } from '../utils/deepgramRuntimeKey';
+import { hasConfiguredDeepgramKey, isRememberExpired, needsUserSuppliedDeepgramKey } from '../utils/deepgramRuntimeKey';
+import { dispatchOpenDeepgramSettings } from '../utils/deepgramSettingsPrompt';
 import { PRESET_LABELS, getPresetConfig } from '../utils/scoreboardLayout';
 import {
   isComponentVisible,
@@ -1689,7 +1690,7 @@ export const DashboardHeader = ({
     configuredAudioSourceMode === "virtualCable"
       ? !cableStreamReady
       : !micTestMode && !tabStreamReady;
-  const apiKeyMissing = !hasConfiguredDeepgramKey();
+  const apiKeyMissing = needsUserSuppliedDeepgramKey();
 
   // Encrypted token presence (vault setup) exists even if the session key isn't unlocked yet.
   const encryptedKeySaved = (() => {
@@ -1706,18 +1707,14 @@ export const DashboardHeader = ({
   const vaultNeedsDecrypt = apiKeyMissing && encryptedKeySaved;
   const apiKeyMissingNoVault = apiKeyMissing && !encryptedKeySaved;
 
-  const showKeyVault = () => {
-    try {
-      window.dispatchEvent(new CustomEvent('cat_show_settings'));
-    } catch (_) {}
+  const showKeyVault = (trigger = 'connect') => {
+    dispatchOpenDeepgramSettings(trigger);
   };
 
   const connectRequireDoubleTapIndicator = false;
 
   const connectLabel = vaultNeedsDecrypt
     ? 'Decrypt'
-    : apiKeyMissingNoVault
-      ? 'Enter key'
     : isZombieCall
     ? 'Re-attach'
     : audioAttached
@@ -1730,9 +1727,9 @@ export const DashboardHeader = ({
   const connectSingleTitle = isZombieCall
     ? 'Re-attach to your call (timer saved)'
     : vaultNeedsDecrypt
-      ? 'Unlock Deepgram with your password'
+      ? 'Unlock Deepgram with your password (gear icon)'
       : apiKeyMissingNoVault
-        ? 'Enter your Deepgram key in Settings'
+        ? 'Connect tab audio — if STT fails, add Deepgram key in Settings (gear)'
       : audioAttached
           ? 'Start interpreting — begin transcription'
           : micTestMode
@@ -1751,20 +1748,18 @@ export const DashboardHeader = ({
         : 'Pick a different browser tab';
 
   const connectOnSingle = (() => {
-    if (apiKeyMissing) return showKeyVault;
     if (isZombieCall) return onRecovery;
     if (!audioAttached) return onAttachAudio;
     return onStartCall;
   })();
 
   const connectOnDouble = (() => {
-    if (apiKeyMissing) return showKeyVault;
     if (isZombieCall) return onRecovery;
     if (!audioAttached) return onAttachAudioFresh || onAttachAudio;
     return onConnectAnotherTab;
   })();
 
-  const connectFlash = !isBreakActive && !apiKeyMissing && (tabNeedsReconnect || (!audioAttached && !isZombieCall));
+  const connectFlash = !isBreakActive && (tabNeedsReconnect || (!audioAttached && !isZombieCall));
   const showEndDayButton = !isActive && stats.dailyMinutes > 0 && !isBreakActive;
 
   // Listen for Demo Scenarios

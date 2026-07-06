@@ -26,6 +26,7 @@ import { AuthPanel } from './AuthPanel';
 import { CorrectionsBackupPanel } from './CorrectionsBackupPanel';
 import { useAuth } from '../contexts/AuthContext';
 import { useAudioSource } from '../hooks/useAudioSource';
+import { getDeepgramSettingsPrompt } from '../utils/deepgramSettingsPrompt';
 import {
   THEME_PALETTES,
   derivePaletteFromImageUrl,
@@ -37,7 +38,13 @@ import {
 const MOODS = ['auto', 'default', 'fast', 'chill'];
 const MOOD_LABELS = { auto: 'Trans Auto', default: 'Default', fast: 'Fast', chill: 'Chill' };
 
-export default function SettingsPanel({ open, onClose, initialSection = 'deepgram' }) {
+export default function SettingsPanel({
+  open,
+  onClose,
+  initialSection = 'deepgram',
+  openReason = null,
+  openTrigger = 'general',
+}) {
   const {
     translationMood,
     setTranslationMood,
@@ -103,6 +110,10 @@ export default function SettingsPanel({ open, onClose, initialSection = 'deepgra
   }, [open, initialSection]);
 
   if (!open) return null;
+
+  const deepgramPrompt = section === 'deepgram'
+    ? getDeepgramSettingsPrompt(openReason, openTrigger)
+    : null;
 
   return (
     <div
@@ -179,6 +190,29 @@ export default function SettingsPanel({ open, onClose, initialSection = 'deepgra
 
         {section === 'deepgram' && (
           <div style={{ marginTop: 12 }}>
+            {deepgramPrompt && (
+              <div
+                style={{
+                  marginBottom: 12,
+                  padding: '10px 12px',
+                  borderRadius: 8,
+                  fontSize: 11,
+                  lineHeight: 1.45,
+                  background: deepgramPrompt.tone === 'info'
+                    ? 'rgba(59,130,246,0.12)'
+                    : 'rgba(245,158,11,0.12)',
+                  border: `1px solid ${
+                    deepgramPrompt.tone === 'info'
+                      ? 'rgba(59,130,246,0.35)'
+                      : 'rgba(245,158,11,0.4)'
+                  }`,
+                  color: deepgramPrompt.tone === 'info' ? '#bfdbfe' : '#fcd34d',
+                }}
+              >
+                <strong style={{ display: 'block', marginBottom: 4 }}>{deepgramPrompt.title}</strong>
+                {deepgramPrompt.body}
+              </div>
+            )}
             <DeepgramKeyVault embedded />
           </div>
         )}

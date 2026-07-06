@@ -11,7 +11,7 @@ import {
 import { ConnectionDiagnosticsBar } from './ConnectionDiagnosticsBar';
 import { StatNumber } from './StatNumber';
 import { ConnectInterpretButton } from './ConnectInterpretButton';
-import { hasConfiguredDeepgramKey } from '../utils/deepgramRuntimeKey';
+import { needsUserSuppliedDeepgramKey } from '../utils/deepgramRuntimeKey';
 import {
   isComponentVisible,
   shouldShowScoreboardConnect,
@@ -212,7 +212,7 @@ const DirectionalCue = ({
     connectProgress?.phase === 'connecting' &&
     !connectProgress?.transcriptReceived;
 
-  const apiKeyMissing = !hasConfiguredDeepgramKey();
+  const apiKeyMissing = needsUserSuppliedDeepgramKey();
 
   const h = new Date().getHours();
   const goalsMet = totalDailyMins >= (dailyGoal || 1);
@@ -277,20 +277,13 @@ const DirectionalCue = ({
     );
   }
 
-  const showKeyVault = () => {
-    try {
-      window.dispatchEvent(new CustomEvent('cat_show_deepgram_key_vault'));
-    } catch (_) {}
-  };
   const handleSingle = () => {
     if (isZombieCall) return onRecovery?.();
-    if (apiKeyMissing) return showKeyVault();
     if (!audioAttached) return onAttachAudio?.();
     return onStartCall?.();
   };
   const handleDouble = () => {
     if (isZombieCall) return onRecovery?.();
-    if (apiKeyMissing) return showKeyVault();
     if (!audioAttached) return (onAttachAudioFresh || onAttachAudio)?.();
     return onConnectAnotherTab?.();
   };
@@ -300,7 +293,7 @@ const DirectionalCue = ({
       <div style={{ color: '#10b981', fontWeight: 900, fontSize: '0.7rem', lineHeight: 1.2 }}>
         {requiredIdleText}
       </div>
-      {showConnectButton && !apiKeyMissing && !isZombieCall && !audioAttached && (
+      {showConnectButton && !isZombieCall && !audioAttached && (
         <div style={{ display: 'flex', gap: '0.35rem', alignItems: 'center', flexWrap: 'wrap' }}>
           <button
             type="button"
