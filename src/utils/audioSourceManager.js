@@ -122,3 +122,55 @@ export const buildVirtualCableFailureUiState = (err) => {
  */
 export const getAudioSourceModeAfterVirtualCableFailure = (currentMode) => currentMode;
 
+/** Tab-share needs getDisplayMedia — missing in Cursor preview and some embedded WebViews. */
+export const canUseTabCapture = (mediaDevices) => {
+  const md = mediaDevices ?? (typeof navigator !== "undefined" ? navigator.mediaDevices : null);
+  try {
+    return !!(md && typeof md.getDisplayMedia === "function");
+  } catch (_) {
+    return false;
+  }
+};
+
+export const isLikelyEmbeddedPreviewBrowser = () => {
+  try {
+    const ua = typeof navigator !== "undefined" ? navigator.userAgent || "" : "";
+    return /CursorBrowser/i.test(ua);
+  } catch (_) {
+    return false;
+  }
+};
+
+/** Plain-language tab capture errors for Connect UI. */
+export const classifyTabCaptureError = (err) => {
+  const name = err?.name || "";
+  const embedded = isLikelyEmbeddedPreviewBrowser();
+
+  if (name === "NotSupportedError" || !canUseTabCapture()) {
+    return {
+      message: embedded
+        ? "Tab capture is not available in Cursor's preview browser. Open catintassist.gatrivi.com in Chrome or Edge, or press 🎤 for mic mode."
+        : "Tab audio capture is not supported in this browser. Use Chrome/Edge, or press 🎤 for microphone mode.",
+      suggestMicFallback: true,
+    };
+  }
+  if (name === "NotAllowedError" || name === "PermissionDeniedError") {
+    return {
+      message: "Tab sharing was blocked. Allow it in the browser prompt, or use 🎤 mic mode.",
+      suggestMicFallback: true,
+    };
+  }
+  if (name === "AbortError") {
+    return {
+      message: "Tab sharing was cancelled. Press Connect again and pick a tab with Share audio checked.",
+      suggestMicFallback: false,
+    };
+  }
+  return {
+    message: err?.message
+      ? `Tab capture failed: ${err.message}`
+      : "Tab capture failed. Try 🎤 mic mode or open the app in Chrome/Edge.",
+    suggestMicFallback: true,
+  };
+};
+

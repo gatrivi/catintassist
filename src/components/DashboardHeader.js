@@ -51,7 +51,10 @@ import { APP_VERSION_LABEL } from '../constants/version';
 import { SlotMicroValue } from './SlotMicroValue';
 import { hasConfiguredDeepgramKey, isRememberExpired, needsUserSuppliedDeepgramKey } from '../utils/deepgramRuntimeKey';
 import { dispatchOpenDeepgramSettings } from '../utils/deepgramSettingsPrompt';
-import { PRESET_LABELS, getPresetConfig } from '../utils/scoreboardLayout';
+import {
+  canUseTabCapture,
+  isLikelyEmbeddedPreviewBrowser,
+} from '../utils/audioSourceManager';
 import {
   isComponentVisible,
   shouldShowProgressStack,
@@ -256,6 +259,11 @@ const buildOffCallStatus = ({
   }
   if (isBreakActive) {
     return 'On break — press the green button when you return';
+  }
+  if (!micTestMode && !audioAttached && !canUseTabCapture()) {
+    return isLikelyEmbeddedPreviewBrowser()
+      ? 'Cursor preview cannot share tabs — open in Chrome/Edge, or press 🎤 mic mode'
+      : 'This browser cannot share tabs — use Chrome/Edge, or press 🎤 mic mode';
   }
   if (isZombieCall) {
     return `Call still active — press Re-attach (timer saved) · ${slackText}`;
@@ -807,6 +815,22 @@ const SessionControlsSticky = React.memo(({
               >
                 {offCallStatusText}
               </span>
+              {!isActive && (
+                <span
+                  className="call-micro-bar-slot"
+                  style={{
+                    gridColumn: '1 / -1',
+                    fontSize: '0.62rem',
+                    fontWeight: 900,
+                    color: '#fdba74',
+                    opacity: 0.95,
+                    textShadow: '0 0 10px rgba(251,191,36,0.25)',
+                  }}
+                  title="Off-call elapsed today (avail + breaks)"
+                >
+                  🚪 {formatTime(Math.floor(totalOffCallSeconds))}
+                </span>
+              )}
             </div>
           )}
           <ConnectionDiagnosticsBar
@@ -1333,6 +1357,11 @@ export const DashboardHeader = ({
   const totalDailyMins = stats.dailyMinutes + unbankedMins;
   const liveBreakMins = (stats.dailyBreakMinutes || 0) + (breakSeconds / 60);
   const totalOffCallMins = (stats.dailyAvailMinutes || 0) + (stats.dailyBreakMinutes || 0) + (availSeconds / 60) + (breakSeconds / 60);
+  const totalOffCallSeconds = (
+    ((stats.dailyAvailMinutes || 0) + (stats.dailyBreakMinutes || 0)) * 60
+    + (availSeconds || 0)
+    + (breakSeconds || 0)
+  );
 
   // CATCH-UP LOGIC: Dynamic shifts and SUCCESS ZONES
   const ABSOLUTE_END = 23;
@@ -2714,7 +2743,17 @@ ${isInDeficit ? `⚠️ DEFICIT: Behind pace by ${Math.round(monthlyDeficitMins)
           {/* Daily bar */}
           <div style={{ display: 'flex', flexDirection: 'column', gap: '0.15rem' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.6rem', color: 'var(--text-muted)', alignItems: 'center' }}>
-              <span title="Shift starts at 9:00 AM">☀️ 09:00 (Min: {dailyGoal}m)</span>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', flexWrap: 'wrap' }}>
+                <span title="Shift starts at 9:00 AM">☀️ 09:00 (Min: {dailyGoal}m)</span>
+                {!isActive && (
+                  <span
+                    style={{ color: '#fdba74', fontWeight: 900 }}
+                    title="Off-call elapsed today (avail + breaks)"
+                  >
+                    🚪 {formatTime(Math.floor(totalOffCallSeconds))}
+                  </span>
+                )}
+              </div>
               <div style={{ display: 'flex', alignItems: 'center', gap: '0.3rem' }}>
                 {stats.dailyMinutes >= 480 ? (
                   <span style={{ color: '#fcd34d', fontWeight: 800 }}>👑 LEGENDARY DAY (480m+)</span>
@@ -2747,7 +2786,8 @@ ${isInDeficit ? `⚠️ DEFICIT: Behind pace by ${Math.round(monthlyDeficitMins)
                   color: stats.dailyMinutes >= 480 ? '#fcd34d' : (stats.dailyMinutes >= 350 ? '#c084fc' : '#f87171'),
                   body: `Banked today: ${Math.round(stats.dailyMinutes)}m.\n` +
                     `Including current call: ${Math.round(totalDailyMins)}m / 480m.\n` +
-                    `Min target: ${Math.round(dailyGoal)}m.`
+                    `Min target: ${Math.round(dailyGoal)}m.\n` +
+                    `Off-call elapsed today: ${formatValue(totalOffCallMins)}`
                 })
               }
               onMouseLeave={hideMetricTooltip}

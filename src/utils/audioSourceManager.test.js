@@ -10,6 +10,9 @@ import {
   buildVirtualCableGetUserMediaConstraints,
   buildVirtualCableFailureUiState,
   getAudioSourceModeAfterVirtualCableFailure,
+  canUseTabCapture,
+  classifyTabCaptureError,
+  isLikelyEmbeddedPreviewBrowser,
 } from "./audioSourceManager";
 
 describe("audioSourceManager", () => {
@@ -61,6 +64,20 @@ describe("audioSourceManager", () => {
     const currentMode = readAudioSourceMode();
     const nextMode = getAudioSourceModeAfterVirtualCableFailure(currentMode);
     expect(nextMode).toBe(AUDIO_SOURCE_MODE_TAB);
+  });
+
+  test("classify NotSupportedError suggests mic fallback", () => {
+    const err = { name: "NotSupportedError", message: "Not supported" };
+    const out = classifyTabCaptureError(err);
+    expect(out.suggestMicFallback).toBe(true);
+    expect(out.message).toMatch(/not supported|Chrome/i);
+  });
+
+  test("canUseTabCapture is false without getDisplayMedia", () => {
+    expect(canUseTabCapture({ getUserMedia: () => {} })).toBe(false);
+    expect(
+      canUseTabCapture({ getDisplayMedia: () => {}, getUserMedia: () => {} }),
+    ).toBe(true);
   });
 });
 

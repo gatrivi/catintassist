@@ -1,6 +1,13 @@
 # CatIntAssist Roadmap (v4.60+)
 
-**North star:** 80% viewport = transcription + translation. Stable on **900×600**. Everything else serves the live interpret loop.
+
+
+
+
+
+
+
+**North star:** 80%+ viewport = transcription + translation. Stable on **900×600**. Everything else serves the live interpret loop.
 
 Agent task specs: [`handoff/README.md`](handoff/README.md) · Daily use: [`onboarding/advice.md`](onboarding/advice.md)
 

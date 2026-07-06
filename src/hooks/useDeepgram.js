@@ -16,6 +16,8 @@ import {
   readSelectedVirtualCableInputDeviceId,
   buildVirtualCableGetUserMediaConstraints,
   buildVirtualCableFailureUiState,
+  canUseTabCapture,
+  classifyTabCaptureError,
 } from "../utils/audioSourceManager";
 import {
   loadLanguagePair,
@@ -99,6 +101,15 @@ const acquireAudioStreamForSource = async (source) => {
   }
 
   // Default: existing tab-share capture.
+  if (!canUseTabCapture()) {
+    const ex =
+      typeof DOMException !== "undefined"
+        ? new DOMException("Tab capture not supported in this browser", "NotSupportedError")
+        : Object.assign(new Error("Tab capture not supported in this browser"), {
+            name: "NotSupportedError",
+          });
+    throw ex;
+  }
   return navigator.mediaDevices.getDisplayMedia({ video: true, audio: true });
 };
 
@@ -1071,22 +1082,28 @@ export const useDeepgram = () => {
             ? "mic"
             : "tab";
 
-      if (attemptedSource === "tab" && !micTestModeRef.current && hasSelectedMicDevice()) {
-        // Tab capture failed on mobile (picker blocked / rejected / no-audio stream).
-        // Fall back to selected mic and set mic mode so the app unblocks transcription.
-        try {
-          setConnectionState("connecting");
-          setConnectionMessage("Tab audio failed — switching to microphone...");
-          resetConnectProgress();
-          clearWatchdog();
-          setMicTestMode(true);
-          const micStream = await acquireAudioStreamForSource("mic");
-          const ok = beginStream(micStream, "mic");
-          return ok;
-        } catch (_) {
-          // Fall through to original tab error below.
+      if (attemptedSource === "tab" && !micTestModeRef.current) {
+        const tabErr = classifyTabCaptureError(err);
+        if (tabErr.suggestMicFallback) {
+          try {
+            setConnectionState("connecting");
+            setConnectionMessage("Tab capture unavailable — trying microphone...");
+            resetConnectProgress();
+            clearWatchdog();
+            setMicTestMode(true);
+            const micStream = await acquireAudioStreamForSource("mic");
+            const ok = beginStream(micStream, "mic");
+            return ok;
+          } catch (_) {
+            // Fall through to tab-specific message below.
+          }
         }
+        setConnectionState("error");
+        setConnectionMessage(tabErr.message);
+        syncConnectProgress({ phase: "error", lastError: tabErr.message });
+        return false;
       }
+
       if (attemptedSource === "virtualCable") {
         const ui = buildVirtualCableFailureUiState(err);
         setVirtualCableFailure(ui);
@@ -1098,7 +1115,7 @@ export const useDeepgram = () => {
 
       const msg = micTestModeRef.current
         ? "Microphone access was denied. Please allow microphone permissions and press Connect again."
-        : "Tab sharing was cancelled. Please start tab sharing again and press Connect again.";
+        : classifyTabCaptureError(err).message;
       setConnectionState("error");
       setConnectionMessage(msg);
       syncConnectProgress({ phase: "error", lastError: msg });
@@ -1170,21 +1187,26 @@ export const useDeepgram = () => {
             ? "mic"
             : "tab";
 
-      if (attemptedSource === "tab" && !micTestModeRef.current && hasSelectedMicDevice()) {
-        // Tab capture failed on mobile (picker blocked / rejected / no-audio stream).
-        // Fall back to selected mic and set mic mode so the app unblocks transcription.
-        try {
-          setConnectionState("connecting");
-          setConnectionMessage("Tab audio failed — switching to microphone...");
-          resetConnectProgress();
-          clearWatchdog();
-          setMicTestMode(true);
-          const micStream = await acquireAudioStreamForSource("mic");
-          const ok = beginStream(micStream, "mic");
-          return ok;
-        } catch (_) {
-          // Fall through to original tab error below.
+      if (attemptedSource === "tab" && !micTestModeRef.current) {
+        const tabErr = classifyTabCaptureError(err);
+        if (tabErr.suggestMicFallback) {
+          try {
+            setConnectionState("connecting");
+            setConnectionMessage("Tab capture unavailable — trying microphone...");
+            resetConnectProgress();
+            clearWatchdog();
+            setMicTestMode(true);
+            const micStream = await acquireAudioStreamForSource("mic");
+            const ok = beginStream(micStream, "mic");
+            return ok;
+          } catch (_) {
+            // Fall through to tab-specific message below.
+          }
         }
+        setConnectionState("error");
+        setConnectionMessage(tabErr.message);
+        syncConnectProgress({ phase: "error", lastError: tabErr.message });
+        return false;
       }
       if (attemptedSource === "virtualCable") {
         const ui = buildVirtualCableFailureUiState(err);
@@ -1197,7 +1219,7 @@ export const useDeepgram = () => {
 
       const msg = micTestModeRef.current
         ? "Microphone access was denied. Please allow microphone permissions and press Connect again."
-        : "Tab sharing was cancelled. Please start tab sharing again and press Connect again.";
+        : classifyTabCaptureError(err).message;
       setConnectionState("error");
       setConnectionMessage(msg);
       syncConnectProgress({ phase: "error", lastError: msg });
