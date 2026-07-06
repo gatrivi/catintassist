@@ -61,6 +61,10 @@ import {
   useComponentVisibilityRefresh,
 } from '../utils/componentVisibility';
 import {
+  getPresetConfig,
+  PRESET_LABELS,
+} from '../utils/scoreboardLayout';
+import {
   loadLanguagePair,
   formatPairShort,
   LANG_PAIR_CHANGED_EVENT,
@@ -343,6 +347,7 @@ const SessionControlsSticky = React.memo(({
   lastEnglishActivityTime,
   sessionSeconds,
   sessionArsLive,
+  totalOffCallSeconds = 0,
   callModeExpanded,
   setCallModeExpanded,
   isNotesOpen,
@@ -3032,6 +3037,7 @@ ${isInDeficit ? `⚠️ DEFICIT: Behind pace by ${Math.round(monthlyDeficitMins)
         lastEnglishActivityTime={lastEnglishActivityTime}
         sessionSeconds={sessionSeconds}
         sessionArsLive={sessionArsLive}
+        totalOffCallSeconds={totalOffCallSeconds}
         callModeExpanded={callModeExpanded}
         setCallModeExpanded={setCallModeExpanded}
         isNotesOpen={isNotesOpen}

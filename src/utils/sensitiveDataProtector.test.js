@@ -80,6 +80,16 @@ describe('formatPhoneAndSSNDigits — SSN vs phone', () => {
   test('leaves short digit runs alone (< 8 digits)', () => {
     expect(formatPhoneAndSSNDigits('Room 1234')).toBe('Room 1234');
   });
+
+  test('does not phone-format address-like digit runs', () => {
+    expect(formatPhoneAndSSNDigits('ship to 123 456 7890 West 34th Street')).toBe(
+      'ship to 123 456 7890 West 34th Street'
+    );
+  });
+
+  test('still formats phone-like digit runs without address context', () => {
+    expect(formatPhoneAndSSNDigits('call 123 456 7890')).toBe('call 123-456-7890');
+  });
 });
 
 // ---------------------------------------------------------------------------

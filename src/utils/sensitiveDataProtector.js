@@ -77,7 +77,11 @@ export const convertEnglishNumberWords = (text, lang = 'en') => {
 
 export const formatPhoneAndSSNDigits = (text) => {
   if (!text) return text;
-  return text.replace(/\b(?:\d[\s.,-:]*){7,15}\d\b/g, (m) => {
+  return text.replace(/\b(?:\d[\s.,-:]*){7,15}\d\b/g, (m, offset, full) => {
+    const before = full.slice(Math.max(0, offset - 40), offset);
+    const after = full.slice(offset + m.length, offset + m.length + 40);
+    if (looksLikeAddressFragment(before, after)) return m;
+
     const digitsOnly = m.replace(/\D/g, '');
     if (digitsOnly.length === 9) {
       // SSN: NNN-NN-NNNN
