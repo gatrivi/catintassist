@@ -2760,6 +2760,11 @@ body:has(.app-container[data-call-mode="true"]) .element-hint-panel {
   animation: none;
 }
 
+.transcript-live-tail {
+  color: rgba(226, 232, 240, 0.92);
+  text-shadow: 0 0 8px rgba(56, 189, 248, 0.18);
+}
+
 #header-lang-pair-btn {
   touch-action: manipulation;
   user-select: none;

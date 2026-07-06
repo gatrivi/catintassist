@@ -74,6 +74,18 @@ const confidenceOpacityFor = (confidence) => {
   return Math.max(0.1, Math.min(1, confidence));
 };
 
+const commonWordPrefixLen = (a = '', b = '') => {
+  const aParts = a.match(/\S+\s*/g) || [];
+  const bParts = b.match(/\S+\s*/g) || [];
+  let len = 0;
+  const n = Math.min(aParts.length, bParts.length);
+  for (let i = 0; i < n; i += 1) {
+    if (aParts[i].trim() !== bParts[i].trim()) break;
+    len += bParts[i].length;
+  }
+  return len;
+};
+
 /** Blue tail slice — same pipeline for bubble text + tailPreviewText. */
 const resolveTailHighlight = (repairedText, rawText, tailPreviewText, lang, applyNumberWords, protectionsActive) => {
   if (!tailPreviewText?.trim() || !repairedText) return null;
@@ -135,6 +147,15 @@ const InteractiveText = ({
     () => (text ? resolveTailHighlight(repairedText, text, tailPreviewText, lang, applyNumberWords, protectionsActive) : null),
     [repairedText, text, tailPreviewText, lang, applyNumberWords, protectionsActive],
   );
+  const previousTextRef = useRef('');
+  const liveStablePrefixLen = useMemo(() => {
+    if (!scramble || !previousTextRef.current || !repairedText) return 0;
+    return commonWordPrefixLen(previousTextRef.current, repairedText);
+  }, [repairedText, scramble]);
+
+  useEffect(() => {
+    previousTextRef.current = repairedText;
+  }, [repairedText]);
 
   const handleCopy = useCallback((num) => {
     const clean = copyableDigits(num);
@@ -170,13 +191,13 @@ const InteractiveText = ({
     return splitDisplaySegments(segment).map((p, i) => renderPart(p, i, keyPrefix, forcePlain, confidenceClass));
   }, [renderPart]);
 
-  const renderConfidenceText = useCallback(() => {
-    if (!wordConfidence?.length || !repairedText) return null;
+  const renderConfidenceText = useCallback((value = repairedText, wordOffset = 0, forcePlain = true, keyRoot = 'cw') => {
+    if (!wordConfidence?.length || !value) return null;
     let wordIndex = 0;
-    return repairedText.split(/(\s+)/).map((token, idx) => {
+    return value.split(/(\s+)/).map((token, idx) => {
       if (!token) return null;
       if (/^\s+$/.test(token)) return <span key={`space-${idx}`}>{token}</span>;
-      const meta = wordConfidence[wordIndex] || null;
+      const meta = wordConfidence[wordOffset + wordIndex] || null;
       wordIndex += 1;
       const opacity = confidenceOpacityFor(meta?.confidence);
       const title = Number.isFinite(meta?.confidence)
@@ -189,11 +210,30 @@ const InteractiveText = ({
           style={{ opacity }}
           title={title}
         >
-          {renderSegment(token, `cw-${idx}-`, false)}
+          {renderSegment(token, `${keyRoot}-${idx}-`, forcePlain)}
         </span>
       );
     });
   }, [repairedText, renderSegment, wordConfidence]);
+
+  const renderLiveDiffText = useCallback(() => {
+    if (!scramble || liveStablePrefixLen <= 0 || liveStablePrefixLen >= repairedText.length) return null;
+    const stable = repairedText.slice(0, liveStablePrefixLen);
+    const tail = repairedText.slice(liveStablePrefixLen);
+    const stableWords = stable.trim() ? stable.trim().split(/\s+/).length : 0;
+    return (
+      <>
+        {wordConfidence?.length
+          ? renderConfidenceText(stable, 0, true, 'stable')
+          : renderSegment(stable, 'stable-', true)}
+        <span className="transcript-live-tail">
+          {wordConfidence?.length
+            ? renderConfidenceText(tail, stableWords, false, 'tail')
+            : renderSegment(tail, 'tail-', false)}
+        </span>
+      </>
+    );
+  }, [liveStablePrefixLen, repairedText, renderConfidenceText, renderSegment, scramble, wordConfidence]);
 
   if (!text) return null;
 
@@ -227,6 +267,16 @@ const InteractiveText = ({
         {renderSegment(tailSlice.before, 'pre-')}
         <span className="transcript-tail-preview">{renderSegment(tailSlice.highlight, 'tail-', true)}</span>
         {renderSegment(tailSlice.after, 'post-')}
+      </>
+    );
+  }
+
+  const liveDiffText = renderLiveDiffText();
+  if (liveDiffText) {
+    return (
+      <>
+        {chipRow}
+        {liveDiffText}
       </>
     );
   }
