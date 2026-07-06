@@ -112,8 +112,10 @@ export const MealTrackerWidget = () => {
     <div ref={containerRef} style={{ position: 'relative' }}>
       {/* Collapsed Pill */}
       <button
+        data-guide="wellbeing-dock-meals"
+        data-tooltip="Meals and hydration"
+        aria-label="Meals and hydration"
         onClick={() => { acknowledgeNudge('meals'); setIsOpen((o) => !o); }}
-        title="Wellbeing: meals & hydration"
         style={{
           position: 'relative',
           width: '40px',

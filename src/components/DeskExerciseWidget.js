@@ -114,17 +114,18 @@ export const DeskExerciseWidget = () => {
   }, [isActive, allDone, minsSinceLastSet, playWarningPing]);
 
   const shouldNudge = !allDone && minsSinceLastSet >= REMINDER_THRESHOLD_MIN;
-  const pillBottom = '6px';
 
   return (
     <div ref={containerRef} style={{ position: 'relative' }}>
       {/* Collapsed Pill */}
       <button
+        data-guide="wellbeing-dock-desk"
+        data-tooltip="Desk stretches"
+        aria-label="Desk stretches"
         onClick={() => {
           acknowledgeNudge('desk');
           setIsOpen((o) => !o);
         }}
-        title="Wellbeing: desk stretches"
         style={{
           position: 'relative',
           width: '40px',

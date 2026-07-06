@@ -97,8 +97,10 @@ export const ChoreTrackerWidget = () => {
     <div ref={containerRef} style={{ position: 'relative' }}>
       {/* Collapsed Pill */}
       <button
+        data-guide="wellbeing-dock-chores"
+        data-tooltip="Chore break"
+        aria-label="Chore break"
         onClick={() => { acknowledgeNudge('chores'); setIsOpen((o) => !o); }}
-        title="Wellbeing: chore break"
         style={{
           position: 'relative',
           width: '40px',

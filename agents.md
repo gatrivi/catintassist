@@ -68,6 +68,7 @@ SOUNDSCAPE INTERPRETER
 [] every minute the sound of earning one coin is played
 [] every succeeding minute the sound of earning another coin in a proportionally richer sound
 [] on complete call a sound like a proportional stack of coins crashing into a purse is played
+[] Rebuild 40-word interpreter warning safely: per language/turn only, visual-first, audio opt-in/low-volume/route-safe, never through patient audio, no repeated pings while interpreter is listening.
 
 good friday
 [] soundboard doesnt work

@@ -145,6 +145,7 @@ export const useDeepgram = () => {
     socketEnClose: "",
     socketEsClose: "",
     audioChunksSent: false,
+    lastAudioChunkAt: 0,
     transcriptReceived: false,
     lastCloseCode: null,
     lastCloseReason: null,
@@ -173,6 +174,7 @@ export const useDeepgram = () => {
   const captionEngineRef = useRef(createCaptionEngineState());
   const interimFlushTimerRef = useRef(null);
   const lastInterimAtRef = useRef(0);
+  const lastAudioProgressAtRef = useRef(0);
   const captionsHydratedRef = useRef(false);
 
   // After refresh there is no live MediaStream — clear stale tab-ready flag.
@@ -214,6 +216,7 @@ export const useDeepgram = () => {
     socketEnClose: "",
     socketEsClose: "",
     audioChunksSent: false,
+    lastAudioChunkAt: 0,
     transcriptReceived: false,
     lastCloseCode: null,
     lastCloseReason: null,
@@ -291,6 +294,7 @@ export const useDeepgram = () => {
       socketEnClose: "",
       socketEsClose: "",
       audioChunksSent: false,
+      lastAudioChunkAt: 0,
       transcriptReceived: false,
       lastCloseCode: null,
       lastCloseReason: null,
@@ -396,6 +400,7 @@ export const useDeepgram = () => {
       socketEnClose: "",
       socketEsClose: "",
       audioChunksSent: false,
+      lastAudioChunkAt: 0,
       transcriptReceived: false,
       lastCloseCode: null,
       lastCloseReason: null,
@@ -622,9 +627,18 @@ export const useDeepgram = () => {
                   sentAny = true;
                   socketRefEs.current.send(e.data);
                 }
-                if (sentAny && !connectFlagsRef.current.audioChunksSent) {
-
-                  syncConnectProgress({ audioChunksSent: true });
+                const firstAudioChunk = sentAny && !connectFlagsRef.current.audioChunksSent;
+                if (sentAny) {
+                  const audioNow = Date.now();
+                  if (
+                    firstAudioChunk ||
+                    audioNow - lastAudioProgressAtRef.current > 500
+                  ) {
+                    lastAudioProgressAtRef.current = audioNow;
+                    syncConnectProgress({ audioChunksSent: true, lastAudioChunkAt: audioNow });
+                  }
+                }
+                if (firstAudioChunk) {
                   clearKeepalive();
                   clearWatchdog();
                 }
@@ -771,6 +785,7 @@ export const useDeepgram = () => {
             merged,
             {
               transcript,
+              words: alt?.words || [],
               isFinal,
               speechFinal,
               confidence,

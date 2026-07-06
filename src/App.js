@@ -41,6 +41,7 @@ import {
   isValidDeepgramApiKey,
   isRememberExpired,
 } from "./utils/deepgramRuntimeKey";
+import { applyThemePalette, loadThemePalette } from "./utils/themePalette";
 import { APP_VERSION_LABEL } from "./constants/version";
 import { setSttActive } from "./utils/routeDiagnostics";
 import { isWellbeingDockEnabled } from "./utils/wellbeingDock";
@@ -49,6 +50,12 @@ import {
   useComponentVisibilityRefresh,
 } from "./utils/componentVisibility";
 import "./index.css";
+
+const focusQuickNotesSoon = () => {
+  window.setTimeout(() => {
+    window.dispatchEvent(new Event("catint_focus_notes"));
+  }, 80);
+};
 
 const Dashboard = () => {
   const {
@@ -145,6 +152,7 @@ const Dashboard = () => {
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [settingsSection, setSettingsSection] = useState("deepgram");
   const [showWellbeingDock, setShowWellbeingDock] = useState(isWellbeingDockEnabled);
+  const [quickNotesNotice, setQuickNotesNotice] = useState("");
   const [, setRuntimeKeyTick] = useState(0);
   const [shellReady, setShellReady] = useState(() => isSplashSeenThisSession());
   const [showSplash, setShowSplash] = useState(() => !isSplashSeenThisSession());
@@ -174,6 +182,43 @@ const Dashboard = () => {
   const showWellbeingWidgets =
     showWellbeingDock &&
     isComponentVisible('wellbeing_dock', { isActive, isZombieCall });
+
+  const showQuickNotesNotice = useCallback((message) => {
+    setQuickNotesNotice(message);
+    window.setTimeout(() => setQuickNotesNotice(""), 3200);
+  }, []);
+
+  const toggleQuickNotes = useCallback(() => {
+    setIsNotesOpen((open) => {
+      const next = !open;
+      console.info(`[QuickNotes] ${next ? "open requested" : "closed"}`, {
+        isActive,
+        isZombieCall,
+        hipaaGraceActive,
+        workspaceView,
+        isEditingBg,
+      });
+      if (next) {
+        if (isEditingBg) {
+          showQuickNotesNotice("Quick notes blocked: close the soundboard/background editor first.");
+        } else {
+          showQuickNotesNotice("Quick notes opened.");
+          focusQuickNotesSoon();
+        }
+      }
+      return next;
+    });
+  }, [hipaaGraceActive, isActive, isEditingBg, isZombieCall, setIsNotesOpen, showQuickNotesNotice, workspaceView]);
+
+  useEffect(() => {
+    console.info("[QuickNotes] state", {
+      open: isNotesOpen,
+      panelMounted: isNotesOpen,
+      blockedByEditor: isEditingBg,
+      mode: isActive || isZombieCall || hipaaGraceActive ? "call" : workspaceView,
+    });
+    if (isNotesOpen && !isEditingBg) focusQuickNotesSoon();
+  }, [hipaaGraceActive, isActive, isEditingBg, isNotesOpen, isZombieCall, workspaceView]);
   useEffect(() => {
     const onRuntime = () => setRuntimeKeyTick((t) => t + 1);
     const onShowVault = () => {
@@ -293,6 +338,13 @@ const Dashboard = () => {
 
   const blockSecondaryChrome =
     showSplash || !shellReady || settingsOpen || guideOverlayOpen;
+
+  useEffect(() => {
+    applyThemePalette(loadThemePalette());
+    const onTheme = (e) => applyThemePalette(e.detail || loadThemePalette());
+    window.addEventListener("catint_theme_palette_changed", onTheme);
+    return () => window.removeEventListener("catint_theme_palette_changed", onTheme);
+  }, []);
 
   useEffect(() => {
     let objectUrl = null;
@@ -591,6 +643,38 @@ const Dashboard = () => {
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, []);
 
+  const renderNotesPanel = () => {
+    if (!isNotesOpen) return null;
+    return (
+      <div className="tools-column notes-open">
+        <div
+          className="glass-panel tools-notes"
+          style={{
+            overflow: "hidden",
+            display: "flex",
+            flexDirection: "column",
+            flex: 1,
+            minHeight: isActive && callFocusMode ? "200px" : undefined,
+          }}
+        >
+          {isEditingBg ? (
+            <div className="quick-notes-blocked" role="status">
+              Quick notes are paused while the soundboard/background editor is open.
+              <button type="button" onClick={() => setIsEditingBg(false)}>
+                Close editor
+              </button>
+            </div>
+          ) : (
+            <>
+              {(!isActive || !callFocusMode) && <DictionaryTool />}
+              <NotePad />
+            </>
+          )}
+        </div>
+      </div>
+    );
+  };
+
   return (
     <ElementHintProvider>
     <GuideHostProvider prepareGuideView={prepareGuideView}>
@@ -717,11 +801,13 @@ const Dashboard = () => {
           audioAttached={audioAttached}
           micTestMode={micTestMode}
           connectionState={connectionState}
+          notesOpen={isNotesOpen}
+          notesPanel={renderNotesPanel()}
         />
       )}
 
       {isSoundboardStudio && (
-        <main className="main-content view-soundboard">
+        <main className={`main-content view-soundboard${isNotesOpen ? " notes-open" : ""}`}>
           <div
             className="workspace-soundboard-pane glass-panel"
             data-guide="soundboard-lab"
@@ -731,6 +817,7 @@ const Dashboard = () => {
               onExitStudio={exitSoundboardStudio}
             />
           </div>
+          {renderNotesPanel()}
         </main>
       )}
 
@@ -748,25 +835,10 @@ const Dashboard = () => {
               onClearAll={clearCaptions}
               onReconnect={handleRecovery}
               lastDataTime={lastDataTime}
+              connectProgress={connectProgress}
             />
           </div>
-          {isNotesOpen && !isEditingBg && (
-            <div className="tools-column notes-open">
-              <div
-                className="glass-panel tools-notes"
-                style={{
-                  overflow: "hidden",
-                  display: "flex",
-                  flexDirection: "column",
-                  flex: 1,
-                  minHeight: isActive && callFocusMode ? "200px" : undefined,
-                }}
-              >
-                {(!isActive || !callFocusMode) && <DictionaryTool />}
-                <NotePad />
-              </div>
-            </div>
-          )}
+          {renderNotesPanel()}
         </main>
       )}
 
@@ -776,6 +848,12 @@ const Dashboard = () => {
         onDismiss={dismissUpdate}
         onUpdate={reloadToUpdate}
       />
+
+      {quickNotesNotice && (
+        <div className="quick-notes-status" role="status" aria-live="polite">
+          {quickNotesNotice}
+        </div>
+      )}
 
       <div className="wellbeing-dock habit-dock">
         {showWellbeingWidgets && (
@@ -792,9 +870,11 @@ const Dashboard = () => {
           WorkspaceViewSwitcher pill to avoid duplicate CTAs.
         */}
         <button
+          id="quick-notes-btn"
           data-guide="notes"
-          onClick={() => setIsNotesOpen((o) => !o)}
-          title="Quick Notes"
+          data-tooltip="Quick Notes"
+          aria-label="Quick Notes"
+          onClick={toggleQuickNotes}
           style={{
             width: "40px",
             height: "40px",

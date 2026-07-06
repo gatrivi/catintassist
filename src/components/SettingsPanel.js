@@ -26,6 +26,13 @@ import { AuthPanel } from './AuthPanel';
 import { CorrectionsBackupPanel } from './CorrectionsBackupPanel';
 import { useAuth } from '../contexts/AuthContext';
 import { useAudioSource } from '../hooks/useAudioSource';
+import {
+  THEME_PALETTES,
+  derivePaletteFromImageUrl,
+  loadThemePalette,
+  parseCssBackgroundUrl,
+  saveThemePalette,
+} from '../utils/themePalette';
 
 const MOODS = ['auto', 'default', 'fast', 'chill'];
 const MOOD_LABELS = { auto: 'Trans Auto', default: 'Default', fast: 'Fast', chill: 'Chill' };
@@ -50,6 +57,8 @@ export default function SettingsPanel({ open, onClose, initialSection = 'deepgra
       return true;
     }
   });
+  const [themePalette, setThemePalette] = useState(loadThemePalette);
+  const [themeStatus, setThemeStatus] = useState('');
   const [languagePair, setLanguagePair] = useState(loadLanguagePair);
   const {
     currentSourceMode,
@@ -69,6 +78,25 @@ export default function SettingsPanel({ open, onClose, initialSection = 'deepgra
   });
   const { playTTS } = useTTS();
   const { user: authUser } = useAuth();
+
+  const applyPalette = (palette) => {
+    setThemePalette(saveThemePalette(palette));
+    setThemeStatus(`${palette.name} palette applied`);
+  };
+
+  const derivePaletteFromBackground = async () => {
+    setThemeStatus('Reading current background...');
+    try {
+      const rawUrl = parseCssBackgroundUrl(document.body.style.backgroundImage);
+      const url = rawUrl.startsWith('blob:') || rawUrl.startsWith('http')
+        ? rawUrl
+        : `${window.location.origin}${rawUrl}`;
+      const palette = await derivePaletteFromImageUrl(url);
+      applyPalette(palette);
+    } catch (err) {
+      setThemeStatus(err?.message || 'Could not read background');
+    }
+  };
 
   useEffect(() => {
     if (open) setSection(initialSection);
@@ -358,6 +386,43 @@ export default function SettingsPanel({ open, onClose, initialSection = 'deepgra
 
         {section === 'display' && (
           <div style={{ marginTop: 12 }}>
+            <div style={{ fontSize: 11, color: '#93c5fd', marginBottom: 6 }}>
+              Theme palette [{APP_VERSION_LABEL}]
+            </div>
+            <div className="theme-palette-panel">
+              <div className="theme-palette-row">
+                {Object.values(THEME_PALETTES).map((palette) => (
+                  <button
+                    key={palette.id}
+                    type="button"
+                    className={`theme-swatch-btn${themePalette.id === palette.id ? ' is-active' : ''}`}
+                    onClick={() => applyPalette(palette)}
+                    title={`${palette.name} palette`}
+                    aria-pressed={themePalette.id === palette.id}
+                  >
+                    <span className="theme-swatch-dot" style={{ background: palette.accent }} />
+                    {palette.name}
+                  </button>
+                ))}
+                <button
+                  type="button"
+                  className={`theme-swatch-btn${themePalette.id === 'derived' ? ' is-active' : ''}`}
+                  onClick={derivePaletteFromBackground}
+                  title="Sample current background image and build a readable palette"
+                  aria-pressed={themePalette.id === 'derived'}
+                >
+                  <span className="theme-swatch-dot" style={{ background: themePalette.accent }} />
+                  From bg
+                </button>
+              </div>
+              <div className="theme-palette-preview" style={{ borderColor: themePalette.border, background: themePalette.panel }}>
+                <span style={{ color: themePalette.accent }}>Accent</span>
+                <span style={{ color: themePalette.accentHover || themePalette.accent }}>Hover</span>
+                <span>Panel</span>
+              </div>
+              {themeStatus && <div className="theme-palette-status">{themeStatus}</div>}
+            </div>
+
             <div style={{ fontSize: 11, color: '#93c5fd', marginBottom: 4 }}>
               Component visibility [{APP_VERSION_LABEL}]
             </div>

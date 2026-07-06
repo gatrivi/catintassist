@@ -1,4 +1,4 @@
-import React, { createContext, useCallback, useContext, useMemo, useState } from 'react';
+import React, { createContext, useCallback, useContext, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 
 /** Build copyable selector: prefer #id, else [data-guide="…"]. */
@@ -14,15 +14,24 @@ const ElementHintContext = createContext(null);
 export const ElementHintProvider = ({ children }) => {
   const [hint, setHint] = useState(null);
   const [copied, setCopied] = useState(false);
+  const hideTimerRef = useRef(null);
 
   const show = useCallback((payload) => {
+    if (hideTimerRef.current) clearTimeout(hideTimerRef.current);
     setCopied(false);
     setHint(payload);
   }, []);
 
+  const keepOpen = useCallback(() => {
+    if (hideTimerRef.current) clearTimeout(hideTimerRef.current);
+  }, []);
+
   const hide = useCallback(() => {
-    setHint(null);
-    setCopied(false);
+    if (hideTimerRef.current) clearTimeout(hideTimerRef.current);
+    hideTimerRef.current = setTimeout(() => {
+      setHint(null);
+      setCopied(false);
+    }, 180);
   }, []);
 
   const copySelector = useCallback(async () => {
@@ -37,13 +46,13 @@ export const ElementHintProvider = ({ children }) => {
     }
   }, [hint?.selector]);
 
-  const value = useMemo(() => ({ show, hide }), [show, hide]);
+  const value = useMemo(() => ({ show, hide, keepOpen }), [show, hide, keepOpen]);
 
   return (
     <ElementHintContext.Provider value={value}>
       {children}
       {hint && createPortal(
-        <ElementHintPanel hint={hint} copied={copied} onCopy={copySelector} />,
+        <ElementHintPanel hint={hint} copied={copied} onCopy={copySelector} onKeepOpen={keepOpen} onHide={hide} />,
         document.body,
       )}
     </ElementHintContext.Provider>
@@ -56,6 +65,7 @@ export const useElementHint = () => {
     return {
       show: () => {},
       hide: () => {},
+      keepOpen: () => {},
     };
   }
   return ctx;
@@ -66,8 +76,10 @@ const placementStyle = (placement) => {
   return 'translate(-50%, calc(-100% - 10px))';
 };
 
+const clamp = (n, min, max) => Math.max(min, Math.min(max, n));
+
 /** Portal panel — rich tooltip with element selector + copy. */
-export const ElementHintPanel = ({ hint, copied, onCopy }) => {
+export const ElementHintPanel = ({ hint, copied, onCopy, onKeepOpen, onHide }) => {
   const color = hint.color || '#3b82f6';
   return (
     <div
@@ -80,7 +92,9 @@ export const ElementHintPanel = ({ hint, copied, onCopy }) => {
         zIndex: 1200,
         pointerEvents: 'auto',
       }}
-      onMouseEnter={(e) => e.stopPropagation()}
+      onMouseEnter={() => onKeepOpen?.()}
+      onMouseLeave={() => onHide?.()}
+      onPointerDown={() => onKeepOpen?.()}
     >
       <div className="element-hint-accent" style={{ background: color }} />
       <div className="element-hint-head">
@@ -89,8 +103,10 @@ export const ElementHintPanel = ({ hint, copied, onCopy }) => {
         )}
         <span className="element-hint-heading">{hint.heading}</span>
       </div>
+      {hint.body && <div className="element-hint-body">{hint.body}</div>}
       {hint.selector && (
         <div className="element-hint-selector-row">
+          <span className="element-hint-selector-label">Debug selector</span>
           <code className="element-hint-selector">{hint.selector}</code>
           <button
             type="button"
@@ -102,7 +118,6 @@ export const ElementHintPanel = ({ hint, copied, onCopy }) => {
           </button>
         </div>
       )}
-      {hint.body && <div className="element-hint-body">{hint.body}</div>}
     </div>
   );
 };
@@ -121,16 +136,17 @@ export const ElementHintTarget = ({
   placement = 'auto',
   children,
 }) => {
-  const { show, hide } = useElementHint();
+  const { show, hide, keepOpen } = useElementHint();
   const selector = buildElementSelector({ elementId, guideKey, fallback: heading });
 
   const open = (e) => {
+    if (document.querySelector('.app-container[data-call-mode="true"]')) return;
     const rect = e.currentTarget.getBoundingClientRect();
     const resolvedPlacement = placement === 'auto'
       ? (rect.top < 160 ? 'below' : 'above')
       : placement;
     const y = resolvedPlacement === 'above' ? rect.top : rect.bottom;
-    const x = rect.left + rect.width / 2;
+    const x = clamp(rect.left + rect.width / 2, 140, window.innerWidth - 140);
     show({
       x,
       y,
@@ -155,6 +171,11 @@ export const ElementHintTarget = ({
     onMouseLeave: (e) => {
       rest.onMouseLeave?.(e);
       hide();
+    },
+    onPointerDown: (e) => {
+      rest.onPointerDown?.(e);
+      keepOpen?.();
+      open(e);
     },
     onFocus: (e) => {
       rest.onFocus?.(e);

@@ -11,6 +11,8 @@ export const OffCallWorkspace = ({
   audioAttached = false,
   micTestMode = false,
   connectionState = 'disconnected',
+  notesPanel = null,
+  notesOpen = false,
 }) => {
   const [sessionHidden, setSessionHidden] = useState(false);
   useComponentVisibilityRefresh();
@@ -18,7 +20,7 @@ export const OffCallWorkspace = ({
   const showGuide = showOffCallGuide && !sessionHidden && !isNewcomerGuideDismissed();
 
   return (
-    <main id="interpret-root" className="main-content view-interpret interpret-workspace">
+    <main id="interpret-root" className={`main-content view-interpret interpret-workspace${notesOpen ? ' notes-open' : ''}`}>
       <div className="interpret-pane" data-guide="transcript">
         {showGuide ? (
           <NewcomerIdleGuide
@@ -48,6 +50,7 @@ export const OffCallWorkspace = ({
           </div>
         )}
       </div>
+      {notesPanel}
     </main>
   );
 };

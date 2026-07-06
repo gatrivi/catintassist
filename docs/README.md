@@ -3,6 +3,7 @@
 This is the single source of truth for *documentation + onboarding*.
 
 ## What's new
+- **Operator work log:** [`WORK_LOG.md`](WORK_LOG.md)
 - **Latest overnight report:** [`OVERNIGHT_REPORT.md`](OVERNIGHT_REPORT.md)
 - **v4.78.0** — Settings → Data (corrections backup) + [`exports/audio-greeting-editor/`](../exports/audio-greeting-editor/README.md)
 - **v4.75.5+** — [`development/element-hint.md`](development/element-hint.md) — rich tooltips with copy selector

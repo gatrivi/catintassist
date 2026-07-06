@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { FAILURE } from '../utils/deepgramDiagnostics';
 import { getDeepgramKeyInfo } from '../utils/deepgramRuntimeKey';
 
@@ -42,12 +43,14 @@ export const ConnectionDiagnosticsBar = ({
   const keyResolved = Boolean(liveKey.key);
   const keySource = liveKey.source || s.keySource || '?';
   const keyMasked = liveKey.masked || s.keyMasked || '';
-  const isConnecting = connectionState === 'connecting' || s.phase === 'connecting';
-  const isError = connectionState === 'error' || s.phase === 'error';
-  const hasFailureDetailsText = !!(connectionMessage || s.lastError);
+  const isConnected = connectionState === 'connected';
+  const isConnecting = !isConnected && (connectionState === 'connecting' || s.phase === 'connecting');
+  const isError = !isConnected && connectionState === 'error';
+  const hasFailureDetailsText = (isConnecting || isError) && !!(connectionMessage || s.lastError);
 
   const pinnedRef = useRef(false);
   const [detailsOpen, setDetailsOpen] = useState(false);
+  const [detailsPos, setDetailsPos] = useState({ left: 8, top: 40 });
   useEffect(() => {
     // Close when we return to ready/idle: no connecting/error + no failure text.
     const shouldStayVisible = isConnecting || isError;
@@ -62,7 +65,7 @@ export const ConnectionDiagnosticsBar = ({
     return cat ? CATEGORY_LABEL[cat] || cat : null;
   }, [s.failureCategory]);
 
-  const shouldShowAnything = isConnecting || isError || hasFailureDetailsText;
+  const shouldShowAnything = !isConnected && (isConnecting || isError || hasFailureDetailsText);
   if (!shouldShowAnything) return null;
 
   const step1 = keyResolved;
@@ -74,26 +77,32 @@ export const ConnectionDiagnosticsBar = ({
   const failed = isError;
 
   const socketOk = step2a || step2b;
-  const isFailureLike = isError || hasFailureDetailsText;
+  const isFailureLike = isError;
   const markForChip = isFailureLike
     ? { mark: '!', color: '#ef4444' }
     : isConnecting
-      ? { mark: '→', color: '#f59e0b' }
-      : { mark: '•', color: 'rgba(255,255,255,0.35)' };
+      ? { mark: '>', color: '#f59e0b' }
+      : { mark: '.', color: 'rgba(255,255,255,0.35)' };
   const chipMainLabel = isFailureLike
     ? (compact ? 'Deepgram down' : 'Deepgram down: transcription unavailable')
-    : 'Connecting…';
+    : hasFailureDetailsText
+      ? (compact ? 'Deepgram check' : 'Deepgram check: details available')
+      : 'Connecting...';
   const chipStateClass = isFailureLike ? ' is-failed' : isConnecting ? ' is-connecting' : '';
   // In compact header mode the chip must never steal layout space.
   // Full step-by-step checks live only in the hover/focus/click tooltip.
   const showInlineChecks = false;
 
-  const openDetails = (pinned) => {
+  const openDetails = (pinned, target) => {
+    if (target?.getBoundingClientRect) {
+      const rect = target.getBoundingClientRect();
+      setDetailsPos({
+        left: Math.min(Math.max(rect.left, 8), window.innerWidth - 336),
+        top: Math.min(rect.bottom + 6, window.innerHeight - 120),
+      });
+    }
     if (pinned) pinnedRef.current = true;
     setDetailsOpen(true);
-  };
-  const closeDetailsIfUnpinned = () => {
-    if (!pinnedRef.current) setDetailsOpen(false);
   };
 
   const rows = [
@@ -148,18 +157,22 @@ export const ConnectionDiagnosticsBar = ({
   }
 
   return (
-    <div className="connection-diagnostics-wrap">
+    <div
+      className="connection-diagnostics-wrap"
+      onMouseLeave={() => {
+        if (!pinnedRef.current) setDetailsOpen(false);
+      }}
+    >
       <button
         type="button"
         className={`connection-diagnostics-bar connection-diagnostics-chip${compact ? ' is-compact' : ''}${chipStateClass}`}
-        title={detailsTitleWithCat}
         aria-expanded={detailsOpen}
+        aria-describedby={detailsOpen ? 'connection-diagnostics-details' : undefined}
         aria-label={detailsTitleWithCat}
-        onClick={() => openDetails(true)} // click/tap pins the popover
-        onMouseEnter={() => openDetails(false)}
-        onMouseLeave={closeDetailsIfUnpinned}
-        onFocus={() => openDetails(false)}
-        onBlur={closeDetailsIfUnpinned}
+        data-tooltip={`${detailsTitleWithCat}. Click for checks.`}
+        onMouseEnter={(e) => openDetails(false, e.currentTarget)}
+        onFocus={(e) => openDetails(false, e.currentTarget)}
+        onClick={(e) => openDetails(true, e.currentTarget)}
       >
         <span className="connection-diagnostics-chip-main">
           <span className="connection-diagnostics-chip-mark" style={{ color: markForChip.color }}>
@@ -181,11 +194,19 @@ export const ConnectionDiagnosticsBar = ({
         </span>
       </button>
 
-      {detailsOpen && (
+      {detailsOpen && createPortal((
         <div
+          id="connection-diagnostics-details"
           className={`connection-diagnostics-details${compact ? ' is-compact' : ''}${failed ? ' is-failed' : ''}`}
           role="tooltip"
           aria-label={detailsTitleWithCat}
+          style={{
+            left: detailsPos.left,
+            top: detailsPos.top,
+          }}
+          onMouseLeave={() => {
+            if (!pinnedRef.current) setDetailsOpen(false);
+          }}
         >
           <div className="connection-diagnostics-details-head">
             <div className="connection-diagnostics-details-head-title">
@@ -235,7 +256,8 @@ export const ConnectionDiagnosticsBar = ({
             </div>
           )}
         </div>
-      )}
+      ), document.body)}
     </div>
   );
 };
+

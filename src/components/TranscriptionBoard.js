@@ -3,7 +3,6 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTTS } from '../hooks/useTTS';
 import { useTranslate } from '../hooks/useTranslate';
 import { useSession, safeSet } from '../contexts/SessionContext';
-import { useProgressiveAudio } from '../hooks/useProgressiveAudio';
 import { useAudioSettings } from '../contexts/AudioSettingsContext';
 import { truncateDeviceLabel } from '../utils/audioSelfTest';
 import { formatTranscriptForDisplay, isSpellingBlock, collectCopyableEntities } from '../utils/transcriptFormat';
@@ -70,6 +69,11 @@ const splitDisplaySegments = (segment) => {
   return segment.split(NUMBER_HIGHLIGHT_REGEX);
 };
 
+const confidenceOpacityFor = (confidence) => {
+  if (!Number.isFinite(confidence)) return 1;
+  return Math.max(0.1, Math.min(1, confidence));
+};
+
 /** Blue tail slice — same pipeline for bubble text + tailPreviewText. */
 const resolveTailHighlight = (repairedText, rawText, tailPreviewText, lang, applyNumberWords, protectionsActive) => {
   if (!tailPreviewText?.trim() || !repairedText) return null;
@@ -118,6 +122,7 @@ const InteractiveText = ({
   lang = 'en',
   protectionsActive = true,
   tailPreviewText = null,
+  wordConfidence = null,
 }) => {
   const processedText = useMemo(() => (text ? formatTranscriptForDisplay(text, lang) : ''), [text, lang]);
   const spellingLayout = useMemo(() => Boolean(text && isSpellingBlock(text)), [text]);
@@ -137,14 +142,14 @@ const InteractiveText = ({
     navigator.clipboard.writeText(clean);
   }, []);
 
-  const renderPart = useCallback((p, i, keyPrefix = '', forcePlain = false) => {
+  const renderPart = useCallback((p, i, keyPrefix = '', forcePlain = false, confidenceClass = '') => {
     const partKey = `${keyPrefix}${i}`;
     const useScramble = scramble && !forcePlain;
     if (p && p.match(NUMBER_HIGHLIGHT_REGEX)) {
       return (
         <span
           key={partKey}
-          className="phone-number highlight-number"
+          className={`phone-number highlight-number${confidenceClass}`}
           onClick={(e) => { e.stopPropagation(); handleCopy(p); }}
           title={`Click to copy: ${copyableDigits(p)}`}
           style={{ cursor: 'copy', backgroundColor: 'rgba(252, 211, 77, 0.1)', color: '#fcd34d', padding: '0 2px', borderRadius: '2px', fontWeight: 600, display: 'inline' }}
@@ -153,13 +158,42 @@ const InteractiveText = ({
         </span>
       );
     }
-    return useScramble ? <ScrambleText key={partKey} value={p} /> : <span key={partKey}>{p}</span>;
+    return useScramble ? (
+      <ScrambleText key={partKey} value={p} className={confidenceClass.trim()} />
+    ) : (
+      <span key={partKey} className={confidenceClass.trim()}>{p}</span>
+    );
   }, [scramble, handleCopy]);
 
-  const renderSegment = useCallback((segment, keyPrefix = '', forcePlain = false) => {
+  const renderSegment = useCallback((segment, keyPrefix = '', forcePlain = false, confidenceClass = '') => {
     if (!segment) return null;
-    return splitDisplaySegments(segment).map((p, i) => renderPart(p, i, keyPrefix, forcePlain));
+    return splitDisplaySegments(segment).map((p, i) => renderPart(p, i, keyPrefix, forcePlain, confidenceClass));
   }, [renderPart]);
+
+  const renderConfidenceText = useCallback(() => {
+    if (!wordConfidence?.length || !repairedText) return null;
+    let wordIndex = 0;
+    return repairedText.split(/(\s+)/).map((token, idx) => {
+      if (!token) return null;
+      if (/^\s+$/.test(token)) return <span key={`space-${idx}`}>{token}</span>;
+      const meta = wordConfidence[wordIndex] || null;
+      wordIndex += 1;
+      const opacity = confidenceOpacityFor(meta?.confidence);
+      const title = Number.isFinite(meta?.confidence)
+        ? `Deepgram confidence ${Math.round(meta.confidence * 100)}%`
+        : undefined;
+      return (
+        <span
+          key={`word-${idx}`}
+          className="confidence-word"
+          style={{ opacity }}
+          title={title}
+        >
+          {renderSegment(token, `cw-${idx}-`, false)}
+        </span>
+      );
+    });
+  }, [repairedText, renderSegment, wordConfidence]);
 
   if (!text) return null;
 
@@ -193,6 +227,16 @@ const InteractiveText = ({
         {renderSegment(tailSlice.before, 'pre-')}
         <span className="transcript-tail-preview">{renderSegment(tailSlice.highlight, 'tail-', true)}</span>
         {renderSegment(tailSlice.after, 'post-')}
+      </>
+    );
+  }
+
+  const confidenceText = renderConfidenceText();
+  if (confidenceText) {
+    return (
+      <>
+        {chipRow}
+        {confidenceText}
       </>
     );
   }
@@ -287,6 +331,7 @@ const TranslatedBubble = ({
   forceTranslateKey = 0,
   onManualRetranslate,
   tailPreviewText = null,
+  wordConfidence = null,
   isFinal = true,
   allowAutoRetranslate = true,
   languagePair = null,
@@ -315,16 +360,6 @@ const TranslatedBubble = ({
     forceTranslateKey,
     { isFinal, mockTranslation, userTranslationOverride },
   );
-  const hasAutoPlayedRef = useRef(false);
-
-  useEffect(() => {
-    if (ttsMode === 'auto' && translation && audioUrl && !hasAutoPlayedRef.current) {
-      hasAutoPlayedRef.current = true;
-      playTTS(translation, targetLang, audioUrl);
-    }
-    if (!translation) hasAutoPlayedRef.current = false;
-  }, [translation, ttsMode, playTTS, targetLang, audioUrl]);
-
   const isThisPlaying = playingUrl && audioUrl && playingUrl === audioUrl;
   const transcriptColor = '#ffffff';
   const translationColor = '#a1a1aa';
@@ -400,6 +435,7 @@ const TranslatedBubble = ({
             lang={lang}
             protectionsActive={protectionsActive}
             tailPreviewText={tailPreviewText}
+            wordConfidence={wordConfidence}
           />
         </div>
         {showEdit && (
@@ -483,6 +519,7 @@ const translatedBubblePropsEqual = (prev, next) =>
   prev.lang === next.lang &&
   prev.isFinal === next.isFinal &&
   prev.tailPreviewText === next.tailPreviewText &&
+  prev.wordConfidence === next.wordConfidence &&
   prev.forceTranslateKey === next.forceTranslateKey &&
   prev.allowAutoRetranslate === next.allowAutoRetranslate &&
   prev.reverse === next.reverse &&
@@ -507,6 +544,7 @@ export const TranscriptionBoard = ({
   onClearAll,
   onReconnect,
   lastDataTime,
+  connectProgress = null,
   connectionState = 'disconnected',
   audioAttached = false,
   micTestMode = false,
@@ -516,7 +554,7 @@ export const TranscriptionBoard = ({
   const isScrolledUpRef = useRef(false);
   const scrollTimeoutRef = useRef(null);
   const lastScrollKeyRef = useRef('');
-  const [ttsMode, setTtsMode] = useState('manual');
+  const ttsMode = 'manual';
   const [pinnedCaptions, setPinnedCaptions] = useState(() => {
     try {
       return JSON.parse(localStorage.getItem('catint_pinned_msgs')) || [];
@@ -529,7 +567,6 @@ export const TranscriptionBoard = ({
   const [languagePair, setLanguagePair] = useState(loadLanguagePair);
   const protectionsActive = isEnEsProtectionMode(languagePair);
   const { playTTS, stopTTS, isPlaying, playingUrl, prefetchTTS } = useTTS();
-  const { playWarningPing } = useProgressiveAudio();
   const { isActive, isZombieCall, lastCallSummary, setLastCallSummary, updateCaptions } = useSession();
   useComponentVisibilityRefresh();
   const showOffCallGuide = isComponentVisible('off_call_guide', { isActive, isZombieCall });
@@ -541,18 +578,26 @@ export const TranscriptionBoard = ({
     const outLabel = truncateDeviceLabel(out?.label || 'Default out');
     return `🎤 ${micLabel} → 🔊 ${outLabel}`;
   }, [inputDevices, outputDevices, selectedMicId, selectedSinkId]);
-  const warnedBubblesRef = useRef(new Set());
   const [popover, setPopover] = useState({ show: false, x: 0, y: 0, text: '' });
   const popoverTimerRef = useRef(null);
   const [correctionsRev, setCorrectionsRev] = useState(0);
   const [correctionEditor, setCorrectionEditor] = useState(null);
   const [footerStatus, setFooterStatus] = useState('');
+  const [sttNow, setSttNow] = useState(Date.now());
+  const liveBubbleHeightsRef = useRef(new Map());
+  const [, setLiveHeightRev] = useState(0);
 
   useEffect(() => {
     const onCorrections = () => setCorrectionsRev((n) => n + 1);
     window.addEventListener(CORRECTIONS_CHANGED_EVENT, onCorrections);
     return () => window.removeEventListener(CORRECTIONS_CHANGED_EVENT, onCorrections);
   }, []);
+
+  useEffect(() => {
+    if (connectionState !== 'connected' || !connectProgress?.audioChunksSent) return undefined;
+    const id = window.setInterval(() => setSttNow(Date.now()), 250);
+    return () => window.clearInterval(id);
+  }, [connectProgress?.audioChunksSent, connectionState]);
 
   const openCorrectionEditor = useCallback((cap, field, draft, extra = {}) => {
     const sourceLang = normalizeLang(cap.lang);
@@ -622,6 +667,23 @@ export const TranscriptionBoard = ({
     [openCorrectionEditor],
   );
 
+  const rememberLiveBubbleHeight = useCallback((id, node) => {
+    if (!id || !node) return;
+    const height = Math.ceil(node.getBoundingClientRect().height);
+    const previous = liveBubbleHeightsRef.current.get(id) || 0;
+    if (height > previous + 2) {
+      liveBubbleHeightsRef.current.set(id, height);
+      setLiveHeightRev((n) => n + 1);
+    }
+  }, []);
+
+  useEffect(() => {
+    const activeIds = new Set(captions.map((cap) => cap.id).filter(Boolean));
+    liveBubbleHeightsRef.current.forEach((_, id) => {
+      if (!activeIds.has(id)) liveBubbleHeightsRef.current.delete(id);
+    });
+  }, [captions]);
+
   const handleClearLog = useCallback(() => {
     const ok = window.confirm(
       'Clear transcript log? Pinned messages stay. This cannot be undone.',
@@ -677,6 +739,10 @@ export const TranscriptionBoard = ({
   }, []);
 
   const pinnedIds = pinnedCaptions.map((p) => p.id);
+  const lastAudioChunkAt = connectProgress?.lastAudioChunkAt || 0;
+  const audioRecentlySent = connectionState === 'connected' && lastAudioChunkAt > 0 && sttNow - lastAudioChunkAt < 1800;
+  const transcriptLagMs = lastDataTime ? sttNow - lastDataTime : Number.POSITIVE_INFINITY;
+  const showSttPendingRail = audioRecentlySent && transcriptLagMs > 700;
 
   /** One word count per silence-to-silence turn — show only on the last bubble of that turn. */
   const turnDisplayMeta = useMemo(() => {
@@ -728,15 +794,7 @@ export const TranscriptionBoard = ({
     }
     lastScrollKeyRef.current = scrollKey;
 
-    if (lastCap && lastCap.text) {
-      const words = lastCap.text.trim().split(/\s+/).length;
-
-      if (words >= 40 && !warnedBubblesRef.current.has(lastCap.id)) {
-        playWarningPing();
-        warnedBubblesRef.current.add(lastCap.id);
-      }
-    }
-  }, [captions, playWarningPing]);
+  }, [captions]);
 
   const resetScrollTimer = () => {
     if (scrollTimeoutRef.current) clearTimeout(scrollTimeoutRef.current);
@@ -909,6 +967,7 @@ export const TranscriptionBoard = ({
                   userTranslationOverride={cap.userTranslationOverride || null}
                   canEdit={cap.isFinal !== false}
                   correctionsRev={correctionsRev}
+                  wordConfidence={cap.wordConfidence || null}
                   {...makeEditHandlers(cap)}
                 />
                 <button
@@ -926,8 +985,36 @@ export const TranscriptionBoard = ({
         )}
 
         <div style={{ flex: '1 1 auto' }} />
+
+        {showSttPendingRail && (
+          <div className="transcript-bubble is-live stt-pending-bubble" aria-live="polite">
+            <div className="translated-bubble-row">
+              <div className="bubble-col bubble-col-source">
+                <div className="bubble-line stt-pending-line">
+                  <span className="stt-pending-dot" aria-hidden />
+                  Hearing audio…
+                </div>
+              </div>
+              <div className="bubble-col bubble-col-rail" style={{ position: 'relative', minWidth: '6ch' }}>
+                <BubbleRail
+                  engineStatus="translating"
+                  turnWordCount={0}
+                  showTurnWordCount={false}
+                  isThisPlaying={false}
+                  canPlay={false}
+                  onPlayClick={() => {}}
+                />
+              </div>
+              <div className="bubble-col bubble-col-translation">
+                <div className="bubble-line bubble-line-translation stt-pending-line">
+                  Waiting for Deepgram text…
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
         
-        {captions.length === 0 && pinnedCaptions.length === 0 && (
+        {captions.length === 0 && pinnedCaptions.length === 0 && !showSttPendingRail && (
           <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', opacity: isZombieCall ? 0.85 : 1 }}>
             {isZombieCall && connectionState !== 'connected' ? (
               <div style={{ fontFamily: 'var(--font-mono)', fontSize: '0.8rem', textAlign: 'center', padding: '0 1rem', color: '#fbbf24' }}>
@@ -964,9 +1051,11 @@ export const TranscriptionBoard = ({
           const isLongBubble = wordCount > 50 && !isLive;
           const isExpanded = expandedIds.has(cap.id);
           const bubbleStyle = getBubbleStyle(cap.text, isLive, cap.lang, languagePair);
+          const stableMinHeight = isLive ? liveBubbleHeightsRef.current.get(cap.id) : null;
 
           return (
             <div
+              ref={(node) => (isLive ? rememberLiveBubbleHeight(cap.id, node) : undefined)}
               key={cap.id || i}
               className={`transcript-bubble${isLive ? ' is-live' : ' is-sealed'}${isSplitContinuation ? ' is-flowed' : ''}${cap.userCorrected || cap.userTranslationOverride ? ' is-user-corrected' : ''}`}
               style={{
@@ -974,6 +1063,7 @@ export const TranscriptionBoard = ({
               marginTop: isSplitContinuation ? '0rem' : '0.25rem',
               border: '1px solid transparent',
               background: bubbleStyle.backgroundColor,
+              minHeight: stableMinHeight ? `${stableMinHeight}px` : undefined,
               ...bubbleStyle
             }}>
               
@@ -994,6 +1084,7 @@ export const TranscriptionBoard = ({
                   userTranslationOverride={cap.userTranslationOverride || null}
                   canEdit={!isLive}
                   correctionsRev={correctionsRev}
+                  wordConfidence={cap.wordConfidence || null}
                   {...makeEditHandlers(cap)}
                 />
               </div>
@@ -1036,16 +1127,12 @@ export const TranscriptionBoard = ({
         borderTop: '1px solid #18181b', background: 'var(--panel-bg)', fontFamily: 'var(--font-mono, monospace)', fontSize: '0.65rem'
       }}>
         <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-          <button
-            type="button"
-            onClick={() => setTtsMode(m => m === 'manual' ? 'auto' : 'manual')}
-            aria-pressed={ttsMode === 'auto'}
-            aria-label={ttsMode === 'auto' ? 'TTS auto-play on' : 'TTS auto-play off'}
-            title={ttsMode === 'auto' ? 'Auto-play translation audio' : 'Manual TTS only'}
-            style={{ background: 'transparent', color: ttsMode === 'auto' ? 'var(--accent-primary)' : '#fff', border: 'none', cursor: 'pointer' }}
+          <span
+            className="transcript-audio-safe"
+            title="Transcript audio is manual only. Messages never auto-play."
           >
-            TTS:{ttsMode === 'auto' ? 'AUTO' : 'OFF'}
-          </button>
+            TTS:MANUAL
+          </span>
           {pinnedCaptions.length > 0 && (
             <button
               type="button"

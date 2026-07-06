@@ -4,6 +4,7 @@ import { useTTS } from '../hooks/useTTS';
 
 export const NotePad = () => {
   const { playTTS, stopTTS, isPlaying } = useTTS();
+  const textareaRef = useRef(null);
   const [notes, setNotes] = useState(() => {
     return localStorage.getItem('catintassist_notes') || '';
   });
@@ -25,6 +26,15 @@ export const NotePad = () => {
     const onCleared = () => setNotes('');
     window.addEventListener('catint_notes_cleared', onCleared);
     return () => window.removeEventListener('catint_notes_cleared', onCleared);
+  }, []);
+
+  useEffect(() => {
+    const focusNotes = () => {
+      window.setTimeout(() => textareaRef.current?.focus(), 60);
+    };
+    focusNotes();
+    window.addEventListener('catint_focus_notes', focusNotes);
+    return () => window.removeEventListener('catint_focus_notes', focusNotes);
   }, []);
 
   const clearNotes = () => {
@@ -54,6 +64,8 @@ export const NotePad = () => {
         </div>
       </div>
       <textarea
+        id="quick-notes-textarea"
+        ref={textareaRef}
         className="notepad-textarea"
         placeholder="Jot down numbers, names, and medical terms here... (Auto-saves)"
         value={notes}

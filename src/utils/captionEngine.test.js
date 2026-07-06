@@ -69,6 +69,26 @@ describe("captionEngine", () => {
     expect(next[0].text).toMatch(/hello/i);
   });
 
+  test("reduceTranscriptEvent carries Deepgram word confidence metadata", () => {
+    const ctx = makeCtx();
+    const next = reduceTranscriptEvent(
+      [],
+      makeEvent({
+        transcript: "hello there",
+        words: [
+          { word: "hello", confidence: 0.96 },
+          { word: "there", confidence: 0.48 },
+        ],
+      }),
+      ctx,
+    );
+
+    expect(next[0].wordConfidence).toEqual([
+      { word: "hello", confidence: 0.96 },
+      { word: "there", confidence: 0.48 },
+    ]);
+  });
+
   test("final event seals and creates tail row with tailPreviewText reusing live draft id", () => {
     const ctx = makeCtx();
     const now1 = Date.now();
@@ -221,6 +241,12 @@ describe("captionEngine", () => {
     const a = [{ id: "1", text: "hi", isFinal: false }];
     const b = [{ id: "1", text: "hi there", isFinal: false }];
     expect(captionsSnapshotEqual(a, a)).toBe(true);
+    expect(captionsSnapshotEqual(a, b)).toBe(false);
+  });
+
+  test("captionsSnapshotEqual detects confidence-only changes", () => {
+    const a = [{ id: "1", text: "hi", isFinal: false, wordConfidence: [{ word: "hi", confidence: 0.9 }] }];
+    const b = [{ id: "1", text: "hi", isFinal: false, wordConfidence: [{ word: "hi", confidence: 0.5 }] }];
     expect(captionsSnapshotEqual(a, b)).toBe(false);
   });
 });

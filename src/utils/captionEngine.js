@@ -26,6 +26,27 @@ export const buildStableCaptionId = (channelKey, startTime, isFinal) =>
 
 export const createCaptionEngineState = () => ({ finals: [], liveDraft: null });
 
+const normalizeWord = (word) =>
+  (word || "").toString().toLowerCase().replace(/[^\p{L}\p{N}]+/gu, "");
+
+export const normalizeWordConfidence = (words = []) =>
+  (Array.isArray(words) ? words : [])
+    .map((w) => ({
+      word: normalizeWord(w.word ?? w.punctuated_word ?? ""),
+      confidence: Number.isFinite(w.confidence) ? w.confidence : null,
+    }))
+    .filter((w) => w.word);
+
+const wordCount = (text) => (text || "").trim().split(/\s+/).filter(Boolean).length;
+
+const sliceWordConfidenceForText = (wordConfidence, text, offset = 0) => {
+  if (!wordConfidence?.length || !text?.trim()) return [];
+  return wordConfidence.slice(offset, offset + wordCount(text));
+};
+
+const wordConfidenceKey = (words) =>
+  words?.length ? words.map((w) => `${w.word}:${Math.round((w.confidence ?? -1) * 100)}`).join("|") : "";
+
 export const mergeCaptionsForUi = (state) => {
   const { finals, liveDraft } = state || createCaptionEngineState();
   const merged = liveDraft ? [...finals, liveDraft] : [...finals];
@@ -43,6 +64,7 @@ export const captionsSnapshotEqual = (a, b) => {
     if (x?.text !== y?.text) return false;
     if (x?.isFinal !== y?.isFinal) return false;
     if (x?.tailPreviewText !== y?.tailPreviewText) return false;
+    if (wordConfidenceKey(x?.wordConfidence) !== wordConfidenceKey(y?.wordConfidence)) return false;
   }
   return true;
 };
@@ -70,6 +92,11 @@ const buildSealedBubble = (
 ) => {
   const lang = template.lang || pair.left;
   const text = sealText(sentence, lang);
+  const wordConfidence = sliceWordConfidenceForText(
+    template.wordConfidence,
+    sentence,
+    template.wordConfidenceOffset || 0,
+  );
   const side = laneSideForLang(lang, pair);
   const id =
     sealIndex === 0 && template.id
@@ -79,6 +106,8 @@ const buildSealedBubble = (
     ...template,
     id,
     text,
+    wordConfidence,
+    wordConfidenceOffset: 0,
     turnId: template.turnId,
     turnWordCount,
     enFinalized: side === "en" ? text : "",
@@ -104,12 +133,14 @@ const peelCommaChunks = (
   if (!chunks.length) return { sealed: [], remainder: text };
 
   let acc = turnWordsBase;
+  let confidenceOffset = template.wordConfidenceOffset || 0;
   const sealed = chunks.map((chunk, idx) => {
-    const w = chunk.trim().split(/\s+/).filter(Boolean).length;
+    const w = wordCount(chunk);
+    const chunkTemplate = { ...template, wordConfidenceOffset: confidenceOffset };
     acc += w;
-    return buildSealedBubble(
+    const sealedChunk = buildSealedBubble(
       chunk,
-      template,
+      chunkTemplate,
       bubbleIdCounterRef,
       acc,
       pair,
@@ -117,6 +148,8 @@ const peelCommaChunks = (
       startTime,
       idx + 1,
     );
+    confidenceOffset += w;
+    return sealedChunk;
   });
   return { sealed, remainder: "" };
 };
@@ -139,10 +172,12 @@ export const reduceTranscriptEvent = (prev, event, ctx) => {
     protectionsOn,
     langMode,
     pair,
+    words,
   } = event;
   const { turnWordsBaseRef, currentTurnIdRef, bubbleIdCounterRef, lastBubbleStartedRef } = ctx;
 
   const shouldFinalize = isFinal || speechFinal;
+  const eventWordConfidence = normalizeWordConfidence(words);
 
   let last = prev[prev.length - 1];
   const isNewTurn = isSilentBreak || !last;
@@ -170,6 +205,8 @@ export const reduceTranscriptEvent = (prev, event, ctx) => {
         turnWordCount: turnWordsBaseRef.current,
         isSplit: !isSilentBreak,
         tailPreviewText: null,
+        wordConfidence: [],
+        wordConfidenceOffset: 0,
         isFinal: false,
       };
       prev = [...prev, last];
@@ -234,6 +271,10 @@ export const reduceTranscriptEvent = (prev, event, ctx) => {
   const winSide = laneSideForLang(winnerLang, pair);
   current.lang = winnerLang;
   current.text = winSide === "en" ? enFull : esFull;
+  if (eventWordConfidence.length) {
+    current.wordConfidence = eventWordConfidence;
+  }
+  current.wordConfidenceOffset = 0;
   current.enFull = enFull;
   current.esFull = esFull;
   current.isFinal = shouldFinalize;
@@ -252,15 +293,17 @@ export const reduceTranscriptEvent = (prev, event, ctx) => {
     const { sentences, remainder: sentRemainder } = peelCompleteSentences(current.text);
     let sealedAll = [];
     let tailText = sentRemainder;
+    const sourceWordBase = turnWordsBaseRef.current;
 
     if (sentences.length > 0) {
       let acc = turnWordsBaseRef.current;
       sealedAll = sentences.map((sent, idx) => {
-        const w = sent.trim().split(/\s+/).filter(Boolean).length;
+        const w = wordCount(sent);
+        const sentenceTemplate = { ...current, wordConfidenceOffset: acc - turnWordsBaseRef.current };
         acc += w;
         return buildSealedBubble(
           sent,
-          current,
+          sentenceTemplate,
           bubbleIdCounterRef,
           acc,
           pair,
@@ -275,7 +318,7 @@ export const reduceTranscriptEvent = (prev, event, ctx) => {
     if (tailText?.trim()) {
       const { sealed: commaSealed, remainder: commaRemainder } = peelCommaChunks(
         tailText,
-        current,
+        { ...current, wordConfidenceOffset: turnWordsBaseRef.current - sourceWordBase },
         bubbleIdCounterRef,
         turnWordsBaseRef.current,
         pair,
@@ -292,7 +335,7 @@ export const reduceTranscriptEvent = (prev, event, ctx) => {
     if (!sentences.length && !sealedAll.length && current.text?.trim()) {
       const { sealed: commaOnly, remainder: commaRemainder } = peelCommaChunks(
         current.text,
-        current,
+        { ...current, wordConfidenceOffset: 0 },
         bubbleIdCounterRef,
         turnWordsBaseRef.current,
         pair,
@@ -321,12 +364,19 @@ export const reduceTranscriptEvent = (prev, event, ctx) => {
         const winLang = current.lang || pair.left;
         const tailSide = laneSideForLang(winLang, pair);
         const formatted = sealText(tailText, winLang);
+        const tailWordConfidence = sliceWordConfidenceForText(
+          current.wordConfidence,
+          tailText,
+          turnWordsBaseRef.current - sourceWordBase,
+        );
         newArr.push({
           ...current,
           id: originalLastId,
           turnId: current.turnId,
           turnWordCount: turnWordsBaseRef.current,
           text: formatted,
+          wordConfidence: tailWordConfidence,
+          wordConfidenceOffset: 0,
           tailPreviewText: tailText.trim(),
           enFinalized: tailSide === "en" ? formatted : "",
           esFinalized: tailSide === "es" ? formatted : "",

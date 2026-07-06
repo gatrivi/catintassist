@@ -236,10 +236,13 @@ const buildOffCallStatus = ({
   }
   if (vaultStatus === 'unlocking') return 'Unlocking key…';
   if (connectionState === 'connecting') {
-    return connectionMessage || 'Connecting…';
+    return connectionMessage || 'Deepgram connecting…';
   }
   if (connectionState === 'error') {
-    return `${connectionMessage || 'Something went wrong'} — try the green button again`;
+    return (
+      'Deepgram isn\'t working right now (engine for interpretation). ' +
+      'Press ⚡ Zap, then check Settings key + Deepgram WebSocket + tab audio/mic permissions.'
+    );
   }
   if (isRememberExpired() && apiKeyMissing) {
     return 'Password expired — open Settings (gear, top-right)';
@@ -257,7 +260,9 @@ const buildOffCallStatus = ({
     return `Call still active — press Re-attach (timer saved) · ${slackText}`;
   }
   if (audioAttached) {
-    return 'Tab connected — press Start interpreting when the call begins';
+    return micTestMode
+      ? 'Mic connected — press the green button to start interpreting'
+      : 'Tab connected — press the green button to start interpreting';
   }
 
   // Work-hours: if tab stream is detached, keep the user out of “blocked when call rings”.
@@ -267,9 +272,12 @@ const buildOffCallStatus = ({
     return 'Tab disconnected — reconnect now to avoid missing the first lines';
   }
   const micHint = micTestMode
-    ? 'Mic mode on — press Click to connect tab (uses your microphone)'
-    : 'No tab yet? Press the mic button, then Click to connect tab';
-  if (idleMuted) return `Ready — click to connect when you want · ${micHint}`;
+    ? 'Mic mode ON — press the green button to connect the microphone'
+    : 'Tab mode — press the green button to connect the other browser tab';
+
+  if (idleMuted) {
+    return `${micHint}. Then press it again to start interpreting.`;
+  }
 
   return `${pickRotatingAdvice()} · ${micHint}`;
 };
@@ -388,6 +396,18 @@ const SessionControlsSticky = React.memo(({
   const handleLangClick = () => {
     if (didLongPressRef.current) return;
     onToggleLanguage?.();
+  };
+
+  const toggleQuickNotes = () => {
+    setIsNotesOpen((open) => {
+      const next = !open;
+      if (next) {
+        window.setTimeout(() => {
+          window.dispatchEvent(new Event('catint_focus_notes'));
+        }, 80);
+      }
+      return next;
+    });
   };
 
   const langPairShort = (languagePairLabel || 'EN|ES').replace(/\s+/g, '');
@@ -768,28 +788,26 @@ const SessionControlsSticky = React.memo(({
           <span className="call-micro-bar-slot call-micro-bar-reserved" aria-hidden="true" />
         </div>
       ) : (
-        <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', gap: '0.2rem' }}>
-          <div className="call-micro-bar-center off-call-status-bar" title="Connection status">
-            <span
-              className="call-micro-bar-slot call-micro-bar-status"
-              style={{
-                gridColumn: '1 / -1',
-                fontSize: '0.68rem',
-                fontWeight: 700,
-                color: isZombieCall
-                  ? '#fbbf24'
-                  : audioAttached
-                    ? '#34d399'
-                  : connectionState === 'error'
-                    ? '#ef4444'
-                    : connectionState === 'connecting'
-                      ? '#f59e0b'
+        <div className="off-call-status-column" style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', gap: '0.15rem' }}>
+          {!(connectionState === 'error' || connectionState === 'connecting') && (
+            <div className="call-micro-bar-center off-call-status-bar" title="Connection status">
+              <span
+                className="call-micro-bar-slot call-micro-bar-status"
+                style={{
+                  gridColumn: '1 / -1',
+                  fontSize: '0.68rem',
+                  fontWeight: 700,
+                  color: isZombieCall
+                    ? '#fbbf24'
+                    : audioAttached
+                      ? '#34d399'
                       : '#9dffed',
-              }}
-            >
-              {offCallStatusText}
-            </span>
-          </div>
+                }}
+              >
+                {offCallStatusText}
+              </span>
+            </div>
+          )}
           <ConnectionDiagnosticsBar
             connectProgress={connectProgress}
             connectionState={connectionState}
@@ -846,16 +864,16 @@ const SessionControlsSticky = React.memo(({
           </ElementHintTarget>
         )}
         <ElementHintTarget
-          elementId="header-notes-btn"
+          elementId="header-quick-notes-btn"
           guideKey="notes"
           heading="Quick notes"
           body="Toggle the quick notes sidebar for jotting during calls."
           color="#f43f5e"
         >
         <button
-          id="header-notes-btn"
+          id="header-quick-notes-btn"
           className="btn-icon tiny-btn"
-          onClick={() => setIsNotesOpen(!isNotesOpen)}
+          onClick={toggleQuickNotes}
           style={{ opacity: isNotesOpen ? 1 : 0.45, width: '24px', height: '24px', fontSize: '0.75rem' }}
           title="Quick Notes"
         >
@@ -866,35 +884,37 @@ const SessionControlsSticky = React.memo(({
         <AppGuideButton />
       </div>
       </div>
-      <AudioRouteStatusBar
-        micTestMode={micTestMode}
-        tabStreamReady={tabStreamReady}
-        cableStreamReady={cableStreamReady}
-        configuredAudioSourceMode={configuredAudioSourceMode}
-        attachedAudioSourceMode={attachedAudioSourceMode}
-        virtualCableFailure={virtualCableFailure}
-        audioAttached={audioAttached}
-        connectionState={connectionState}
-        connectProgress={connectProgress}
-        lastDataTime={lastDataTime}
-        isActive={isActive}
-        isZombieCall={isZombieCall}
-        onReconnectStream={onReconnectStream}
-        onReconnectAudioSource={onReconnectAudioSource}
-        onSwitchToTabShare={onSwitchToTabShare}
-        onTestLocal={() => playTestToneLocal()}
-        onTestRoute={async () => {
-          const sinkId = localStorage.getItem('CATINTASSIST_SINK_ID');
-          if (!sinkId) {
-            document.getElementById('audio-route-sink-select')?.focus();
-            return;
-          }
-          await playTestToneSink(sinkId);
-        }}
-        onOpenSoundboard={!isActive ? onOpenSoundboard : undefined}
-        soundboardOpen={soundboardOpen}
-        compact
-      />
+      {!(isActive && !callModeExpanded) && (
+        <AudioRouteStatusBar
+          micTestMode={micTestMode}
+          tabStreamReady={tabStreamReady}
+          cableStreamReady={cableStreamReady}
+          configuredAudioSourceMode={configuredAudioSourceMode}
+          attachedAudioSourceMode={attachedAudioSourceMode}
+          virtualCableFailure={virtualCableFailure}
+          audioAttached={audioAttached}
+          connectionState={connectionState}
+          connectProgress={connectProgress}
+          lastDataTime={lastDataTime}
+          isActive={isActive}
+          isZombieCall={isZombieCall}
+          onReconnectStream={onReconnectStream}
+          onReconnectAudioSource={onReconnectAudioSource}
+          onSwitchToTabShare={onSwitchToTabShare}
+          onTestLocal={() => playTestToneLocal()}
+          onTestRoute={async () => {
+            const sinkId = localStorage.getItem('CATINTASSIST_SINK_ID');
+            if (!sinkId) {
+              document.getElementById('audio-route-sink-select')?.focus();
+              return;
+            }
+            await playTestToneSink(sinkId);
+          }}
+          onOpenSoundboard={!isActive ? onOpenSoundboard : undefined}
+          soundboardOpen={soundboardOpen}
+          compact
+        />
+      )}
     </>
   );
 });
@@ -996,8 +1016,25 @@ export const DashboardHeader = ({
   const toggleToolbar = useCallback(() => {
     const next = !isToolbarVisible;
     setIsToolbarVisible(next);
-    if (next) setIsNotesOpen(true);
+    if (next) {
+      setIsNotesOpen(true);
+      window.setTimeout(() => {
+        window.dispatchEvent(new Event('catint_focus_notes'));
+      }, 80);
+    }
   }, [isToolbarVisible, setIsToolbarVisible, setIsNotesOpen]);
+
+  const toggleQuickNotes = useCallback(() => {
+    setIsNotesOpen((open) => {
+      const next = !open;
+      if (next) {
+        window.setTimeout(() => {
+          window.dispatchEvent(new Event('catint_focus_notes'));
+        }, 80);
+      }
+      return next;
+    });
+  }, [setIsNotesOpen]);
   const { outputDevices, inputDevices, selectedSinkId, selectedMicId, changeSinkId, changeMicId, fetchDevices } = useAudioSettings();
   const audioEngine = useProgressiveAudio();
   const { playChaChing } = useRewardAudio();
@@ -1056,6 +1093,8 @@ export const DashboardHeader = ({
       return next;
     });
   }, []);
+
+  const headerCallCompact = isActive && !callModeExpanded;
 
   const expandOffCallMetrics = useCallback(() => {
     setOffCallMetricsExpanded(true);
@@ -1762,7 +1801,7 @@ export const DashboardHeader = ({
     return () => window.removeEventListener('cat_demo_scenario', handleScenario);
   }, [onAttachAudio, onStartCall, audioAttached, onStopAudio, handleStop, handleStartBreak, stopBreak, stopSession, audioEngine]);
 
-  const renderHeaderMetricsStrip = (expandedFlag) => (
+  const renderHeaderMetricsStrip = (expandedFlag, { showBars = true, showQuickRow = true } = {}) => (
     <HeaderMetricsStrip
       {...buildHeaderStripMetrics({
         stats,
@@ -1781,14 +1820,19 @@ export const DashboardHeader = ({
       onBarHover={showProgressBarTooltip}
       onBarLeave={hideMetricTooltip}
       scoreView={scoreView}
-      onScoreViewChange={handleQuickScoreView}
+      onScoreViewChange={expandedFlag ? handleQuickScoreView : undefined}
       studioView={studioView}
-      onCycleWorkspace={onCycleWorkspace}
+      onCycleWorkspace={expandedFlag ? onCycleWorkspace : undefined}
       showStudioHint={showStudioHint}
+      showBars={showBars}
+      showQuickRow={showQuickRow}
     />
   );
 
-  const renderOffCallCollapsedBody = () => renderHeaderMetricsStrip(false);
+  const renderOffCallCollapsedBody = () => renderHeaderMetricsStrip(false, {
+    showBars: false,
+    showQuickRow: false,
+  });
 
   const renderWorkspaceBody = () => (
       <div className={`dashboard-header-fill${offCallScoreboardView ? ' scoreboard-workspace scoreboard-workspace--header' : ''}`} data-guide={offCallScoreboardView ? 'scoreboard' : undefined}>
@@ -2244,7 +2288,7 @@ export const DashboardHeader = ({
                     {id === 'minimal' ? 'Min' : id === 'standard' ? 'Std' : 'Full'}
                   </button>
                 ))}
-                <button id="header-notes-btn" className="btn-icon tiny-btn" onClick={() => setIsNotesOpen(!isNotesOpen)} style={{ opacity: isNotesOpen ? 1 : 0.3, width: '22px', height: '22px' }} title="Notes"><NotesIcon size={14} /></button>
+                <button id="header-notes-secondary-btn" className="btn-icon tiny-btn" onClick={toggleQuickNotes} style={{ opacity: isNotesOpen ? 1 : 0.3, width: '22px', height: '22px' }} title="Notes"><NotesIcon size={14} /></button>
                 <button id="header-tools-btn" className="btn-icon tiny-btn" onClick={toggleToolbar} style={{ opacity: isToolbarVisible ? 1 : 0.3, background: isToolbarVisible ? 'rgba(239,68,68,0.15)' : 'transparent', width: '22px', height: '22px' }} title="Show tools (notes + background)"><ToolsIcon size={14} /></button>
                 <button id="header-help-btn" className="btn-icon tiny-btn" onClick={() => setIsScoreboardHelpVisible(!isScoreboardHelpVisible)} style={{ opacity: isScoreboardHelpVisible ? 1 : 0.3, background: isScoreboardHelpVisible ? 'rgba(239,68,68,0.15)' : 'transparent', width: '22px', height: '22px' }} title="Scoreboard help labels"><HelpIcon size={14} /></button>
                 <button id="header-edit-btn" className="btn-icon tiny-btn" onClick={() => { if(isCollapsed) setIsCollapsed(false); setIsEditingScoreboard(!isEditingScoreboard); }} style={{ opacity: isEditingScoreboard ? 1 : 0.3, width: '22px', height: '22px' }} title="Edit Grid"><EditIcon size={14} /></button>
@@ -2408,7 +2452,7 @@ export const DashboardHeader = ({
               <div className="header-utility-group" style={{ display: 'flex', gap: '0.2rem', alignItems: 'center', flexWrap: 'wrap' }}>
                 <button className="btn-icon-tiny" onClick={() => setTimeEditMode('call')} title="Edit call time">✏️📞</button>
                 <button className="btn-icon-tiny" onClick={() => setTimeEditMode('break')} title="Edit break time">✏️☕</button>
-                <button className={`btn-icon-tiny ${isNotesOpen ? 'active' : ''}`} onClick={() => setIsNotesOpen(!isNotesOpen)} title="Notes">📝</button>
+                <button className={`btn-icon-tiny ${isNotesOpen ? 'active' : ''}`} onClick={toggleQuickNotes} title="Notes">📝</button>
                 <button className={`btn-icon-tiny ${isToolbarVisible ? 'active' : ''}`} onClick={toggleToolbar} title="Show tools (notes + background)">🛠️</button>
                 <button className={`btn-icon-tiny ${isEditingScoreboard ? 'active' : ''}`} onClick={() => setIsEditingScoreboard(!isEditingScoreboard)} title="Edit Grid">{isEditingScoreboard ? '💾' : '✏️'}</button>
                 <button className={`btn-icon-tiny ${isScoreboardHelpVisible ? 'active' : ''}`} onClick={() => setIsScoreboardHelpVisible(!isScoreboardHelpVisible)} title="Help">❓</button>
@@ -2473,7 +2517,7 @@ export const DashboardHeader = ({
       )}
 
       {/* Progress bars */}
-      {dailyGoal > 0 && showProgressStack && !offCallScoreboardView && (
+      {(!isActive || callModeExpanded) && dailyGoal > 0 && showProgressStack && !offCallScoreboardView && (
         <div className="header-progress-stack" style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem', padding: '0.25rem 0.15rem 0.1rem' }}>
           {/* Monthly bar */}
           <div style={{ display: 'flex', flexDirection: 'column', gap: '0.15rem' }}>
@@ -2900,7 +2944,12 @@ ${isInDeficit ? `⚠️ DEFICIT: Behind pace by ${Math.round(monthlyDeficitMins)
 
   return (
     <>
-    <header className={`dashboard-header glass-panel${headerMinimal ? ' dashboard-header--minimal' : ''}${offCallScoreboardView ? ' dashboard-header--off-call-scoreboard' : ''}${offCallScoreboardView && offCallMetricsExpanded ? ' dashboard-header--metrics-expanded' : ''}`} style={{ position: 'relative', zIndex: 100 }}>
+    <header className={`dashboard-header glass-panel${headerMinimal ? ' dashboard-header--minimal' : ''}${headerCallCompact ? ' dashboard-header--call-compact' : ''}${isActive && callModeExpanded ? ' dashboard-header--call-expanded' : ''}${offCallScoreboardView ? ' dashboard-header--off-call-scoreboard' : ''}${offCallScoreboardView && offCallMetricsExpanded ? ' dashboard-header--metrics-expanded' : ''}`} style={{ position: 'relative', zIndex: 100 }}>
+      {versionLabel && (
+        <div className="app-version-pill" style={{ position: 'absolute', top: 6, right: 8 }}>
+          {versionLabel}
+        </div>
+      )}
       <SessionControlsSticky
         isActive={isActive}
         isBreakActive={isBreakActive}
@@ -2976,9 +3025,11 @@ ${isInDeficit ? `⚠️ DEFICIT: Behind pace by ${Math.round(monthlyDeficitMins)
       />
 
       {!headerMinimal && (
-        offCallScoreboardView && !offCallMetricsExpanded
-          ? renderOffCallCollapsedBody()
-          : renderWorkspaceBody()
+        headerCallCompact
+          ? null
+          : offCallScoreboardView && !offCallMetricsExpanded
+            ? renderOffCallCollapsedBody()
+            : renderWorkspaceBody()
       )}
 
       {isTodayDialOpen && createPortal(

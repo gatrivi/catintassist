@@ -112,8 +112,10 @@ export const RosaryWidget = () => {
     <div ref={containerRef} style={{ position: 'relative' }}>
       {/* Collapsed Pill */}
       <button
+        data-guide="wellbeing-dock-rosary"
+        data-tooltip="Rosary pause"
+        aria-label="Rosary pause"
         onClick={() => { acknowledgeNudge('rosary'); setIsOpen((o) => !o); }}
-        title="Wellbeing: rosary pause"
         style={{
           position: 'relative',
           width: '40px',
