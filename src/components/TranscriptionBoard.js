@@ -12,6 +12,7 @@ import {
   NUMBER_HIGHLIGHT_REGEX,
 } from '../utils/sensitiveDataProtector';
 import { ScrambleText } from './ScrambleText';
+import { alignWordConfidence, confidenceVisualFor } from '../utils/wordConfidenceAlign';
 import { NewcomerIdleGuide } from './NewcomerIdleGuide';
 import { isNewcomerGuideDismissed } from '../utils/newcomerGuide';
 import { isTranslationStuckForRetranslate } from '../utils/translationQuality';
@@ -67,11 +68,6 @@ const processDisplayText = (raw, lang, applyNumberWords, protectionsActive) => {
 const splitDisplaySegments = (segment) => {
   if (!segment) return [];
   return segment.split(NUMBER_HIGHLIGHT_REGEX);
-};
-
-const confidenceOpacityFor = (confidence) => {
-  if (!Number.isFinite(confidence)) return 1;
-  return Math.max(0.1, Math.min(1, confidence));
 };
 
 const commonWordPrefixLen = (a = '', b = '') => {
@@ -135,6 +131,7 @@ const InteractiveText = ({
   protectionsActive = true,
   tailPreviewText = null,
   wordConfidence = null,
+  isFinal = true,
 }) => {
   const processedText = useMemo(() => (text ? formatTranscriptForDisplay(text, lang) : ''), [text, lang]);
   const spellingLayout = useMemo(() => Boolean(text && isSpellingBlock(text)), [text]);
@@ -142,6 +139,10 @@ const InteractiveText = ({
   const repairedText = useMemo(
     () => (text ? processDisplayText(text, lang, applyNumberWords, protectionsActive) : ''),
     [text, lang, applyNumberWords, protectionsActive],
+  );
+  const alignedWords = useMemo(
+    () => alignWordConfidence(repairedText, wordConfidence),
+    [repairedText, wordConfidence],
   );
   const tailSlice = useMemo(
     () => (text ? resolveTailHighlight(repairedText, text, tailPreviewText, lang, applyNumberWords, protectionsActive) : null),
@@ -163,7 +164,8 @@ const InteractiveText = ({
     navigator.clipboard.writeText(clean);
   }, []);
 
-  const renderPart = useCallback((p, i, keyPrefix = '', forcePlain = false, confidenceClass = '') => {
+  const renderPart = useCallback((p, i, keyPrefix = '', forcePlain = false, opts = {}) => {
+    const { confidenceClass = '', liveScramble = false } = opts;
     const partKey = `${keyPrefix}${i}`;
     const useScramble = scramble && !forcePlain;
     if (p && p.match(NUMBER_HIGHLIGHT_REGEX)) {
@@ -175,46 +177,54 @@ const InteractiveText = ({
           title={`Click to copy: ${copyableDigits(p)}`}
           style={{ cursor: 'copy', backgroundColor: 'rgba(252, 211, 77, 0.1)', color: '#fcd34d', padding: '0 2px', borderRadius: '2px', fontWeight: 600, display: 'inline' }}
         >
-          {useScramble ? <ScrambleText value={p} /> : p}
+          {useScramble ? <ScrambleText value={p} liveMode={liveScramble} /> : p}
         </span>
       );
     }
     return useScramble ? (
-      <ScrambleText key={partKey} value={p} className={confidenceClass.trim()} />
+      <ScrambleText key={partKey} value={p} className={confidenceClass.trim()} liveMode={liveScramble} />
     ) : (
       <span key={partKey} className={confidenceClass.trim()}>{p}</span>
     );
   }, [scramble, handleCopy]);
 
-  const renderSegment = useCallback((segment, keyPrefix = '', forcePlain = false, confidenceClass = '') => {
+  const renderSegment = useCallback((segment, keyPrefix = '', forcePlain = false, opts = {}) => {
     if (!segment) return null;
-    return splitDisplaySegments(segment).map((p, i) => renderPart(p, i, keyPrefix, forcePlain, confidenceClass));
+    return splitDisplaySegments(segment).map((p, i) => renderPart(p, i, keyPrefix, forcePlain, opts));
   }, [renderPart]);
 
-  const renderConfidenceText = useCallback((value = repairedText, wordOffset = 0, forcePlain = true, keyRoot = 'cw') => {
-    if (!wordConfidence?.length || !value) return null;
+  const renderConfidenceText = useCallback((
+    value = repairedText,
+    wordOffset = 0,
+    forcePlain = !scramble,
+    keyRoot = 'cw',
+    liveTail = false,
+  ) => {
+    if (!alignedWords?.length || !value) return null;
     let wordIndex = 0;
     return value.split(/(\s+)/).map((token, idx) => {
       if (!token) return null;
       if (/^\s+$/.test(token)) return <span key={`space-${idx}`}>{token}</span>;
-      const meta = wordConfidence[wordOffset + wordIndex] || null;
+      const meta = alignedWords[wordOffset + wordIndex] || null;
       wordIndex += 1;
-      const opacity = confidenceOpacityFor(meta?.confidence);
+      const visual = confidenceVisualFor(meta?.confidence, isFinal);
       const title = Number.isFinite(meta?.confidence)
         ? `Deepgram confidence ${Math.round(meta.confidence * 100)}%`
         : undefined;
       return (
         <span
           key={`word-${idx}`}
-          className={`confidence-word${Number.isFinite(meta?.confidence) && meta.confidence < 0.7 ? ' confidence-word--low' : ''}`}
-          style={{ opacity }}
+          className={`confidence-word${visual.className ? ` ${visual.className}` : ''}`}
+          style={{ color: visual.color, opacity: visual.opacity }}
           title={title}
         >
-          {renderSegment(token, `${keyRoot}-${idx}-`, forcePlain)}
+          {renderSegment(token, `${keyRoot}-${idx}-`, forcePlain, {
+            liveScramble: !forcePlain && liveTail,
+          })}
         </span>
       );
     });
-  }, [repairedText, renderSegment, wordConfidence]);
+  }, [alignedWords, isFinal, repairedText, renderSegment, scramble]);
 
   const renderLiveDiffText = useCallback(() => {
     if (!scramble || liveStablePrefixLen <= 0 || liveStablePrefixLen >= repairedText.length) return null;
@@ -223,17 +233,17 @@ const InteractiveText = ({
     const stableWords = stable.trim() ? stable.trim().split(/\s+/).length : 0;
     return (
       <>
-        {wordConfidence?.length
-          ? renderConfidenceText(stable, 0, true, 'stable')
+        {alignedWords?.length
+          ? renderConfidenceText(stable, 0, true, 'stable', false)
           : renderSegment(stable, 'stable-', true)}
         <span className="transcript-live-tail">
-          {wordConfidence?.length
-            ? renderConfidenceText(tail, stableWords, false, 'tail')
-            : renderSegment(tail, 'tail-', false)}
+          {alignedWords?.length
+            ? renderConfidenceText(tail, stableWords, false, 'tail', true)
+            : renderSegment(tail, 'tail-', false, { liveScramble: true })}
         </span>
       </>
     );
-  }, [liveStablePrefixLen, repairedText, renderConfidenceText, renderSegment, scramble, wordConfidence]);
+  }, [alignedWords, liveStablePrefixLen, repairedText, renderConfidenceText, renderSegment, scramble]);
 
   if (!text) return null;
 
@@ -261,12 +271,22 @@ const InteractiveText = ({
   }
 
   if (tailSlice) {
+    const beforeWords = tailSlice.before.trim() ? tailSlice.before.trim().split(/\s+/).length : 0;
+    const highlightWords = tailSlice.highlight.trim() ? tailSlice.highlight.trim().split(/\s+/).length : 0;
     return (
       <>
         {chipRow}
-        {renderSegment(tailSlice.before, 'pre-')}
-        <span className="transcript-tail-preview">{renderSegment(tailSlice.highlight, 'tail-', true)}</span>
-        {renderSegment(tailSlice.after, 'post-')}
+        {alignedWords.length
+          ? renderConfidenceText(tailSlice.before, 0, true, 'pre', false)
+          : renderSegment(tailSlice.before, 'pre-')}
+        <span className="transcript-tail-preview">
+          {alignedWords.length
+            ? renderConfidenceText(tailSlice.highlight, beforeWords, true, 'tail', false)
+            : renderSegment(tailSlice.highlight, 'tail-', true)}
+        </span>
+        {alignedWords.length
+          ? renderConfidenceText(tailSlice.after, beforeWords + highlightWords, true, 'post', false)
+          : renderSegment(tailSlice.after, 'post-')}
       </>
     );
   }
@@ -281,7 +301,7 @@ const InteractiveText = ({
     );
   }
 
-  const confidenceText = renderConfidenceText();
+  const confidenceText = renderConfidenceText(repairedText, 0, !scramble, 'cw', scramble && !isFinal);
   if (confidenceText) {
     return (
       <>
@@ -486,6 +506,7 @@ const TranslatedBubble = ({
             protectionsActive={protectionsActive}
             tailPreviewText={tailPreviewText}
             wordConfidence={wordConfidence}
+            isFinal={isFinal}
           />
         </div>
         {showEdit && (
@@ -635,6 +656,7 @@ export const TranscriptionBoard = ({
   const [footerStatus, setFooterStatus] = useState('');
   const [sttNow, setSttNow] = useState(Date.now());
   const liveBubbleHeightsRef = useRef(new Map());
+  const lastRenderTraceRef = useRef('');
   const [, setLiveHeightRev] = useState(0);
 
   useEffect(() => {
@@ -648,6 +670,38 @@ export const TranscriptionBoard = ({
     const id = window.setInterval(() => setSttNow(Date.now()), 250);
     return () => window.clearInterval(id);
   }, [connectProgress?.audioChunksSent, connectionState]);
+
+  useEffect(() => {
+    const lastCap = captions[captions.length - 1];
+    if (!lastCap) return;
+    const key = `${captions.length}|${lastCap.id}|${lastCap.text}|${lastCap.isFinal}`;
+    if (lastRenderTraceRef.current === key) return;
+    lastRenderTraceRef.current = key;
+    if (typeof window !== 'undefined') {
+      const entry = {
+        at: new Date().toISOString(),
+        ms: Math.round(performance.now()),
+        stage: '7 string rendered in TranscriptionBoard',
+        rows: captions.length,
+        id: lastCap.id,
+        chars: lastCap.text?.length || 0,
+        text: (lastCap.text || '').slice(0, 160),
+        wordConfidenceCount: lastCap.wordConfidence?.length || 0,
+        isFinal: lastCap.isFinal !== false,
+      };
+      const trace = (window.__catintSttTrace ??= []);
+      trace.push(entry);
+      if (trace.length > 300) trace.splice(0, trace.length - 300);
+      console.info('[CAT STT] 7 string rendered in TranscriptionBoard', entry);
+      if ((lastCap.text || '').trim() && !(lastCap.wordConfidence?.length)) {
+        console.warn('[CAT STT] rendered without word confidence', {
+          id: lastCap.id,
+          chars: lastCap.text?.length || 0,
+          text: (lastCap.text || '').slice(0, 160),
+        });
+      }
+    }
+  }, [captions]);
 
   const openCorrectionEditor = useCallback((cap, field, draft, extra = {}) => {
     const sourceLang = normalizeLang(cap.lang);
@@ -789,10 +843,44 @@ export const TranscriptionBoard = ({
   }, []);
 
   const pinnedIds = pinnedCaptions.map((p) => p.id);
+  const captionRenderKeys = useMemo(() => {
+    const seen = new Map();
+    return captions.map((cap, i) => {
+      const base = cap?.id || `caption-${i}`;
+      const n = seen.get(base) || 0;
+      seen.set(base, n + 1);
+      return n === 0 ? base : `${base}-renderdup${n}`;
+    });
+  }, [captions]);
   const lastAudioChunkAt = connectProgress?.lastAudioChunkAt || 0;
-  const audioRecentlySent = connectionState === 'connected' && lastAudioChunkAt > 0 && sttNow - lastAudioChunkAt < 1800;
-  const transcriptLagMs = lastDataTime ? sttNow - lastDataTime : Number.POSITIVE_INFINITY;
-  const showSttPendingRail = audioRecentlySent && transcriptLagMs > 700;
+  const lastPipelineAt = Math.max(
+    lastAudioChunkAt,
+    connectProgress?.lastDeepgramMessageAt || 0,
+    connectProgress?.lastTranscriptStringAt || 0,
+    connectProgress?.lastCaptionCommitAt || 0,
+  );
+  const showSttPendingRail = connectionState === 'connected' && lastAudioChunkAt > 0 && sttNow - lastPipelineAt < 4500;
+  const showSttSoundbar = connectionState === 'connected';
+  const audioHot = lastAudioChunkAt > 0 && sttNow - lastAudioChunkAt < 1400;
+  const enConfidence = Number.isFinite(connectProgress?.lastSocketEnConfidence)
+    ? connectProgress.lastSocketEnConfidence
+    : null;
+  const esConfidence = Number.isFinite(connectProgress?.lastSocketEsConfidence)
+    ? connectProgress.lastSocketEsConfidence
+    : null;
+  const enRecent = (connectProgress?.lastSocketEnMessageAt || 0) > 0 && sttNow - connectProgress.lastSocketEnMessageAt < 4500;
+  const esRecent = (connectProgress?.lastSocketEsMessageAt || 0) > 0 && sttNow - connectProgress.lastSocketEsMessageAt < 4500;
+  const sttWinner =
+    enConfidence !== null && esConfidence !== null
+      ? enConfidence >= esConfidence ? 'en' : 'es'
+      : enConfidence !== null ? 'en' : esConfidence !== null ? 'es' : null;
+  const sttPipelineSteps = [
+    { key: 'heard', label: 'In', title: 'Sound heard by app', at: lastAudioChunkAt },
+    { key: 'sent', label: 'API', title: 'Sound sent to Deepgram', at: lastAudioChunkAt },
+    { key: 'dgmsg', label: 'DG', title: 'Deepgram answered', at: connectProgress?.lastDeepgramMessageAt || 0 },
+    { key: 'text', label: 'Text', title: 'Deepgram returned text', at: connectProgress?.lastTranscriptStringAt || 0 },
+    { key: 'commit', label: 'UI', title: 'Text committed to UI', at: connectProgress?.lastCaptionCommitAt || 0 },
+  ];
 
   /** One word count per silence-to-silence turn — show only on the last bubble of that turn. */
   const turnDisplayMeta = useMemo(() => {
@@ -970,6 +1058,26 @@ export const TranscriptionBoard = ({
         </div>
       )}
 
+      {showSttPendingRail && (
+        <div className="stt-process-rail" aria-live="polite">
+          {sttPipelineSteps.map((step) => (
+            <span
+              key={step.key}
+              className={`stt-process-step${step.at ? ' is-done' : ' is-waiting'}`}
+              title={step.at ? `${step.label}: ${sttNow - step.at}ms ago` : `${step.label}: waiting`}
+            >
+              <span className="stt-process-dot" />
+              {step.label}
+            </span>
+          ))}
+          {Number.isFinite(connectProgress?.lastTranscriptConfidence) && (
+            <span className="stt-process-confidence">
+              conf {Math.round(connectProgress.lastTranscriptConfidence * 100)}% · words {connectProgress?.lastWordConfidenceCount || 0}
+            </span>
+          )}
+        </div>
+      )}
+
       <div 
         className="scroll-area"
         style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column' }} 
@@ -1106,10 +1214,9 @@ export const TranscriptionBoard = ({
           return (
             <div
               ref={(node) => (isLive ? rememberLiveBubbleHeight(cap.id, node) : undefined)}
-              key={cap.id || i}
+              key={captionRenderKeys[i]}
               className={`transcript-bubble${isLive ? ' is-live' : ' is-sealed'}${isSplitContinuation ? ' is-flowed' : ''}${cap.userCorrected || cap.userTranslationOverride ? ' is-user-corrected' : ''}`}
               style={{
-              opacity: isLive ? 0.6 : 1,
               marginTop: isSplitContinuation ? '0rem' : '0.25rem',
               border: '1px solid transparent',
               background: bubbleStyle.backgroundColor,
@@ -1157,8 +1264,41 @@ export const TranscriptionBoard = ({
             </div>
           );
         })}
-        <div id="scroll-bottom-anchor" ref={bottomRef} style={{ height: '48px', flexShrink: 0, pointerEvents: 'none' }} />
+        <div id="scroll-bottom-anchor" ref={bottomRef} style={{ height: '22px', flexShrink: 0, pointerEvents: 'none' }} />
       </div>
+
+      {showSttSoundbar && (
+        <div className={`stt-process-rail stt-process-rail--bottom${audioHot ? ' is-audio-hot' : ''}`} aria-live="polite">
+          <div className="stt-sound-wave" title={audioHot ? 'Audio chunks are reaching the app and being sent to Deepgram' : 'Waiting for speech'}>
+            {Array.from({ length: 14 }).map((_, i) => <span key={i} style={{ '--bar-i': i }} />)}
+          </div>
+          {sttPipelineSteps.map((step) => (
+            <span
+              key={step.key}
+              className={`stt-process-step${step.at ? ' is-done' : ' is-waiting'}`}
+              title={step.at ? `${step.title || step.label}: ${sttNow - step.at}ms ago` : `${step.title || step.label}: waiting`}
+            >
+              <span className="stt-process-dot" />
+              {step.label}
+            </span>
+          ))}
+          <span
+            className={`stt-lane stt-lane--en${enRecent ? ' is-recent' : ''}${sttWinner === 'en' ? ' is-winner' : ''}`}
+            title={connectProgress?.lastSocketEnHadText ? 'EN socket returned text' : 'EN socket returned no text'}
+          >
+            EN {enConfidence === null ? '--' : `${Math.round(enConfidence * 100)}%`}
+          </span>
+          <span
+            className={`stt-lane stt-lane--es${esRecent ? ' is-recent' : ''}${sttWinner === 'es' ? ' is-winner' : ''}`}
+            title={connectProgress?.lastSocketEsHadText ? 'ES socket returned text' : 'ES socket returned no text'}
+          >
+            ES {esConfidence === null ? '--' : `${Math.round(esConfidence * 100)}%`}
+          </span>
+          <span className="stt-process-confidence">
+            w{connectProgress?.lastWordConfidenceCount || 0}
+          </span>
+        </div>
+      )}
 
       <BubbleCorrectionEditor
         open={Boolean(correctionEditor)}

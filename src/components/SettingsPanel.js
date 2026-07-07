@@ -34,6 +34,12 @@ import {
   parseCssBackgroundUrl,
   saveThemePalette,
 } from '../utils/themePalette';
+import {
+  STT_LATENCY_CHANGED_EVENT,
+  STT_LATENCY_MODES,
+  loadSttLatencyMode,
+  saveSttLatencyMode,
+} from '../utils/deepgramListenConfig';
 
 const MOODS = ['auto', 'default', 'fast', 'chill'];
 const MOOD_LABELS = { auto: 'Trans Auto', default: 'Default', fast: 'Fast', chill: 'Chill' };
@@ -67,6 +73,7 @@ export default function SettingsPanel({
   const [themePalette, setThemePalette] = useState(loadThemePalette);
   const [themeStatus, setThemeStatus] = useState('');
   const [languagePair, setLanguagePair] = useState(loadLanguagePair);
+  const [sttLatencyMode, setSttLatencyMode] = useState(loadSttLatencyMode);
   const {
     currentSourceMode,
     switchAudioSourceMode,
@@ -108,6 +115,12 @@ export default function SettingsPanel({
   useEffect(() => {
     if (open) setSection(initialSection);
   }, [open, initialSection]);
+
+  useEffect(() => {
+    const onLatencyChange = (e) => setSttLatencyMode(e.detail || loadSttLatencyMode());
+    window.addEventListener(STT_LATENCY_CHANGED_EVENT, onLatencyChange);
+    return () => window.removeEventListener(STT_LATENCY_CHANGED_EVENT, onLatencyChange);
+  }, []);
 
   if (!open) return null;
 
@@ -214,6 +227,27 @@ export default function SettingsPanel({
               </div>
             )}
             <DeepgramKeyVault embedded />
+            <div style={{ marginTop: 12 }}>
+              <div style={{ fontSize: 11, color: '#93c5fd', marginBottom: 6 }}>STT latency mode</div>
+              <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>
+                {Object.values(STT_LATENCY_MODES).map((mode) => (
+                  <button
+                    key={mode.id}
+                    type="button"
+                    onClick={() => saveSttLatencyMode(mode.id)}
+                    style={{
+                      ...tabBtn,
+                      background: sttLatencyMode === mode.id ? 'rgba(34, 211, 238, 0.22)' : tabBtn.background,
+                    }}
+                  >
+                    {mode.label}
+                  </button>
+                ))}
+              </div>
+              <p style={{ fontSize: 10, color: 'rgba(255,255,255,0.5)', margin: '6px 0 0' }}>
+                FAST = 100ms chunks + endpointing 150 (reconnects live audio). BAL = steadier 250ms / 300ms.
+              </p>
+            </div>
           </div>
         )}
 

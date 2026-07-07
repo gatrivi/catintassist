@@ -2,6 +2,35 @@
 
 Short operator-readable notes for recent Codex work. Use this when you want to catch up fast without reading chat history.
 
+## v4.80.2 - STT render recovery
+- Problem: transcription felt slow; live text shrank mid-speech; confidence coloring was invisible.
+- Change: STT FAST/BAL toggle (default FAST); 100ms chunks + endpointing 150; ScrambleText liveMode append-only; tiered confidence colors (white/slate/yellow); pending "Hearing audio" rail re-enabled; live bubble no longer 0.6 opacity.
+- Verify: corner **v4.80.2**; speak → `w{N}` > 0 in bottom soundbar; low-confidence words yellow; text never shrinks on live tail; STT:FAST pill in header toggles to BAL and reconnects.
+
+## v4.80.1 - render key guard
+- Problem: React kept warning about duplicate caption keys such as `dg-en-327.31-i`, which can break live text identity and animation.
+- Change: `TranscriptionBoard` now generates unique render keys even when old persisted captions contain duplicate ids; QuickNotes debug spam was removed.
+- Why it matters: live transcript rows should update more predictably during interim Deepgram replacements.
+- Verify: browser console should not repeat duplicate key warnings after a hard refresh and new captions.
+
+## v4.80.0 - live text identity
+- Problem: live text animation did not visibly appear, and duplicate ids could destabilize React rendering.
+- Change: `ScrambleText` now reveals from empty text; `captionEngine` forces unique ids and has a focused test.
+- Why it matters: live transcript updates should animate and avoid duplicate-key render bugs.
+- Verify: `npm.cmd test -- --runTestsByPath src\utils\captionEngine.test.js --watchAll=false --silent`.
+
+## v4.79.9 - STT bottom soundbar
+- Problem: STT status was either invisible, late, or too verbose.
+- Change: added one-row bottom STT soundbar; added `words=true` to Deepgram websocket URL for per-word confidence.
+- Why it matters: operator can see audio in, API send, Deepgram response, text, UI commit, and EN/ES confidence without consuming bubble space.
+- Verify: during speech, bottom waveform animates and console trace shows `wordConfidenceCount`.
+
+## v4.79.7 - STT trace rail
+- Problem: it was unclear whether failure was audio capture, Deepgram, caption engine, or render.
+- Change: added `[CAT STT]` logs and `window.__catintSttTrace`.
+- Why it matters: soft-outage diagnosis is now stage-based.
+- Verify: run `window.__catintSttTrace` in browser console.
+
 ## v4.78.8 - STT pending rail
 - Problem: audio could reach Deepgram for several seconds before any transcript appeared, especially during phone numbers.
 - Change: `useDeepgram` now tracks `lastAudioChunkAt`; `TranscriptionBoard` shows a temporary "Hearing audio... / Waiting for Deepgram text..." row before text arrives.

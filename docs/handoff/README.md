@@ -1,11 +1,11 @@
-# Agent Handoff Index (v4.76.0)
+# Agent Handoff Index (v4.80.1)
 
 **Read first:** [`00_global_rules.md`](00_global_rules.md)
 
 Outside agents: pick **one** spec below. Do not re-read the whole repo.
 
 ## Current app version
-Top-right must show **v4.76.0** after this ship.
+Top-right must show **v4.80.2** after this ship.
 
 ## What's new (docs)
 - [`docs/transcription-pane/corrections.md`](../transcription-pane/corrections.md) — bubble teach feature
@@ -16,7 +16,7 @@ Top-right must show **v4.76.0** after this ship.
 1. Read global rules + your task spec
 2. Touch only files listed in that spec
 3. `npm test` + `npm run build`
-4. Bump version in `src/App.js` + `src/components/SettingsPanel.js`
+4. Bump version in `src/constants/version.js`, `package.json`, and `package-lock.json`
 5. Push to `master` (user pulls live)
 
 ## Task specs (priority order)
@@ -29,6 +29,7 @@ Top-right must show **v4.76.0** after this ship.
 | 4 | Transcript corrections | [`04_transcript_corrections.md`](04_transcript_corrections.md) | **SHIPPED v4.76.0** — [`corrections.md`](../transcription-pane/corrections.md) |
 | 5 | Scoreboard polish | [`03_scoreboard.md`](03_scoreboard.md) | `GameScoreboard.js`, `DashboardHeader.js` |
 | 6 | Auth + DB (future) | [`06_auth_db.md`](06_auth_db.md) | read only until approved |
+| 7 | STT soft outage | [`07_stt_soft_outage.md`](07_stt_soft_outage.md) | `useDeepgram.js`, `captionEngine.js`, `TranscriptionBoard.js` |
 
 ## Also read
 - [`docs/cursor-agent/README.md`](../cursor-agent/README.md) — touch-only file table

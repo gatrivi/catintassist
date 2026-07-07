@@ -249,4 +249,12 @@ describe("captionEngine", () => {
     const b = [{ id: "1", text: "hi", isFinal: false, wordConfidence: [{ word: "hi", confidence: 0.5 }] }];
     expect(captionsSnapshotEqual(a, b)).toBe(false);
   });
+
+  test("mergeCaptionsForUi makes duplicate ids unique", () => {
+    const rows = mergeCaptionsForUi({
+      finals: [{ id: "dg-en-1-i", isFinal: true }, { id: "dg-en-1-i", isFinal: true }],
+      liveDraft: { id: "dg-en-1-i", isFinal: false },
+    });
+    expect(new Set(rows.map((r) => r.id)).size).toBe(rows.length);
+  });
 });

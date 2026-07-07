@@ -52,6 +52,12 @@ import { SlotMicroValue } from './SlotMicroValue';
 import { hasConfiguredDeepgramKey, isRememberExpired, needsUserSuppliedDeepgramKey } from '../utils/deepgramRuntimeKey';
 import { dispatchOpenDeepgramSettings } from '../utils/deepgramSettingsPrompt';
 import {
+  STT_LATENCY_CHANGED_EVENT,
+  getSttLatencyConfig,
+  loadSttLatencyMode,
+  saveSttLatencyMode,
+} from '../utils/deepgramListenConfig';
+import {
   canUseTabCapture,
   isLikelyEmbeddedPreviewBrowser,
 } from '../utils/audioSourceManager';
@@ -375,6 +381,15 @@ const SessionControlsSticky = React.memo(({
   const showConnecting = isActive && connectionState !== 'connected';
   const isConnectionError = connectionState === 'error';
   const slackText = `SLACK ${formatTime(silenceCount)}`;
+  const [sttLatencyMode, setSttLatencyMode] = useState(loadSttLatencyMode);
+
+  useEffect(() => {
+    const onLatencyChange = (e) => setSttLatencyMode(e.detail || loadSttLatencyMode());
+    window.addEventListener(STT_LATENCY_CHANGED_EVENT, onLatencyChange);
+    return () => window.removeEventListener(STT_LATENCY_CHANGED_EVENT, onLatencyChange);
+  }, []);
+
+  const sttLatencyLabel = getSttLatencyConfig(sttLatencyMode).label;
 
   const offCallStatusText = buildOffCallStatus({
     settingsOpen,
@@ -554,6 +569,29 @@ const SessionControlsSticky = React.memo(({
           </button>
           </ElementHintTarget>
         )}
+
+        <button
+          id="header-stt-latency-btn"
+          type="button"
+          className="btn-icon tiny-btn"
+          onClick={() => saveSttLatencyMode(sttLatencyMode === 'fast' ? 'balanced' : 'fast')}
+          style={{
+            height: '26px',
+            padding: '0 6px',
+            fontSize: '0.58rem',
+            fontWeight: 800,
+            letterSpacing: '0.03em',
+            background: sttLatencyMode === 'fast'
+              ? 'rgba(34, 211, 238, 0.18)'
+              : 'rgba(255,255,255,0.06)',
+            border: sttLatencyMode === 'fast'
+              ? '1px solid rgba(34, 211, 238, 0.45)'
+              : '1px solid rgba(255,255,255,0.1)',
+          }}
+          title="STT speed — FAST = lower latency (reconnects). BAL = steadier interims."
+        >
+          STT:{sttLatencyLabel}
+        </button>
 
         {!isActive && onOpenGoalDial && (
           <ElementHintTarget

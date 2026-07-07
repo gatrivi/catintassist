@@ -47,10 +47,21 @@ const sliceWordConfidenceForText = (wordConfidence, text, offset = 0) => {
 const wordConfidenceKey = (words) =>
   words?.length ? words.map((w) => `${w.word}:${Math.round((w.confidence ?? -1) * 100)}`).join("|") : "";
 
+const ensureUniqueCaptionIds = (rows) => {
+  const seen = new Map();
+  return (rows || []).map((row, idx) => {
+    const base = row?.id || `caption-${idx}`;
+    const count = seen.get(base) || 0;
+    seen.set(base, count + 1);
+    if (count === 0 && row?.id) return row;
+    return { ...row, id: `${base}-dup${count}` };
+  });
+};
+
 export const mergeCaptionsForUi = (state) => {
   const { finals, liveDraft } = state || createCaptionEngineState();
   const merged = liveDraft ? [...finals, liveDraft] : [...finals];
-  return merged.slice(-CAPTION_ROW_LIMIT);
+  return ensureUniqueCaptionIds(merged.slice(-CAPTION_ROW_LIMIT));
 };
 
 /** Cheap equality — skip React flush when live row unchanged. */
@@ -396,7 +407,7 @@ export const reduceTranscriptEvent = (prev, event, ctx) => {
     }
   }
 
-  return newArr.slice(-CAPTION_ROW_LIMIT);
+  return ensureUniqueCaptionIds(newArr.slice(-CAPTION_ROW_LIMIT));
 };
 
 /** Whether UI should flush immediately (final) vs throttle (interim only). */

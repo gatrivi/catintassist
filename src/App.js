@@ -196,13 +196,6 @@ const Dashboard = () => {
   const toggleQuickNotes = useCallback(() => {
     setIsNotesOpen((open) => {
       const next = !open;
-      console.info(`[QuickNotes] ${next ? "open requested" : "closed"}`, {
-        isActive,
-        isZombieCall,
-        hipaaGraceActive,
-        workspaceView,
-        isEditingBg,
-      });
       if (next) {
         if (isEditingBg) {
           showQuickNotesNotice("Quick notes blocked: close the soundboard/background editor first.");
@@ -213,17 +206,11 @@ const Dashboard = () => {
       }
       return next;
     });
-  }, [hipaaGraceActive, isActive, isEditingBg, isZombieCall, setIsNotesOpen, showQuickNotesNotice, workspaceView]);
+  }, [isEditingBg, setIsNotesOpen, showQuickNotesNotice]);
 
   useEffect(() => {
-    console.info("[QuickNotes] state", {
-      open: isNotesOpen,
-      panelMounted: isNotesOpen,
-      blockedByEditor: isEditingBg,
-      mode: isActive || isZombieCall || hipaaGraceActive ? "call" : workspaceView,
-    });
     if (isNotesOpen && !isEditingBg) focusQuickNotesSoon();
-  }, [hipaaGraceActive, isActive, isEditingBg, isNotesOpen, isZombieCall, workspaceView]);
+  }, [isEditingBg, isNotesOpen]);
   useEffect(() => {
     const onRuntime = () => setRuntimeKeyTick((t) => t + 1);
     const applySettingsOpen = (detail = {}) => {
@@ -322,7 +309,7 @@ const Dashboard = () => {
     setShellReady(true);
     // No forced Settings takeover — bottom banner nudges; user opens when ready.
     if (!hasConfiguredDeepgramKey()) return;
-    if (!isAppGuideDone()) {
+    if (process.env.NODE_ENV !== "development" && !isAppGuideDone()) {
       setTimeout(() => {
         window.dispatchEvent(new CustomEvent("cat_open_app_guide"));
       }, 500);
@@ -331,7 +318,9 @@ const Dashboard = () => {
 
   const [guideOverlayOpen, setGuideOverlayOpen] = useState(false);
   useEffect(() => {
-    const onOpen = () => setGuideOverlayOpen(true);
+    const onOpen = () => {
+      if (process.env.NODE_ENV !== "development") setGuideOverlayOpen(true);
+    };
     const onClose = () => setGuideOverlayOpen(false);
     window.addEventListener("cat_open_app_guide", onOpen);
     window.addEventListener("cat_guide_overlay_closed", onClose);

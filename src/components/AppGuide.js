@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { HelpIcon } from './HeaderIcons';
 import { isAppGuideDone, markAppGuideDone } from '../utils/appGuideStorage';
 import { loadGuideLang, saveGuideLang } from '../utils/guideLangStorage';
@@ -150,6 +151,7 @@ export const AppGuideButton = ({ className = '' }) => {
   const [open, setOpen] = useState(false);
   const [lang, setLang] = useState(loadGuideLang);
   const showPulse = !isAppGuideDone();
+  const guideDisabled = process.env.NODE_ENV === 'development';
 
   useEffect(() => {
     const openGuide = () => {
@@ -159,6 +161,8 @@ export const AppGuideButton = ({ className = '' }) => {
     window.addEventListener('cat_open_app_guide', openGuide);
     return () => window.removeEventListener('cat_open_app_guide', openGuide);
   }, []);
+
+  if (guideDisabled) return null;
 
   return (
     <>
@@ -171,7 +175,7 @@ export const AppGuideButton = ({ className = '' }) => {
       >
         <HelpIcon size={14} />
       </button>
-      {open && (
+      {open && createPortal(
         <AppGuideOverlay
           lang={lang}
           onLangChange={setLang}
@@ -179,7 +183,8 @@ export const AppGuideButton = ({ className = '' }) => {
             window.dispatchEvent(new CustomEvent('cat_guide_overlay_closed'));
             setOpen(false);
           }}
-        />
+        />,
+        document.body,
       )}
     </>
   );

@@ -28,7 +28,6 @@ import {
   LANG_PAIR_CHANGED_EVENT,
 } from "../utils/languageConfig";
 import {
-  INTERIM_THROTTLE_MS,
   mergeCaptionsForUi,
   splitCaptionRows,
   initEngineFromPersisted,
@@ -37,8 +36,17 @@ import {
   createCaptionEngineState,
   captionsSnapshotEqual,
 } from "../utils/captionEngine";
+import {
+  STT_LATENCY_CHANGED_EVENT,
+  buildListenUrl,
+  getInterimFlushMs,
+  getInterimProcessThrottleMs,
+  getMediaRecorderTimeslice,
+  loadSttLatencyMode,
+} from "../utils/deepgramListenConfig";
 
 const CAPTIONS_CLEARED_EVENT = "catint_captions_cleared";
+const STT_TRACE_LIMIT = 300;
 
 const TAB_STREAM_READY_KEY = "catint_tab_stream_ok_v1";
 const readTabStreamReady = () => {
@@ -158,6 +166,19 @@ export const useDeepgram = () => {
     socketEsClose: "",
     audioChunksSent: false,
     lastAudioChunkAt: 0,
+    lastAudioChunkSize: 0,
+    lastDeepgramMessageAt: 0,
+    lastTranscriptStringAt: 0,
+    lastCaptionCommitAt: 0,
+    lastTranscriptText: "",
+    lastTranscriptConfidence: null,
+    lastWordConfidenceCount: 0,
+    lastSocketEnMessageAt: 0,
+    lastSocketEsMessageAt: 0,
+    lastSocketEnConfidence: null,
+    lastSocketEsConfidence: null,
+    lastSocketEnHadText: false,
+    lastSocketEsHadText: false,
     transcriptReceived: false,
     lastCloseCode: null,
     lastCloseReason: null,
@@ -187,6 +208,7 @@ export const useDeepgram = () => {
   const interimFlushTimerRef = useRef(null);
   const lastInterimAtRef = useRef(0);
   const lastAudioProgressAtRef = useRef(0);
+  const sttLatencyModeRef = useRef(loadSttLatencyMode());
   const captionsHydratedRef = useRef(false);
 
   // After refresh there is no live MediaStream — clear stale tab-ready flag.
@@ -229,6 +251,19 @@ export const useDeepgram = () => {
     socketEsClose: "",
     audioChunksSent: false,
     lastAudioChunkAt: 0,
+    lastAudioChunkSize: 0,
+    lastDeepgramMessageAt: 0,
+    lastTranscriptStringAt: 0,
+    lastCaptionCommitAt: 0,
+    lastTranscriptText: "",
+    lastTranscriptConfidence: null,
+    lastWordConfidenceCount: 0,
+    lastSocketEnMessageAt: 0,
+    lastSocketEsMessageAt: 0,
+    lastSocketEnConfidence: null,
+    lastSocketEsConfidence: null,
+    lastSocketEnHadText: false,
+    lastSocketEsHadText: false,
     transcriptReceived: false,
     lastCloseCode: null,
     lastCloseReason: null,
@@ -241,6 +276,20 @@ export const useDeepgram = () => {
     connectFlagsRef.current = { ...connectFlagsRef.current, ...patch, lastUpdatedAt: Date.now() };
     setConnectProgress(connectFlagsRef.current);
   };
+
+  const sttTrace = useCallback((stage, data = {}) => {
+    if (typeof window === "undefined") return;
+    const entry = {
+      at: new Date().toISOString(),
+      ms: Math.round(performance.now()),
+      stage,
+      ...data,
+    };
+    const trace = (window.__catintSttTrace ??= []);
+    trace.push(entry);
+    if (trace.length > STT_TRACE_LIMIT) trace.splice(0, trace.length - STT_TRACE_LIMIT);
+    console.info(`[CAT STT] ${stage}`, entry);
+  }, []);
 
   const patchKeyProgress = useCallback(() => {
     const keyInfo = getDeepgramKeyInfo();
@@ -271,10 +320,11 @@ export const useDeepgram = () => {
 
   const scheduleInterimFlush = useCallback(() => {
     if (interimFlushTimerRef.current) return;
+    const flushMs = getInterimFlushMs(sttLatencyModeRef.current);
     interimFlushTimerRef.current = setTimeout(() => {
       interimFlushTimerRef.current = null;
       flushCaptionsToSession();
-    }, INTERIM_THROTTLE_MS);
+    }, flushMs);
   }, [flushCaptionsToSession]);
 
   // Hydrate engine once after IDB load — never re-sync on every flush (caused desync loops).
@@ -307,6 +357,19 @@ export const useDeepgram = () => {
       socketEsClose: "",
       audioChunksSent: false,
       lastAudioChunkAt: 0,
+      lastAudioChunkSize: 0,
+      lastDeepgramMessageAt: 0,
+      lastTranscriptStringAt: 0,
+      lastCaptionCommitAt: 0,
+      lastTranscriptText: "",
+      lastTranscriptConfidence: null,
+      lastWordConfidenceCount: 0,
+      lastSocketEnMessageAt: 0,
+      lastSocketEsMessageAt: 0,
+      lastSocketEnConfidence: null,
+      lastSocketEsConfidence: null,
+      lastSocketEnHadText: false,
+      lastSocketEsHadText: false,
       transcriptReceived: false,
       lastCloseCode: null,
       lastCloseReason: null,
@@ -631,24 +694,37 @@ export const useDeepgram = () => {
             mediaRecorderRef.current = new MediaRecorder(stream);
             mediaRecorderRef.current.addEventListener("dataavailable", (e) => {
               if (e.data.size > 0) {
+                const audioNow = Date.now();
                 let sentAny = false;
+                const lanes = [];
                 if (socketRefEn.current?.readyState === 1) {
                   sentAny = true;
+                  lanes.push("En");
                   socketRefEn.current.send(e.data);
                 }
                 if (!multiMode && socketRefEs.current?.readyState === 1) {
                   sentAny = true;
+                  lanes.push("Es");
                   socketRefEs.current.send(e.data);
                 }
                 const firstAudioChunk = sentAny && !connectFlagsRef.current.audioChunksSent;
                 if (sentAny) {
-                  const audioNow = Date.now();
                   if (
                     firstAudioChunk ||
                     audioNow - lastAudioProgressAtRef.current > 500
                   ) {
                     lastAudioProgressAtRef.current = audioNow;
-                    syncConnectProgress({ audioChunksSent: true, lastAudioChunkAt: audioNow });
+                    sttTrace("1 sound received + 2 sound sent", {
+                      bytes: e.data.size,
+                      type: e.data.type,
+                      lanes,
+                      firstAudioChunk,
+                    });
+                    syncConnectProgress({
+                      audioChunksSent: true,
+                      lastAudioChunkAt: audioNow,
+                      lastAudioChunkSize: e.data.size,
+                    });
                   }
                 }
                 if (firstAudioChunk) {
@@ -657,7 +733,9 @@ export const useDeepgram = () => {
                 }
               }
             });
-            mediaRecorderRef.current.start(250);
+            mediaRecorderRef.current.start(
+              getMediaRecorderTimeslice(sttLatencyModeRef.current),
+            );
 
           }
         } catch (err) {
@@ -669,7 +747,7 @@ export const useDeepgram = () => {
       };
 
       const createSocket = (lang, stream, { socketSide = "En", isFirst = false } = {}) => {
-        const url = `wss://api.deepgram.com/v1/listen?model=nova-2&smart_format=true&filler_words=true&language=${lang}&interim_results=true&endpointing=300`;
+        const url = buildListenUrl(lang, sttLatencyModeRef.current);
         const ws = new WebSocket(url, ["token", API_KEY]);
         const sk = socketSide === "En" ? "socketEn" : "socketEs";
         const skClose = socketSide === "En" ? "socketEnClose" : "socketEsClose";
@@ -694,6 +772,17 @@ export const useDeepgram = () => {
           } catch (_) {
             return;
           }
+          const dgMessageAt = Date.now();
+          const socketMsgPatch = socketSide === "En"
+            ? { lastSocketEnMessageAt: dgMessageAt }
+            : { lastSocketEsMessageAt: dgMessageAt };
+          sttTrace("3 Deepgram websocket message received", {
+            lang,
+            type: received?.type || "transcript",
+            isFinal: !!received?.is_final,
+            speechFinal: !!received?.speech_final,
+          });
+          syncConnectProgress({ lastDeepgramMessageAt: dgMessageAt, ...socketMsgPatch });
           const errType = (received?.type || "").toString().toLowerCase();
           if (errType === "error" || received?.error) {
             const errText =
@@ -712,7 +801,24 @@ export const useDeepgram = () => {
           }
           const alt = received.channel?.alternatives?.[0];
           const transcript = alt?.transcript;
-          if (!transcript || transcript.trim().length === 0) return;
+          const socketConfidencePatch = socketSide === "En"
+            ? {
+                lastSocketEnConfidence: alt?.confidence ?? 0,
+                lastSocketEnHadText: Boolean(transcript?.trim()),
+              }
+            : {
+                lastSocketEsConfidence: alt?.confidence ?? 0,
+                lastSocketEsHadText: Boolean(transcript?.trim()),
+              };
+          if (!transcript || transcript.trim().length === 0) {
+            syncConnectProgress(socketConfidencePatch);
+            sttTrace("4 Deepgram processed empty transcript", {
+              lang,
+              confidence: alt?.confidence ?? null,
+              words: alt?.words?.length || 0,
+            });
+            return;
+          }
 
           // CPU triage counters for the STT caption hot path. Expose via `window.__ciaPerf`.
           const perf =
@@ -729,6 +835,16 @@ export const useDeepgram = () => {
           const isFinal = received.is_final;
           const speechFinal = received.speech_final;
           const startTime = received.start ?? 0;
+          const wordConfidenceCount = (alt?.words || []).filter((w) => Number.isFinite(w?.confidence)).length;
+          sttTrace("4 Deepgram processed + 5 returned string", {
+            lang,
+            chars: transcript.length,
+            text: transcript.slice(0, 160),
+            confidence,
+            wordConfidenceCount,
+            isFinal: !!isFinal,
+            speechFinal: !!speechFinal,
+          });
 
           const socketLaneLang =
             lang === "multi"
@@ -752,6 +868,13 @@ export const useDeepgram = () => {
           if (!connectFlagsRef.current.transcriptReceived) {
             syncConnectProgress({ transcriptReceived: true, phase: "ready" });
           }
+          syncConnectProgress({
+            lastTranscriptStringAt: Date.now(),
+            lastTranscriptText: transcript.slice(0, 120),
+            lastTranscriptConfidence: confidence,
+            lastWordConfidenceCount: wordConfidenceCount,
+            ...socketConfidencePatch,
+          });
 
           if (isCallDetectionEnabled && confidence > 0.4) {
             updateActivity();
@@ -779,7 +902,11 @@ export const useDeepgram = () => {
           if (!shouldCaptureCaptionsRef.current) {
             if (!didLogCaptureGateWhileNotActiveRef.current && typeof window !== "undefined") {
               didLogCaptureGateWhileNotActiveRef.current = true;
-
+              sttTrace("blocked before render: capture gate off", {
+                isActive,
+                isZombieCall,
+                text: transcript.slice(0, 120),
+              });
             }
             return;
           }
@@ -788,7 +915,8 @@ export const useDeepgram = () => {
           const isFinalish = !!isFinal || !!speechFinal;
           if (!isFinalish) {
             const nowPerf = performance.now();
-            if (nowPerf - lastInterimAtRef.current < 200) return;
+            const interimGate = getInterimProcessThrottleMs(sttLatencyModeRef.current);
+            if (nowPerf - lastInterimAtRef.current < interimGate) return;
             lastInterimAtRef.current = nowPerf;
           }
 
@@ -820,6 +948,13 @@ export const useDeepgram = () => {
           );
           captionEngineRef.current = splitCaptionRows(newArr);
           const dt = performance.now() - t0;
+          sttTrace("6 caption engine committed", {
+            ms: Number(dt.toFixed(2)),
+            rows: newArr.length,
+            lastRowId: newArr[newArr.length - 1]?.id || null,
+            wordConfidenceCount,
+          });
+          syncConnectProgress({ lastCaptionCommitAt: Date.now() });
           if (perf) {
             perf.captionMs += dt;
             if (dt > 8 && process.env.NODE_ENV !== "production") {
@@ -933,6 +1068,7 @@ export const useDeepgram = () => {
       clearWatchdog,
       clearKeepalive,
       isLikelyApiKeyRejected,
+      sttTrace,
     ],
   );
 
@@ -1337,6 +1473,17 @@ export const useDeepgram = () => {
     };
     window.addEventListener(LANG_PAIR_CHANGED_EVENT, onPairChange);
     return () => window.removeEventListener(LANG_PAIR_CHANGED_EVENT, onPairChange);
+  }, []);
+
+  useEffect(() => {
+    const onLatencyChange = (e) => {
+      sttLatencyModeRef.current = e.detail || loadSttLatencyMode();
+      if (isActiveRef.current && streamRef.current) {
+        reconnectStreamRef.current?.();
+      }
+    };
+    window.addEventListener(STT_LATENCY_CHANGED_EVENT, onLatencyChange);
+    return () => window.removeEventListener(STT_LATENCY_CHANGED_EVENT, onLatencyChange);
   }, []);
 
   return {

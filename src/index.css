@@ -4234,12 +4234,162 @@ body:has(.app-container[data-call-mode="true"]) .element-hint-panel {
 
 .confidence-word {
   border-radius: 2px;
-  transition: opacity 120ms ease;
+  transition: color 160ms ease, opacity 160ms ease;
+}
+
+.confidence-word--mid {
+  color: #cbd5e1;
 }
 
 .confidence-word--low {
+  color: #fbbf24;
   text-decoration: underline dotted rgba(250, 204, 21, 0.85);
   text-underline-offset: 0.16em;
+}
+
+.confidence-word--tentative {
+  animation: confidenceTentativePulse 1.2s ease-in-out 1;
+}
+
+@keyframes confidenceTentativePulse {
+  0%, 100% { opacity: 0.72; }
+  50% { opacity: 1; }
+}
+
+.transcript-bubble.is-live {
+  border-color: rgba(56, 189, 248, 0.35) !important;
+  box-shadow: 0 0 0 1px rgba(56, 189, 248, 0.12), inset 0 0 12px rgba(56, 189, 248, 0.04);
+}
+
+.stt-process-rail {
+  position: absolute;
+  top: 2.7rem;
+  left: 0.55rem;
+  right: 0.55rem;
+  z-index: 900;
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  min-height: 30px;
+  padding: 0.25rem 0.4rem;
+  background: rgba(8, 13, 25, 0.82);
+  border: 1px solid rgba(96, 165, 250, 0.28);
+  border-radius: 6px;
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.28);
+  pointer-events: none;
+  overflow-x: auto;
+}
+
+.stt-process-rail--bottom {
+  position: static;
+  inset: auto;
+  z-index: 3;
+  flex: 0 0 26px;
+  min-height: 26px;
+  max-height: 26px;
+  border-left: none;
+  border-right: none;
+  border-radius: 0;
+  box-shadow: none;
+  background: rgba(6, 12, 22, 0.9);
+  overflow: hidden;
+  gap: 0.24rem;
+}
+
+.stt-sound-wave {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  width: 54px;
+  height: 18px;
+  flex: 0 0 54px;
+}
+
+.stt-sound-wave span {
+  width: 2px;
+  height: 4px;
+  border-radius: 99px;
+  background: rgba(148, 163, 184, 0.45);
+  transform-origin: center;
+}
+
+.stt-process-rail--bottom.is-audio-hot .stt-sound-wave span {
+  background: #22d3ee;
+  animation: sttSoundWave 640ms ease-in-out infinite;
+  animation-delay: calc(var(--bar-i) * 42ms);
+}
+
+@keyframes sttSoundWave {
+  0%, 100% { height: 4px; opacity: 0.45; }
+  50% { height: 17px; opacity: 1; }
+}
+
+.stt-lane {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 5.7ch;
+  padding: 0.05rem 0.28rem;
+  border-radius: 4px;
+  border: 1px solid rgba(148, 163, 184, 0.22);
+  color: rgba(226, 232, 240, 0.5);
+  font-size: 0.62rem;
+  font-weight: 900;
+  white-space: nowrap;
+}
+
+.stt-lane.is-recent {
+  color: rgba(226, 232, 240, 0.9);
+}
+
+.stt-lane.is-winner {
+  border-color: rgba(250, 204, 21, 0.75);
+  color: #facc15;
+  box-shadow: inset 0 0 0 1px rgba(250, 204, 21, 0.18);
+}
+
+.stt-process-step {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  white-space: nowrap;
+  font-size: 0.62rem;
+  font-weight: 800;
+  color: rgba(255, 255, 255, 0.42);
+}
+
+.stt-process-rail--bottom .stt-process-step {
+  gap: 0.16rem;
+  font-size: 0.58rem;
+}
+
+.stt-process-rail--bottom .stt-process-dot {
+  width: 0.34rem;
+  height: 0.34rem;
+}
+
+.stt-process-step.is-done {
+  color: rgba(255, 255, 255, 0.92);
+}
+
+.stt-process-dot {
+  width: 0.45rem;
+  height: 0.45rem;
+  border-radius: 999px;
+  background: rgba(148, 163, 184, 0.42);
+}
+
+.stt-process-step.is-done .stt-process-dot {
+  background: #22d3ee;
+  box-shadow: 0 0 8px rgba(34, 211, 238, 0.7);
+}
+
+.stt-process-confidence {
+  margin-left: auto;
+  white-space: nowrap;
+  font-size: 0.62rem;
+  color: #facc15;
+  font-weight: 800;
 }
 
 .zombie-reattach-banner {
@@ -4552,6 +4702,8 @@ body:has(.app-container[data-call-mode="true"]) .element-hint-panel {
   z-index: 25002;
   pointer-events: auto;
   padding: 0.85rem 1rem;
+  max-height: calc(100vh - 24px);
+  overflow: auto;
   border-radius: 10px;
   background: rgba(15, 23, 42, 0.98);
   border: 1px solid rgba(56, 189, 248, 0.35);
@@ -4600,6 +4752,11 @@ body:has(.app-container[data-call-mode="true"]) .element-hint-panel {
   gap: 0.35rem;
   justify-content: flex-end;
   flex-wrap: wrap;
+  position: sticky;
+  bottom: -0.85rem;
+  padding-top: 0.4rem;
+  padding-bottom: 0.2rem;
+  background: rgba(15, 23, 42, 0.98);
 }
 
 .app-guide-btn {
