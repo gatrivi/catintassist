@@ -38,6 +38,7 @@ Prod verification checklist:
 - [ ] EN/ES column tie-break sane ([`transcription-pane/README.md`](transcription-pane/README.md))
 - [x] Dev fixture harness (no tab capture) — [`development/transcription-test-harness.md`](development/transcription-test-harness.md) (v4.81.0)
 - [x] Translation reliability harness — applicator + fixtures + sealed IDB ([`development/translation-reliability-harness.md`](development/translation-reliability-harness.md)) (v4.82.0)
+- [x] Phase 0 Smoke Dashboard — operator checklist + live probes ([`development/phase0-smoke-dashboard.md`](development/phase0-smoke-dashboard.md)) (v4.83.0) — **marks still open until you smoke the real stack**
 
 **Code:** [`useTranslate.js`](../src/hooks/useTranslate.js) · [`useDeepgram.js`](../src/hooks/useDeepgram.js) · [`sensitiveDataProtector.js`](../src/utils/sensitiveDataProtector.js) · [`translationApplicator.js`](../src/utils/translationApplicator.js)
 

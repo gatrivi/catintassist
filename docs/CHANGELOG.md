@@ -4,6 +4,11 @@
 
 ---
 
+## v4.83.0 — Phase 0 Smoke Dashboard
+- Settings → Behavior → Phase 0 Smoke: operator checklist + live stack probes
+- Does not re-implement v4.81/v4.82; proves them on the real stack
+- `npm run test:phase0-smoke` · docs: `development/phase0-smoke-dashboard.md`
+
 ## v4.82.0 — Translation safety ledger
 - Pure `applyTranslationResult` — keyed `captionId::segmentId::sourceHash::targetLang`
 - Invariant: weaker never overwrites stronger (`preserved: true` / strength rank)

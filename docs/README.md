@@ -1,8 +1,9 @@
-# CatIntAssist Docs (v4.82.0)
+# CatIntAssist Docs (v4.83.0)
 
 This is the single source of truth for *documentation + onboarding*.
 
 ## What's new
+- **v4.83.0** — [`development/phase0-smoke-dashboard.md`](development/phase0-smoke-dashboard.md) — Phase 0 real-stack smoke checklist
 - **v4.82.0** — [`development/translation-reliability-harness.md`](development/translation-reliability-harness.md) — translation applicator + fixtures
 - **v4.81.0** — [`development/transcription-test-harness.md`](development/transcription-test-harness.md) — fixture replay without tab capture
 - **Operator work log:** [`WORK_LOG.md`](WORK_LOG.md)

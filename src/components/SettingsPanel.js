@@ -23,6 +23,7 @@ import {
 import { DevSimulatePanel } from './DevSimulatePanel';
 import { isDevSimEnabled } from '../utils/devSimulateCaptions';
 import { TestHarnessPanel, isTestHarnessEnabled } from './TestHarnessPanel';
+import { Phase0SmokeDashboard, isPhase0SmokeEnabled } from './Phase0SmokeDashboard';
 import { AuthPanel } from './AuthPanel';
 import { CorrectionsBackupPanel } from './CorrectionsBackupPanel';
 import { useAuth } from '../contexts/AuthContext';
@@ -422,6 +423,7 @@ export default function SettingsPanel({
             )}
             {isDevSimEnabled() && <DevSimulatePanel />}
             {isTestHarnessEnabled() && <TestHarnessPanel />}
+            {isPhase0SmokeEnabled() && <Phase0SmokeDashboard />}
             <div style={{ marginTop: 14, paddingTop: 10, borderTop: '1px solid rgba(255,255,255,0.08)' }}>
               <div style={{ fontSize: 11, color: '#93c5fd', marginBottom: 6 }}>TTS route test</div>
               <button
