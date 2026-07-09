@@ -78,7 +78,13 @@ export function splitCommittedAndTail(prevCommitted, nextText) {
 
 /**
  * Continuity keys for React list — prefer turnId so live id flips don't remount.
- * Live row always `cont:{turn}:live`. Sealed rows `cont:{turn}:s{n}:{id}`.
+ *
+ * v4.84.10 seal-in-place: every row is keyed by its seal ordinal `g{n}` within
+ * the turn; the live row inherits the ordinal it will get once sealed. So when
+ * a bubble seals (with or without split), the paragraph being read KEEPS its
+ * DOM node and position — only the small tail mounts as a new bubble below.
+ * (Old scheme keyed live as `:live`, so sealing remounted the whole paragraph
+ * elsewhere — the vanish/reappear the interpreter saw mid-read.)
  */
 export function buildCaptionContinuityKeys(captions = []) {
   const sealCountByTurn = new Map();
@@ -86,14 +92,9 @@ export function buildCaptionContinuityKeys(captions = []) {
 
   return captions.map((cap, i) => {
     const turn = cap?.turnId || cap?.id || `solo-${i}`;
-    let base;
-    if (cap?.isFinal === false) {
-      base = `cont:${turn}:live`;
-    } else {
-      const n = sealCountByTurn.get(turn) || 0;
-      sealCountByTurn.set(turn, n + 1);
-      base = `cont:${turn}:s${n}:${cap?.id || i}`;
-    }
+    const n = sealCountByTurn.get(turn) || 0;
+    if (cap?.isFinal !== false) sealCountByTurn.set(turn, n + 1);
+    const base = `cont:${turn}:g${n}`;
     const dup = seen.get(base) || 0;
     seen.set(base, dup + 1);
     return dup === 0 ? base : `${base}~${dup}`;

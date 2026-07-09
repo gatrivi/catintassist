@@ -18,6 +18,7 @@ import { StableLiveTranscriptText } from './StableLiveTranscriptText';
 import { buildCaptionContinuityKeys } from '../utils/stableLiveTranscript';
 import { alignWordConfidence, confidenceVisualFor } from '../utils/wordConfidenceAlign';
 import { flagVanish, traceCaptionArrayDiff, observeDomVanish } from '../utils/vanishTrace';
+import { nextLiveHeightLock } from '../utils/liveBubbleHeight';
 import { NewcomerIdleGuide } from './NewcomerIdleGuide';
 import { isNewcomerGuideDismissed } from '../utils/newcomerGuide';
 import { isTranslationStuckForRetranslate } from '../utils/translationQuality';
@@ -838,35 +839,17 @@ export const TranscriptionBoard = ({
   const rememberLiveBubbleHeight = useCallback((id, node, textLen = 0) => {
     if (!id || !node) return;
     const height = Math.ceil(node.getBoundingClientRect().height);
-    const prev = liveBubbleHeightsRef.current.get(id);
-    const prevH = prev?.height ?? 0;
-    const prevLen = prev?.textLen ?? 0;
-
-    // Text shorter than when lock was set → release / re-measure.
-    if (prev && textLen > 0 && textLen < prevLen - 2) {
-      liveBubbleHeightsRef.current.set(id, { height, textLen });
+    const action = nextLiveHeightLock(liveBubbleHeightsRef.current.get(id), height, textLen);
+    if (!action) return;
+    if (action.release) {
+      // v4.84.10: shrunk text must drop the lock entirely (old code re-locked at
+      // the inflated measured height — the "void" after seal-splits).
+      liveBubbleHeightsRef.current.delete(id);
       setLiveHeightRev((n) => n + 1);
       return;
     }
-
-    // Measured shrink > 8px → release lock (allow bubble to contract).
-    if (prevH > 0 && height < prevH - 8) {
-      liveBubbleHeightsRef.current.set(id, { height, textLen });
-      setLiveHeightRev((n) => n + 1);
-      return;
-    }
-
-    // Grow past anti-jitter (±2px) only.
-    if (height > prevH + 2) {
-      liveBubbleHeightsRef.current.set(id, { height, textLen });
-      setLiveHeightRev((n) => n + 1);
-      return;
-    }
-
-    // Keep textLen fresh even when height is stable.
-    if (prev && textLen !== prevLen) {
-      liveBubbleHeightsRef.current.set(id, { height: prevH || height, textLen });
-    }
+    liveBubbleHeightsRef.current.set(id, action.set);
+    if (action.rerender) setLiveHeightRev((n) => n + 1);
   }, []);
 
   useEffect(() => {

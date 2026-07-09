@@ -4,6 +4,14 @@
 
 ---
 
+## v4.84.10 — Seal-in-place: no remount on live→sealed
+- Continuity keys by seal ordinal (`g{n}`): live bubble keeps its DOM node when it seals or splits — only the tail mounts new. Kills the vanish/reappear-elsewhere mid-read
+- Height lock releases on text shrink (was re-locking at inflated height — the "void" after splits): `liveBubbleHeight.js`
+- Repro: `[CAT VANISH] caption_bubble_split` + `caption_split_or_append` on `dg-es-152.82-i` (training video 2026-07-09)
+
+## v4.84.9 — DOM vanish net
+- `observeDomVanish`: MutationObserver flags `dom_bubble_removed` / `dom_bubble_relocated` even when no words are lost
+
 ## v4.84.8 — Name chips: ES cues + accent fix
 - `mi nombre es Maria Lopez` → strong cue (lowercase OK); bare `soy Josefina` → weak cue (Capitalized required)
 - ES role/condition stopwords: `soy la intérprete` / `soy alérgica` / `Soy Diabética` never chip

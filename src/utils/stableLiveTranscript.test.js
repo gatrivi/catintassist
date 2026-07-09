@@ -42,17 +42,37 @@ describe('stableLiveTranscript', () => {
     expect(state.committed + state.tail).toBe(next);
   });
 
-  test('buildCaptionContinuityKeys keeps live key stable per turn', () => {
-    const liveOnly = buildCaptionContinuityKeys([
-      { id: 'dg-en-1-i', turnId: 'turn-1', isFinal: false, text: 'hello' },
+  test('buildCaptionContinuityKeys: live bubble seals IN PLACE (same key)', () => {
+    const beforeSeal = buildCaptionContinuityKeys([
+      { id: 'dg-en-1-i', turnId: 'turn-1', isFinal: false, text: 'Hello world' },
     ]);
-    expect(liveOnly[0]).toBe('cont:turn-1:live');
-
     const afterSeal = buildCaptionContinuityKeys([
-      { id: 'dg-en-1-f', turnId: 'turn-1', isFinal: true, text: 'Hello.' },
-      { id: 'dg-en-2-i', turnId: 'turn-1', isFinal: false, text: 'more' },
+      { id: 'dg-en-1-i', turnId: 'turn-1', isFinal: true, text: 'Hello world.' },
     ]);
-    expect(afterSeal[0]).toMatch(/^cont:turn-1:s0:/);
-    expect(afterSeal[1]).toBe('cont:turn-1:live');
+    // Same React key live → sealed: no remount, no vanish/reappear mid-read.
+    expect(afterSeal[0]).toBe(beforeSeal[0]);
+  });
+
+  test('buildCaptionContinuityKeys: seal-split keeps first chunk on the old node, only tail mounts new', () => {
+    const beforeSplit = buildCaptionContinuityKeys([
+      { id: 'dg-es-152.82-i', turnId: 'turn-9', isFinal: false, text: 'Frase uno. Frase dos. Okay' },
+    ]);
+    const afterSplit = buildCaptionContinuityKeys([
+      { id: 'dg-es-152.82-f-s0-1', turnId: 'turn-9', isFinal: true, text: 'Frase uno.' },
+      { id: 'dg-es-152.82-f-s1-2', turnId: 'turn-9', isFinal: true, text: 'Frase dos.' },
+      { id: 'dg-es-152.82-i', turnId: 'turn-9', isFinal: false, text: 'Okay' },
+    ]);
+    expect(afterSplit[0]).toBe(beforeSplit[0]); // first sealed chunk reuses the read node
+    expect(new Set(afterSplit).size).toBe(3); // no duplicate keys
+  });
+
+  test('buildCaptionContinuityKeys: next live row after seal gets the next ordinal', () => {
+    const keys = buildCaptionContinuityKeys([
+      { id: 'a', turnId: 'turn-1', isFinal: true, text: 'Hello.' },
+      { id: 'b', turnId: 'turn-1', isFinal: false, text: 'more' },
+      { id: 'c', turnId: 'turn-2', isFinal: false, text: 'other turn' },
+    ]);
+    expect(keys[0]).not.toBe(keys[1]);
+    expect(new Set(keys).size).toBe(3);
   });
 });
