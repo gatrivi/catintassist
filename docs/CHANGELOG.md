@@ -4,6 +4,12 @@
 
 ---
 
+## v4.84.1 — Continuity-preserving StableTextMorph
+- Live source: word-level `diffWordsStable` + `StableTextMorph` (A→B without blank remount)
+- Changed spans: brief `from ⇢ to` cue; protected tokens (phones/doses) never vanish
+- Reduced motion: instant highlighted patch (no typewriter)
+- ScrambleText remains for non-critical UI only
+
 ## v4.84.0 — Stable transcript display
 - Live STT source: no ScrambleText; single `StableLiveTranscriptText` path (committed prefix + uncertain tail)
 - Continuity keys by turnId so live id flips do not remount readable text
