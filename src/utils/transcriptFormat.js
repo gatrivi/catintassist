@@ -143,9 +143,14 @@ const NAME_STOPWORDS = new Set([
 
 /** Strong cues — capitalize not required (STT often lowercases). */
 const STRONG_NAME_CUE_PATTERNS = [
-  /\b(?:my|patient(?:'s)?)\s+name\s+is\s+([A-Za-zÁÉÍÓÚáéíóúñÑ][\wÁÉÍÓÚÜáéíóúüñÑ'.-]*(?:\s+[A-Za-zÁÉÍÓÚáéíóúñÑ][\wÁÉÍÓÚÜáéíóúüñÑ'.-]*){0,2})/gi,
+  // "the patient's name is, Juan" / "the patients name is, Juan" (commas + plural)
+  /\b(?:my|patient(?:'s|s)?)\s+name\s+is\s*[,.:;]?\s*([A-Za-zÁÉÍÓÚáéíóúñÑ][\wÁÉÍÓÚÜáéíóúüñÑ'.-]*(?:\s+[A-Za-zÁÉÍÓÚáéíóúñÑ][\wÁÉÍÓÚÜáéíóúüñÑ'.-]*){0,2})/gi,
   /\b(?:me llamo|se llama|mi nombre es)\s+([A-Za-zÁÉÍÓÚáéíóúñÑ][\wÁÉÍÓÚÜáéíóúüñÑ'.-]*(?:\s+[A-Za-zÁÉÍÓÚáéíóúñÑ][\wÁÉÍÓÚÜáéíóúüñÑ'.-]*){0,2})/gi,
   /\bDr\.?\s+([A-Za-zÁÉÍÓÚáéíóúñÑ][\wÁÉÍÓÚÜáéíóúüñÑ'.-]*(?:\s+[A-Za-zÁÉÍÓÚáéíóúñÑ][\wÁÉÍÓÚÜáéíóúüñÑ'.-]*){0,1})/gi,
+  // Name labels (so we catch "first name is" / "last name is" mid-sentence).
+  /\bfirst[- ]?name\s+(?:is\s+)?[,.:;]?\s*([A-Za-zÁÉÍÓÚáéíóúñÑ][\wÁÉÍÓÚÜáéíóúüñÑ'.-]*(?:\s+[A-Za-zÁÉÍÓÚáéíóúñÑ][\wÁÉÍÓÚÜáéíóúüñÑ'.-]*){0,1})/gi,
+  /\blast[- ]?name\s+(?:is\s+)?[,.:;]?\s*([A-Za-zÁÉÍÓÚáéíóúñÑ][\wÁÉÍÓÚÜáéíóúüñÑ'.-]*(?:\s+[A-Za-zÁÉÍÓÚáéíóúñÑ][\wÁÉÍÓÚÜáéíóúüñÑ'.-]*){0,1})/gi,
+  /\bsurname\s+(?:is\s+)?[,.:;]?\s*([A-Za-zÁÉÍÓÚáéíóúñÑ][\wÁÉÍÓÚÜáéíóúüñÑ'.-]*(?:\s+[A-Za-zÁÉÍÓÚáéíóúñÑ][\wÁÉÍÓÚÜáéíóúüñÑ'.-]*){0,1})/gi,
 ];
 
 /** Weak cues — first token must be Capitalized (blocks I'm sorry). */
@@ -167,7 +172,7 @@ export const isPlausibleCopyableName = (value, { requireCapitalized = false } = 
   if (!cleaned || cleaned.length < 2) return false;
   const tokens = cleaned.split(/\s+/);
   if (tokens.some((t) => NAME_STOPWORDS.has(tokenStem(t)))) return false;
-  if (requireCapitalized && !/^[A-ZÁÉÍÓÚÑ]/.test(tokens[0])) return false;
+  if (requireCapitalized && !/^[A-ZÁÉÍÓÚÑÜ]/.test(tokens[0])) return false;
   return true;
 };
 

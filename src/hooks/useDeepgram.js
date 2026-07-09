@@ -533,7 +533,7 @@ export const useDeepgram = () => {
       });
       if (cat === FAILURE.AUTH || isLikelyApiKeyRejected(message)) setApiKeyRejected(true);
     },
-    [clearWatchdog, clearKeepalive, isLikelyApiKeyRejected],
+    [clearWatchdog, clearKeepalive, isLikelyApiKeyRejected, critLog],
   );
 
   const scheduleConnectFail = useCallback(
@@ -1071,6 +1071,7 @@ export const useDeepgram = () => {
       clearKeepalive,
       isLikelyApiKeyRejected,
       sttTrace,
+      critLog,
     ],
   );
 
@@ -1155,7 +1156,7 @@ export const useDeepgram = () => {
       setVirtualCableFailure(null);
       return true;
     },
-    [bindStreamLifecycle, startDeepgram],
+    [bindStreamLifecycle, startDeepgram, critLog],
   );
 
   const startRecording = useCallback(async () => {
@@ -1447,7 +1448,7 @@ export const useDeepgram = () => {
         startRecording();
       }
     }, 400);
-  }, [closeConnections, startDeepgram, startRecording, clearWatchdog, resetConnectProgress]);
+  }, [closeConnections, startDeepgram, startRecording, clearWatchdog, resetConnectProgress, critLog]);
 
   const toggleLanguage = useCallback(() => {
     setSttLanguage((prev) => {

@@ -39,6 +39,11 @@ describe('extractCopyableNames', () => {
     expect(names[0]?.value).toBe('John Smith');
   });
 
+  test('finds patient name in mid-sentence (plural + comma after is)', () => {
+    const names = extractCopyableNames("and the patients name is, Juan Carlos");
+    expect(names[0]?.value).toBe('Juan Carlos');
+  });
+
   test('finds Dr name', () => {
     const names = extractCopyableNames('seen by Dr Jane Doe');
     expect(names.some((n) => n.value.includes('Jane'))).toBe(true);
@@ -71,6 +76,12 @@ describe('extractCopyableNames', () => {
 
   test('Dr. Perez produces chip', () => {
     expect(extractCopyableNames('seen by Dr. Perez')[0]?.value).toBe('Perez');
+  });
+
+  test('finds first/last name labels', () => {
+    const names = extractCopyableNames("the patient's first name is John, last name is Smith");
+    expect(names.some((n) => n.value === 'John')).toBe(true);
+    expect(names.some((n) => n.value === 'Smith')).toBe(true);
   });
 
   test('mi nombre es Maria Lopez produces chip', () => {
