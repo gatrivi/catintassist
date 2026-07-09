@@ -68,6 +68,7 @@ export const buildOffCallStatusLabel = ({
   if (vaultStatus === 'unlocking') return 'Unlocking key…';
   if (connectionState === 'connecting') return connectionMessage || 'Connecting…';
   if (connectionState === 'error') return 'Deepgram error';
+  if (connectionState === 'disconnected' && connectionMessage) return connectionMessage;
   if (isRememberExpired() && apiKeyMissing) return 'Key session expired';
   if (vaultNeedsDecrypt) return 'Deepgram locked';
   if (apiKeyMissingNoVault) return 'No Deepgram key';

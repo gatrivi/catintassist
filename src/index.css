@@ -2267,6 +2267,52 @@ body {
   flex-shrink: 0;
 }
 
+.audio-route-hint-chip {
+  font-size: 0.58rem;
+  font-weight: 700;
+  color: #93c5fd;
+  border: 1px solid rgba(59, 130, 246, 0.28);
+  background: rgba(59, 130, 246, 0.1);
+  padding: 0.1rem 0.35rem;
+  border-radius: 4px;
+  flex-shrink: 0;
+}
+
+.audio-route-source-toggle {
+  display: inline-flex;
+  gap: 2px;
+  flex-shrink: 0;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 5px;
+  overflow: hidden;
+  background: rgba(0, 0, 0, 0.2);
+}
+
+.audio-route-source-btn {
+  border: none;
+  background: transparent;
+  color: rgba(226, 232, 240, 0.75);
+  font-size: 0.62rem;
+  font-weight: 800;
+  line-height: 1;
+  padding: 0.2rem 0.42rem;
+  min-height: 22px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.audio-route-source-btn.is-active.is-tab {
+  background: rgba(59, 130, 246, 0.28);
+  color: #bfdbfe;
+  box-shadow: inset 0 0 0 1px rgba(59, 130, 246, 0.45);
+}
+
+.audio-route-source-btn.is-active.is-cable {
+  background: rgba(245, 158, 11, 0.22);
+  color: #fde68a;
+  box-shadow: inset 0 0 0 1px rgba(245, 158, 11, 0.5);
+}
+
 .audio-route-more-panel {
   display: flex;
   align-items: center;

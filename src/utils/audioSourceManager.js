@@ -171,10 +171,21 @@ export const isLikelyEmbeddedPreviewBrowser = () => {
   }
 };
 
+/** User closed the browser tab-share picker without picking. */
+export const isTabCaptureUserCancel = (err) => err?.name === "AbortError";
+
 /** Plain-language tab capture errors for Connect UI. */
 export const classifyTabCaptureError = (err) => {
   const name = err?.name || "";
   const embedded = isLikelyEmbeddedPreviewBrowser();
+
+  if (name === "AbortError") {
+    return {
+      message: "Tab share cancelled — press Connect when ready.",
+      suggestMicFallback: false,
+      userCancelled: true,
+    };
+  }
 
   if (name === "NotSupportedError" || !canUseTabCapture()) {
     return {
@@ -188,12 +199,6 @@ export const classifyTabCaptureError = (err) => {
     return {
       message: "Tab sharing was blocked. Allow it in the browser prompt, or use 🎤 mic mode.",
       suggestMicFallback: true,
-    };
-  }
-  if (name === "AbortError") {
-    return {
-      message: "Tab sharing was cancelled. Press Connect again and pick a tab with Share audio checked.",
-      suggestMicFallback: false,
     };
   }
   return {

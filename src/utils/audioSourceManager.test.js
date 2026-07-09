@@ -16,6 +16,7 @@ import {
   pickVbCableSttInputDevice,
   canUseTabCapture,
   classifyTabCaptureError,
+  isTabCaptureUserCancel,
   isLikelyEmbeddedPreviewBrowser,
 } from "./audioSourceManager";
 
@@ -84,13 +85,6 @@ describe("audioSourceManager", () => {
     ).toBe(true);
   });
 
-  test("VB-Cable device label helpers distinguish in vs out", () => {
-    expect(isVbCableSttInputLabel("CABLE Output (VB-Audio Virtual Cable)")).toBe(true);
-    expect(isVbCableSttInputLabel("CABLE Input (VB-Audio Virtual Cable)")).toBe(false);
-    expect(isVbCableSinkLabel("CABLE Input (VB-Audio Virtual Cable)")).toBe(true);
-    expect(isVbCableSinkLabel("CABLE Output (VB-Audio Virtual Cable)")).toBe(false);
-  });
-
   test("pick helpers choose cable devices from lists", () => {
     const inputs = [
       { deviceId: "mic1", label: "Realtek Mic", kind: "audioinput" },
@@ -102,6 +96,19 @@ describe("audioSourceManager", () => {
     ];
     expect(pickVbCableSttInputDevice(inputs)).toBe("cable-out");
     expect(pickVbCableSinkDevice(outputs)).toBe("cable-in");
+  });
+
+  test("VB-Cable device label helpers distinguish in vs out", () => {
+    expect(isVbCableSttInputLabel("CABLE Output (VB-Audio Virtual Cable)")).toBe(true);
+    expect(isVbCableSttInputLabel("CABLE Input (VB-Audio Virtual Cable)")).toBe(false);
+    expect(isVbCableSinkLabel("CABLE Input (VB-Audio Virtual Cable)")).toBe(true);
+    expect(isVbCableSinkLabel("CABLE Output (VB-Audio Virtual Cable)")).toBe(false);
+  });
+
+  test("tab share cancel is detected", () => {
+    const err = { name: "AbortError", message: "The user aborted a request." };
+    expect(isTabCaptureUserCancel(err)).toBe(true);
+    expect(isTabCaptureUserCancel({ name: "NotAllowedError" })).toBe(false);
   });
 });
 

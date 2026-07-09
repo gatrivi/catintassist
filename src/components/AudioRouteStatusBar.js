@@ -1,7 +1,7 @@
 import React, { useMemo, useState, useEffect } from 'react';
 import { useAudioSettings } from '../contexts/AudioSettingsContext';
 import { useAudioSource } from '../hooks/useAudioSource';
-import { AUDIO_SOURCE_MODE_VIRTUAL_CABLE } from '../utils/audioSourceManager';
+import { AUDIO_SOURCE_MODE_TAB, AUDIO_SOURCE_MODE_VIRTUAL_CABLE } from '../utils/audioSourceManager';
 import { truncateDeviceLabel } from '../utils/audioSelfTest';
 import { ElementHintTarget } from './ElementHint';
 import {
@@ -85,10 +85,14 @@ export const AudioRouteStatusBar = ({
     selectedInputDeviceId: selectedCableInputId,
     refreshSelectedDeviceId: changeCableInputId,
     refreshInputDevices: refreshCableInputDevices,
+    switchAudioSourceMode,
+    currentSourceMode,
   } = useAudioSource();
   useComponentVisibilityRefresh();
   const showMicMeter = isComponentVisible('mic_meter_strip', { isActive, isZombieCall });
-  const isCableMode = configuredAudioSourceMode === AUDIO_SOURCE_MODE_VIRTUAL_CABLE;
+  const mobileMicMode = micTestMode;
+  const isCableMode = (configuredAudioSourceMode || currentSourceMode) === AUDIO_SOURCE_MODE_VIRTUAL_CABLE;
+  const isTabMode = !isCableMode && !mobileMicMode;
 
   useEffect(() => {
     fetchDevices({ requestMicPermissionForLabels: false });
@@ -128,7 +132,11 @@ export const AudioRouteStatusBar = ({
     attachedAudioSourceMode === 'virtualCable' ? 'virtualCable' : 'tab';
   const isModeMismatch =
     isActive && configuredAudioSourceMode !== attachedSettingsMode;
-  const mobileMicMode = micTestMode;
+
+  const routeTabLabel = isTabMode && (tabStreamReady || audioAttached) ? 'Tab ✓' : 'Tab';
+  const routeCableLabel = isCableMode
+    ? (cableStreamReady || isCableAttached ? 'VB ✓' : 'VB ON')
+    : 'VB Cable';
 
   const sttInLabel = isMicAttached
     ? 'Mic STT'
@@ -235,6 +243,31 @@ export const AudioRouteStatusBar = ({
       title={`Audio I/O · v${APP_VERSION}`}
     >
       <div className="audio-route-status-main">
+        {!mobileMicMode && (
+          <div className="audio-route-source-toggle" role="group" aria-label="STT route">
+            <button
+              type="button"
+              id="audio-route-tab-mode-btn"
+              className={`audio-route-source-btn${isTabMode ? ' is-active is-tab' : ''}`}
+              onClick={() => switchAudioSourceMode(AUDIO_SOURCE_MODE_TAB)}
+              aria-pressed={isTabMode}
+              title="Tab share STT — browser picks the interpreting tab"
+            >
+              {routeTabLabel}
+            </button>
+            <button
+              type="button"
+              id="audio-route-cable-mode-btn"
+              className={`audio-route-source-btn${isCableMode ? ' is-active is-cable' : ''}`}
+              onClick={() => switchAudioSourceMode(AUDIO_SOURCE_MODE_VIRTUAL_CABLE)}
+              aria-pressed={isCableMode}
+              title="VB-Cable STT — CABLE Output feeds Deepgram (no tab picker)"
+            >
+              {routeCableLabel}
+            </button>
+          </div>
+        )}
+
         {isCableMode && !mobileMicMode && (
           <label className="audio-route-device-pick" title={`STT in: ${cableInLabel}`}>
             <span className="audio-route-device-pick-label">📥</span>
@@ -372,10 +405,16 @@ export const AudioRouteStatusBar = ({
             className="audio-route-inline-btn"
             style={{ ...btn, borderColor: 'rgba(59,130,246,0.45)', color: '#93c5fd' }}
             onClick={onSwitchToTabShare}
-            title="Fallback: switch STT to tab share (keeps VB out for greetings)"
+            title="Live fallback: switch STT to tab share now (opens tab picker)"
           >
-            Tab backup
+            → Tab
           </button>
+        )}
+
+        {isTabMode && connectionState === 'disconnected' && !audioAttached && (
+          <span className="audio-route-hint-chip" title="Press Connect — pick tab + check Share audio">
+            Connect picks tab
+          </span>
         )}
 
         {!virtualCableFailure && isModeMismatch && onReconnectAudioSource && (

@@ -15,6 +15,7 @@ import {
   readAudioSourceMode,
   buildVirtualCableFailureUiState,
   classifyTabCaptureError,
+  isTabCaptureUserCancel,
 } from "../utils/audioSourceManager";
 import {
   acquireInputSource,
@@ -397,6 +398,32 @@ export const useDeepgram = () => {
     if (watchdogTimeoutRef.current) clearTimeout(watchdogTimeoutRef.current);
     watchdogTimeoutRef.current = null;
   }, []);
+
+  /** User cancelled tab picker — calm reset, not a Deepgram error. */
+  const abortConnectAttempt = useCallback((message) => {
+    isActiveRef.current = false;
+    reconnectAttemptsRef.current = 0;
+    clearWatchdog();
+    clearKeepalive();
+    if (connectFailTimerRef.current) {
+      clearTimeout(connectFailTimerRef.current);
+      connectFailTimerRef.current = null;
+    }
+    setConnectionState("disconnected");
+    setConnectionMessage(message || "Tab share cancelled — press Connect when ready.");
+    const keyInfo = getDeepgramKeyInfo();
+    syncConnectProgress({
+      phase: "idle",
+      lastError: null,
+      keyResolved: !!keyInfo.key,
+      keySource: keyInfo.source,
+      keyMasked: keyInfo.masked,
+      audioStreamReady: false,
+      socketsOpen: false,
+      socketEn: "pending",
+      socketEs: "pending",
+    });
+  }, [clearWatchdog, clearKeepalive]);
 
   // Only store transcript bubbles during an active or zombie-resumed call.
   useEffect(() => {
@@ -1236,6 +1263,10 @@ export const useDeepgram = () => {
 
       if (attemptedSource === "tab" && !micTestModeRef.current) {
         const tabErr = classifyTabCaptureError(err);
+        if (isTabCaptureUserCancel(err)) {
+          abortConnectAttempt(tabErr.message);
+          return false;
+        }
         if (tabErr.suggestMicFallback) {
           try {
             setConnectionState("connecting");
@@ -1273,7 +1304,7 @@ export const useDeepgram = () => {
       syncConnectProgress({ phase: "error", lastError: msg });
       return false;
     }
-  }, [beginStream, startDeepgram, clearWatchdog, setMicTestMode, resetConnectProgress]);
+  }, [beginStream, startDeepgram, clearWatchdog, setMicTestMode, resetConnectProgress, abortConnectAttempt]);
 
   // Force re-open picker (tab) or re-request mic (double-tap connect).
   const startRecordingFresh = useCallback(async () => {
@@ -1341,6 +1372,10 @@ export const useDeepgram = () => {
 
       if (attemptedSource === "tab" && !micTestModeRef.current) {
         const tabErr = classifyTabCaptureError(err);
+        if (isTabCaptureUserCancel(err)) {
+          abortConnectAttempt(tabErr.message);
+          return false;
+        }
         if (tabErr.suggestMicFallback) {
           try {
             setConnectionState("connecting");
@@ -1377,7 +1412,7 @@ export const useDeepgram = () => {
       syncConnectProgress({ phase: "error", lastError: msg });
       return false;
     }
-  }, [beginStream, closeConnections, stopStreamTracks, clearWatchdog, setMicTestMode, resetConnectProgress]);
+  }, [beginStream, closeConnections, stopStreamTracks, clearWatchdog, setMicTestMode, resetConnectProgress, abortConnectAttempt]);
 
   /**
    * Safe in-call audio source switching:
