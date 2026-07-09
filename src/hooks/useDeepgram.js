@@ -239,6 +239,25 @@ export const useDeepgram = () => {
     setConnectProgress(connectFlagsRef.current);
   };
 
+  // Critical-only console logs for outage hotfixing.
+  // Ponytail: time gate prevents reconnect loops from flooding logs.
+  const lastCritLogAtRef = useRef(0);
+  const critLog = useCallback((level, message, extra = {}) => {
+    try {
+      const now = Date.now();
+      if (now - lastCritLogAtRef.current < 5000) return;
+      lastCritLogAtRef.current = now;
+      const phase = connectFlagsRef.current?.phase;
+      const attemptId = connectAttemptIdRef.current;
+      console[level](`[CAT STT CRIT] ${message}`, {
+        phase,
+        attemptId,
+        isActive: isActiveRef.current,
+        ...extra,
+      });
+    } catch (_) {}
+  }, []);
+
   const sttTrace = useCallback((stage, data = {}) => {
     if (typeof window === "undefined") return;
     const entry = {
@@ -467,6 +486,14 @@ export const useDeepgram = () => {
 
   const failConnection = useCallback(
     (message, extra = {}) => {
+      critLog("warn", "failConnection", {
+        message,
+        failureCategory: extra?.failureCategory,
+        lastCloseCode: extra?.lastCloseCode,
+        lastCloseReason: extra?.lastCloseReason,
+        socketEnClose: extra?.socketEnClose,
+        socketEsClose: extra?.socketEsClose,
+      });
       isActiveRef.current = false;
       reconnectAttemptsRef.current = 0;
       clearWatchdog();
@@ -719,6 +746,10 @@ export const useDeepgram = () => {
         ws.onopen = () => {
           reconnectAttemptsRef.current = 0;
           syncConnectProgress({ [sk]: "open" });
+          critLog("info", `socket open (${lang}/${socketSide})`, {
+            multiMode,
+            latencyMode: sttLatencyModeRef.current,
+          });
           if (isFirst && !multiMode) {
             syncConnectProgress({ socketEs: "connecting" });
             socketRefEs.current = createSocket(pair.right, stream, {
@@ -962,6 +993,13 @@ export const useDeepgram = () => {
             lastCloseReason: reason,
           });
 
+          if (code !== 1000) {
+            critLog("warn", `socket close (${lang}/${socketSide})`, {
+              code,
+              reason: (reason || "").slice(0, 140),
+            });
+          }
+
           if (connectFlagsRef.current.phase === "connecting") {
             if (code !== 1000) {
               scheduleConnectFail(lang, code, reason, socketSide);
@@ -972,6 +1010,11 @@ export const useDeepgram = () => {
           if (isActiveRef.current && reconnectAttemptsRef.current < 5) {
             reconnectAttemptsRef.current++;
             const delay = Math.pow(2, reconnectAttemptsRef.current) * 1000;
+            critLog("info", "auto reconnect scheduled", {
+              reconnectAttempts: reconnectAttemptsRef.current,
+              delayMs: delay,
+              socketSide,
+            });
             const livePair = languagePairRef.current;
             const liveMulti = usesMultiSocket(livePair);
             setTimeout(() => {
@@ -998,6 +1041,7 @@ export const useDeepgram = () => {
           if (connectFlagsRef.current.phase !== "connecting") return;
           syncConnectProgress({ [sk]: "error" });
           console.warn(`[Deepgram] ${lang} WebSocket error (awaiting close code…)`);
+          critLog("error", `socket error (${lang}/${socketSide})`);
         };
         return ws;
       };
@@ -1071,6 +1115,7 @@ export const useDeepgram = () => {
       const audioTrackCount = stream.getAudioTracks().length;
 
       if (audioTrackCount === 0) {
+        critLog("error", "beginStream: no audio tracks", { source });
         setConnectionState("error");
         setConnectionMessage(
           "No audio track was detected. Make sure your selected tab or microphone includes audio, then press Connect again."
@@ -1386,6 +1431,7 @@ export const useDeepgram = () => {
   );
 
   const reconnectStream = useCallback(() => {
+    critLog("warn", "manual reconnectStream()");
     connectAttemptIdRef.current += 1;
     clearWatchdog();
     reconnectAttemptsRef.current = 0; // Reset manual attempts

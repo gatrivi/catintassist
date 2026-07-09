@@ -367,7 +367,7 @@ export const AudioRouteStatusBar = ({
         </button>
         </ElementHintTarget>
 
-        {(stale || critical) && onReconnectStream && (
+        {(stale || critical || (isActive && isDeepgramError)) && onReconnectStream && (
           <button
             id="audio-route-zap-btn"
             type="button"
