@@ -1186,6 +1186,20 @@ export const useDeepgram = () => {
               : "Reusing Tab Audio...",
         );
         isActiveRef.current = true;
+        setAttachedAudioSourceMode(source);
+        if (source === "virtualCable") {
+          setTabStreamReady(false);
+          setCableStreamReady(true);
+        } else if (source === "tab") {
+          setCableStreamReady(false);
+          setTabStreamReady(true);
+          try {
+            sessionStorage.setItem(TAB_STREAM_READY_KEY, "1");
+          } catch {}
+        } else {
+          setTabStreamReady(false);
+          setCableStreamReady(false);
+        }
         startDeepgram(streamRef.current);
         return true;
       }

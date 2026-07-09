@@ -6,6 +6,11 @@ import {
   ROUTE_MODE,
 } from '../utils/audioRoutePassthrough';
 import { logRouteEvent, ROUTE_EVENT } from '../utils/routeDiagnostics';
+import {
+  AUDIO_SOURCE_MODE_VIRTUAL_CABLE,
+  pickVbCableSinkDevice,
+  readAudioSourceMode,
+} from '../utils/audioSourceManager';
 
 const AudioSettingsContext = createContext();
 
@@ -67,6 +72,19 @@ export const AudioSettingsProvider = ({ children }) => {
       setInputDevices(inputs);
       if (selectedSinkId && !outputs.some(d => d.deviceId === selectedSinkId)) {
         setSelectedSinkId('');
+      }
+      // ponytail: virtual-cable mode — auto-pick CABLE Input sink when unset.
+      if (
+        !selectedSinkId &&
+        readAudioSourceMode() === AUDIO_SOURCE_MODE_VIRTUAL_CABLE
+      ) {
+        const pickedSink = pickVbCableSinkDevice(outputs);
+        if (pickedSink) {
+          setSelectedSinkId(pickedSink);
+          try {
+            localStorage.setItem('CATINTASSIST_SINK_ID', pickedSink);
+          } catch (_) {}
+        }
       }
     } catch (err) {
       console.error('Failed to enumerate audio devices:', err);

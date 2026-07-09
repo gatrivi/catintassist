@@ -10,6 +10,10 @@ import {
   buildVirtualCableGetUserMediaConstraints,
   buildVirtualCableFailureUiState,
   getAudioSourceModeAfterVirtualCableFailure,
+  isVbCableSinkLabel,
+  isVbCableSttInputLabel,
+  pickVbCableSinkDevice,
+  pickVbCableSttInputDevice,
   canUseTabCapture,
   classifyTabCaptureError,
   isLikelyEmbeddedPreviewBrowser,
@@ -78,6 +82,26 @@ describe("audioSourceManager", () => {
     expect(
       canUseTabCapture({ getDisplayMedia: () => {}, getUserMedia: () => {} }),
     ).toBe(true);
+  });
+
+  test("VB-Cable device label helpers distinguish in vs out", () => {
+    expect(isVbCableSttInputLabel("CABLE Output (VB-Audio Virtual Cable)")).toBe(true);
+    expect(isVbCableSttInputLabel("CABLE Input (VB-Audio Virtual Cable)")).toBe(false);
+    expect(isVbCableSinkLabel("CABLE Input (VB-Audio Virtual Cable)")).toBe(true);
+    expect(isVbCableSinkLabel("CABLE Output (VB-Audio Virtual Cable)")).toBe(false);
+  });
+
+  test("pick helpers choose cable devices from lists", () => {
+    const inputs = [
+      { deviceId: "mic1", label: "Realtek Mic", kind: "audioinput" },
+      { deviceId: "cable-out", label: "CABLE Output (VB-Audio Virtual Cable)", kind: "audioinput" },
+    ];
+    const outputs = [
+      { deviceId: "spk1", label: "Speakers", kind: "audiooutput" },
+      { deviceId: "cable-in", label: "CABLE Input (VB-Audio Virtual Cable)", kind: "audiooutput" },
+    ];
+    expect(pickVbCableSttInputDevice(inputs)).toBe("cable-out");
+    expect(pickVbCableSinkDevice(outputs)).toBe("cable-in");
   });
 });
 

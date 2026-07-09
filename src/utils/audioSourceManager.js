@@ -63,6 +63,36 @@ export const persistSelectedVirtualCableInputDeviceId = (
  * - channelCount must be 1
  * - video must be false
  */
+/** STT reads platform audio from CABLE Output / Voicemeeter Output (audioinput). */
+export const isVbCableSttInputLabel = (label) => {
+  const l = (label || "").toLowerCase();
+  if (!l) return false;
+  if (l.includes("cable input")) return false;
+  if (l.includes("cable output")) return true;
+  if (l.includes("voicemeeter output")) return true;
+  return false;
+};
+
+/** Greetings/mic passthrough go to CABLE Input / Voicemeeter Input (audiooutput). */
+export const isVbCableSinkLabel = (label) => {
+  const l = (label || "").toLowerCase();
+  if (!l) return false;
+  if (l.includes("cable output")) return false;
+  if (l.includes("cable input")) return true;
+  if (l.includes("voicemeeter input")) return true;
+  return false;
+};
+
+export const pickVbCableSttInputDevice = (inputDevices = []) => {
+  const match = inputDevices.find((d) => isVbCableSttInputLabel(d.label));
+  return match?.deviceId || "";
+};
+
+export const pickVbCableSinkDevice = (outputDevices = []) => {
+  const match = outputDevices.find((d) => isVbCableSinkLabel(d.label));
+  return match?.deviceId || "";
+};
+
 export const buildVirtualCableGetUserMediaConstraints = (selectedDeviceId) => {
   return {
     audio: {

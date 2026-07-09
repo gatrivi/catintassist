@@ -1,5 +1,7 @@
 import React, { useMemo, useState, useEffect } from 'react';
 import { useAudioSettings } from '../contexts/AudioSettingsContext';
+import { useAudioSource } from '../hooks/useAudioSource';
+import { AUDIO_SOURCE_MODE_VIRTUAL_CABLE } from '../utils/audioSourceManager';
 import { truncateDeviceLabel } from '../utils/audioSelfTest';
 import { ElementHintTarget } from './ElementHint';
 import {
@@ -79,8 +81,14 @@ export const AudioRouteStatusBar = ({
     micLevel,
     micStatus,
   } = useAudioSettings();
+  const {
+    selectedInputDeviceId: selectedCableInputId,
+    refreshSelectedDeviceId: changeCableInputId,
+    refreshInputDevices: refreshCableInputDevices,
+  } = useAudioSource();
   useComponentVisibilityRefresh();
   const showMicMeter = isComponentVisible('mic_meter_strip', { isActive, isZombieCall });
+  const isCableMode = configuredAudioSourceMode === AUDIO_SOURCE_MODE_VIRTUAL_CABLE;
 
   useEffect(() => {
     fetchDevices({ requestMicPermissionForLabels: false });
@@ -97,6 +105,11 @@ export const AudioRouteStatusBar = ({
     const dev = inputDevices.find((d) => d.deviceId === selectedMicId);
     return truncateDeviceLabel(dev?.label || (selectedMicId ? 'Mic' : 'Default mic'));
   }, [inputDevices, selectedMicId]);
+
+  const cableInLabel = useMemo(() => {
+    const dev = inputDevices.find((d) => d.deviceId === selectedCableInputId);
+    return truncateDeviceLabel(dev?.label || (selectedCableInputId ? 'Cable in' : 'Pick CABLE Output'));
+  }, [inputDevices, selectedCableInputId]);
 
   const outLabel = useMemo(() => {
     const dev = outputDevices.find((d) => d.deviceId === selectedSinkId);
@@ -222,6 +235,31 @@ export const AudioRouteStatusBar = ({
       title={`Audio I/O · v${APP_VERSION}`}
     >
       <div className="audio-route-status-main">
+        {isCableMode && !mobileMicMode && (
+          <label className="audio-route-device-pick" title={`STT in: ${cableInLabel}`}>
+            <span className="audio-route-device-pick-label">📥</span>
+            <select
+              id="audio-route-cable-in-select"
+              className="audio-route-select"
+              style={{
+                ...selectStyle,
+                borderColor: selectedCableInputId ? 'rgba(16,185,129,0.45)' : 'rgba(245,158,11,0.55)',
+              }}
+              value={selectedCableInputId}
+              onChange={(e) => changeCableInputId(e.target.value)}
+              onFocus={() => refreshCableInputDevices()}
+              onMouseDown={() => refreshCableInputDevices()}
+            >
+              <option value="">{inputDevices.length ? 'Cable in…' : 'Cable (allow perm)'}</option>
+              {inputDevices.map((d) => (
+                <option key={d.deviceId} value={d.deviceId}>
+                  {formatDeviceOption(d, 'mic')}
+                </option>
+              ))}
+            </select>
+          </label>
+        )}
+
         {/* Mic for record + passthrough */}
         <label className="audio-route-device-pick" title={`Mic: ${micDeviceLabel}`}>
           <span className="audio-route-device-pick-label">🎤</span>
@@ -325,6 +363,19 @@ export const AudioRouteStatusBar = ({
           <span className="audio-route-warn-chip" title={virtualCableFailure.message}>
             ⚠ Cable
           </span>
+        )}
+
+        {isCableMode && !mobileMicMode && onSwitchToTabShare && (
+          <button
+            type="button"
+            id="audio-route-tab-backup-btn"
+            className="audio-route-inline-btn"
+            style={{ ...btn, borderColor: 'rgba(59,130,246,0.45)', color: '#93c5fd' }}
+            onClick={onSwitchToTabShare}
+            title="Fallback: switch STT to tab share (keeps VB out for greetings)"
+          >
+            Tab backup
+          </button>
         )}
 
         {!virtualCableFailure && isModeMismatch && onReconnectAudioSource && (

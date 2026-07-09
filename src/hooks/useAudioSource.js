@@ -8,6 +8,7 @@ import {
   readSelectedVirtualCableInputDeviceId,
   persistSelectedVirtualCableInputDeviceId,
   buildVirtualCableGetUserMediaConstraints,
+  pickVbCableSttInputDevice,
   refreshInputDevices as refreshInputDevicesUtil,
 } from "../utils/audioSourceManager";
 
@@ -42,6 +43,34 @@ export const useAudioSource = () => {
     }
   }, [currentSourceMode, refreshInputDevices]);
 
+  const refreshSelectedDeviceId = useCallback((deviceId) => {
+    setSelectedInputDeviceId(deviceId || "");
+    persistSelectedVirtualCableInputDeviceId(deviceId || "");
+    try {
+      window.dispatchEvent(
+        new CustomEvent("catint_audio_cable_input_changed", { detail: { deviceId: deviceId || "" } }),
+      );
+    } catch (_) {}
+  }, []);
+
+  useEffect(() => {
+    const onDevice = (e) => {
+      const next = e?.detail?.deviceId;
+      if (typeof next !== "string") return;
+      setSelectedInputDeviceId(next);
+    };
+    window.addEventListener("catint_audio_cable_input_changed", onDevice);
+    return () => window.removeEventListener("catint_audio_cable_input_changed", onDevice);
+  }, []);
+
+  // ponytail: auto-pick CABLE Output for STT when virtual-cable mode and nothing saved yet.
+  useEffect(() => {
+    if (currentSourceMode !== AUDIO_SOURCE_MODE_VIRTUAL_CABLE) return;
+    if (selectedInputDeviceId) return;
+    const picked = pickVbCableSttInputDevice(inputDevices);
+    if (picked) refreshSelectedDeviceId(picked);
+  }, [currentSourceMode, selectedInputDeviceId, inputDevices, refreshSelectedDeviceId]);
+
   // Cross-component sync (SettingsPanel ↔ App/headers) without relying on storage events.
   useEffect(() => {
     const onMode = (e) => {
@@ -66,14 +95,12 @@ export const useAudioSource = () => {
           new CustomEvent("catint_audio_source_mode_changed", { detail: { mode: next } }),
         );
       } catch (_) {}
+      if (next === AUDIO_SOURCE_MODE_VIRTUAL_CABLE) {
+        fetchDevices({ requestMicPermissionForLabels: true }).catch(() => {});
+      }
     },
-    [setCurrentSourceMode],
+    [fetchDevices],
   );
-
-  const refreshSelectedDeviceId = useCallback((deviceId) => {
-    setSelectedInputDeviceId(deviceId || "");
-    persistSelectedVirtualCableInputDeviceId(deviceId || "");
-  }, []);
 
   const startAudioSource = useCallback(async () => {
     if (currentSourceMode === AUDIO_SOURCE_MODE_VIRTUAL_CABLE) {
