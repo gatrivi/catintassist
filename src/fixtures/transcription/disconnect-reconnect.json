@@ -1,0 +1,125 @@
+{
+  "id": "disconnect-reconnect",
+  "label": "Disconnect / reconnect (revenant capture gate meta)",
+  "meta": {
+    "protectionsOn": true,
+    "pair": { "left": "en", "right": "es" },
+    "silentBreakGapMs": 2500,
+    "revenantCaptureGate": true,
+    "phiNote": "FAKE ONLY — simulates gap then resume after refresh-like break"
+  },
+  "events": [
+    {
+      "atMs": 0,
+      "lane": "en",
+      "payload": {
+        "type": "Results",
+        "is_final": false,
+        "speech_final": false,
+        "start": 10.0,
+        "channel": {
+          "alternatives": [
+            {
+              "transcript": "we will call you back at",
+              "confidence": 0.8,
+              "words": [
+                { "word": "we", "confidence": 0.9 },
+                { "word": "will", "confidence": 0.88 },
+                { "word": "call", "confidence": 0.87 },
+                { "word": "you", "confidence": 0.9 },
+                { "word": "back", "confidence": 0.85 },
+                { "word": "at", "confidence": 0.9 }
+              ]
+            }
+          ]
+        }
+      }
+    },
+    {
+      "atMs": 500,
+      "lane": "en",
+      "payload": {
+        "type": "Results",
+        "is_final": true,
+        "speech_final": true,
+        "start": 10.0,
+        "channel": {
+          "alternatives": [
+            {
+              "transcript": "We will call you back at 5551234567.",
+              "confidence": 0.95,
+              "words": [
+                { "word": "we", "confidence": 0.96 },
+                { "word": "will", "confidence": 0.95 },
+                { "word": "call", "confidence": 0.94 },
+                { "word": "you", "confidence": 0.95 },
+                { "word": "back", "confidence": 0.93 },
+                { "word": "at", "confidence": 0.94 },
+                { "word": "5551234567", "confidence": 0.92 }
+              ]
+            }
+          ]
+        }
+      }
+    },
+    {
+      "atMs": 4000,
+      "lane": "en",
+      "isSilentBreak": true,
+      "payload": {
+        "type": "Results",
+        "is_final": false,
+        "speech_final": false,
+        "start": 20.0,
+        "channel": {
+          "alternatives": [
+            {
+              "transcript": "sorry about the disconnect",
+              "confidence": 0.75,
+              "words": [
+                { "word": "sorry", "confidence": 0.85 },
+                { "word": "about", "confidence": 0.8 },
+                { "word": "the", "confidence": 0.9 },
+                { "word": "disconnect", "confidence": 0.7 }
+              ]
+            }
+          ]
+        }
+      }
+    },
+    {
+      "atMs": 4500,
+      "lane": "en",
+      "payload": {
+        "type": "Results",
+        "is_final": true,
+        "speech_final": true,
+        "start": 20.0,
+        "channel": {
+          "alternatives": [
+            {
+              "transcript": "Sorry about the disconnect. Continuing with John Example.",
+              "confidence": 0.94,
+              "words": [
+                { "word": "sorry", "confidence": 0.95 },
+                { "word": "about", "confidence": 0.93 },
+                { "word": "the", "confidence": 0.95 },
+                { "word": "disconnect", "confidence": 0.9 },
+                { "word": "continuing", "confidence": 0.9 },
+                { "word": "with", "confidence": 0.9 },
+                { "word": "john", "confidence": 0.9 },
+                { "word": "example", "confidence": 0.9 }
+              ]
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "expect": {
+    "minFinals": 2,
+    "langs": ["en"],
+    "preserveDigits": ["5551234567"],
+    "finalTexts": ["555", "disconnect"]
+  }
+}

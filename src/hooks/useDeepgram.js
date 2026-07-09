@@ -13,12 +13,13 @@ import {
 import {
   AUDIO_SOURCE_MODE_VIRTUAL_CABLE,
   readAudioSourceMode,
-  readSelectedVirtualCableInputDeviceId,
-  buildVirtualCableGetUserMediaConstraints,
   buildVirtualCableFailureUiState,
-  canUseTabCapture,
   classifyTabCaptureError,
 } from "../utils/audioSourceManager";
+import {
+  acquireInputSource,
+  mapLegacySourceToKind,
+} from "../utils/inputSource";
 import {
   loadLanguagePair,
   isEnEsProtectionMode,
@@ -29,13 +30,12 @@ import {
 } from "../utils/languageConfig";
 import {
   mergeCaptionsForUi,
-  splitCaptionRows,
   initEngineFromPersisted,
-  reduceTranscriptEvent,
   shouldFlushImmediately,
   createCaptionEngineState,
   captionsSnapshotEqual,
 } from "../utils/captionEngine";
+import { applyDeepgramTranscriptPayload } from "../utils/applyDeepgramTranscriptPayload";
 import {
   STT_LATENCY_CHANGED_EVENT,
   buildListenUrl,
@@ -44,6 +44,7 @@ import {
   getMediaRecorderTimeslice,
   loadSttLatencyMode,
 } from "../utils/deepgramListenConfig";
+import { readMicTestMode, writeMicTestMode } from "../utils/micMode";
 
 const CAPTIONS_CLEARED_EVENT = "catint_captions_cleared";
 const STT_TRACE_LIMIT = 300;
@@ -71,54 +72,14 @@ const deepgramKeyRejectedMessage = () => {
   return "Deepgram API key is missing or invalid — open Settings (gear) and paste your key.";
 };
 
-const MIC_TEST_KEY = "catint_mic_test_mode_v1";
 const MIC_DEVICE_KEY = "CATINTASSIST_MIC_ID";
 
-const readMicTestMode = () => {
-  try {
-    return localStorage.getItem(MIC_TEST_KEY) === "1";
-  } catch {
-    return false;
-  }
-};
-
 const acquireAudioStreamForSource = async (source) => {
-  let micIdPresent = false;
-  try {
-    micIdPresent = !!localStorage.getItem(MIC_DEVICE_KEY);
-  } catch (_) {}
-
-
-  if (source === "mic") {
-    const micId = localStorage.getItem(MIC_DEVICE_KEY);
-    const audio = micId
-      ? {
-          deviceId: { exact: micId },
-          echoCancellation: true,
-          noiseSuppression: true,
-          autoGainControl: true,
-        }
-      : true;
-    return navigator.mediaDevices.getUserMedia({ audio });
+  const { stream } = await acquireInputSource(mapLegacySourceToKind(source));
+  if (!stream) {
+    throw new Error(`InputSource ${source} did not yield a MediaStream`);
   }
-
-  if (source === "virtualCable") {
-    const deviceId = readSelectedVirtualCableInputDeviceId();
-    const constraints = buildVirtualCableGetUserMediaConstraints(deviceId);
-    return navigator.mediaDevices.getUserMedia(constraints);
-  }
-
-  // Default: existing tab-share capture.
-  if (!canUseTabCapture()) {
-    const ex =
-      typeof DOMException !== "undefined"
-        ? new DOMException("Tab capture not supported in this browser", "NotSupportedError")
-        : Object.assign(new Error("Tab capture not supported in this browser"), {
-            name: "NotSupportedError",
-          });
-    throw ex;
-  }
-  return navigator.mediaDevices.getDisplayMedia({ video: true, audio: true });
+  return stream;
 };
 
 // Heuristic: only auto-switch to mic mode on small screens to avoid surprising desktop users.
@@ -341,7 +302,7 @@ export const useDeepgram = () => {
     return () => window.removeEventListener(CAPTIONS_CLEARED_EVENT, onCleared);
   }, [resetCaptionEngine]);
 
-  const resetConnectProgress = () => {
+  const resetConnectProgress = useCallback(() => {
     didLogCaptureGateWhileNotActiveRef.current = false;
     const keyInfo = getDeepgramKeyInfo();
     syncConnectProgress({
@@ -376,7 +337,7 @@ export const useDeepgram = () => {
       failureCategory: null,
       lastError: null,
     });
-  };
+  }, []);
 
   const hasSelectedMicDevice = () => {
     try {
@@ -597,9 +558,7 @@ export const useDeepgram = () => {
       const on = !!enabled;
       micTestModeRef.current = on;
       setMicTestModeState(on);
-      try {
-        localStorage.setItem(MIC_TEST_KEY, on ? "1" : "0");
-      } catch (_) {}
+      writeMicTestMode(on);
       // Drop cached stream if source type would change on next connect.
       if (
         streamRef.current &&
@@ -834,7 +793,6 @@ export const useDeepgram = () => {
           const confidence = alt?.confidence || 0;
           const isFinal = received.is_final;
           const speechFinal = received.speech_final;
-          const startTime = received.start ?? 0;
           const wordConfidenceCount = (alt?.words || []).filter((w) => Number.isFinite(w?.confidence)).length;
           sttTrace("4 Deepgram processed + 5 returned string", {
             lang,
@@ -920,38 +878,33 @@ export const useDeepgram = () => {
             lastInterimAtRef.current = nowPerf;
           }
 
-          const merged = mergeCaptionsForUi(captionEngineRef.current);
           const t0 = performance.now();
-          const newArr = reduceTranscriptEvent(
-            merged,
-            {
-              transcript,
-              words: alt?.words || [],
-              isFinal,
-              speechFinal,
-              confidence,
-              laneSide,
-              channelKey: lang,
-              startTime,
+          const applied = applyDeepgramTranscriptPayload({
+            engineState: captionEngineRef.current,
+            payload: received,
+            lane: lang,
+            ctxMeta: {
+              pair,
+              langMode: langModeRef.current,
+              protectionsOn,
               now,
               isSilentBreak,
-              protectionsOn,
-              langMode: langModeRef.current,
-              pair,
-            },
-            {
+              laneSide,
+              channelKey: lang,
               turnWordsBaseRef,
               currentTurnIdRef,
               bubbleIdCounterRef,
               lastBubbleStartedRef,
             },
-          );
-          captionEngineRef.current = splitCaptionRows(newArr);
+          });
+          if (!applied) return;
+          captionEngineRef.current = applied.nextEngineState;
+          const newArr = applied.nextRows;
           const dt = performance.now() - t0;
           sttTrace("6 caption engine committed", {
             ms: Number(dt.toFixed(2)),
             rows: newArr.length,
-            lastRowId: newArr[newArr.length - 1]?.id || null,
+            lastRowId: applied.debug?.lastRowId || null,
             wordConfidenceCount,
           });
           syncConnectProgress({ lastCaptionCommitAt: Date.now() });
@@ -1111,8 +1064,6 @@ export const useDeepgram = () => {
   const beginStream = useCallback(
     (stream, source) => {
       const audioTrackCount = stream.getAudioTracks().length;
-      const videoTrackCount = stream.getVideoTracks?.().length ?? 0;
-
 
       if (audioTrackCount === 0) {
         setConnectionState("error");
@@ -1257,7 +1208,7 @@ export const useDeepgram = () => {
       syncConnectProgress({ phase: "error", lastError: msg });
       return false;
     }
-  }, [beginStream, startDeepgram, clearWatchdog, setMicTestMode]);
+  }, [beginStream, startDeepgram, clearWatchdog, setMicTestMode, resetConnectProgress]);
 
   // Force re-open picker (tab) or re-request mic (double-tap connect).
   const startRecordingFresh = useCallback(async () => {
@@ -1361,7 +1312,7 @@ export const useDeepgram = () => {
       syncConnectProgress({ phase: "error", lastError: msg });
       return false;
     }
-  }, [beginStream, closeConnections, stopStreamTracks, clearWatchdog, setMicTestMode]);
+  }, [beginStream, closeConnections, stopStreamTracks, clearWatchdog, setMicTestMode, resetConnectProgress]);
 
   /**
    * Safe in-call audio source switching:
@@ -1445,7 +1396,7 @@ export const useDeepgram = () => {
         startRecording();
       }
     }, 400);
-  }, [closeConnections, startDeepgram, startRecording, clearWatchdog]);
+  }, [closeConnections, startDeepgram, startRecording, clearWatchdog, resetConnectProgress]);
 
   const toggleLanguage = useCallback(() => {
     setSttLanguage((prev) => {

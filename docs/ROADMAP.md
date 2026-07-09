@@ -36,6 +36,7 @@ Prod verification checklist:
 - [ ] Weak translation beats empty (`AGENTS.md`)
 - [ ] No status UI thrash on connect ([`.cursor/RULES/ui-thrash.md`](../.cursor/RULES/ui-thrash.md))
 - [ ] EN/ES column tie-break sane ([`transcription-pane/README.md`](transcription-pane/README.md))
+- [x] Dev fixture harness (no tab capture) — [`development/transcription-test-harness.md`](development/transcription-test-harness.md) (v4.81.0)
 
 **Code:** [`useTranslate.js`](../src/hooks/useTranslate.js) · [`useDeepgram.js`](../src/hooks/useDeepgram.js) · [`sensitiveDataProtector.js`](../src/utils/sensitiveDataProtector.js)
 

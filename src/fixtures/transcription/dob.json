@@ -1,0 +1,98 @@
+{
+  "id": "dob",
+  "label": "DOB (interim → correction → final)",
+  "meta": {
+    "protectionsOn": true,
+    "pair": { "left": "en", "right": "es" },
+    "phiNote": "FAKE ONLY — 01/02/1970 John Example"
+  },
+  "events": [
+    {
+      "atMs": 0,
+      "lane": "en",
+      "payload": {
+        "type": "Results",
+        "is_final": false,
+        "speech_final": false,
+        "start": 3.0,
+        "channel": {
+          "alternatives": [
+            {
+              "transcript": "date of birth is january",
+              "confidence": 0.7,
+              "words": [
+                { "word": "date", "confidence": 0.9 },
+                { "word": "of", "confidence": 0.9 },
+                { "word": "birth", "confidence": 0.88 },
+                { "word": "is", "confidence": 0.9 },
+                { "word": "january", "confidence": 0.6 }
+              ]
+            }
+          ]
+        }
+      }
+    },
+    {
+      "atMs": 400,
+      "lane": "en",
+      "payload": {
+        "type": "Results",
+        "is_final": false,
+        "speech_final": false,
+        "start": 3.0,
+        "channel": {
+          "alternatives": [
+            {
+              "transcript": "date of birth is january second nineteen seventy",
+              "confidence": 0.82,
+              "words": [
+                { "word": "date", "confidence": 0.92 },
+                { "word": "of", "confidence": 0.91 },
+                { "word": "birth", "confidence": 0.9 },
+                { "word": "is", "confidence": 0.93 },
+                { "word": "january", "confidence": 0.85 },
+                { "word": "second", "confidence": 0.8 },
+                { "word": "nineteen", "confidence": 0.78 },
+                { "word": "seventy", "confidence": 0.77 }
+              ]
+            }
+          ]
+        }
+      }
+    },
+    {
+      "atMs": 900,
+      "lane": "en",
+      "payload": {
+        "type": "Results",
+        "is_final": true,
+        "speech_final": true,
+        "start": 3.0,
+        "channel": {
+          "alternatives": [
+            {
+              "transcript": "Date of birth for John Example is 01/02/1970.",
+              "confidence": 0.96,
+              "words": [
+                { "word": "date", "confidence": 0.97 },
+                { "word": "of", "confidence": 0.96 },
+                { "word": "birth", "confidence": 0.95 },
+                { "word": "for", "confidence": 0.9 },
+                { "word": "john", "confidence": 0.9 },
+                { "word": "example", "confidence": 0.9 },
+                { "word": "is", "confidence": 0.95 },
+                { "word": "01/02/1970", "confidence": 0.94 }
+              ]
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "expect": {
+    "minFinals": 1,
+    "langs": ["en"],
+    "preserveDigits": ["01021970"],
+    "finalTexts": ["1970"]
+  }
+}

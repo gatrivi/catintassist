@@ -1,0 +1,90 @@
+{
+  "id": "low-confidence",
+  "label": "Low confidence words preserved in metadata",
+  "meta": {
+    "protectionsOn": false,
+    "pair": { "left": "en", "right": "es" },
+    "phiNote": "FAKE ONLY"
+  },
+  "events": [
+    {
+      "atMs": 0,
+      "lane": "en",
+      "payload": {
+        "type": "Results",
+        "is_final": false,
+        "speech_final": false,
+        "start": 6.0,
+        "channel": {
+          "alternatives": [
+            {
+              "transcript": "the medication might be",
+              "confidence": 0.45,
+              "words": [
+                { "word": "the", "confidence": 0.9 },
+                { "word": "medication", "confidence": 0.35 },
+                { "word": "might", "confidence": 0.4 },
+                { "word": "be", "confidence": 0.7 }
+              ]
+            }
+          ]
+        }
+      }
+    },
+    {
+      "atMs": 400,
+      "lane": "en",
+      "payload": {
+        "type": "Results",
+        "is_final": false,
+        "speech_final": false,
+        "start": 6.0,
+        "channel": {
+          "alternatives": [
+            {
+              "transcript": "the medication might be examplecillin",
+              "confidence": 0.5,
+              "words": [
+                { "word": "the", "confidence": 0.9 },
+                { "word": "medication", "confidence": 0.42 },
+                { "word": "might", "confidence": 0.48 },
+                { "word": "be", "confidence": 0.75 },
+                { "word": "examplecillin", "confidence": 0.28 }
+              ]
+            }
+          ]
+        }
+      }
+    },
+    {
+      "atMs": 900,
+      "lane": "en",
+      "payload": {
+        "type": "Results",
+        "is_final": true,
+        "speech_final": true,
+        "start": 6.0,
+        "channel": {
+          "alternatives": [
+            {
+              "transcript": "The medication might be Examplecillin.",
+              "confidence": 0.55,
+              "words": [
+                { "word": "the", "confidence": 0.92 },
+                { "word": "medication", "confidence": 0.5 },
+                { "word": "might", "confidence": 0.52 },
+                { "word": "be", "confidence": 0.8 },
+                { "word": "examplecillin", "confidence": 0.33 }
+              ]
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "expect": {
+    "minFinals": 1,
+    "langs": ["en"],
+    "finalTexts": ["Examplecillin"]
+  }
+}

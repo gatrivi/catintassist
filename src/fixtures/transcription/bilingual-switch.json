@@ -1,0 +1,114 @@
+{
+  "id": "bilingual-switch",
+  "label": "Bilingual EN→ES lane switch",
+  "meta": {
+    "protectionsOn": true,
+    "pair": { "left": "en", "right": "es" },
+    "phiNote": "FAKE ONLY — no real call text"
+  },
+  "events": [
+    {
+      "atMs": 0,
+      "lane": "en",
+      "payload": {
+        "type": "Results",
+        "is_final": false,
+        "speech_final": false,
+        "start": 5.0,
+        "channel": {
+          "alternatives": [
+            {
+              "transcript": "please confirm your",
+              "confidence": 0.75,
+              "words": [
+                { "word": "please", "confidence": 0.9 },
+                { "word": "confirm", "confidence": 0.85 },
+                { "word": "your", "confidence": 0.8 }
+              ]
+            }
+          ]
+        }
+      }
+    },
+    {
+      "atMs": 400,
+      "lane": "en",
+      "payload": {
+        "type": "Results",
+        "is_final": true,
+        "speech_final": true,
+        "start": 5.0,
+        "channel": {
+          "alternatives": [
+            {
+              "transcript": "Please confirm your name for John Example.",
+              "confidence": 0.94,
+              "words": [
+                { "word": "please", "confidence": 0.95 },
+                { "word": "confirm", "confidence": 0.94 },
+                { "word": "your", "confidence": 0.93 },
+                { "word": "name", "confidence": 0.92 },
+                { "word": "for", "confidence": 0.9 },
+                { "word": "john", "confidence": 0.9 },
+                { "word": "example", "confidence": 0.9 }
+              ]
+            }
+          ]
+        }
+      }
+    },
+    {
+      "atMs": 3200,
+      "lane": "es",
+      "isSilentBreak": true,
+      "payload": {
+        "type": "Results",
+        "is_final": false,
+        "speech_final": false,
+        "start": 8.0,
+        "channel": {
+          "alternatives": [
+            {
+              "transcript": "me llamo juan",
+              "confidence": 0.7,
+              "words": [
+                { "word": "me", "confidence": 0.85 },
+                { "word": "llamo", "confidence": 0.7 },
+                { "word": "juan", "confidence": 0.65 }
+              ]
+            }
+          ]
+        }
+      }
+    },
+    {
+      "atMs": 3600,
+      "lane": "es",
+      "payload": {
+        "type": "Results",
+        "is_final": true,
+        "speech_final": true,
+        "start": 8.0,
+        "channel": {
+          "alternatives": [
+            {
+              "transcript": "Me llamo Juan Ejemplo.",
+              "confidence": 0.93,
+              "words": [
+                { "word": "me", "confidence": 0.95 },
+                { "word": "llamo", "confidence": 0.92 },
+                { "word": "juan", "confidence": 0.9 },
+                { "word": "ejemplo", "confidence": 0.88 }
+              ]
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "expect": {
+    "minFinals": 2,
+    "langs": ["en", "es"],
+    "finalTexts": ["Example", "Ejemplo"]
+  }
+}

@@ -1,0 +1,94 @@
+{
+  "id": "medication-dosage",
+  "label": "Medication dosage (interim typo → correction → final)",
+  "meta": {
+    "protectionsOn": true,
+    "pair": { "left": "en", "right": "es" },
+    "langMode": "auto",
+    "phiNote": "FAKE ONLY — Examplecillin 500 mg, not a real Rx"
+  },
+  "events": [
+    {
+      "atMs": 0,
+      "lane": "en",
+      "payload": {
+        "type": "Results",
+        "is_final": false,
+        "speech_final": false,
+        "start": 2.0,
+        "channel": {
+          "alternatives": [
+            {
+              "transcript": "take examplecillin five",
+              "confidence": 0.68,
+              "words": [
+                { "word": "take", "confidence": 0.9 },
+                { "word": "examplecillin", "confidence": 0.55 },
+                { "word": "five", "confidence": 0.6 }
+              ]
+            }
+          ]
+        }
+      }
+    },
+    {
+      "atMs": 350,
+      "lane": "en",
+      "payload": {
+        "type": "Results",
+        "is_final": false,
+        "speech_final": false,
+        "start": 2.0,
+        "channel": {
+          "alternatives": [
+            {
+              "transcript": "take examplecillin five hundred milligrams",
+              "confidence": 0.8,
+              "words": [
+                { "word": "take", "confidence": 0.92 },
+                { "word": "examplecillin", "confidence": 0.7 },
+                { "word": "five", "confidence": 0.85 },
+                { "word": "hundred", "confidence": 0.84 },
+                { "word": "milligrams", "confidence": 0.82 }
+              ]
+            }
+          ]
+        }
+      }
+    },
+    {
+      "atMs": 800,
+      "lane": "en",
+      "payload": {
+        "type": "Results",
+        "is_final": true,
+        "speech_final": true,
+        "start": 2.0,
+        "channel": {
+          "alternatives": [
+            {
+              "transcript": "Take Examplecillin 500 mg twice daily with food.",
+              "confidence": 0.95,
+              "words": [
+                { "word": "take", "confidence": 0.97 },
+                { "word": "examplecillin", "confidence": 0.9 },
+                { "word": "500", "confidence": 0.94 },
+                { "word": "mg", "confidence": 0.93 },
+                { "word": "twice", "confidence": 0.92 },
+                { "word": "daily", "confidence": 0.91 },
+                { "word": "with", "confidence": 0.9 },
+                { "word": "food", "confidence": 0.9 }
+              ]
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "expect": {
+    "minFinals": 1,
+    "langs": ["en"],
+    "preserveDigits": ["500"],
+    "finalTexts": ["500"]
+  }
+}

@@ -22,6 +22,7 @@ import {
 } from '../utils/languageConfig';
 import { DevSimulatePanel } from './DevSimulatePanel';
 import { isDevSimEnabled } from '../utils/devSimulateCaptions';
+import { TestHarnessPanel, isTestHarnessEnabled } from './TestHarnessPanel';
 import { AuthPanel } from './AuthPanel';
 import { CorrectionsBackupPanel } from './CorrectionsBackupPanel';
 import { useAuth } from '../contexts/AuthContext';
@@ -383,6 +384,7 @@ export default function SettingsPanel({
             </label>
             <p style={{ fontSize: 10, color: 'rgba(255,255,255,0.5)', margin: '6px 0 0' }}>
               OFF by default to avoid blocking browser permission dialogs on first use.
+              Tab share needs Chrome or Edge — Cursor Simple Browser cannot pick tabs; use Mic test mode (🎤) there, or open the app in Chrome.
             </p>
 
             {process.env.NODE_ENV !== 'production' && (
@@ -419,6 +421,7 @@ export default function SettingsPanel({
               </div>
             )}
             {isDevSimEnabled() && <DevSimulatePanel />}
+            {isTestHarnessEnabled() && <TestHarnessPanel />}
             <div style={{ marginTop: 14, paddingTop: 10, borderTop: '1px solid rgba(255,255,255,0.08)' }}>
               <div style={{ fontSize: 11, color: '#93c5fd', marginBottom: 6 }}>TTS route test</div>
               <button
@@ -609,8 +612,7 @@ export default function SettingsPanel({
               Default is Tab share to preserve your current working setup.
             </p>
             <p style={{ fontSize: 10, color: 'rgba(255,255,255,0.45)', margin: 0, lineHeight: 1.45 }}>
-              This setting does <strong>not</strong> affect TTS playback routing.
-              It only changes what browser listens to for transcripts.
+              Mic mode (🎤) also forces TTS and soundboard to <strong>local speakers only</strong> — for phone assistant / debug.
             </p>
 
             <div>

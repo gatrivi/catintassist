@@ -1,0 +1,99 @@
+{
+  "id": "phone-number",
+  "label": "Phone number (interim typo → correction → final)",
+  "meta": {
+    "protectionsOn": true,
+    "pair": { "left": "en", "right": "es" },
+    "langMode": "auto",
+    "phiNote": "FAKE ONLY — 555-123-4567 / John Example"
+  },
+  "events": [
+    {
+      "atMs": 0,
+      "lane": "en",
+      "payload": {
+        "type": "Results",
+        "is_final": false,
+        "speech_final": false,
+        "start": 1.0,
+        "channel": {
+          "alternatives": [
+            {
+              "transcript": "my number is five five",
+              "confidence": 0.72,
+              "words": [
+                { "word": "my", "confidence": 0.9 },
+                { "word": "number", "confidence": 0.88 },
+                { "word": "is", "confidence": 0.91 },
+                { "word": "five", "confidence": 0.7 },
+                { "word": "five", "confidence": 0.65 }
+              ]
+            }
+          ]
+        }
+      }
+    },
+    {
+      "atMs": 400,
+      "lane": "en",
+      "payload": {
+        "type": "Results",
+        "is_final": false,
+        "speech_final": false,
+        "start": 1.0,
+        "channel": {
+          "alternatives": [
+            {
+              "transcript": "my number is five five five one two",
+              "confidence": 0.81,
+              "words": [
+                { "word": "my", "confidence": 0.92 },
+                { "word": "number", "confidence": 0.9 },
+                { "word": "is", "confidence": 0.93 },
+                { "word": "five", "confidence": 0.85 },
+                { "word": "five", "confidence": 0.84 },
+                { "word": "five", "confidence": 0.83 },
+                { "word": "one", "confidence": 0.8 },
+                { "word": "two", "confidence": 0.79 }
+              ]
+            }
+          ]
+        }
+      }
+    },
+    {
+      "atMs": 900,
+      "lane": "en",
+      "payload": {
+        "type": "Results",
+        "is_final": true,
+        "speech_final": true,
+        "start": 1.0,
+        "channel": {
+          "alternatives": [
+            {
+              "transcript": "My callback number is 5551234567 for John Example.",
+              "confidence": 0.96,
+              "words": [
+                { "word": "my", "confidence": 0.97 },
+                { "word": "callback", "confidence": 0.95 },
+                { "word": "number", "confidence": 0.96 },
+                { "word": "is", "confidence": 0.98 },
+                { "word": "5551234567", "confidence": 0.94 },
+                { "word": "for", "confidence": 0.9 },
+                { "word": "john", "confidence": 0.91 },
+                { "word": "example", "confidence": 0.9 }
+              ]
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "expect": {
+    "minFinals": 1,
+    "langs": ["en"],
+    "preserveDigits": ["5551234567"],
+    "finalTexts": ["555"]
+  }
+}

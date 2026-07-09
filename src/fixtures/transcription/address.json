@@ -1,0 +1,97 @@
+{
+  "id": "address",
+  "label": "Address (interim → correction → final)",
+  "meta": {
+    "protectionsOn": true,
+    "pair": { "left": "en", "right": "es" },
+    "phiNote": "FAKE ONLY — 123 Main Street"
+  },
+  "events": [
+    {
+      "atMs": 0,
+      "lane": "en",
+      "payload": {
+        "type": "Results",
+        "is_final": false,
+        "speech_final": false,
+        "start": 4.0,
+        "channel": {
+          "alternatives": [
+            {
+              "transcript": "i live at one two",
+              "confidence": 0.7,
+              "words": [
+                { "word": "i", "confidence": 0.9 },
+                { "word": "live", "confidence": 0.88 },
+                { "word": "at", "confidence": 0.9 },
+                { "word": "one", "confidence": 0.65 },
+                { "word": "two", "confidence": 0.6 }
+              ]
+            }
+          ]
+        }
+      }
+    },
+    {
+      "atMs": 350,
+      "lane": "en",
+      "payload": {
+        "type": "Results",
+        "is_final": false,
+        "speech_final": false,
+        "start": 4.0,
+        "channel": {
+          "alternatives": [
+            {
+              "transcript": "i live at one two three main",
+              "confidence": 0.8,
+              "words": [
+                { "word": "i", "confidence": 0.92 },
+                { "word": "live", "confidence": 0.9 },
+                { "word": "at", "confidence": 0.91 },
+                { "word": "one", "confidence": 0.85 },
+                { "word": "two", "confidence": 0.84 },
+                { "word": "three", "confidence": 0.83 },
+                { "word": "main", "confidence": 0.8 }
+              ]
+            }
+          ]
+        }
+      }
+    },
+    {
+      "atMs": 850,
+      "lane": "en",
+      "payload": {
+        "type": "Results",
+        "is_final": true,
+        "speech_final": true,
+        "start": 4.0,
+        "channel": {
+          "alternatives": [
+            {
+              "transcript": "I live at 123 Main Street in Exampletown.",
+              "confidence": 0.95,
+              "words": [
+                { "word": "i", "confidence": 0.97 },
+                { "word": "live", "confidence": 0.95 },
+                { "word": "at", "confidence": 0.96 },
+                { "word": "123", "confidence": 0.94 },
+                { "word": "main", "confidence": 0.93 },
+                { "word": "street", "confidence": 0.92 },
+                { "word": "in", "confidence": 0.9 },
+                { "word": "exampletown", "confidence": 0.88 }
+              ]
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "expect": {
+    "minFinals": 1,
+    "langs": ["en"],
+    "preserveDigits": ["123"],
+    "finalTexts": ["Main"]
+  }
+}

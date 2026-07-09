@@ -1,8 +1,9 @@
-# CatIntAssist Docs (v4.76.0)
+# CatIntAssist Docs (v4.81.0)
 
 This is the single source of truth for *documentation + onboarding*.
 
 ## What's new
+- **v4.81.0** — [`development/transcription-test-harness.md`](development/transcription-test-harness.md) — fixture replay without tab capture
 - **Operator work log:** [`WORK_LOG.md`](WORK_LOG.md)
 - **Latest overnight report:** [`OVERNIGHT_REPORT.md`](OVERNIGHT_REPORT.md)
 - **v4.78.0** — Settings → Data (corrections backup) + [`exports/audio-greeting-editor/`](../exports/audio-greeting-editor/README.md)
@@ -16,6 +17,7 @@ This is the single source of truth for *documentation + onboarding*.
 ## Start Here
 - [`docs/ROADMAP.md`](ROADMAP.md): product phases 0–3, do-not-yet list, future inbox
 - [`docs/onboarding/quickstart.md`](onboarding/quickstart.md): install, run locally, and dev/sanity checks
+- [`docs/onboarding/mic-mode-phone-assistant.md`](onboarding/mic-mode-phone-assistant.md): **phone assistant** — mic STT + local soundboard/TTS (v4.80.15)
 - [`docs/onboarding/advice.md`](onboarding/advice.md): the daily “what to click” advice checklist
 - [`docs/architecture/flow.md`](architecture/flow.md): end-to-end data flow + key state owners
 
