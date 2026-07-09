@@ -19,10 +19,11 @@ window.__catintVanishOn = false  // mute
 | `morph_word_diff` | StableTextMorph saw delete/replace |
 | `ui_blank_caption_skipped` | row present but empty text |
 
-## Protector TLDR (v4.84.7)
+## Protector TLDR (v4.84.8)
 
 - **Phone/SSN:** format at display (sentinel may skip)
 - **Date / dosage / money:** one highlight/copy unit each
 - **Sentinels:** display brake on stitch/phone for address/email/spelling/date/dosage…
 - **Spelling:** spoken paragraph + trailing Spelled chip (no newline remount)
+- **Name chips:** ES strong/weak cues + accent stem (v4.84.8)
 - Full plan: [`sensitive-data-approach.md`](sensitive-data-approach.md)

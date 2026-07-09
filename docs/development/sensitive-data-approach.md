@@ -2,7 +2,7 @@
 
 ![Sensitive data approach summary](assets/sensitive-data-approach-summary.png)
 
-**Status:** Phase A–E shipped (sensitive-data approach complete for planned scope).
+**Status:** Phase A–E shipped; **A+ ES name chips** shipped v4.84.8.
 
 **Code:** `src/utils/sensitiveDataProtector.js` · chips: `transcriptFormat.js` · UI: `TranscriptionBoard.js`  
 **Related:** [`../handoff/01_number_protection.md`](../handoff/01_number_protection.md) · [`vanish-trace.md`](vanish-trace.md)
@@ -44,13 +44,13 @@ Date cues · months · weekdays · ordinals · `MM/DD[/YY]` · clock · dosage (
 `detectSentinelContext`: spelling · email · ssn · phone · address · date · medication · dosage · price  
 (Comment says: call before number-word/phone format; skip/limit transforms. **Nothing in live path calls it.**)
 
-### D. Outside protector (UI / format)
+### D. Outside protector (UI / format) — post A–E / A+
 
-| Item | Behavior | Known bug |
-|------|----------|-----------|
-| Spelling ≥3 “as in” | newlines + mono + chip on seal | live→seal layout cliff |
-| Name chips | `I'm…` / `my name is…` / `Dr…` | `I'm sorry` → **Name sorry** |
-| Digit highlight | any `\d+` yellow click-copy | day alone in “8 May 2024”; not a date unit |
+| Item | Behavior | Notes |
+|------|----------|-------|
+| Spelling ≥3 “as in” | spoken paragraph + sealed Spelled chip | no `\n` remount (v4.84.6) |
+| Name chips | EN+ES strong/weak cues; sealed trailing | A+ accents/stopwords (v4.84.8) |
+| Digit / unit highlight | phone · date · dosage · money spans | lone day-in-date fixed (v4.84.4) |
 | Confidence underline | low DG confidence | looks like “selection”; not copy |
 
 ---
@@ -87,6 +87,19 @@ These must stay readable and copyable as **units**, not random digits:
 | live draft with name cue | chip mid-speech | no chips until sealed |
 
 **Done:** stopwords · weak-cue Capitalized · sealed-only · trailing CSS.
+
+### Phase A+ — ES name cues + accents — **shipped v4.84.8**
+
+**From → to:**
+
+| Input | Before | After |
+|-------|--------|-------|
+| `mi nombre es Maria Lopez` | often no chip | trailing `Name · Maria Lopez` |
+| `soy Josefina` | miss / false | chip (weak + Capitalized) |
+| `soy la intérprete` / `soy alérgica` / `Soy Diabética` | false Name / truncated `Diab` | no chip |
+| `I'm here` / `me llamo Josefina` / `Dr. Perez` | mixed | stopword / strong / Dr as designed |
+
+**Done:** strong `mi nombre es` · weak `soy` · ES role/condition stopwords · `tokenStem` accent strip.
 
 ### Phase B — Date as a unit (the missing formatter) — **shipped v4.84.4**
 
@@ -177,6 +190,7 @@ Each ship: `npm test`, version pill, one CHANGELOG line, **from→to** examples 
 ## 7) Acceptance (overall)
 
 - [x] `I'm sorry` never produces a Name chip (v4.84.3)
+- [x] ES: `mi nombre es` / `soy Josefina` chip; role/condition/`Soy Diabética` never (v4.84.8)
 - [x] Full DOB/appointment date highlights/copies as one unit when month+year present (v4.84.4)
 - [x] `8 mg` stays dosage; phones still group (v4.84.7)
 - [x] Spelling does not blank or remount the readable sentence mid-utterance (v4.84.6)
@@ -193,6 +207,7 @@ Each ship: `npm test`, version pill, one CHANGELOG line, **from→to** examples 
 - Vanish/derender console flags (v4.84.2) — diagnosis only
 - StableTextMorph continuity invariant (v4.84.1) — separate from protector formatters
 - Phase A name chips (v4.84.3) — no `I'm sorry` Name chip; sealed trailing chips
+- Phase A+ ES chips (v4.84.8) — `mi nombre es` / weak `soy` / accent stem / ES stopwords
 - Phase B date units (v4.84.4) — full date one highlight/copy; ISO when year present
 - Phase C sentinels (v4.84.5) — display stitch/phone gated by `detectSentinelContext`
 - Phase D spelling soften (v4.84.6) — spoken paragraph + Spelled chip; no newline remount

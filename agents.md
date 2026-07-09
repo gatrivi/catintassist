@@ -60,7 +60,7 @@ MAINVIEW (where transcription and translation happens)
   [] do not waste v space w things like spa and eng. use color coding to do that.
 [x] any time 9 or 10 digits are said back to back, group them (v4.15.0/v4.19.0)
 [x] **No Vanishing Text / StableTextMorph (v4.84.1):** never destroy readable text A and remount blank B. Morph A→B on the same mount — stable prefix stays, changes are cued (`from ⇢ to`), no blank frame; protected tokens (phones/dates/doses/money) never vanish. ScrambleText ≠ critical live transcript. Spec: [`docs/transcription-pane/README.md`](docs/transcription-pane/README.md) §12
-[x] **Sensitive data A–E (v4.84.3–4.84.7):** name chips fixed; date/dose/money units; sentinels gate display; spelling soften. Plan: [`docs/development/sensitive-data-approach.md`](docs/development/sensitive-data-approach.md)
+[x] **Sensitive data A–E + ES chips (v4.84.3–4.84.8):** name chips EN+ES; date/dose/money units; sentinels; spelling soften. Plan: [`docs/development/sensitive-data-approach.md`](docs/development/sensitive-data-approach.md)
 
 SCOREBOARD GUIDELINES
 [x] keep track of how long ive been working wo breaks. 
@@ -155,5 +155,5 @@ CURRENT INBOX
 - [x] v4.76.0: bubble corrections — double-click/✎ fix transcription or translation, teach STT + glossary (`docs/transcription-pane/corrections.md`)
 - [x] v4.77.0: production a11y — PWA manifest, clear-log confirm, skip link, reduced motion
 - [x] v4.78.0: audio editor export pack (`exports/audio-greeting-editor/`); Settings → Data corrections backup; compliance docs
-- [x] v4.84.3–4.84.7: sensitive data A–E — chips · dates · sentinels · spelling · dose/money (`docs/development/sensitive-data-approach.md`)
+- [x] v4.84.3–4.84.8: sensitive data A–E + ES name chips — chips · dates · sentinels · spelling · dose/money (`docs/development/sensitive-data-approach.md`)
 </details>

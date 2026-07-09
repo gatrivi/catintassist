@@ -2,6 +2,12 @@
 
 Short operator-readable notes for recent Codex work. Use this when you want to catch up fast without reading chat history.
 
+## v4.84.8 - name chips ES + accents
+- Problem: ES name cues weak/missing; accents truncated chips (`Diabética` → `Diab`); `soy la intérprete` / conditions false-positive.
+- Change: strong `mi nombre es` / `me llamo`; weak `soy` + Capitalized; ES stopwords; `tokenStem` strips accents.
+- Verify: corner **v4.84.8**; `mi nombre es Maria Lopez` chips; `soy Josefina` chips; `soy alérgica` / `Soy Diabética` / `soy la intérprete` no chip.
+- Docs: `docs/development/sensitive-data-approach.md` §Phase A+
+
 ## v4.84.7 - sensitive data A–E complete
 - Problem: false Name chips, lone day digits in dates, dead sentinels, spelling remount cliff, dose/money not units.
 - Change: A chips · B date units · C sentinel display gate · D spelling paragraph+chip · E dosage/money spans.
@@ -76,7 +82,7 @@ Short operator-readable notes for recent Codex work. Use this when you want to c
 ## Queued
 - Rebuild the 40-word interpreter warning safely: visual-first, per language/turn, optional quiet audio, never through patient audio, no repeated pings.
 - Add 900x600 layout screenshot checks for call default, call+notes, soundboard+notes.
-- Continue sensitive data protector work for phone numbers and delayed number transcription.
+- Phone / delayed-number STT: only with repro + `[CAT VANISH]` reason (see sensitive-data rule §0).
 
 ## Health Commands
 ```powershell

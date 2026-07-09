@@ -68,10 +68,10 @@ flowchart TD
 - Responsibility: monitors `lastActivityTime` while active and plays tiered warnings; optionally auto-disconnects by moving the app into break state (based on silence thresholds).
 - Main file: [`src/components/SilenceGuardian.js`](src/components/SilenceGuardian.js)
 
-#### Sensitive data protection (pure utils, v4.84.7)
+#### Sensitive data protection (pure utils, v4.84.8)
 - Responsibility: lane-aware number words, phone/SSN, digit stitch, date/dosage/money highlight units, sentinel display brakes, NYC zip; overlap digit guards.
 - Main file: [`src/utils/sensitiveDataProtector.js`](src/utils/sensitiveDataProtector.js)
-- Chips/spelling: [`src/utils/transcriptFormat.js`](src/utils/transcriptFormat.js)
+- Chips/spelling (EN+ES cues): [`src/utils/transcriptFormat.js`](src/utils/transcriptFormat.js)
 - Approach: [`docs/development/sensitive-data-approach.md`](../development/sensitive-data-approach.md)
 - Handoff: [`docs/handoff/01_number_protection.md`](../handoff/01_number_protection.md)
 
@@ -95,8 +95,8 @@ flowchart TD
 - Main file: [`src/components/ElementHint.js`](src/components/ElementHint.js)
 - Doc: [`docs/development/element-hint.md`](../development/element-hint.md)
 
-#### Transcript format + copy chips (v4.75.6)
-- Responsibility: consolidate spelling blocks, extract copyable names/entities for chip row.
+#### Transcript format + copy chips (v4.75.6 / v4.84.8)
+- Responsibility: consolidate spelling blocks; EN+ES name cues (strong/weak + accent stem); copyable entities for chip row.
 - Main file: [`src/utils/transcriptFormat.js`](src/utils/transcriptFormat.js)
 
 #### Auth / DB (future)

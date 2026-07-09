@@ -43,7 +43,7 @@ Prod verification checklist:
 - [x] v4.83.1 viewport blockers — Azure status, live height unlock, soundboard full-width, one STT rail
 - [x] v4.84.0 stable transcript display — no live scramble; continuity keys; tail-only updates
 - [x] v4.84.1 StableTextMorph — word diff morph (not plain snap / not scramble)
-- [x] v4.84.3–4.84.7 sensitive data A–E — chips · date units · sentinels · spelling soften · dose/money ([`development/sensitive-data-approach.md`](development/sensitive-data-approach.md))
+- [x] v4.84.3–4.84.8 sensitive data A–E + ES name chips — chips · date units · sentinels · spelling soften · dose/money · ES cues ([`development/sensitive-data-approach.md`](development/sensitive-data-approach.md))
 
 **Code:** [`useTranslate.js`](../src/hooks/useTranslate.js) · [`useDeepgram.js`](../src/hooks/useDeepgram.js) · [`sensitiveDataProtector.js`](../src/utils/sensitiveDataProtector.js) · [`translationApplicator.js`](../src/utils/translationApplicator.js)
 

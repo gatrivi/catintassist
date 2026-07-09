@@ -1,4 +1,4 @@
-# Transcription Pane (v4.84.7)
+# Transcription Pane (v4.84.8)
 
 ## 1) The one table to memorize (columns are fixed)
 Columns never swap.
@@ -52,9 +52,10 @@ Mic Test mode persists in `localStorage` (`catint_mic_test_mode_v1`).
 - `src/utils/transcriptFormat.js` (copy chips, spelling consolidate)
 - `src/utils/sensitiveDataProtector.js` (phone/SSN, dates, dose/money, sentinels)
 
-## 8) Copy chips + sensitive highlights (v4.75.6+ / v4.84.7)
+## 8) Copy chips + sensitive highlights (v4.75.6+ / v4.84.8)
 - Names / spelled: trailing `CopyChip` on **sealed** only; spoken spelling paragraph stays (no `\n` remount)
-- Weak cues (`I'm` / `I am`): Capitalized name required — `I'm sorry` is **not** a name
+- Weak cues (`I'm` / `I am` / `soy`): Capitalized name required — `I'm sorry` / `soy alérgica` ≠ name
+- Strong ES: `me llamo` / `mi nombre es` (lowercase OK); accents via `tokenStem` (v4.84.8)
 - Highlight units (click-copy): phone/SSN digits · full **date** (ISO when year) · **dosage** (`500 mg`) · **money** (`$25`)
 - Sentinels gate stitch/phone format on address/email/spelling/date/dosage cues
 - Plan: [`../development/sensitive-data-approach.md`](../development/sensitive-data-approach.md)

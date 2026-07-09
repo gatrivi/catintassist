@@ -1,9 +1,9 @@
-# Handoff: Number / Sensitive Data Protection (v4.84.7)
+# Handoff: Number / Sensitive Data Protection (v4.84.8)
 
 ## Problem
 Phone, SSN, dates, dosage, money, addresses, email, and spelling must survive STT overlap and display as readable **units**. Wrong edits lose the interpreter their job.
 
-**Full approach (A–E shipped):** [`../development/sensitive-data-approach.md`](../development/sensitive-data-approach.md)
+**Full approach (A–E + ES chips):** [`../development/sensitive-data-approach.md`](../development/sensitive-data-approach.md)
 
 ## Pipeline (read in order)
 1. **STT overlap** — `removeOverlapPreservingDigitSequences()` + `containsCriticalData` guards (`captionEngine` / `useDeepgram`)
@@ -24,7 +24,8 @@ Phone, SSN, dates, dosage, money, addresses, email, and spelling must survive ST
 
 ## Name / spelling chips (not protector)
 - Sealed trailing chips only (`transcriptFormat.js`)
-- Weak cue `I'm` needs Capitalized name — `I'm sorry` ≠ Name
+- Weak cue `I'm` / `soy` needs Capitalized name — `I'm sorry` / `soy alérgica` ≠ Name
+- Strong ES: `me llamo` / `mi nombre es` (lowercase OK); accents via `tokenStem`
 - Spelling: spoken paragraph stays; trailing `Spelled · SMITH` (v4.84.6)
 
 ## Known footguns
@@ -33,6 +34,7 @@ Phone, SSN, dates, dosage, money, addresses, email, and spelling must survive ST
 | Numbers vanish mid-call | Overlap dedupe ate digits | v4.18 hardened — add test before changing overlap |
 | EN "once" → 11 | Ran ES map on EN lane | Always pass `lang` to `convertEnglishNumberWords` |
 | `I'm sorry` Name chip | Weak cue grabbed next word | v4.84.3 stopwords + Capitalized gate |
+| `Soy Diabética` → `Diab` chip | Accent truncated capture / no ES stopwords | v4.84.8 stem + stopwords |
 | Lone `8` in date | Number regex only | v4.84.4 date units |
 | Address digits → phone | No sentinel gate | v4.84.5 |
 
