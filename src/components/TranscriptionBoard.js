@@ -796,20 +796,46 @@ export const TranscriptionBoard = ({
     [openCorrectionEditor],
   );
 
-  const rememberLiveBubbleHeight = useCallback((id, node) => {
+  const rememberLiveBubbleHeight = useCallback((id, node, textLen = 0) => {
     if (!id || !node) return;
     const height = Math.ceil(node.getBoundingClientRect().height);
-    const previous = liveBubbleHeightsRef.current.get(id) || 0;
-    if (height > previous + 2) {
-      liveBubbleHeightsRef.current.set(id, height);
+    const prev = liveBubbleHeightsRef.current.get(id);
+    const prevH = prev?.height ?? 0;
+    const prevLen = prev?.textLen ?? 0;
+
+    // Text shorter than when lock was set → release / re-measure.
+    if (prev && textLen > 0 && textLen < prevLen - 2) {
+      liveBubbleHeightsRef.current.set(id, { height, textLen });
       setLiveHeightRev((n) => n + 1);
+      return;
+    }
+
+    // Measured shrink > 8px → release lock (allow bubble to contract).
+    if (prevH > 0 && height < prevH - 8) {
+      liveBubbleHeightsRef.current.set(id, { height, textLen });
+      setLiveHeightRev((n) => n + 1);
+      return;
+    }
+
+    // Grow past anti-jitter (±2px) only.
+    if (height > prevH + 2) {
+      liveBubbleHeightsRef.current.set(id, { height, textLen });
+      setLiveHeightRev((n) => n + 1);
+      return;
+    }
+
+    // Keep textLen fresh even when height is stable.
+    if (prev && textLen !== prevLen) {
+      liveBubbleHeightsRef.current.set(id, { height: prevH || height, textLen });
     }
   }, []);
 
   useEffect(() => {
-    const activeIds = new Set(captions.map((cap) => cap.id).filter(Boolean));
+    const activeLiveIds = new Set(
+      captions.filter((cap) => cap?.id && cap.isFinal === false).map((cap) => cap.id),
+    );
     liveBubbleHeightsRef.current.forEach((_, id) => {
-      if (!activeIds.has(id)) liveBubbleHeightsRef.current.delete(id);
+      if (!activeLiveIds.has(id)) liveBubbleHeightsRef.current.delete(id);
     });
   }, [captions]);
 
@@ -878,13 +904,6 @@ export const TranscriptionBoard = ({
     });
   }, [captions]);
   const lastAudioChunkAt = connectProgress?.lastAudioChunkAt || 0;
-  const lastPipelineAt = Math.max(
-    lastAudioChunkAt,
-    connectProgress?.lastDeepgramMessageAt || 0,
-    connectProgress?.lastTranscriptStringAt || 0,
-    connectProgress?.lastCaptionCommitAt || 0,
-  );
-  const showSttPendingRail = connectionState === 'connected' && lastAudioChunkAt > 0 && sttNow - lastPipelineAt < 4500;
   const showSttSoundbar = connectionState === 'connected';
   const audioHot = lastAudioChunkAt > 0 && sttNow - lastAudioChunkAt < 1400;
   const enConfidence = Number.isFinite(connectProgress?.lastSocketEnConfidence)
@@ -1083,26 +1102,6 @@ export const TranscriptionBoard = ({
         </div>
       )}
 
-      {showSttPendingRail && (
-        <div className="stt-process-rail" aria-live="polite">
-          {sttPipelineSteps.map((step) => (
-            <span
-              key={step.key}
-              className={`stt-process-step${step.at ? ' is-done' : ' is-waiting'}`}
-              title={step.at ? `${step.label}: ${sttNow - step.at}ms ago` : `${step.label}: waiting`}
-            >
-              <span className="stt-process-dot" />
-              {step.label}
-            </span>
-          ))}
-          {Number.isFinite(connectProgress?.lastTranscriptConfidence) && (
-            <span className="stt-process-confidence">
-              conf {Math.round(connectProgress.lastTranscriptConfidence * 100)}% · words {connectProgress?.lastWordConfidenceCount || 0}
-            </span>
-          )}
-        </div>
-      )}
-
       <div 
         className="scroll-area"
         style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column' }} 
@@ -1171,35 +1170,7 @@ export const TranscriptionBoard = ({
 
         <div style={{ flex: '1 1 auto' }} />
 
-        {showSttPendingRail && (
-          <div className="transcript-bubble is-live stt-pending-bubble" aria-live="polite">
-            <div className="translated-bubble-row">
-              <div className="bubble-col bubble-col-source">
-                <div className="bubble-line stt-pending-line">
-                  <span className="stt-pending-dot" aria-hidden />
-                  Hearing audio…
-                </div>
-              </div>
-              <div className="bubble-col bubble-col-rail" style={{ position: 'relative', minWidth: '6ch' }}>
-                <BubbleRail
-                  engineStatus="translating"
-                  turnWordCount={0}
-                  showTurnWordCount={false}
-                  isThisPlaying={false}
-                  canPlay={false}
-                  onPlayClick={() => {}}
-                />
-              </div>
-              <div className="bubble-col bubble-col-translation">
-                <div className="bubble-line bubble-line-translation stt-pending-line">
-                  Waiting for Deepgram text…
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
-        
-        {captions.length === 0 && pinnedCaptions.length === 0 && !showSttPendingRail && (
+        {captions.length === 0 && pinnedCaptions.length === 0 && (
           <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', opacity: isZombieCall ? 0.85 : 1 }}>
             {isZombieCall && connectionState !== 'connected' ? (
               <div style={{ fontFamily: 'var(--font-mono)', fontSize: '0.8rem', textAlign: 'center', padding: '0 1rem', color: '#fbbf24' }}>
@@ -1236,18 +1207,23 @@ export const TranscriptionBoard = ({
           const isLongBubble = wordCount > 50 && !isLive;
           const isExpanded = expandedIds.has(cap.id);
           const bubbleStyle = getBubbleStyle(cap.text, isLive, cap.lang, languagePair);
-          const stableMinHeight = isLive ? liveBubbleHeightsRef.current.get(cap.id) : null;
+          const stableMinHeight = isLive
+            ? liveBubbleHeightsRef.current.get(cap.id)?.height
+            : null;
+          const textLen = (cap.text || '').length;
 
           return (
             <div
-              ref={(node) => (isLive ? rememberLiveBubbleHeight(cap.id, node) : undefined)}
+              ref={(node) =>
+                isLive ? rememberLiveBubbleHeight(cap.id, node, textLen) : undefined
+              }
               key={captionRenderKeys[i]}
               className={`transcript-bubble${isLive ? ' is-live' : ' is-sealed'}${isSplitContinuation ? ' is-flowed' : ''}${cap.userCorrected || cap.userTranslationOverride ? ' is-user-corrected' : ''}`}
               style={{
               marginTop: isSplitContinuation ? '0rem' : '0.25rem',
               border: '1px solid transparent',
               background: bubbleStyle.backgroundColor,
-              minHeight: stableMinHeight ? `${stableMinHeight}px` : undefined,
+              minHeight: isLive && stableMinHeight ? `${stableMinHeight}px` : undefined,
               ...bubbleStyle
             }}>
               

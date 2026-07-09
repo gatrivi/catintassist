@@ -4,6 +4,12 @@
 
 ---
 
+## v4.83.1 — Phase 0 viewport / Azure blockers
+- Azure status: missing / unauthorized·key-region mismatch / error / ok (success-only) / paused; fallback-chain banner
+- Live bubble height: anti-jitter only; release on shrink/seal/split (no historic max slab)
+- On-call soundboard: `grid-column: 1 / -1` above transcript+tools
+- STT: single bottom status rail (removed top absolute + pending bubble)
+
 ## v4.83.0 — Phase 0 Smoke Dashboard
 - Settings → Behavior → Phase 0 Smoke: operator checklist + live stack probes
 - Does not re-implement v4.81/v4.82; proves them on the real stack

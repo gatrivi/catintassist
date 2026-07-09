@@ -87,13 +87,26 @@ export const clearSessionEngineBlacklist = () => {
   Object.keys(BLACKBOX).forEach((k) => delete BLACKBOX[k]);
   Object.keys(BLACKBOX_TTLS).forEach((k) => delete BLACKBOX_TTLS[k]);
   Object.keys(BLACKBOX_REASONS).forEach((k) => delete BLACKBOX_REASONS[k]);
+  lastAzureOutcome = null;
+};
+
+/** Auth failures — do not treat as rate limit (403 can be key/region mismatch). */
+export const isUnauthorizedError = (err, body = '') => {
+  const s = `${err?.message || err || ''} ${body}`.toUpperCase();
+  return (
+    /\b401\b/.test(s) ||
+    /\b403\b/.test(s) ||
+    s.includes('UNAUTHORIZED') ||
+    s.includes('AUTHENTICATION') ||
+    s.includes('ACCESS DENIED')
+  );
 };
 
 export const isRateLimitError = (err, body = '') => {
+  if (isUnauthorizedError(err, body)) return false;
   const s = `${err?.message || err || ''} ${body}`.toUpperCase();
   return (
     s.includes('429') ||
-    s.includes('403') ||
     s.includes('LIMIT') ||
     s.includes('THROTTLED') ||
     s.includes('QUOTA') ||
@@ -113,10 +126,58 @@ export const isBrowserFetchError = (err) => {
 };
 
 export const classifyEngineFailure = (err) => {
+  if (isUnauthorizedError(err)) return 'unauthorized';
   if (isRateLimitError(err)) return 'rate_limit';
   if (isBrowserFetchError(err)) return 'cors_or_network';
   if (`${err?.message || ''}`.includes('timeout')) return 'timeout';
   return 'error';
+};
+
+/** Last Azure outcome only — never stores keys, bodies, or translated text. */
+let lastAzureOutcome = null; // { status: 'ok'|'unauthorized'|'error', at: number }
+
+export const getLastAzureOutcome = () => lastAzureOutcome;
+
+const recordAzureOutcome = (status) => {
+  lastAzureOutcome = { status, at: Date.now() };
+};
+
+/**
+ * Visible Azure line for Settings / Phase 0.
+ * "ok" only after a successful Azure request — key presence alone is never ok.
+ */
+export const getAzureStatusLabel = () => {
+  const keys = getTranslationKeyStatus();
+  if (!keys.azure) return 'Azure: missing key';
+  if (isEngineBlocked('azure')) {
+    const session = readSessionBlacklist();
+    const entry = session.azure;
+    const reason =
+      (typeof entry === 'object' && entry?.reason) ||
+      BLACKBOX_REASONS.azure ||
+      lastAzureOutcome?.status;
+    if (reason === 'unauthorized' || lastAzureOutcome?.status === 'unauthorized') {
+      return 'Azure: unauthorized / key-region mismatch';
+    }
+    return 'Azure: paused';
+  }
+  if (lastAzureOutcome?.status === 'ok') return 'Azure: ok';
+  if (lastAzureOutcome?.status === 'unauthorized') {
+    return 'Azure: unauthorized / key-region mismatch';
+  }
+  if (lastAzureOutcome?.status === 'error') return 'Azure: error';
+  return 'Azure: key configured (unverified)';
+};
+
+export const isAzureFallbackOnly = () => {
+  const keys = getTranslationKeyStatus();
+  if (!keys.azure) return false;
+  if (lastAzureOutcome?.status === 'unauthorized') return true;
+  if (!isEngineBlocked('azure')) return false;
+  const session = readSessionBlacklist();
+  const entry = session.azure;
+  const reason = (typeof entry === 'object' && entry?.reason) || BLACKBOX_REASONS.azure;
+  return reason === 'unauthorized' || lastAzureOutcome?.status === 'unauthorized';
 };
 
 const logEngineFailOnce = (id, reason) => {
@@ -150,7 +211,15 @@ export const getTranslationEngineHealth = () => {
   const blocked = ['deepl', 'azure', 'openai', 'google_gtx', 'mymemory'].filter((id) =>
     isEngineBlocked(id),
   );
-  return { keys, chain, blocked, lastAttempt: lastTranslationAttempt };
+  return {
+    keys,
+    chain,
+    blocked,
+    lastAttempt: lastTranslationAttempt,
+    azureStatus: getAzureStatusLabel(),
+    azureFallbackOnly: isAzureFallbackOnly(),
+    azureRegion: apiKeys.AZURE_REGION || DEFAULT_AZURE_REGION,
+  };
 };
 
 const buildFetchers = (sLang, tLang, keys, signal) => ({
@@ -189,6 +258,7 @@ const buildFetchers = (sLang, tLang, keys, signal) => ({
     });
     if (!r.ok) throw new Error(`azure ${r.status}`);
     const d = await r.json();
+    recordAzureOutcome('ok');
     return d?.[0]?.translations?.[0]?.text;
   },
   openai: async (text) => {
@@ -316,7 +386,14 @@ export const translateWithFallback = async ({
       failures.push({ id, reason });
       logEngineFailOnce(id, reason);
       onEngineFail?.(id, reason);
-      if (isRateLimitError(e) || isBrowserFetchError(e)) {
+      if (id === 'azure') {
+        recordAzureOutcome(reason === 'unauthorized' ? 'unauthorized' : 'error');
+      }
+      if (
+        isRateLimitError(e) ||
+        isBrowserFetchError(e) ||
+        reason === 'unauthorized'
+      ) {
         blacklistEngine(id, undefined, reason);
       }
     }

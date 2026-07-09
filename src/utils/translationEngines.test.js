@@ -6,12 +6,16 @@ import {
   isRateLimitError,
   classifyEngineFailure,
   translateWithFallback,
+  clearSessionEngineBlacklist,
+  getAzureStatusLabel,
+  isAzureFallbackOnly,
 } from './translationEngines';
 import { isTranslationPassthrough } from './translationQuality';
 
 describe('translationEngines v4.54', () => {
   beforeEach(() => {
     sessionStorage.clear();
+    clearSessionEngineBlacklist();
   });
 
   test('buildEngineChain excludes lingva', () => {
@@ -63,6 +67,46 @@ describe('translationEngines v4.54', () => {
 
   test('classifyEngineFailure for network', () => {
     expect(classifyEngineFailure(new TypeError('Failed to fetch'))).toBe('cors_or_network');
+  });
+
+  test('classifyEngineFailure maps 401/403 to unauthorized', () => {
+    expect(classifyEngineFailure(new Error('azure 401'))).toBe('unauthorized');
+    expect(classifyEngineFailure(new Error('azure 403'))).toBe('unauthorized');
+    expect(isRateLimitError(new Error('azure 403'))).toBe(false);
+  });
+
+  test('getAzureStatusLabel: ok only after success', async () => {
+    global.fetch = jest.fn().mockResolvedValue({
+      ok: true,
+      json: async () => [{ translations: [{ text: 'Hola', to: 'es' }] }],
+    });
+    await translateWithFallback({
+      text: 'Hi',
+      sLang: 'en',
+      tLang: 'es',
+      keys: { AZURE: 'test-key', AZURE_REGION: 'brazilsouth' },
+    });
+    expect(getAzureStatusLabel()).toBe('Azure: ok');
+  });
+
+  test('azure 401 records unauthorized and fallback-only', async () => {
+    global.fetch = jest.fn().mockResolvedValue({
+      ok: false,
+      status: 401,
+      json: async () => ({}),
+    });
+    blacklistEngine('google_gtx', 60000, 'error');
+    blacklistEngine('mymemory', 60000, 'error');
+
+    await translateWithFallback({
+      text: 'Hello',
+      sLang: 'en',
+      tLang: 'es',
+      keys: { AZURE: 'bad-key', AZURE_REGION: 'brazilsouth' },
+    });
+
+    expect(getAzureStatusLabel()).toBe('Azure: unauthorized / key-region mismatch');
+    expect(isAzureFallbackOnly()).toBe(true);
   });
 
   test('blacklistEngine blocks via sessionStorage', () => {

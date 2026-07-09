@@ -598,7 +598,7 @@ body {
 }
 
 #main-transcript.notes-open > .on-call-soundboard-strip {
-  grid-column: 1;
+  grid-column: 1 / -1;
   grid-row: 1;
   max-height: 34px;
   overflow: hidden;
@@ -623,7 +623,7 @@ body {
 
 #main-transcript.notes-open > .tools-column {
   grid-column: 2;
-  grid-row: 1 / span 2;
+  grid-row: 2;
   min-width: 0;
 }
 

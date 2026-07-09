@@ -4,6 +4,7 @@ import { APP_VERSION } from '../constants/version';
 
 const REASON_LABEL = {
   rate_limit: 'rate limited (429)',
+  unauthorized: 'unauthorized / key-region mismatch',
   cors_or_network: 'blocked by browser / CORS',
   timeout: 'timed out',
   error: 'error',
@@ -22,7 +23,7 @@ const ENGINE_LABEL = {
 export const TranslationStatusBar = ({ meta = null, compact = false }) => {
   const health = getTranslationEngineHealth();
   const last = meta || health.lastAttempt;
-  const { keys, chain, blocked } = health;
+  const { keys, chain, blocked, azureStatus, azureFallbackOnly, azureRegion } = health;
 
   const keyLabel = (name, has, source) => {
     if (!has) return `no ${name} key`;
@@ -38,6 +39,15 @@ export const TranslationStatusBar = ({ meta = null, compact = false }) => {
   const chainLine = chain.length
     ? chain.map((id) => ENGINE_LABEL[id] || id).join(' → ')
     : 'no engines available';
+
+  const azureLineColor =
+    azureStatus?.includes('ok') && !azureStatus?.includes('unverified')
+      ? '#34d399'
+      : azureStatus?.includes('missing')
+        ? '#fcd34d'
+        : azureStatus?.includes('unauthorized') || azureStatus?.includes('error')
+          ? '#fca5a5'
+          : '#fbbf24';
 
   return (
     <div
@@ -55,6 +65,20 @@ export const TranslationStatusBar = ({ meta = null, compact = false }) => {
         Translation engines [v{APP_VERSION}]
       </div>
       <div>{keyLine}</div>
+      <div style={{ marginTop: 2, color: azureLineColor, fontWeight: 700 }}>
+        {azureStatus}
+        {keys.azure && azureRegion ? (
+          <span style={{ fontWeight: 500, color: 'rgba(255,255,255,0.45)' }}>
+            {' '}
+            · region {azureRegion}
+          </span>
+        ) : null}
+      </div>
+      {azureFallbackOnly && (
+        <div style={{ marginTop: 4, color: '#fcd34d', fontWeight: 700 }}>
+          Translation smoke: fallback-chain only, Azure unavailable
+        </div>
+      )}
       <div style={{ marginTop: 2 }}>Chain: {chainLine}</div>
       {blocked.length > 0 && (
         <div style={{ marginTop: 2, color: '#fbbf24' }}>
