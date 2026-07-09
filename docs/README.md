@@ -1,9 +1,10 @@
-# CatIntAssist Docs (v4.84.17)
+# CatIntAssist Docs (v4.84.20)
 
 This is the single source of truth for *documentation + onboarding*.
 
 ## What's new
-- **v4.84.17** — Unified button sizing (`--btn-h` / `--btn-icon`) — [`development/button-sizing.md`](development/button-sizing.md)
+- **v4.84.20** — Bilingual release-notes modal (ES default) + VB-Cable route UX — [`onboarding/release-notes.md`](onboarding/release-notes.md)
+- **v4.84.19** — VB-Cable I/O strip (Tab / VB toggle, → Tab fallback) — [`development/audio-routing-no-spof.md`](development/audio-routing-no-spof.md)
 - **v4.84.8** — Name chips ES cues + accent stem — [`development/sensitive-data-approach.md`](development/sensitive-data-approach.md) §Phase A+
 - **v4.84.3–4.84.7** — Sensitive data A–E shipped — same doc (chips · dates · sentinels · spelling · dose/money)
 - **v4.84.2** — Vanish/derender console flags — [`development/vanish-trace.md`](development/vanish-trace.md)
@@ -24,6 +25,7 @@ This is the single source of truth for *documentation + onboarding*.
 ## Start Here
 - [`docs/ROADMAP.md`](ROADMAP.md): product phases 0–3, do-not-yet list, future inbox
 - [`docs/onboarding/quickstart.md`](onboarding/quickstart.md): install, run locally, and dev/sanity checks
+- [`docs/onboarding/release-notes.md`](onboarding/release-notes.md): **novedades / what's new** — bilingual modal + VB-Cable guide (v4.84.20)
 - [`docs/onboarding/mic-mode-phone-assistant.md`](onboarding/mic-mode-phone-assistant.md): **phone assistant** — mic STT + local soundboard/TTS (v4.80.15)
 - [`docs/onboarding/advice.md`](onboarding/advice.md): the daily “what to click” advice checklist
 - [`docs/architecture/flow.md`](architecture/flow.md): end-to-end data flow + key state owners

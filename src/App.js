@@ -25,7 +25,9 @@ import { useAudioSource } from "./hooks/useAudioSource";
 import { useDevSimulate } from "./hooks/useDevSimulate";
 import { useProgressiveAudio } from "./hooks/useProgressiveAudio";
 import { useAppUpdateCheck } from "./hooks/useAppUpdateCheck";
+import { useReleaseNotes } from "./hooks/useReleaseNotes";
 import { UpdateAppBanner } from "./components/UpdateAppBanner";
+import { ReleaseNotesModal } from "./components/ReleaseNotesModal";
 import { loadFile, generateObjectUrl } from "./utils/storage";
 import { resolveAppBackgroundPath } from "./utils/defaultBackgrounds";
 import SettingsPanel from "./components/SettingsPanel";
@@ -35,6 +37,8 @@ import { GuideHostProvider } from "./contexts/GuideHostContext";
 import { ElementHintProvider } from "./components/ElementHint";
 import { isSplashSeenThisSession } from "./utils/splashStorage";
 import { isAppGuideDone } from "./utils/appGuideStorage";
+import { getReleaseNoteForVersion } from "./content/releaseNotes";
+import { shouldShowReleaseNotes } from "./utils/releaseNotesStorage";
 import {
   getRuntimeDeepgramKey,
   hasConfiguredDeepgramKey,
@@ -160,6 +164,13 @@ const Dashboard = () => {
   const [, setRuntimeKeyTick] = useState(0);
   const [shellReady, setShellReady] = useState(() => isSplashSeenThisSession());
   const [showSplash, setShowSplash] = useState(() => !isSplashSeenThisSession());
+  const {
+    note: releaseNote,
+    open: releaseNotesOpen,
+    handleGotIt: onReleaseNotesGotIt,
+    handleLater: onReleaseNotesLater,
+    handleNever: onReleaseNotesNever,
+  } = useReleaseNotes({ shellReady, isActive, isZombieCall });
   const [showVersionBadge, setShowVersionBadge] = useState(() => {
     try {
       return localStorage.getItem('catint_show_version_badge_v1') !== '0';
@@ -308,7 +319,9 @@ const Dashboard = () => {
     setShellReady(true);
     // No forced Settings takeover — bottom banner nudges; user opens when ready.
     if (!hasConfiguredDeepgramKey()) return;
-    if (process.env.NODE_ENV !== "development" && !isAppGuideDone()) {
+    const note = getReleaseNoteForVersion();
+    const releaseNotesPending = note && shouldShowReleaseNotes(note);
+    if (process.env.NODE_ENV !== "development" && !isAppGuideDone() && !releaseNotesPending) {
       setTimeout(() => {
         window.dispatchEvent(new CustomEvent("cat_open_app_guide"));
       }, 500);
@@ -330,7 +343,7 @@ const Dashboard = () => {
   }, []);
 
   const blockSecondaryChrome =
-    showSplash || !shellReady || settingsOpen || guideOverlayOpen;
+    showSplash || !shellReady || settingsOpen || guideOverlayOpen || releaseNotesOpen;
 
   useEffect(() => {
     applyThemePalette(loadThemePalette());
@@ -896,6 +909,14 @@ const Dashboard = () => {
         latestVersionToken={latestVersionToken}
         onDismiss={dismissUpdate}
         onUpdate={reloadToUpdate}
+      />
+
+      <ReleaseNotesModal
+        open={releaseNotesOpen && shellReady && !isActive && !isZombieCall}
+        note={releaseNote}
+        onGotIt={onReleaseNotesGotIt}
+        onLater={onReleaseNotesLater}
+        onNever={onReleaseNotesNever}
       />
 
       {quickNotesNotice && (

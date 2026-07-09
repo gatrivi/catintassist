@@ -4,7 +4,18 @@
 
 ---
 
-## v4.84.10 — Seal-in-place: no remount on live→sealed
+## v4.84.20 — Release notes modal (ES default) + VB-Cable shine
+- Bilingual what's-new modal on first load per version (`ReleaseNotesModal`, `src/content/releaseNotes.js`)
+- ES default, EN toggle; **Entendido** / **Ver después** (24h) / **No mostrar de nuevo**
+- Post-dismiss: header buttons shine (`catint-ui-shine`) — VB Cable, Tab, → Tab, VB out
+- Docs: `docs/onboarding/release-notes.md`
+
+## v4.84.19 — VB-Cable route toggle + tab fallback
+- I/O strip: Tab | VB Cable toggle, → Tab backup, cable device pickers
+- Tab picker cancel → disconnected (no red error spam)
+- Docs: `docs/development/audio-routing-no-spof.md`
+
+## v4.84.17 — Unified button sizing
 - Continuity keys by seal ordinal (`g{n}`): live bubble keeps its DOM node when it seals or splits — only the tail mounts new. Kills the vanish/reappear-elsewhere mid-read
 - Height lock releases on text shrink (was re-locking at inflated height — the "void" after splits): `liveBubbleHeight.js`
 - Repro: `[CAT VANISH] caption_bubble_split` + `caption_split_or_append` on `dg-es-152.82-i` (training video 2026-07-09)
