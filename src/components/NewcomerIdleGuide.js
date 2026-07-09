@@ -133,20 +133,19 @@ export const NewcomerIdleGuide = ({
 
       <div style={{ display: 'flex', flexDirection: 'column', gap: '0.45rem' }}>
         <div style={stepStyle(1)}>
-          <strong>Step 1 — Connect</strong>
+          <strong>Step 1 — Connect &amp; start</strong>
           <br />
           Press the green button above. It says{' '}
-          <em>&quot;Click to connect tab&quot;</em>.
+          <em>&quot;Connect &amp; start&quot;</em>.
           <br />
           Pick the browser tab where the conversation is happening. Check{' '}
-          <strong>Share audio</strong> if the browser asks.
+          <strong>Share audio</strong> if the browser asks — interpreting begins automatically.
         </div>
 
         <div style={stepStyle(2)}>
-          <strong>Step 2 — Start interpreting</strong>
+          <strong>Step 2 — Next call</strong>
           <br />
-          When the tab is connected, press the green button once more. It will say{' '}
-          <em>&quot;Start interpreting&quot;</em>.
+          After STOP, tab audio stays connected. Press the green button once to start the next call.
           {connecting && (
             <span style={{ display: 'block', marginTop: 4, color: '#fbbf24' }}>
               Connecting now…

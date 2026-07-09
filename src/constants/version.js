@@ -1,3 +1,3 @@
 /** Single source of truth for app version (UI + package.json should match). */
-export const APP_VERSION = '4.84.12';
-export const APP_VERSION_LABEL = `v${APP_VERSION} - seal in place`;
+export const APP_VERSION = '4.84.17';
+export const APP_VERSION_LABEL = `v${APP_VERSION} - connect once`;

@@ -1,6 +1,6 @@
-# CSS Reference (v4.48.2)
+# CSS Reference (v4.84.17)
 
-This file centralizes the styling tokens and base layout from `src/style/css.md` so dev notes stay discoverable.
+This file centralizes styling tokens and layout notes. **Button sizing:** [`button-sizing.md`](button-sizing.md).
 
 ## Theme tokens
 - `--bg`: #0f1115
@@ -11,7 +11,7 @@ This file centralizes the styling tokens and base layout from `src/style/css.md`
 - `--accent-strong`: #f4c978
 - `--border`: #2a2f3a
 - `--shadow`: `0 12px 30px rgba(0, 0, 0, 0.35)`
-- `font-family`: "IBM Plex Mono", "Courier New", monospace
+- `--btn-h`, `--btn-icon`, `--btn-px` — unified button sizing — [`development/button-sizing.md`](development/button-sizing.md)
 
 ## Base layout highlights
 - `body`: radial gradient + centered `.app` panel with padding + rounded corners

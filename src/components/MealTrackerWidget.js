@@ -115,12 +115,10 @@ export const MealTrackerWidget = () => {
         data-guide="wellbeing-dock-meals"
         data-tooltip="Meals and hydration"
         aria-label="Meals and hydration"
+        className="habit-dock-pill"
         onClick={() => { acknowledgeNudge('meals'); setIsOpen((o) => !o); }}
         style={{
           position: 'relative',
-          width: '40px',
-          height: '40px',
-          borderRadius: '20px',
           border: '1px solid rgba(255,255,255,0.1)',
           background: shouldNudge
             ? 'rgba(16, 185, 129, 0.25)'

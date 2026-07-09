@@ -7,7 +7,7 @@ export const IDLE_TIP_LEVEL_KEY = 'catint_idle_tip_level_v1';
 export const IDLE_TIP_SNOOZE_UNTIL_KEY = 'catint_idle_tip_snoozed_until_v1';
 
 export const OFF_CALL_ADVICE = [
-  'Press C or CONNECT to attach, then press again to start interpreting.',
+  'Press C or CONNECT to attach and start interpreting.',
   'Press M or use the 🎤 mic button (header right) if tab audio is unavailable.',
   'Double-tap CONNECT to re-open the browser tab picker (Chrome/Edge).',
   'Pin key details so numbers stay visible while you wait.',
@@ -18,7 +18,7 @@ export const OFF_CALL_ADVICE = [
 
 export const IDLE_TIPS = [
   'At 9am the app auto-attaches your interpreting tab when Auto-attach is on.',
-  'Press C or CONNECT to attach; press again when the patient connects.',
+  'Press C or CONNECT to attach and start when the patient connects.',
   'Press M or the 🎤 mic button to use your microphone instead of tab audio.',
   'Double-tap CONNECT to re-open the browser tab picker (Chrome/Edge).',
   'Use Space/Alt+Space to toggle EN/ES detection while you wait.',
@@ -27,7 +27,7 @@ export const IDLE_TIPS = [
 ];
 
 export const IDLE_CHECKLIST = [
-  'CONNECT tab (or 🎤 mic) · press Connect again to start interpreting · STOP when done',
+  'CONNECT tab (or 🎤 mic) · one press starts interpreting · STOP when done',
   'Deepgram key in Settings (gear) if STT fails',
   'VB-Cable output routes greetings to the patient',
 ];
@@ -113,7 +113,7 @@ export const buildOffCallIdleDetail = (ctx) => {
     lines.push('Unlocking encrypted key vault…');
   } else if (connectionState === 'connecting') {
     lines.push(connectionMessage || 'Connecting to Deepgram…');
-    lines.push('When audio is attached, press the green Connect button again to start interpreting.');
+    lines.push('Starting interpretation…');
   } else if (connectionState === 'error') {
     lines.push(
       'Deepgram is not working (STT engine). Press ⚡ Zap, then check Settings key, WebSocket, and tab/mic permissions.'
@@ -140,8 +140,8 @@ export const buildOffCallIdleDetail = (ctx) => {
   } else if (audioAttached) {
     lines.push(
       micTestMode
-        ? 'Microphone connected — press the green Connect button to start interpreting.'
-        : 'Tab connected — press the green Connect button to start interpreting.'
+        ? 'Microphone connected — press the green Connect button for the next call.'
+        : 'Tab connected — press the green Connect button for the next call.'
     );
   } else {
     const h = new Date().getHours();
@@ -150,10 +150,9 @@ export const buildOffCallIdleDetail = (ctx) => {
     }
     lines.push(
       micTestMode
-        ? 'Mic mode ON — press the green Connect button (top-left) to connect the microphone.'
-        : 'Tab mode — press the green Connect button (top-left) to share the interpreter tab (Chrome/Edge).'
+        ? 'Mic mode ON — press the green Connect button (top-left) to connect and start.'
+        : 'Tab mode — press the green Connect button (top-left) to share tab audio and start.'
     );
-    lines.push('Then press Connect again to start interpreting.');
     showRotatingTip = !isIdleTipsMuted();
     showChecklist = true;
   }

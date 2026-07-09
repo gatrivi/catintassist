@@ -21,6 +21,15 @@
   --glow-1: rgba(59, 130, 246, 0.16);
   --glow-2: rgba(56, 189, 248, 0.10);
   --glow-speed: 8s;
+
+  /* Button sizing — docs/development/button-sizing.md */
+  --btn-h: 26px;
+  --btn-icon: 26px;
+  --btn-px: 6px;
+  --btn-px-sm: 4px;
+  --btn-radius: 4px;
+  --btn-font-size: 0.62rem;
+  --btn-h-touch: 44px;
 }
 
 [data-state="call"] {
@@ -261,10 +270,10 @@ body {
 .session-controls-left-cluster .btn-icon.tiny-btn,
 .session-controls-left-cluster .btn-emoji,
 .session-controls-left-cluster .connect-interpret-btn {
-  width: 26px !important;
-  height: 26px !important;
-  min-width: 26px;
-  min-height: 26px;
+  width: var(--btn-icon) !important;
+  height: var(--btn-h) !important;
+  min-width: var(--btn-icon);
+  min-height: var(--btn-h);
   padding: 0 !important;
   display: inline-flex;
   align-items: center;
@@ -275,19 +284,19 @@ body {
 /* Gray chrome — mic, goals, STT, lang, key, notes, zap, expand (match settings gear). */
 .header-chrome-btn,
 .settings-scoreboard-btn {
-  width: 22px;
-  height: 22px;
-  min-width: 22px;
-  min-height: 22px;
+  width: var(--btn-icon);
+  height: var(--btn-h);
+  min-width: var(--btn-icon);
+  min-height: var(--btn-h);
   display: inline-flex;
   align-items: center;
   justify-content: center;
   padding: 0;
-  border-radius: 4px;
+  border-radius: var(--btn-radius);
   border: 1px solid rgba(255, 255, 255, 0.2);
   background: rgba(255, 255, 255, 0.06);
   color: rgba(255, 255, 255, 0.55);
-  font-size: 0.62rem;
+  font-size: var(--btn-font-size);
   font-weight: 800;
   letter-spacing: 0.02em;
   line-height: 1;
@@ -296,6 +305,15 @@ body {
   flex-shrink: 0;
   transition: border-color 0.2s, background 0.2s, color 0.2s;
   box-sizing: border-box;
+}
+
+.header-chrome-btn.header-text-btn,
+.btn-text {
+  width: auto !important;
+  min-width: var(--btn-h);
+  height: var(--btn-h) !important;
+  min-height: var(--btn-h) !important;
+  padding: 0 var(--btn-px-sm) !important;
 }
 
 .header-chrome-btn:hover:not(:disabled),
@@ -315,14 +333,6 @@ body {
   border-color: rgba(255, 255, 255, 0.2);
   background: rgba(255, 255, 255, 0.14);
   color: rgba(255, 255, 255, 0.95);
-}
-
-.header-chrome-btn.header-text-btn {
-  width: auto !important;
-  min-width: 22px;
-  height: 22px !important;
-  min-height: 22px !important;
-  padding: 0 4px !important;
 }
 
 /* Colored accents — hierarchy: connect (most) → break → hold → logoff (least). */
@@ -368,11 +378,11 @@ body {
 .session-controls-right-cluster #header-stt-latency-btn,
 .header-text-btn {
   width: auto !important;
-  height: 22px !important;
-  min-width: 22px;
-  min-height: 22px !important;
-  padding: 0 4px !important;
-  font-size: 0.62rem;
+  height: var(--btn-h) !important;
+  min-width: var(--btn-h);
+  min-height: var(--btn-h) !important;
+  padding: 0 var(--btn-px-sm) !important;
+  font-size: var(--btn-font-size);
   font-weight: 800;
   letter-spacing: 0.02em;
   white-space: nowrap;
@@ -400,12 +410,12 @@ body {
   background: linear-gradient(90deg, transparent 0%, rgba(12, 12, 18, 0.92) 28%, rgba(12, 12, 18, 0.98) 100%);
 }
 
-.session-controls-right-cluster .btn-icon.tiny-btn:not(.header-text-btn),
-.session-controls-right-cluster .btn-emoji {
-  width: 26px !important;
-  height: 26px !important;
-  min-width: 26px;
-  min-height: 26px;
+.session-controls-right-cluster .btn-icon.tiny-btn:not(.header-text-btn):not(.btn-text),
+.session-controls-right-cluster .btn-emoji:not(.has-label) {
+  width: var(--btn-icon) !important;
+  height: var(--btn-h) !important;
+  min-width: var(--btn-icon);
+  min-height: var(--btn-h);
   padding: 0 !important;
   display: inline-flex;
   align-items: center;
@@ -414,8 +424,15 @@ body {
 }
 
 .session-controls-left-cluster .app-logo-btn {
-  width: 26px !important;
-  height: 26px !important;
+  width: var(--btn-icon) !important;
+  height: var(--btn-h) !important;
+}
+
+.btn-emoji.header-accent-break.has-label,
+.btn-emoji.header-accent-logoff.has-label {
+  width: auto !important;
+  min-width: var(--btn-h);
+  padding: 0 var(--btn-px) !important;
 }
 
 .session-controls-left-cluster .app-logo-img {
@@ -443,7 +460,7 @@ body {
   grid-template-columns: auto;
   justify-content: center;
   flex: 0 1 auto;
-  max-width: 7ch;
+  max-width: min(100%, 18ch);
 }
 
 .session-controls-sticky-row > .session-controls-center,
@@ -509,6 +526,55 @@ body {
   grid-template-columns: 1fr;
   flex: 1;
   min-width: 0;
+}
+.status-bar-timers {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.35rem;
+  grid-column: 1 / -1;
+  min-width: 0;
+  font-family: var(--font-mono);
+  font-size: 0.62rem;
+  font-weight: 900;
+  line-height: 1.1;
+  white-space: nowrap;
+}
+.status-bar-timers--compact {
+  font-size: 0.58rem;
+  gap: 0.28rem;
+}
+.status-bar-timer {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.15rem;
+  min-width: 0;
+}
+.status-bar-timer-icon {
+  flex-shrink: 0;
+  font-size: 0.72em;
+  line-height: 1;
+}
+.status-bar-timer-sep {
+  opacity: 0.45;
+  font-weight: 700;
+}
+.status-bar-timer--on-call {
+  color: #34d399;
+  text-shadow: 0 0 6px rgba(52, 211, 153, 0.35);
+}
+.status-bar-timer--off-call {
+  color: #fdba74;
+  text-shadow: 0 0 6px rgba(253, 186, 116, 0.3);
+}
+.call-micro-bar-center--compact .status-bar-timers {
+  margin-top: 0.1rem;
+}
+@media (prefers-reduced-motion: reduce) {
+  .status-bar-timer--on-call,
+  .status-bar-timer--off-call {
+    text-shadow: none;
+  }
 }
 .call-micro-bar-status {
   text-overflow: ellipsis;
@@ -674,11 +740,11 @@ body {
 
 /* ── Workspace views (scoreboard ↔ soundboard lab) ── */
 .workspace-view-btn {
-  width: 44px;
-  height: 44px;
+  width: var(--btn-icon);
+  height: var(--btn-h);
   padding: 0;
   border: 1px solid rgba(212, 175, 55, 0.35);
-  border-radius: 4px;
+  border-radius: var(--btn-radius);
   background: linear-gradient(145deg, rgba(12, 12, 18, 0.92), rgba(24, 20, 12, 0.88));
   color: #d4af37;
   cursor: pointer;
@@ -693,8 +759,8 @@ body {
 }
 
 .workspace-view-btn--inline {
-  width: 28px;
-  height: 28px;
+  width: var(--btn-icon);
+  height: var(--btn-h);
   border: none;
   background: transparent;
   box-shadow: none;
@@ -707,9 +773,9 @@ body {
 }
 
 .workspace-view-btn--dock {
-  width: 40px;
-  height: 40px;
-  border-radius: 20px;
+  width: var(--btn-icon);
+  height: var(--btn-h);
+  border-radius: var(--btn-radius);
 }
 
 .workspace-view-btn:hover:not(:disabled) {
@@ -860,10 +926,11 @@ body {
   flex-shrink: 0;
   font-size: 0.58rem;
   font-weight: 800;
-  min-width: 24px;
-  height: 22px;
-  padding: 0 0.3rem;
-  border-radius: 4px;
+  min-width: var(--btn-h);
+  height: var(--btn-h);
+  min-height: var(--btn-h);
+  padding: 0 var(--btn-px-sm);
+  border-radius: var(--btn-radius);
   border: 1px solid rgba(255, 255, 255, 0.12);
   background: rgba(255, 255, 255, 0.05);
   color: rgba(255, 255, 255, 0.65);
@@ -884,14 +951,15 @@ body {
 }
 
 .header-metrics-quick-btn--help {
-  font-size: 0.62rem;
-  min-width: 22px;
+  font-size: var(--btn-font-size);
+  min-width: var(--btn-icon);
+  width: var(--btn-icon);
   padding: 0;
 }
 
 .header-metrics-quick-row .workspace-view-btn--inline {
-  width: 24px;
-  height: 22px;
+  width: var(--btn-icon);
+  height: var(--btn-h);
 }
 
 .header-metrics-bars {
@@ -1602,14 +1670,19 @@ body {
 
 .sb-btn {
   flex: 1;
-  padding: 0.32rem 0.25rem;
-  border-radius: 4px;
+  padding: 0 var(--btn-px-sm);
+  border-radius: var(--btn-radius);
   font-size: 0.68rem;
   font-weight: 600;
   cursor: pointer;
   border: 1px solid transparent;
   min-width: 0;
+  min-height: var(--btn-h);
+  height: var(--btn-h);
   white-space: nowrap;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .sb-btn:disabled {
@@ -1834,12 +1907,17 @@ body {
 
 .sb-img-btn {
   font-size: 0.68rem;
-  padding: 0.28rem 0.55rem;
-  border-radius: 4px;
+  min-height: var(--btn-h);
+  height: var(--btn-h);
+  padding: 0 var(--btn-px);
+  border-radius: var(--btn-radius);
   border: 1px dashed rgba(167, 139, 250, 0.45);
   background: rgba(139, 92, 246, 0.12);
   color: #ddd6fe;
   cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  box-sizing: border-box;
 }
 
 .sb-img-btn:hover {
@@ -1848,12 +1926,17 @@ body {
 
 .sb-audio-btn {
   font-size: 0.68rem;
-  padding: 0.28rem 0.55rem;
-  border-radius: 4px;
+  min-height: var(--btn-h);
+  height: var(--btn-h);
+  padding: 0 var(--btn-px);
+  border-radius: var(--btn-radius);
   border: 1px solid rgba(244, 63, 94, 0.4);
   background: rgba(244, 63, 94, 0.12);
   color: #bae6fd;
   cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  box-sizing: border-box;
 }
 
 .sb-audio-btn:hover:not(:disabled) {
@@ -2103,15 +2186,19 @@ body {
 .audio-route-soundboard-btn {
   background: rgba(212, 175, 55, 0.18);
   border: 1px solid rgba(212, 175, 55, 0.45);
-  border-radius: 4px;
+  border-radius: var(--btn-radius);
   color: #fde68a;
   cursor: pointer;
   font-size: 0.65rem;
   font-weight: 900;
-  padding: 0.18rem 0.5rem;
-  min-height: 24px;
+  padding: 0 var(--btn-px);
+  min-height: var(--btn-h);
+  height: var(--btn-h);
+  display: inline-flex;
+  align-items: center;
   white-space: nowrap;
   flex-shrink: 0;
+  box-sizing: border-box;
 }
 
 .audio-route-soundboard-btn:hover {
@@ -2142,8 +2229,8 @@ body {
 
 .app-logo-btn {
   padding: 0;
-  width: 26px;
-  height: 26px;
+  width: var(--btn-icon);
+  height: var(--btn-h);
   overflow: hidden;
   border-radius: 50%;
   border: 1px solid rgba(255, 255, 255, 0.12);
@@ -2155,7 +2242,8 @@ body {
   width: 100%;
   height: 100%;
   border-radius: 50%;
-  object-fit: cover;
+  object-fit: contain;
+  padding: 2px;
   animation: appLogoSpin 60s linear infinite;
 }
 
@@ -2332,9 +2420,11 @@ body {
 }
 .element-hint-copy-btn {
   flex-shrink: 0;
-  width: 22px;
-  height: 22px;
-  border-radius: 4px;
+  width: var(--btn-icon);
+  height: var(--btn-h);
+  min-width: var(--btn-icon);
+  min-height: var(--btn-h);
+  border-radius: var(--btn-radius);
   border: 1px solid rgba(255, 255, 255, 0.15);
   background: rgba(255, 255, 255, 0.08);
   color: #e2e8f0;
@@ -2533,13 +2623,19 @@ body:has(.app-container[data-call-mode="true"]) .element-hint-panel {
   background: rgba(255,255,255,0.05);
   color: rgba(255,255,255,0.7);
   cursor: pointer;
-  width: 20px;
-  height: 20px;
-  border-radius: 6px;
+  width: var(--btn-icon);
+  height: var(--btn-h);
+  min-width: var(--btn-icon);
+  min-height: var(--btn-h);
+  border-radius: var(--btn-radius);
   font-weight: 900;
-  line-height: 20px;
+  line-height: 1;
   padding: 0;
   flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
 }
 
 .connection-diagnostics-close-btn:hover {
@@ -2847,23 +2943,28 @@ body:has(.app-container[data-call-mode="true"]) .element-hint-panel {
   align-items: center;
   justify-content: center;
   gap: 0.3rem;
-  padding: 0.3rem 0.6rem;
+  min-height: var(--btn-h);
+  height: var(--btn-h);
+  padding: 0 var(--btn-px);
   border-radius: 6px;
   border: none;
   font-weight: 600;
   font-size: 0.7rem;
   cursor: pointer;
   color: lightslategray;
+  box-sizing: border-box;
 }
 
 .btn-emoji {
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 30px;
-  height: 30px;
+  width: var(--btn-icon);
+  height: var(--btn-h);
+  min-width: var(--btn-icon);
+  min-height: var(--btn-h);
   border: none;
-  border-radius: 4px;
+  border-radius: var(--btn-radius);
   cursor: pointer;
   font-size: 0.9rem;
   padding: 0;
@@ -2871,6 +2972,7 @@ body:has(.app-container[data-call-mode="true"]) .element-hint-panel {
   transition: background 0.2s, transform 0.1s;
   color: rgba(226,232,240,0.95);
   line-height: 1;
+  box-sizing: border-box;
 }
 
 .btn-emoji:hover {
@@ -2991,8 +3093,8 @@ body:has(.app-container[data-call-mode="true"]) .element-hint-panel {
 #header-lang-pair-btn {
   touch-action: manipulation;
   user-select: none;
-  min-width: 44px;
-  min-height: 22px;
+  min-width: var(--btn-h);
+  min-height: var(--btn-h);
   flex-shrink: 0;
 }
 
@@ -3150,13 +3252,18 @@ body:has(.app-container[data-call-mode="true"]) .element-hint-panel {
 .quick-notes-blocked button {
   align-self: flex-start;
   border: 1px solid rgba(244, 63, 94, 0.45);
-  border-radius: 4px;
+  border-radius: var(--btn-radius);
   background: rgba(244, 63, 94, 0.16);
   color: #fecdd3;
   font-size: 0.68rem;
   font-weight: 900;
   cursor: pointer;
-  padding: 0.3rem 0.5rem;
+  min-height: var(--btn-h);
+  height: var(--btn-h);
+  padding: 0 var(--btn-px);
+  display: inline-flex;
+  align-items: center;
+  box-sizing: border-box;
 }
 
 .transcript-audio-safe {
@@ -3215,14 +3322,14 @@ body:has(.app-container[data-call-mode="true"]) .element-hint-panel {
   #quick-notes-btn,
   .bubble-rail-play,
   .transcription-footer button {
-    min-width: 44px !important;
-    min-height: 44px !important;
+    min-width: var(--btn-h-touch) !important;
+    min-height: var(--btn-h-touch) !important;
   }
 
   .audio-route-status-main button,
   .audio-route-more-panel button,
   .audio-route-select {
-    min-height: 36px;
+    min-height: var(--btn-h-touch);
   }
 
   /* mode 0 — Transcript focus: header ~40%, main ~60% */
@@ -3476,25 +3583,42 @@ body:has(.app-container[data-call-mode="true"]) .element-hint-panel {
 .edit-btn-tiny {
   background: rgba(255, 255, 255, 0.06);
   border: 1px solid rgba(255, 255, 255, 0.1);
-  border-radius: 2px;
-  padding: 0 0.1rem;
-  height: 16px;
+  border-radius: var(--btn-radius);
+  padding: 0;
+  width: var(--btn-icon);
+  height: var(--btn-h);
+  min-width: var(--btn-icon);
+  min-height: var(--btn-h);
   cursor: pointer;
   font-size: 0.5rem;
   color: #93c5fd;
   display: flex;
   align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
 }
 
-.tiny-btn,
-.btn-icon-tiny {
-  width: 20px !important;
-  height: 20px !important;
+.tiny-btn:not(.btn-text):not(.header-text-btn),
+.btn-icon-tiny:not(.btn-text) {
+  width: var(--btn-icon) !important;
+  height: var(--btn-h) !important;
+  min-width: var(--btn-icon);
+  min-height: var(--btn-h);
   font-size: 0.7rem !important;
   padding: 0 !important;
   display: flex !important;
   align-items: center !important;
   justify-content: center !important;
+  box-sizing: border-box;
+}
+
+.tiny-btn.btn-text,
+.btn-icon-tiny.btn-text {
+  width: auto !important;
+  min-width: var(--btn-h);
+  height: var(--btn-h) !important;
+  min-height: var(--btn-h) !important;
+  padding: 0 var(--btn-px-sm) !important;
 }
 
 /* THE MAGIC: Active working state glow */
@@ -3815,20 +3939,34 @@ body:has(.app-container[data-call-mode="true"]) .element-hint-panel {
 }
 
 
-/* btn-icon: small square emoji-style icon button */
-.btn-icon {
+/* btn-icon: square icon button */
+.btn-icon:not(.btn-text):not(.header-text-btn) {
   background: transparent;
   border: none;
   cursor: pointer;
   font-size: 0.9rem;
-  padding: 0.2rem 0.3rem;
-  border-radius: 4px;
+  padding: 0;
+  border-radius: var(--btn-radius);
   transition: background 0.2s;
   display: flex;
   align-items: center;
   justify-content: center;
+  width: var(--btn-icon);
+  height: var(--btn-h);
+  min-width: var(--btn-icon);
+  min-height: var(--btn-h);
   color: rgba(226,232,240,0.95);
   line-height: 1;
+  box-sizing: border-box;
+}
+
+.btn-icon.btn-text,
+.btn-icon.header-text-btn {
+  width: auto;
+  min-width: var(--btn-h);
+  height: var(--btn-h);
+  min-height: var(--btn-h);
+  padding: 0 var(--btn-px-sm);
 }
 .btn-icon:hover { background: rgba(255,255,255,0.08); }
 /* ── COIN RAIN ANIMATIONS ── */
@@ -3942,15 +4080,19 @@ body:has(.app-container[data-call-mode="true"]) .element-hint-panel {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 24px;
-  height: 24px;
-  border-radius: 4px;
+  width: var(--btn-icon);
+  height: var(--btn-h);
+  min-width: var(--btn-icon);
+  min-height: var(--btn-h);
+  border-radius: var(--btn-radius);
   border: none;
   background: rgba(255, 255, 255, 0.08);
   color: var(--text-muted);
   cursor: pointer;
   font-size: 0.8rem;
   transition: all 0.2s;
+  padding: 0;
+  box-sizing: border-box;
 }
 
 .btn-compact:hover {
@@ -4086,7 +4228,7 @@ body:has(.app-container[data-call-mode="true"]) .element-hint-panel {
 
 .header-column-side .btn-icon, 
 .header-column-side .btn-emoji {
-  transform: scale(0.9);
+  transform: none;
 }
 
 .income-dashboard .right-col {
@@ -4098,6 +4240,30 @@ body:has(.app-container[data-call-mode="true"]) .element-hint-panel {
   padding-left: 0.2rem !important;
 }
 
+
+.connect-interpret-btn:not(.connect-interpret-btn--idle) {
+  width: var(--btn-icon);
+  height: var(--btn-h);
+  min-width: var(--btn-icon);
+  min-height: var(--btn-h);
+  padding: 0;
+  border-radius: var(--btn-radius);
+  box-sizing: border-box;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.connect-interpret-btn--idle {
+  width: 100%;
+  min-height: var(--btn-h-touch);
+  padding: 0.75rem 1rem;
+  font-size: 0.95rem;
+  border-radius: 10px;
+  font-weight: 900;
+  letter-spacing: 0.02em;
+  box-sizing: border-box;
+}
 
 /* ── Habit Dock ── */
 .habit-dock {
@@ -4111,10 +4277,19 @@ body:has(.app-container[data-call-mode="true"]) .element-hint-panel {
 }
 
 .habit-dock > button,
-.habit-dock .workspace-view-btn {
-  width: 36px !important;
-  height: 36px !important;
-  border-radius: 6px !important;
+.habit-dock .workspace-view-btn,
+.habit-dock-pill {
+  width: var(--btn-icon) !important;
+  height: var(--btn-h) !important;
+  min-width: var(--btn-icon) !important;
+  min-height: var(--btn-h) !important;
+  border-radius: var(--btn-radius) !important;
+  padding: 0 !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  box-sizing: border-box !important;
+  cursor: pointer;
   border: 1px solid var(--panel-border) !important;
   background: rgba(7, 14, 35, 0.62) !important;
   color: rgba(226, 232, 240, 0.82) !important;
@@ -4255,15 +4430,15 @@ body:has(.app-container[data-call-mode="true"]) .element-hint-panel {
 /* Rail-mode retranslate: replaces the play rail with a single ↻ button */
 .bubble-rail-retranslate-btn {
   flex: 0 0 auto;
-  width: 6ch;
-  max-width: 6ch;
-  min-width: 6ch;
-  min-height: 16px;
-  height: 16px;
+  width: var(--btn-icon);
+  max-width: var(--btn-icon);
+  min-width: var(--btn-icon);
+  min-height: var(--btn-h);
+  height: var(--btn-h);
   padding: 0;
   margin-top: 0.1rem;
   border: 1px solid rgba(56, 189, 248, 0.35);
-  border-radius: 4px;
+  border-radius: var(--btn-radius);
   background: rgba(56, 189, 248, 0.12);
   color: rgba(125, 211, 252, 0.95);
   cursor: pointer;
@@ -4284,13 +4459,15 @@ body:has(.app-container[data-call-mode="true"]) .element-hint-panel {
 
 /* ── App guide (spotlight tour) ─────────────────────────────────────────── */
 .app-guide-scoreboard-btn {
-  width: 22px;
-  height: 22px;
+  width: var(--btn-icon);
+  height: var(--btn-h);
+  min-width: var(--btn-icon);
+  min-height: var(--btn-h);
   display: flex;
   align-items: center;
   justify-content: center;
   padding: 0;
-  border-radius: 4px;
+  border-radius: var(--btn-radius);
   border: 1px solid rgba(56, 189, 248, 0.5);
   background: rgba(244, 63, 94, 0.15);
   color: #fecaca;
@@ -5269,13 +5446,18 @@ body:has(.app-container[data-call-mode="true"]) .element-hint-panel {
 .on-call-sb-btn {
   font-size: 0.62rem;
   font-weight: 700;
-  padding: 0.2rem 0.45rem;
-  border-radius: 4px;
+  min-height: var(--btn-h);
+  height: var(--btn-h);
+  padding: 0 var(--btn-px-sm);
+  border-radius: var(--btn-radius);
   border: 1px solid rgba(255, 255, 255, 0.12);
   background: rgba(255, 255, 255, 0.06);
   color: rgba(255, 255, 255, 0.85);
   cursor: pointer;
   white-space: nowrap;
+  display: inline-flex;
+  align-items: center;
+  box-sizing: border-box;
 }
 
 .on-call-sb-btn.is-playing {

@@ -19,6 +19,11 @@ import { buildCaptionContinuityKeys } from '../utils/stableLiveTranscript';
 import { alignWordConfidence, confidenceVisualFor } from '../utils/wordConfidenceAlign';
 import { flagVanish, traceCaptionArrayDiff, observeDomVanish } from '../utils/vanishTrace';
 import { nextLiveHeightLock } from '../utils/liveBubbleHeight';
+import {
+  isCaptionPinned,
+  migratePinnedCaptions,
+  togglePinEntry,
+} from '../utils/pinnedCaptions';
 import { NewcomerIdleGuide } from './NewcomerIdleGuide';
 import { isNewcomerGuideDismissed } from '../utils/newcomerGuide';
 import { isTranslationStuckForRetranslate } from '../utils/translationQuality';
@@ -899,6 +904,14 @@ export const TranscriptionBoard = ({
     safeSet('catint_pinned_msgs', JSON.stringify(pinnedCaptions));
   }, [pinnedCaptions]);
 
+  // Caption ids change on seal/split — keep pins aligned to the same bubble.
+  useEffect(() => {
+    setPinnedCaptions((prev) => {
+      const next = migratePinnedCaptions(prev, captions);
+      return next === prev ? prev : next;
+    });
+  }, [captions]);
+
   useEffect(() => {
     const onPairChange = (e) => setLanguagePair(e.detail || loadLanguagePair());
     window.addEventListener(LANG_PAIR_CHANGED_EVENT, onPairChange);
@@ -915,7 +928,6 @@ export const TranscriptionBoard = ({
     return () => window.removeEventListener('catint_pinned_cleared', onPinnedCleared);
   }, []);
 
-  const pinnedIds = pinnedCaptions.map((p) => p.id);
   const captionRenderKeys = useMemo(
     () => buildCaptionContinuityKeys(captions),
     [captions],
@@ -957,13 +969,7 @@ export const TranscriptionBoard = ({
   }, [captions]);
 
   const togglePin = (cap) => {
-    if (!cap?.id || !cap.text?.trim()) return;
-    setPinnedCaptions((prev) => {
-      if (prev.some((p) => p.id === cap.id)) {
-        return prev.filter((p) => p.id !== cap.id);
-      }
-      return [...prev, { id: cap.id, text: cap.text, lang: cap.lang || 'en' }];
-    });
+    setPinnedCaptions((prev) => togglePinEntry(prev, cap));
   };
 
   const bumpManualRetranslate = (cap) => {
@@ -1226,8 +1232,7 @@ export const TranscriptionBoard = ({
           const tid = cap.turnId || `solo-${cap.id}`;
           const turnWordCount = turnDisplayMeta.maxCountByTurn[tid] ?? cap.turnWordCount ?? 0;
           const showTurnWordCount = i === turnDisplayMeta.lastIndexByTurn[tid];
-          const isPinned = pinnedIds.includes(cap.id);
-          if (isPinned) return null;
+          if (isCaptionPinned(pinnedCaptions, cap)) return null;
           // UI_SPLIT_HEURISTIC:
           // This is the current UI-only signal we use to trigger the "flow/move" look.
           // IMPORTANT: The real algorithm-selected moved text section happens inside

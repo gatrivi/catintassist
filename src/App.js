@@ -452,17 +452,6 @@ const Dashboard = () => {
     connectionState === "connected" &&
     (micTestMode || tabStreamReady || cableStreamReady);
 
-  // Step 1: attach audio only (no call timer, no transcript capture).
-  const handleAttachAudio = useCallback(
-    async (fresh = false) => {
-      cancelHipaaDisconnectGrace?.();
-      if (isBreakActive) stopBreak();
-      return fresh ? startRecordingFresh() : startRecording();
-    },
-    [startRecording, startRecordingFresh, isBreakActive, stopBreak, cancelHipaaDisconnectGrace],
-  );
-
-  // Step 2: start call timer + transcription UI (audio should already be attached).
   const handleStartCall = useCallback(
     (isRecovery = false) => {
       cancelHipaaDisconnectGrace?.();
@@ -471,6 +460,25 @@ const Dashboard = () => {
       startSession(isRecovery);
     },
     [startSession, clearZombieState, isBreakActive, stopBreak, cancelHipaaDisconnectGrace],
+  );
+
+  // Attach audio then auto-start call (one green-button press).
+  const handleAttachAudio = useCallback(
+    async (fresh = false) => {
+      cancelHipaaDisconnectGrace?.();
+      if (isBreakActive) stopBreak();
+      const ok = fresh ? await startRecordingFresh() : await startRecording();
+      if (ok) handleStartCall(false);
+      return ok;
+    },
+    [
+      startRecording,
+      startRecordingFresh,
+      isBreakActive,
+      stopBreak,
+      cancelHipaaDisconnectGrace,
+      handleStartCall,
+    ],
   );
 
   // Zombie refresh: re-attach audio then resume preserved call state.

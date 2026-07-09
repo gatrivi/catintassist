@@ -28,25 +28,7 @@ export const ConnectInterpretButton = ({
     };
   }, []);
 
-  const style = useMemo(() => {
-    if (size === 'idle') {
-      return {
-        width: '100%',
-        padding: '0.75rem 1rem',
-        fontSize: '0.95rem',
-        borderRadius: '10px',
-        fontWeight: 900,
-        letterSpacing: '0.02em',
-      };
-    }
-    return {
-      padding: '0.35rem 0.55rem',
-      fontSize: '0.75rem',
-      borderRadius: '8px',
-      fontWeight: 900,
-      letterSpacing: '0.02em',
-    };
-  }, [size]);
+  const style = useMemo(() => ({ color: '#fff' }), []);
 
   const handleClick = () => {
     if (disabled) return;
@@ -102,11 +84,8 @@ export const ConnectInterpretButton = ({
       data-guide="connect"
       onClick={handleClick}
       disabled={disabled}
-      className={`connect-interpret-btn btn-primaryish header-accent-connect ${flash || isPendingDoubleTap ? 'connect-interpret-flash' : ''}`}
-      style={{
-        ...style,
-        color: '#fff',
-      }}
+      className={`connect-interpret-btn btn-primaryish header-accent-connect ${size === 'idle' ? 'connect-interpret-btn--idle' : ''} ${flash || isPendingDoubleTap ? 'connect-interpret-flash' : ''}`}
+      style={style}
       title={doubleTitle
         ? (requireDoubleTapIndicator
             ? `${label} — double-tap required (2nd click opens picker).`

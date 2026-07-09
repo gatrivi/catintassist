@@ -122,15 +122,13 @@ export const DeskExerciseWidget = () => {
         data-guide="wellbeing-dock-desk"
         data-tooltip="Desk stretches"
         aria-label="Desk stretches"
+        className="habit-dock-pill"
         onClick={() => {
           acknowledgeNudge('desk');
           setIsOpen((o) => !o);
         }}
         style={{
           position: 'relative',
-          width: '40px',
-          height: '40px',
-          borderRadius: '20px',
           border: '1px solid rgba(255,255,255,0.1)',
           background: shouldNudge
             ? 'rgba(245, 158, 11, 0.25)'

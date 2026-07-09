@@ -617,6 +617,15 @@ export const SessionProvider = ({ children }) => {
       setLastCallSummary(summary);
     }
 
+    // HIPAA/UX: wipe transcript log + pins as soon as the call ends (summary already captured).
+    clearCaptions();
+    purgeTranslationCache();
+    try {
+      safeLocalStorageSet('catint_pinned_msgs', JSON.stringify([]));
+      window.dispatchEvent(new CustomEvent('catint_pinned_cleared'));
+    } catch (e) {}
+    requestHipaaDisconnectGrace();
+
     let billableSecs = sessionSeconds;
     const trailingSilenceSecs = Math.max(0, (Date.now() - callLastSpeechAtRef.current) / 1000);
     if (!callHadSpeechRef.current) {

@@ -115,12 +115,10 @@ export const RosaryWidget = () => {
         data-guide="wellbeing-dock-rosary"
         data-tooltip="Rosary pause"
         aria-label="Rosary pause"
+        className="habit-dock-pill"
         onClick={() => { acknowledgeNudge('rosary'); setIsOpen((o) => !o); }}
         style={{
           position: 'relative',
-          width: '40px',
-          height: '40px',
-          borderRadius: '20px',
           border: '1px solid rgba(255,255,255,0.1)',
           background: shouldNudge
             ? 'rgba(139, 92, 246, 0.25)'

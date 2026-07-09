@@ -1,8 +1,9 @@
-# CatIntAssist Docs (v4.84.8)
+# CatIntAssist Docs (v4.84.17)
 
 This is the single source of truth for *documentation + onboarding*.
 
 ## What's new
+- **v4.84.17** — Unified button sizing (`--btn-h` / `--btn-icon`) — [`development/button-sizing.md`](development/button-sizing.md)
 - **v4.84.8** — Name chips ES cues + accent stem — [`development/sensitive-data-approach.md`](development/sensitive-data-approach.md) §Phase A+
 - **v4.84.3–4.84.7** — Sensitive data A–E shipped — same doc (chips · dates · sentinels · spelling · dose/money)
 - **v4.84.2** — Vanish/derender console flags — [`development/vanish-trace.md`](development/vanish-trace.md)

@@ -46,6 +46,7 @@ import { HeaderMetricsStrip } from './HeaderMetricsStrip';
 import { playTestToneLocal, playTestToneSink } from '../utils/audioSelfTest';
 import { APP_VERSION_LABEL } from '../constants/version';
 import { SlotMicroValue } from './SlotMicroValue';
+import { SessionStatusTimers } from './SessionStatusTimers';
 import { needsUserSuppliedDeepgramKey } from '../utils/deepgramRuntimeKey';
 import {
   STT_LATENCY_CHANGED_EVENT,
@@ -268,6 +269,7 @@ const SessionControlsSticky = React.memo(({
   sessionSeconds,
   sessionArsLive,
   totalOffCallSeconds = 0,
+  totalOnCallSeconds = 0,
   callModeExpanded,
   setCallModeExpanded,
   isNotesOpen,
@@ -339,6 +341,7 @@ const SessionControlsSticky = React.memo(({
 
   const langPairShort = (languagePairLabel || 'EN|ES').replace(/\s+/g, '');
   const langBtnTitle = `STT ${langPairShort} · ${sttLanguage === 'auto' ? 'auto-detect' : sttLanguage === 'left' ? 'forcing left column' : 'forcing right column'} · Tap: cycle STT · Hold: pair settings`;
+  const showBreakLabel = shouldBreakNudge && !isActive;
 
   return (
     <>
@@ -404,26 +407,21 @@ const SessionControlsSticky = React.memo(({
           <ElementHintTarget
             elementId="header-break-btn"
             heading="Break"
-            body="Coffee icon only. Expands to BREAK after 90m on call without a break. Disabled during active calls."
+            body="Coffee icon only during calls. Off-call, expands to BREAK after 90m without a break."
             color="#fb923c"
           >
             <button
               id="header-break-btn"
-              className="btn-emoji header-accent-break"
+              className={`btn-emoji header-accent-break${showBreakLabel ? ' has-label' : ''}`}
               onClick={isBreakActive ? stopBreak : onStartBreak}
               style={{
                 color: '#fff',
-                height: '30px',
                 opacity: isActive ? 0.35 : 1,
-                width: shouldBreakNudge ? '86px' : '30px',
-                padding: shouldBreakNudge ? '0 8px' : '0',
-                fontSize: shouldBreakNudge ? '0.62rem' : undefined,
-                borderRadius: shouldBreakNudge ? '8px' : undefined,
               }}
               disabled={isActive}
               title={shouldBreakNudge ? '90+ min on call — take a break when you can' : 'BREAK'}
             >
-              {shouldBreakNudge ? (
+              {showBreakLabel ? (
                 <span className="header-break-nudge">
                   <CoffeeIcon size={14} />
                   <span>BREAK</span>
@@ -468,7 +466,7 @@ const SessionControlsSticky = React.memo(({
                   type="button"
                   className={`btn-emoji header-accent-hold${isHold ? ' is-active' : ''}`}
                   onClick={() => setIsHold(!isHold)}
-                  style={{ width: '30px', height: '30px', fontSize: '0.65rem', padding: 0 }}
+                  style={{ fontSize: '0.65rem' }}
                 >
                   {isHold ? 'H' : <PauseIcon size={14} />}
                 </button>
@@ -569,6 +567,13 @@ const SessionControlsSticky = React.memo(({
                 </span>
               )}
               <span className="call-micro-bar-slot call-micro-bar-reserved" aria-hidden="true" />
+              {!showConnecting && (
+                <SessionStatusTimers
+                  onCallSeconds={totalOnCallSeconds}
+                  offCallSeconds={totalOffCallSeconds}
+                  compact
+                />
+              )}
             </div>
             ) : (
             <div className="call-micro-bar-center call-micro-bar-center--compact" title="Call timer">
@@ -581,6 +586,13 @@ const SessionControlsSticky = React.memo(({
                   <SlotMicroValue text={formatTime(sessionSeconds)} />
                 )}
               </span>
+              {!showConnecting && (
+                <SessionStatusTimers
+                  onCallSeconds={totalOnCallSeconds}
+                  offCallSeconds={totalOffCallSeconds}
+                  compact
+                />
+              )}
             </div>
             )
           ) : (
@@ -607,21 +619,11 @@ const SessionControlsSticky = React.memo(({
                 >
                   {offCallStatusLabel}
                 </span>
-                {!isActive && (
-                  <span
-                    className="call-micro-bar-slot"
-                    style={{
-                      gridColumn: '1 / -1',
-                      fontSize: '0.62rem',
-                      fontWeight: 900,
-                      color: '#fdba74',
-                      opacity: 0.95,
-                    }}
-                    title="Off-call elapsed today"
-                  >
-                    🚪 {formatTime(Math.floor(totalOffCallSeconds))}
-                  </span>
-                )}
+                <SessionStatusTimers
+                  onCallSeconds={totalOnCallSeconds}
+                  offCallSeconds={totalOffCallSeconds}
+                  compact
+                />
               </div>
             </div>
           )}
@@ -756,7 +758,6 @@ const SessionControlsSticky = React.memo(({
                 type="button"
                 className="btn-emoji header-accent-logoff"
                 onClick={onEndDay}
-                style={{ width: '30px', height: '30px' }}
                 title="END DAY"
               >
                 <MoonIcon size={14} />
@@ -835,7 +836,7 @@ export const DashboardHeader = ({
   onReconnectAudioSource,
   onSwitchToTabShare,
 }) => {
-  const { isActive, sessionSeconds, sessionEarnings, stats, updateStat, stopSession, endDay, RATE_PER_MINUTE, arsRate, setArsRate, isBreakActive, breakSeconds, startBreak, stopBreak, availSeconds, isEditingScoreboard, setIsEditingScoreboard, visibleCards, toggleCard, visibleMetrics, toggleMetric, scoreboardPreset, applyScoreboardPreset, isNotesOpen, setIsNotesOpen, isToolbarVisible, setIsToolbarVisible, isHeatmapOpen, setIsHeatmapOpen, isZombieCall, isScoreboardHelpVisible, setIsScoreboardHelpVisible, isHold, setIsHold, dailyTimeline, historyTimeline, dailyLog, lastActivityTime, lastEnglishActivityTime, isCallDetectionEnabled, setIsCallDetectionEnabled, callFocusMode, setCallFocusMode, minutesSinceLastBreak, requestHipaaDisconnectGrace, vaultStatus } = useSession();
+  const { isActive, sessionSeconds, sessionEarnings, stats, updateStat, stopSession, endDay, RATE_PER_MINUTE, arsRate, setArsRate, isBreakActive, breakSeconds, startBreak, stopBreak, availSeconds, isEditingScoreboard, setIsEditingScoreboard, visibleCards, toggleCard, visibleMetrics, toggleMetric, scoreboardPreset, applyScoreboardPreset, isNotesOpen, setIsNotesOpen, isToolbarVisible, setIsToolbarVisible, isHeatmapOpen, setIsHeatmapOpen, isZombieCall, isScoreboardHelpVisible, setIsScoreboardHelpVisible, isHold, setIsHold, dailyTimeline, historyTimeline, dailyLog, lastActivityTime, lastEnglishActivityTime, isCallDetectionEnabled, setIsCallDetectionEnabled, callFocusMode, setCallFocusMode, minutesSinceLastBreak, vaultStatus } = useSession();
 
   const headerMinimal = !isActive && offCallWorkspace === 'soundboard';
   const offCallScoreboardView = !isActive && offCallWorkspace === 'scoreboard';
@@ -1136,13 +1137,7 @@ export const DashboardHeader = ({
 
   const handleStop = useCallback(() => {
     setCallModeExpanded(false);
-    // HIPAA grace: keep transcript/translation/pins for a short window.
-    // Final clearing happens inside SessionContext after the grace timer.
-    requestHipaaDisconnectGrace?.(15000);
     stopSession((mins) => {
-      // Stop audio immediately; transcript/translation destruction is deferred by HIPAA grace.
-      onStopAudio?.();
-
       // DENOMINATION PAYOUT LOGIC
       // Diamonds = 20m, Bills = 5m, Coins = 1m
       let rem = Math.round(mins);
@@ -1158,8 +1153,8 @@ export const DashboardHeader = ({
       setCelebration({ type: 'call', label: `+AR$${Math.round(mins * RATE_PER_MINUTE * arsRate).toLocaleString('es-AR')}`, coins: Math.min(60, Math.floor(mins * 1.5)) });
       setTimeout(() => setCelebration(null), 4000);
     });
-    // Keep audio stream attached for the next call (attach once per shift).
-  }, [stopSession, onStopAudio, requestHipaaDisconnectGrace, RATE_PER_MINUTE, arsRate, audioEngine]);
+    // ponytail: keep tab/STT attached between calls — next green press starts call only.
+  }, [stopSession, RATE_PER_MINUTE, arsRate, audioEngine]);
 
   const handleEndDay = () => {
     setCallModeExpanded(false);
@@ -1219,6 +1214,7 @@ export const DashboardHeader = ({
     + (availSeconds || 0)
     + (breakSeconds || 0)
   );
+  const totalOnCallSeconds = Math.floor((stats.dailyMinutes || 0) * 60) + (isActive ? sessionSeconds : 0);
 
   // CATCH-UP LOGIC: Dynamic shifts and SUCCESS ZONES
   const ABSOLUTE_END = 23;
@@ -1617,10 +1613,10 @@ export const DashboardHeader = ({
     : audioAttached
         ? 'Start interpreting'
         : micTestMode
-          ? 'Connect microphone'
+          ? 'Connect & start'
           : configuredAudioSourceMode === "virtualCable"
-            ? 'Click to connect cable'
-            : 'Click to connect tab';
+            ? 'Connect & start'
+            : 'Connect & start';
   const connectSingleTitle = isZombieCall
     ? 'Re-attach to your call (timer saved)'
     : vaultNeedsDecrypt
@@ -1630,10 +1626,10 @@ export const DashboardHeader = ({
       : audioAttached
           ? 'Start interpreting — begin transcription'
           : micTestMode
-            ? 'Connect using your microphone'
+            ? 'Connect microphone and start interpreting'
             : configuredAudioSourceMode === "virtualCable"
-              ? 'Press here to connect to the selected virtual cable input (VB-CABLE / Voicemeeter)'
-              : 'Press here to connect to another browser tab where a conversation to interpret is happening';
+              ? 'Connect virtual cable and start interpreting'
+              : 'Connect tab audio and start interpreting';
   const connectDoubleTitle = micTestMode
     ? 'Pick a different microphone'
     : vaultNeedsDecrypt
@@ -2088,8 +2084,8 @@ export const DashboardHeader = ({
                 ⏳{Math.floor(minutesSinceLastBreak)}m
               </div>
               <div id="header-edit-tools-mini" style={{ display: 'flex', gap: '2px' }}>
-                <button className="edit-btn-tiny" onClick={() => setTimeEditMode('call')} title="Edit call time" style={{ width: '20px', height: '26px', fontSize: '0.5rem' }}>📞</button>
-                <button className="edit-btn-tiny" onClick={() => setTimeEditMode('break')} title="Edit break time" style={{ width: '20px', height: '26px', fontSize: '0.5rem' }}>☕</button>
+                <button className="edit-btn-tiny" onClick={() => setTimeEditMode('call')} title="Edit call time">📞</button>
+                <button className="edit-btn-tiny" onClick={() => setTimeEditMode('break')} title="Edit break time">☕</button>
               </div>
             </div>
             <div id="left-pills-row" style={{ display: 'flex', gap: '0.3rem', alignItems: 'center' }}>
@@ -2169,10 +2165,10 @@ export const DashboardHeader = ({
                   <button
                     key={id}
                     type="button"
-                    className="btn-icon tiny-btn"
+                    className="btn-icon tiny-btn btn-text"
                     onClick={() => applyScoreboardPreset(id)}
                     style={{
-                      height: '22px', fontSize: '0.45rem', fontWeight: 800, padding: '0 3px',
+                      fontSize: '0.45rem', fontWeight: 800,
                       opacity: scoreboardPreset === id ? 1 : 0.4,
                       background: scoreboardPreset === id ? 'rgba(239,68,68,0.2)' : 'transparent',
                     }}
@@ -2181,13 +2177,13 @@ export const DashboardHeader = ({
                     {id === 'minimal' ? 'Min' : id === 'standard' ? 'Std' : 'Full'}
                   </button>
                 ))}
-                <button id="header-notes-secondary-btn" className="btn-icon tiny-btn" onClick={toggleQuickNotes} style={{ opacity: isNotesOpen ? 1 : 0.3, width: '22px', height: '22px' }} title="Notes"><NotesIcon size={14} /></button>
-                <button id="header-tools-btn" className="btn-icon tiny-btn" onClick={toggleToolbar} style={{ opacity: isToolbarVisible ? 1 : 0.3, background: isToolbarVisible ? 'rgba(239,68,68,0.15)' : 'transparent', width: '22px', height: '22px' }} title="Show tools (notes + background)"><ToolsIcon size={14} /></button>
-                <button id="header-help-btn" className="btn-icon tiny-btn" onClick={() => setIsScoreboardHelpVisible(!isScoreboardHelpVisible)} style={{ opacity: isScoreboardHelpVisible ? 1 : 0.3, background: isScoreboardHelpVisible ? 'rgba(239,68,68,0.15)' : 'transparent', width: '22px', height: '22px' }} title="Scoreboard help labels"><HelpIcon size={14} /></button>
-                <button id="header-edit-btn" className="btn-icon tiny-btn" onClick={() => { if(isCollapsed) setIsCollapsed(false); setIsEditingScoreboard(!isEditingScoreboard); }} style={{ opacity: isEditingScoreboard ? 1 : 0.3, width: '22px', height: '22px' }} title="Edit Grid"><EditIcon size={14} /></button>
-                <button id="header-expand-btn" className="btn-icon tiny-btn" onClick={() => setIsCollapsed(!isCollapsed)} style={{ width: '22px', height: '22px' }} title={isCollapsed ? "Expand HUD" : "Collapse HUD"}>{isCollapsed ? <ChevronUpIcon size={14} /> : <ChevronDownIcon size={14} />}</button>
-                <button id="header-calldetect-btn" className="btn-icon tiny-btn" onClick={() => setIsCallDetectionEnabled(!isCallDetectionEnabled)} style={{ opacity: isCallDetectionEnabled ? 1 : 0.3, background: isCallDetectionEnabled ? 'rgba(16,185,129,0.1)' : 'transparent', width: '22px', height: '22px' }} title="Call Detection">{isCallDetectionEnabled ? <SignalIcon size={14} /> : <SignalOffIcon size={14} />}</button>
-                <button id="header-focus-btn" className="btn-icon tiny-btn" onClick={() => setCallFocusMode(!callFocusMode)} style={{ opacity: callFocusMode ? 1 : 0.3, background: callFocusMode ? 'rgba(16,185,129,0.1)' : 'transparent', width: '22px', height: '22px' }} title="Call Focus: auto-hide sidebars during calls">{callFocusMode ? <FocusIcon size={14} /> : <FocusOffIcon size={14} />}</button>
+                <button id="header-notes-secondary-btn" className="btn-icon tiny-btn" onClick={toggleQuickNotes} style={{ opacity: isNotesOpen ? 1 : 0.3 }} title="Notes"><NotesIcon size={14} /></button>
+                <button id="header-tools-btn" className="btn-icon tiny-btn" onClick={toggleToolbar} style={{ opacity: isToolbarVisible ? 1 : 0.3, background: isToolbarVisible ? 'rgba(239,68,68,0.15)' : 'transparent' }} title="Show tools (notes + background)"><ToolsIcon size={14} /></button>
+                <button id="header-help-btn" className="btn-icon tiny-btn" onClick={() => setIsScoreboardHelpVisible(!isScoreboardHelpVisible)} style={{ opacity: isScoreboardHelpVisible ? 1 : 0.3, background: isScoreboardHelpVisible ? 'rgba(239,68,68,0.15)' : 'transparent' }} title="Scoreboard help labels"><HelpIcon size={14} /></button>
+                <button id="header-edit-btn" className="btn-icon tiny-btn" onClick={() => { if(isCollapsed) setIsCollapsed(false); setIsEditingScoreboard(!isEditingScoreboard); }} style={{ opacity: isEditingScoreboard ? 1 : 0.3 }} title="Edit Grid"><EditIcon size={14} /></button>
+                <button id="header-expand-btn" className="btn-icon tiny-btn" onClick={() => setIsCollapsed(!isCollapsed)} title={isCollapsed ? "Expand HUD" : "Collapse HUD"}>{isCollapsed ? <ChevronUpIcon size={14} /> : <ChevronDownIcon size={14} />}</button>
+                <button id="header-calldetect-btn" className="btn-icon tiny-btn" onClick={() => setIsCallDetectionEnabled(!isCallDetectionEnabled)} style={{ opacity: isCallDetectionEnabled ? 1 : 0.3, background: isCallDetectionEnabled ? 'rgba(16,185,129,0.1)' : 'transparent' }} title="Call Detection">{isCallDetectionEnabled ? <SignalIcon size={14} /> : <SignalOffIcon size={14} />}</button>
+                <button id="header-focus-btn" className="btn-icon tiny-btn" onClick={() => setCallFocusMode(!callFocusMode)} style={{ opacity: callFocusMode ? 1 : 0.3, background: callFocusMode ? 'rgba(16,185,129,0.1)' : 'transparent' }} title="Call Focus: auto-hide sidebars during calls">{callFocusMode ? <FocusIcon size={14} /> : <FocusOffIcon size={14} />}</button>
             </div>
           </div>
           </div>
@@ -2901,6 +2897,7 @@ ${isInDeficit ? `⚠️ DEFICIT: Behind pace by ${Math.round(monthlyDeficitMins)
         sessionSeconds={sessionSeconds}
         sessionArsLive={sessionArsLive}
         totalOffCallSeconds={totalOffCallSeconds}
+        totalOnCallSeconds={totalOnCallSeconds}
         callModeExpanded={callModeExpanded}
         setCallModeExpanded={setCallModeExpanded}
         isNotesOpen={isNotesOpen}
