@@ -357,7 +357,10 @@ export const useTranslate = (
         const rawSegments = splitLongForTranslation(sourceForTranslate, { maxWords: 40 });
         const labeled = assignSegmentIds(rawSegments);
         const activeKeys = [];
+        const segmentSources = [];
         let lastMeta = emptyMeta;
+        let anyOk = false;
+        let anyFailed = false;
 
         for (const { segmentId, text: segText } of labeled) {
           if (signal.aborted) break;
@@ -370,6 +373,7 @@ export const useTranslate = (
             targetLang: tLang,
           });
           activeKeys.push(requestId);
+          segmentSources.push({ key: requestId, sourceText: segText });
 
           const res = await fetchChunk(segText);
           lastMeta = {
@@ -396,46 +400,38 @@ export const useTranslate = (
           });
           translationsMapRef.current = nextMap;
           persistIfSealed(entry);
+          if (entry.status === 'ok' || entry.status === 'weak') anyOk = true;
+          if (entry.status === 'failed' || entry.passthrough || entry.warning) anyFailed = true;
         }
 
         if (signal.aborted) return;
 
-        const composed = composeCaptionTranslation(translationsMapRef.current, activeKeys);
-        setTranslationMeta(lastMeta);
+        // Never silent blank: compose joins segment texts / source passthrough.
+        const composed = composeCaptionTranslation(
+          translationsMapRef.current,
+          activeKeys,
+          segmentSources,
+        );
+        setTranslationMeta({
+          ...lastMeta,
+          quality: anyOk && !anyFailed ? lastMeta.quality : anyOk ? 'weak' : 'failed',
+        });
 
-        const passthrough =
-          composed && isTranslationPassthrough(sourceForTranslate, composed, sLang, tLang);
-        const hasUsable =
+        if (!langPairRef.current) langPairRef.current = langPair;
+        setTranslation(composed || sourceForTranslate);
+        hasGoodTranslationRef.current = anyOk || Boolean(composed);
+        lastTranslatedTextRef.current = normText;
+        lastWordCountRef.current = wordCount;
+
+        if (
+          shouldPrefetch &&
+          typeof prefetchTTS === 'function' &&
           composed &&
-          composed.length >= 1 &&
-          (!passthrough || lastMeta.quality === 'weak' || /\[⚠ Check:/.test(composed));
-
-        if (hasUsable) {
-          if (!langPairRef.current) langPairRef.current = langPair;
-          setTranslation(composed);
-          hasGoodTranslationRef.current = true;
-          lastTranslatedTextRef.current = normText;
-          lastWordCountRef.current = wordCount;
-
-          if (shouldPrefetch && typeof prefetchTTS === 'function') {
-            const url = await prefetchTTS(composed, tLang);
-            setAudioUrl(url);
-          }
-        } else if (!signal.aborted) {
-          // Prefer previous composed if we still have map text
-          const fallback = composeCaptionTranslation(translationsMapRef.current, activeKeys);
-          if (fallback) {
-            setTranslation(fallback);
-            hasGoodTranslationRef.current = true;
-          } else if (!lastTranslatedTextRef.current || lastTranslatedTextRef.current !== normText) {
-            setTranslation('');
-            hasGoodTranslationRef.current = false;
-          }
-          if (isFinal !== false && !fallback) {
-            setTranslationMeta((prev) => ({ ...prev, quality: 'failed' }));
-          }
-          lastTranslatedTextRef.current = normText;
-          lastWordCountRef.current = wordCount;
+          anyOk &&
+          !isTranslationPassthrough(sourceForTranslate, composed, sLang, tLang)
+        ) {
+          const url = await prefetchTTS(composed, tLang);
+          setAudioUrl(url);
         }
       } catch (e) {
         if (e.name !== 'AbortError') console.error('[Trans] Catch:', e);

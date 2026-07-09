@@ -10,6 +10,7 @@ import siblingGoodSurvivesOtherFail from './sibling-good-survives-other-fail.jso
 import sameCaptionNewSourceInvalidatesOld from './same-caption-new-source-invalidates-old.json';
 import userOverrideWins from './user-override-wins.json';
 import numberPresentButReformatted from './number-present-but-reformatted.json';
+import quotaBlackoutPassthrough from './quota-blackout-passthrough.json';
 
 export const TRANSLATION_FIXTURES = [
   splitSiblingFailure,
@@ -24,6 +25,7 @@ export const TRANSLATION_FIXTURES = [
   sameCaptionNewSourceInvalidatesOld,
   userOverrideWins,
   numberPresentButReformatted,
+  quotaBlackoutPassthrough,
 ];
 
 export default TRANSLATION_FIXTURES;

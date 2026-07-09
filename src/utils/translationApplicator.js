@@ -1,9 +1,9 @@
 /**
- * Pure translation accept/reject applicator (v4.82.0).
+ * Pure translation accept/reject applicator (v4.82.0 — safety ledger).
  * Shared by live useTranslate + fixture replay.
  *
+ * Invariant: a weaker result must never overwrite a stronger visible result.
  * Key: captionId::segmentId::sourceHash::targetLang
- * Preserve: status stays ok|weak with preserved:true + warning (never looks "failed").
  */
 import { peelCompleteSentences } from './transcriptFormat';
 import {
@@ -11,10 +11,21 @@ import {
   salvageSensitiveTokens,
 } from './translationSensitiveTokens';
 
-const FILLER_RE =
-  /^(bueno|um|uh|eh|ah|oh|hmm|mhm|sí|si|ok|okay|vale|pues|este|like|you know)[.,!?…]*$/i;
+/** Target-output filler — reject when source is a real sentence. */
+export const FILLER_ONLY_RE =
+  /^(bueno|um|uh|eh|ah|oh|hmm|mhm|sí|si|ok|okay|vale|pues|este|like|you know|yes|no|aja|ajá)[.!?\s…]*$/i;
 
 export const DEFAULT_MAX_SEGMENT_WORDS = 40;
+
+/** Strength: higher = safer to keep. Weaker must not overwrite stronger. */
+export const TRANSLATION_STRENGTH = {
+  ok: 40,
+  weak: 30,
+  warning: 25,
+  weak_digit_loss: 20,
+  pending: 10,
+  failed: 5,
+};
 
 const normalizeSource = (text) =>
   String(text || '')
@@ -31,7 +42,6 @@ const splitSentencesLocal = (text) => {
   return segments;
 };
 
-/** djb2 → base36 short hash of normalized source. */
 export function hashTranslationSource(text) {
   const s = normalizeSource(text).toLowerCase();
   let h = 5381;
@@ -41,12 +51,10 @@ export function hashTranslationSource(text) {
   return (h >>> 0).toString(36);
 }
 
-/** Delimiter-safe key — do not use single `-` (IDs/hashes contain dashes). */
 export function buildTranslationKey({ captionId, segmentId, sourceHash, targetLang }) {
   return `${captionId}::${segmentId}::${sourceHash}::${targetLang}`;
 }
 
-/** Per-segment request id (same identity as key). */
 export function buildSegmentRequestId({ captionId, segmentId, sourceHash, targetLang }) {
   return buildTranslationKey({ captionId, segmentId, sourceHash, targetLang });
 }
@@ -58,6 +66,16 @@ export function assignSegmentIds(segments) {
   }));
 }
 
+export function translationStrength(entry) {
+  if (!entry) return 0;
+  const t = String(entry.text || '').trim();
+  if (!t) return 0;
+  if (entry.preserved && (entry.status === 'ok' || entry.status === 'weak')) {
+    return TRANSLATION_STRENGTH[entry.status] || 30;
+  }
+  return TRANSLATION_STRENGTH[entry.status] || 0;
+}
+
 /** True when engine output is filler garbage vs a real source sentence. */
 export function isGarbageTranslation(source, result) {
   const src = normalizeSource(source);
@@ -67,19 +85,28 @@ export function isGarbageTranslation(source, result) {
   const isReal =
     srcWords >= 4 || /\d/.test(src) || /[.,!?;:]/.test(src);
   if (!isReal) return false;
-  if (FILLER_RE.test(out)) return true;
-  // Single-token garbage when source is long
-  if (srcWords >= 6 && out.split(/\s+/).filter(Boolean).length <= 1 && FILLER_RE.test(out.replace(/[.,!?…]/g, ''))) {
+  if (FILLER_ONLY_RE.test(out)) return true;
+  if (
+    srcWords >= 6 &&
+    out.split(/\s+/).filter(Boolean).length <= 1 &&
+    FILLER_ONLY_RE.test(out.replace(/[.,!?…]/g, ''))
+  ) {
     return true;
   }
   return false;
 }
 
-/**
- * Chunk text into ~35–45 word API payloads (sentence peel first).
- * @param {string} text
- * @param {{ maxWords?: number }} [opts]
- */
+/** Reject suspiciously short output (e.g. one word for a long sentence). */
+export function isSuspiciouslyShort(source, result) {
+  const srcWords = normalizeSource(source).split(/\s+/).filter(Boolean).length;
+  const outWords = normalizeSource(result).split(/\s+/).filter(Boolean).length;
+  if (srcWords < 6) return false;
+  if (outWords === 0) return true;
+  // Output < 25% of source words and no digits in output when source has digits
+  if (outWords < Math.max(2, Math.floor(srcWords * 0.25))) return true;
+  return false;
+}
+
 export function segmentLongMonologue(text, { maxWords = DEFAULT_MAX_SEGMENT_WORDS } = {}) {
   const cap = Math.max(20, Math.min(45, maxWords || DEFAULT_MAX_SEGMENT_WORDS));
   const pieces = splitSentencesLocal(text);
@@ -94,7 +121,6 @@ export function segmentLongMonologue(text, { maxWords = DEFAULT_MAX_SEGMENT_WORD
     let i = 0;
     while (i < words.length) {
       let end = Math.min(i + cap, words.length);
-      // Prefer breaking at comma-ish boundary inside window
       if (end < words.length) {
         for (let j = end; j > i + Math.floor(cap * 0.6); j--) {
           if (/[,;:]$/.test(words[j - 1])) {
@@ -116,41 +142,72 @@ const usablePrevious = (prev) => {
   if (!prev) return null;
   const t = String(prev.text || '').trim();
   if (!t) return null;
-  if (prev.status === 'failed' && !prev.preserved) return null;
+  if (prev.status === 'failed' && !prev.preserved && prev.warning !== 'engine_failed') return null;
   return prev;
 };
 
-const preserveEntry = (prev, base, warning) => {
+/** Source passthrough when nothing better exists — never silent blank. */
+export function sourcePassthroughEntry(base, sourceText, warning) {
+  const src = normalizeSource(sourceText);
+  return {
+    ...base,
+    text: src,
+    status: warning === 'sensitive_token_loss' ? 'weak_digit_loss' : 'failed',
+    quality: 'failed',
+    preserved: false,
+    warning: warning || 'engine_failed',
+    passthrough: true,
+    updatedAt: Date.now(),
+  };
+}
+
+const preserveOrPassthrough = (prev, base, sourceText, warning) => {
   const good = usablePrevious(prev);
   if (good) {
+    const keepStatus =
+      good.status === 'ok' || good.status === 'weak' || good.status === 'weak_digit_loss'
+        ? good.status
+        : good.status === 'warning'
+          ? 'warning'
+          : 'ok';
     return {
       ...base,
       text: good.text,
-      status: good.status === 'weak' ? 'weak' : 'ok',
-      quality: good.quality || good.status || 'ok',
+      status: keepStatus === 'failed' ? 'ok' : keepStatus,
+      quality: good.quality || keepStatus || 'ok',
       engineId: good.engineId || base.engineId,
       preserved: true,
       warning,
       missingTokens: good.missingTokens,
+      passthrough: !!good.passthrough,
       updatedAt: Date.now(),
     };
   }
-  return {
-    ...base,
-    text: '',
-    status: 'failed',
-    quality: 'failed',
-    preserved: false,
-    warning,
-    updatedAt: Date.now(),
-  };
+  return sourcePassthroughEntry(base, sourceText, warning);
+};
+
+/** Keep previous if it is strictly stronger than candidate. */
+const preferStronger = (prev, candidate) => {
+  if (!prev || !String(prev.text || '').trim()) return candidate;
+  if (translationStrength(prev) > translationStrength(candidate)) {
+    return {
+      ...candidate,
+      text: prev.text,
+      status: prev.status === 'failed' ? candidate.status : prev.status,
+      quality: prev.quality || prev.status,
+      engineId: prev.engineId || candidate.engineId,
+      preserved: true,
+      warning: candidate.warning || prev.warning,
+      missingTokens: prev.missingTokens || candidate.missingTokens,
+      passthrough: prev.passthrough,
+      updatedAt: Date.now(),
+    };
+  }
+  return candidate;
 };
 
 /**
  * Apply one engine result into a translations map (immutable).
- * @param {Record<string, object>} state
- * @param {object} event
- * @returns {{ state: Record<string, object>, entry: object }}
  */
 export function applyTranslationResult(state = {}, event = {}) {
   const {
@@ -196,13 +253,13 @@ export function applyTranslationResult(state = {}, event = {}) {
     segmentId,
     sourceHash: expectedHash,
     targetLang,
+    sourceText: sourceTextNorm,
     engineId: engineResult.engineId || null,
     quality: engineResult.quality || null,
   };
 
-  // Stale: event hash must match current source; requestId must match segment key
   if (eventHash && eventHash !== expectedHash) {
-    const entry = preserveEntry(prev, base, 'stale');
+    const entry = preserveOrPassthrough(prev, base, sourceTextNorm, 'stale');
     return { state: { ...state, [expectedKey]: entry }, entry };
   }
   if (
@@ -211,19 +268,34 @@ export function applyTranslationResult(state = {}, event = {}) {
     engineResult.requestId !== expectedRequestId &&
     engineResult.requestId !== key
   ) {
-    const entry = preserveEntry(prev, base, 'stale');
+    const entry = preserveOrPassthrough(prev, base, sourceTextNorm, 'stale');
     return { state: { ...state, [expectedKey]: entry }, entry };
   }
 
   const raw = String(engineResult.text ?? '').trim();
 
   if (!raw) {
-    const entry = preserveEntry(prev, base, 'blank');
+    const entry = preserveOrPassthrough(prev, base, sourceTextNorm, 'blank');
     return { state: { ...state, [expectedKey]: entry }, entry };
   }
 
   if (isGarbageTranslation(sourceTextNorm, raw)) {
-    const entry = preserveEntry(prev, { ...base, engineId: engineResult.engineId }, 'garbage_rejected');
+    const entry = preserveOrPassthrough(
+      prev,
+      { ...base, engineId: engineResult.engineId },
+      sourceTextNorm,
+      'garbage_rejected',
+    );
+    return { state: { ...state, [expectedKey]: entry }, entry };
+  }
+
+  if (isSuspiciouslyShort(sourceTextNorm, raw)) {
+    const entry = preserveOrPassthrough(
+      prev,
+      { ...base, engineId: engineResult.engineId },
+      sourceTextNorm,
+      'too_short',
+    );
     return { state: { ...state, [expectedKey]: entry }, entry };
   }
 
@@ -231,60 +303,90 @@ export function applyTranslationResult(state = {}, event = {}) {
   let text = raw;
   let warning;
   let missingTokens;
+  let status;
+  let quality = engineResult.quality === 'weak' ? 'weak' : 'ok';
+
   if (missing.length) {
+    // Digit loss: never silently accept. Prefer prior good; else salvage + weak_digit_loss.
+    const good = usablePrevious(prev);
+    if (good && translationStrength(good) >= TRANSLATION_STRENGTH.ok) {
+      const entry = preserveOrPassthrough(prev, base, sourceTextNorm, 'sensitive_token_loss');
+      return { state: { ...state, [expectedKey]: entry }, entry };
+    }
     text = salvageSensitiveTokens(raw, missing);
     warning = 'sensitive_token_loss';
     missingTokens = missing;
+    status = 'weak_digit_loss';
+    quality = 'weak';
+  } else {
+    status = quality;
   }
 
-  const quality = engineResult.quality === 'weak' ? 'weak' : 'ok';
-  const entry = {
+  let entry = {
     ...base,
     text,
-    status: warning ? 'warning' : quality,
+    status,
     quality,
     preserved: false,
     warning,
     missingTokens,
+    passthrough: false,
     engineId: engineResult.engineId || null,
     updatedAt: Date.now(),
   };
+
+  entry = preferStronger(prev, entry);
 
   return { state: { ...state, [expectedKey]: entry }, entry };
 }
 
 /**
- * Compose display translation from current segment keys only.
+ * Compose display text. Empty segment → source passthrough (never blank hole).
  * @param {Record<string, object>} entriesMap
- * @param {Array<{ key?: string, segmentId?: string }>} [orderedKeys]
+ * @param {string[]} [orderedKeys]
+ * @param {Array<{ key?: string, sourceText?: string }>} [segmentSources]
  */
-export function composeCaptionTranslation(entriesMap, orderedKeys) {
+export function composeCaptionTranslation(entriesMap, orderedKeys, segmentSources) {
   if (!entriesMap || typeof entriesMap !== 'object') return '';
-  let entries;
+  let keys;
   if (Array.isArray(orderedKeys) && orderedKeys.length) {
-    entries = orderedKeys
-      .map((k) => (typeof k === 'string' ? entriesMap[k] : entriesMap[k?.key]))
-      .filter(Boolean);
+    keys = orderedKeys.map((k) => (typeof k === 'string' ? k : k?.key)).filter(Boolean);
   } else {
-    entries = Object.values(entriesMap).sort((a, b) => {
-      const ai = Number(String(a.segmentId || '').replace(/\D/g, '')) || 0;
-      const bi = Number(String(b.segmentId || '').replace(/\D/g, '')) || 0;
+    keys = Object.keys(entriesMap).sort((a, b) => {
+      const ea = entriesMap[a];
+      const eb = entriesMap[b];
+      const ai = Number(String(ea?.segmentId || '').replace(/\D/g, '')) || 0;
+      const bi = Number(String(eb?.segmentId || '').replace(/\D/g, '')) || 0;
       return ai - bi;
     });
   }
-  return entries
-    .map((e) => String(e.text || '').trim())
+
+  const sourceByKey = new Map();
+  if (Array.isArray(segmentSources)) {
+    for (const s of segmentSources) {
+      if (s?.key) sourceByKey.set(s.key, s.sourceText);
+    }
+  }
+
+  return keys
+    .map((k) => {
+      const e = entriesMap[k];
+      const t = String(e?.text || '').trim();
+      if (t) return t;
+      const src = sourceByKey.get(k) || e?.sourceText || '';
+      return normalizeSource(src);
+    })
     .filter(Boolean)
     .join(' ')
     .replace(/\s+/g, ' ')
     .trim();
 }
 
-/** Whether an entry should be written to IDB (sealed path decides separately). */
 export function shouldPersistTranslationEntry(entry) {
   if (!entry) return false;
-  if (entry.status === 'failed' && !entry.text) return false;
-  if (entry.warning === 'sensitive_token_loss') return true;
+  if (!String(entry.text || '').trim()) return false;
+  if (entry.status === 'failed' && entry.passthrough) return true; // restore passthrough after refresh
+  if (entry.warning === 'sensitive_token_loss' || entry.status === 'weak_digit_loss') return true;
   if (entry.status === 'ok' || entry.status === 'weak' || entry.status === 'warning') return true;
   if (entry.preserved && entry.text) return true;
   return false;

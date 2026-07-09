@@ -129,6 +129,22 @@ describe('applyTranslationResult', () => {
     expect(state[key].text).toBe('Traducción buena previa.');
   });
 
+  test('blank without previous → source passthrough (never silent blank)', () => {
+    const sourceHash = hashTranslationSource(baseEvent.sourceText);
+    const requestId = buildSegmentRequestId({ ...baseEvent, sourceHash });
+    const { entry } = applyTranslationResult(
+      {},
+      {
+        ...baseEvent,
+        sourceHash,
+        engineResult: { text: '', engineId: 'x', quality: 'failed', requestId },
+      },
+    );
+    expect(entry.passthrough).toBe(true);
+    expect(entry.text).toBe(baseEvent.sourceText);
+    expect(entry.warning).toBe('blank');
+  });
+
   test('blank result preserves previous-good', () => {
     const sourceHash = hashTranslationSource(baseEvent.sourceText);
     const requestId = buildSegmentRequestId({ ...baseEvent, sourceHash });

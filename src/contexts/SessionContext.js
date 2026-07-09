@@ -610,6 +610,8 @@ export const SessionProvider = ({ children }) => {
   // TERMINAR LLAMADA: Guardamos los minutos que trabajamos para no perderlos.
   const stopSession = (onCallEnded) => {
     setIsActive(false);
+    // Clear revenant/re-attach gate — STOP must not leave zombie banner/capture gate.
+    clearZombieState();
     const summary = extractCallSummary(captionsRef.current);
     if (summary && (summary.numbers.length > 0 || summary.dollars.length > 0)) {
       setLastCallSummary(summary);

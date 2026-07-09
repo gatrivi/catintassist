@@ -1,0 +1,21 @@
+{
+  "id": "quota-blackout-passthrough",
+  "label": "All engines fail → source passthrough, never blank",
+  "captionId": "cap-quota",
+  "targetLang": "es",
+  "segments": [
+    "Please schedule a follow-up for your lab results next week."
+  ],
+  "events": [
+    {
+      "segmentId": "seg-0",
+      "resultText": "",
+      "engineId": "quota",
+      "quality": "failed"
+    }
+  ],
+  "expect": {
+    "composedIncludes": ["follow-up", "lab results"],
+    "entryWarnings": { "seg-0": "blank" }
+  }
+}
