@@ -45,6 +45,7 @@ import {
   loadSttLatencyMode,
 } from "../utils/deepgramListenConfig";
 import { readMicTestMode, writeMicTestMode } from "../utils/micMode";
+import { traceCaptionArrayDiff } from "../utils/vanishTrace";
 
 const CAPTIONS_CLEARED_EVENT = "catint_captions_cleared";
 const STT_TRACE_LIMIT = 300;
@@ -276,7 +277,11 @@ export const useDeepgram = () => {
   const flushCaptionsToSession = useCallback(() => {
     const next = mergeCaptionsForUi(captionEngineRef.current);
 
-    updateCaptions((prev) => (captionsSnapshotEqual(prev, next) ? prev : next));
+    updateCaptions((prev) => {
+      if (captionsSnapshotEqual(prev, next)) return prev;
+      traceCaptionArrayDiff(prev, next, 'useDeepgram.flushCaptions');
+      return next;
+    });
   }, [updateCaptions]);
 
   const scheduleInterimFlush = useCallback(() => {

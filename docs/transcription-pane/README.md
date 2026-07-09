@@ -1,4 +1,4 @@
-# Transcription Pane (v4.76.0)
+# Transcription Pane (v4.84.7)
 
 ## 1) The one table to memorize (columns are fixed)
 Columns never swap.
@@ -49,13 +49,15 @@ Mic Test mode persists in `localStorage` (`catint_mic_test_mode_v1`).
 - `src/utils/transcriptCorrections.js` (STT + glossary store)
 - `src/hooks/useDeepgram.js` (captions, `lang`, dual sockets, tie-break)
 - `src/hooks/useTranslate.js` (per-bubble translation + glossary)
-- `src/utils/transcriptFormat.js` (copy chips, spelled names)
-- `src/utils/sensitiveDataProtector.js` (numbers, digit stitch)
+- `src/utils/transcriptFormat.js` (copy chips, spelling consolidate)
+- `src/utils/sensitiveDataProtector.js` (phone/SSN, dates, dose/money, sentinels)
 
-## 8) Copy chips + numbers (v4.75.6+)
-- Names / spelled text: `CopyChip` row above bubble when detected
-- Click highlighted number → copies digits only (no spaces)
-- `stitchSingleDigitSequences()` groups 9–10 digit phone runs
+## 8) Copy chips + sensitive highlights (v4.75.6+ / v4.84.7)
+- Names / spelled: trailing `CopyChip` on **sealed** only; spoken spelling paragraph stays (no `\n` remount)
+- Weak cues (`I'm` / `I am`): Capitalized name required — `I'm sorry` is **not** a name
+- Highlight units (click-copy): phone/SSN digits · full **date** (ISO when year) · **dosage** (`500 mg`) · **money** (`$25`)
+- Sentinels gate stitch/phone format on address/email/spelling/date/dosage cues
+- Plan: [`../development/sensitive-data-approach.md`](../development/sensitive-data-approach.md)
 
 ## 9) Teach corrections (v4.76.0) — **read this**
 Full guide: [`corrections.md`](corrections.md)
@@ -82,5 +84,17 @@ Core interaction features:
 - Pinning: important messages can be pinned
 - Auto-scroll anchored to latest transcript
 - Inactivity detect: Silence Guardian monitors this view for active audio flow
+
+## 12) No Vanishing Text / StableTextMorph (v4.84.1+) — **rendering invariant**
+Standing rule (also in `AGENTS.md` MAINVIEW + `handoff/00_global_rules.md`):
+
+- Never destroy readable text **A** and remount blank **B**.
+- Morph **A→B** on the **same mount**: stable prefix stays visible; only changed spans cue (`from ⇢ to`); **no blank frame**.
+- Protected tokens (phones, dates, doses, money, digit runs) **never vanish** during interim→final or correction morphs.
+- Continuity keys by `turnId` so live id flips do not remount readable text.
+- **ScrambleText ≠ critical live transcript** — keep for non-critical UI only.
+- Code: `StableTextMorph.js` · `diffWordsStable.js` · `stableLiveTranscript.js` · live path in `TranscriptionBoard.js`
+
+Manual smoke: long correction only changes the span; prefix stays; phone does not vanish; seal/split does not blank the line.
 
 

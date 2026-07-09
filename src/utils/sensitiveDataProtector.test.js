@@ -17,6 +17,11 @@ import {
   containsNumberSequence,
   isNumberLike,
   cleanFillerWords,
+  findDateUnits,
+  splitHighlightSegments,
+  looksLikeDateFragment,
+  findDosageUnits,
+  findMoneyUnits,
 } from './sensitiveDataProtector';
 
 // ---------------------------------------------------------------------------
@@ -122,6 +127,124 @@ describe('applyDisplayProtections', () => {
 
   test('preserves EN once', () => {
     expect(applyDisplayProtections('Once a week', 'en')).toBe('Once a week');
+  });
+
+  test('does not phone-format a year inside a month date', () => {
+    const out = applyDisplayProtections('born May 8 1990', 'en');
+    expect(out).toContain('May 8 1990');
+    expect(out).not.toMatch(/1-990/);
+  });
+});
+
+describe('findDateUnits / splitHighlightSegments (Phase B)', () => {
+  test('May 8 1990 is one date unit with ISO copy', () => {
+    const units = findDateUnits('born May 8 1990');
+    expect(units).toHaveLength(1);
+    expect(units[0].text).toBe('May 8 1990');
+    expect(units[0].copyValue).toBe('1990-05-08');
+  });
+
+  test('8 May 1990 is one date unit', () => {
+    const units = findDateUnits('DOB 8 May 1990');
+    expect(units[0]?.text).toBe('8 May 1990');
+    expect(units[0]?.copyValue).toBe('1990-05-08');
+  });
+
+  test('numeric appointment date is one unit', () => {
+    const units = findDateUnits('appointment 3/15/26');
+    expect(units[0]?.text).toBe('3/15/26');
+    expect(units[0]?.copyValue).toBe('2026-03-15');
+  });
+
+  test('highlight split: date is one segment, not lone day digit', () => {
+    const segs = splitHighlightSegments('Did you say May 8 1990?');
+    const dateSeg = segs.find((s) => s.type === 'date');
+    expect(dateSeg?.value).toBe('May 8 1990');
+    expect(segs.filter((s) => s.type === 'number' && s.value === '8')).toHaveLength(0);
+  });
+
+  test('8 mg is a dosage unit, not a lone day digit', () => {
+    expect(findDateUnits('take 8 mg')).toHaveLength(0);
+    expect(findDosageUnits('take 8 mg')[0]?.text).toBe('8 mg');
+    const segs = splitHighlightSegments('take 8 mg');
+    expect(segs.some((s) => s.type === 'dosage' && s.value === '8 mg')).toBe(true);
+    expect(segs.filter((s) => s.type === 'number' && s.value === '8')).toHaveLength(0);
+  });
+
+  test('phone still formats', () => {
+    expect(applyDisplayProtections('call 5551234567', 'en')).toMatch(/555-123-4567/);
+  });
+
+  test('looksLikeDateFragment near month', () => {
+    expect(looksLikeDateFragment('born May ', ' 1990')).toBe(true);
+    expect(looksLikeDateFragment('call me at ', ' please')).toBe(false);
+  });
+});
+
+describe('dosage / money units (Phase E)', () => {
+  test('500 mg is one dosage unit', () => {
+    const units = findDosageUnits('take 500 mg twice daily');
+    expect(units[0]?.text).toBe('500 mg');
+    expect(units[0]?.copyValue).toBe('500 mg');
+  });
+
+  test('$25.00 is one money unit', () => {
+    const units = findMoneyUnits('copay is $25.00 today');
+    expect(units[0]?.text).toMatch(/\$\s*25\.00/);
+  });
+
+  test('highlight split keeps dosage together and phone separate', () => {
+    const segs = splitHighlightSegments('take 2.5 ml then call 555-123-4567');
+    expect(segs.some((s) => s.type === 'dosage' && /2\.5\s*ml/.test(s.value))).toBe(true);
+    expect(segs.some((s) => s.type === 'number' && /555/.test(s.value))).toBe(true);
+  });
+});
+
+describe('sentinel display gate (Phase C)', () => {
+  test('address sentinel does not phone-format street digits', () => {
+    const raw = 'my mailing address is 123 456 7890 West 34th Street';
+    expect(detectSentinelContext(raw, 'en').mode).toBe('address');
+    const out = applyDisplayProtections(raw, 'en');
+    expect(out).toContain('123 456 7890');
+    expect(out).not.toMatch(/123-456-7890/);
+  });
+
+  test('email sentinel does not stitch digit runs', () => {
+    const raw = 'my email is john 1 2 3 at gmail dot com';
+    expect(detectSentinelContext(raw, 'en').mode).toBe('email');
+    expect(applyDisplayProtections(raw, 'en')).toContain('1 2 3');
+  });
+
+  test('spelling sentinel does not stitch letter-adjacent digits', () => {
+    const raw = 'let me spell my last name S as in Sam, M as in Mary, I as in India';
+    expect(detectSentinelContext(raw, 'en').mode).toBe('spelling');
+    expect(applyDisplayProtections(raw, 'en')).toBe(raw);
+  });
+
+  test('date sentinel still leaves month date intact', () => {
+    const raw = 'appointment scheduled May 8 1990';
+    expect(detectSentinelContext(raw, 'en').mode).toBe('date');
+    expect(applyDisplayProtections(raw, 'en')).toContain('May 8 1990');
+  });
+
+  test('phone sentinel still formats', () => {
+    const raw = 'my phone number is 5551234567';
+    expect(detectSentinelContext(raw, 'en').mode).toBe('phone');
+    expect(applyDisplayProtections(raw, 'en')).toMatch(/555-123-4567/);
+  });
+
+  test('ssn sentinel still formats', () => {
+    const raw = 'my social is 123456789';
+    expect(detectSentinelContext(raw, 'en').mode).toBe('ssn');
+    expect(applyDisplayProtections(raw, 'en')).toBe('my social is 123-45-6789');
+  });
+
+  test('dosage sentinel skips phone format but may stitch', () => {
+    const raw = 'take medication 5 0 0 mg twice daily';
+    expect(['dosage', 'medication']).toContain(detectSentinelContext(raw, 'en').mode);
+    const out = applyDisplayProtections(raw, 'en');
+    expect(out).not.toMatch(/\d{3}-\d{3}-\d{4}/);
+    expect(out).toMatch(/500\s*mg|5 0 0\s*mg/);
   });
 });
 

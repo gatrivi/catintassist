@@ -1,15 +1,16 @@
-# Agent Handoff Index (v4.80.1)
+# Agent Handoff Index (v4.84.7)
 
 **Read first:** [`00_global_rules.md`](00_global_rules.md)
 
 Outside agents: pick **one** spec below. Do not re-read the whole repo.
 
 ## Current app version
-Top-right must show **v4.80.2** after this ship.
+Top-right must show **v4.84.7** after this ship.
 
 ## What's new (docs)
-- [`docs/transcription-pane/corrections.md`](../transcription-pane/corrections.md) — bubble teach feature
-- [`docs/CHANGELOG.md`](../CHANGELOG.md) — v4.75.5–v4.76.0 notes
+- [`docs/development/sensitive-data-approach.md`](../development/sensitive-data-approach.md) — A–E shipped (v4.84.3–4.84.7)
+- [`docs/CHANGELOG.md`](../CHANGELOG.md) — recent versions
+- [`docs/transcription-pane/corrections.md`](../transcription-pane/corrections.md) — bubble teach
 - [`docs/development/element-hint.md`](../development/element-hint.md) — tooltip system
 
 ## How to work

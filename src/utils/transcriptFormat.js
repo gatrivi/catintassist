@@ -101,7 +101,10 @@ const formatSpellingSegment = (segment, lang) => {
   return s;
 };
 
-/** One line per spelled unit — same bubble, easier to scan */
+/**
+ * Optional stacked spelling layout (Phase D: NOT used for default display).
+ * Prefer spoken paragraph + trailing Spelled chip via consolidateSpelling.
+ */
 export const formatSpellingText = (text, lang = 'en') => {
   if (!text || !isSpellingBlock(text)) return text;
 
@@ -124,32 +127,72 @@ export const consolidateSpelling = (text, lang = 'en') => {
   return joined.length >= 2 ? joined : null;
 };
 
-const NAME_CUE_PATTERNS = [
-  /\b(?:my|patient(?:'s)?)\s+name\s+is\s+([A-Za-zÁÉÍÓÚáéíóúñÑ][\w'.-]*(?:\s+[A-Za-zÁÉÍÓÚáéíóúñÑ][\w'.-]*){0,2})/gi,
-  /\b(?:called|call me)\s+([A-Za-zÁÉÍÓÚáéíóúñÑ][\w'.-]*(?:\s+[A-Za-zÁÉÍÓÚáéíóúñÑ][\w'.-]*){0,2})/gi,
-  /\b(?:this is|I am|I'm)\s+([A-Za-zÁÉÍÓÚáéíóúñÑ][\w'.-]*(?:\s+[A-Za-zÁÉÍÓÚáéíóúñÑ][\w'.-]*){0,2})/gi,
-  /\b(?:me llamo|soy el|soy la|se llama)\s+([A-Za-zÁÉÍÓÚáéíóúñÑ][\w'.-]*(?:\s+[A-Za-zÁÉÍÓÚáéíóúñÑ][\w'.-]*){0,2})/gi,
-  /\bDr\.?\s+([A-Za-z][\w'.-]*(?:\s+[A-Za-z][\w'.-]*){0,1})/gi,
+/** Words that must never become Name chips (I'm sorry → sorry). */
+const NAME_STOPWORDS = new Set([
+  'sorry', 'here', 'doctor', 'doctora', 'dr',
+  'uh', 'um', 'eh', 'ah', 'oh', 'hmm', 'mm',
+  'just', 'going', 'looking', 'calling', 'trying', 'feeling',
+  'good', 'fine', 'okay', 'ok', 'well', 'back', 'ready',
+  'available', 'afraid', 'happy', 'sad', 'late', 'early',
+  'later', 'now', 'there', 'coming', 'leaving',
+  'disculpe', 'perdon', 'perdón', 'aqui', 'aquí', 'bien', 'mal',
+  // ES roles/conditions after "soy" — never names (tokenStem strips accents)
+  'interprete', 'enfermero', 'enfermera', 'paciente', 'medico', 'medica',
+  'alergico', 'alergica', 'diabetico', 'diabetica', 'yo', 'el', 'la', 'un', 'una',
+]);
+
+/** Strong cues — capitalize not required (STT often lowercases). */
+const STRONG_NAME_CUE_PATTERNS = [
+  /\b(?:my|patient(?:'s)?)\s+name\s+is\s+([A-Za-zÁÉÍÓÚáéíóúñÑ][\wÁÉÍÓÚÜáéíóúüñÑ'.-]*(?:\s+[A-Za-zÁÉÍÓÚáéíóúñÑ][\wÁÉÍÓÚÜáéíóúüñÑ'.-]*){0,2})/gi,
+  /\b(?:me llamo|se llama|mi nombre es)\s+([A-Za-zÁÉÍÓÚáéíóúñÑ][\wÁÉÍÓÚÜáéíóúüñÑ'.-]*(?:\s+[A-Za-zÁÉÍÓÚáéíóúñÑ][\wÁÉÍÓÚÜáéíóúüñÑ'.-]*){0,2})/gi,
+  /\bDr\.?\s+([A-Za-zÁÉÍÓÚáéíóúñÑ][\wÁÉÍÓÚÜáéíóúüñÑ'.-]*(?:\s+[A-Za-zÁÉÍÓÚáéíóúñÑ][\wÁÉÍÓÚÜáéíóúüñÑ'.-]*){0,1})/gi,
 ];
+
+/** Weak cues — first token must be Capitalized (blocks I'm sorry). */
+const WEAK_NAME_CUE_PATTERNS = [
+  /\b(?:this is|I am|I'm)\s+([A-Za-zÁÉÍÓÚáéíóúñÑ][\wÁÉÍÓÚÜáéíóúüñÑ'.-]*(?:\s+[A-Za-zÁÉÍÓÚáéíóúñÑ][\wÁÉÍÓÚÜáéíóúüñÑ'.-]*){0,2})/gi,
+  /\b(?:called|call me)\s+([A-Za-zÁÉÍÓÚáéíóúñÑ][\wÁÉÍÓÚÜáéíóúüñÑ'.-]*(?:\s+[A-Za-zÁÉÍÓÚáéíóúñÑ][\wÁÉÍÓÚÜáéíóúüñÑ'.-]*){0,2})/gi,
+  /\bsoy(?:\s+el|\s+la)?\s+([A-Za-zÁÉÍÓÚáéíóúñÑ][\wÁÉÍÓÚÜáéíóúüñÑ'.-]*(?:\s+[A-Za-zÁÉÍÓÚáéíóúñÑ][\wÁÉÍÓÚÜáéíóúüñÑ'.-]*){0,2})/gi,
+];
+
+const cleanNameCapture = (raw) =>
+  (raw || '').trim().replace(/\s+/g, ' ').replace(/[,.;:!?…]+$/g, '');
+
+const tokenStem = (t) =>
+  (t || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^\p{L}]/gu, '');
+
+/** @returns {boolean} */
+export const isPlausibleCopyableName = (value, { requireCapitalized = false } = {}) => {
+  const cleaned = cleanNameCapture(value);
+  if (!cleaned || cleaned.length < 2) return false;
+  const tokens = cleaned.split(/\s+/);
+  if (tokens.some((t) => NAME_STOPWORDS.has(tokenStem(t)))) return false;
+  if (requireCapitalized && !/^[A-ZÁÉÍÓÚÑ]/.test(tokens[0])) return false;
+  return true;
+};
+
+const pushNameMatches = (text, patterns, requireCapitalized, seen, names) => {
+  patterns.forEach((re) => {
+    re.lastIndex = 0;
+    let m;
+    while ((m = re.exec(text))) {
+      const value = cleanNameCapture(m[1]);
+      const key = value.toLowerCase();
+      if (seen.has(key)) continue;
+      if (!isPlausibleCopyableName(value, { requireCapitalized })) continue;
+      seen.add(key);
+      names.push({ kind: 'name', label: 'Name', value });
+    }
+  });
+};
 
 /** Proper-name candidates for one-click copy chips. */
 export const extractCopyableNames = (text) => {
   if (!text) return [];
   const seen = new Set();
   const names = [];
-
-  NAME_CUE_PATTERNS.forEach((re) => {
-    re.lastIndex = 0;
-    let m;
-    while ((m = re.exec(text))) {
-      const value = m[1].trim().replace(/\s+/g, ' ');
-      const key = value.toLowerCase();
-      if (value.length < 2 || seen.has(key)) continue;
-      seen.add(key);
-      names.push({ kind: 'name', label: 'Name', value });
-    }
-  });
-
+  pushNameMatches(text, STRONG_NAME_CUE_PATTERNS, false, seen, names);
+  pushNameMatches(text, WEAK_NAME_CUE_PATTERNS, true, seen, names);
   return names;
 };
 
@@ -209,9 +252,14 @@ export const splitLongTextAtCommas = (text, maxWords = 40) => {
   return chunks.length > 1 ? chunks : [];
 };
 
+/**
+ * Display path (Phase D): keep spoken paragraph.
+ * Spelling consolidation is chip-only via collectCopyableEntities / consolidateSpelling.
+ * formatSpellingText (newlines) is opt-in only — not default.
+ */
 export const formatTranscriptForDisplay = (text, lang = 'en') => {
   if (!text) return text;
-  return formatSpellingText(text, lang);
+  return text;
 };
 
 export const applyTranscriptFormatting = (text, lang = 'en') => formatTranscriptForDisplay(text, lang);

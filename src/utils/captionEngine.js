@@ -14,6 +14,7 @@ import {
   laneSideForLang,
   langForLaneSide,
 } from "./languageConfig";
+import { flagVanish } from "./vanishTrace";
 
 export const INTERIM_THROTTLE_MS = 150;
 export const CAPTION_ROW_LIMIT = 150;
@@ -239,7 +240,20 @@ export const reduceTranscriptEvent = (prev, event, ctx) => {
   const baseContext = (historyText + " " + currentFinalized).trim();
 
   const cleaned = removeOverlapPreservingDigitSequences(baseContext, transcript);
-  if (!cleaned.trim() && !shouldFinalize) return prev;
+  if (!cleaned.trim() && !shouldFinalize) {
+    flagVanish('overlap_empty_freeze', {
+      id: current.id,
+      turnId: current.turnId,
+      before: current.text,
+      after: current.text,
+      stage: 'captionEngine.interim',
+      force: true,
+      extra: { note: 'cleaned empty — keep prev bubble', transcriptPreview: String(transcript).slice(0, 80) },
+    });
+    return prev;
+  }
+
+  const textBeforeLane = current.text || '';
 
   if (shouldFinalize) {
     const merged = (
@@ -282,6 +296,20 @@ export const reduceTranscriptEvent = (prev, event, ctx) => {
   const winSide = laneSideForLang(winnerLang, pair);
   current.lang = winnerLang;
   current.text = winSide === "en" ? enFull : esFull;
+  if (current.text !== textBeforeLane && textBeforeLane) {
+    const lost = textBeforeLane.split(/\s+/).filter(Boolean).length
+      - (current.text || '').split(/\s+/).filter(Boolean).length;
+    if (lost > 0 || (textBeforeLane.length > 8 && !(current.text || '').includes(textBeforeLane.slice(0, Math.min(12, textBeforeLane.length))))) {
+      flagVanish('caption_lane_text_rewrite', {
+        id: current.id,
+        turnId: current.turnId,
+        before: textBeforeLane,
+        after: current.text,
+        stage: 'captionEngine.assignText',
+        extra: { winnerLang, shouldFinalize, enLen: enFull.length, esLen: esFull.length },
+      });
+    }
+  }
   if (eventWordConfidence.length) {
     current.wordConfidence = eventWordConfidence;
   }
@@ -361,6 +389,20 @@ export const reduceTranscriptEvent = (prev, event, ctx) => {
     }
 
     if (sealedAll.length > 0) {
+      flagVanish('caption_bubble_split', {
+        id: originalLastId,
+        turnId: current.turnId,
+        before: current.text,
+        after: sealedAll.map((s) => s.text).join(' || '),
+        remount: true,
+        force: true,
+        stage: 'captionEngine.sealSplit',
+        extra: {
+          sealedCount: sealedAll.length,
+          hasTail: Boolean(tailText?.trim()),
+          sealedIds: sealedAll.map((s) => s.id),
+        },
+      });
       const hasTail = Boolean(tailText?.trim());
       if (hasTail && sealedAll[0]?.id === originalLastId) {
         sealedAll[0] = {

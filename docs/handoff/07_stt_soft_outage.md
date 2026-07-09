@@ -16,7 +16,7 @@ npm.cmd run build
 ## v4.80.2 fixes (this sweep)
 - **STT FAST/BAL toggle** — header pill + Settings → Deepgram; default FAST; reconnects on change.
 - **Latency** — FAST: 100ms MediaRecorder, 100ms interim process/flush, endpointing 150.
-- **Live animation** — `ScrambleText liveMode` append-only; no shrink mid-utterance.
+- **Live animation (legacy note)** — pre-v4.84 used `ScrambleText liveMode`. **Current invariant:** `StableTextMorph` (No Vanishing Text) — see `transcription-pane/README.md` §12.
 - **Confidence visible** — tier colors (white / slate / yellow+underline); `wordConfidenceAlign.js`.
 - **Pending rail** — "Hearing audio…" bubble re-enabled during chunk→text gap.
 - **Live bubble** — removed 0.6 opacity; blue border glow instead.
@@ -98,3 +98,4 @@ Read the trace like this:
 - Interim updates must not shrink row height.
 - Existing translations must not be destroyed on bubble split.
 - EN column stays left, ES column stays right.
+- **No Vanishing Text / StableTextMorph:** never destroy A → remount blank B; ScrambleText not on critical live transcript.

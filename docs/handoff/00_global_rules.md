@@ -14,6 +14,8 @@ Each handoff spec lists allowed files. Do not refactor unrelated code.
 - Nothing in the interpret pane may pop in/out without transition or reserved space
 - Throttled auto-scroll only on new bubble or finalize (`TranscriptionBoard.js`)
 - `React.memo` on bubbles — do not remove without reason
+- **No Vanishing Text / StableTextMorph (v4.84.1+):** never destroy readable text A and remount blank B. Morph A→B on the same mount — stable prefix stays, changes are cued, no blank frame; protected tokens (phones/dates/doses/money) never vanish. ScrambleText is not for critical live transcript (`StableTextMorph.js`)
+- **Sensitive data (v4.84.7):** see [`../development/sensitive-data-approach.md`](../development/sensitive-data-approach.md) — do not regress date/dose units or sentinel display brakes
 
 ## Translation / STT
 - Do not destroy existing translations on bubble split (`useTranslate.js` sticky pairs)

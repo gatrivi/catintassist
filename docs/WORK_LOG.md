@@ -2,6 +2,12 @@
 
 Short operator-readable notes for recent Codex work. Use this when you want to catch up fast without reading chat history.
 
+## v4.84.7 - sensitive data A–E complete
+- Problem: false Name chips, lone day digits in dates, dead sentinels, spelling remount cliff, dose/money not units.
+- Change: A chips · B date units · C sentinel display gate · D spelling paragraph+chip · E dosage/money spans.
+- Verify: corner **v4.84.7**; `I'm sorry` no Name chip; `May 8 1990` one yellow span; `500 mg` / `$25` one span; address digits not phone-formatted.
+- Docs: `docs/development/sensitive-data-approach.md`
+
 ## v4.80.2 - STT render recovery
 - Problem: transcription felt slow; live text shrank mid-speech; confidence coloring was invisible.
 - Change: STT FAST/BAL toggle (default FAST); 100ms chunks + endpointing 150; ScrambleText liveMode append-only; tiered confidence colors (white/slate/yellow); pending "Hearing audio" rail re-enabled; live bubble no longer 0.6 opacity.

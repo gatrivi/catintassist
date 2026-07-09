@@ -40,6 +40,7 @@ describe('diffWordsStable', () => {
     expect(isProtectedToken('555-123-4567')).toBe(true);
     expect(isProtectedToken('500mg')).toBe(true);
     expect(isProtectedToken('01/02/1970')).toBe(true);
+    expect(isProtectedToken('May 8 1990')).toBe(true);
     expect(isProtectedToken('hello')).toBe(false);
   });
 });

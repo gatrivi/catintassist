@@ -36,12 +36,14 @@ Prod verification checklist:
 - [ ] Weak translation beats empty (`AGENTS.md`)
 - [ ] No status UI thrash on connect ([`.cursor/RULES/ui-thrash.md`](../.cursor/RULES/ui-thrash.md))
 - [ ] EN/ES column tie-break sane ([`transcription-pane/README.md`](transcription-pane/README.md))
+- [x] **No Vanishing Text / StableTextMorph** — never destroy A → remount blank B; morph with stable prefix + cued changes; ScrambleText ≠ live transcript ([`transcription-pane/README.md`](transcription-pane/README.md) §12) (v4.84.1)
 - [x] Dev fixture harness (no tab capture) — [`development/transcription-test-harness.md`](development/transcription-test-harness.md) (v4.81.0)
 - [x] Translation reliability harness — applicator + fixtures + sealed IDB ([`development/translation-reliability-harness.md`](development/translation-reliability-harness.md)) (v4.82.0)
 - [x] Phase 0 Smoke Dashboard — operator checklist + live probes ([`development/phase0-smoke-dashboard.md`](development/phase0-smoke-dashboard.md)) (v4.83.0) — **marks still open until you smoke the real stack**
 - [x] v4.83.1 viewport blockers — Azure status, live height unlock, soundboard full-width, one STT rail
 - [x] v4.84.0 stable transcript display — no live scramble; continuity keys; tail-only updates
 - [x] v4.84.1 StableTextMorph — word diff morph (not plain snap / not scramble)
+- [x] v4.84.3–4.84.7 sensitive data A–E — chips · date units · sentinels · spelling soften · dose/money ([`development/sensitive-data-approach.md`](development/sensitive-data-approach.md))
 
 **Code:** [`useTranslate.js`](../src/hooks/useTranslate.js) · [`useDeepgram.js`](../src/hooks/useDeepgram.js) · [`sensitiveDataProtector.js`](../src/utils/sensitiveDataProtector.js) · [`translationApplicator.js`](../src/utils/translationApplicator.js)
 

@@ -27,7 +27,7 @@ Read this file first. Stays small on purpose.
 | STT / transcript | `src/hooks/useDeepgram.js`, `src/components/TranscriptionBoard.js` |
 | TTS | `src/hooks/useTTS.js` — or separate TTS repo per `docs/tts/` |
 | Scoreboard | `src/components/GameScoreboard.js`, `src/components/DashboardHeader.js` (scoreboard/progress only) |
-| Number protection | `src/utils/sensitiveDataProtector.js`, tests, `TranscriptionBoard.js` (display only) |
+| Number / sensitive data | `sensitiveDataProtector.js`, `transcriptFormat.js`, tests, board/morph display — plan: `docs/development/sensitive-data-approach.md` |
 | Medical terms | `src/utils/medicalTermLexicon.js`, tests; Phase 2: `useDeepgram.js` |
 | Transcript corrections | `src/utils/transcriptCorrections.js`, tests; Phase 2: `TranscriptionBoard.js` |
 | UI cleanup | `src/index.css`, header/scoreboard chrome — see `docs/handoff/05_ui_cleanup.md` |

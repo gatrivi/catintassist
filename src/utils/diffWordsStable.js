@@ -96,13 +96,18 @@ export function diffWordsStable(prevText = '', nextText = '') {
   return ops;
 }
 
-/** True if token looks like phone/dose/date digits — never blank during morph. */
+/** True if token looks like phone/dose/date — never blank during morph. */
 export function isProtectedToken(text = '') {
   const t = (text || '').trim();
   if (!t) return false;
   if (/\d/.test(t) && t.replace(/\D/g, '').length >= 2) return true;
   if (/^\d+\/\d+/.test(t)) return true;
   if (/mg|mcg|ml|units?/i.test(t) && /\d/.test(t)) return true;
+  if (/[$€£]/.test(t) && /\d/.test(t)) return true;
+  if (/\b(?:dollars?|pesos?|usd|copay)\b/i.test(t) && /\d/.test(t)) return true;
+  // Month-name dates: "May 8 1990", "8 de mayo de 1990"
+  if (/\b(?:jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec|enero|febrero|marzo|abril|mayo|junio|julio|agosto|septiembre|octubre|noviembre|diciembre)\b/i.test(t)
+    && /\d/.test(t)) return true;
   return false;
 }
 

@@ -4,6 +4,44 @@
 
 ---
 
+## v4.84.8 — Name chips: ES cues + accent fix
+- `mi nombre es Maria Lopez` → strong cue (lowercase OK); bare `soy Josefina` → weak cue (Capitalized required)
+- ES role/condition stopwords: `soy la intérprete` / `soy alérgica` / `Soy Diabética` never chip
+- Accented letters no longer truncate captures (`Diabética` ≠ `Diab` chip)
+- Brief acceptance tests added: `I'm here`, `me llamo Josefina`, `Dr. Perez`
+
+## v4.84.7 — Phase E dosage / money units
+- `500 mg`, `2.5 ml`, `$25.00` highlight/copy as one unit (not lone digits)
+- Phones/dates still separate; overlap unchanged
+
+## v4.84.6 — Phase D spelling soften
+- Display keeps spoken spelling paragraph (no `\n` mono remount cliff)
+- Sealed trailing **Spelled** chip still consolidates (SMITH); `formatSpellingText` opt-in only
+- Removed InteractiveText spelling-branch layout swap
+
+## v4.84.5 — Phase C sentinels wired
+- `detectSentinelContext` gates display stitch/phone format
+- Skip stitch: date · address · email · spelling
+- Skip phone format: those + dosage · medication · price
+- phone/ssn modes still format; overlap guards unchanged
+
+## v4.84.4 — Phase B date units
+- Date spans (`May 8 1990`, `8 May 1990`, `3/15/26`) highlight/copy as **one** unit (ISO when year present)
+- Mask dates before digit stitch/phone format; skip stitch near month/year
+- `8 mg` stays a lone number; phones still group
+- Plan: `docs/development/sensitive-data-approach.md`
+
+## v4.84.3 — Phase A name chips
+- `I'm sorry` no longer → Name chip (stopwords + weak-cue Capitalized gate)
+- Chips: sealed bubbles only; trailing under text (not slab above)
+- Plan + diagram: `docs/development/sensitive-data-approach.md`
+
+## v4.84.2 — Vanish / derender console flags
+- `window.__catintVanishTrace` + `[CAT VANISH]` logs when words/segments shorten, remount, or derender
+- Wired: overlap strip, hallucination prune, digit stitch/phone reformat, spelling layout flip, live→sealed, morph diff, caption split
+- Mute: `window.__catintVanishOn = false`
+- Protector audit note: dates/dosage/address are detect-only (no formatters); spelling ≥3 “as in” flips sealed layout
+
 ## v4.84.1 — Continuity-preserving StableTextMorph
 - Live source: word-level `diffWordsStable` + `StableTextMorph` (A→B without blank remount)
 - Changed spans: brief `from ⇢ to` cue; protected tokens (phones/doses) never vanish

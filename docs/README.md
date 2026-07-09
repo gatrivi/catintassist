@@ -1,8 +1,11 @@
-# CatIntAssist Docs (v4.83.0)
+# CatIntAssist Docs (v4.84.7)
 
 This is the single source of truth for *documentation + onboarding*.
 
 ## What's new
+- **v4.84.3–4.84.7** — Sensitive data A–E shipped — [`development/sensitive-data-approach.md`](development/sensitive-data-approach.md) (chips · dates · sentinels · spelling · dose/money)
+- **v4.84.2** — Vanish/derender console flags — [`development/vanish-trace.md`](development/vanish-trace.md)
+- **v4.84.1** — No Vanishing Text / StableTextMorph invariant — [`transcription-pane/README.md`](transcription-pane/README.md) §12
 - **v4.83.0** — [`development/phase0-smoke-dashboard.md`](development/phase0-smoke-dashboard.md) — Phase 0 real-stack smoke checklist
 - **v4.82.0** — [`development/translation-reliability-harness.md`](development/translation-reliability-harness.md) — translation applicator + fixtures
 - **v4.81.0** — [`development/transcription-test-harness.md`](development/transcription-test-harness.md) — fixture replay without tab capture

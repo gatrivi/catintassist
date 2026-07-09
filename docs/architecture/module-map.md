@@ -68,9 +68,11 @@ flowchart TD
 - Responsibility: monitors `lastActivityTime` while active and plays tiered warnings; optionally auto-disconnects by moving the app into break state (based on silence thresholds).
 - Main file: [`src/components/SilenceGuardian.js`](src/components/SilenceGuardian.js)
 
-#### Number protection (pure utils)
-- Responsibility: lane-aware number words, phone/SSN grouping, overlap-safe digit sequences, NYC zip repair.
+#### Sensitive data protection (pure utils, v4.84.7)
+- Responsibility: lane-aware number words, phone/SSN, digit stitch, date/dosage/money highlight units, sentinel display brakes, NYC zip; overlap digit guards.
 - Main file: [`src/utils/sensitiveDataProtector.js`](src/utils/sensitiveDataProtector.js)
+- Chips/spelling: [`src/utils/transcriptFormat.js`](src/utils/transcriptFormat.js)
+- Approach: [`docs/development/sensitive-data-approach.md`](../development/sensitive-data-approach.md)
 - Handoff: [`docs/handoff/01_number_protection.md`](../handoff/01_number_protection.md)
 
 #### Medical term priority (stub v4.56)

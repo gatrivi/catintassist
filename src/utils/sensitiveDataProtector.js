@@ -3,6 +3,8 @@
 // other models/agents without dragging UI/context into prompts.
 // v4.28.0
 
+import { flagVanish } from './vanishTrace';
+
 // ------------------------------
 // Display-time helpers (UI)
 // ------------------------------
@@ -81,6 +83,7 @@ export const formatPhoneAndSSNDigits = (text) => {
     const before = full.slice(Math.max(0, offset - 40), offset);
     const after = full.slice(offset + m.length, offset + m.length + 40);
     if (looksLikeAddressFragment(before, after)) return m;
+    if (looksLikeDateFragment(before, after)) return m;
 
     const digitsOnly = m.replace(/\D/g, '');
     if (digitsOnly.length === 9) {
@@ -108,6 +111,273 @@ export const formatPhoneAndSSNDigits = (text) => {
 
 const SINGLE_DIGIT_RUN_RE = /\b\d(?:[\s,.-]+\d)+\b/g;
 
+/** Month token → 1–12 (EN + ES). */
+const MONTH_TO_NUM = {
+  jan: 1, january: 1, enero: 1,
+  feb: 2, february: 2, febrero: 2,
+  mar: 3, march: 3, marzo: 3,
+  apr: 4, april: 4, abril: 4,
+  may: 5, mayo: 5,
+  jun: 6, june: 6, junio: 6,
+  jul: 7, july: 7, julio: 7,
+  aug: 8, august: 8, agosto: 8,
+  sep: 9, sept: 9, september: 9, septiembre: 9, setiembre: 9,
+  oct: 10, october: 10, octubre: 10,
+  nov: 11, november: 11, noviembre: 11,
+  dec: 12, december: 12, diciembre: 12,
+};
+
+const MONTH_ALT = Object.keys(MONTH_TO_NUM).sort((a, b) => b.length - a.length).join('|');
+
+const ORDINAL_TO_DAY = {
+  first: 1, second: 2, third: 3, fourth: 4, fifth: 5, sixth: 6, seventh: 7,
+  eighth: 8, ninth: 9, tenth: 10, eleventh: 11, twelfth: 12, thirteenth: 13,
+  fourteenth: 14, fifteenth: 15, sixteenth: 16, seventeenth: 17, eighteenth: 18,
+  nineteenth: 19, twentieth: 20, 'twenty-first': 21, 'twenty first': 21,
+  'twenty-second': 22, 'twenty second': 22, 'twenty-third': 23, 'twenty third': 23,
+  thirtieth: 30, 'thirty-first': 31, 'thirty first': 31,
+  primero: 1, primera: 1, segundo: 2, segunda: 2, tercero: 3, tercera: 3,
+  cuarto: 4, cuarta: 4, quinto: 5, quinta: 5, sexto: 6, sexta: 6,
+  septimo: 7, séptimo: 7, octavo: 8, noveno: 9, decimo: 10, décimo: 10,
+};
+
+const pad2 = (n) => String(n).padStart(2, '0');
+
+const normalizeYear = (yRaw) => {
+  const y = parseInt(String(yRaw).replace(/\D/g, ''), 10);
+  if (!Number.isFinite(y)) return null;
+  if (y >= 1000 && y <= 2100) return y;
+  if (y >= 0 && y <= 99) return y >= 30 ? 1900 + y : 2000 + y;
+  return null;
+};
+
+const monthNumFromToken = (tok) => {
+  const k = (tok || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+  return MONTH_TO_NUM[k] || null;
+};
+
+const dayFromToken = (tok) => {
+  const t = (tok || '').toLowerCase().replace(/,/g, '').trim();
+  if (/^\d{1,2}(st|nd|rd|th)?$/i.test(t)) {
+    const d = parseInt(t, 10);
+    return d >= 1 && d <= 31 ? d : null;
+  }
+  const ord = ORDINAL_TO_DAY[t] || ORDINAL_TO_DAY[t.replace(/\s+/g, ' ')];
+  return ord || null;
+};
+
+const isoFromParts = (year, month, day) => {
+  if (!year || !month || !day) return null;
+  if (month < 1 || month > 12 || day < 1 || day > 31) return null;
+  return `${year}-${pad2(month)}-${pad2(day)}`;
+};
+
+/**
+ * Find date spans that must highlight/copy as one unit (Phase B).
+ * Does not rewrite display text — only reports spans + preferred copy value.
+ */
+export const findDateUnits = (text) => {
+  if (!text) return [];
+  const units = [];
+  const push = (start, end, raw, iso) => {
+    if (start < 0 || end <= start) return;
+    // skip overlaps
+    if (units.some((u) => !(end <= u.start || start >= u.end))) return;
+    units.push({
+      start,
+      end,
+      text: text.slice(start, end),
+      iso: iso || null,
+      copyValue: iso || text.slice(start, end).trim(),
+    });
+  };
+
+  // 1) Numeric: M/D/YYYY or D/M/YYYY (ambiguous → still one span; ISO only if unambiguous US-ish)
+  const numericRe = /\b(\d{1,2})[/-](\d{1,2})(?:[/-](\d{2,4}))?\b/g;
+  let m;
+  while ((m = numericRe.exec(text))) {
+    const a = parseInt(m[1], 10);
+    const b = parseInt(m[2], 10);
+    const year = m[3] ? normalizeYear(m[3]) : null;
+    let iso = null;
+    if (year && a >= 1 && a <= 12 && b >= 1 && b <= 31) {
+      iso = isoFromParts(year, a, b); // prefer MDY when first ≤12
+    } else if (year && b >= 1 && b <= 12 && a >= 1 && a <= 31 && a > 12) {
+      iso = isoFromParts(year, b, a); // DMY when day>12
+    }
+    push(m.index, m.index + m[0].length, m[0], iso);
+  }
+
+  // 2) Month name + day + year: May 8 1990 / May 8, 1990 / May 8th 1990
+  const mdY = new RegExp(
+    `\\b((?:${MONTH_ALT}))\\s+(\\d{1,2}(?:st|nd|rd|th)?|[A-Za-zÁÉÍÓÚáéíóúñÑ-]+)\\s*,?\\s+(\\d{2,4})\\b`,
+    'gi',
+  );
+  while ((m = mdY.exec(text))) {
+    const month = monthNumFromToken(m[1]);
+    const day = dayFromToken(m[2]);
+    const year = normalizeYear(m[3]);
+    push(m.index, m.index + m[0].length, m[0], isoFromParts(year, month, day));
+  }
+
+  // 3) Day + month + year: 8 May 1990 / 8 de mayo de 1990
+  const dmy = new RegExp(
+    `\\b(\\d{1,2}(?:st|nd|rd|th)?|[A-Za-zÁÉÍÓÚáéíóúñÑ-]+)\\s+(?:de\\s+)?((?:${MONTH_ALT}))\\s+(?:de\\s+)?(\\d{2,4})\\b`,
+    'gi',
+  );
+  while ((m = dmy.exec(text))) {
+    const day = dayFromToken(m[1]);
+    const month = monthNumFromToken(m[2]);
+    const year = normalizeYear(m[3]);
+    if (!day || !month || !year) continue;
+    push(m.index, m.index + m[0].length, m[0], isoFromParts(year, month, day));
+  }
+
+  return units.sort((a, b) => a.start - b.start);
+};
+
+/** True if digit run sits next to a month/year date context — do not stitch. */
+export const looksLikeDateFragment = (textBefore, textAfter) => {
+  const before = (textBefore || '').slice(-48);
+  const after = (textAfter || '').slice(0, 48);
+  const monthRe = new RegExp(`\\b(?:${MONTH_ALT})\\b`, 'i');
+  if (monthRe.test(before) || monthRe.test(after)) return true;
+  if (/\b(?:born|dob|birthday|appointment|appt|fecha|nacimiento|cita)\b/i.test(before)) return true;
+  // year sitting after a lone day digit
+  if (/^\s*(?:de\s+)?(?:\d{4}|'\d{2})\b/i.test(after) && /\b\d{1,2}\s*$/.test(before)) return true;
+  return false;
+};
+
+const DATE_MASK = (i) => `\uE000D${i}\uE001`;
+
+/** Mask date spans so stitch/phone format cannot tear them apart. */
+export const maskDateUnits = (text) => {
+  const units = findDateUnits(text);
+  if (!units.length) return { text, units: [], restore: (t) => t };
+  let out = '';
+  let cursor = 0;
+  units.forEach((u, i) => {
+    out += text.slice(cursor, u.start);
+    out += DATE_MASK(i);
+    cursor = u.end;
+  });
+  out += text.slice(cursor);
+  const restore = (masked) => {
+    let restored = masked;
+    units.forEach((u, i) => {
+      restored = restored.split(DATE_MASK(i)).join(u.text);
+    });
+    return restored;
+  };
+  return { text: out, units, restore };
+};
+
+/**
+ * Split for highlight/copy: date → dosage → money units, then number regex on gaps.
+ * @returns {{ type: 'text'|'number'|'date'|'dosage'|'money', value: string, copyValue?: string }[]}
+ */
+export const findDosageUnits = (text) => {
+  if (!text) return [];
+  const units = [];
+  const re = /\b\d+(?:[.,]\d+)?\s*(?:mg|mcg|g|ml|cc|iu|units?|mEq|milligrams?|micrograms?|grams?|milliliters?|miligramos?|microgramos?|gramos?|mililitros?|unidades?)\b/gi;
+  let m;
+  while ((m = re.exec(text))) {
+    const raw = m[0];
+    units.push({
+      start: m.index,
+      end: m.index + raw.length,
+      text: raw,
+      copyValue: raw.replace(/\s+/g, ' ').trim(),
+    });
+  }
+  return units;
+};
+
+export const findMoneyUnits = (text) => {
+  if (!text) return [];
+  const units = [];
+  const re = /(?:[$€£]\s*\d+(?:[.,]\d{2})?|\b\d+(?:[.,]\d{2})?\s*(?:dollars?|pesos?|usd|ars|copay|co-pay|copago|coaseguro)\b)/gi;
+  let m;
+  while ((m = re.exec(text))) {
+    const raw = m[0];
+    const digits = raw.replace(/[^\d.,]/g, '');
+    units.push({
+      start: m.index,
+      end: m.index + raw.length,
+      text: raw,
+      copyValue: digits || raw.trim(),
+    });
+  }
+  return units;
+};
+
+/** Merge non-overlapping typed units; earlier/longer wins on overlap. */
+const mergeTypedUnits = (groups) => {
+  const all = [];
+  groups.forEach(({ type, units }) => {
+    units.forEach((u) => all.push({ ...u, type }));
+  });
+  all.sort((a, b) => a.start - b.start || (b.end - b.start) - (a.end - a.start));
+  const out = [];
+  all.forEach((u) => {
+    if (out.some((x) => !(u.end <= x.start || u.start >= x.end))) return;
+    out.push(u);
+  });
+  return out.sort((a, b) => a.start - b.start);
+};
+
+export const splitHighlightSegments = (text) => {
+  if (!text) return [];
+  const units = mergeTypedUnits([
+    { type: 'date', units: findDateUnits(text) },
+    { type: 'dosage', units: findDosageUnits(text) },
+    { type: 'money', units: findMoneyUnits(text) },
+  ]);
+  const segments = [];
+  let cursor = 0;
+
+  const pushNumberSplits = (chunk) => {
+    if (!chunk) return;
+    const parts = chunk.split(NUMBER_HIGHLIGHT_REGEX);
+    parts.forEach((p) => {
+      if (!p) return;
+      if (p.match(NUMBER_HIGHLIGHT_REGEX)) {
+        segments.push({ type: 'number', value: p, copyValue: copyableDigits(p) });
+      } else {
+        segments.push({ type: 'text', value: p });
+      }
+    });
+  };
+
+  units.forEach((u) => {
+    pushNumberSplits(text.slice(cursor, u.start));
+    segments.push({ type: u.type, value: u.text, copyValue: u.copyValue });
+    cursor = u.end;
+  });
+  pushNumberSplits(text.slice(cursor));
+  return segments;
+};
+
+/** Clipboard value for a highlighted sensitive span. */
+export const copyableSensitiveValue = (value, type = 'number') => {
+  if (type === 'date') {
+    const units = findDateUnits(String(value));
+    if (units[0]?.copyValue) return units[0].copyValue;
+    return String(value || '').trim();
+  }
+  if (type === 'dosage') {
+    const units = findDosageUnits(String(value));
+    if (units[0]?.copyValue) return units[0].copyValue;
+    return String(value || '').replace(/\s+/g, ' ').trim();
+  }
+  if (type === 'money') {
+    const units = findMoneyUnits(String(value));
+    if (units[0]?.copyValue) return units[0].copyValue;
+    return String(value || '').trim();
+  }
+  return copyableDigits(value);
+};
+
 export const stitchSingleDigitSequences = (text, { minDigits = 2 } = {}) => {
   if (!text) return text;
   return text.replace(SINGLE_DIGIT_RUN_RE, (match, offset, full) => {
@@ -117,20 +387,89 @@ export const stitchSingleDigitSequences = (text, { minDigits = 2 } = {}) => {
     const before = full.slice(Math.max(0, offset - 40), offset);
     const after = full.slice(offset + match.length, offset + match.length + 40);
     if (looksLikeAddressFragment(before, after)) return match;
+    if (looksLikeDateFragment(before, after)) return match;
 
     const trailingPunct = match.match(/[,.]$/)?.[0] || '';
     return parts.join('') + trailingPunct;
   });
 };
 
+/**
+ * Sentinel display brakes (Phase C).
+ * - Skip stitch: date/address/email/spelling (digit runs are not phone dictation)
+ * - Skip phone/SSN format: those + dosage/medication/price (keep stitch for "5 0 0 mg")
+ * - phone + ssn modes: full transforms allowed
+ */
+export const DISPLAY_SKIP_STITCH_MODES = new Set([
+  'date',
+  'address',
+  'email',
+  'spelling',
+]);
+
+export const DISPLAY_SKIP_PHONE_FORMAT_MODES = new Set([
+  'date',
+  'address',
+  'email',
+  'spelling',
+  'dosage',
+  'medication',
+  'price',
+]);
+
+export const shouldSkipDigitStitch = (mode) =>
+  Boolean(mode && DISPLAY_SKIP_STITCH_MODES.has(mode));
+
+export const shouldSkipPhoneFormat = (mode) =>
+  Boolean(mode && DISPLAY_SKIP_PHONE_FORMAT_MODES.has(mode));
+
+/** @deprecated use shouldSkipPhoneFormat — kept for older call sites */
+export const shouldSkipPhoneDigitTransforms = (mode) => shouldSkipPhoneFormat(mode);
+
 /** Display pipeline order (transcript + translation panes). */
 export const applyDisplayProtections = (text, lang = 'en', { applyNumberWords = true } = {}) => {
   if (!text) return text;
   let out = text;
   if (applyNumberWords) out = convertEnglishNumberWords(out, lang);
-  out = stitchSingleDigitSequences(out);
-  out = formatPhoneAndSSNDigits(out);
+
+  // Phase C: sentinels gate stitch/phone — display brake only (overlap unchanged).
+  const sentinel = detectSentinelContext(out, lang);
+  const skipStitch = shouldSkipDigitStitch(sentinel.mode);
+  const skipPhone = shouldSkipPhoneFormat(sentinel.mode);
+
+  const { text: masked, restore } = maskDateUnits(out);
+  out = masked;
+
+  if (!skipStitch) {
+    const afterWords = out;
+    out = stitchSingleDigitSequences(out);
+    if (out !== afterWords) {
+      flagVanish('display_digit_stitch', {
+        before: afterWords,
+        after: out,
+        stage: 'applyDisplayProtections',
+        force: true,
+        extra: { step: 'stitchSingleDigitSequences', sentinel: sentinel.mode },
+      });
+    }
+  }
+
+  if (!skipPhone) {
+    const afterStitch = out;
+    out = formatPhoneAndSSNDigits(out);
+    if (out !== afterStitch && /\d/.test(afterStitch)) {
+      flagVanish('display_phone_ssn_reformat', {
+        before: afterStitch,
+        after: out,
+        stage: 'applyDisplayProtections',
+        force: true,
+        extra: { step: 'formatPhoneAndSSNDigits', sentinel: sentinel.mode },
+      });
+    }
+  }
+
   out = repairNYCZipNumbers(out);
+  out = restore(out);
   return out;
 };
 
@@ -469,7 +808,17 @@ export const hallucinationGuard = (text) => {
   if (words.length === 1) {
     const w = words[0].toLowerCase();
     if (isNumberLike(w)) return text;
-    if (w === 'bueno' || w === 'um' || w === 'eh' || w === 'uh' || w === 'ah') return '';
+    if (w === 'bueno' || w === 'um' || w === 'eh' || w === 'uh' || w === 'ah') {
+      flagVanish('hallucination_filler_wipe', {
+        before: text,
+        after: '',
+        stage: 'hallucinationGuard',
+        derender: true,
+        force: true,
+        extra: { filler: w },
+      });
+      return '';
+    }
   }
 
   if (words.length < 2) return text;
@@ -518,12 +867,27 @@ export const hallucinationGuard = (text) => {
     !containsNumberSequence(text, 2) &&
     !containsCriticalData(text)
   ) {
+    const pruned = `${cleaned.slice(0, 12).join(' ')}... [Stutter Pruned]`;
     // eslint-disable-next-line no-console
     if (process.env.NODE_ENV !== 'production') console.log('[PRUNED]', text, '→', cleaned.slice(0, 12).join(' '));
-    return `${cleaned.slice(0, 12).join(' ')}... [Stutter Pruned]`;
+    flagVanish('hallucination_stutter_prune', {
+      before: text,
+      after: pruned,
+      stage: 'hallucinationGuard',
+      force: true,
+    });
+    return pruned;
   }
 
-  return cleanFillerWords(cleaned.join(' '));
+  const out = cleanFillerWords(cleaned.join(' '));
+  if (out !== text && cleaned.length < words.length) {
+    flagVanish('hallucination_stutter_dedupe', {
+      before: text,
+      after: out,
+      stage: 'hallucinationGuard',
+    });
+  }
+  return out;
 };
 
 export const removeOverlapPreservingDigitSequences = (base, addition) => {
@@ -565,5 +929,15 @@ export const removeOverlapPreservingDigitSequences = (base, addition) => {
     }
   }
 
-  return aWordsRaw.slice(bestOverlap).join(' ');
+  const result = aWordsRaw.slice(bestOverlap).join(' ');
+  if (bestOverlap > 0 && result !== addition) {
+    flagVanish('overlap_strip', {
+      before: addition,
+      after: result,
+      stage: 'removeOverlapPreservingDigitSequences',
+      force: true,
+      extra: { bestOverlap, baseTail: base.trim().split(/\s+/).slice(-8).join(' ') },
+    });
+  }
+  return result;
 };

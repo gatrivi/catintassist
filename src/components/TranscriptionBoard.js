@@ -5,16 +5,19 @@ import { useTranslate } from '../hooks/useTranslate';
 import { useSession, safeSet } from '../contexts/SessionContext';
 import { useAudioSettings } from '../contexts/AudioSettingsContext';
 import { truncateDeviceLabel } from '../utils/audioSelfTest';
-import { formatTranscriptForDisplay, isSpellingBlock, collectCopyableEntities } from '../utils/transcriptFormat';
 import {
   applyDisplayProtections,
   copyableDigits,
+  copyableSensitiveValue,
   NUMBER_HIGHLIGHT_REGEX,
+  splitHighlightSegments,
 } from '../utils/sensitiveDataProtector';
+import { formatTranscriptForDisplay, collectCopyableEntities } from '../utils/transcriptFormat';
 import { ScrambleText } from './ScrambleText';
 import { StableLiveTranscriptText } from './StableLiveTranscriptText';
 import { buildCaptionContinuityKeys } from '../utils/stableLiveTranscript';
 import { alignWordConfidence, confidenceVisualFor } from '../utils/wordConfidenceAlign';
+import { flagVanish, traceCaptionArrayDiff } from '../utils/vanishTrace';
 import { NewcomerIdleGuide } from './NewcomerIdleGuide';
 import { isNewcomerGuideDismissed } from '../utils/newcomerGuide';
 import { isTranslationStuckForRetranslate } from '../utils/translationQuality';
@@ -66,10 +69,10 @@ const processDisplayText = (raw, lang, applyNumberWords, protectionsActive) => {
   return applyDisplayProtections(spelled, lang, { applyNumberWords });
 };
 
-/** Stable regex for number split — avoid new RegExp() every render. */
+/** Stable split — dates as one unit, then numbers. */
 const splitDisplaySegments = (segment) => {
   if (!segment) return [];
-  return segment.split(NUMBER_HIGHLIGHT_REGEX);
+  return splitHighlightSegments(segment);
 };
 
 const commonWordPrefixLen = (a = '', b = '') => {
@@ -135,8 +138,6 @@ const InteractiveText = ({
   wordConfidence = null,
   isFinal = true,
 }) => {
-  const processedText = useMemo(() => (text ? formatTranscriptForDisplay(text, lang) : ''), [text, lang]);
-  const spellingLayout = useMemo(() => Boolean(text && isSpellingBlock(text)), [text]);
   const copyEntities = useMemo(() => (text ? collectCopyableEntities(text, lang) : []), [text, lang]);
   const repairedText = useMemo(
     () => (text ? processDisplayText(text, lang, applyNumberWords, protectionsActive) : ''),
@@ -160,33 +161,59 @@ const InteractiveText = ({
     previousTextRef.current = repairedText;
   }, [repairedText]);
 
-  const handleCopy = useCallback((num) => {
-    const clean = copyableDigits(num);
+  const handleCopy = useCallback((value, type = 'number') => {
+    const clean = (type === 'date' || type === 'dosage' || type === 'money')
+      ? copyableSensitiveValue(value, type)
+      : copyableDigits(value);
     if (!clean) return;
     navigator.clipboard.writeText(clean);
   }, []);
 
-  const renderPart = useCallback((p, i, keyPrefix = '', forcePlain = false, opts = {}) => {
+  const renderPart = useCallback((seg, i, keyPrefix = '', forcePlain = false, opts = {}) => {
     const { confidenceClass = '', liveScramble = false } = opts;
     const partKey = `${keyPrefix}${i}`;
     const useScramble = scramble && !forcePlain;
-    if (p && p.match(NUMBER_HIGHLIGHT_REGEX)) {
+    if (typeof seg === 'string') {
+      if (seg && seg.match(NUMBER_HIGHLIGHT_REGEX)) {
+        return (
+          <span
+            key={partKey}
+            className={`phone-number highlight-number${confidenceClass}`}
+            onClick={(e) => { e.stopPropagation(); handleCopy(seg, 'number'); }}
+            title={`Click to copy: ${copyableDigits(seg)}`}
+            style={{ cursor: 'copy', backgroundColor: 'rgba(252, 211, 77, 0.1)', color: '#fcd34d', padding: '0 2px', borderRadius: '2px', fontWeight: 600, display: 'inline' }}
+          >
+            {useScramble ? <ScrambleText value={seg} liveMode={liveScramble} /> : seg}
+          </span>
+        );
+      }
+      return useScramble ? (
+        <ScrambleText key={partKey} value={seg} className={confidenceClass.trim()} liveMode={liveScramble} />
+      ) : (
+        <span key={partKey} className={confidenceClass.trim()}>{seg}</span>
+      );
+    }
+    if (seg?.type === 'date' || seg?.type === 'number' || seg?.type === 'dosage' || seg?.type === 'money') {
+      const copyVal = seg.copyValue
+        || (seg.type === 'number' ? copyableDigits(seg.value) : copyableSensitiveValue(seg.value, seg.type));
+      const kindClass = seg.type === 'number' ? 'phone-number' : `${seg.type}-unit`;
       return (
         <span
           key={partKey}
-          className={`phone-number highlight-number${confidenceClass}`}
-          onClick={(e) => { e.stopPropagation(); handleCopy(p); }}
-          title={`Click to copy: ${copyableDigits(p)}`}
+          className={`${kindClass} highlight-number${confidenceClass}`}
+          onClick={(e) => { e.stopPropagation(); handleCopy(seg.value, seg.type); }}
+          title={`Click to copy: ${copyVal}`}
           style={{ cursor: 'copy', backgroundColor: 'rgba(252, 211, 77, 0.1)', color: '#fcd34d', padding: '0 2px', borderRadius: '2px', fontWeight: 600, display: 'inline' }}
         >
-          {useScramble ? <ScrambleText value={p} liveMode={liveScramble} /> : p}
+          {useScramble ? <ScrambleText value={seg.value} liveMode={liveScramble} /> : seg.value}
         </span>
       );
     }
+    const plain = seg?.value ?? '';
     return useScramble ? (
-      <ScrambleText key={partKey} value={p} className={confidenceClass.trim()} liveMode={liveScramble} />
+      <ScrambleText key={partKey} value={plain} className={confidenceClass.trim()} liveMode={liveScramble} />
     ) : (
-      <span key={partKey} className={confidenceClass.trim()}>{p}</span>
+      <span key={partKey} className={confidenceClass.trim()}>{plain}</span>
     );
   }, [scramble, handleCopy]);
 
@@ -249,35 +276,21 @@ const InteractiveText = ({
 
   if (!text) return null;
 
-  const chipRow = copyEntities.length > 0 ? (
-    <span className="copy-chip-row">
+  // Phase A: chips only on sealed bubbles; trailing (after text), not a slab above.
+  // Phase D: spelling stays spoken paragraph; Spelled chip via collectCopyableEntities.
+  const chipRow = isFinal && copyEntities.length > 0 ? (
+    <span className="copy-chip-row copy-chip-row--trailing">
       {copyEntities.map((ent) => (
         <CopyChip key={`${ent.kind}-${ent.value}`} value={ent.value} label={ent.label} kind={ent.kind} />
       ))}
     </span>
   ) : null;
 
-  if (spellingLayout && processedText.includes('\n')) {
-    return (
-      <>
-        {chipRow}
-        <span className="bubble-spelling-lines" style={{ whiteSpace: 'pre-line', lineHeight: 1.35 }}>
-          {processedText.split('\n').map((line, li) => (
-            <span key={li} style={{ display: 'block', fontFamily: 'var(--font-mono)', fontWeight: 700 }}>
-              {scramble ? <ScrambleText value={line} /> : line}
-            </span>
-          ))}
-        </span>
-      </>
-    );
-  }
-
   if (tailSlice) {
     const beforeWords = tailSlice.before.trim() ? tailSlice.before.trim().split(/\s+/).length : 0;
     const highlightWords = tailSlice.highlight.trim() ? tailSlice.highlight.trim().split(/\s+/).length : 0;
     return (
       <>
-        {chipRow}
         {alignedWords.length
           ? renderConfidenceText(tailSlice.before, 0, true, 'pre', false)
           : renderSegment(tailSlice.before, 'pre-')}
@@ -289,6 +302,7 @@ const InteractiveText = ({
         {alignedWords.length
           ? renderConfidenceText(tailSlice.after, beforeWords + highlightWords, true, 'post', false)
           : renderSegment(tailSlice.after, 'post-')}
+        {chipRow}
       </>
     );
   }
@@ -297,8 +311,8 @@ const InteractiveText = ({
   if (liveDiffText) {
     return (
       <>
-        {chipRow}
         {liveDiffText}
+        {chipRow}
       </>
     );
   }
@@ -307,16 +321,16 @@ const InteractiveText = ({
   if (confidenceText) {
     return (
       <>
-        {chipRow}
         {confidenceText}
+        {chipRow}
       </>
     );
   }
 
   return (
     <>
-      {chipRow}
       {renderSegment(repairedText)}
+      {chipRow}
     </>
   );
 };
@@ -698,6 +712,7 @@ export const TranscriptionBoard = ({
   const [sttNow, setSttNow] = useState(Date.now());
   const liveBubbleHeightsRef = useRef(new Map());
   const lastRenderTraceRef = useRef('');
+  const prevCaptionsRef = useRef([]);
   const [, setLiveHeightRev] = useState(0);
 
   useEffect(() => {
@@ -711,6 +726,11 @@ export const TranscriptionBoard = ({
     const id = window.setInterval(() => setSttNow(Date.now()), 250);
     return () => window.clearInterval(id);
   }, [connectProgress?.audioChunksSent, connectionState]);
+
+  useEffect(() => {
+    traceCaptionArrayDiff(prevCaptionsRef.current, captions, 'TranscriptionBoard.captions');
+    prevCaptionsRef.current = captions;
+  }, [captions]);
 
   useEffect(() => {
     const lastCap = captions[captions.length - 1];
@@ -1200,7 +1220,21 @@ export const TranscriptionBoard = ({
         )}
 
         {captions.map((cap, i) => {
-          if (!cap.text || !cap.text.trim()) return null;
+          if (!cap.text || !cap.text.trim()) {
+            if (cap.id) {
+              flagVanish('ui_blank_caption_skipped', {
+                id: cap.id,
+                turnId: cap.turnId,
+                before: '(row present)',
+                after: '',
+                derender: true,
+                force: true,
+                stage: 'TranscriptionBoard.map',
+                extra: { note: 'row exists but text empty — not rendered' },
+              });
+            }
+            return null;
+          }
           const isSameAsPrevious = i > 0 && captions[i-1].lang === cap.lang;
           const wordCount = cap.text.trim().split(/\s+/).length;
           const tid = cap.turnId || `solo-${cap.id}`;

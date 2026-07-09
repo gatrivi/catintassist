@@ -3,13 +3,15 @@ import { prefersReducedMotion } from '../utils/motionPreference';
 import {
   applyDisplayProtections,
   copyableDigits,
-  NUMBER_HIGHLIGHT_REGEX,
+  copyableSensitiveValue,
+  splitHighlightSegments,
 } from '../utils/sensitiveDataProtector';
 import { formatTranscriptForDisplay } from '../utils/transcriptFormat';
 import {
   diffWordsStable,
   isProtectedToken,
 } from '../utils/diffWordsStable';
+import { flagVanish } from '../utils/vanishTrace';
 
 const CUE_MS = 480;
 const REDUCED_CUE_MS = 120;
@@ -20,41 +22,45 @@ const processDisplayText = (raw, lang, applyNumberWords, protectionsActive) => {
   return applyDisplayProtections(spelled, lang, { applyNumberWords });
 };
 
-const PhoneSpan = ({ value }) => (
-  <span
-    className="phone-number highlight-number"
-    onClick={(e) => {
-      e.stopPropagation();
-      const clean = copyableDigits(value);
-      if (clean) {
-        try {
-          navigator.clipboard.writeText(clean);
-        } catch (_) {}
-      }
-    }}
-    title={`Click to copy: ${copyableDigits(value)}`}
-    style={{
-      cursor: 'copy',
-      backgroundColor: 'rgba(252, 211, 77, 0.1)',
-      color: '#fcd34d',
-      padding: '0 2px',
-      borderRadius: '2px',
-      fontWeight: 600,
-      display: 'inline',
-    }}
-  >
-    {value}
-  </span>
-);
+const SensitiveSpan = ({ value, type = 'number' }) => {
+  const copyVal = (type === 'date' || type === 'dosage' || type === 'money')
+    ? copyableSensitiveValue(value, type)
+    : copyableDigits(value);
+  const kindClass = type === 'number' ? 'phone-number' : `${type}-unit`;
+  return (
+    <span
+      className={`${kindClass} highlight-number`}
+      onClick={(e) => {
+        e.stopPropagation();
+        if (copyVal) {
+          try {
+            navigator.clipboard.writeText(copyVal);
+          } catch (_) {}
+        }
+      }}
+      title={`Click to copy: ${copyVal}`}
+      style={{
+        cursor: 'copy',
+        backgroundColor: 'rgba(252, 211, 77, 0.1)',
+        color: '#fcd34d',
+        padding: '0 2px',
+        borderRadius: '2px',
+        fontWeight: 600,
+        display: 'inline',
+      }}
+    >
+      {value}
+    </span>
+  );
+};
 
 const renderTokenText = (text) => {
   if (!text) return null;
-  const parts = text.split(NUMBER_HIGHLIGHT_REGEX);
-  return parts.map((p, i) => {
-    if (p && p.match(NUMBER_HIGHLIGHT_REGEX)) {
-      return <PhoneSpan key={`n${i}`} value={p} />;
+  return splitHighlightSegments(text).map((seg, i) => {
+    if (seg.type === 'date' || seg.type === 'number' || seg.type === 'dosage' || seg.type === 'money') {
+      return <SensitiveSpan key={`${seg.type}${i}`} value={seg.value} type={seg.type} />;
     }
-    return <span key={`t${i}`}>{p}</span>;
+    return <span key={`t${i}`}>{seg.value}</span>;
   });
 };
 
@@ -83,6 +89,16 @@ export function StableTextMorph({
   );
 
   if (continuityRef.current !== continuityKey) {
+    if (prevDisplayRef.current) {
+      flagVanish('morph_continuity_reset', {
+        before: prevDisplayRef.current,
+        after: display,
+        remount: true,
+        force: true,
+        stage: 'StableTextMorph',
+        extra: { fromKey: continuityRef.current, toKey: continuityKey },
+      });
+    }
     continuityRef.current = continuityKey;
     prevDisplayRef.current = '';
   }
@@ -90,6 +106,15 @@ export function StableTextMorph({
   useEffect(() => {
     const prev = prevDisplayRef.current;
     if (!display) {
+      if (prev) {
+        flagVanish('morph_display_empty', {
+          before: prev,
+          after: '',
+          derender: true,
+          force: true,
+          stage: 'StableTextMorph',
+        });
+      }
       prevDisplayRef.current = '';
       setCueOps(null);
       return undefined;
@@ -102,6 +127,22 @@ export function StableTextMorph({
     }
 
     const ops = diffWordsStable(prev, display);
+    const lost = ops
+      .filter((o) => o.type === 'delete' || o.type === 'replace')
+      .map((o) => o.from || o.text)
+      .filter(Boolean);
+    if (lost.length) {
+      flagVanish('morph_word_diff', {
+        before: prev,
+        after: display,
+        lost,
+        stage: 'StableTextMorph',
+        force: true,
+        extra: {
+          ops: ops.filter((o) => o.type !== 'equal').map((o) => ({ type: o.type, from: o.from, text: o.text })),
+        },
+      });
+    }
     prevDisplayRef.current = display;
 
     const hasChange = ops.some((o) => o.type !== 'equal');
