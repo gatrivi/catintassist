@@ -65,6 +65,68 @@ export function flagVanish(reason, detail = {}) {
   return entry;
 }
 
+/**
+ * DOM-level net (v4.84.9): catches bubble nodes React removes/relocates even when
+ * no words are lost — invisible to state-level traceCaptionArrayDiff.
+ * Flags: dom_bubble_removed · dom_bubble_relocated (same text re-added within windowMs).
+ */
+export function observeDomVanish(container, { windowMs = 2000 } = {}) {
+  if (!container || typeof MutationObserver === 'undefined') return () => {};
+
+  const recentlyRemoved = []; // { text, at }
+  const textOf = (node) => (node.textContent || '').trim().slice(0, 160);
+  const bubbleOf = (node) => {
+    if (!(node instanceof Element)) return null;
+    if (node.classList?.contains('transcript-bubble')) return node;
+    return node.querySelector?.('.transcript-bubble') || null;
+  };
+
+  const obs = new MutationObserver((mutations) => {
+    const now = Date.now();
+    mutations.forEach((m) => {
+      m.removedNodes.forEach((node) => {
+        const bubble = bubbleOf(node);
+        if (!bubble) return;
+        const text = textOf(bubble);
+        if (!text) return;
+        recentlyRemoved.push({ text, at: now });
+        flagVanish('dom_bubble_removed', {
+          before: text,
+          after: '',
+          derender: true,
+          force: true,
+          stage: 'observeDomVanish',
+        });
+      });
+      m.addedNodes.forEach((node) => {
+        const bubble = bubbleOf(node);
+        if (!bubble) return;
+        const text = textOf(bubble);
+        if (!text) return;
+        // ponytail: prefix match, not diff — good enough to prove relocation
+        const match = recentlyRemoved.find(
+          (r) => now - r.at <= windowMs
+            && (r.text === text || r.text.startsWith(text.slice(0, 60)) || text.startsWith(r.text.slice(0, 60))),
+        );
+        if (match) {
+          flagVanish('dom_bubble_relocated', {
+            before: match.text,
+            after: text,
+            remount: true,
+            force: true,
+            stage: 'observeDomVanish',
+            extra: { gapMs: now - match.at },
+          });
+        }
+      });
+    });
+    while (recentlyRemoved.length && now - recentlyRemoved[0].at > windowMs) recentlyRemoved.shift();
+  });
+
+  obs.observe(container, { childList: true, subtree: true });
+  return () => obs.disconnect();
+}
+
 /** Compare caption arrays: removed rows, shortened text, live→sealed remount. */
 export function traceCaptionArrayDiff(prev, next, stage = 'captions.set') {
   if (!Array.isArray(prev) || !Array.isArray(next)) return;

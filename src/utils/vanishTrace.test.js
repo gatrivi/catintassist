@@ -4,7 +4,7 @@
  * Mute: `window.__catintVanishOn = false`
  */
 
-import { flagVanish, lostWords, textShortened } from './vanishTrace';
+import { flagVanish, lostWords, textShortened, observeDomVanish } from './vanishTrace';
 
 describe('vanishTrace', () => {
   beforeEach(() => {
@@ -34,5 +34,34 @@ describe('vanishTrace', () => {
   test('flagVanish skips benign equal text without force', () => {
     const entry = flagVanish('noop', { before: 'same', after: 'same' });
     expect(entry).toBeNull();
+  });
+
+  const flushMutations = () => new Promise((r) => setTimeout(r, 0));
+
+  test('observeDomVanish flags removed and relocated bubbles', async () => {
+    const container = document.createElement('div');
+    document.body.appendChild(container);
+    const stop = observeDomVanish(container);
+
+    const bubble = document.createElement('div');
+    bubble.className = 'transcript-bubble';
+    bubble.textContent = 'my phone is 555-123-4567';
+    container.appendChild(bubble);
+    await flushMutations();
+    window.__catintVanishTrace = [];
+
+    container.removeChild(bubble);
+    await flushMutations();
+    expect(window.__catintVanishTrace.some((e) => e.reason === 'dom_bubble_removed')).toBe(true);
+
+    const reborn = document.createElement('div');
+    reborn.className = 'transcript-bubble';
+    reborn.textContent = 'my phone is 555-123-4567';
+    container.appendChild(reborn);
+    await flushMutations();
+    expect(window.__catintVanishTrace.some((e) => e.reason === 'dom_bubble_relocated')).toBe(true);
+
+    stop();
+    document.body.removeChild(container);
   });
 });

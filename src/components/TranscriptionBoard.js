@@ -17,7 +17,7 @@ import { ScrambleText } from './ScrambleText';
 import { StableLiveTranscriptText } from './StableLiveTranscriptText';
 import { buildCaptionContinuityKeys } from '../utils/stableLiveTranscript';
 import { alignWordConfidence, confidenceVisualFor } from '../utils/wordConfidenceAlign';
-import { flagVanish, traceCaptionArrayDiff } from '../utils/vanishTrace';
+import { flagVanish, traceCaptionArrayDiff, observeDomVanish } from '../utils/vanishTrace';
 import { NewcomerIdleGuide } from './NewcomerIdleGuide';
 import { isNewcomerGuideDismissed } from '../utils/newcomerGuide';
 import { isTranslationStuckForRetranslate } from '../utils/translationQuality';
@@ -731,6 +731,9 @@ export const TranscriptionBoard = ({
     traceCaptionArrayDiff(prevCaptionsRef.current, captions, 'TranscriptionBoard.captions');
     prevCaptionsRef.current = captions;
   }, [captions]);
+
+  // DOM-level vanish net: catches bubble remove/relocate that state diffing misses.
+  useEffect(() => observeDomVanish(scrollAreaRef.current), []);
 
   useEffect(() => {
     const lastCap = captions[captions.length - 1];
