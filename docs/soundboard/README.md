@@ -49,6 +49,7 @@ Header **Test local** / **Test route** = quick tone checks without a clip.
 
 ## Playback and safety
 - **Passthrough inject**: same VB-Cable path as live mic (v4.75.0)
+- **Mic mode (🎤)**: soundboard plays **local speakers only** — phone assistant + debug; see [`../onboarding/mic-mode-phone-assistant.md`](../onboarding/mic-mode-phone-assistant.md)
 - **Anti-Scream Ramp**: ~50ms volume ramp
 - **Test Mode**: blocks virtual mic; local speakers only
 - **Mic Monitor**: verify recording path before long takes

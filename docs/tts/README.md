@@ -19,6 +19,7 @@ Success criteria:
 
 ## Integration back into CatIntAssist (v4.58.0)
 - **Settings → Behavior → Test TTS route** — speaks a sample phrase via browser `SpeechSynthesis` through the same dual-audio path as bubble play (local + virtual sink).
+- **Mic mode (🎤)**: TTS plays **local speakers only** — no VB-Cable; same as soundboard. See [`../onboarding/mic-mode-phone-assistant.md`](../onboarding/mic-mode-phone-assistant.md).
 - Replace `prefetchTTS` in [`src/hooks/useTTS.js`](../../src/hooks/useTTS.js) with a fetch to the local TTS server when Inworld or self-hosted TTS returns.
 - Keep existing dual-`<audio>` + `setSinkId` play path in `playTTS`.
 

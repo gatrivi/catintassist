@@ -1,0 +1,27 @@
+{
+  "id": "garbage-filler",
+  "label": "Garbage bueno rejected; previous-good kept",
+  "captionId": "cap-garbage",
+  "targetLang": "es",
+  "segments": [
+    "Your appointment is confirmed for March fifteenth at ten am."
+  ],
+  "initialState": {},
+  "events": [
+    {
+      "segmentId": "seg-0",
+      "resultText": "Su cita está confirmada para el quince de marzo a las diez de la mañana.",
+      "quality": "ok"
+    },
+    {
+      "segmentId": "seg-0",
+      "resultText": "bueno",
+      "quality": "ok"
+    }
+  ],
+  "expect": {
+    "composedIncludes": ["cita está confirmada"],
+    "preservedSegments": ["seg-0"],
+    "entryWarnings": { "seg-0": "garbage_rejected" }
+  }
+}

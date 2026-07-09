@@ -173,8 +173,7 @@ export const NewcomerIdleGuide = ({
           lineHeight: 1.45,
         }}
       >
-        <strong>On a phone or no tab to share?</strong> Tap the mic button, then the green button.
-        Your microphone will listen instead of another tab.
+        <strong>On a phone or no tab to share?</strong> Turn on the 🎤 mic button (header, right side), then Connect.
       </div>
 
       <div style={{ display: 'flex', gap: '0.4rem', marginTop: '0.75rem', flexWrap: 'wrap' }}>

@@ -409,6 +409,8 @@ const TranslatedBubble = ({
   mockTranslation = null,
   userCorrected = false,
   userTranslationOverride = null,
+  persistedTranslations = null,
+  onPersistTranslation = null,
   onEditSource,
   onEditTranslation,
   canEdit = true,
@@ -428,7 +430,14 @@ const TranslatedBubble = ({
     shouldPrefetch,
     translationMood,
     forceTranslateKey,
-    { isFinal, mockTranslation, userTranslationOverride },
+    {
+      isFinal,
+      mockTranslation,
+      userTranslationOverride,
+      captionId: id,
+      persistedTranslations,
+      onPersistTranslation,
+    },
   );
   const isThisPlaying = playingUrl && audioUrl && playingUrl === audioUrl;
   const transcriptColor = '#ffffff';
@@ -603,6 +612,8 @@ const translatedBubblePropsEqual = (prev, next) =>
   prev.protectionsActive === next.protectionsActive &&
   prev.userCorrected === next.userCorrected &&
   prev.userTranslationOverride === next.userTranslationOverride &&
+  prev.persistedTranslations === next.persistedTranslations &&
+  prev.onPersistTranslation === next.onPersistTranslation &&
   prev.canEdit === next.canEdit &&
   prev.correctionsRev === next.correctionsRev &&
   prev.languagePair?.left === next.languagePair?.left &&
@@ -639,6 +650,20 @@ export const TranscriptionBoard = ({
   const protectionsActive = isEnEsProtectionMode(languagePair);
   const { playTTS, stopTTS, isPlaying, playingUrl, prefetchTTS } = useTTS();
   const { isActive, isZombieCall, lastCallSummary, setLastCallSummary, updateCaptions } = useSession();
+
+  /** Persist sealed translation entries onto caption.translations (IDB via updateCaptions). */
+  const persistCaptionTranslation = useCallback((capId, entry) => {
+    if (!capId || !entry?.key) return;
+    updateCaptions((prev) =>
+      prev.map((c) => {
+        if (c.id !== capId) return c;
+        if (c.isFinal === false) return c; // sealed/final only
+        const translations = { ...(c.translations || {}), [entry.key]: entry };
+        return { ...c, translations };
+      }),
+    );
+  }, [updateCaptions]);
+
   useComponentVisibilityRefresh();
   const showOffCallGuide = isComponentVisible('off_call_guide', { isActive, isZombieCall });
   const { inputDevices, outputDevices, selectedMicId, selectedSinkId } = useAudioSettings();
@@ -1123,6 +1148,8 @@ export const TranscriptionBoard = ({
                   mockTranslation={cap._devMockTranslation}
                   userCorrected={Boolean(cap.userCorrected)}
                   userTranslationOverride={cap.userTranslationOverride || null}
+                  persistedTranslations={cap.translations || null}
+                  onPersistTranslation={persistCaptionTranslation}
                   canEdit={cap.isFinal !== false}
                   correctionsRev={correctionsRev}
                   wordConfidence={cap.wordConfidence || null}
@@ -1239,6 +1266,8 @@ export const TranscriptionBoard = ({
                   mockTranslation={cap._devMockTranslation}
                   userCorrected={Boolean(cap.userCorrected)}
                   userTranslationOverride={cap.userTranslationOverride || null}
+                  persistedTranslations={cap.translations || null}
+                  onPersistTranslation={persistCaptionTranslation}
                   canEdit={!isLive}
                   correctionsRev={correctionsRev}
                   wordConfidence={cap.wordConfidence || null}

@@ -152,6 +152,41 @@ export const AudioRouteStatusBar = ({
             ? 'warn'
             : 'idle';
 
+  const sttInHintBody = useMemo(() => {
+    if (isMicAttached) {
+      return selectedMicId || inputDevices.length
+        ? 'Mic mode: your microphone feeds Deepgram. Green dot = mic ready.'
+        : 'Mic mode on but no mic selected — pick one in the 🎤 dropdown.';
+    }
+    if (isCableAttached) {
+      if (critical) return 'VB-Cable input: no audio 60s+ — check cable routing or reconnect STT.';
+      if (stale) return 'VB-Cable input: audio stale 30s+ — may need ↻ STT reconnect.';
+      return 'VB-Cable carries call audio into Deepgram for transcription.';
+    }
+    if (tabStreamReady || audioAttached) {
+      return 'Tab share: browser tab audio is routed to Deepgram. Green = stream attached.';
+    }
+    return 'Tab STT off — CONNECT and share a tab (or use mic mode) to send audio.';
+  }, [isMicAttached, isCableAttached, tabStreamReady, audioAttached, selectedMicId, inputDevices.length, stale, critical]);
+
+  const sttSummaryHintBody = useMemo(() => {
+    if (enOk && esOk) return 'Both EN and ES Deepgram sockets open — dual-language STT active.';
+    if (connectionState === 'connecting') return 'Opening Deepgram EN + ES websockets…';
+    if (connectionState === 'error') return 'Deepgram error — check API key in Settings or tap Zap to reconnect.';
+    if (connectionState === 'connected') {
+      const parts = [`EN ${enOk ? 'open' : 'closed'}`, `ES ${esOk ? 'open' : 'closed'}`];
+      if (critical) return `${parts.join(' · ')} — no transcript data 60s+; try Zap or reconnect.`;
+      if (stale) return `${parts.join(' · ')} — no data 30s+; audio may not be reaching Deepgram.`;
+      return `Connected but partial: ${parts.join(' · ')}.`;
+    }
+    if (audioAttached) return 'Audio attached but Deepgram not connected — press CONNECT.';
+    return 'Deepgram disconnected — press CONNECT to start speech-to-text.';
+  }, [enOk, esOk, connectionState, audioAttached, stale, critical]);
+
+  const sttInHintColor = sttInState === 'ok' ? '#10b981' : sttInState === 'err' ? '#ef4444' : '#f59e0b';
+  const sttSummaryHintColor =
+    sttState === 'ok' ? '#10b981' : sttState === 'err' ? '#ef4444' : sttState === 'warn' ? '#f59e0b' : '#94a3b8';
+
   const btn = {
     background: 'rgba(255,255,255,0.06)',
     border: '1px solid rgba(255,255,255,0.12)',
@@ -188,7 +223,7 @@ export const AudioRouteStatusBar = ({
     >
       <div className="audio-route-status-main">
         {/* Mic for record + passthrough */}
-        <label className="audio-route-device-pick" title={`Your mic — record greetings + live speech. Now: ${micDeviceLabel}`}>
+        <label className="audio-route-device-pick" title={`Mic: ${micDeviceLabel}`}>
           <span className="audio-route-device-pick-label">🎤</span>
           <select
             id="audio-route-mic-select"
@@ -209,7 +244,7 @@ export const AudioRouteStatusBar = ({
         </label>
 
         {/* VB-Cable out → patient hears greetings */}
-        <label className="audio-route-device-pick" title={`Virtual output (VB-Cable) — patient hears greetings. Now: ${outLabel}`}>
+        <label className="audio-route-device-pick" title={`VB out: ${outLabel}`}>
           <span className="audio-route-device-pick-label">🔊</span>
           <select
             id="audio-route-sink-select"
@@ -232,43 +267,54 @@ export const AudioRouteStatusBar = ({
           </select>
         </label>
 
-        <span
-          id="audio-route-stt-in-badge"
-          className="audio-route-badge"
-          title={`STT audio source: ${sttInLabel}. Green Connect button attaches tab/cable for transcription.`}
+        <ElementHintTarget
+          elementId="audio-route-stt-in-badge"
+          heading="STT audio in"
+          body={sttInHintBody}
+          color={sttInHintColor}
         >
-          <Dot state={sttInState} title={sttInLabel} />
-          <span>{sttInLabel}</span>
-        </span>
-
-        <span
-          id="audio-route-stt-summary"
-          className="audio-route-badge"
-          title={`Deepgram EN ${enOk ? 'open' : '—'} · ES ${esOk ? 'open' : '—'}`}
-        >
-          <Dot state={sttState === 'idle' ? 'idle' : sttState} title="Deepgram STT sockets" />
-          <span>
-            DG {enOk && esOk ? 'EN·ES' : connectionState}
-            {stale && !critical && <span style={{ color: '#f59e0b' }}> ·stale</span>}
-            {critical && <span style={{ color: '#ef4444' }}> ·no data</span>}
+          <span
+            id="audio-route-stt-in-badge"
+            className="audio-route-badge"
+          >
+            <Dot state={sttInState} />
+            <span>{sttInLabel}</span>
           </span>
-        </span>
+        </ElementHintTarget>
+
+        <ElementHintTarget
+          elementId="audio-route-stt-summary"
+          heading="Deepgram STT"
+          body={sttSummaryHintBody}
+          color={sttSummaryHintColor}
+        >
+          <span
+            id="audio-route-stt-summary"
+            className="audio-route-badge"
+          >
+            <Dot state={sttState === 'idle' ? 'idle' : sttState} />
+            <span>
+              DG {enOk && esOk ? 'EN·ES' : connectionState}
+              {stale && !critical && <span style={{ color: '#f59e0b' }}> ·stale</span>}
+              {critical && <span style={{ color: '#ef4444' }}> ·no data</span>}
+            </span>
+          </span>
+        </ElementHintTarget>
 
         {onOpenSoundboard && !isActive && (
           <ElementHintTarget
             elementId="audio-route-soundboard-btn"
             heading="Soundboard Studio"
-            body={mobileMicMode ? 'Disabled in local mic mode. Soundboard needs a patient audio route.' : soundboardOpen ? 'Hide Soundboard Studio panel.' : 'Record greetings, health check, route test.'}
+            body={mobileMicMode ? 'Mic mode: greetings play on your speakers/headphones — use health check to test quality.' : soundboardOpen ? 'Hide Soundboard Studio panel.' : 'Record greetings, health check, route test.'}
             color="#a855f7"
           >
           <button
             id="audio-route-soundboard-btn"
             type="button"
-            className={`audio-route-soundboard-btn${soundboardOpen ? ' is-open' : ''}${mobileMicMode ? ' is-disabled' : ''}`}
-            onClick={mobileMicMode ? undefined : onOpenSoundboard}
-            disabled={mobileMicMode}
+            className={`audio-route-soundboard-btn${soundboardOpen ? ' is-open' : ''}`}
+            onClick={onOpenSoundboard}
             aria-pressed={soundboardOpen}
-            title={mobileMicMode ? 'Disabled in local mic mode: no patient audio route' : soundboardOpen ? 'Hide Soundboard Studio' : 'Soundboard Studio - record greetings, health check, route test'}
+            title={mobileMicMode ? 'Soundboard Studio — local speakers in mic mode (quality check)' : soundboardOpen ? 'Hide Soundboard Studio' : 'Soundboard Studio - record greetings, health check, route test'}
           >
             {soundboardOpen ? 'Soundboard ✓' : 'Soundboard'}
           </button>
@@ -285,6 +331,7 @@ export const AudioRouteStatusBar = ({
           <button
             type="button"
             id="audio-route-reconnect-audio-btn"
+            className="audio-route-inline-btn"
             style={{
               ...btn,
               borderColor: isDeepgramError ? 'rgba(239,68,68,0.55)' : '#0ea5e9',
@@ -310,7 +357,8 @@ export const AudioRouteStatusBar = ({
         <button
           id="audio-route-more-btn"
           type="button"
-          style={{ ...btn, padding: '0.12rem 0.35rem' }}
+          className="audio-route-inline-btn"
+          style={{ ...btn, padding: '0 0.35rem' }}
           onClick={() => setIsMoreOpen((v) => !v)}
           title="More: test local, test VB out, mic meter"
           aria-expanded={isMoreOpen}
@@ -323,6 +371,7 @@ export const AudioRouteStatusBar = ({
           <button
             id="audio-route-zap-btn"
             type="button"
+            className="audio-route-inline-btn"
             style={{
               ...btn,
               borderColor: isDeepgramError ? 'rgba(239,68,68,0.55)' : '#0ea5e9',

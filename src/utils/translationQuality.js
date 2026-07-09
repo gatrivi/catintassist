@@ -1,6 +1,13 @@
-/** Translation quality helpers — v4.50.0 */
+/** Translation quality helpers — v4.50.0 / v4.82.0 long-monologue chunks */
 
 import { peelCompleteSentences } from './transcriptFormat';
+import {
+  isGarbageTranslation,
+  segmentLongMonologue,
+  DEFAULT_MAX_SEGMENT_WORDS,
+} from './translationApplicator';
+
+export { isGarbageTranslation, segmentLongMonologue, DEFAULT_MAX_SEGMENT_WORDS };
 
 const normalize = (text) => (text || '').trim().replace(/\s+/g, ' ').toLowerCase();
 
@@ -79,6 +86,13 @@ export const splitTranslatableSegments = (text) => {
   if (remainder.length > 1) segments.push(remainder);
   return segments;
 };
+
+/**
+ * Sentence peel + ~35–45 word chunks for API requests (v4.82.0).
+ * Replaces the old >80-word hard reject.
+ */
+export const splitLongForTranslation = (text, { maxWords = DEFAULT_MAX_SEGMENT_WORDS } = {}) =>
+  segmentLongMonologue(text, { maxWords });
 
 /** True when text ends with sentence punctuation (stable for translation). */
 export const isSentenceComplete = (text) => /[.!?…]\s*$/.test((text || '').trim());

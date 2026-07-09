@@ -1,0 +1,24 @@
+{
+  "id": "long-monologue",
+  "label": "Long monologue splits into 35-45 word chunks",
+  "captionId": "cap-long",
+  "targetLang": "es",
+  "maxWords": 40,
+  "sourceText": "Well I need to schedule an appointment for next Tuesday because my doctor said the results came back and we should discuss the treatment options the medication dosage and whether I need any follow-up labs before the end of the month when my insurance renews and the copay might change so please call me back with available times and also confirm if the specialist referral is still valid for this visit.",
+  "events": [
+    {
+      "segmentIndex": 0,
+      "resultText": "Bueno necesito programar una cita para el próximo martes porque mi médico dijo que los resultados llegaron y deberíamos discutir las opciones de tratamiento la dosis del medicamento.",
+      "quality": "ok"
+    },
+    {
+      "segmentIndex": 1,
+      "resultText": "Y si necesito laboratorios de seguimiento antes de fin de mes cuando se renueva el seguro y el copago podría cambiar así que por favor llámeme con horarios disponibles.",
+      "quality": "ok"
+    }
+  ],
+  "expect": {
+    "minSegments": 2,
+    "composedIncludes": ["cita", "medicamento"]
+  }
+}

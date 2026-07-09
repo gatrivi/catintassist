@@ -11,7 +11,7 @@ import { safeSet } from '../contexts/SessionContext';
 export const SilenceGuardian = ({ lastDataTime }) => {
   const { isActive, lastActivityTime, stopSession, startBreak, isHold } = useSession();
   const audioEngine = useProgressiveAudio();
-  const [showWarning, setShowWarning] = useState(false);
+  const [, setShowWarning] = useState(false);
   const [lastAlertTime, setLastAlertTime] = useState(0);
   const [alertedLevels, setAlertedLevels] = useState({ 1: false, 2: false, 3: false });
   const [promptCount, setPromptCount] = useState(0);

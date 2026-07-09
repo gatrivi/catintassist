@@ -14,7 +14,7 @@ export const SettingsButton = () => (
   <button
     type="button"
     id="header-settings-btn"
-    className="settings-scoreboard-btn"
+    className="header-chrome-btn settings-scoreboard-btn"
     data-guide="settings"
     onClick={() => {
       try {

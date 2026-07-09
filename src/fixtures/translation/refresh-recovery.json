@@ -1,0 +1,20 @@
+{
+  "id": "refresh-recovery",
+  "label": "Hydrate composed text from persisted map (refresh)",
+  "captionId": "cap-refresh",
+  "targetLang": "es",
+  "segments": [
+    "Please bring your insurance card to the visit."
+  ],
+  "events": [
+    {
+      "segmentId": "seg-0",
+      "resultText": "Por favor traiga su tarjeta de seguro a la visita.",
+      "quality": "ok"
+    }
+  ],
+  "expect": {
+    "composedIncludes": ["tarjeta de seguro"],
+    "statusOk": ["seg-0"]
+  }
+}

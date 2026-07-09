@@ -230,8 +230,8 @@ body {
 /* Call compact: sticky row only (~40px). Scoreboard/timeline hidden unless expanded. */
 .dashboard-header--call-compact {
   flex-shrink: 0;
-  max-height: 52px;
-  overflow: hidden;
+  max-height: none;
+  overflow: visible;
 }
 
 .dashboard-header--call-expanded {
@@ -272,13 +272,145 @@ body {
   flex-shrink: 0;
 }
 
-.session-controls-left-cluster #header-lang-pair-btn {
-  width: auto;
-  min-width: 26px;
-  max-width: 44px;
+/* Gray chrome — mic, goals, STT, lang, key, notes, zap, expand (match settings gear). */
+.header-chrome-btn,
+.settings-scoreboard-btn {
+  width: 22px;
+  height: 22px;
+  min-width: 22px;
+  min-height: 22px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  border-radius: 4px;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  background: rgba(255, 255, 255, 0.06);
+  color: rgba(255, 255, 255, 0.55);
+  font-size: 0.62rem;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+  line-height: 1;
+  white-space: nowrap;
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: border-color 0.2s, background 0.2s, color 0.2s;
+  box-sizing: border-box;
+}
+
+.header-chrome-btn:hover:not(:disabled),
+.settings-scoreboard-btn:hover {
+  border-color: rgba(255, 255, 255, 0.45);
+  background: rgba(255, 255, 255, 0.12);
+  color: rgba(255, 255, 255, 0.92);
+}
+
+.header-chrome-btn:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+
+.header-chrome-btn.is-on,
+.header-chrome-btn[aria-pressed="true"] {
+  border-color: rgba(255, 255, 255, 0.2);
+  background: rgba(255, 255, 255, 0.14);
+  color: rgba(255, 255, 255, 0.95);
+}
+
+.header-chrome-btn.header-text-btn {
+  width: auto !important;
+  min-width: 22px;
+  height: 22px !important;
+  min-height: 22px !important;
   padding: 0 4px !important;
-  overflow: hidden;
-  text-overflow: ellipsis;
+}
+
+/* Colored accents — hierarchy: connect (most) → break → hold → logoff (least). */
+.header-accent-connect {
+  background: #10b981 !important;
+  border: 1px solid rgba(16, 185, 129, 0.55) !important;
+  color: #fff !important;
+  box-shadow: 0 0 14px rgba(16, 185, 129, 0.28);
+}
+
+.header-accent-break {
+  background: #fb923c !important;
+  border: none !important;
+  color: #fff !important;
+}
+
+.header-accent-hold {
+  background: rgba(245, 158, 11, 0.22) !important;
+  border: 1px solid rgba(245, 158, 11, 0.5) !important;
+  color: #fff !important;
+}
+
+.header-accent-hold.is-active {
+  background: #f59e0b !important;
+  border-color: rgba(245, 158, 11, 0.85) !important;
+  box-shadow: 0 0 10px rgba(245, 158, 11, 0.25);
+}
+
+.header-accent-logoff {
+  background: #7c3aed !important;
+  border: none !important;
+  color: #fff !important;
+  opacity: 0.88;
+}
+
+.header-accent-logoff:hover {
+  opacity: 1;
+}
+
+.session-controls-left-cluster #header-lang-pair-btn,
+.session-controls-right-cluster #header-lang-pair-btn,
+.session-controls-left-cluster #header-stt-latency-btn,
+.session-controls-right-cluster #header-stt-latency-btn,
+.header-text-btn {
+  width: auto !important;
+  height: 22px !important;
+  min-width: 22px;
+  min-height: 22px !important;
+  padding: 0 4px !important;
+  font-size: 0.62rem;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+  border: 1px solid rgba(255, 255, 255, 0.2) !important;
+}
+
+.session-controls-center {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+
+.session-controls-right-cluster {
+  display: flex;
+  gap: 3px;
+  align-items: center;
+  flex-shrink: 0;
+  margin-left: auto;
+  position: sticky;
+  right: 0;
+  z-index: 330;
+  padding-left: 6px;
+  background: linear-gradient(90deg, transparent 0%, rgba(12, 12, 18, 0.92) 28%, rgba(12, 12, 18, 0.98) 100%);
+}
+
+.session-controls-right-cluster .btn-icon.tiny-btn:not(.header-text-btn),
+.session-controls-right-cluster .btn-emoji {
+  width: 26px !important;
+  height: 26px !important;
+  min-width: 26px;
+  min-height: 26px;
+  padding: 0 !important;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
 }
 
 .session-controls-left-cluster .app-logo-btn {
@@ -302,9 +434,19 @@ body {
 }
 
 .session-controls-sticky-row {
-  overflow: hidden;
+  overflow-x: auto;
+  overflow-y: hidden;
+  scrollbar-width: thin;
 }
 
+.call-micro-bar-center--compact {
+  grid-template-columns: auto;
+  justify-content: center;
+  flex: 0 1 auto;
+  max-width: 7ch;
+}
+
+.session-controls-sticky-row > .session-controls-center,
 .session-controls-sticky-row > .off-call-status-column,
 .session-controls-sticky-row > div[style*="flex: 1"] {
   min-width: 0;
@@ -618,7 +760,10 @@ body {
 }
 
 .app-container[data-off-call-view="scoreboard"] > .dashboard-header.dashboard-header--off-call-scoreboard:not(.dashboard-header--metrics-expanded) {
-  overflow: hidden;
+  max-height: 22vh;
+  min-height: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
 }
 
 .app-container[data-off-call-view="scoreboard"] > .dashboard-header.dashboard-header--off-call-scoreboard.dashboard-header--metrics-expanded {
@@ -856,7 +1001,62 @@ body {
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 0.5rem 1rem;
+  padding: 0.75rem 1rem;
+}
+
+.interpret-pane-idle {
+  max-width: 32rem;
+  padding: 1rem 1.25rem;
+  border-radius: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: rgba(255, 255, 255, 0.03);
+  text-align: center;
+  font-size: 0.82rem;
+  line-height: 1.45;
+  color: rgba(255, 255, 255, 0.78);
+}
+
+.interpret-pane-idle strong {
+  color: #6ee7b7;
+  font-weight: 800;
+}
+
+.interpret-pane-idle-line {
+  margin: 0 0 0.45rem;
+}
+
+.interpret-pane-idle-line:last-of-type {
+  margin-bottom: 0;
+}
+
+.interpret-pane-tip {
+  margin: 0.75rem 0 0;
+  padding: 0.45rem 0.6rem;
+  border-radius: 6px;
+  border: 1px solid rgba(56, 189, 248, 0.25);
+  background: rgba(56, 189, 248, 0.06);
+  font-size: 0.72rem;
+  line-height: 1.4;
+  color: rgba(186, 230, 253, 0.92);
+}
+
+.interpret-pane-checklist {
+  margin: 0.65rem 0 0;
+  padding-left: 1.1rem;
+  text-align: left;
+  font-size: 0.72rem;
+  line-height: 1.45;
+  color: rgba(255, 255, 255, 0.65);
+}
+
+.interpret-pane-checklist li {
+  margin-bottom: 0.25rem;
+}
+
+.interpret-pane-diagnostics {
+  margin-top: 0.85rem;
+  width: 100%;
+  max-width: 24rem;
 }
 
 .directional-cue-compact {
@@ -2003,8 +2203,14 @@ body {
   transition: width 0.08s ease-out;
 }
 
-#audio-route-more-btn {
+#audio-route-more-btn,
+.audio-route-inline-btn {
   display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+  line-height: 1;
+  padding-block: 0;
 }
 
 /* Connection Diagnostics (v4.72.x hotfix)
@@ -2351,8 +2557,8 @@ body:has(.app-container[data-call-mode="true"]) .element-hint-panel {
 }
 
 @media (max-width: 900px) {
-  /* Compact header budget: keep header short but never clip More panel when open. */
-  .dashboard-header:not(.dashboard-header--minimal):not(.dashboard-header--call-expanded) {
+  /* Compact header budget — skip off-call scoreboard (has its own 20vh cap). */
+  .dashboard-header:not(.dashboard-header--minimal):not(.dashboard-header--call-expanded):not(.dashboard-header--off-call-scoreboard) {
     max-height: 88px;
     overflow: hidden;
     padding: 2px 6px;
@@ -2360,7 +2566,8 @@ body:has(.app-container[data-call-mode="true"]) .element-hint-panel {
   }
 
   .dashboard-header--call-compact {
-    max-height: 48px;
+    max-height: none;
+    overflow: visible;
   }
 
   .dashboard-header--minimal {
@@ -2397,10 +2604,7 @@ body:has(.app-container[data-call-mode="true"]) .element-hint-panel {
     display: none !important;
   }
 
-  /* Off-call scoreboard header body increases height; hide in compact. */
-  .dashboard-header--off-call-scoreboard .scoreboard-workspace--header {
-    display: none !important;
-  }
+  /* Off-call scoreboard stays in header on narrow screens (interpret pane = 80%). */
 
   /* AudioRouteStatusBar: allow wrap on narrow headers */
   .audio-route-status-main {
@@ -2788,7 +2992,7 @@ body:has(.app-container[data-call-mode="true"]) .element-hint-panel {
   touch-action: manipulation;
   user-select: none;
   min-width: 44px;
-  min-height: 26px;
+  min-height: 22px;
   flex-shrink: 0;
 }
 
@@ -4098,28 +4302,7 @@ body:has(.app-container[data-call-mode="true"]) .element-hint-panel {
   box-shadow: 0 0 10px rgba(56, 189, 248, 0.35);
 }
 
-.settings-scoreboard-btn {
-  width: 22px;
-  height: 22px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 0;
-  border-radius: 4px;
-  border: 1px solid rgba(255, 255, 255, 0.2);
-  background: rgba(255, 255, 255, 0.06);
-  color: rgba(255, 255, 255, 0.55);
-  font-size: 0.72rem;
-  font-weight: 800;
-  line-height: 1;
-  cursor: pointer;
-  flex-shrink: 0;
-  transition: border-color 0.2s, background 0.2s;
-}
-
 .settings-scoreboard-btn:hover {
-  border-color: rgba(255, 255, 255, 0.45);
-  background: rgba(255, 255, 255, 0.12);
   color: #fff;
 }
 

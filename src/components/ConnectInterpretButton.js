@@ -102,12 +102,10 @@ export const ConnectInterpretButton = ({
       data-guide="connect"
       onClick={handleClick}
       disabled={disabled}
-      className={`connect-interpret-btn btn-primaryish ${flash || isPendingDoubleTap ? 'connect-interpret-flash' : ''}`}
+      className={`connect-interpret-btn btn-primaryish header-accent-connect ${flash || isPendingDoubleTap ? 'connect-interpret-flash' : ''}`}
       style={{
         ...style,
-        background: '#10b981',
         color: '#fff',
-        border: '1px solid rgba(16,185,129,0.35)',
       }}
       title={doubleTitle
         ? (requireDoubleTapIndicator

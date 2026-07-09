@@ -111,7 +111,7 @@ const SINGLE_DIGIT_RUN_RE = /\b\d(?:[\s,.-]+\d)+\b/g;
 export const stitchSingleDigitSequences = (text, { minDigits = 2 } = {}) => {
   if (!text) return text;
   return text.replace(SINGLE_DIGIT_RUN_RE, (match, offset, full) => {
-    const parts = match.split(/[\s,.\-]+/).filter(Boolean);
+    const parts = match.split(/[\s,.-]+/).filter(Boolean);
     if (parts.length < minDigits || !parts.every((p) => /^\d$/.test(p))) return match;
 
     const before = full.slice(Math.max(0, offset - 40), offset);

@@ -1,0 +1,13 @@
+---
+description: Laconic answer length tiers for on-call coding
+alwaysApply: true
+---
+
+# Answer length
+
+Replies and plan **summaries**:
+- **60%** <40 words
+- **30%** <80 words
+- **10%** <120 words
+
+Long plans OK in files / handoff docs; lead with a tier-sized summary.

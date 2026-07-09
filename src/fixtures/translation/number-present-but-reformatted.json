@@ -1,0 +1,21 @@
+{
+  "id": "number-present-but-reformatted",
+  "label": "5551234567 vs 555-123-4567 counts as preserved",
+  "captionId": "cap-reformat",
+  "targetLang": "es",
+  "segments": [
+    "Please call me back at 5551234567 before five pm."
+  ],
+  "events": [
+    {
+      "segmentId": "seg-0",
+      "resultText": "Por favor llámeme al 555-123-4567 antes de las cinco de la tarde.",
+      "quality": "ok"
+    }
+  ],
+  "expect": {
+    "composedIncludes": ["555-123-4567"],
+    "composedExcludes": ["[⚠ Check:"],
+    "statusOk": ["seg-0"]
+  }
+}

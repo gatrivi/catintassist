@@ -593,6 +593,8 @@ export const SessionProvider = ({ children }) => {
       return prev;
     });
   };
+  const startSessionRef = useRef(startSession);
+  startSessionRef.current = startSession;
   
   const notifySpeechDuringCall = useCallback(() => {
     callHadSpeechRef.current = true;
@@ -601,9 +603,9 @@ export const SessionProvider = ({ children }) => {
 
   const trySpeechAutoStart = useCallback(() => {
     if (!speechAutoConnectRef.current || isActive) return false;
-    startSession(false);
+    startSessionRef.current(false);
     return true;
-  }, [isActive, startSession]);
+  }, [isActive]);
 
   // TERMINAR LLAMADA: Guardamos los minutos que trabajamos para no perderlos.
   const stopSession = (onCallEnded) => {

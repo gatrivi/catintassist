@@ -37,8 +37,9 @@ Prod verification checklist:
 - [ ] No status UI thrash on connect ([`.cursor/RULES/ui-thrash.md`](../.cursor/RULES/ui-thrash.md))
 - [ ] EN/ES column tie-break sane ([`transcription-pane/README.md`](transcription-pane/README.md))
 - [x] Dev fixture harness (no tab capture) — [`development/transcription-test-harness.md`](development/transcription-test-harness.md) (v4.81.0)
+- [x] Translation reliability harness — applicator + fixtures + sealed IDB ([`development/translation-reliability-harness.md`](development/translation-reliability-harness.md)) (v4.82.0)
 
-**Code:** [`useTranslate.js`](../src/hooks/useTranslate.js) · [`useDeepgram.js`](../src/hooks/useDeepgram.js) · [`sensitiveDataProtector.js`](../src/utils/sensitiveDataProtector.js)
+**Code:** [`useTranslate.js`](../src/hooks/useTranslate.js) · [`useDeepgram.js`](../src/hooks/useDeepgram.js) · [`sensitiveDataProtector.js`](../src/utils/sensitiveDataProtector.js) · [`translationApplicator.js`](../src/utils/translationApplicator.js)
 
 ---
 
@@ -151,4 +152,4 @@ From [`archive/future.md`](archive/future.md) + AGENTS soundscape:
 
 ---
 
-*Edit this file by hand. Version anchor: v4.76.0*
+*Edit this file by hand. Version anchor: v4.82.0*

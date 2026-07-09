@@ -1,4 +1,17 @@
+---
+description: 
+alwaysApply: true
+---
+
 cats interpreter assistant app
+
+## Answer length (agents)
+Replies and plan **summaries** should land in three tiers:
+- **60%** of answers: **<40 words**
+- **30%** of answers: **<80 words**
+- **10%** of answers: **<120 words**
+
+Long plans OK in files; lead with a tier-sized summary.
 
 Docs index: `docs/README.md` · **What's new:** `docs/CHANGELOG.md` · **Corrections:** `docs/transcription-pane/corrections.md`
 

@@ -19,6 +19,9 @@
 .env.test.local
 .env.production.local
 
+# local MCP secrets (use placeholder in committed .cursor/mcp.json)
+.cursor/mcp.local.json
+
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*

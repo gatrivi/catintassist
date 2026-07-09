@@ -1,0 +1,32 @@
+{
+  "id": "same-caption-new-source-invalidates-old",
+  "label": "New source hash uses new key; compose uses current segments only",
+  "captionId": "cap-newsrc",
+  "targetLang": "es",
+  "segments": [
+    "Updated message about your Tuesday appointment only."
+  ],
+  "initialState": {
+    "cap-newsrc::seg-0::oldhash::es": {
+      "key": "cap-newsrc::seg-0::oldhash::es",
+      "captionId": "cap-newsrc",
+      "segmentId": "seg-0",
+      "sourceHash": "oldhash",
+      "targetLang": "es",
+      "text": "Mensaje viejo que no debe aparecer.",
+      "status": "ok",
+      "quality": "ok"
+    }
+  },
+  "events": [
+    {
+      "segmentId": "seg-0",
+      "resultText": "Mensaje actualizado solo sobre su cita del martes.",
+      "quality": "ok"
+    }
+  ],
+  "expect": {
+    "composedIncludes": ["actualizado"],
+    "composedExcludes": ["Mensaje viejo"]
+  }
+}

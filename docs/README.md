@@ -1,8 +1,9 @@
-# CatIntAssist Docs (v4.81.0)
+# CatIntAssist Docs (v4.82.0)
 
 This is the single source of truth for *documentation + onboarding*.
 
 ## What's new
+- **v4.82.0** — [`development/translation-reliability-harness.md`](development/translation-reliability-harness.md) — translation applicator + fixtures
 - **v4.81.0** — [`development/transcription-test-harness.md`](development/transcription-test-harness.md) — fixture replay without tab capture
 - **Operator work log:** [`WORK_LOG.md`](WORK_LOG.md)
 - **Latest overnight report:** [`OVERNIGHT_REPORT.md`](OVERNIGHT_REPORT.md)
@@ -31,6 +32,7 @@ This is the single source of truth for *documentation + onboarding*.
 
 ## Maintenance / Agent Rules
 - [`docs/cursor-agent/README.md`](cursor-agent/README.md): Cursor agent “touch only these files” guidance
+- [`docs/api/README.md`](api/README.md): Deepgram / Web Audio / MediaStream / CRA crib sheets (anti-hallucination)
 - [`docs/CHANGELOG.md`](CHANGELOG.md): recent version notes
 - [`docs/development/production-readiness.md`](development/production-readiness.md): sellable-app audit checklist
 - [`docs/compliance/operational-notes.md`](compliance/operational-notes.md): PHI + operator checklist (not legal advice)

@@ -1,0 +1,14 @@
+---
+description: Stop connection-status remount / retry thrash loops
+globs: src/components/**/*.js,src/hooks/**/*.js,src/contexts/**/*.js
+alwaysApply: false
+---
+
+# UI thrash guardrails
+
+Status like `"Connecting now…"`, `"Connecting…"`, `"Initializing Sockets…"` must never remount/animate in a tight loop.
+
+- Latch/cooldown/ref: retry `setState` at most once per user intent or sane interval
+- No sub-second thrash of the same status text
+- Stable effect deps — no rapidly changing objects/functions unless memoized or read via refs
+- When status spams: stop the retry loop first, then touch UI

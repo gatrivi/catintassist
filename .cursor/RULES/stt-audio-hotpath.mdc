@@ -1,0 +1,12 @@
+---
+description: Protect Deepgram STT and Web Audio play paths
+globs: src/hooks/useDeepgram.js,src/hooks/useAudioSource.js,src/utils/audio*.js,src/components/GreetingsPanel.js,src/components/TranscriptionBoard.js
+alwaysApply: false
+---
+
+# STT / audio hot path
+
+- Never block the live STT path with heavy sync work, network fan-out, or layout thrash
+- Soundboard: patient hears sink route — verify route before “it sounds fine locally”
+- Prefer one shared guard over N call-site patches
+- Read API crib sheets: `docs/api/deepgram.md`, `docs/api/web-audio.md`, `docs/api/mediastream.md`

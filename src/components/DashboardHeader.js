@@ -29,9 +29,7 @@ import {
 } from './HeaderIcons';
 import { buildHeaderStripMetrics } from '../utils/headerMetrics';
 import {
-  isIdleTipsMuted,
-  pickRotatingAdvice,
-  readIdleTipPrefs,
+  buildOffCallStatusLabel,
 } from '../utils/offCallIdleMessages';
 import { DialGoalSelector } from './DialGoalSelector';
 import { ElementHintTarget, useElementHint, buildHintPayload } from './ElementHint';
@@ -43,24 +41,18 @@ import { AppGuideButton } from './AppGuide';
 import { SettingsButton } from './SettingsButton';
 import { WorkspaceViewSwitcher } from './WorkspaceViewSwitcher';
 import { ConnectInterpretButton } from './ConnectInterpretButton';
-import { ConnectionDiagnosticsBar } from './ConnectionDiagnosticsBar';
 import { AudioRouteStatusBar } from './AudioRouteStatusBar';
 import { HeaderMetricsStrip } from './HeaderMetricsStrip';
 import { playTestToneLocal, playTestToneSink } from '../utils/audioSelfTest';
 import { APP_VERSION_LABEL } from '../constants/version';
 import { SlotMicroValue } from './SlotMicroValue';
-import { hasConfiguredDeepgramKey, isRememberExpired, needsUserSuppliedDeepgramKey } from '../utils/deepgramRuntimeKey';
-import { dispatchOpenDeepgramSettings } from '../utils/deepgramSettingsPrompt';
+import { needsUserSuppliedDeepgramKey } from '../utils/deepgramRuntimeKey';
 import {
   STT_LATENCY_CHANGED_EVENT,
   getSttLatencyConfig,
   loadSttLatencyMode,
   saveSttLatencyMode,
 } from '../utils/deepgramListenConfig';
-import {
-  canUseTabCapture,
-  isLikelyEmbeddedPreviewBrowser,
-} from '../utils/audioSourceManager';
 import {
   isComponentVisible,
   shouldShowProgressStack,
@@ -224,83 +216,6 @@ const StateIndicators = ({ state, breakMinutes, isZombie, silenceCount }) => {
   );
 };
 
-const buildOffCallStatus = ({
-  settingsOpen,
-  vaultNeedsDecrypt,
-  apiKeyMissingNoVault,
-  vaultStatus,
-  connectionState,
-  connectionMessage,
-  apiKeyMissing,
-  isBreakActive,
-  isZombieCall,
-  audioAttached,
-  tabStreamReady,
-  micTestMode,
-  slackText,
-}) => {
-  const { level: idleLevel, snoozedUntil } = readIdleTipPrefs();
-  const idleMuted = isIdleTipsMuted({ level: idleLevel, snoozedUntil });
-
-  if (settingsOpen && vaultNeedsDecrypt) {
-    return 'Unlock Deepgram — enter password in Settings (gear, top-right)';
-  }
-  if (settingsOpen && apiKeyMissingNoVault) {
-    return 'Paste your Deepgram key in Settings (gear, top-right)';
-  }
-  if (vaultStatus === 'unlocking') return 'Unlocking key…';
-  if (connectionState === 'connecting') {
-    return connectionMessage || 'Deepgram connecting…';
-  }
-  if (connectionState === 'error') {
-    return (
-      'Deepgram isn\'t working right now (engine for interpretation). ' +
-      'Press ⚡ Zap, then check Settings key + Deepgram WebSocket + tab audio/mic permissions.'
-    );
-  }
-  if (isRememberExpired() && apiKeyMissing) {
-    return 'Password expired — open Settings (gear, top-right)';
-  }
-  if (vaultNeedsDecrypt) {
-    return 'Deepgram locked — open Settings or press Decrypt';
-  }
-  if (apiKeyMissingNoVault) {
-    return 'No Deepgram key yet — open Settings (gear, top-right)';
-  }
-  if (isBreakActive) {
-    return 'On break — press the green button when you return';
-  }
-  if (!micTestMode && !audioAttached && !canUseTabCapture()) {
-    return isLikelyEmbeddedPreviewBrowser()
-      ? 'Cursor preview cannot share tabs — open in Chrome/Edge, or press 🎤 mic mode'
-      : 'This browser cannot share tabs — use Chrome/Edge, or press 🎤 mic mode';
-  }
-  if (isZombieCall) {
-    return `Call still active — press Re-attach (timer saved) · ${slackText}`;
-  }
-  if (audioAttached) {
-    return micTestMode
-      ? 'Mic connected — press the green button to start interpreting'
-      : 'Tab connected — press the green button to start interpreting';
-  }
-
-  // Work-hours: if tab stream is detached, keep the user out of “blocked when call rings”.
-  const h = new Date().getHours();
-  const isWorkHours = h >= 9 && h < 18;
-  if (!micTestMode && !isZombieCall && !tabStreamReady && isWorkHours) {
-    return 'Tab disconnected — reconnect now to avoid missing the first lines';
-  }
-  const micHint = micTestMode
-    ? 'Mic mode ON — press the green button to connect the microphone'
-    : 'Tab mode — press the green button to connect the other browser tab';
-
-  if (idleMuted) {
-    return `${micHint}. Then press it again to start interpreting.`;
-  }
-
-  return `${pickRotatingAdvice()} · ${micHint}`;
-};
-
 const SessionControlsSticky = React.memo(({
   isActive,
   isBreakActive,
@@ -336,7 +251,6 @@ const SessionControlsSticky = React.memo(({
   // Break
   minutesSinceLastBreak,
   shouldBreakNudge,
-  breakNudgeStage,
   stopBreak,
   onStartBreak,
 
@@ -377,9 +291,9 @@ const SessionControlsSticky = React.memo(({
   onToggleLanguage,
   onOpenLanguageSettings,
   languagePairLabel,
+  offCallStatusLabel = 'Ready',
 }) => {
   const showConnecting = isActive && connectionState !== 'connected';
-  const isConnectionError = connectionState === 'error';
   const slackText = `SLACK ${formatTime(silenceCount)}`;
   const [sttLatencyMode, setSttLatencyMode] = useState(loadSttLatencyMode);
 
@@ -390,22 +304,6 @@ const SessionControlsSticky = React.memo(({
   }, []);
 
   const sttLatencyLabel = getSttLatencyConfig(sttLatencyMode).label;
-
-  const offCallStatusText = buildOffCallStatus({
-    settingsOpen,
-    vaultNeedsDecrypt,
-    apiKeyMissingNoVault,
-    vaultStatus,
-    connectionState,
-    connectionMessage,
-    apiKeyMissing,
-    isBreakActive,
-    isZombieCall,
-    audioAttached,
-    tabStreamReady,
-    micTestMode,
-    slackText,
-  });
 
   const longPressRef = useRef(null);
   const didLongPressRef = useRef(false);
@@ -445,514 +343,431 @@ const SessionControlsSticky = React.memo(({
   return (
     <>
       <div className="session-controls-sticky-row">
-      <div className="session-controls-left-cluster" style={{ display: 'flex', gap: '3px', alignItems: 'center', flexShrink: 0 }}>
-        <ElementHintTarget
-          elementId="header-app-logo-btn"
-          heading="App logo"
-          body={`CatIntAssist build info. Version: ${APP_VERSION_LABEL}`}
-          color="#a855f7"
-        >
-        <button
-          id="header-app-logo-btn"
-          type="button"
-          className="btn-icon tiny-btn app-logo-btn"
-          aria-label={`CatIntAssist ${APP_VERSION_LABEL}`}
-        >
-          <img
-            className="app-logo-img"
-            src={`${process.env.PUBLIC_URL || ''}/favicon-96x96.png`}
-            alt=""
-            width={22}
-            height={22}
-          />
-        </button>
-        </ElementHintTarget>
+        <div className="session-controls-left-cluster" style={{ display: 'flex', gap: '3px', alignItems: 'center', flexShrink: 0 }}>
+          <ElementHintTarget
+            elementId="header-app-logo-btn"
+            heading="App logo"
+            body={`CatIntAssist build info. Version: ${APP_VERSION_LABEL}`}
+            color="#a855f7"
+          >
+            <button
+              id="header-app-logo-btn"
+              type="button"
+              className="btn-icon tiny-btn app-logo-btn"
+              aria-label={`CatIntAssist ${APP_VERSION_LABEL}`}
+            >
+              <img
+                className="app-logo-img"
+                src={`${process.env.PUBLIC_URL || ''}/favicon-96x96.png`}
+                alt=""
+                width={22}
+                height={22}
+              />
+            </button>
+          </ElementHintTarget>
 
-        {!isActive ? (
-          <>
-            <ConnectInterpretButton
-              onSingle={connectOnSingle}
-              onDouble={connectOnDouble}
-              flash={connectFlash}
-              disabled={false}
-              size="top"
-              label={connectLabel}
-              requireDoubleTapIndicator={requireDoubleTapIndicator}
-              onArmDoubleTap={onArmDoubleTap}
-              pendingDoubleTapTitle={pendingDoubleTapTitle}
-              singleTitle={connectSingleTitle}
-              doubleTitle={connectDoubleTitle}
-            />
+          {!isActive ? (
+              <ConnectInterpretButton
+                onSingle={connectOnSingle}
+                onDouble={connectOnDouble}
+                flash={connectFlash}
+                disabled={false}
+                size="top"
+                label={connectLabel}
+                requireDoubleTapIndicator={requireDoubleTapIndicator}
+                onArmDoubleTap={onArmDoubleTap}
+                pendingDoubleTapTitle={pendingDoubleTapTitle}
+                singleTitle={connectSingleTitle}
+                doubleTitle={connectDoubleTitle}
+              />
+          ) : (
+            <ElementHintTarget
+              elementId="header-stop-btn"
+              guideKey="stop"
+              heading="Stop / disconnect"
+              body="End the current interpretation session and disconnect Deepgram."
+              color="#94a3b8"
+            >
+              <button
+                id="header-stop-btn"
+                data-guide="stop"
+                type="button"
+                className="header-chrome-btn"
+                onClick={handleStop}
+                title="STOP / DISCONNECT"
+              >
+                <StopIcon size={14} />
+              </button>
+            </ElementHintTarget>
+          )}
 
+          <ElementHintTarget
+            elementId="header-break-btn"
+            heading="Break"
+            body="Coffee icon only. Expands to BREAK after 90m on call without a break. Disabled during active calls."
+            color="#fb923c"
+          >
+            <button
+              id="header-break-btn"
+              className="btn-emoji header-accent-break"
+              onClick={isBreakActive ? stopBreak : onStartBreak}
+              style={{
+                color: '#fff',
+                height: '30px',
+                opacity: isActive ? 0.35 : 1,
+                width: shouldBreakNudge ? '86px' : '30px',
+                padding: shouldBreakNudge ? '0 8px' : '0',
+                fontSize: shouldBreakNudge ? '0.62rem' : undefined,
+                borderRadius: shouldBreakNudge ? '8px' : undefined,
+              }}
+              disabled={isActive}
+              title={shouldBreakNudge ? '90+ min on call — take a break when you can' : 'BREAK'}
+            >
+              {shouldBreakNudge ? (
+                <span className="header-break-nudge">
+                  <CoffeeIcon size={14} />
+                  <span>BREAK</span>
+                </span>
+              ) : (
+                <CoffeeIcon size={14} />
+              )}
+            </button>
+          </ElementHintTarget>
+
+          {!isActive && onOpenGoalDial && (
+            <ElementHintTarget
+              elementId="header-goal-btn"
+              guideKey="goal-wheel"
+              heading="Weekly goal wheel"
+              body="Weekly hours commitment — tap to open goal picker wheel."
+              color="#94a3b8"
+            >
+              <button
+                id="header-goal-btn"
+                data-guide="goal-wheel"
+                type="button"
+                className="header-chrome-btn"
+                onClick={onOpenGoalDial}
+                title="Weekly hours commitment — tap to open goal picker wheel"
+              >
+                <TargetIcon size={14} />
+              </button>
+            </ElementHintTarget>
+          )}
+
+          {isActive && (
+            <>
+              <ElementHintTarget
+                elementId="header-hold-btn"
+                heading="Hold"
+                body="Pause interpretation without ending the call. Shows H when hold is active."
+                color="#f59e0b"
+              >
+                <button
+                  id="header-hold-btn"
+                  type="button"
+                  className={`btn-emoji header-accent-hold${isHold ? ' is-active' : ''}`}
+                  onClick={() => setIsHold(!isHold)}
+                  style={{ width: '30px', height: '30px', fontSize: '0.65rem', padding: 0 }}
+                >
+                  {isHold ? 'H' : <PauseIcon size={14} />}
+                </button>
+              </ElementHintTarget>
+              <ElementHintTarget
+                elementId="header-zap-btn"
+                heading="Zap reconnect"
+                body={disableZap ? 'ZAP disabled — stream is healthy.' : 'Force-reconnect the audio stream when STT goes stale.'}
+                color="#94a3b8"
+              >
+                <button
+                  id="header-zap-btn"
+                  type="button"
+                  className={`header-chrome-btn${isZapping ? ' is-on' : ''}`}
+                  onClick={disableZap ? undefined : () => onReconnectStream()}
+                  disabled={disableZap}
+                  title={disableZap ? 'ZAP disabled' : 'ZAP - Reconnect Audio Stream'}
+                >
+                  <ZapIcon size={14} />
+                </button>
+              </ElementHintTarget>
+            </>
+          )}
+
+          <ElementHintTarget
+            elementId="header-quick-notes-btn"
+            guideKey="notes"
+            heading="Quick notes"
+            body="Toggle the quick notes sidebar for jotting during calls."
+            color="#f43f5e"
+          >
+            <button
+              id="header-quick-notes-btn"
+              type="button"
+              className={`header-chrome-btn${isNotesOpen ? ' is-on' : ''}`}
+              onClick={toggleQuickNotes}
+              title="Quick Notes"
+            >
+              <NotesIcon size={14} />
+            </button>
+          </ElementHintTarget>
+        </div>
+
+        <div className="session-controls-center">
+          {isActive ? (
+            callModeExpanded ? (
+            <div className="call-micro-bar-center">
+              <span
+                className="call-micro-bar-slot call-micro-bar-hold"
+                title="Non-doctor hold time (resets on English speech)"
+                style={{ visibility: !showConnecting && silenceCount > 30 ? 'visible' : 'hidden' }}
+              >
+                {formatTime(Math.max(0, Math.floor((Date.now() - lastEnglishActivityTime) / 1000)))}
+              </span>
+
+              <span className="call-micro-bar-slot call-micro-bar-timer">
+                {showConnecting ? (
+                  <span style={{ fontSize: '0.68rem', fontWeight: 900, color: '#f59e0b' }}>
+                    {connectionMessage || 'Connecting…'}
+                  </span>
+                ) : (
+                  <SlotMicroValue text={formatTime(sessionSeconds)} />
+                )}
+              </span>
+
+              {!showConnecting && (
+                <span className="call-micro-bar-slot call-micro-bar-earnings">
+                  <SlotMicroValue text={`AR$${sessionArsLive}`} />
+                </span>
+              )}
+
+              {showConnecting && (
+                <span
+                  className="call-micro-bar-slot call-micro-bar-disconnected"
+                  title="No audio packets received — slacking off time"
+                  style={{
+                    fontFamily: 'var(--font-mono)',
+                    color: '#fbbf24',
+                    fontSize: '0.7rem',
+                    fontWeight: 900,
+                    whiteSpace: 'nowrap',
+                    textOverflow: 'ellipsis',
+                    overflow: 'hidden',
+                    maxWidth: '10ch',
+                  }}
+                >
+                  {slackText}
+                </span>
+              )}
+
+              {!showConnecting && (
+                <span
+                  className="call-micro-bar-slot call-micro-bar-nudge"
+                  title="Working 90+ minutes without a break"
+                  style={{ visibility: minutesSinceLastBreak > 90 ? 'visible' : 'hidden' }}
+                >
+                  🍕 {Math.floor(minutesSinceLastBreak)}m
+                </span>
+              )}
+              <span className="call-micro-bar-slot call-micro-bar-reserved" aria-hidden="true" />
+            </div>
+            ) : (
+            <div className="call-micro-bar-center call-micro-bar-center--compact" title="Call timer">
+              <span className="call-micro-bar-slot call-micro-bar-timer">
+                {showConnecting ? (
+                  <span style={{ fontSize: '0.68rem', fontWeight: 900, color: '#f59e0b' }}>
+                    {connectionMessage || 'Connecting…'}
+                  </span>
+                ) : (
+                  <SlotMicroValue text={formatTime(sessionSeconds)} />
+                )}
+              </span>
+            </div>
+            )
+          ) : (
+            <div className="off-call-status-column" style={{ display: 'flex', flexDirection: 'column', gap: '0.15rem' }}>
+              <div className="call-micro-bar-center off-call-status-bar" title={offCallStatusLabel}>
+                <span
+                  className="call-micro-bar-slot call-micro-bar-status"
+                  style={{
+                    gridColumn: '1 / -1',
+                    fontSize: '0.68rem',
+                    fontWeight: 700,
+                    color: isZombieCall
+                      ? '#fbbf24'
+                      : connectionState === 'error'
+                        ? '#f87171'
+                        : connectionState === 'connecting'
+                          ? '#fbbf24'
+                          : audioAttached
+                            ? '#34d399'
+                            : isBreakActive
+                              ? '#fb923c'
+                              : '#9dffed',
+                  }}
+                >
+                  {offCallStatusLabel}
+                </span>
+                {!isActive && (
+                  <span
+                    className="call-micro-bar-slot"
+                    style={{
+                      gridColumn: '1 / -1',
+                      fontSize: '0.62rem',
+                      fontWeight: 900,
+                      color: '#fdba74',
+                      opacity: 0.95,
+                    }}
+                    title="Off-call elapsed today"
+                  >
+                    🚪 {formatTime(Math.floor(totalOffCallSeconds))}
+                  </span>
+                )}
+              </div>
+            </div>
+          )}
+        </div>
+
+        <div className="session-controls-right-cluster">
+          {((isActive || isZombieCall) && !callModeExpanded) && (
+            <ElementHintTarget
+              elementId="header-expand-btn"
+              heading="Expand header"
+              body="Show full header controls during an active call."
+              color="#94a3b8"
+            >
+              <button
+                id="header-expand-btn"
+                type="button"
+                className="header-chrome-btn"
+                onClick={() => setCallModeExpanded(true)}
+                title="Expand Header"
+              >
+                <ChevronUpIcon size={14} />
+              </button>
+            </ElementHintTarget>
+          )}
+          {(isActive || isZombieCall) && callModeExpanded && (
+            <ElementHintTarget
+              elementId="header-compact-btn"
+              heading="Compact header"
+              body="Minimize header to maximize transcription space during calls."
+              color="#94a3b8"
+            >
+              <button
+                id="header-compact-btn"
+                type="button"
+                className="header-chrome-btn"
+                onClick={() => setCallModeExpanded(false)}
+                title="Compact Header"
+              >
+                <ChevronDownIcon size={14} />
+              </button>
+            </ElementHintTarget>
+          )}
+
+          <button
+            id="header-stt-latency-btn"
+            type="button"
+            className={`header-chrome-btn header-text-btn${sttLatencyMode === 'fast' ? ' is-on' : ''}`}
+            onClick={() => saveSttLatencyMode(sttLatencyMode === 'fast' ? 'balanced' : 'fast')}
+            title="STT speed — FAST = lower latency (reconnects). BAL = steadier interims."
+          >
+            STT:{sttLatencyLabel}
+          </button>
+
+          {onToggleLanguage && (
+            <ElementHintTarget
+              elementId="header-lang-pair-btn"
+              guideKey="language-pair"
+              heading="Language pair / STT mode"
+              body={langBtnTitle}
+              color="#94a3b8"
+            >
+              <button
+                id="header-lang-pair-btn"
+                data-guide="language-pair"
+                type="button"
+                className="header-chrome-btn header-text-btn"
+                onPointerDown={startPress}
+                onPointerUp={endPress}
+                onPointerCancel={endPress}
+                onPointerLeave={endPress}
+                onClick={handleLangClick}
+                title={langBtnTitle}
+              >
+                {langPairShort}
+              </button>
+            </ElementHintTarget>
+          )}
+
+          {!isActive && (
             <ElementHintTarget
               elementId="header-mic-test-btn"
               guideKey="mic-test"
               heading="Mic test mode"
               body="Mic ON: Connect uses your microphone (no tab picker). Mic OFF: Connect captures interpreter tab audio (Share audio)."
-              color="#f59e0b"
+              color="#94a3b8"
             >
-            <button
-              id="header-mic-test-btn"
-            data-guide="mic-test"
-            type="button"
-            className="btn-icon tiny-btn"
-            onClick={() => setMicTestMode?.(!micTestMode)}
-            style={{
-              width: '26px',
-              height: '26px',
-              fontSize: '0.7rem',
-              background: isConnectionError
-                ? 'rgba(239, 68, 68, 0.25)'
-                : micTestMode
-                  ? 'rgba(245, 158, 11, 0.25)'
-                  : 'rgba(255,255,255,0.06)',
-              border: isConnectionError
-                ? '1px solid rgba(239, 68, 68, 0.55)'
-                : micTestMode
-                  ? '1px solid rgba(245, 158, 11, 0.55)'
-                  : '1px solid rgba(255,255,255,0.1)',
-              boxShadow: isConnectionError
-                ? '0 0 10px rgba(239, 68, 68, 0.35)'
-                : micTestMode
-                  ? '0 0 8px rgba(245, 158, 11, 0.35)'
-                  : 'none',
-            }}
-            title={micTestMode ? 'Mic ON — Connect uses microphone (no tab picker)' : 'Mic OFF — Connect captures interpreter tab audio (Share audio)'}
-            aria-pressed={micTestMode}
-          >
-            <MicIcon size={14} />
-          </button>
+              <button
+                id="header-mic-test-btn"
+                data-guide="mic-test"
+                type="button"
+                className={`header-chrome-btn${micTestMode ? ' is-on' : ''}`}
+                onClick={() => setMicTestMode?.(!micTestMode)}
+                title={micTestMode ? 'Mic ON — Connect uses microphone (no tab picker). Use this in Cursor Simple Browser — tab share needs Chrome/Edge.' : 'Mic OFF — Connect captures interpreter tab audio (Share audio). Needs Chrome/Edge — not Cursor Simple Browser.'}
+                aria-pressed={micTestMode}
+              >
+                <MicIcon size={14} />
+              </button>
             </ElementHintTarget>
+          )}
 
-        {onToggleLanguage && (
           <ElementHintTarget
-            elementId="header-lang-pair-btn"
-            guideKey="language-pair"
-            heading="Language pair / STT mode"
-            body={langBtnTitle}
-            color="#34d399"
+            elementId="header-key-vault-btn"
+            heading="Deepgram key vault"
+            body="Open settings to manage your Deepgram API key (encrypted vault)."
+            color="#94a3b8"
           >
-          <button
-            id="header-lang-pair-btn"
-            data-guide="language-pair"
-            type="button"
-            className="btn-icon tiny-btn"
-            onPointerDown={startPress}
-            onPointerUp={endPress}
-            onPointerCancel={endPress}
-            onPointerLeave={endPress}
-            onClick={handleLangClick}
-            style={{
-              height: '26px',
-              padding: '0 6px',
-              fontSize: '0.62rem',
-              fontWeight: 800,
-              letterSpacing: '0.04em',
-              background: isConnectionError
-                ? 'rgba(239, 68, 68, 0.25)'
-                : sttLanguage === 'left'
-                  ? 'rgba(239, 68, 68, 0.25)'
-                  : sttLanguage === 'right'
-                    ? 'rgba(16, 185, 129, 0.25)'
-                    : 'rgba(255,255,255,0.06)',
-              border: isConnectionError
-                ? '1px solid rgba(239, 68, 68, 0.55)'
-                : sttLanguage === 'left'
-                  ? '1px solid rgba(239, 68, 68, 0.55)'
-                  : sttLanguage === 'right'
-                    ? '1px solid rgba(16, 185, 129, 0.55)'
-                    : '1px solid rgba(255,255,255,0.1)',
-            }}
-            title={langBtnTitle}
-          >
-            {langPairShort}
-          </button>
-          </ElementHintTarget>
-        )}
-
-        <button
-          id="header-stt-latency-btn"
-          type="button"
-          className="btn-icon tiny-btn"
-          onClick={() => saveSttLatencyMode(sttLatencyMode === 'fast' ? 'balanced' : 'fast')}
-          style={{
-            height: '26px',
-            padding: '0 6px',
-            fontSize: '0.58rem',
-            fontWeight: 800,
-            letterSpacing: '0.03em',
-            background: sttLatencyMode === 'fast'
-              ? 'rgba(34, 211, 238, 0.18)'
-              : 'rgba(255,255,255,0.06)',
-            border: sttLatencyMode === 'fast'
-              ? '1px solid rgba(34, 211, 238, 0.45)'
-              : '1px solid rgba(255,255,255,0.1)',
-          }}
-          title="STT speed — FAST = lower latency (reconnects). BAL = steadier interims."
-        >
-          STT:{sttLatencyLabel}
-        </button>
-
-        {!isActive && onOpenGoalDial && (
-          <ElementHintTarget
-            elementId="header-goal-btn"
-            guideKey="goal-wheel"
-            heading="Weekly goal wheel"
-            body="Weekly hours commitment — tap to open goal picker wheel."
-            color="#a855f7"
-          >
-          <button
-            id="header-goal-btn"
-            data-guide="goal-wheel"
-            type="button"
-            className="btn-icon tiny-btn"
-            onClick={onOpenGoalDial}
-            style={{
-              width: '26px',
-              height: '26px',
-              fontSize: '0.75rem',
-              background: isConnectionError
-                ? 'rgba(239, 68, 68, 0.22)'
-                : 'rgba(139, 92, 246, 0.18)',
-              border: isConnectionError
-                ? '1px solid rgba(239, 68, 68, 0.55)'
-                : '1px solid rgba(167, 139, 250, 0.45)',
-            }}
-            title="Weekly hours commitment — tap to open goal picker wheel"
-          >
-            <TargetIcon size={14} />
-          </button>
-          </ElementHintTarget>
-        )}
-
-            <ElementHintTarget
-              elementId="header-key-vault-btn"
-              heading="Deepgram key vault"
-              body="Open settings to manage your Deepgram API key (encrypted vault)."
-              color="#10b981"
-            >
             <button
               id="header-key-vault-btn"
               type="button"
-              className="btn-emoji"
+              className={`header-chrome-btn${apiKeyRejected ? ' is-on' : ''}`}
               onClick={() => {
                 try {
-                  window.dispatchEvent(new CustomEvent("cat_show_settings"));
+                  window.dispatchEvent(new CustomEvent('cat_show_settings'));
                 } catch (_) {}
-              }}
-              style={{
-                background: apiKeyRejected
-                  ? "rgba(16,185,129,0.16)"
-                  : "rgba(16,185,129,0.08)",
-                color: apiKeyRejected
-                  ? "#d1fae5"
-                  : "rgba(209,250,229,0.55)",
-                width: "30px",
-                height: "30px",
-                borderRadius: "8px",
-                border: apiKeyRejected
-                  ? "1px solid rgba(16,185,129,0.35)"
-                  : "1px solid rgba(16,185,129,0.22)",
-                boxShadow: apiKeyRejected ? "0 0 12px rgba(16,185,129,0.25)" : "none",
               }}
               title="Deepgram Key Vault"
               aria-label="Deepgram Key Vault"
             >
               <KeyIcon size={14} />
             </button>
-            </ElementHintTarget>
-          </>
-        ) : (
-          <>
-            <ElementHintTarget
-              elementId="header-stop-btn"
-              guideKey="stop"
-              heading="Stop / disconnect"
-              body="End the current interpretation session and disconnect Deepgram."
-              color="#ef4444"
-            >
-            <button
-              id="header-stop-btn"
-              data-guide="stop"
-              className="btn-emoji"
-              onClick={handleStop}
-              style={{ background: '#ef4444', color: '#fff', width: '30px', height: '30px' }}
-              title="STOP / DISCONNECT"
-            >
-              <StopIcon size={14} />
-            </button>
-            </ElementHintTarget>
-            <ElementHintTarget
-              elementId="header-hold-btn"
-              heading="Hold"
-              body="Pause interpretation without ending the call. Shows H when hold is active."
-              color="#f59e0b"
-            >
-            <button
-              id="header-hold-btn"
-              className="btn btn-condensed"
-              onClick={() => setIsHold(!isHold)}
-              style={{
-                background: isHold ? '#f59e0b' : 'rgba(255,255,255,0.08)',
-                height: '30px',
-                padding: '0',
-                width: '30px',
-                fontSize: '0.65rem',
-                border: '1px solid rgba(255,255,255,0.1)',
-              }}
-            >
-              {isHold ? 'H' : <PauseIcon size={14} />}
-            </button>
-            </ElementHintTarget>
-            <ElementHintTarget
-              elementId="header-zap-btn"
-              heading="Zap reconnect"
-              body={disableZap ? 'ZAP disabled — stream is healthy.' : 'Force-reconnect the audio stream when STT goes stale.'}
-              color="#ef4444"
-            >
-            <button
-              id="header-zap-btn"
-              className={`btn-emoji ${isZapping ? 'zap-active' : ''}`}
-              onClick={disableZap ? undefined : () => onReconnectStream()}
-              disabled={disableZap}
-              style={{
-                background: '#ef4444',
-                width: '30px',
-                height: '30px',
-                opacity: disableZap ? 0.25 : 1,
-              }}
-              title={disableZap ? 'ZAP disabled' : 'ZAP - Reconnect Audio Stream'}
-            >
-              <ZapIcon size={14} />
-            </button>
-            </ElementHintTarget>
-          </>
-        )}
-
-        <ElementHintTarget
-          elementId="header-break-btn"
-          heading="Break"
-          body="Start or end a break. Disabled during active calls. Orange nudge after 90m without break."
-          color="#fb923c"
-        >
-        <button
-          id="header-break-btn"
-          className="btn-emoji"
-          onClick={isBreakActive ? stopBreak : onStartBreak}
-          style={{
-            background: '#fb923c',
-            color: '#fff',
-            height: '30px',
-            opacity: isActive ? 0.35 : 1,
-            width: shouldBreakNudge ? '86px' : '30px',
-            padding: shouldBreakNudge ? '0 8px' : '0',
-            fontSize: shouldBreakNudge ? '0.62rem' : undefined,
-            borderRadius: shouldBreakNudge ? '8px' : undefined,
-          }}
-          disabled={isActive}
-          title="BREAK"
-        >
-          {shouldBreakNudge ? (
-            <span className="header-break-nudge">
-              <CoffeeIcon size={14} />
-              <span>BREAK</span>
-            </span>
-          ) : (
-            <CoffeeIcon size={14} />
-          )}
-        </button>
-        </ElementHintTarget>
-
-        {showEndDayButton && (
-          <ElementHintTarget
-            elementId="header-end-day-btn"
-            heading="End day"
-            body="Close out the work day and reset daily tracking."
-            color="#8b5cf6"
-          >
-          <button
-            id="header-end-day-btn"
-            className="btn-emoji"
-            onClick={onEndDay}
-            style={{ background: '#8b5cf6', color: '#fff', width: '30px', height: '30px' }}
-            title="END DAY"
-          >
-            <MoonIcon size={14} />
-          </button>
           </ElementHintTarget>
-        )}
-      </div>
 
-      {isActive ? (
-        <div className="call-micro-bar-center">
-          <span
-            className="call-micro-bar-slot call-micro-bar-hold"
-            title="Non-doctor hold time (resets on English speech)"
-            style={{ visibility: !showConnecting && silenceCount > 30 ? 'visible' : 'hidden' }}
-          >
-            {formatTime(Math.max(0, Math.floor((Date.now() - lastEnglishActivityTime) / 1000)))}
-          </span>
-
-          <span className="call-micro-bar-slot call-micro-bar-timer">
-            {showConnecting ? (
-              <span style={{ fontSize: '0.68rem', fontWeight: 900, color: '#f59e0b' }}>
-                {connectionMessage || 'Connecting…'}
-              </span>
-            ) : (
-              <SlotMicroValue text={formatTime(sessionSeconds)} />
-            )}
-          </span>
-
-          {!showConnecting && (
-            <span className="call-micro-bar-slot call-micro-bar-earnings">
-              <SlotMicroValue text={`AR$${sessionArsLive}`} />
-            </span>
-          )}
-
-          {showConnecting && (
-            <span
-              className="call-micro-bar-slot call-micro-bar-disconnected"
-              title="No audio packets received — slacking off time"
-              style={{
-                fontFamily: "var(--font-mono)",
-                color: "#fbbf24",
-                fontSize: "0.7rem",
-                fontWeight: 900,
-                whiteSpace: "nowrap",
-                textOverflow: "ellipsis",
-                overflow: "hidden",
-                maxWidth: "10ch",
-              }}
+          {showEndDayButton && (
+            <ElementHintTarget
+              elementId="header-end-day-btn"
+              heading="End day"
+              body="Close out the work day and reset daily tracking."
+              color="#7c3aed"
             >
-              {slackText}
-            </span>
-          )}
-
-          {!showConnecting && (
-            <span
-              className="call-micro-bar-slot call-micro-bar-nudge"
-              title="Working 90+ minutes without a break"
-              style={{ visibility: minutesSinceLastBreak > 90 ? 'visible' : 'hidden' }}
-            >
-              🍕 {Math.floor(minutesSinceLastBreak)}m
-            </span>
-          )}
-          <span className="call-micro-bar-slot call-micro-bar-reserved" aria-hidden="true" />
-        </div>
-      ) : (
-        <div className="off-call-status-column" style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', gap: '0.15rem' }}>
-          {!(connectionState === 'error' || connectionState === 'connecting') && (
-            <div className="call-micro-bar-center off-call-status-bar" title="Connection status">
-              <span
-                className="call-micro-bar-slot call-micro-bar-status"
-                style={{
-                  gridColumn: '1 / -1',
-                  fontSize: '0.68rem',
-                  fontWeight: 700,
-                  color: isZombieCall
-                    ? '#fbbf24'
-                    : audioAttached
-                      ? '#34d399'
-                      : '#9dffed',
-                }}
+              <button
+                id="header-end-day-btn"
+                type="button"
+                className="btn-emoji header-accent-logoff"
+                onClick={onEndDay}
+                style={{ width: '30px', height: '30px' }}
+                title="END DAY"
               >
-                {offCallStatusText}
-              </span>
-              {!isActive && (
-                <span
-                  className="call-micro-bar-slot"
-                  style={{
-                    gridColumn: '1 / -1',
-                    fontSize: '0.62rem',
-                    fontWeight: 900,
-                    color: '#fdba74',
-                    opacity: 0.95,
-                    textShadow: '0 0 10px rgba(251,191,36,0.25)',
-                  }}
-                  title="Off-call elapsed today (avail + breaks)"
-                >
-                  🚪 {formatTime(Math.floor(totalOffCallSeconds))}
-                </span>
-              )}
-            </div>
+                <MoonIcon size={14} />
+              </button>
+            </ElementHintTarget>
           )}
-          <ConnectionDiagnosticsBar
-            connectProgress={connectProgress}
-            connectionState={connectionState}
-            connectionMessage={connectionMessage}
-            compact
-          />
-        </div>
-      )}
 
-      <div
-        style={{
-          display: 'flex',
-          gap: '3px',
-          alignItems: 'center',
-          flexShrink: 0,
-          position: 'relative',
-          zIndex: 320, // ensure gear/help stay above diagnostics chip
-        }}
-      >
-        {isActive && !callModeExpanded && (
-          <ElementHintTarget
-            elementId="header-expand-btn"
-            heading="Expand header"
-            body="Show full header controls during an active call."
-            color="#94a3b8"
-          >
-          <button
-            id="header-expand-btn"
-            className="btn-icon tiny-btn"
-            onClick={() => setCallModeExpanded(true)}
-            style={{ width: '24px', height: '24px', fontSize: '0.7rem' }}
-            title="Expand Header"
-          >
-            <ChevronUpIcon size={14} />
-          </button>
-          </ElementHintTarget>
-        )}
-        {isActive && callModeExpanded && (
-          <ElementHintTarget
-            elementId="header-compact-btn"
-            heading="Compact header"
-            body="Minimize header to maximize transcription space during calls."
-            color="#94a3b8"
-          >
-          <button
-            id="header-compact-btn"
-            className="btn-icon tiny-btn"
-            onClick={() => setCallModeExpanded(false)}
-            style={{ width: '24px', height: '24px', fontSize: '0.7rem' }}
-            title="Compact Header"
-          >
-            <ChevronDownIcon size={14} />
-          </button>
-          </ElementHintTarget>
-        )}
-        <ElementHintTarget
-          elementId="header-quick-notes-btn"
-          guideKey="notes"
-          heading="Quick notes"
-          body="Toggle the quick notes sidebar for jotting during calls."
-          color="#f43f5e"
-        >
-        <button
-          id="header-quick-notes-btn"
-          className="btn-icon tiny-btn"
-          onClick={toggleQuickNotes}
-          style={{ opacity: isNotesOpen ? 1 : 0.45, width: '24px', height: '24px', fontSize: '0.75rem' }}
-          title="Quick Notes"
-        >
-          <NotesIcon size={14} />
-        </button>
-        </ElementHintTarget>
-        <SettingsButton />
-        <AppGuideButton />
+          <SettingsButton />
+        </div>
       </div>
-      </div>
-      {!(isActive && !callModeExpanded) && (
+      {(!(isActive && !callModeExpanded) || isZombieCall || connectionState !== 'connected' || !audioAttached) && (
         <AudioRouteStatusBar
           micTestMode={micTestMode}
           tabStreamReady={tabStreamReady}
@@ -1162,7 +977,7 @@ export const DashboardHeader = ({
     });
   }, []);
 
-  const headerCallCompact = isActive && !callModeExpanded;
+  const headerCallCompact = (isActive || isZombieCall) && !callModeExpanded;
 
   const expandOffCallMetrics = useCallback(() => {
     setOffCallMetricsExpanded(true);
@@ -1215,15 +1030,14 @@ export const DashboardHeader = ({
     return () => window.removeEventListener('cat_guide_prepare_view', onPrepare);
   }, []);
 
-  // Break nudges during idle (not on a call, not currently on break).
-  // Stage thresholds are intentionally coarse to avoid spamming the UI.
-  const breakNudgeStage = !isActive && !isBreakActive
-    ? (minutesSinceLastBreak >= 180 ? 3 : minutesSinceLastBreak >= 120 ? 2 : minutesSinceLastBreak >= 60 ? 1 : 0)
+  // Break button: icon-only until 90m on call without a break (matches mic-bar nudge).
+  const breakNudgeStage = isActive && !isBreakActive
+    ? (minutesSinceLastBreak >= 110 ? 2 : minutesSinceLastBreak >= 90 ? 1 : 0)
     : 0;
   const shouldBreakNudge = breakNudgeStage > 0;
   const lastBreakNudgeStageRef = useRef(0);
   useEffect(() => {
-    if (isActive || isBreakActive) {
+    if (!isActive || isBreakActive) {
       lastBreakNudgeStageRef.current = 0;
       return;
     }
@@ -1779,9 +1593,20 @@ export const DashboardHeader = ({
   const vaultNeedsDecrypt = apiKeyMissing && encryptedKeySaved;
   const apiKeyMissingNoVault = apiKeyMissing && !encryptedKeySaved;
 
-  const showKeyVault = (trigger = 'connect') => {
-    dispatchOpenDeepgramSettings(trigger);
-  };
+  const offCallStatusLabel = buildOffCallStatusLabel({
+    settingsOpen,
+    vaultNeedsDecrypt,
+    apiKeyMissingNoVault,
+    vaultStatus,
+    connectionState,
+    connectionMessage,
+    apiKeyMissing,
+    isBreakActive,
+    isZombieCall,
+    audioAttached,
+    tabStreamReady,
+    micTestMode,
+  });
 
   const connectRequireDoubleTapIndicator = false;
 
@@ -1964,6 +1789,7 @@ export const DashboardHeader = ({
                     getCompensatedLogOff={getCompensatedLogOff}
                     connectInHeader={offCallScoreboardView}
                     compactPane={offCallScoreboardView}
+                    offCallStatusLabel={offCallStatusLabel}
                   />
                 </div>
 
@@ -3060,7 +2886,6 @@ ${isInDeficit ? `⚠️ DEFICIT: Behind pace by ${Math.round(monthlyDeficitMins)
 
         minutesSinceLastBreak={minutesSinceLastBreak}
         shouldBreakNudge={shouldBreakNudge}
-        breakNudgeStage={breakNudgeStage}
         stopBreak={stopBreak}
         onStartBreak={handleStartBreak}
 
@@ -3101,6 +2926,7 @@ ${isInDeficit ? `⚠️ DEFICIT: Behind pace by ${Math.round(monthlyDeficitMins)
         }}
         languagePairLabel={languagePairLabel}
         versionLabel={versionLabel}
+        offCallStatusLabel={offCallStatusLabel}
       />
 
       {!headerMinimal && (

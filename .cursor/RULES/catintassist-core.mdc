@@ -1,0 +1,25 @@
+---
+description: CatIntAssist hard constraints — reliability, layout, ship discipline
+alwaysApply: true
+---
+
+# CatIntAssist core
+
+- Interpreter reliability > features. Prefer smallest safe diff.
+- Transcription + translation ≈ 80% viewport; scoreboard/chrome ≈ 20%. Target 900×600, scale up.
+- Version pill always visible (upper right). Feature ships bump `src/App.js` version.
+- Laconic replies (see answer-length). On-call brainspace is tiny.
+- Do not commit/push unless user says commit/push. Never force-push.
+- After feature: test → refactor/cleanup if needed → ship only if confident (no crash).
+- Proposed changes: show precisely from → to before large edits.
+
+# Hot paths — do not block or weaken
+
+- STT: `src/hooks/useDeepgram.js` and transcript apply path
+- Audio play/route: soundboard / passthrough / `src/utils/audio*`
+- Numbers/phones: `src/utils/sensitiveDataProtector.js` — never strip digits while reading
+
+# Stack (do not hallucinate)
+
+- CRA (`react-scripts`), not Vite. No Electron/Tauri shell in this repo.
+- Tab capture = `getDisplayMedia`. Phone assistant = mic mode (see onboarding doc).

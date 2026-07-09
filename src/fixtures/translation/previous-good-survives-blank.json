@@ -1,0 +1,26 @@
+{
+  "id": "previous-good-survives-blank",
+  "label": "Previous-good survives blank engine result",
+  "captionId": "cap-blank",
+  "targetLang": "es",
+  "segments": [
+    "Please bring your photo ID to the front desk."
+  ],
+  "events": [
+    {
+      "segmentId": "seg-0",
+      "resultText": "Por favor traiga su identificación con foto a la recepción.",
+      "quality": "ok"
+    },
+    {
+      "segmentId": "seg-0",
+      "resultText": "",
+      "quality": "failed"
+    }
+  ],
+  "expect": {
+    "composedIncludes": ["identificación"],
+    "preservedSegments": ["seg-0"],
+    "entryWarnings": { "seg-0": "blank" }
+  }
+}

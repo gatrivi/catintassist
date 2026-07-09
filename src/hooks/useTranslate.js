@@ -1,7 +1,7 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useCallback } from 'react';
 import {
   isTranslationPassthrough,
-  splitTranslatableSegments,
+  splitLongForTranslation,
   isIncrementalTranscriptGrowth,
   isSentenceComplete,
 } from '../utils/translationQuality';
@@ -9,7 +9,6 @@ import { applySttCorrections, findGlossaryTranslation, CORRECTIONS_CHANGED_EVENT
 import { translateWithFallback } from '../utils/translationEngines';
 import { getTranslationApiKeys } from '../utils/translationRuntimeKeys';
 import { dedupeInFlight, withTranslationSlot } from '../utils/translationRequestQueue';
-import { APP_VERSION } from '../constants/version';
 import { isDevSimEnabled } from '../utils/devSimulateCaptions';
 import {
   loadLanguagePair,
@@ -17,6 +16,15 @@ import {
   getOppositeLang,
   LANG_PAIR_CHANGED_EVENT,
 } from '../utils/languageConfig';
+import {
+  assignSegmentIds,
+  applyTranslationResult,
+  buildSegmentRequestId,
+  buildTranslationKey,
+  composeCaptionTranslation,
+  hashTranslationSource,
+  shouldPersistTranslationEntry,
+} from '../utils/translationApplicator';
 
 let TRANS_CACHE = {};
 
@@ -83,7 +91,14 @@ export const useTranslate = (
   shouldPrefetch,
   mood = 'auto',
   forceTranslateKey = 0,
-  { isFinal = true, mockTranslation = null, userTranslationOverride = null } = {},
+  {
+    isFinal = true,
+    mockTranslation = null,
+    userTranslationOverride = null,
+    captionId = null,
+    persistedTranslations = null,
+    onPersistTranslation = null,
+  } = {},
 ) => {
   const [translation, setTranslation] = useState('');
   const [audioUrl, setAudioUrl] = useState(null);
@@ -98,6 +113,10 @@ export const useTranslate = (
   const debounceTimerRef = useRef(null);
   const abortControllerRef = useRef(null);
   const hasGoodTranslationRef = useRef(false);
+  const translationsMapRef = useRef({ ...(persistedTranslations || {}) });
+  const hydratedRef = useRef(false);
+  const onPersistRef = useRef(onPersistTranslation);
+  onPersistRef.current = onPersistTranslation;
   const [languagePair, setLanguagePair] = useState(loadLanguagePair);
   const [correctionsRev, setCorrectionsRev] = useState(0);
 
@@ -116,9 +135,41 @@ export const useTranslate = (
     return () => window.removeEventListener(LANG_PAIR_CHANGED_EVENT, onPairChange);
   }, []);
 
+  // Hydrate from IDB-backed caption.translations once
+  useEffect(() => {
+    if (hydratedRef.current) return;
+    if (!persistedTranslations || typeof persistedTranslations !== 'object') return;
+    const keys = Object.keys(persistedTranslations);
+    if (!keys.length) return;
+    hydratedRef.current = true;
+    translationsMapRef.current = { ...persistedTranslations };
+    const composed = composeCaptionTranslation(translationsMapRef.current);
+    if (composed) {
+      setTranslation(composed);
+      setEngineStatus('ready');
+      setTranslationMeta({ engineId: 'idb', quality: 'ok', failures: [], tried: ['idb'] });
+      hasGoodTranslationRef.current = true;
+      if (text) {
+        const norm = text.trim().replace(/\s+/g, ' ');
+        lastTranslatedTextRef.current = norm;
+        prevTextRef.current = norm;
+      }
+    }
+  }, [persistedTranslations, text]);
+
   const sourceLang = normalizeLang(lang);
   const targetLang = getOppositeLang(sourceLang, languagePair);
   const currentLangPair = `${sourceLang}-${targetLang}`;
+
+  const persistIfSealed = useCallback(
+    (entry) => {
+      if (isFinal === false) return;
+      if (!captionId || typeof onPersistRef.current !== 'function') return;
+      if (!shouldPersistTranslationEntry(entry)) return;
+      onPersistRef.current(captionId, entry);
+    },
+    [isFinal, captionId],
+  );
 
   useEffect(() => {
     if (!text || !text.trim()) {
@@ -158,6 +209,29 @@ export const useTranslate = (
       prevTextRef.current = normText;
       lastTranslatedTextRef.current = normText;
       hasGoodTranslationRef.current = true;
+      if (isFinal !== false && captionId && typeof onPersistRef.current === 'function') {
+        const sourceHash = hashTranslationSource(normText);
+        const segmentId = 'seg-0';
+        const key = buildTranslationKey({
+          captionId,
+          segmentId,
+          sourceHash,
+          targetLang,
+        });
+        onPersistRef.current(captionId, {
+          key,
+          captionId,
+          segmentId,
+          sourceHash,
+          targetLang,
+          text: override,
+          status: 'ok',
+          quality: 'ok',
+          engineId: 'user',
+          preserved: false,
+          updatedAt: Date.now(),
+        });
+      }
       return;
     }
 
@@ -168,7 +242,7 @@ export const useTranslate = (
       lastTranslatedTextRef.current = '';
       lastWordCountRef.current = 0;
       hasGoodTranslationRef.current = false;
-      // Bubble split: drop stale translation from the longer pre-split text.
+      // Drop composed display; keep map entries for other keys until new source hashes apply
       setTranslation('');
       setAudioUrl(null);
       setTranslationMeta(emptyMeta);
@@ -195,17 +269,18 @@ export const useTranslate = (
       /^bueno[.,!?]*$/i.test(normText) &&
       wordDelta < 2 &&
       lastTranslatedTextRef.current;
-    const IS_TOO_LONG = wordCount > 80;
     const IS_TOO_SHORT = normText.length < 2 && !/\d/.test(normText);
 
-    if (IS_TOO_LONG || IS_FILLER || IS_TOO_SHORT) {
-      setEngineStatus(IS_TOO_LONG ? 'ready' : 'idle');
-      if (IS_TOO_LONG) setTranslation(`(Text too long for direct translation [v${APP_VERSION}])`);
+    if (IS_FILLER || IS_TOO_SHORT) {
+      setEngineStatus('idle');
       return;
     }
 
     const hasPunctuation = /[.,?]/.test(normText);
-    const forceTrigger = mood === 'auto' ? (isSentenceComplete(normText) || isSplitRewrite) : wordCount >= 10 || hasPunctuation;
+    const forceTrigger =
+      mood === 'auto'
+        ? isSentenceComplete(normText) || isSplitRewrite
+        : wordCount >= 10 || hasPunctuation;
 
     if (normText.length < 3 && !/\w/.test(normText)) return;
 
@@ -231,6 +306,7 @@ export const useTranslate = (
 
       const langPair = langPairRef.current || currentLangPair;
       const [sLang, tLang] = langPair.split('-');
+      const capId = captionId || `anon-${hashTranslationSource(normText)}`;
 
       const sourceForTranslate = applySttCorrections(normText, sLang);
       const glossaryHit = findGlossaryTranslation(sourceForTranslate, sLang, tLang);
@@ -277,74 +353,85 @@ export const useTranslate = (
         );
       };
 
-      const translateSegments = async (segments) => {
-        const results = [];
+      try {
+        const rawSegments = splitLongForTranslation(sourceForTranslate, { maxWords: 40 });
+        const labeled = assignSegmentIds(rawSegments);
+        const activeKeys = [];
         let lastMeta = emptyMeta;
-        for (const segment of segments) {
-          if (signal.aborted) return { text: '', meta: lastMeta };
-          const res = await fetchChunk(segment);
+
+        for (const { segmentId, text: segText } of labeled) {
+          if (signal.aborted) break;
+
+          const sourceHash = hashTranslationSource(segText);
+          const requestId = buildSegmentRequestId({
+            captionId: capId,
+            segmentId,
+            sourceHash,
+            targetLang: tLang,
+          });
+          activeKeys.push(requestId);
+
+          const res = await fetchChunk(segText);
           lastMeta = {
             engineId: res.engineId,
             quality: res.quality,
             failures: res.failures || [],
             tried: res.tried || [],
           };
-          if (!res.text) return { text: '', meta: lastMeta };
-          results.push(res.text);
-        }
-        return {
-          text: results.join(' ').replace(/\s+/g, ' ').trim(),
-          meta: lastMeta,
-        };
-      };
 
-      try {
-        const segments = splitTranslatableSegments(sourceForTranslate);
-        let { text: final, meta } = await translateSegments(segments);
-
-        if (
-          mood !== 'auto' &&
-          (!final || isTranslationPassthrough(sourceForTranslate, final, sLang, tLang)) &&
-          segments.length > 1 &&
-          !signal.aborted
-        ) {
-          const res = await fetchChunk(sourceForTranslate);
-          final = res.text;
-          meta = {
-            engineId: res.engineId,
-            quality: res.quality,
-            failures: res.failures || [],
-            tried: res.tried || [],
-          };
+          const prev = translationsMapRef.current[requestId] || null;
+          const { state: nextMap, entry } = applyTranslationResult(translationsMapRef.current, {
+            captionId: capId,
+            segmentId,
+            sourceText: segText,
+            sourceHash,
+            targetLang: tLang,
+            previousEntry: prev,
+            engineResult: {
+              text: res.text || '',
+              engineId: res.engineId,
+              quality: res.quality || (res.text ? 'ok' : 'failed'),
+              requestId,
+            },
+          });
+          translationsMapRef.current = nextMap;
+          persistIfSealed(entry);
         }
 
         if (signal.aborted) return;
 
-        setTranslationMeta(meta);
+        const composed = composeCaptionTranslation(translationsMapRef.current, activeKeys);
+        setTranslationMeta(lastMeta);
 
-        const passthrough = final && isTranslationPassthrough(sourceForTranslate, final, sLang, tLang);
-        const acceptable =
-          final &&
-          final.length >= 1 &&
-          (!passthrough || meta.quality === 'weak');
+        const passthrough =
+          composed && isTranslationPassthrough(sourceForTranslate, composed, sLang, tLang);
+        const hasUsable =
+          composed &&
+          composed.length >= 1 &&
+          (!passthrough || lastMeta.quality === 'weak' || /\[⚠ Check:/.test(composed));
 
-        if (acceptable) {
+        if (hasUsable) {
           if (!langPairRef.current) langPairRef.current = langPair;
-          setTranslation(final);
-          hasGoodTranslationRef.current = meta.quality === 'ok' || meta.quality === 'weak';
+          setTranslation(composed);
+          hasGoodTranslationRef.current = true;
           lastTranslatedTextRef.current = normText;
           lastWordCountRef.current = wordCount;
 
           if (shouldPrefetch && typeof prefetchTTS === 'function') {
-            const url = await prefetchTTS(final, tLang);
+            const url = await prefetchTTS(composed, tLang);
             setAudioUrl(url);
           }
         } else if (!signal.aborted) {
-          if (!lastTranslatedTextRef.current || lastTranslatedTextRef.current !== normText) {
+          // Prefer previous composed if we still have map text
+          const fallback = composeCaptionTranslation(translationsMapRef.current, activeKeys);
+          if (fallback) {
+            setTranslation(fallback);
+            hasGoodTranslationRef.current = true;
+          } else if (!lastTranslatedTextRef.current || lastTranslatedTextRef.current !== normText) {
             setTranslation('');
             hasGoodTranslationRef.current = false;
           }
-          if (isFinal !== false && !final) {
+          if (isFinal !== false && !fallback) {
             setTranslationMeta((prev) => ({ ...prev, quality: 'failed' }));
           }
           lastTranslatedTextRef.current = normText;
@@ -364,7 +451,23 @@ export const useTranslate = (
       if (debounceTimerRef.current) clearTimeout(debounceTimerRef.current);
       if (abortControllerRef.current) abortControllerRef.current.abort();
     };
-  }, [text, lang, shouldPrefetch, prefetchTTS, currentLangPair, mood, forceTranslateKey, isFinal, languagePair, mockTranslation, userTranslationOverride, correctionsRev]);
+  }, [
+    text,
+    lang,
+    shouldPrefetch,
+    prefetchTTS,
+    currentLangPair,
+    mood,
+    forceTranslateKey,
+    isFinal,
+    languagePair,
+    mockTranslation,
+    userTranslationOverride,
+    correctionsRev,
+    captionId,
+    targetLang,
+    persistIfSealed,
+  ]);
 
   return {
     translation,

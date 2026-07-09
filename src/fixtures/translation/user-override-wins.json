@@ -1,0 +1,20 @@
+{
+  "id": "user-override-wins",
+  "label": "User override wins over engine compose",
+  "captionId": "cap-override",
+  "targetLang": "es",
+  "segments": [
+    "The specialist will see you next week."
+  ],
+  "userTranslationOverride": "El especialista lo verá la próxima semana. (corregido)",
+  "events": [
+    {
+      "segmentId": "seg-0",
+      "resultText": "El especialista te verá la próxima semana.",
+      "quality": "ok"
+    }
+  ],
+  "expect": {
+    "composedEquals": "El especialista lo verá la próxima semana. (corregido)"
+  }
+}

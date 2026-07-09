@@ -27,5 +27,6 @@ Each handoff spec lists allowed files. Do not refactor unrelated code.
 - No backend/login yet — see `06_auth_db.md`
 
 ## User communication
+- **Answer tiers:** 60% <40w · 30% <80w · 10% <120w (summaries + replies; see `AGENTS.md`)
 - Laconic replies; user is often on call
 - Mention version number in feature messages

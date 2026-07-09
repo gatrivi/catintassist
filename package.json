@@ -1,6 +1,6 @@
 {
   "name": "catintassist",
-  "version": "4.81.0",
+  "version": "4.82.0",
   "private": true,
   "dependencies": {
     "@testing-library/dom": "^10.4.1",
@@ -23,6 +23,7 @@
     "test:watch": "react-scripts test",
     "test:transcription": "react-scripts test --watchAll=false --testPathPattern=\"(captionEngine|fixtureReplay|applyDeepgramTranscriptPayload|sensitiveDataProtector)\"",
     "test:fixtures": "react-scripts test --watchAll=false --testPathPattern=\"fixtureReplay\"",
+    "test:translation": "react-scripts test --watchAll=false --testPathPattern=\"(translationApplicator|translationFixtureReplay|translationSensitiveTokens|translationQuality)\"",
     "eject": "react-scripts eject"
   },
   "eslintConfig": {

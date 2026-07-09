@@ -1,8 +1,23 @@
-# Cursor Agent Rules (v4.56.0)
+# Cursor Agent Rules (v4.81.1)
+
+## Answer length
+**60%** <40 words · **30%** <80 · **10%** <120. Applies to replies and plan summaries (`AGENTS.md`).
 
 Read this file first. Stays small on purpose.
 
+**Rules:** `.cursor/rules/*.mdc` (core, thrash, STT/audio, numbers)
+
+**Slash commands:** `.cursor/commands/` — `/ship` · `/diagnose` · `/patch` · `/wrapup` · `/overnight`
+
+**Subagents:** `.cursor/agents/` — `bug-hunter` · `mobile-ux-auditor` · `test-sentinel`
+
+**API crib sheets:** [`docs/api/README.md`](../api/README.md) (Deepgram, Web Audio, MediaStream, CRA≠Vite)
+
+**MCP:** [`.cursor/MCP.md`](../../.cursor/MCP.md) — GitHub + Playwright + Context7 (set PAT)
+
 **Handoff specs:** [`docs/handoff/README.md`](../handoff/README.md) — pick one task, read global rules once.
+
+**Later:** Cursor hooks (dirty-tree gate, post-edit test/build), Memory MCP.
 
 ## Scope by task (touch only these files)
 | Task | Touch only |

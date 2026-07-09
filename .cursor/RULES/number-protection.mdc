@@ -1,0 +1,12 @@
+---
+description: Phone/SSN/digit sequences must survive live edits
+globs: src/utils/sensitiveDataProtector.js,src/utils/transcriptFormat.js,src/components/TranscriptionBoard.js
+alwaysApply: false
+---
+
+# Number protection
+
+- 9–10 digit runs stay grouped and copyable
+- Do not weaken overlap/dedupe guards that protect phone/SSN sequences
+- EN number-words → digits; do not break Spanish words that look like EN teens
+- If unsure, add a failing test in `sensitiveDataProtector` tests before changing behavior

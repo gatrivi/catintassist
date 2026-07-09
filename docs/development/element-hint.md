@@ -27,7 +27,7 @@ Selector priority: `elementId` → `guideKey` → `fallback`.
 ## Where wired (v4.75.5+)
 - `DashboardHeader.js` — session controls, connect, settings
 - `HeaderMetricsStrip.js` — condensed toolbar + 12 metric cells `#metric-m1`…`m12`
-- `AudioRouteStatusBar.js` — I/O strip
+- `AudioRouteStatusBar.js` — I/O strip (`#audio-route-stt-in-badge`, `#audio-route-stt-summary`, soundboard, more, test buttons)
 - `ConnectInterpretButton.js`, `SettingsButton.js`, `WorkspaceViewSwitcher.js`
 
 ## Other tooltip systems (don't mix up)

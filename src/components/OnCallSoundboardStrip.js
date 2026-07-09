@@ -15,7 +15,6 @@ import { readRouteModePreference, ROUTE_MODE } from '../utils/audioRoutePassthro
 import { logRouteEvent, ROUTE_EVENT } from '../utils/routeDiagnostics';
 import { APP_VERSION } from '../constants/version';
 
-const TIME_SLOTS = ['morning', 'afternoon', 'evening'];
 const CALL_ROUTE_MIN_SCORE = 0.5;
 
 /** High-use slots for on-call strip — keeps UI compact. */
@@ -39,7 +38,7 @@ const getTimeOfDay = () => {
 const resolveClipKey = (slot, timeOfDay) =>
   slot.dynamic ? `${slot.actionId}_${timeOfDay}` : slot.actionId;
 
-export function OnCallSoundboardStrip({ collapsed: collapsedProp, onToggleCollapse }) {
+export function OnCallSoundboardStrip({ micTestMode = false, collapsed: collapsedProp, onToggleCollapse }) {
   const {
     selectedSinkId,
     selectedMicId,
@@ -116,6 +115,29 @@ export function OnCallSoundboardStrip({ collapsed: collapsedProp, onToggleCollap
       return;
     }
     clearPlay();
+
+    if (micTestMode) {
+      const url = URL.createObjectURL(blob);
+      logRouteEvent(ROUTE_EVENT.PLAY_START, { clipKey: key, routeMode: 'local_speakers', onCall: true, micTestMode: true });
+      setPlayingKey(key);
+      primePlaybackElements(audioRefLocal.current, audioRefSink.current);
+      audioRefLocal.current.src = url;
+      const onEnd = () => {
+        URL.revokeObjectURL(url);
+        clearPlay();
+        logRouteEvent(ROUTE_EVENT.PLAY_END, { clipKey: key, onCall: true, micTestMode: true });
+      };
+      audioRefLocal.current.onended = onEnd;
+      try {
+        await audioRefLocal.current.play();
+        rampCancelRef.current = rampVolume(audioRefLocal.current, null, localVolume, 0);
+      } catch (e) {
+        console.error('On-call soundboard local play error:', e);
+        logRouteEvent(ROUTE_EVENT.PLAY_FAIL, { clipKey: key, reason: e?.message, micTestMode: true });
+        clearPlay();
+      }
+      return;
+    }
 
     const score = healthScores[key];
     const healthOk = score !== undefined && score >= CALL_ROUTE_MIN_SCORE;
@@ -207,7 +229,7 @@ export function OnCallSoundboardStrip({ collapsed: collapsedProp, onToggleCollap
             const action = ACTIONS.find((a) => a.id === slot.actionId);
             const label = slot.label || action?.label || slot.actionId;
             const lang = action?.lang;
-            const blocked = has && (
+            const blocked = has && !micTestMode && (
               healthScores[key] === undefined ||
               healthScores[key] < CALL_ROUTE_MIN_SCORE ||
               !isManualCallOk(manualCallOk, key, selectedSinkId, selectedMicId)
@@ -222,9 +244,11 @@ export function OnCallSoundboardStrip({ collapsed: collapsedProp, onToggleCollap
                 title={
                   !has
                     ? 'Record in Soundboard Studio'
-                    : blocked
-                      ? 'Health or CALL OK gate — test off-call'
-                      : `Fire ${label} to patient path`
+                    : micTestMode
+                      ? 'Play on your speakers/headphones'
+                      : blocked
+                        ? 'Health or CALL OK gate — test off-call'
+                        : `Fire ${label} to patient path`
                 }
               >
                 {lang && <span className="on-call-sb-lang">{lang.toUpperCase()}</span>}

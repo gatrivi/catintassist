@@ -157,6 +157,7 @@ const DirectionalCue = ({
   onRecovery, onConnectAnotherTab,
   shiftElapsedMins,
   connectInHeader = false,
+  offCallStatusLabel = 'Ready',
   showConnectButton = true,
 }) => {
   const [rotateTick, setRotateTick] = useState(0);
@@ -262,17 +263,10 @@ const DirectionalCue = ({
         ? 'Start interpreting'
         : 'Click to connect tab';
 
-  const compactTip = (() => {
-    if (isZombieCall) return 'Re-attach tab — timer saved';
-    if (apiKeyMissing) return 'Add Deepgram key in Settings (gear)';
-    if (audioAttached) return 'Tab connected — press Start when call begins';
-    return IDLE_TIPS[rotateTick % IDLE_TIPS.length];
-  })();
-
   if (connectInHeader) {
     return (
-      <div className="directional-cue-compact" title={compactTip}>
-        {compactTip}
+      <div className="directional-cue-compact">
+        {offCallStatusLabel}
       </div>
     );
   }
@@ -484,6 +478,7 @@ export const GameScoreboard = ({
   onRecovery, onConnectAnotherTab,
   connectInHeader = false,
   compactPane = false,
+  offCallStatusLabel = 'Ready',
  }) => {
   useComponentVisibilityRefresh();
   const visCtx = { isActive, isZombieCall };
@@ -587,6 +582,7 @@ export const GameScoreboard = ({
             onConnectAnotherTab={onConnectAnotherTab}
             shiftElapsedMins={shiftElapsedMins}
             connectInHeader={connectInHeader}
+            offCallStatusLabel={offCallStatusLabel}
             showConnectButton={showConnectButton}
           />
         )}

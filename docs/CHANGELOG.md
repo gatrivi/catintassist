@@ -4,6 +4,15 @@
 
 ---
 
+## v4.82.0 — Translation reliability harness
+- Pure `applyTranslationResult` — keyed `captionId::segmentId::sourceHash::targetLang`
+- Previous-good preserve (`preserved: true`); garbage/stale/blank never wipe siblings
+- Sensitive-token salvage: ` [⚠ Check: TOKEN]`; reformatted phones count as present
+- Long monologue → ~40-word chunks (removed >80 hard reject)
+- Persist sealed translations on `caption.translations` in IDB
+- `npm run test:translation` + 12 fixtures
+- Docs: [`development/translation-reliability-harness.md`](development/translation-reliability-harness.md)
+
 ## v4.81.0 — Transcription test harness
 - `applyDeepgramTranscriptPayload` — live WS + fixtures share one reducer path
 - Fixtures (fake PHI only): phone, dosage, DOB, address, bilingual, low-confidence, disconnect-reconnect

@@ -1,0 +1,27 @@
+{
+  "id": "stale-late-response",
+  "label": "Late response with wrong sourceHash preserves previous",
+  "captionId": "cap-stale",
+  "targetLang": "es",
+  "segments": [
+    "I am checking your account now and I see the balance."
+  ],
+  "events": [
+    {
+      "segmentId": "seg-0",
+      "resultText": "Estoy revisando su cuenta ahora y veo el saldo.",
+      "quality": "ok"
+    },
+    {
+      "segmentId": "seg-0",
+      "sourceHash": "stale-old-hash",
+      "resultText": "respuesta tardía basura",
+      "quality": "ok"
+    }
+  ],
+  "expect": {
+    "composedIncludes": ["revisando su cuenta"],
+    "preservedSegments": ["seg-0"],
+    "entryWarnings": { "seg-0": "stale" }
+  }
+}

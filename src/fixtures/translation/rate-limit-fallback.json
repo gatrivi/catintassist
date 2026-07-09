@@ -1,0 +1,28 @@
+{
+  "id": "rate-limit-fallback",
+  "label": "Blank rate-limit response preserves previous-good",
+  "captionId": "cap-rate",
+  "targetLang": "es",
+  "segments": [
+    "The nurse will call you back within twenty four hours."
+  ],
+  "events": [
+    {
+      "segmentId": "seg-0",
+      "resultText": "La enfermera le devolverá la llamada en veinticuatro horas.",
+      "engineId": "deepl",
+      "quality": "ok"
+    },
+    {
+      "segmentId": "seg-0",
+      "resultText": "",
+      "engineId": "rate-limited",
+      "quality": "failed"
+    }
+  ],
+  "expect": {
+    "composedIncludes": ["enfermera"],
+    "preservedSegments": ["seg-0"],
+    "entryWarnings": { "seg-0": "blank" }
+  }
+}

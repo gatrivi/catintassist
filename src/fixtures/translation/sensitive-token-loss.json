@@ -1,0 +1,20 @@
+{
+  "id": "sensitive-token-loss",
+  "label": "Missing phone salvaged with Check marker",
+  "captionId": "cap-phi",
+  "targetLang": "es",
+  "segments": [
+    "My callback number is 5551234567."
+  ],
+  "events": [
+    {
+      "segmentId": "seg-0",
+      "resultText": "Mi número de devolución de llamada es.",
+      "quality": "ok"
+    }
+  ],
+  "expect": {
+    "composedIncludes": ["[⚠ Check:", "555"],
+    "entryWarnings": { "seg-0": "sensitive_token_loss" }
+  }
+}

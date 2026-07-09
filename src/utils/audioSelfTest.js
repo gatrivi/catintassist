@@ -118,3 +118,10 @@ export const truncateDeviceLabel = (label, max = 14) => {
   if (clean.length <= max) return clean;
   return `${clean.slice(0, max - 1)}…`;
 };
+
+/** Mic mode or studio test mode — local speakers/headphones only (no VB-Cable). */
+export const isLocalOnlyPlayback = (micTestMode = false, testMode = false) =>
+  Boolean(micTestMode || testMode);
+
+/** @deprecated use isLocalOnlyPlayback */
+export const isLocalOnlySoundboardPlayback = isLocalOnlyPlayback;

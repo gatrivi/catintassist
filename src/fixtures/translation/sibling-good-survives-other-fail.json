@@ -1,0 +1,27 @@
+{
+  "id": "sibling-good-survives-other-fail",
+  "label": "Sibling good survives other segment fail",
+  "captionId": "cap-sib",
+  "targetLang": "es",
+  "segments": [
+    "Part one is about your medication refill.",
+    "Part two is about the billing department."
+  ],
+  "events": [
+    {
+      "segmentId": "seg-0",
+      "resultText": "La parte uno es sobre su resurtido de medicamento.",
+      "quality": "ok"
+    },
+    {
+      "segmentId": "seg-1",
+      "resultText": "bueno",
+      "quality": "ok"
+    }
+  ],
+  "expect": {
+    "composedIncludes": ["resurtido"],
+    "composedExcludes": ["bueno"],
+    "entryWarnings": { "seg-1": "garbage_rejected" }
+  }
+}

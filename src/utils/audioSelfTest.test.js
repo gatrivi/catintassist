@@ -1,4 +1,4 @@
-import { classifyHealthScore, formatHealthDisplay, truncateDeviceLabel, createTestToneUrl } from './audioSelfTest';
+import { classifyHealthScore, formatHealthDisplay, truncateDeviceLabel, createTestToneUrl, isLocalOnlySoundboardPlayback } from './audioSelfTest';
 
 describe('audioSelfTest', () => {
   test('classifyHealthScore peaches at high confidence', () => {
@@ -23,5 +23,11 @@ describe('audioSelfTest', () => {
     const url = createTestToneUrl(100);
     expect(url).toMatch(/^blob:/);
     URL.revokeObjectURL(url);
+  });
+
+  test('isLocalOnlyPlayback when mic or test mode', () => {
+    expect(isLocalOnlySoundboardPlayback(false, false)).toBe(false);
+    expect(isLocalOnlySoundboardPlayback(true, false)).toBe(true);
+    expect(isLocalOnlySoundboardPlayback(false, true)).toBe(true);
   });
 });

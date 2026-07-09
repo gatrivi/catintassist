@@ -17,7 +17,7 @@ import {
   formatRouteDiagLine,
   ROUTE_EVENT,
 } from '../utils/routeDiagnostics';
-import { analyzeBlobHealth, formatHealthDisplay, truncateDeviceLabel } from '../utils/audioSelfTest';
+import { analyzeBlobHealth, formatHealthDisplay, truncateDeviceLabel, isLocalOnlySoundboardPlayback } from '../utils/audioSelfTest';
 import {
   buildRouteFingerprint,
   isManualCallOk,
@@ -143,7 +143,7 @@ const getSetupStats = (blobs) => {
   return { saved, total, missing: total - saved };
 };
 
-export const GreetingsPanel = ({ onEditModeChange, onExitStudio }) => {
+export const GreetingsPanel = ({ onEditModeChange, onExitStudio, micTestMode = false }) => {
   const {
     selectedSinkId,
     selectedMicId,
@@ -175,6 +175,7 @@ export const GreetingsPanel = ({ onEditModeChange, onExitStudio }) => {
   const [playbackProgress, setPlaybackProgress] = useState(0);
   const [recordingKey, setRecordingKey] = useState(null);
   const [testMode, setTestMode] = useState(false);
+  const localOnlyPlayback = isLocalOnlySoundboardPlayback(micTestMode, testMode);
   const [safetyNotice, setSafetyNotice] = useState('');
   const [waveforms, setWaveforms] = useState({});
   const [collapsedActions, setCollapsedActions] = useState(() => new Set());
@@ -298,6 +299,8 @@ export const GreetingsPanel = ({ onEditModeChange, onExitStudio }) => {
   useEffect(() => {
     reloadData();
     warnLegacyCallPathStorage();
+    // Mount-only hydrate; reloadData is intentionally not a dep.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useEffect(() => {
@@ -500,7 +503,7 @@ export const GreetingsPanel = ({ onEditModeChange, onExitStudio }) => {
   const trackProgress = () => {
     if (audioRefLocal.current && audioRefLocal.current.duration) {
       setPlaybackProgress(audioRefLocal.current.currentTime / audioRefLocal.current.duration);
-      if (!testMode && playingKey && callerRouteRef.current) {
+      if (!localOnlyPlayback && playingKey && callerRouteRef.current) {
         window.__CAT_AUDIO_VOL = (40 + Math.random() * 60) * sinkVolume;
       } else {
         window.__CAT_AUDIO_VOL = 0;
@@ -589,7 +592,7 @@ export const GreetingsPanel = ({ onEditModeChange, onExitStudio }) => {
       return;
     }
 
-    let sendToCaller = routeToVirtualMic && !testMode;
+    let sendToCaller = routeToVirtualMic && !localOnlyPlayback;
     if (sendToCaller && !bypassGate) {
       const score = healthScores[key];
       const healthOk = isCallerReady(score);
@@ -617,7 +620,8 @@ export const GreetingsPanel = ({ onEditModeChange, onExitStudio }) => {
       clipKey: key,
       routeMode: usePassthrough ? ROUTE_MODE.PASSTHROUGH : ROUTE_MODE.DUAL_ELEMENT,
       playSink,
-      testMode,
+      testMode: localOnlyPlayback,
+      micTestMode,
     });
     const sttRisk = assessSttLoadRisk({
       sttActive: undefined,
@@ -1059,15 +1063,20 @@ export const GreetingsPanel = ({ onEditModeChange, onExitStudio }) => {
 
       <div className="sb-play-head">
         <div style={{ display: 'flex', flexDirection: 'column', gap: '0.1rem' }}>
-          <span className={`sb-play-title ${testMode ? 'is-test' : ''}`}>Soundboard · {timeOfDay}</span>
+          <span className={`sb-play-title ${localOnlyPlayback ? 'is-test' : ''}`}>Soundboard · {timeOfDay}</span>
+          {micTestMode && (
+            <span style={{ fontSize: '0.62rem', color: '#fbbf24', fontWeight: 700 }}>
+              🎤 Mic mode — greetings on your speakers/headphones (quality check)
+            </span>
+          )}
           {playStats.missing > 0 && (
             <span style={{ fontSize: '0.62rem', color: '#f87171', fontWeight: 600 }}>{playStats.missing} clip{playStats.missing !== 1 ? 's' : ''} missing — tap ⚙️</span>
           )}
         </div>
 
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-          <label style={{ display: 'flex', alignItems: 'center', gap: '0.25rem', fontSize: '0.7rem', color: testMode ? '#f59e0b' : 'var(--text-muted)', cursor: 'pointer', background: testMode ? 'rgba(245, 158, 11, 0.1)' : 'transparent', padding: '0.2rem 0.4rem', borderRadius: '4px', border: testMode ? '1px solid rgba(245, 158, 11, 0.3)' : '1px solid transparent', transition: 'all 0.2s' }} title="Test Mode: local speakers only — nothing to virtual mic">
-            <input type="checkbox" checked={testMode} onChange={(e) => setTestMode(e.target.checked)} style={{ cursor: 'pointer' }} />
+          <label style={{ display: 'flex', alignItems: 'center', gap: '0.25rem', fontSize: '0.7rem', color: localOnlyPlayback ? '#f59e0b' : 'var(--text-muted)', cursor: micTestMode ? 'default' : 'pointer', background: localOnlyPlayback ? 'rgba(245, 158, 11, 0.1)' : 'transparent', padding: '0.2rem 0.4rem', borderRadius: '4px', border: localOnlyPlayback ? '1px solid rgba(245, 158, 11, 0.3)' : '1px solid transparent', transition: 'all 0.2s' }} title={micTestMode ? 'Mic mode forces local speakers — use health check to test greeting quality' : 'Test Mode: local speakers only — nothing to virtual mic'}>
+            <input type="checkbox" checked={localOnlyPlayback} disabled={micTestMode} onChange={(e) => setTestMode(e.target.checked)} style={{ cursor: micTestMode ? 'default' : 'pointer' }} />
             🧪 Test
           </label>
 
@@ -1087,20 +1096,20 @@ export const GreetingsPanel = ({ onEditModeChange, onExitStudio }) => {
 
       <div className="sb-vol-strip">
         <div className="sb-vol-row">
-          <span style={{ color: testMode ? '#f59e0b' : 'var(--text-muted)' }}>🔊 You (Local)</span>
+          <span style={{ color: localOnlyPlayback ? '#f59e0b' : 'var(--text-muted)' }}>🔊 You (Local)</span>
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
             <input type="range" min="0" max="1" step="0.05" value={localVolume} onChange={(e) => changeLocalVolume(parseFloat(e.target.value))} style={{ width: '60px', accentColor: '#ef4444' }} title="Your Speakers Volume" />
             <div style={{ width: '30px', height: '6px', background: 'rgba(255,255,255,0.1)', borderRadius: '3px', overflow: 'hidden' }}>
-               <div style={{ width: playingKey ? `${localVolume * (40 + Math.random() * 60)}%` : '0%', height: '100%', background: testMode ? '#f59e0b' : '#ef4444', transition: 'width 0.1s' }} />
+               <div style={{ width: playingKey ? `${localVolume * (40 + Math.random() * 60)}%` : '0%', height: '100%', background: localOnlyPlayback ? '#f59e0b' : '#ef4444', transition: 'width 0.1s' }} />
             </div>
           </div>
         </div>
         <div className="sb-vol-row">
-          <span style={{ color: testMode ? 'rgba(255,255,255,0.2)' : 'var(--text-muted)' }}>🎤 Call (Virtual Mic)</span>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', opacity: testMode ? 0.3 : 1 }}>
-            <input type="range" disabled={testMode} min="0" max="1" step="0.05" value={sinkVolume} onChange={(e) => changeSinkVolume(parseFloat(e.target.value))} style={{ width: '60px', accentColor: '#10b981' }} title="Interpreter Call Volume" />
+          <span style={{ color: localOnlyPlayback ? 'rgba(255,255,255,0.2)' : 'var(--text-muted)' }}>🎤 Call (Virtual Mic)</span>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', opacity: localOnlyPlayback ? 0.3 : 1 }}>
+            <input type="range" disabled={localOnlyPlayback} min="0" max="1" step="0.05" value={sinkVolume} onChange={(e) => changeSinkVolume(parseFloat(e.target.value))} style={{ width: '60px', accentColor: '#10b981' }} title="Interpreter Call Volume" />
             <div style={{ width: '30px', height: '6px', background: 'rgba(255,255,255,0.1)', borderRadius: '3px', overflow: 'hidden' }}>
-               <div style={{ width: (playingKey && blobs[playingKey] && !testMode) ? `${sinkVolume * (40 + Math.random() * 60)}%` : '0%', height: '100%', background: '#10b981', transition: 'width 0.1s' }} />
+               <div style={{ width: (playingKey && blobs[playingKey] && !localOnlyPlayback) ? `${sinkVolume * (40 + Math.random() * 60)}%` : '0%', height: '100%', background: '#10b981', transition: 'width 0.1s' }} />
             </div>
           </div>
         </div>
@@ -1142,7 +1151,7 @@ export const GreetingsPanel = ({ onEditModeChange, onExitStudio }) => {
             <div>STT active: {typeof window !== 'undefined' && window.__CAT_STT_ACTIVE ? 'YES' : 'no'}</div>
             <div>Sink: {sinkLabel}</div>
             <div>Mic: {micLabel}</div>
-            <div>Test mode: {testMode ? 'ON' : 'OFF'}</div>
+            <div>Local only: {localOnlyPlayback ? 'ON' : 'OFF'}{micTestMode ? ' (mic mode)' : ''}</div>
             <div>Passthrough: {sinkPlaybackActive ? 'MUTED/CLIP' : 'OPEN'}</div>
             <div>
               Last route test:{' '}
@@ -1164,7 +1173,7 @@ export const GreetingsPanel = ({ onEditModeChange, onExitStudio }) => {
         {ACTIONS.map((action) => {
           const activeKey = action.dynamic ? `${action.id}_${timeOfDay}` : action.id;
           const hasAudio = !!blobs[activeKey];
-          const callerBlocked = hasAudio && !testMode && (
+          const callerBlocked = hasAudio && !localOnlyPlayback && (
             !isCallerReady(healthScores[activeKey]) ||
             !isCallPathReady(manualCallOk, activeKey, selectedSinkId, selectedMicId)
           );
@@ -1195,7 +1204,7 @@ export const GreetingsPanel = ({ onEditModeChange, onExitStudio }) => {
               key={action.id}
               type="button"
               className={`sb-slot sb-slot--ready ${isItPlaying ? 'is-playing' : ''} ${callerBlocked ? 'is-blocked' : ''} ${action.lang ? `sb-slot--${action.lang}` : ''}`}
-              onClick={() => playAudioBlock(activeKey, !testMode, { bypassGate: false })}
+              onClick={() => playAudioBlock(activeKey, !localOnlyPlayback, { bypassGate: false })}
               style={{ backgroundImage: bgImage !== 'none' ? bgImage : undefined }}
               title={
                 callerBlocked

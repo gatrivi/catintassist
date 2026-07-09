@@ -3,6 +3,8 @@ import { useAudioSettings } from '../contexts/AudioSettingsContext';
 import { bindAudioToSink, primePlaybackElements } from '../utils/audioRoute';
 import { readRouteModePreference, ROUTE_MODE } from '../utils/audioRoutePassthrough';
 import { logRouteEvent, ROUTE_EVENT } from '../utils/routeDiagnostics';
+import { readMicTestMode } from '../utils/micMode';
+import { isLocalOnlyPlayback } from '../utils/audioSelfTest';
 
 export const useTTS = () => {
   const [isPlaying, setIsPlaying] = useState(false);
@@ -42,14 +44,21 @@ export const useTTS = () => {
     stopTTS();
     
     setIsPlaying(true);
+    const localOnly = isLocalOnlyPlayback(readMicTestMode());
+
     try {
       let audioUrl = preloadedAudioUrl;
       if (!audioUrl) {
         audioUrl = await prefetchTTS(text, lang);
       }
       if (!audioUrl) {
-        // FALLBACK: Browser Speech Synthesis
+        // FALLBACK: Browser Speech Synthesis — always local speakers
         console.log("Using browser synthesis fallback...");
+        logRouteEvent(ROUTE_EVENT.PLAY_START, {
+          clipKey: 'tts',
+          routeMode: localOnly ? 'local_speakers' : 'speech_synthesis',
+          micTestMode: localOnly,
+        });
         const utterance = new SpeechSynthesisUtterance(text);
         utterance.lang = lang === 'es' ? 'es-ES' : 'en-US';
         utterance.rate = 1.1;
@@ -62,9 +71,29 @@ export const useTTS = () => {
       setPlayingUrl(audioUrl);
       
       const audioLocal = new Audio(audioUrl);
+      primePlaybackElements(audioLocal, null);
+      activeAudioLocalRef.current = audioLocal;
+      audioLocal.volume = localVolume;
+      audioLocal.src = audioUrl;
+
+      if (localOnly) {
+        logRouteEvent(ROUTE_EVENT.PLAY_START, {
+          clipKey: 'tts',
+          routeMode: 'local_speakers',
+          micTestMode: true,
+        });
+        audioLocal.onended = () => {
+          setIsPlaying(false);
+          setPlayingUrl(null);
+          activeAudioLocalRef.current = null;
+          logRouteEvent(ROUTE_EVENT.PLAY_END, { clipKey: 'tts', micTestMode: true });
+        };
+        await audioLocal.play();
+        return;
+      }
+
       const audioSink = new Audio(audioUrl);
       primePlaybackElements(audioLocal, audioSink);
-      activeAudioLocalRef.current = audioLocal;
       activeAudioSinkRef.current = audioSink;
 
       const routeMode = readRouteModePreference();
@@ -93,8 +122,6 @@ export const useTTS = () => {
         setSinkPlaybackActive(true);
         audioSink.src = audioUrl;
       }
-
-      audioLocal.src = audioUrl;
       
       const ttsTimer = setInterval(() => {
         if (!activeAudioLocalRef.current) {

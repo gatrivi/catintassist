@@ -100,7 +100,6 @@ const Dashboard = () => {
     clearZombieState,
     callFocusMode,
     stopBreak,
-    isToolbarVisible,
     autoAttachEnabled,
   } = useSession();
   const { playCoin } = useProgressiveAudio();
@@ -529,6 +528,7 @@ const Dashboard = () => {
     isBreakActive,
     isZombieCall,
     audioAttached,
+    connectionState,
     startRecordingFresh,
     autoAttachEnabled,
   ]);
@@ -835,6 +835,12 @@ const Dashboard = () => {
           audioAttached={audioAttached}
           micTestMode={micTestMode}
           connectionState={connectionState}
+          connectionMessage={connectionMessage}
+          connectProgress={connectProgress}
+          tabStreamReady={tabStreamReady}
+          isZombieCall={isZombieCall}
+          isBreakActive={isBreakActive}
+          settingsOpen={settingsOpen}
           notesOpen={isNotesOpen}
           notesPanel={renderNotesPanel()}
         />
@@ -847,6 +853,7 @@ const Dashboard = () => {
             data-guide="soundboard-lab"
           >
             <GreetingsPanel
+              micTestMode={micTestMode}
               onEditModeChange={setIsEditingBg}
               onExitStudio={exitSoundboardStudio}
             />
@@ -857,7 +864,7 @@ const Dashboard = () => {
 
       {(isActive || isZombieCall || hipaaGraceActive) && (
         <main id="main-transcript" className={`main-content ${isNotesOpen ? "notes-open" : ""}`}>
-          {isActive && <OnCallSoundboardStrip />}
+          {isActive && <OnCallSoundboardStrip micTestMode={micTestMode} />}
           <div className="transcription-pane" data-guide="transcript">
             <TranscriptionBoard
               captions={captions}

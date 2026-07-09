@@ -34,6 +34,7 @@ Press the **red stop button** when the call ends.
 
 1. Tap the **mic button** (🎤) next to the green button.
 2. Then press **"Click to connect tab"** — it will use your microphone instead.
+3. Greetings and TTS play on **your speaker** (not to the patient). Full detail: [`mic-mode-phone-assistant.md`](mic-mode-phone-assistant.md).
 
 ---
 
