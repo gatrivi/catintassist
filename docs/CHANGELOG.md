@@ -4,6 +4,12 @@
 
 ---
 
+## v4.84.0 — Stable transcript display
+- Live STT source: no ScrambleText; single `StableLiveTranscriptText` path (committed prefix + uncertain tail)
+- Continuity keys by turnId so live id flips do not remount readable text
+- Sealed bubbles: no typewriter/scramble; translation column isolated from source reflow
+- Helpers/tests: `stableLiveTranscript.js`
+
 ## v4.83.1 — Phase 0 viewport / Azure blockers
 - Azure status: missing / unauthorized·key-region mismatch / error / ok (success-only) / paused; fallback-chain banner
 - Live bubble height: anti-jitter only; release on shrink/seal/split (no historic max slab)

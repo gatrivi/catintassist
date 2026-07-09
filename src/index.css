@@ -4405,6 +4405,30 @@ body:has(.app-container[data-call-mode="true"]) .element-hint-panel {
   contain: layout style;
 }
 
+/* v4.84: translation reflow must not shove source while reading */
+.translated-bubble-row.is-live-source .bubble-col-source {
+  align-self: start;
+}
+.translated-bubble-row.is-live-source .bubble-col-translation {
+  align-self: start;
+  min-height: 1.25em;
+}
+.translated-bubble-row.is-live-source .bubble-line-translation {
+  min-height: 1.25em;
+}
+
+.stable-live-transcript {
+  display: inline;
+}
+.stable-live-committed {
+  display: inline;
+  color: inherit;
+}
+.stable-live-tail {
+  display: inline;
+  color: rgba(226, 232, 240, 0.92);
+}
+
 .bubble-col-translation {
   text-align: left;
 }

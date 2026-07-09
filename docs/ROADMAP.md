@@ -40,6 +40,7 @@ Prod verification checklist:
 - [x] Translation reliability harness — applicator + fixtures + sealed IDB ([`development/translation-reliability-harness.md`](development/translation-reliability-harness.md)) (v4.82.0)
 - [x] Phase 0 Smoke Dashboard — operator checklist + live probes ([`development/phase0-smoke-dashboard.md`](development/phase0-smoke-dashboard.md)) (v4.83.0) — **marks still open until you smoke the real stack**
 - [x] v4.83.1 viewport blockers — Azure status, live height unlock, soundboard full-width, one STT rail
+- [x] v4.84.0 stable transcript display — no live scramble; continuity keys; tail-only updates
 
 **Code:** [`useTranslate.js`](../src/hooks/useTranslate.js) · [`useDeepgram.js`](../src/hooks/useDeepgram.js) · [`sensitiveDataProtector.js`](../src/utils/sensitiveDataProtector.js) · [`translationApplicator.js`](../src/utils/translationApplicator.js)
 

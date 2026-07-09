@@ -12,6 +12,8 @@ import {
   NUMBER_HIGHLIGHT_REGEX,
 } from '../utils/sensitiveDataProtector';
 import { ScrambleText } from './ScrambleText';
+import { StableLiveTranscriptText } from './StableLiveTranscriptText';
+import { buildCaptionContinuityKeys } from '../utils/stableLiveTranscript';
 import { alignWordConfidence, confidenceVisualFor } from '../utils/wordConfidenceAlign';
 import { NewcomerIdleGuide } from './NewcomerIdleGuide';
 import { isNewcomerGuideDismissed } from '../utils/newcomerGuide';
@@ -415,6 +417,7 @@ const TranslatedBubble = ({
   onEditTranslation,
   canEdit = true,
   correctionsRev = 0,
+  continuityKey = '',
 }) => {
   const { translationMood } = useSession();
   const displaySourceText = useMemo(() => {
@@ -491,32 +494,44 @@ const TranslatedBubble = ({
     protectionsActive && normalizeLang(lang) === 'en';
   const targetUsesNumberWords =
     protectionsActive && normalizeLang(targetLang) === 'en';
-  const sourceScramble = !isFinal;
-  const targetScramble = !isFinal;
+  // v4.84: never scramble live STT source; sealed source stays plain (no typewriter).
+  const sourceScramble = false;
+  const targetScramble = false;
   const translationFailed =
     engineStatus === 'ready' && !translation?.trim() && translationMeta?.quality === 'failed';
   const translationTitle = translationFailed
     ? 'Translation failed — check Settings → Translation for engine status'
     : undefined;
+  const useStableLiveSource = !isFinal;
 
   return (
-    <div className={`translated-bubble-row${reverse ? ' is-reverse' : ''}${userCorrected || userTranslationOverride ? ' is-user-corrected' : ''}`}>
+    <div className={`translated-bubble-row${reverse ? ' is-reverse' : ''}${userCorrected || userTranslationOverride ? ' is-user-corrected' : ''}${useStableLiveSource ? ' is-live-source' : ' is-sealed-source'}`}>
       <div
         className={`bubble-col bubble-col-source${showEdit ? ' bubble-col--editable' : ''}`}
         style={{ textAlign: reverse ? 'right' : 'left', position: 'relative' }}
         onDoubleClick={showEdit ? openSourceEdit : undefined}
       >
         <div className="bubble-line" style={{ color: transcriptColor }}>
-          <MemoInteractiveText
-            text={displaySourceText}
-            scramble={sourceScramble}
-            applyNumberWords={sourceUsesNumberWords}
-            lang={lang}
-            protectionsActive={protectionsActive}
-            tailPreviewText={tailPreviewText}
-            wordConfidence={wordConfidence}
-            isFinal={isFinal}
-          />
+          {useStableLiveSource ? (
+            <StableLiveTranscriptText
+              text={displaySourceText}
+              lang={lang}
+              applyNumberWords={sourceUsesNumberWords}
+              protectionsActive={protectionsActive}
+              continuityKey={continuityKey || id}
+            />
+          ) : (
+            <MemoInteractiveText
+              text={displaySourceText}
+              scramble={sourceScramble}
+              applyNumberWords={sourceUsesNumberWords}
+              lang={lang}
+              protectionsActive={protectionsActive}
+              tailPreviewText={null}
+              wordConfidence={wordConfidence}
+              isFinal={isFinal}
+            />
+          )}
         </div>
         {showEdit && (
           <button
@@ -616,6 +631,7 @@ const translatedBubblePropsEqual = (prev, next) =>
   prev.onPersistTranslation === next.onPersistTranslation &&
   prev.canEdit === next.canEdit &&
   prev.correctionsRev === next.correctionsRev &&
+  prev.continuityKey === next.continuityKey &&
   prev.languagePair?.left === next.languagePair?.left &&
   prev.languagePair?.right === next.languagePair?.right;
 
@@ -894,15 +910,10 @@ export const TranscriptionBoard = ({
   }, []);
 
   const pinnedIds = pinnedCaptions.map((p) => p.id);
-  const captionRenderKeys = useMemo(() => {
-    const seen = new Map();
-    return captions.map((cap, i) => {
-      const base = cap?.id || `caption-${i}`;
-      const n = seen.get(base) || 0;
-      seen.set(base, n + 1);
-      return n === 0 ? base : `${base}-renderdup${n}`;
-    });
-  }, [captions]);
+  const captionRenderKeys = useMemo(
+    () => buildCaptionContinuityKeys(captions),
+    [captions],
+  );
   const lastAudioChunkAt = connectProgress?.lastAudioChunkAt || 0;
   const showSttSoundbar = connectionState === 'connected';
   const audioHot = lastAudioChunkAt > 0 && sttNow - lastAudioChunkAt < 1400;
@@ -1234,7 +1245,7 @@ export const TranscriptionBoard = ({
                   isPinned={false} onTogglePin={() => togglePin(cap)}
                   forceTranslateKey={translationBumps[cap.id] ?? 0}
                   onManualRetranslate={() => bumpManualRetranslate(cap)}
-                  tailPreviewText={cap.tailPreviewText || null}
+                  tailPreviewText={null}
                   isFinal={cap.isFinal !== false}
                   allowAutoRetranslate={i >= captions.length - 2}
                   languagePair={languagePair}
@@ -1242,6 +1253,7 @@ export const TranscriptionBoard = ({
                   mockTranslation={cap._devMockTranslation}
                   userCorrected={Boolean(cap.userCorrected)}
                   userTranslationOverride={cap.userTranslationOverride || null}
+                  continuityKey={captionRenderKeys[i]}
                   persistedTranslations={cap.translations || null}
                   onPersistTranslation={persistCaptionTranslation}
                   canEdit={!isLive}
