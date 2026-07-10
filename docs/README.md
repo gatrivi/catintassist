@@ -3,6 +3,10 @@
 This is the single source of truth for *documentation + onboarding*.
 
 ## What's new
+- **v4.84.24** — Sticky bottom transcript follow (default ON) — [`CHANGELOG.md`](CHANGELOG.md)
+- **v4.84.23** — Connect button: mode SVG + robot when Deepgram ready — [`CHANGELOG.md`](CHANGELOG.md)
+- **v4.84.22** — STT toggle 🔖 tab · 🎧 VB · 🎤 mic — [`CHANGELOG.md`](CHANGELOG.md)
+- **v4.84.21** — Off-call tips respect tab / VB / mic mode — [`CHANGELOG.md`](CHANGELOG.md)
 - **v4.84.20** — Bilingual release-notes modal (ES default) + VB-Cable route UX — [`onboarding/release-notes.md`](onboarding/release-notes.md)
 - **v4.84.19** — VB-Cable I/O strip (Tab / VB toggle, → Tab fallback) — [`development/audio-routing-no-spof.md`](development/audio-routing-no-spof.md)
 - **v4.84.8** — Name chips ES cues + accent stem — [`development/sensitive-data-approach.md`](development/sensitive-data-approach.md) §Phase A+

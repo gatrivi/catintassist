@@ -855,10 +855,12 @@ const Dashboard = () => {
         <OffCallWorkspace
           audioAttached={audioAttached}
           micTestMode={micTestMode}
+          audioSourceMode={configuredAudioSourceMode}
           connectionState={connectionState}
           connectionMessage={connectionMessage}
           connectProgress={connectProgress}
           tabStreamReady={tabStreamReady}
+          cableStreamReady={cableStreamReady}
           isZombieCall={isZombieCall}
           isBreakActive={isBreakActive}
           settingsOpen={settingsOpen}

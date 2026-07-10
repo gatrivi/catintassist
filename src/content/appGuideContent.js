@@ -29,15 +29,15 @@ const STEP_DEFS = [
   },
   {
     id: 'mic',
-    target: '[data-guide="mic-test"]',
+    target: '#audio-route-mic-mode-btn',
     viewAction: { workspace: 'scoreboard', closeSettings: true },
     en: {
-      title: '2 · Mic test mode',
-      body: '🎤 toggles mic mode when you have no tab to share (phone / mic-only). Orange = mic ON.',
+      title: '2 · STT route (🔖 · 🎧 · 🎤)',
+      body: 'I/O strip toggle: 🔖 tab share · 🎧 VB-Cable · 🎤 mic (phone / no tab). Active mode highlights. Hotkey M = mic.',
     },
     es: {
-      title: '2 · Modo micrófono',
-      body: '🎤 activa modo mic si no hay tab (teléfono / solo mic). Naranja = mic ON.',
+      title: '2 · Ruta STT (🔖 · 🎧 · 🎤)',
+      body: 'Barra I/O: 🔖 pestaña · 🎧 VB-Cable · 🎤 mic (teléfono / sin tab). El modo activo se resalta. Tecla M = mic.',
     },
   },
   {

@@ -4,6 +4,23 @@
 
 ---
 
+## v4.84.24 — Sticky bottom transcript follow
+- Default-on **⬇ sticky** toggle; follows live bubble growth (was only new/final)
+- Scroll-up still pauses; re-enable via toggle
+
+## v4.84.23 — Connect button mode + robot icons
+- Green Connect shows STT mode SVG (bookmark / headset / mic) matching I/O strip
+- Robot SVG after mode icon when Deepgram key is unlocked/available
+
+## v4.84.22 — STT route toggle: 🔖 tab · 🎧 VB · 🎤 mic
+- Mic joined Tab/VB in the I/O strip 3-way toggle (header mic button removed)
+- Emoji labels; picking one clears the others; hotkey M still toggles mic
+
+## v4.84.21 — Off-call tips respect audio mode
+- Idle pane / status / scoreboard tips check tab vs VB-Cable vs mic — no more “Tab mode” copy while on VB
+- Mode-filtered rotating tips + checklist; newcomer guide step 1/2 matches mode
+- VB + mic stay separate (playback differs) but share “device input / no tab picker” tip framing
+
 ## v4.84.20 — Release notes modal (ES default) + VB-Cable shine
 - Bilingual what's-new modal on first load per version (`ReleaseNotesModal`, `src/content/releaseNotes.js`)
 - ES default, EN toggle; **Entendido** / **Ver después** (24h) / **No mostrar de nuevo**

@@ -46,6 +46,33 @@ export const MicIcon = (props) => (
   </Svg>
 );
 
+/** Tab-share STT (🔖) */
+export const BookmarkIcon = (props) => (
+  <Svg {...props}>
+    <path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z" />
+  </Svg>
+);
+
+/** VB-Cable STT (🎧) */
+export const HeadsetIcon = (props) => (
+  <Svg {...props}>
+    <path d="M3 18v-6a9 9 0 0 1 18 0v6" />
+    <path d="M21 19a2 2 0 0 1-2 2h-1a2 2 0 0 1-2-2v-3a2 2 0 0 1 2-2h3zM3 19a2 2 0 0 0 2 2h1a2 2 0 0 0 2-2v-3a2 2 0 0 0-2-2H3z" />
+  </Svg>
+);
+
+/** Interpreting / STT provider ready */
+export const RobotIcon = (props) => (
+  <Svg {...props}>
+    <rect x="5" y="9" width="14" height="10" rx="2" />
+    <path d="M12 3v4" />
+    <circle cx="12" cy="2.5" r="1" fill="currentColor" stroke="none" />
+    <circle cx="9" cy="13" r="1.25" fill="currentColor" stroke="none" />
+    <circle cx="15" cy="13" r="1.25" fill="currentColor" stroke="none" />
+    <path d="M9 17h6" />
+  </Svg>
+);
+
 export const TargetIcon = (props) => (
   <Svg {...props}>
     <circle cx="12" cy="12" r="10" />

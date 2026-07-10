@@ -16,7 +16,6 @@ import {
   GameIcon,
   HelpIcon,
   KeyIcon,
-  MicIcon,
   MoonIcon,
   NotesIcon,
   PauseIcon,
@@ -382,6 +381,9 @@ const SessionControlsSticky = React.memo(({
                 pendingDoubleTapTitle={pendingDoubleTapTitle}
                 singleTitle={connectSingleTitle}
                 doubleTitle={connectDoubleTitle}
+                micTestMode={micTestMode}
+                audioSourceMode={configuredAudioSourceMode}
+                providerReady={!apiKeyMissing && !vaultNeedsDecrypt}
               />
           ) : (
             <ElementHintTarget
@@ -702,28 +704,6 @@ const SessionControlsSticky = React.memo(({
             </ElementHintTarget>
           )}
 
-          {!isActive && (
-            <ElementHintTarget
-              elementId="header-mic-test-btn"
-              guideKey="mic-test"
-              heading="Mic test mode"
-              body="Mic ON: Connect uses your microphone (no tab picker). Mic OFF: Connect captures interpreter tab audio (Share audio)."
-              color="#94a3b8"
-            >
-              <button
-                id="header-mic-test-btn"
-                data-guide="mic-test"
-                type="button"
-                className={`header-chrome-btn${micTestMode ? ' is-on' : ''}`}
-                onClick={() => setMicTestMode?.(!micTestMode)}
-                title={micTestMode ? 'Mic ON — Connect uses microphone (no tab picker). Use this in Cursor Simple Browser — tab share needs Chrome/Edge.' : 'Mic OFF — Connect captures interpreter tab audio (Share audio). Needs Chrome/Edge — not Cursor Simple Browser.'}
-                aria-pressed={micTestMode}
-              >
-                <MicIcon size={14} />
-              </button>
-            </ElementHintTarget>
-          )}
-
           <ElementHintTarget
             elementId="header-key-vault-btn"
             heading="Deepgram key vault"
@@ -771,6 +751,7 @@ const SessionControlsSticky = React.memo(({
       {(!(isActive && !callModeExpanded) || isZombieCall || connectionState !== 'connected' || !audioAttached) && (
         <AudioRouteStatusBar
           micTestMode={micTestMode}
+          setMicTestMode={setMicTestMode}
           tabStreamReady={tabStreamReady}
           cableStreamReady={cableStreamReady}
           configuredAudioSourceMode={configuredAudioSourceMode}
@@ -1601,7 +1582,9 @@ export const DashboardHeader = ({
     isZombieCall,
     audioAttached,
     tabStreamReady,
+    cableStreamReady,
     micTestMode,
+    audioSourceMode: configuredAudioSourceMode,
   });
 
   const connectRequireDoubleTapIndicator = false;
@@ -1786,6 +1769,8 @@ export const DashboardHeader = ({
                     connectInHeader={offCallScoreboardView}
                     compactPane={offCallScoreboardView}
                     offCallStatusLabel={offCallStatusLabel}
+                    micTestMode={micTestMode}
+                    audioSourceMode={configuredAudioSourceMode}
                   />
                 </div>
 

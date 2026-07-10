@@ -3,10 +3,11 @@ import { AppGuideButton } from './AppGuide';
 import { SettingsButton } from './SettingsButton';
 import { GridIcon, SunIcon, CalendarIcon } from './HeaderIcons';
 import {
-  IDLE_CHECKLIST,
+  checklistForMode,
   IDLE_TIP_LEVEL_KEY,
   IDLE_TIP_SNOOZE_UNTIL_KEY,
-  IDLE_TIPS,
+  resolveIdleAudioMode,
+  tipsForMode,
 } from '../utils/offCallIdleMessages';
 import { ConnectionDiagnosticsBar } from './ConnectionDiagnosticsBar';
 import { StatNumber } from './StatNumber';
@@ -159,7 +160,12 @@ const DirectionalCue = ({
   connectInHeader = false,
   offCallStatusLabel = 'Ready',
   showConnectButton = true,
+  micTestMode = false,
+  audioSourceMode = 'tab',
 }) => {
+  const idleMode = resolveIdleAudioMode({ micTestMode, audioSourceMode });
+  const modeTips = tipsForMode(idleMode);
+  const modeChecklist = checklistForMode(idleMode);
   const [rotateTick, setRotateTick] = useState(0);
   useEffect(() => {
     const iv = setInterval(() => setRotateTick((n) => n + 1), 12000);
@@ -193,10 +199,10 @@ const DirectionalCue = ({
   const bucket = rotateTick % 3;
   const idleSecondary = (() => {
     if (bucket === 0) {
-      return { label: 'Tip', text: IDLE_TIPS[rotateTick % IDLE_TIPS.length], color: '#9dffed' };
+      return { label: 'Tip', text: modeTips[rotateTick % modeTips.length], color: '#9dffed' };
     }
     if (bucket === 1) {
-      return { label: 'Flow', text: IDLE_CHECKLIST[rotateTick % IDLE_CHECKLIST.length], color: '#a5f3fc' };
+      return { label: 'Flow', text: modeChecklist[rotateTick % modeChecklist.length], color: '#a5f3fc' };
     }
     const left = Math.max(0, Math.round(dailyGoal - totalDailyMins));
     const pace = pacePrediction?.label || '—';
@@ -250,10 +256,14 @@ const DirectionalCue = ({
     : apiKeyMissing
       ? 'Enter your Deepgram key in Settings (gear, top-right)'
       : audioAttached
-        ? 'Tab connected — press Start interpreting when the call begins'
+        ? idleMode === 'mic'
+          ? 'Mic connected — press Start interpreting when the call begins'
+          : idleMode === 'virtualCable'
+            ? 'VB connected — press Start interpreting when the call begins'
+            : 'Tab connected — press Start interpreting when the call begins'
         : idleMuted
           ? 'Ready — connect when you want'
-          : IDLE_TIPS[rotateTick % IDLE_TIPS.length];
+          : modeTips[rotateTick % modeTips.length];
 
   const connectLabel = isZombieCall
     ? 'Re-attach'
@@ -361,6 +371,9 @@ const DirectionalCue = ({
           onDouble={handleDouble}
           singleTitle="Press here to connect to another browser tab where a conversation to interpret is happening"
           doubleTitle="Pick a different browser tab"
+          micTestMode={micTestMode}
+          audioSourceMode={audioSourceMode}
+          providerReady={!apiKeyMissing}
         />
       )}
 
@@ -479,6 +492,8 @@ export const GameScoreboard = ({
   connectInHeader = false,
   compactPane = false,
   offCallStatusLabel = 'Ready',
+  micTestMode = false,
+  audioSourceMode = 'tab',
  }) => {
   useComponentVisibilityRefresh();
   const visCtx = { isActive, isZombieCall };
@@ -584,6 +599,8 @@ export const GameScoreboard = ({
             connectInHeader={connectInHeader}
             offCallStatusLabel={offCallStatusLabel}
             showConnectButton={showConnectButton}
+            micTestMode={micTestMode}
+            audioSourceMode={audioSourceMode}
           />
         )}
       </div>

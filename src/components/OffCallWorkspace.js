@@ -8,7 +8,7 @@ import {
 import { ConnectionDiagnosticsBar } from './ConnectionDiagnosticsBar';
 import {
   buildOffCallIdleDetail,
-  IDLE_CHECKLIST,
+  checklistForMode,
   pickRotatingAdvice,
 } from '../utils/offCallIdleMessages';
 import { needsUserSuppliedDeepgramKey } from '../utils/deepgramRuntimeKey';
@@ -17,10 +17,12 @@ import { needsUserSuppliedDeepgramKey } from '../utils/deepgramRuntimeKey';
 export const OffCallWorkspace = ({
   audioAttached = false,
   micTestMode = false,
+  audioSourceMode = 'tab',
   connectionState = 'disconnected',
   connectionMessage = '',
   connectProgress = {},
   tabStreamReady = false,
+  cableStreamReady = false,
   isZombieCall = false,
   isBreakActive = false,
   settingsOpen = false,
@@ -66,10 +68,14 @@ export const OffCallWorkspace = ({
     isZombieCall,
     audioAttached,
     tabStreamReady,
+    cableStreamReady,
     micTestMode,
+    audioSourceMode,
   });
 
-  const rotatingTip = pickRotatingAdvice(Date.now() + tipTick * 12000);
+  const idleMode = detail.mode || 'tab';
+  const rotatingTip = pickRotatingAdvice(Date.now() + tipTick * 12000, idleMode);
+  const checklist = checklistForMode(idleMode);
 
   return (
     <main id="interpret-root" className={`main-content view-interpret interpret-workspace${notesOpen ? ' notes-open' : ''}`}>
@@ -78,6 +84,7 @@ export const OffCallWorkspace = ({
           <NewcomerIdleGuide
             audioAttached={audioAttached}
             micTestMode={micTestMode}
+            audioSourceMode={audioSourceMode}
             connectionState={connectionState}
             isActive={false}
             onHideSession={() => setSessionHidden(true)}
@@ -92,7 +99,7 @@ export const OffCallWorkspace = ({
             )}
             {detail.showChecklist && (
               <ul className="interpret-pane-checklist">
-                {IDLE_CHECKLIST.map((item) => (
+                {checklist.map((item) => (
                   <li key={item}>{item}</li>
                 ))}
               </ul>

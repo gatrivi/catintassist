@@ -26,5 +26,25 @@ describe('ConnectInterpretButton', () => {
 
     expect(onSingle).toHaveBeenCalledTimes(1);
   });
+
+  test('shows mode icon + robot when provider ready', () => {
+    const { rerender } = render(
+      <ConnectInterpretButton audioMode="tab" providerReady label="Connect" />
+    );
+    let btn = screen.getByRole('button', { name: /connect/i });
+    expect(btn).toHaveAttribute('data-audio-mode', 'tab');
+    expect(btn).toHaveAttribute('data-provider-ready', '1');
+    expect(btn.querySelectorAll('svg')).toHaveLength(2);
+
+    rerender(<ConnectInterpretButton audioMode="virtualCable" providerReady label="Connect" />);
+    btn = screen.getByRole('button', { name: /connect/i });
+    expect(btn).toHaveAttribute('data-audio-mode', 'virtualCable');
+
+    rerender(<ConnectInterpretButton audioMode="mic" providerReady={false} label="Connect" />);
+    btn = screen.getByRole('button', { name: /connect/i });
+    expect(btn).toHaveAttribute('data-audio-mode', 'mic');
+    expect(btn).toHaveAttribute('data-provider-ready', '0');
+    expect(btn.querySelectorAll('svg')).toHaveLength(1);
+  });
 });
 

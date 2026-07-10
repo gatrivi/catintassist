@@ -17,6 +17,7 @@ import {
 export const NewcomerIdleGuide = ({
   audioAttached = false,
   micTestMode = false,
+  audioSourceMode = 'tab',
   connectionState = 'disconnected',
   isActive = false,
   onHideSession,
@@ -37,6 +38,67 @@ export const NewcomerIdleGuide = ({
   })();
   const step = isActive ? 3 : audioAttached ? 2 : 1;
   const connecting = connectionState === 'connecting';
+  const mode = micTestMode
+    ? 'mic'
+    : audioSourceMode === 'virtualCable'
+      ? 'virtualCable'
+      : 'tab';
+
+  const step1Body =
+    mode === 'mic'
+      ? (
+        <>
+          Press the green button above. It says{' '}
+          <em>&quot;Connect &amp; start&quot;</em>.
+          <br />
+          Mic mode uses your microphone — no tab picker. Interpreting begins automatically.
+        </>
+      )
+      : mode === 'virtualCable'
+        ? (
+          <>
+            Press the green button above. It says{' '}
+            <em>&quot;Connect &amp; start&quot;</em>.
+            <br />
+            VB-Cable mode attaches <strong>CABLE Output</strong> for STT — no tab picker.
+          </>
+        )
+        : (
+          <>
+            Press the green button above. It says{' '}
+            <em>&quot;Connect &amp; start&quot;</em>.
+            <br />
+            Pick the browser tab where the conversation is happening. Check{' '}
+            <strong>Share audio</strong> if the browser asks — interpreting begins automatically.
+          </>
+        );
+
+  const step2Body =
+    mode === 'mic'
+      ? 'After STOP, the mic stays connected. Press the green button once to start the next call.'
+      : mode === 'virtualCable'
+        ? 'After STOP, VB-Cable stays connected. Press the green button once to start the next call.'
+        : 'After STOP, tab audio stays connected. Press the green button once to start the next call.';
+
+  const modeHint =
+    mode === 'mic'
+      ? (
+        <>
+          <strong>Desktop production?</strong> Turn 🎤 off, then use 🔖 tab or 🎧 VB in the I/O strip.
+        </>
+      )
+      : mode === 'virtualCable'
+        ? (
+          <>
+            <strong>Cable failing?</strong> I/O strip → 🔖 for fallback, or 🎤 for phone/local mic test.
+          </>
+        )
+        : (
+          <>
+            <strong>On a phone or no tab to share?</strong> Tap 🎤 in the I/O strip (🔖 · 🎧 · 🎤), then Connect.
+            {' '}Or switch to 🎧 VB-Cable.
+          </>
+        );
 
   const stepStyle = (n) => ({
     padding: '0.5rem 0.65rem',
@@ -135,24 +197,19 @@ export const NewcomerIdleGuide = ({
         <div style={stepStyle(1)}>
           <strong>Step 1 — Connect &amp; start</strong>
           <br />
-          Press the green button above. It says{' '}
-          <em>&quot;Connect &amp; start&quot;</em>.
-          <br />
-          Pick the browser tab where the conversation is happening. Check{' '}
-          <strong>Share audio</strong> if the browser asks — interpreting begins automatically.
+          {step1Body}
         </div>
 
         <div style={stepStyle(2)}>
           <strong>Step 2 — Next call</strong>
           <br />
-          After STOP, tab audio stays connected. Press the green button once to start the next call.
+          {step2Body}
           {connecting && (
             <span style={{ display: 'block', marginTop: 4, color: '#fbbf24' }}>
               Connecting now…
             </span>
           )}
         </div>
-
         <div style={stepStyle(3)}>
           <strong>Step 3 — Stop when done</strong>
           <br />
@@ -165,16 +222,15 @@ export const NewcomerIdleGuide = ({
           marginTop: '0.85rem',
           padding: '0.5rem 0.65rem',
           borderRadius: 6,
-          border: micTestMode ? '1px solid rgba(245,158,11,0.5)' : '1px solid rgba(255,255,255,0.06)',
-          background: micTestMode ? 'rgba(245,158,11,0.08)' : 'rgba(255,255,255,0.02)',
+          border: micTestMode || mode === 'virtualCable' ? '1px solid rgba(245,158,11,0.5)' : '1px solid rgba(255,255,255,0.06)',
+          background: micTestMode || mode === 'virtualCable' ? 'rgba(245,158,11,0.08)' : 'rgba(255,255,255,0.02)',
           fontSize: '0.72rem',
           color: 'rgba(255,255,255,0.6)',
           lineHeight: 1.45,
         }}
       >
-        <strong>On a phone or no tab to share?</strong> Turn on the 🎤 mic button (header, right side), then Connect.
+        {modeHint}
       </div>
-
       <div style={{ display: 'flex', gap: '0.4rem', marginTop: '0.75rem', flexWrap: 'wrap' }}>
         <button
           type="button"

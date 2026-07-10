@@ -25,6 +25,153 @@ import { APP_VERSION } from '../constants/version';
 /** Newest first. Only the entry matching APP_VERSION is shown on load. */
 export const RELEASE_NOTES_CATALOG = [
   {
+    version: '4.84.24',
+    id: 'sticky-bottom-v1',
+    highlightElementIds: ['sticky-bottom-toggle'],
+    es: {
+      title: 'Sticky bottom — seguir la última línea',
+      intro:
+        'El panel de transcripción sigue el texto en vivo por defecto. Botón ⬇ sticky para pausar/reanudar.',
+      sections: [
+        {
+          heading: 'Qué cambió',
+          bullets: [
+            'Antes solo hacía scroll en burbujas nuevas/finales — el texto en vivo se perdía abajo.',
+            'Sticky ON por defecto; si subís a leer, se pausa; tocá ⬇ sticky para volver.',
+          ],
+        },
+      ],
+    },
+    en: {
+      title: 'Sticky bottom — follow the latest line',
+      intro:
+        'Transcript pane follows live text by default. ⬇ sticky toggles pause/resume.',
+      sections: [
+        {
+          heading: 'What changed',
+          bullets: [
+            'Before: scroll only on new/final bubbles — live growth scrolled out of view.',
+            'Sticky ON by default; scrolling up pauses; tap ⬇ sticky to re-follow.',
+          ],
+        },
+      ],
+    },
+  },
+  {
+    version: '4.84.23',
+    id: 'connect-btn-mode-robot-v1',
+    highlightElementIds: ['header-connect-btn'],
+    es: {
+      title: 'Connect: icono de modo + robot',
+      intro:
+        'El botón verde muestra el modo STT (marcador / auriculares / mic) y un robot cuando Deepgram está listo.',
+      sections: [
+        {
+          heading: 'Iconos',
+          bullets: [
+            'Marcador = pestaña · Auriculares = VB · Mic = micrófono',
+            'Robot = clave Deepgram desbloqueada / disponible',
+          ],
+        },
+      ],
+    },
+    en: {
+      title: 'Connect: mode + robot icons',
+      intro:
+        'Green Connect shows STT mode (bookmark / headset / mic) and a robot when Deepgram is ready.',
+      sections: [
+        {
+          heading: 'Icons',
+          bullets: [
+            'Bookmark = tab · Headset = VB · Mic = microphone',
+            'Robot = Deepgram key unlocked / available',
+          ],
+        },
+      ],
+    },
+  },
+  {
+    version: '4.84.22',
+    id: 'stt-route-three-way-v1',
+    highlightElementIds: [
+      'audio-route-tab-mode-btn',
+      'audio-route-cable-mode-btn',
+      'audio-route-mic-mode-btn',
+    ],
+    es: {
+      title: 'Ruta STT: 🔖 · 🎧 · 🎤',
+      intro:
+        'Micrófono ahora vive en el mismo interruptor que Tab y VB-Cable. Un toque elige el modo; los otros se apagan.',
+      sections: [
+        {
+          heading: 'Barra I/O',
+          bullets: [
+            '🔖 — compartir pestaña del navegador',
+            '🎧 — VB-Cable (CABLE Output → Deepgram)',
+            '🎤 — micrófono del dispositivo (teléfono / sin tab)',
+            'Tecla M sigue alternando mic. El botón 🎤 del encabezado se quitó.',
+          ],
+        },
+      ],
+    },
+    en: {
+      title: 'STT route: 🔖 · 🎧 · 🎤',
+      intro:
+        'Mic now lives in the same toggle as Tab and VB-Cable. One tap picks the mode; the others clear.',
+      sections: [
+        {
+          heading: 'I/O strip',
+          bullets: [
+            '🔖 — browser tab share',
+            '🎧 — VB-Cable (CABLE Output → Deepgram)',
+            '🎤 — device mic (phone / no tab)',
+            'Hotkey M still toggles mic. Header mic button removed.',
+          ],
+        },
+      ],
+    },
+  },
+  {
+    version: '4.84.21',
+    id: 'off-call-tips-audio-mode-v1',
+    highlightElementIds: [
+      'audio-route-cable-mode-btn',
+      'audio-route-tab-mode-btn',
+    ],
+    es: {
+      title: 'Consejos off-call según modo de audio',
+      intro:
+        'El panel en espera ya no dice “modo pestaña” si estás en VB-Cable o micrófono. Tips y checklist siguen el modo activo.',
+      sections: [
+        {
+          heading: 'Qué cambia',
+          bullets: [
+            'VB Cable → tips de CABLE Output (sin selector de pestaña).',
+            '🎤 Mic → tips de micrófono / altavoces locales.',
+            'Tab → tips de compartir pestaña (como antes).',
+            'VB y mic siguen separados (ruta de reproducción distinta), pero ambos son “entrada de dispositivo”.',
+          ],
+        },
+      ],
+    },
+    en: {
+      title: 'Off-call tips follow audio mode',
+      intro:
+        'Idle pane no longer says “Tab mode” while you are on VB-Cable or mic. Tips and checklist match the active mode.',
+      sections: [
+        {
+          heading: 'What changed',
+          bullets: [
+            'VB Cable → CABLE Output tips (no tab picker).',
+            '🎤 Mic → microphone / local-speaker tips.',
+            'Tab → tab-share tips (unchanged).',
+            'VB and mic stay separate (playback differs) but share “device input” framing.',
+          ],
+        },
+      ],
+    },
+  },
+  {
     version: '4.84.20',
     id: 'vb-cable-route-ux-v1',
     highlightElementIds: [

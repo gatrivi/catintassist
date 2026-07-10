@@ -3,7 +3,8 @@
 Use CatIntAssist on a **phone or tablet** (or Cursor preview) when you cannot share a browser tab. Mic mode routes **STT from your mic** and plays **soundboard + TTS on local speakers** — nothing through VB-Cable.
 
 ## Toggle
-- Header **🎤** (right cluster) — orange = mic mode ON
+- I/O strip **🎤** (with 🔖 tab · 🎧 VB) — purple highlight = mic ON
+- Hotkey **M** still toggles mic
 - Persists: `localStorage` key `catint_mic_test_mode_v1`
 
 ## Audio paths

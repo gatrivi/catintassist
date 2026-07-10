@@ -672,6 +672,16 @@ export const TranscriptionBoard = ({
   const isScrolledUpRef = useRef(false);
   const scrollTimeoutRef = useRef(null);
   const lastScrollKeyRef = useRef('');
+  const STICKY_BOTTOM_KEY = 'catint_sticky_bottom_v1';
+  const [stickyBottom, setStickyBottom] = useState(() => {
+    try {
+      return localStorage.getItem(STICKY_BOTTOM_KEY) !== '0';
+    } catch {
+      return true;
+    }
+  });
+  const stickyBottomRef = useRef(stickyBottom);
+  stickyBottomRef.current = stickyBottom;
   const ttsMode = 'manual';
   const [pinnedCaptions, setPinnedCaptions] = useState(() => {
     try {
@@ -986,22 +996,43 @@ export const TranscriptionBoard = ({
     const count = captions.length;
     const lastId = lastCap?.id || '';
     const isFinal = lastCap?.isFinal !== false;
-    const scrollKey = `${count}|${lastId}|${isFinal ? 'final' : 'live'}`;
+    // Include live text length so sticky follows mid-bubble growth (was missing → missed latest).
+    const liveLen = !isFinal ? String(lastCap?.text || '').length : 0;
+    const scrollKey = `${count}|${lastId}|${isFinal ? 'final' : 'live'}|${liveLen}`;
 
     const prev = lastScrollKeyRef.current;
     const [prevCountStr, prevId, prevFinalFlag] = prev.split('|');
     const prevCount = parseInt(prevCountStr || '0', 10);
     const countIncreased = count > prevCount;
     const becameFinal = prevFinalFlag === 'live' && isFinal && prevId === lastId;
+    const liveGrew = !isFinal && prev !== scrollKey;
 
-    if (!isScrolledUpRef.current && (countIncreased || becameFinal)) {
+    if (
+      stickyBottomRef.current &&
+      !isScrolledUpRef.current &&
+      (countIncreased || becameFinal || liveGrew)
+    ) {
       bottomRef.current?.scrollIntoView({ behavior: 'auto' });
     }
     lastScrollKeyRef.current = scrollKey;
-
   }, [captions]);
 
+  const toggleStickyBottom = () => {
+    setStickyBottom((prev) => {
+      const next = !prev;
+      try {
+        localStorage.setItem(STICKY_BOTTOM_KEY, next ? '1' : '0');
+      } catch (_) {}
+      if (next) {
+        isScrolledUpRef.current = false;
+        bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
+      }
+      return next;
+    });
+  };
+
   const resetScrollTimer = () => {
+    if (!stickyBottomRef.current) return;
     if (scrollTimeoutRef.current) clearTimeout(scrollTimeoutRef.current);
     scrollTimeoutRef.current = setTimeout(() => {
       isScrolledUpRef.current = false;
@@ -1308,6 +1339,17 @@ export const TranscriptionBoard = ({
         })}
         <div id="scroll-bottom-anchor" ref={bottomRef} style={{ height: '22px', flexShrink: 0, pointerEvents: 'none' }} />
       </div>
+
+      <button
+        type="button"
+        id="sticky-bottom-toggle"
+        className={`sticky-bottom-toggle${stickyBottom ? ' is-on' : ''}`}
+        onClick={toggleStickyBottom}
+        aria-pressed={stickyBottom}
+        title={stickyBottom ? 'Sticky bottom ON — following latest transcript (click to pause)' : 'Sticky bottom OFF — click to follow latest'}
+      >
+        {stickyBottom ? '⬇ sticky' : '⬇ off'}
+      </button>
 
       {showSttSoundbar && (
         <div className={`stt-process-rail stt-process-rail--bottom${audioHot ? ' is-audio-hot' : ''}`} aria-live="polite">

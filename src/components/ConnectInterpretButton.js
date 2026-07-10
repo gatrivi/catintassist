@@ -1,9 +1,15 @@
 import React, { useEffect, useMemo, useRef } from 'react';
-import { PlayIcon } from './HeaderWidgets';
-import { MicIcon } from './HeaderIcons';
+import { BookmarkIcon, HeadsetIcon, MicIcon, RobotIcon } from './HeaderIcons';
 import { ElementHintTarget } from './ElementHint';
+import { resolveIdleAudioMode } from '../utils/offCallIdleMessages';
 
 const DOUBLE_TAP_MS = 280;
+
+const modeIconFor = (mode) => {
+  if (mode === 'mic') return MicIcon;
+  if (mode === 'virtualCable') return HeadsetIcon;
+  return BookmarkIcon;
+};
 
 export const ConnectInterpretButton = ({
   onSingle,
@@ -17,6 +23,12 @@ export const ConnectInterpretButton = ({
   requireDoubleTapIndicator = false,
   onArmDoubleTap,
   pendingDoubleTapTitle = 'Tap again to start',
+  /** 'tab' | 'virtualCable' | 'mic' — drives leading icon */
+  audioMode,
+  micTestMode = false,
+  audioSourceMode = 'tab',
+  /** Deepgram / STT provider unlocked & available → show robot */
+  providerReady = false,
 }) => {
   const timeoutRef = useRef(null);
   const lastClickAtRef = useRef(0);
@@ -66,9 +78,9 @@ export const ConnectInterpretButton = ({
         : `${singleTitle || label} (double tap: ${doubleTitle})`)
     : (singleTitle || label);
 
-  const lower = String(label || singleTitle || doubleTitle || '').toLowerCase();
-  const isMicConnect = lower.includes('microphon');
-  const ButtonIcon = isMicConnect ? MicIcon : PlayIcon;
+  const mode = audioMode || resolveIdleAudioMode({ micTestMode, audioSourceMode });
+  const ModeIcon = modeIconFor(mode);
+  const iconSize = size === 'idle' ? 16 : 14;
 
   return (
     <ElementHintTarget
@@ -82,6 +94,8 @@ export const ConnectInterpretButton = ({
       type="button"
       id="header-connect-btn"
       data-guide="connect"
+      data-audio-mode={mode}
+      data-provider-ready={providerReady ? '1' : '0'}
       onClick={handleClick}
       disabled={disabled}
       className={`connect-interpret-btn btn-primaryish header-accent-connect ${size === 'idle' ? 'connect-interpret-btn--idle' : ''} ${flash || isPendingDoubleTap ? 'connect-interpret-flash' : ''}`}
@@ -93,13 +107,14 @@ export const ConnectInterpretButton = ({
         : (singleTitle || label)}
       aria-label={singleTitle || label}
     >
-      <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem' }}>
-        <span aria-hidden style={{ display: 'inline-flex', transform: 'translateY(-0.5px)' }}>
-          <ButtonIcon />
-        </span>
+      <span
+        style={{ display: 'inline-flex', alignItems: 'center', gap: '0.28rem' }}
+        aria-hidden
+      >
+        <ModeIcon size={iconSize} />
+        {providerReady ? <RobotIcon size={iconSize} /> : null}
       </span>
     </button>
     </ElementHintTarget>
   );
 };
-
