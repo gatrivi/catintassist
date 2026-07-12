@@ -14,6 +14,7 @@ import { isTranslationPassthrough } from './translationQuality';
 
 describe('translationEngines v4.54', () => {
   beforeEach(() => {
+    localStorage.clear();
     sessionStorage.clear();
     clearSessionEngineBlacklist();
   });
@@ -76,6 +77,7 @@ describe('translationEngines v4.54', () => {
   });
 
   test('getAzureStatusLabel: ok only after success', async () => {
+    localStorage.setItem('AZURE_TRANSLATOR_KEY', 'test-key');
     global.fetch = jest.fn().mockResolvedValue({
       ok: true,
       json: async () => [{ translations: [{ text: 'Hola', to: 'es' }] }],
@@ -90,6 +92,7 @@ describe('translationEngines v4.54', () => {
   });
 
   test('azure 401 records unauthorized and fallback-only', async () => {
+    localStorage.setItem('AZURE_TRANSLATOR_KEY', 'bad-key');
     global.fetch = jest.fn().mockResolvedValue({
       ok: false,
       status: 401,
