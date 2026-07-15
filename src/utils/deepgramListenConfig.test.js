@@ -4,6 +4,7 @@ import {
   getInterimFlushMs,
   getInterimProcessThrottleMs,
   getMediaRecorderTimeslice,
+  getDeepgramModel,
   loadSttLatencyMode,
   saveSttLatencyMode,
   toggleSttLatencyMode,
@@ -20,10 +21,20 @@ describe('deepgramListenConfig', () => {
 
   test('buildListenUrl includes words and mode endpointing', () => {
     const fast = buildListenUrl('en', 'fast');
+    expect(fast).toContain('model=nova-3-general');
+    expect(fast).toContain('numerals=true');
+    expect(fast).toContain('filler_words=true');
     expect(fast).toContain('words=true');
     expect(fast).toContain('endpointing=150');
     const bal = buildListenUrl('es', 'balanced');
+    expect(bal).toContain('model=nova-3-general');
     expect(bal).toContain('endpointing=300');
+  });
+
+  test('uses nova-3-general for all lanes (medical+filler_words unsupported)', () => {
+    expect(getDeepgramModel('en-US')).toBe('nova-3-general');
+    expect(getDeepgramModel('es-419')).toBe('nova-3-general');
+    expect(getDeepgramModel('multi')).toBe('nova-3-general');
   });
 
   test('fast mode uses aggressive timings', () => {

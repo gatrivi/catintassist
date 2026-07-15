@@ -1,5 +1,5 @@
 /**
- * On-call quick-fire soundboard strip (v4.75.0).
+ * On-call quick-fire soundboard strip — compact thumbnail gallery.
  * Fires pre-recorded clips via passthrough routing during active calls.
  */
 import React, { useState, useEffect, useRef, useCallback } from 'react';
@@ -16,6 +16,7 @@ import { logRouteEvent, ROUTE_EVENT } from '../utils/routeDiagnostics';
 import { APP_VERSION } from '../constants/version';
 
 const CALL_ROUTE_MIN_SCORE = 0.5;
+const SIZE_KEY = 'catint_oncall_sb_size';
 
 /** High-use slots for on-call strip — keeps UI compact. */
 export const ON_CALL_SLOTS = [
@@ -38,6 +39,15 @@ const getTimeOfDay = () => {
 const resolveClipKey = (slot, timeOfDay) =>
   slot.dynamic ? `${slot.actionId}_${timeOfDay}` : slot.actionId;
 
+const readThumbSize = () => {
+  try {
+    const n = parseInt(localStorage.getItem(SIZE_KEY), 10);
+    return Number.isFinite(n) ? Math.min(56, Math.max(28, n)) : 36;
+  } catch {
+    return 36;
+  }
+};
+
 export function OnCallSoundboardStrip({ micTestMode = false, collapsed: collapsedProp, onToggleCollapse }) {
   const {
     selectedSinkId,
@@ -50,6 +60,7 @@ export function OnCallSoundboardStrip({ micTestMode = false, collapsed: collapse
 
   const [collapsed, setCollapsed] = useState(collapsedProp ?? true);
   const [blobs, setBlobs] = useState({});
+  const [thumbs, setThumbs] = useState({});
   const [healthScores] = useState(() => {
     try {
       return JSON.parse(localStorage.getItem('catint_audio_health')) || {};
@@ -60,11 +71,15 @@ export function OnCallSoundboardStrip({ micTestMode = false, collapsed: collapse
   const [manualCallOk] = useState(() => loadManualCallOk());
   const [timeOfDay, setTimeOfDay] = useState(getTimeOfDay);
   const [playingKey, setPlayingKey] = useState(null);
+  const [playbackProgress, setPlaybackProgress] = useState(0);
   const [notice, setNotice] = useState('');
+  const [thumbSize, setThumbSize] = useState(readThumbSize);
 
   const audioRefLocal = useRef(new Audio());
   const audioRefSink = useRef(new Audio());
   const rampCancelRef = useRef(null);
+  const progressRafRef = useRef(null);
+  const thumbUrlsRef = useRef([]);
 
   useEffect(() => {
     const tick = () => setTimeOfDay(getTimeOfDay());
@@ -77,14 +92,33 @@ export function OnCallSoundboardStrip({ micTestMode = false, collapsed: collapse
     let cancelled = false;
     (async () => {
       const state = {};
+      const thumbState = {};
+      const urls = [];
       for (const slot of ON_CALL_SLOTS) {
         const key = resolveClipKey(slot, getTimeOfDay());
         const b = await loadFile(key);
         if (b && !cancelled) state[key] = b;
+        const thumbBlob = await loadFile(`thumb_${slot.actionId}`);
+        if (thumbBlob && !cancelled) {
+          const url = URL.createObjectURL(thumbBlob);
+          urls.push(url);
+          thumbState[slot.actionId] = url;
+        }
       }
-      if (!cancelled) setBlobs(state);
+      if (!cancelled) {
+        thumbUrlsRef.current.forEach((u) => URL.revokeObjectURL(u));
+        thumbUrlsRef.current = urls;
+        setBlobs(state);
+        setThumbs(thumbState);
+      } else {
+        urls.forEach((u) => URL.revokeObjectURL(u));
+      }
     })();
-    return () => { cancelled = true; };
+    return () => {
+      cancelled = true;
+      thumbUrlsRef.current.forEach((u) => URL.revokeObjectURL(u));
+      thumbUrlsRef.current = [];
+    };
   }, [timeOfDay]);
 
   const flashNotice = (msg) => {
@@ -92,8 +126,23 @@ export function OnCallSoundboardStrip({ micTestMode = false, collapsed: collapse
     window.setTimeout(() => setNotice(''), 3500);
   };
 
+  const stopProgress = () => {
+    if (progressRafRef.current) cancelAnimationFrame(progressRafRef.current);
+    progressRafRef.current = null;
+    setPlaybackProgress(0);
+  };
+
+  const trackProgress = useCallback(() => {
+    const a = audioRefLocal.current;
+    if (a && a.duration) {
+      setPlaybackProgress(a.currentTime / a.duration);
+    }
+    progressRafRef.current = requestAnimationFrame(trackProgress);
+  }, []);
+
   const clearPlay = useCallback(() => {
     setPlayingKey(null);
+    stopProgress();
     stopClipToSink();
     audioRefLocal.current.pause();
     audioRefSink.current.pause();
@@ -120,6 +169,7 @@ export function OnCallSoundboardStrip({ micTestMode = false, collapsed: collapse
       const url = URL.createObjectURL(blob);
       logRouteEvent(ROUTE_EVENT.PLAY_START, { clipKey: key, routeMode: 'local_speakers', onCall: true, micTestMode: true });
       setPlayingKey(key);
+      progressRafRef.current = requestAnimationFrame(trackProgress);
       primePlaybackElements(audioRefLocal.current, audioRefSink.current);
       audioRefLocal.current.src = url;
       const onEnd = () => {
@@ -158,6 +208,7 @@ export function OnCallSoundboardStrip({ micTestMode = false, collapsed: collapse
 
     logRouteEvent(ROUTE_EVENT.PLAY_START, { clipKey: key, routeMode, onCall: true });
     setPlayingKey(key);
+    progressRafRef.current = requestAnimationFrame(trackProgress);
     primePlaybackElements(audioRefLocal.current, audioRefSink.current);
     audioRefLocal.current.src = url;
 
@@ -211,8 +262,19 @@ export function OnCallSoundboardStrip({ micTestMode = false, collapsed: collapse
     onToggleCollapse?.(next);
   };
 
+  const playingSlot = playingKey
+    ? ON_CALL_SLOTS.find((s) => resolveClipKey(s, timeOfDay) === playingKey)
+    : null;
+  const playingLabel = playingSlot
+    ? (playingSlot.label || ACTIONS.find((a) => a.id === playingSlot.actionId)?.label || playingKey)
+    : null;
+
   return (
-    <div className="on-call-soundboard-strip" data-guide="on-call-soundboard">
+    <div
+      className={`on-call-soundboard-strip${collapsed ? '' : ' is-expanded'}${playingKey ? ' is-playing-strip' : ''}`}
+      data-guide="on-call-soundboard"
+      style={{ '--oncall-thumb': `${thumbSize}px` }}
+    >
       <button
         type="button"
         className="on-call-sb-toggle"
@@ -220,43 +282,72 @@ export function OnCallSoundboardStrip({ micTestMode = false, collapsed: collapse
         title={`Quick greetings [v${APP_VERSION}]`}
       >
         {collapsed ? '▸' : '▾'} Greetings
+        {playingKey && (
+          <span className="on-call-sb-live" role="status">
+            ▶ {micTestMode ? 'local' : 'LIVE'}{playingLabel ? ` · ${playingLabel}` : ''}
+          </span>
+        )}
       </button>
       {!collapsed && (
-        <div className="on-call-sb-buttons">
-          {ON_CALL_SLOTS.map((slot) => {
-            const key = resolveClipKey(slot, timeOfDay);
-            const has = !!blobs[key];
-            const action = ACTIONS.find((a) => a.id === slot.actionId);
-            const label = slot.label || action?.label || slot.actionId;
-            const lang = action?.lang;
-            const blocked = has && !micTestMode && (
-              healthScores[key] === undefined ||
-              healthScores[key] < CALL_ROUTE_MIN_SCORE ||
-              !isManualCallOk(manualCallOk, key, selectedSinkId, selectedMicId)
-            );
-            return (
-              <button
-                key={key}
-                type="button"
-                className={`on-call-sb-btn${playingKey === key ? ' is-playing' : ''}${!has ? ' is-missing' : ''}${blocked ? ' is-blocked' : ''}`}
-                disabled={!has}
-                onClick={() => fireClip(slot)}
-                title={
-                  !has
-                    ? 'Record in Soundboard Studio'
-                    : micTestMode
-                      ? 'Play on your speakers/headphones'
-                      : blocked
-                        ? 'Health or CALL OK gate — test off-call'
-                        : `Fire ${label} to patient path`
-                }
-              >
-                {lang && <span className="on-call-sb-lang">{lang.toUpperCase()}</span>}
-                {label}
-              </button>
-            );
-          })}
-        </div>
+        <>
+          <label className="on-call-sb-size" title="Thumbnail size">
+            <input
+              type="range"
+              min="28"
+              max="56"
+              step="4"
+              value={thumbSize}
+              onChange={(e) => {
+                const n = parseInt(e.target.value, 10);
+                setThumbSize(n);
+                try { localStorage.setItem(SIZE_KEY, String(n)); } catch { /* ignore */ }
+              }}
+            />
+          </label>
+          <div className="on-call-sb-gallery">
+            {ON_CALL_SLOTS.map((slot) => {
+              const key = resolveClipKey(slot, timeOfDay);
+              const has = !!blobs[key];
+              const action = ACTIONS.find((a) => a.id === slot.actionId);
+              const label = slot.label || action?.label || slot.actionId;
+              const lang = action?.lang;
+              const thumbUrl = thumbs[slot.actionId];
+              const isPlaying = playingKey === key;
+              const blocked = has && !micTestMode && (
+                healthScores[key] === undefined ||
+                healthScores[key] < CALL_ROUTE_MIN_SCORE ||
+                !isManualCallOk(manualCallOk, key, selectedSinkId, selectedMicId)
+              );
+              return (
+                <button
+                  key={key}
+                  type="button"
+                  className={`on-call-sb-tile${isPlaying ? ' is-playing' : ''}${!has ? ' is-missing' : ''}${blocked ? ' is-blocked' : ''}${thumbUrl ? ' has-thumb' : ''}`}
+                  disabled={!has}
+                  onClick={() => fireClip(slot)}
+                  style={thumbUrl ? { backgroundImage: `url(${thumbUrl})` } : undefined}
+                  title={
+                    !has
+                      ? 'Record in Soundboard Studio'
+                      : micTestMode
+                        ? 'Play on your speakers/headphones'
+                        : blocked
+                          ? 'Health or CALL OK gate — test off-call'
+                          : `Fire ${label} to patient path`
+                  }
+                >
+                  {isPlaying && (
+                    <span className="on-call-sb-tile-progress" style={{ width: `${playbackProgress * 100}%` }} />
+                  )}
+                  <span className="on-call-sb-tile-chrome">
+                    {lang && <span className="on-call-sb-lang">{lang.toUpperCase()}</span>}
+                    <span className="on-call-sb-tile-label">{isPlaying ? '⏹' : label}</span>
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+        </>
       )}
       {notice && <span className="on-call-sb-notice">{notice}</span>}
     </div>

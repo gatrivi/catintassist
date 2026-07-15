@@ -25,6 +25,111 @@ import { APP_VERSION } from '../constants/version';
 /** Newest first. Only the entry matching APP_VERSION is shown on load. */
 export const RELEASE_NOTES_CATALOG = [
   {
+    version: '4.84.28',
+    id: 'stt-medical-filler-fix-v1',
+    highlightElementIds: ['audio-route-stt-summary', 'audio-route-zap-btn'],
+    es: {
+      title: 'STT arreglado — modelo medical roto',
+      intro:
+        'El socket EN usaba nova-3-medical con filler_words. Deepgram solo permite fillers en modelos general → EN muerto/basura. Ahora ambas pistas: nova-3-general.',
+      sections: [
+        {
+          heading: 'Qué hacer',
+          bullets: [
+            'Recargá y mirá v4.84.28 arriba a la derecha',
+            'Entre llamadas: desconectar/conectar STT (o Zap)',
+          ],
+        },
+      ],
+    },
+    en: {
+      title: 'STT fixed — medical model broke EN',
+      intro:
+        'EN socket used nova-3-medical with filler_words. Deepgram only allows fillers on general models → EN dead/garbage. Both lanes now nova-3-general.',
+      sections: [
+        {
+          heading: 'What to do',
+          bullets: [
+            'Reload and confirm v4.84.28 top-right',
+            'Between calls: disconnect/reconnect STT (or Zap)',
+          ],
+        },
+      ],
+    },
+  },
+  {
+    version: '4.84.27',
+    id: 'vb-route-hear-myself-v1',
+    highlightElementIds: [
+      'audio-route-sink-select',
+      'audio-route-fix-sink-btn',
+      'sb-test-mode-toggle',
+    ],
+    es: {
+      title: 'VB-Cable: por qué no te oís',
+      intro:
+        'Si Windows “Escuchar este dispositivo” está en el cable pero VB out = parlantes, el saludo nunca entra al cable → silencio. VB out debe ser CABLE Input.',
+      sections: [
+        {
+          heading: 'Receta',
+          bullets: [
+            '📥 STT in = CABLE Output · 🎤 mic real · 🔊 VB out = CABLE Input',
+            'Chip ⚠ + Fix → CABLE In si VB out está mal',
+            'Para oírte ya: 🧪 Test + 🔊 You (Local)',
+          ],
+        },
+      ],
+    },
+    en: {
+      title: 'VB-Cable: why you can’t hear greetings',
+      intro:
+        'Windows “Listen to this device” on the cable hears nothing if VB out = speakers — greetings never enter the cable. VB out must be CABLE Input.',
+      sections: [
+        {
+          heading: 'Recipe',
+          bullets: [
+            '📥 STT in = CABLE Output · 🎤 real mic · 🔊 VB out = CABLE Input',
+            '⚠ chip + Fix → CABLE In when VB out is wrong',
+            'Hear yourself now: 🧪 Test + 🔊 You (Local)',
+          ],
+        },
+      ],
+    },
+  },
+  {
+    version: '4.84.25',
+    id: 'soundboard-gallery-v1',
+    highlightElementIds: ['audio-route-soundboard-btn', 'workspace-soundboard-pane'],
+    es: {
+      title: 'Soundboard galería + LIVE',
+      intro:
+        'Las miniaturas son la galería. Etiquetas al hover (o toggle Labels). En llamada: thumbs chicos + tamaño. Banner ▶ LIVE cuando el paciente escucha.',
+      sections: [
+        {
+          heading: 'Qué ver',
+          bullets: [
+            'Studio: slider Size + Labels; banner LIVE / local con barra de progreso.',
+            'En llamada: expandí Greetings → thumbs; slider de tamaño; ▶ LIVE en el toggle.',
+          ],
+        },
+      ],
+    },
+    en: {
+      title: 'Soundboard gallery + LIVE',
+      intro:
+        'Thumbnails are the gallery. Labels on hover (or Labels toggle). On-call: small thumbs + size. ▶ LIVE banner while patient hears the clip.',
+      sections: [
+        {
+          heading: 'What to look for',
+          bullets: [
+            'Studio: Size slider + Labels; LIVE/local banner with progress.',
+            'On-call: expand Greetings → thumbs; size slider; ▶ LIVE on the toggle.',
+          ],
+        },
+      ],
+    },
+  },
+  {
     version: '4.84.24',
     id: 'sticky-bottom-v1',
     highlightElementIds: ['sticky-bottom-toggle'],

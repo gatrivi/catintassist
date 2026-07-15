@@ -26,8 +26,10 @@ import {
   warnLegacyCallPathStorage,
 } from '../utils/routeVerification';
 import { useAudioSettings } from '../contexts/AudioSettingsContext';
+import { diagnoseVbCableRoute } from '../utils/audioSourceManager';
 import AudioEditorPanel from './AudioEditorPanel';
 import { getRuntimeDeepgramKey } from '../utils/deepgramRuntimeKey';
+import { ElementHintTarget } from './ElementHint';
 
 const TIME_SLOTS = ['morning', 'afternoon', 'evening'];
 const TIME_SLOT_META = {
@@ -173,9 +175,32 @@ export const GreetingsPanel = ({ onEditModeChange, onExitStudio, micTestMode = f
   const [isAnalyzing, setIsAnalyzing] = useState(null); // key of item being analyzed
   const [playingKey, setPlayingKey] = useState(null);
   const [playbackProgress, setPlaybackProgress] = useState(0);
+  const [routeLive, setRouteLive] = useState(false); // patient-path play (for LIVE banner)
   const [recordingKey, setRecordingKey] = useState(null);
   const [testMode, setTestMode] = useState(false);
+  // ponytail: gallery prefs — localStorage only, no settings schema
+  const [showChrome, setShowChrome] = useState(() => {
+    try { return localStorage.getItem('catint_sb_show_chrome') === '1'; } catch { return false; }
+  });
+  const [tileSize, setTileSize] = useState(() => {
+    try {
+      const n = parseInt(localStorage.getItem('catint_sb_tile_size'), 10);
+      return Number.isFinite(n) ? Math.min(160, Math.max(64, n)) : 100;
+    } catch { return 100; }
+  });
   const localOnlyPlayback = isLocalOnlySoundboardPlayback(micTestMode, testMode);
+  const sinkRawLabel = (outputDevices.find((d) => d.deviceId === selectedSinkId)?.label || '').trim();
+  const sinkRouteDiag = diagnoseVbCableRoute({
+    cableMode: !micTestMode,
+    sttInputLabel: '',
+    sinkLabel: sinkRawLabel,
+    sinkId: selectedSinkId,
+  });
+  // ponytail: studio tip only cares about sink; STT in is handled by I/O strip
+  const showSinkRouteTip =
+    !micTestMode &&
+    !localOnlyPlayback &&
+    (!sinkRouteDiag.ok && sinkRouteDiag.code?.startsWith('sink_'));
   const [safetyNotice, setSafetyNotice] = useState('');
   const [waveforms, setWaveforms] = useState({});
   const [collapsedActions, setCollapsedActions] = useState(() => new Set());
@@ -517,6 +542,7 @@ export const GreetingsPanel = ({ onEditModeChange, onExitStudio, micTestMode = f
   const clearPlaybackState = () => {
     setPlayingKey(null);
     setPlaybackProgress(0);
+    setRouteLive(false);
     window.__CAT_AUDIO_VOL = 0;
     stopClipToSink();
     setSinkPlaybackActive(false);
@@ -613,6 +639,7 @@ export const GreetingsPanel = ({ onEditModeChange, onExitStudio, micTestMode = f
     let playLocal = !callerOnly;
     let playSink = sendToCaller;
     callerRouteRef.current = playSink;
+    setRouteLive(!!playSink);
     const routeMode = readRouteModePreference();
     const usePassthrough = playSink && routeMode === ROUTE_MODE.PASSTHROUGH;
 
@@ -647,6 +674,7 @@ export const GreetingsPanel = ({ onEditModeChange, onExitStudio, micTestMode = f
         }
         playSink = false;
         callerRouteRef.current = false;
+        setRouteLive(false);
         setSafetyNotice('⚠️ Virtual mic route failed — local only');
         window.setTimeout(() => setSafetyNotice(''), 4500);
       }
@@ -1038,12 +1066,33 @@ export const GreetingsPanel = ({ onEditModeChange, onExitStudio, micTestMode = f
 
   const playStats = getSetupStats(blobs);
 
+  const playingAction = playingKey
+    ? ACTIONS.find((a) => playingKey === a.id || playingKey.startsWith(`${a.id}_`))
+    : null;
+  const playingToPatient = !!(playingKey && routeLive);
+
   return (
-    <div className="sb-play-wrap">
+    <div className={`sb-play-wrap${showChrome ? ' sb-show-chrome' : ''}`} style={{ '--sb-tile-size': `${tileSize}px` }}>
       {editorOverlay}
       {safetyNotice && (
         <div style={{ fontSize: '0.7rem', fontWeight: 700, color: '#fbbf24', background: 'rgba(245, 158, 11, 0.12)', border: '1px solid rgba(245, 158, 11, 0.35)', borderRadius: '6px', padding: '0.35rem 0.5rem' }}>
           {safetyNotice}
+        </div>
+      )}
+
+      {playingKey && (
+        <div className={`sb-now-playing${playingToPatient ? ' is-live' : ' is-local'}`} role="status">
+          <span className="sb-now-playing-pulse" aria-hidden />
+          <span className="sb-now-playing-label">
+            {playingToPatient ? '▶ LIVE to patient' : '▶ Playing (local)'}
+            {playingAction ? ` · ${playingAction.label}` : ''}
+          </span>
+          <div className="sb-now-playing-bar">
+            <div className="sb-now-playing-fill" style={{ width: `${playbackProgress * 100}%` }} />
+          </div>
+          <button type="button" className="sb-now-playing-stop" onClick={() => playAudioBlock(playingKey, false)} title="Stop">
+            ⏹
+          </button>
         </div>
       )}
 
@@ -1074,11 +1123,46 @@ export const GreetingsPanel = ({ onEditModeChange, onExitStudio, micTestMode = f
           )}
         </div>
 
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-          <label style={{ display: 'flex', alignItems: 'center', gap: '0.25rem', fontSize: '0.7rem', color: localOnlyPlayback ? '#f59e0b' : 'var(--text-muted)', cursor: micTestMode ? 'default' : 'pointer', background: localOnlyPlayback ? 'rgba(245, 158, 11, 0.1)' : 'transparent', padding: '0.2rem 0.4rem', borderRadius: '4px', border: localOnlyPlayback ? '1px solid rgba(245, 158, 11, 0.3)' : '1px solid transparent', transition: 'all 0.2s' }} title={micTestMode ? 'Mic mode forces local speakers — use health check to test greeting quality' : 'Test Mode: local speakers only — nothing to virtual mic'}>
-            <input type="checkbox" checked={localOnlyPlayback} disabled={micTestMode} onChange={(e) => setTestMode(e.target.checked)} style={{ cursor: micTestMode ? 'default' : 'pointer' }} />
-            🧪 Test
+        <div className="sb-play-head-controls">
+          <label className="sb-gallery-ctrl" title="Tile size">
+            <span>Size</span>
+            <input
+              type="range"
+              min="64"
+              max="160"
+              step="8"
+              value={tileSize}
+              onChange={(e) => {
+                const n = parseInt(e.target.value, 10);
+                setTileSize(n);
+                try { localStorage.setItem('catint_sb_tile_size', String(n)); } catch { /* ignore */ }
+              }}
+            />
           </label>
+          <label className="sb-gallery-ctrl" title="Show labels on all tiles (off = hover only)">
+            <input
+              type="checkbox"
+              checked={showChrome}
+              onChange={(e) => {
+                const on = e.target.checked;
+                setShowChrome(on);
+                try { localStorage.setItem('catint_sb_show_chrome', on ? '1' : '0'); } catch { /* ignore */ }
+              }}
+            />
+            Labels
+          </label>
+          <ElementHintTarget
+            elementId="sb-test-mode-toggle"
+            icon="🧪"
+            heading="Test Mode = hear locally"
+            body="ON: greetings play on your speakers only (nothing to VB-Cable). OFF: greeting goes to VB out (must be CABLE Input). Windows Listen only works when VB out = CABLE Input."
+            color="#f59e0b"
+          >
+            <label id="sb-test-mode-toggle" style={{ display: 'flex', alignItems: 'center', gap: '0.25rem', fontSize: '0.7rem', color: localOnlyPlayback ? '#f59e0b' : 'var(--text-muted)', cursor: micTestMode ? 'default' : 'pointer', background: localOnlyPlayback ? 'rgba(245, 158, 11, 0.1)' : 'transparent', padding: '0.2rem 0.4rem', borderRadius: '4px', border: localOnlyPlayback ? '1px solid rgba(245, 158, 11, 0.3)' : '1px solid transparent', transition: 'all 0.2s' }}>
+              <input type="checkbox" checked={localOnlyPlayback} disabled={micTestMode} onChange={(e) => setTestMode(e.target.checked)} style={{ cursor: micTestMode ? 'default' : 'pointer' }} />
+              🧪 Test
+            </label>
+          </ElementHintTarget>
 
           <button type="button" className="sb-open-setup-btn" onClick={() => openSettings('bg_app')} title="App-wide background image">
             🖼️ Fondo
@@ -1095,6 +1179,26 @@ export const GreetingsPanel = ({ onEditModeChange, onExitStudio, micTestMode = f
       </div>
 
       <div className="sb-vol-strip">
+        {showSinkRouteTip && (
+          <div
+            className="sb-route-tip"
+            role="status"
+            style={{
+              gridColumn: '1 / -1',
+              fontSize: '0.68rem',
+              lineHeight: 1.35,
+              color: '#fde68a',
+              background: 'rgba(245,158,11,0.12)',
+              border: '1px solid rgba(245,158,11,0.35)',
+              borderRadius: 6,
+              padding: '0.4rem 0.55rem',
+              marginBottom: '0.35rem',
+            }}
+          >
+            <strong>Can&apos;t hear greetings?</strong> {sinkRouteDiag.tip}{' '}
+            Or flip <strong>🧪 Test</strong> + raise <strong>🔊 You (Local)</strong>.
+          </div>
+        )}
         <div className="sb-vol-row">
           <span style={{ color: localOnlyPlayback ? '#f59e0b' : 'var(--text-muted)' }}>🔊 You (Local)</span>
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
@@ -1114,20 +1218,29 @@ export const GreetingsPanel = ({ onEditModeChange, onExitStudio, micTestMode = f
           </div>
         </div>
         <div className="sb-vol-row">
-          <button
-            onClick={() => setMonitorMic(m => !m)}
-            style={{
-              background: monitorMic ? 'rgba(245, 158, 11, 0.2)' : 'transparent',
-              color: monitorMic ? '#fbbf24' : 'var(--text-muted)',
-              border: monitorMic ? '1px solid rgba(245,158,11,0.4)' : '1px solid transparent',
-              borderRadius: '4px', padding: '0.1rem 0.4rem', cursor: 'pointer', fontSize: '0.7rem',
-              fontWeight: monitorMic ? 700 : 400,
-              animation: monitorMic ? 'pulseGlow 2s infinite' : 'none'
-            }}
-            title="Hear your own mic through your local speakers"
+          <ElementHintTarget
+            elementId="sb-mic-monitor-btn"
+            icon="👂"
+            heading="Mic Monitor"
+            body="Hear your live mic on speakers (record path check). Not for greeting playback — use 🧪 Test for that."
+            color="#f59e0b"
           >
-            {monitorMic ? '🔴 Mic Monitor ON' : '👂 Mic Monitor'}
-          </button>
+            <button
+              id="sb-mic-monitor-btn"
+              type="button"
+              onClick={() => setMonitorMic(m => !m)}
+              style={{
+                background: monitorMic ? 'rgba(245, 158, 11, 0.2)' : 'transparent',
+                color: monitorMic ? '#fbbf24' : 'var(--text-muted)',
+                border: monitorMic ? '1px solid rgba(245,158,11,0.4)' : '1px solid transparent',
+                borderRadius: '4px', padding: '0.1rem 0.4rem', cursor: 'pointer', fontSize: '0.7rem',
+                fontWeight: monitorMic ? 700 : 400,
+                animation: monitorMic ? 'pulseGlow 2s infinite' : 'none'
+              }}
+            >
+              {monitorMic ? '🔴 Mic Monitor ON' : '👂 Mic Monitor'}
+            </button>
+          </ElementHintTarget>
           {monitorMic && (
             <input type="range" min="0" max="1" step="0.05" value={monitorVolume}
               onChange={e => setMonitorVolume(parseFloat(e.target.value))}
@@ -1169,7 +1282,7 @@ export const GreetingsPanel = ({ onEditModeChange, onExitStudio, micTestMode = f
         )}
       </div>
       
-      <div className="sb-grid">
+      <div className="sb-grid sb-grid--gallery">
         {ACTIONS.map((action) => {
           const activeKey = action.dynamic ? `${action.id}_${timeOfDay}` : action.id;
           const hasAudio = !!blobs[activeKey];
@@ -1177,7 +1290,8 @@ export const GreetingsPanel = ({ onEditModeChange, onExitStudio, micTestMode = f
             !isCallerReady(healthScores[activeKey]) ||
             !isCallPathReady(manualCallOk, activeKey, selectedSinkId, selectedMicId)
           );
-          const bgImage = blobs[`url_thumb_${action.id}`] ? `url(${blobs[`url_thumb_${action.id}`]})` : 'none';
+          const hasThumb = !!blobs[`url_thumb_${action.id}`];
+          const bgImage = hasThumb ? `url(${blobs[`url_thumb_${action.id}`]})` : undefined;
           const isItPlaying = playingKey === activeKey;
           const otherSlotsSaved = action.dynamic
             ? TIME_SLOTS.filter((t) => t !== timeOfDay && blobs[`${action.id}_${t}`]).map((t) => TIME_SLOT_META[t].short)
@@ -1203,25 +1317,28 @@ export const GreetingsPanel = ({ onEditModeChange, onExitStudio, micTestMode = f
             <button
               key={action.id}
               type="button"
-              className={`sb-slot sb-slot--ready ${isItPlaying ? 'is-playing' : ''} ${callerBlocked ? 'is-blocked' : ''} ${action.lang ? `sb-slot--${action.lang}` : ''}`}
+              className={`sb-slot sb-slot--ready${hasThumb ? ' has-thumb' : ''}${isItPlaying ? ' is-playing' : ''}${callerBlocked ? ' is-blocked' : ''}${action.lang ? ` sb-slot--${action.lang}` : ''}`}
               onClick={() => playAudioBlock(activeKey, !localOnlyPlayback, { bypassGate: false })}
-              style={{ backgroundImage: bgImage !== 'none' ? bgImage : undefined }}
+              style={bgImage ? { backgroundImage: bgImage } : undefined}
               title={
                 callerBlocked
                   ? 'Blocked from virtual mic — local preview only (Setup → Call Test + confirm CALL OK, or 🧪 Test Mode)'
-                  : 'Play clip'
+                  : `${action.label} — tap to play`
               }
             >
               <div className="sb-slot-overlay" />
               {action.lang && <span className={`sb-lang-badge sb-lang-badge--${action.lang}`}>{action.lang.toUpperCase()}</span>}
               {isItPlaying && <div className="sb-slot-progress" style={{ width: `${playbackProgress * 100}%` }} />}
-              <span className="sb-slot-label">
-                {isItPlaying ? '⏹ STOP' : action.label}
-                {healthScores[activeKey] !== undefined && (
-                  <span className="sb-slot-health" style={{ color: getHealthMeta(healthScores[activeKey])?.color }}>
-                    {getHealthMeta(healthScores[activeKey])?.label}
-                  </span>
-                )}
+              {isItPlaying && <span className="sb-slot-live-badge">{playingToPatient ? 'LIVE' : '▶'}</span>}
+              <span className="sb-slot-chrome">
+                <span className="sb-slot-label">
+                  {isItPlaying ? '⏹ STOP' : action.label}
+                  {healthScores[activeKey] !== undefined && (
+                    <span className="sb-slot-health" style={{ color: getHealthMeta(healthScores[activeKey])?.color }}>
+                      {getHealthMeta(healthScores[activeKey])?.label}
+                    </span>
+                  )}
+                </span>
               </span>
             </button>
           );

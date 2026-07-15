@@ -93,6 +93,100 @@ export const pickVbCableSinkDevice = (outputDevices = []) => {
   return match?.deviceId || "";
 };
 
+/**
+ * Diagnose VB-Cable I/O for greetings + STT.
+ * Windows naming: CABLE Input = play into cable; CABLE Output = listen from cable.
+ *
+ * @returns {{ ok: boolean, code: string, level: 'ok'|'warn'|'err', short: string, tip: string }}
+ */
+export const diagnoseVbCableRoute = ({
+  cableMode = false,
+  sttInputLabel = "",
+  sinkLabel = "",
+  sinkId = "",
+} = {}) => {
+  if (!cableMode) {
+    return {
+      ok: true,
+      code: "not_cable_mode",
+      level: "ok",
+      short: "",
+      tip: "",
+    };
+  }
+
+  const sttOk = isVbCableSttInputLabel(sttInputLabel);
+  const sinkOk = isVbCableSinkLabel(sinkLabel);
+  const sinkLooksLikeSpeakers =
+    !!sinkId &&
+    !sinkOk &&
+    /speaker|headphone|headset|realtek|default|dispositivo|altavoz/i.test(sinkLabel || "");
+  const sinkIsCableOutput =
+    !!sinkId && /cable\s*output/i.test(sinkLabel || "") && !isVbCableSinkLabel(sinkLabel);
+
+  if (!sinkId) {
+    return {
+      ok: false,
+      code: "sink_missing",
+      level: "err",
+      short: "VB out empty",
+      tip: "🔊 VB out must be CABLE Input — greetings + mic go into the cable the call app uses as mic.",
+    };
+  }
+
+  if (sinkIsCableOutput) {
+    return {
+      ok: false,
+      code: "sink_is_cable_output",
+      level: "err",
+      short: "VB out ≠ Input",
+      tip: "You picked CABLE Output (listen). VB out needs CABLE Input (play into). Flip Input↔Output.",
+    };
+  }
+
+  if (!sinkOk) {
+    return {
+      ok: false,
+      code: sinkLooksLikeSpeakers ? "sink_is_speakers" : "sink_not_cable",
+      level: "err",
+      short: sinkLooksLikeSpeakers ? "VB out = speakers" : "VB out wrong",
+      tip:
+        "VB out → CABLE Input (not speakers). Windows “Listen to this device” only hears greetings if they enter the cable. Use 🧪 Test + 🔊 You (Local) to preview on speakers.",
+    };
+  }
+
+  if (!sttOk && sttInputLabel) {
+    const sttIsInput = /cable\s*input/i.test(sttInputLabel);
+    return {
+      ok: false,
+      code: sttIsInput ? "stt_is_cable_input" : "stt_not_cable_output",
+      level: "warn",
+      short: sttIsInput ? "STT in ≠ Output" : "STT in check",
+      tip: sttIsInput
+        ? "📥 STT in needs CABLE Output (hear from cable). CABLE Input is for VB out only."
+        : "📥 STT in should be CABLE Output so Deepgram hears the call.",
+    };
+  }
+
+  if (!sttOk) {
+    return {
+      ok: false,
+      code: "stt_missing",
+      level: "warn",
+      short: "Pick cable in",
+      tip: "📥 STT in → CABLE Output. That is the recording side of VB-Cable.",
+    };
+  }
+
+  return {
+    ok: true,
+    code: "ok",
+    level: "ok",
+    short: "Cable OK",
+    tip: "Recipe: 📥 CABLE Output · 🎤 real mic · 🔊 CABLE Input. Hear yourself: 🧪 Test, or Windows Listen on CABLE Output → headphones.",
+  };
+};
+
 export const buildVirtualCableGetUserMediaConstraints = (selectedDeviceId) => {
   return {
     audio: {

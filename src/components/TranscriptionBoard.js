@@ -957,12 +957,32 @@ export const TranscriptionBoard = ({
     enConfidence !== null && esConfidence !== null
       ? enConfidence >= esConfidence ? 'en' : 'es'
       : enConfidence !== null ? 'en' : esConfidence !== null ? 'es' : null;
+  const emptyReplyStreak = connectProgress?.emptyTranscriptStreak || 0;
+  const repeatedEmptyReply =
+    emptyReplyStreak >= 3 &&
+    (connectProgress?.lastEmptyTranscriptAt || 0) > (connectProgress?.lastTranscriptStringAt || 0);
+  const captureBlocked =
+    (connectProgress?.captureBlockedAt || 0) > (connectProgress?.lastCaptionCommitAt || 0);
   const sttPipelineSteps = [
     { key: 'heard', label: 'In', title: 'Sound heard by app', at: lastAudioChunkAt },
     { key: 'sent', label: 'API', title: 'Sound sent to Deepgram', at: lastAudioChunkAt },
     { key: 'dgmsg', label: 'DG', title: 'Deepgram answered', at: connectProgress?.lastDeepgramMessageAt || 0 },
-    { key: 'text', label: 'Text', title: 'Deepgram returned text', at: connectProgress?.lastTranscriptStringAt || 0 },
-    { key: 'commit', label: 'UI', title: 'Text committed to UI', at: connectProgress?.lastCaptionCommitAt || 0 },
+    {
+      key: 'text',
+      label: repeatedEmptyReply ? 'Text×' : 'Text',
+      title: repeatedEmptyReply
+        ? `Deepgram answered empty ${emptyReplyStreak} times; check the selected audio source`
+        : 'Deepgram returned text',
+      at: connectProgress?.lastTranscriptStringAt || 0,
+      state: repeatedEmptyReply ? 'empty' : undefined,
+    },
+    {
+      key: 'commit',
+      label: captureBlocked ? 'UI×' : 'UI',
+      title: captureBlocked ? 'Text returned but the active-call capture gate blocked rendering' : 'Text committed to UI',
+      at: connectProgress?.lastCaptionCommitAt || 0,
+      state: captureBlocked ? 'blocked' : undefined,
+    },
   ];
 
   /** One word count per silence-to-silence turn — show only on the last bubble of that turn. */
@@ -1359,7 +1379,7 @@ export const TranscriptionBoard = ({
           {sttPipelineSteps.map((step) => (
             <span
               key={step.key}
-              className={`stt-process-step${step.at ? ' is-done' : ' is-waiting'}`}
+              className={`stt-process-step is-${step.state || (step.at ? 'done' : 'waiting')}`}
               title={step.at ? `${step.title || step.label}: ${sttNow - step.at}ms ago` : `${step.title || step.label}: waiting`}
             >
               <span className="stt-process-dot" />

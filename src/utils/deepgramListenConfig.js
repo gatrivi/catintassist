@@ -48,12 +48,16 @@ export const getMediaRecorderTimeslice = (mode) => getSttLatencyConfig(mode).med
 export const getInterimProcessThrottleMs = (mode) => getSttLatencyConfig(mode).interimProcessMs;
 export const getInterimFlushMs = (mode) => getSttLatencyConfig(mode).interimFlushMs;
 
+/** Phone-interpret: general Nova-3. Medical + filler_words is unsupported and can kill the EN socket. */
+export const getDeepgramModel = (_lang) => 'nova-3-general';
+
 /** Documented Deepgram query params only. */
 export const buildListenUrl = (lang, mode = loadSttLatencyMode()) => {
   const cfg = getSttLatencyConfig(mode);
   const params = new URLSearchParams({
-    model: 'nova-2',
+    model: getDeepgramModel(lang),
     smart_format: 'true',
+    numerals: 'true',
     filler_words: 'true',
     words: 'true',
     language: lang,

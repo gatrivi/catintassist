@@ -69,6 +69,7 @@ const Dashboard = () => {
     startRecordingFresh,
     stopRecording,
     reconnectStream,
+    armCaptionCapture,
     captions,
     clearCaptions,
     sttLanguage,
@@ -480,8 +481,11 @@ const Dashboard = () => {
     async (fresh = false) => {
       cancelHipaaDisconnectGrace?.();
       if (isBreakActive) stopBreak();
+      // Arm before await — DG text can arrive before isActive React commit.
+      armCaptionCapture(true);
       const ok = fresh ? await startRecordingFresh() : await startRecording();
       if (ok) handleStartCall(false);
+      else armCaptionCapture(false);
       return ok;
     },
     [
@@ -491,6 +495,7 @@ const Dashboard = () => {
       stopBreak,
       cancelHipaaDisconnectGrace,
       handleStartCall,
+      armCaptionCapture,
     ],
   );
 
@@ -500,9 +505,13 @@ const Dashboard = () => {
     cancelHipaaDisconnectGrace?.();
     if (isBreakActive) stopBreak();
     let ok = audioAttached;
-    if (!ok) ok = await startRecording();
+    if (!ok) {
+      armCaptionCapture(true);
+      ok = await startRecording();
+      if (!ok) armCaptionCapture(false);
+    }
     if (ok) handleStartCall(true);
-  }, [audioAttached, startRecording, handleStartCall, isBreakActive, stopBreak, cancelHipaaDisconnectGrace]);
+  }, [audioAttached, startRecording, handleStartCall, isBreakActive, stopBreak, cancelHipaaDisconnectGrace, armCaptionCapture]);
 
   const handleConnectAnotherTab = useCallback(async () => {
     // HIPAA: cancel any pending disconnect grace when attaching a new stream.
@@ -873,6 +882,7 @@ const Dashboard = () => {
         <main className={`main-content view-soundboard${isNotesOpen ? " notes-open" : ""}`}>
           <div
             className="workspace-soundboard-pane glass-panel"
+            id="workspace-soundboard-pane"
             data-guide="soundboard-lab"
           >
             <GreetingsPanel

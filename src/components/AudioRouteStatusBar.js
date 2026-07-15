@@ -1,7 +1,12 @@
 import React, { useMemo, useState, useEffect } from 'react';
 import { useAudioSettings } from '../contexts/AudioSettingsContext';
 import { useAudioSource } from '../hooks/useAudioSource';
-import { AUDIO_SOURCE_MODE_TAB, AUDIO_SOURCE_MODE_VIRTUAL_CABLE } from '../utils/audioSourceManager';
+import {
+  AUDIO_SOURCE_MODE_TAB,
+  AUDIO_SOURCE_MODE_VIRTUAL_CABLE,
+  diagnoseVbCableRoute,
+  pickVbCableSinkDevice,
+} from '../utils/audioSourceManager';
 import { truncateDeviceLabel } from '../utils/audioSelfTest';
 import { ElementHintTarget } from './ElementHint';
 import {
@@ -134,6 +139,37 @@ export const AudioRouteStatusBar = ({
     const dev = outputDevices.find((d) => d.deviceId === selectedSinkId);
     return truncateDeviceLabel(dev?.label || (selectedSinkId ? 'Virtual out' : 'Pick VB-Cable'));
   }, [outputDevices, selectedSinkId]);
+
+  const sinkRawLabel = useMemo(() => {
+    const dev = outputDevices.find((d) => d.deviceId === selectedSinkId);
+    return (dev?.label || '').trim();
+  }, [outputDevices, selectedSinkId]);
+
+  const cableInRawLabel = useMemo(() => {
+    const dev = inputDevices.find((d) => d.deviceId === selectedCableInputId);
+    return (dev?.label || '').trim();
+  }, [inputDevices, selectedCableInputId]);
+
+  const suggestedCableSinkId = useMemo(
+    () => pickVbCableSinkDevice(outputDevices),
+    [outputDevices],
+  );
+
+  const cableRouteDiag = useMemo(
+    () =>
+      diagnoseVbCableRoute({
+        cableMode: isCableMode,
+        sttInputLabel: cableInRawLabel,
+        sinkLabel: sinkRawLabel,
+        sinkId: selectedSinkId,
+      }),
+    [isCableMode, cableInRawLabel, sinkRawLabel, selectedSinkId],
+  );
+
+  const fixCableSink = () => {
+    if (!suggestedCableSinkId) return;
+    changeSinkId(suggestedCableSinkId);
+  };
 
   const timeSincePacket = Date.now() - (lastDataTime || 0);
   const stale = isActive && connectionState === 'connected' && timeSincePacket > 30000;
@@ -295,21 +331,62 @@ export const AudioRouteStatusBar = ({
         </div>
 
         {isCableMode && (
-          <label className="audio-route-device-pick" title={`STT in: ${cableInLabel}`}>
-            <span className="audio-route-device-pick-label">📥</span>
+          <ElementHintTarget
+            elementId="audio-route-cable-in-select"
+            icon="📥"
+            heading="STT in = CABLE Output"
+            body="Recording side of VB-Cable. Deepgram listens here. Not CABLE Input. Windows “Listen to this device” on CABLE Output → headphones = hear the cable."
+            color={cableRouteDiag.code?.startsWith('stt_') ? '#f59e0b' : '#38bdf8'}
+          >
+            <label className="audio-route-device-pick" title={`STT in: ${cableInLabel}`}>
+              <span className="audio-route-device-pick-label">📥</span>
+              <select
+                id="audio-route-cable-in-select"
+                className="audio-route-select"
+                style={{
+                  ...selectStyle,
+                  borderColor:
+                    cableRouteDiag.code?.startsWith('stt_')
+                      ? 'rgba(239,68,68,0.55)'
+                      : selectedCableInputId
+                        ? 'rgba(16,185,129,0.45)'
+                        : 'rgba(245,158,11,0.55)',
+                }}
+                value={selectedCableInputId}
+                onChange={(e) => changeCableInputId(e.target.value)}
+                onFocus={() => refreshCableInputDevices()}
+                onMouseDown={() => refreshCableInputDevices()}
+              >
+                <option value="">{inputDevices.length ? 'Cable in…' : 'Cable (allow perm)'}</option>
+                {inputDevices.map((d) => (
+                  <option key={d.deviceId} value={d.deviceId}>
+                    {formatDeviceOption(d, 'mic')}
+                  </option>
+                ))}
+              </select>
+            </label>
+          </ElementHintTarget>
+        )}
+
+        <ElementHintTarget
+          elementId="audio-route-mic-select"
+          icon="🎤"
+          heading="Mic = your real mic"
+          body="Physical headset/mic. App pipes it through VB out to the patient. Not CABLE Output."
+          color="#a78bfa"
+        >
+          <label className="audio-route-device-pick" title={`Mic: ${micDeviceLabel}`}>
+            <span className="audio-route-device-pick-label">🎤</span>
             <select
-              id="audio-route-cable-in-select"
+              id="audio-route-mic-select"
               className="audio-route-select"
-              style={{
-                ...selectStyle,
-                borderColor: selectedCableInputId ? 'rgba(16,185,129,0.45)' : 'rgba(245,158,11,0.55)',
-              }}
-              value={selectedCableInputId}
-              onChange={(e) => changeCableInputId(e.target.value)}
-              onFocus={() => refreshCableInputDevices()}
-              onMouseDown={() => refreshCableInputDevices()}
+              style={selectStyle}
+              value={selectedMicId}
+              onChange={(e) => changeMicId(e.target.value)}
+              onFocus={() => fetchDevices({ requestMicPermissionForLabels: true })}
+              onMouseDown={() => fetchDevices({ requestMicPermissionForLabels: true })}
             >
-              <option value="">{inputDevices.length ? 'Cable in…' : 'Cable (allow perm)'}</option>
+              <option value="">{inputDevices.length ? 'Mic…' : 'Mic (allow perm)'}</option>
               {inputDevices.map((d) => (
                 <option key={d.deviceId} value={d.deviceId}>
                   {formatDeviceOption(d, 'mic')}
@@ -317,52 +394,85 @@ export const AudioRouteStatusBar = ({
               ))}
             </select>
           </label>
+        </ElementHintTarget>
+
+        <ElementHintTarget
+          elementId="audio-route-sink-select"
+          icon="🔊"
+          heading="VB out = CABLE Input"
+          body={
+            cableRouteDiag.ok
+              ? 'Playback side of VB-Cable. Greetings + mic land here so the call app (mic = CABLE Output) hears you. Speakers here = you hear it, patient does not.'
+              : cableRouteDiag.tip
+          }
+          color={cableRouteDiag.ok ? '#34d399' : '#ef4444'}
+        >
+          <label className="audio-route-device-pick" title={`VB out: ${outLabel}`}>
+            <span className="audio-route-device-pick-label">🔊</span>
+            <select
+              id="audio-route-sink-select"
+              className="audio-route-select"
+              style={{
+                ...selectStyle,
+                borderColor:
+                  isCableMode && !cableRouteDiag.ok && cableRouteDiag.code?.startsWith('sink_')
+                    ? 'rgba(239,68,68,0.7)'
+                    : selectedSinkId
+                      ? 'rgba(16,185,129,0.45)'
+                      : 'rgba(245,158,11,0.55)',
+              }}
+              value={selectedSinkId}
+              onChange={(e) => changeSinkId(e.target.value)}
+              onFocus={() => fetchDevices({ requestMicPermissionForLabels: false })}
+              onMouseDown={() => fetchDevices({ requestMicPermissionForLabels: false })}
+            >
+              <option value="">{outputDevices.length ? 'VB out…' : 'No outputs found'}</option>
+              {outputDevices.map((d) => (
+                <option key={d.deviceId} value={d.deviceId}>
+                  {formatDeviceOption(d, 'out')}
+                </option>
+              ))}
+            </select>
+          </label>
+        </ElementHintTarget>
+
+        {isCableMode && !cableRouteDiag.ok && (
+          <span
+            className="audio-route-warn-chip"
+            title={cableRouteDiag.tip}
+            style={{ maxWidth: 160, overflow: 'hidden', textOverflow: 'ellipsis' }}
+          >
+            ⚠ {cableRouteDiag.short}
+          </span>
         )}
-
-        {/* Mic for record + passthrough */}
-        <label className="audio-route-device-pick" title={`Mic: ${micDeviceLabel}`}>
-          <span className="audio-route-device-pick-label">🎤</span>
-          <select
-            id="audio-route-mic-select"
-            className="audio-route-select"
-            style={selectStyle}
-            value={selectedMicId}
-            onChange={(e) => changeMicId(e.target.value)}
-            onFocus={() => fetchDevices({ requestMicPermissionForLabels: true })}
-            onMouseDown={() => fetchDevices({ requestMicPermissionForLabels: true })}
-          >
-            <option value="">{inputDevices.length ? 'Mic…' : 'Mic (allow perm)'}</option>
-            {inputDevices.map((d) => (
-              <option key={d.deviceId} value={d.deviceId}>
-                {formatDeviceOption(d, 'mic')}
-              </option>
-            ))}
-          </select>
-        </label>
-
-        {/* VB-Cable out → patient hears greetings */}
-        <label className="audio-route-device-pick" title={`VB out: ${outLabel}`}>
-          <span className="audio-route-device-pick-label">🔊</span>
-          <select
-            id="audio-route-sink-select"
-            className="audio-route-select"
-            style={{
-              ...selectStyle,
-              borderColor: selectedSinkId ? 'rgba(16,185,129,0.45)' : 'rgba(245,158,11,0.55)',
-            }}
-            value={selectedSinkId}
-            onChange={(e) => changeSinkId(e.target.value)}
-            onFocus={() => fetchDevices({ requestMicPermissionForLabels: false })}
-            onMouseDown={() => fetchDevices({ requestMicPermissionForLabels: false })}
-          >
-            <option value="">{outputDevices.length ? 'VB out…' : 'No outputs found'}</option>
-            {outputDevices.map((d) => (
-              <option key={d.deviceId} value={d.deviceId}>
-                {formatDeviceOption(d, 'out')}
-              </option>
-            ))}
-          </select>
-        </label>
+        {isCableMode &&
+          !cableRouteDiag.ok &&
+          cableRouteDiag.code?.startsWith('sink_') &&
+          suggestedCableSinkId &&
+          suggestedCableSinkId !== selectedSinkId && (
+            <button
+              type="button"
+              id="audio-route-fix-sink-btn"
+              className="audio-route-inline-btn"
+              style={{
+                background: 'rgba(255,255,255,0.06)',
+                border: '1px solid rgba(16,185,129,0.55)',
+                borderRadius: 4,
+                color: '#6ee7b7',
+                cursor: 'pointer',
+                fontSize: compact ? '0.62rem' : '0.68rem',
+                fontWeight: 800,
+                lineHeight: 1,
+                padding: '0.16rem 0.42rem',
+                minHeight: compact ? 22 : 24,
+                whiteSpace: 'nowrap',
+              }}
+              onClick={fixCableSink}
+              title="Set VB out to detected CABLE Input"
+            >
+              Fix → CABLE In
+            </button>
+          )}
 
         <ElementHintTarget
           elementId="audio-route-stt-in-badge"

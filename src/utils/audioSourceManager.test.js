@@ -14,6 +14,7 @@ import {
   isVbCableSttInputLabel,
   pickVbCableSinkDevice,
   pickVbCableSttInputDevice,
+  diagnoseVbCableRoute,
   canUseTabCapture,
   classifyTabCaptureError,
   isTabCaptureUserCancel,
@@ -103,6 +104,47 @@ describe("audioSourceManager", () => {
     expect(isVbCableSttInputLabel("CABLE Input (VB-Audio Virtual Cable)")).toBe(false);
     expect(isVbCableSinkLabel("CABLE Input (VB-Audio Virtual Cable)")).toBe(true);
     expect(isVbCableSinkLabel("CABLE Output (VB-Audio Virtual Cable)")).toBe(false);
+  });
+
+  test("diagnoseVbCableRoute flags speakers as VB out", () => {
+    const d = diagnoseVbCableRoute({
+      cableMode: true,
+      sttInputLabel: "CABLE Output (VB-Audio Virtual Cable)",
+      sinkLabel: "Speakers (Realtek)",
+      sinkId: "spk1",
+    });
+    expect(d.ok).toBe(false);
+    expect(d.code).toBe("sink_is_speakers");
+    expect(d.tip).toMatch(/CABLE Input/i);
+  });
+
+  test("diagnoseVbCableRoute flags swapped cable sides", () => {
+    const sinkOut = diagnoseVbCableRoute({
+      cableMode: true,
+      sttInputLabel: "CABLE Output (VB-Audio Virtual Cable)",
+      sinkLabel: "CABLE Output (VB-Audio Virtual Cable)",
+      sinkId: "out",
+    });
+    expect(sinkOut.code).toBe("sink_is_cable_output");
+
+    const sttIn = diagnoseVbCableRoute({
+      cableMode: true,
+      sttInputLabel: "CABLE Input (VB-Audio Virtual Cable)",
+      sinkLabel: "CABLE Input (VB-Audio Virtual Cable)",
+      sinkId: "in",
+    });
+    expect(sttIn.code).toBe("stt_is_cable_input");
+  });
+
+  test("diagnoseVbCableRoute ok when Input/Output correct", () => {
+    const d = diagnoseVbCableRoute({
+      cableMode: true,
+      sttInputLabel: "CABLE Output (VB-Audio Virtual Cable)",
+      sinkLabel: "CABLE Input (VB-Audio Virtual Cable)",
+      sinkId: "in",
+    });
+    expect(d.ok).toBe(true);
+    expect(d.code).toBe("ok");
   });
 
   test("tab share cancel is detected", () => {

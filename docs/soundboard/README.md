@@ -14,6 +14,16 @@ Pre-recorded greetings + clip legibility health (Deepgram) + **manual** route at
 
 On-call **Greetings** strip (collapsible above transcript) fires 7 high-use slots when health + CALL OK pass.
 
+## Hear yourself (v4.84.27)
+
+| Goal | Setting |
+|------|---------|
+| Patient hears greeting | 🔊 VB out = **CABLE Input** (not Speakers) |
+| You hear via Windows Listen | Listen on **CABLE Output** → headphones, *and* VB out = CABLE Input |
+| Preview without patient path | 🧪 Test Mode + raise **🔊 You (Local)** |
+
+Wrong classic: STT in = CABLE Output ✓, VB out = Speakers ✗ → Listen stays silent.
+
 ## AUDIO HEALTH (clip QA only)
 On upload/record, audio is sent to Deepgram. Score tiers:
 

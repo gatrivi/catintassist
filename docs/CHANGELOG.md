@@ -4,6 +4,28 @@
 
 ---
 
+## v4.84.28 — Fix STT: drop medical model (filler_words conflict)
+- Root cause: EN socket used `nova-3-medical` + `filler_words=true` — Deepgram only allows filler words on **general** models → EN lane dies / garbles
+- Both lanes → `nova-3-general` + numerals; keep filler_words
+- Also: arm caption capture before Connect auto-starts call (was dropping early finals until React painted `isActive`)
+- Hard refresh + reconnect STT after call (or between calls)
+
+## v4.84.27 — Soundboard “can’t hear myself” routing UX
+- Root tip: **VB out = CABLE Input** (not speakers). Windows Listen only hears greetings on the cable.
+- I/O strip: detects wrong sink / swapped Input↔Output → ⚠ chip + **Fix → CABLE In**
+- Smart ElementHints on 📥 STT in · 🎤 Mic · 🔊 VB out · 🧪 Test · Mic Monitor
+- Studio banner when VB out is speakers/wrong
+
+## v4.84.26 — STT accuracy + truthful health rail
+- ~~Deepgram: Nova-3 Medical for English~~ — **reverted in v4.84.28** (medical + filler_words unsupported)
+- Bottom STT rail turns amber on repeated empty Deepgram replies or an active-call render gate block
+- `npm test` runs fresh-memory batches so the full suite does not die midway on Windows
+
+## v4.84.25 — Soundboard picture gallery
+- Studio play grid = photo gallery; labels on hover (toggle **Labels** = always on); size slider
+- On-call greetings = thumbnail tiles + size slider (was text chips)
+- **▶ LIVE to patient** banner + progress while greeting plays (studio + on-call)
+
 ## v4.84.24 — Sticky bottom transcript follow
 - Default-on **⬇ sticky** toggle; follows live bubble growth (was only new/final)
 - Scroll-up still pauses; re-enable via toggle

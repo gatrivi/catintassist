@@ -131,8 +131,11 @@ export const useDeepgram = () => {
     lastAudioChunkAt: 0,
     lastAudioChunkSize: 0,
     lastDeepgramMessageAt: 0,
+    lastEmptyTranscriptAt: 0,
+    emptyTranscriptStreak: 0,
     lastTranscriptStringAt: 0,
     lastCaptionCommitAt: 0,
+    captureBlockedAt: 0,
     lastTranscriptText: "",
     lastTranscriptConfidence: null,
     lastWordConfidenceCount: 0,
@@ -216,8 +219,11 @@ export const useDeepgram = () => {
     lastAudioChunkAt: 0,
     lastAudioChunkSize: 0,
     lastDeepgramMessageAt: 0,
+    lastEmptyTranscriptAt: 0,
+    emptyTranscriptStreak: 0,
     lastTranscriptStringAt: 0,
     lastCaptionCommitAt: 0,
+    captureBlockedAt: 0,
     lastTranscriptText: "",
     lastTranscriptConfidence: null,
     lastWordConfidenceCount: 0,
@@ -345,8 +351,11 @@ export const useDeepgram = () => {
       lastAudioChunkAt: 0,
       lastAudioChunkSize: 0,
       lastDeepgramMessageAt: 0,
+      lastEmptyTranscriptAt: 0,
+      emptyTranscriptStreak: 0,
       lastTranscriptStringAt: 0,
       lastCaptionCommitAt: 0,
+      captureBlockedAt: 0,
       lastTranscriptText: "",
       lastTranscriptConfidence: null,
       lastWordConfidenceCount: 0,
@@ -426,9 +435,15 @@ export const useDeepgram = () => {
   }, [clearWatchdog, clearKeepalive]);
 
   // Only store transcript bubbles during an active or zombie-resumed call.
+  // Armed sync before React paints (Connect auto-starts call) — beginStream can
+  // receive Deepgram text before isActive state commits (v4.84.28).
   useEffect(() => {
     shouldCaptureCaptionsRef.current = !!(isActive || isZombieCall);
   }, [isActive, isZombieCall]);
+
+  const armCaptionCapture = useCallback((on = true) => {
+    shouldCaptureCaptionsRef.current = !!on;
+  }, []);
 
   useEffect(() => {
     const onKeyChange = () => {
@@ -833,7 +848,11 @@ export const useDeepgram = () => {
                 lastSocketEsHadText: Boolean(transcript?.trim()),
               };
           if (!transcript || transcript.trim().length === 0) {
-            syncConnectProgress(socketConfidencePatch);
+            syncConnectProgress({
+              ...socketConfidencePatch,
+              lastEmptyTranscriptAt: dgMessageAt,
+              emptyTranscriptStreak: (connectFlagsRef.current.emptyTranscriptStreak || 0) + 1,
+            });
             sttTrace("4 Deepgram processed empty transcript", {
               lang,
               confidence: alt?.confidence ?? null,
@@ -891,6 +910,7 @@ export const useDeepgram = () => {
           }
           syncConnectProgress({
             lastTranscriptStringAt: Date.now(),
+            emptyTranscriptStreak: 0,
             lastTranscriptText: transcript.slice(0, 120),
             lastTranscriptConfidence: confidence,
             lastWordConfidenceCount: wordConfidenceCount,
@@ -928,6 +948,9 @@ export const useDeepgram = () => {
                 isZombieCall,
                 text: transcript.slice(0, 120),
               });
+              if (isActive || isZombieCall) {
+                syncConnectProgress({ captureBlockedAt: Date.now() });
+              }
             }
             return;
           }
@@ -1544,6 +1567,7 @@ export const useDeepgram = () => {
     switchAudioSourceModeSafely,
     stopRecording,
     reconnectStream,
+    armCaptionCapture,
     captions,
     clearCaptions,
     sttLanguage,
