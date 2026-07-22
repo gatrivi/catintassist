@@ -119,3 +119,70 @@ export const isLikelyAuthClose = (code, reason = '') => {
   const { category } = classifyDeepgramClose(code, reason);
   return category === FAILURE.AUTH;
 };
+
+/**
+ * Classify offline DG health probe results (scripts/dg-health-probe.js).
+ * Pure — no network. Use when status page is green but app still "down".
+ */
+export const classifyDeepgramHealthProbe = ({
+  keyPresent = false,
+  projectsHttp = null,
+  listenHttp = null,
+  wsOk = null,
+  wsSkipped = false,
+} = {}) => {
+  if (!keyPresent) {
+    return {
+      verdict: 'NO_KEY',
+      category: FAILURE.AUTH,
+      hint: 'No REACT_APP_DEEPGRAM_API_KEY in .env.local / .env (or runtime key).',
+    };
+  }
+
+  const authish = (code) => code === 401 || code === 403;
+  if (authish(projectsHttp) || authish(listenHttp)) {
+    return {
+      verdict: 'AUTH_BAD',
+      category: FAILURE.AUTH,
+      hint: 'API key rejected on projects/listen — rotate key or check scopes in Deepgram console.',
+    };
+  }
+
+  if (projectsHttp != null && projectsHttp !== 200) {
+    return {
+      verdict: 'DEGRADED',
+      category: FAILURE.NETWORK,
+      hint: `Projects API HTTP ${projectsHttp} — network, DNS, or Deepgram outage.`,
+    };
+  }
+
+  if (listenHttp != null && listenHttp !== 200) {
+    return {
+      verdict: 'DEGRADED',
+      category: listenHttp >= 500 ? FAILURE.UNKNOWN : FAILURE.AUDIO,
+      hint: `Prerecorded listen HTTP ${listenHttp} — STT endpoint unhealthy or request rejected.`,
+    };
+  }
+
+  if (wsOk === false && !wsSkipped) {
+    return {
+      verdict: 'DEGRADED',
+      category: FAILURE.NETWORK,
+      hint: 'Live wss:// listen handshake failed — firewall/VPN/proxy or Streaming API issue.',
+    };
+  }
+
+  if (projectsHttp === 200 && (listenHttp == null || listenHttp === 200) && (wsOk === true || wsOk == null || wsSkipped)) {
+    return {
+      verdict: 'OK',
+      category: null,
+      hint: 'Key + Deepgram API healthy. If app still fails, check tab audio / sink route / browser console [CAT STT].',
+    };
+  }
+
+  return {
+    verdict: 'DEGRADED',
+    category: FAILURE.UNKNOWN,
+    hint: 'Incomplete probe — re-run scripts/dg-health-probe.js.',
+  };
+};

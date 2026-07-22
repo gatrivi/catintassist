@@ -25,6 +25,8 @@
     "test:fixtures": "react-scripts test --watchAll=false --testPathPattern=\"fixtureReplay\"",
     "test:translation": "react-scripts test --watchAll=false --testPathPattern=\"(translationApplicator|translationFixtureReplay|translationSensitiveTokens|translationQuality)\"",
     "test:phase0-smoke": "react-scripts test --watchAll=false --testPathPattern=\"phase0SmokeChecklist\"",
+    "test:critical": "react-scripts test --watchAll=false --testPathPattern=\"(deepgramDiagnostics|deepgramRuntimeKey|deepgramListenConfig|audioSelfTest|audioSourceManager|audioRoutePassthrough|routeDiagnostics|sensitiveDataProtector|fixtureReplay|phase0SmokeChecklist|translationApplicator)\"",
+    "dg:health": "node scripts/dg-health-probe.js",
     "eject": "react-scripts eject"
   },
   "eslintConfig": {
