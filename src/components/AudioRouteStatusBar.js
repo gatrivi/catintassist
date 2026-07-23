@@ -512,7 +512,7 @@ export const AudioRouteStatusBar = ({
           <ElementHintTarget
             elementId="audio-route-soundboard-btn"
             heading="Soundboard Studio"
-            body={mobileMicMode ? 'Mic mode: greetings play on your speakers/headphones — use health check to test quality.' : soundboardOpen ? 'Hide Soundboard Studio panel.' : 'Record greetings, health check, route test.'}
+            body={mobileMicMode ? 'Mic mode: greetings play on your speakers/headphones.' : soundboardOpen ? 'Hide Soundboard Studio panel.' : 'Off-call: 3-step greeting checklist (quality → hear → caller path).'}
             color="#a855f7"
           >
           <button

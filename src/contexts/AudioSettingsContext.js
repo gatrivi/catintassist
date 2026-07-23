@@ -8,6 +8,7 @@ import {
 import { logRouteEvent, ROUTE_EVENT } from '../utils/routeDiagnostics';
 import {
   AUDIO_SOURCE_MODE_VIRTUAL_CABLE,
+  needsVbCableSinkAutoFix,
   pickVbCableSinkDevice,
   readAudioSourceMode,
 } from '../utils/audioSourceManager';
@@ -70,16 +71,20 @@ export const AudioSettingsProvider = ({ children }) => {
       const inputs = devices.filter(d => d.kind === 'audioinput');
       setOutputDevices(outputs);
       setInputDevices(inputs);
-      if (selectedSinkId && !outputs.some(d => d.deviceId === selectedSinkId)) {
+      let nextSinkId = selectedSinkId;
+      if (nextSinkId && !outputs.some((d) => d.deviceId === nextSinkId)) {
+        nextSinkId = '';
         setSelectedSinkId('');
       }
-      // ponytail: virtual-cable mode — auto-pick CABLE Input sink when unset.
-      if (
-        !selectedSinkId &&
-        readAudioSourceMode() === AUDIO_SOURCE_MODE_VIRTUAL_CABLE
-      ) {
+      // ponytail: cable mode — auto-fix VB out when empty or stuck on speakers/default.
+      if (readAudioSourceMode() === AUDIO_SOURCE_MODE_VIRTUAL_CABLE) {
         const pickedSink = pickVbCableSinkDevice(outputs);
-        if (pickedSink) {
+        const sinkLabel = outputs.find((d) => d.deviceId === nextSinkId)?.label || '';
+        if (
+          pickedSink &&
+          needsVbCableSinkAutoFix({ sinkId: nextSinkId, sinkLabel })
+        ) {
+          nextSinkId = pickedSink;
           setSelectedSinkId(pickedSink);
           try {
             localStorage.setItem('CATINTASSIST_SINK_ID', pickedSink);

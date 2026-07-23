@@ -1,8 +1,9 @@
-# CatIntAssist Docs (v4.84.20)
+# CatIntAssist Docs (v4.84.29)
 
 This is the single source of truth for *documentation + onboarding*.
 
 ## What's new
+- **v4.84.29** — Button colors + SB chrome (live/test/danger/chrome) — [`development/button-sizing.md`](development/button-sizing.md)
 - **v4.84.24** — Sticky bottom transcript follow (default ON) — [`CHANGELOG.md`](CHANGELOG.md)
 - **v4.84.23** — Connect button: mode SVG + robot when Deepgram ready — [`CHANGELOG.md`](CHANGELOG.md)
 - **v4.84.22** — STT toggle 🔖 tab · 🎧 VB · 🎤 mic — [`CHANGELOG.md`](CHANGELOG.md)

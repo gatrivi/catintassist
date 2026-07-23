@@ -22,6 +22,8 @@ import {
   looksLikeDateFragment,
   findDosageUnits,
   findMoneyUnits,
+  findAddressUnits,
+  findEmailUnits,
 } from './sensitiveDataProtector';
 
 // ---------------------------------------------------------------------------
@@ -201,12 +203,22 @@ describe('dosage / money units (Phase E)', () => {
 });
 
 describe('sentinel display gate (Phase C)', () => {
-  test('address sentinel does not phone-format street digits', () => {
-    const raw = 'my mailing address is 123 456 7890 West 34th Street';
+  test('address sentinel stitches single-digit dictation but does not phone-format', () => {
+    const raw = 'my mailing address is 1 2 3 4 5 6 7 8 9 0 West 34th Street';
     expect(detectSentinelContext(raw, 'en').mode).toBe('address');
     const out = applyDisplayProtections(raw, 'en');
-    expect(out).toContain('123 456 7890');
+    expect(out).toContain('1234567890');
     expect(out).not.toMatch(/123-456-7890/);
+  });
+
+  test('HIPAA verification cues address sentinel and groups dictation digits', () => {
+    const raw = 'For verification through HIPAA terms, I need the number 1 9 3 5, Madison Avenue, Unit, 1 1 1, Chula Vista, California, 9 1 9 1 3';
+    expect(detectSentinelContext(raw, 'en').mode).toBe('address');
+    const out = applyDisplayProtections(raw, 'en');
+    expect(out).toContain('1935');
+    expect(out).toContain('111');
+    expect(out).toContain('91913');
+    expect(out).not.toMatch(/123-456-7890|919-13/);
   });
 
   test('email sentinel does not stitch digit runs', () => {
@@ -245,6 +257,37 @@ describe('sentinel display gate (Phase C)', () => {
     const out = applyDisplayProtections(raw, 'en');
     expect(out).not.toMatch(/\d{3}-\d{3}-\d{4}/);
     expect(out).toMatch(/500\s*mg|5 0 0\s*mg/);
+  });
+});
+
+describe('findAddressUnits / findEmailUnits (Phase F)', () => {
+  test('groups street number, unit, and zip after state', () => {
+    const text = 'number 1935, Madison Avenue, Unit, 111, Chula Vista, California, 91913';
+    const addr = findAddressUnits(text);
+    expect(addr.some((u) => u.text === '1935' && u.copyValue === '1935')).toBe(true);
+    expect(addr.some((u) => u.text === '111')).toBe(true);
+    expect(addr.some((u) => u.text === '91913')).toBe(true);
+  });
+
+  test('email is one highlight unit', () => {
+    const units = findEmailUnits('contact felita1984@hotmail.com please');
+    expect(units).toHaveLength(1);
+    expect(units[0].copyValue).toBe('felita1984@hotmail.com');
+  });
+
+  test('splitHighlightSegments keeps full date as one span', () => {
+    const segs = splitHighlightSegments('born May 8, 1948');
+    expect(segs.some((s) => s.type === 'date' && /May 8.*1948/.test(s.value))).toBe(true);
+    expect(segs.filter((s) => s.type === 'number')).toHaveLength(0);
+  });
+
+  test('splitHighlightSegments keeps stitched address zip as one number span', () => {
+    const disp = applyDisplayProtections(
+      'For verification through HIPAA, number 9 1 9 1 3, California',
+      'en',
+    );
+    const segs = splitHighlightSegments(disp);
+    expect(segs.some((s) => (s.type === 'number' || s.type === 'address') && s.value.includes('91913'))).toBe(true);
   });
 });
 

@@ -25,6 +25,7 @@ import {
   togglePinEntry,
 } from '../utils/pinnedCaptions';
 import { NewcomerIdleGuide } from './NewcomerIdleGuide';
+import { ConfirmDialog } from './ConfirmDialog';
 import { isNewcomerGuideDismissed } from '../utils/newcomerGuide';
 import { isTranslationStuckForRetranslate } from '../utils/translationQuality';
 import {
@@ -68,6 +69,8 @@ const getBubbleStyle = (text, isCurrent, lang, pair) => {
 
   return { borderLeft: `3px solid ${baseBorder}`, backgroundColor: baseBg };
 };
+
+const SENSITIVE_SEGMENT_TYPES = new Set(['date', 'number', 'dosage', 'money', 'address', 'email']);
 
 const processDisplayText = (raw, lang, applyNumberWords, protectionsActive) => {
   const spelled = formatTranscriptForDisplay(raw, lang);
@@ -168,7 +171,7 @@ const InteractiveText = ({
   }, [repairedText]);
 
   const handleCopy = useCallback((value, type = 'number') => {
-    const clean = (type === 'date' || type === 'dosage' || type === 'money')
+    const clean = SENSITIVE_SEGMENT_TYPES.has(type)
       ? copyableSensitiveValue(value, type)
       : copyableDigits(value);
     if (!clean) return;
@@ -199,7 +202,7 @@ const InteractiveText = ({
         <span key={partKey} className={confidenceClass.trim()}>{seg}</span>
       );
     }
-    if (seg?.type === 'date' || seg?.type === 'number' || seg?.type === 'dosage' || seg?.type === 'money') {
+    if (seg?.type && SENSITIVE_SEGMENT_TYPES.has(seg.type)) {
       const copyVal = seg.copyValue
         || (seg.type === 'number' ? copyableDigits(seg.value) : copyableSensitiveValue(seg.value, seg.type));
       const kindClass = seg.type === 'number' ? 'phone-number' : `${seg.type}-unit`;
@@ -235,31 +238,58 @@ const InteractiveText = ({
     keyRoot = 'cw',
     liveTail = false,
   ) => {
-    if (!alignedWords?.length || !value) return null;
-    let wordIndex = 0;
-    return value.split(/(\s+)/).map((token, idx) => {
-      if (!token) return null;
-      if (/^\s+$/.test(token)) return <span key={`space-${idx}`}>{token}</span>;
-      const meta = alignedWords[wordOffset + wordIndex] || null;
-      wordIndex += 1;
-      const visual = confidenceVisualFor(meta?.confidence, isFinal);
-      const title = Number.isFinite(meta?.confidence)
-        ? `Deepgram confidence ${Math.round(meta.confidence * 100)}%`
-        : undefined;
-      return (
-        <span
-          key={`word-${idx}`}
-          className={`confidence-word${visual.className ? ` ${visual.className}` : ''}`}
-          style={{ color: visual.color, opacity: visual.opacity }}
-          title={title}
-        >
-          {renderSegment(token, `${keyRoot}-${idx}-`, forcePlain, {
-            liveScramble: !forcePlain && liveTail,
-          })}
-        </span>
-      );
+    if (!value) return null;
+
+    const segments = splitDisplaySegments(value);
+    let runningWordOffset = wordOffset;
+    const opts = { liveScramble: !forcePlain && liveTail };
+    const nodes = [];
+
+    segments.forEach((seg, segIdx) => {
+      if (seg?.type && SENSITIVE_SEGMENT_TYPES.has(seg.type)) {
+        nodes.push(renderPart(seg, segIdx, `${keyRoot}-seg-`, forcePlain, opts));
+        runningWordOffset += (seg.value || '').trim().split(/\s+/).filter(Boolean).length;
+        return;
+      }
+
+      const chunk = seg?.value ?? (typeof seg === 'string' ? seg : '');
+      if (!chunk) return;
+
+      if (!alignedWords?.length) {
+        nodes.push(...splitDisplaySegments(chunk).map((p, i) => renderPart(p, i, `${keyRoot}-seg-${segIdx}-`, forcePlain, opts)));
+        runningWordOffset += chunk.trim().split(/\s+/).filter(Boolean).length;
+        return;
+      }
+
+      let localWi = 0;
+      chunk.split(/(\s+)/).forEach((token, idx) => {
+        if (!token) return;
+        if (/^\s+$/.test(token)) {
+          nodes.push(<span key={`${keyRoot}-seg-${segIdx}-sp-${idx}`}>{token}</span>);
+          return;
+        }
+        const meta = alignedWords[runningWordOffset + localWi] || null;
+        localWi += 1;
+        const visual = confidenceVisualFor(meta?.confidence, isFinal);
+        const title = Number.isFinite(meta?.confidence)
+          ? `Deepgram confidence ${Math.round(meta.confidence * 100)}%`
+          : undefined;
+        nodes.push(
+          <span
+            key={`${keyRoot}-seg-${segIdx}-w-${idx}`}
+            className={`confidence-word${visual.className ? ` ${visual.className}` : ''}`}
+            style={{ color: visual.color, opacity: visual.opacity }}
+            title={title}
+          >
+            {token}
+          </span>,
+        );
+      });
+      runningWordOffset += localWi;
     });
-  }, [alignedWords, isFinal, repairedText, renderSegment, scramble]);
+
+    return nodes;
+  }, [alignedWords, isFinal, repairedText, renderPart, scramble]);
 
   const renderLiveDiffText = useCallback(() => {
     if (!scramble || liveStablePrefixLen <= 0 || liveStablePrefixLen >= repairedText.length) return null;
@@ -725,6 +755,7 @@ export const TranscriptionBoard = ({
   const [correctionsRev, setCorrectionsRev] = useState(0);
   const [correctionEditor, setCorrectionEditor] = useState(null);
   const [footerStatus, setFooterStatus] = useState('');
+  const [clearLogConfirmOpen, setClearLogConfirmOpen] = useState(false);
   const [sttNow, setSttNow] = useState(Date.now());
   const liveBubbleHeightsRef = useRef(new Map());
   const lastRenderTraceRef = useRef('');
@@ -877,14 +908,17 @@ export const TranscriptionBoard = ({
   }, [captions]);
 
   const handleClearLog = useCallback(() => {
-    const ok = window.confirm(
-      'Clear transcript log? Pinned messages stay. This cannot be undone.',
-    );
-    if (!ok) return;
+    setClearLogConfirmOpen(true);
+  }, []);
+
+  const confirmClearLog = useCallback(() => {
+    setClearLogConfirmOpen(false);
     onClearAll?.();
     setFooterStatus('Transcript cleared');
     setTimeout(() => setFooterStatus(''), 2500);
   }, [onClearAll]);
+
+  const cancelClearLog = useCallback(() => setClearLogConfirmOpen(false), []);
 
   const handleCopyPinned = useCallback(() => {
     const pinnedText = pinnedCaptions
@@ -1466,6 +1500,16 @@ export const TranscriptionBoard = ({
           </button>
         </div>
       </div>
+      <ConfirmDialog
+        open={clearLogConfirmOpen}
+        title="Clear transcript log?"
+        message="Unpinned messages will be removed. Pinned messages stay. This cannot be undone."
+        confirmLabel="Clear log"
+        cancelLabel="Keep log"
+        danger
+        onConfirm={confirmClearLog}
+        onCancel={cancelClearLog}
+      />
     </div>
   );
 };

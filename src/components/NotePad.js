@@ -1,6 +1,7 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { safeSet } from '../contexts/SessionContext';
 import { useTTS } from '../hooks/useTTS';
+import { ConfirmDialog } from './ConfirmDialog';
 
 export const NotePad = () => {
   const { playTTS, stopTTS, isPlaying } = useTTS();
@@ -37,11 +38,16 @@ export const NotePad = () => {
     return () => window.removeEventListener('catint_focus_notes', focusNotes);
   }, []);
 
-  const clearNotes = () => {
-    if (window.confirm("Are you sure you want to clear your session notes?")) {
-      setNotes('');
-    }
-  };
+  const [clearConfirmOpen, setClearConfirmOpen] = useState(false);
+
+  const requestClearNotes = () => setClearConfirmOpen(true);
+
+  const confirmClearNotes = useCallback(() => {
+    setClearConfirmOpen(false);
+    setNotes('');
+  }, []);
+
+  const cancelClearNotes = useCallback(() => setClearConfirmOpen(false), []);
 
   return (
     <div className="notepad-container">
@@ -55,7 +61,7 @@ export const NotePad = () => {
           )}
           <button onClick={stopTTS} disabled={!isPlaying} className="btn" style={{ background: 'rgba(239, 68, 68, 0.2)', color: '#f87171', padding: '0.1rem 0.4rem', fontSize: '0.65rem' }}>🛑</button>
           <button
-            onClick={clearNotes}
+            onClick={requestClearNotes}
             title="Clear Notes"
             style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', fontSize: '1rem', marginLeft: '0.5rem' }}
           >
@@ -63,6 +69,16 @@ export const NotePad = () => {
           </button>
         </div>
       </div>
+      <ConfirmDialog
+        open={clearConfirmOpen}
+        title="Clear session notes?"
+        message="This removes all notes from this session. This cannot be undone."
+        confirmLabel="Clear notes"
+        cancelLabel="Keep notes"
+        danger
+        onConfirm={confirmClearNotes}
+        onCancel={cancelClearNotes}
+      />
       <textarea
         id="quick-notes-textarea"
         ref={textareaRef}

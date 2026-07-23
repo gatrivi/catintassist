@@ -22,8 +22,10 @@ const processDisplayText = (raw, lang, applyNumberWords, protectionsActive) => {
   return applyDisplayProtections(spelled, lang, { applyNumberWords });
 };
 
+const SENSITIVE_TYPES = new Set(['date', 'number', 'dosage', 'money', 'address', 'email']);
+
 const SensitiveSpan = ({ value, type = 'number' }) => {
-  const copyVal = (type === 'date' || type === 'dosage' || type === 'money')
+  const copyVal = SENSITIVE_TYPES.has(type)
     ? copyableSensitiveValue(value, type)
     : copyableDigits(value);
   const kindClass = type === 'number' ? 'phone-number' : `${type}-unit`;
@@ -57,7 +59,7 @@ const SensitiveSpan = ({ value, type = 'number' }) => {
 const renderTokenText = (text) => {
   if (!text) return null;
   return splitHighlightSegments(text).map((seg, i) => {
-    if (seg.type === 'date' || seg.type === 'number' || seg.type === 'dosage' || seg.type === 'money') {
+    if (seg.type && SENSITIVE_TYPES.has(seg.type)) {
       return <SensitiveSpan key={`${seg.type}${i}`} value={seg.value} type={seg.type} />;
     }
     return <span key={`t${i}`}>{seg.value}</span>;

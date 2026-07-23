@@ -1215,9 +1215,13 @@ export const useDeepgram = () => {
       resetConnectProgress();
       clearWatchdog();
       setConnectionState("connecting");
+      // Mic mode wins over persisted VB-Cable — UI 🎤 must match STT path.
       const configuredMode = readAudioSourceMode();
-      const useVirtualCable = configuredMode === AUDIO_SOURCE_MODE_VIRTUAL_CABLE;
-      const source = useVirtualCable ? "virtualCable" : micTestModeRef.current ? "mic" : "tab";
+      const source = micTestModeRef.current
+        ? "mic"
+        : configuredMode === AUDIO_SOURCE_MODE_VIRTUAL_CABLE
+          ? "virtualCable"
+          : "tab";
       const useMic = source === "mic";
 
 
@@ -1277,12 +1281,11 @@ export const useDeepgram = () => {
     } catch (err) {
       console.error(err);
       const configuredMode = readAudioSourceMode();
-      const attemptedSource =
-        configuredMode === AUDIO_SOURCE_MODE_VIRTUAL_CABLE
+      const attemptedSource = micTestModeRef.current
+        ? "mic"
+        : configuredMode === AUDIO_SOURCE_MODE_VIRTUAL_CABLE
           ? "virtualCable"
-          : micTestModeRef.current
-            ? "mic"
-            : "tab";
+          : "tab";
 
       if (attemptedSource === "tab" && !micTestModeRef.current) {
         const tabErr = classifyTabCaptureError(err);
@@ -1335,11 +1338,10 @@ export const useDeepgram = () => {
       connectAttemptIdRef.current += 1;
       clearWatchdog();
       const configuredMode = readAudioSourceMode();
-      const useVirtualCable = configuredMode === AUDIO_SOURCE_MODE_VIRTUAL_CABLE;
-      const source = useVirtualCable
-        ? "virtualCable"
-        : micTestModeRef.current
-          ? "mic"
+      const source = micTestModeRef.current
+        ? "mic"
+        : configuredMode === AUDIO_SOURCE_MODE_VIRTUAL_CABLE
+          ? "virtualCable"
           : "tab";
       const useMic = source === "mic";
       closeConnections();
@@ -1386,12 +1388,11 @@ export const useDeepgram = () => {
     } catch (err) {
       console.error(err);
       const configuredMode = readAudioSourceMode();
-      const attemptedSource =
-        configuredMode === AUDIO_SOURCE_MODE_VIRTUAL_CABLE
+      const attemptedSource = micTestModeRef.current
+        ? "mic"
+        : configuredMode === AUDIO_SOURCE_MODE_VIRTUAL_CABLE
           ? "virtualCable"
-          : micTestModeRef.current
-            ? "mic"
-            : "tab";
+          : "tab";
 
       if (attemptedSource === "tab" && !micTestModeRef.current) {
         const tabErr = classifyTabCaptureError(err);

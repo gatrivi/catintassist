@@ -17,7 +17,7 @@ import {
   formatRouteDiagLine,
   ROUTE_EVENT,
 } from '../utils/routeDiagnostics';
-import { analyzeBlobHealth, formatHealthDisplay, truncateDeviceLabel, isLocalOnlySoundboardPlayback } from '../utils/audioSelfTest';
+import { analyzeBlobHealth, formatHealthDisplay, truncateDeviceLabel, isLocalOnlyPlayback, getPreflightSteps, isPreflightReady, playTestToneSink } from '../utils/audioSelfTest';
 import {
   buildRouteFingerprint,
   isManualCallOk,
@@ -177,7 +177,8 @@ export const GreetingsPanel = ({ onEditModeChange, onExitStudio, micTestMode = f
   const [playbackProgress, setPlaybackProgress] = useState(0);
   const [routeLive, setRouteLive] = useState(false); // patient-path play (for LIVE banner)
   const [recordingKey, setRecordingKey] = useState(null);
-  const [testMode, setTestMode] = useState(false);
+  const [checkLang, setCheckLang] = useState('en');
+  const [advancedOpen, setAdvancedOpen] = useState(false);
   // ponytail: gallery prefs — localStorage only, no settings schema
   const [showChrome, setShowChrome] = useState(() => {
     try { return localStorage.getItem('catint_sb_show_chrome') === '1'; } catch { return false; }
@@ -188,7 +189,7 @@ export const GreetingsPanel = ({ onEditModeChange, onExitStudio, micTestMode = f
       return Number.isFinite(n) ? Math.min(160, Math.max(64, n)) : 100;
     } catch { return 100; }
   });
-  const localOnlyPlayback = isLocalOnlySoundboardPlayback(micTestMode, testMode);
+  const localOnlyPlayback = isLocalOnlyPlayback(micTestMode);
   const sinkRawLabel = (outputDevices.find((d) => d.deviceId === selectedSinkId)?.label || '').trim();
   const sinkRouteDiag = diagnoseVbCableRoute({
     cableMode: !micTestMode,
@@ -815,8 +816,17 @@ export const GreetingsPanel = ({ onEditModeChange, onExitStudio, micTestMode = f
           )}
           {hasBlob && (
             <>
-              <button type="button" className="sb-btn sb-btn--preview" onClick={() => playAudioBlock(key, false)}>
-                {playingKey === key ? '⏹' : '▶'}
+              <button type="button" className="sb-btn sb-btn--preview" onClick={() => playAudioBlock(key, false)} title="Hear on your speakers only">
+                {playingKey === key ? '⏹' : '🔊 You'}
+              </button>
+              <button
+                type="button"
+                className="sb-btn sb-btn--call"
+                onClick={() => playAudioBlock(key, true, { bypassGate: true, callerOnly: true })}
+                disabled={!selectedSinkId}
+                title={selectedSinkId ? 'Send through VB-Cable — confirm CALL OK on remote side' : 'Pick VB-Cable in header Speaker first'}
+              >
+                📡 Caller
               </button>
               <button
                 type="button"
@@ -825,15 +835,6 @@ export const GreetingsPanel = ({ onEditModeChange, onExitStudio, micTestMode = f
                 title="Edit waveform — crop, re-record, remove silences"
               >
                 ✏️
-              </button>
-              <button
-                type="button"
-                className="sb-btn sb-btn--call"
-                onClick={() => playAudioBlock(key, true, { bypassGate: true, callerOnly: true })}
-                disabled={!selectedSinkId}
-                title={selectedSinkId ? 'Route clip to virtual sink — confirm on remote side before CALL OK' : 'Pick VB-Cable in header Speaker first'}
-              >
-                📡
               </button>
             </>
           )}
@@ -891,7 +892,7 @@ export const GreetingsPanel = ({ onEditModeChange, onExitStudio, micTestMode = f
     return (
       <div className="sb-setup glass-panel" style={{ border: 'none' }}>
         {editorOverlay}
-        {pendingRouteConfirm && (
+        {pendingRouteConfirm && mode === 'settings' && (
           <div className="sb-route-confirm">
             <span>Did remote side hear it cleanly? ({pendingRouteConfirm.clipKey})</span>
             <div className="sb-route-confirm-actions">
@@ -925,7 +926,7 @@ export const GreetingsPanel = ({ onEditModeChange, onExitStudio, micTestMode = f
             >
               {missingOnly ? 'Showing gaps' : 'Missing only'}
             </button>
-            <button type="button" className="btn btn-primary" onClick={() => setMode('play')} style={{ padding: '0.3rem 0.75rem', borderRadius: '20px', fontSize: '0.78rem' }}>
+            <button type="button" className="sb-btn sb-btn--call" onClick={() => setMode('play')}>
               Save & Play
             </button>
             {onExitStudio && (
@@ -1065,6 +1066,26 @@ export const GreetingsPanel = ({ onEditModeChange, onExitStudio, micTestMode = f
   }
 
   const playStats = getSetupStats(blobs);
+  const checkKey = `greeting_${checkLang}_${timeOfDay}`;
+  const checkHasClip = !!blobs[checkKey];
+  const checkCallOk = isCallPathReady(manualCallOk, checkKey, selectedSinkId, selectedMicId);
+  const checkAwaiting = pendingRouteConfirm?.clipKey === checkKey;
+  const preflight = getPreflightSteps({
+    hasClip: checkHasClip,
+    healthScore: healthScores[checkKey],
+    callPathOk: checkCallOk,
+    awaitingConfirm: checkAwaiting,
+  });
+  const preflightReady = isPreflightReady(preflight);
+  const checkHealth = getHealthMeta(healthScores[checkKey]);
+
+  const preflightDot = (state) => {
+    if (state === 'ok') return 'sb-pf-dot sb-pf-dot--ok';
+    if (state === 'fail') return 'sb-pf-dot sb-pf-dot--fail';
+    if (state === 'confirm') return 'sb-pf-dot sb-pf-dot--confirm';
+    if (state === 'missing') return 'sb-pf-dot sb-pf-dot--missing';
+    return 'sb-pf-dot sb-pf-dot--pending';
+  };
 
   const playingAction = playingKey
     ? ACTIONS.find((a) => playingKey === a.id || playingKey.startsWith(`${a.id}_`))
@@ -1096,30 +1117,24 @@ export const GreetingsPanel = ({ onEditModeChange, onExitStudio, micTestMode = f
         </div>
       )}
 
-      {pendingRouteConfirm && (
-        <div className="sb-route-confirm">
-          <span>Did remote side hear it cleanly? ({pendingRouteConfirm.clipKey})</span>
-          <div className="sb-route-confirm-actions">
-            <button type="button" className="sb-btn sb-btn--call" onClick={confirmManualCallOk}>
-              Yes, mark CALL OK
-            </button>
-            <button type="button" className="sb-filter-chip" onClick={declineManualCallOk}>
-              No
-            </button>
-          </div>
-        </div>
-      )}
-
       <div className="sb-play-head">
         <div style={{ display: 'flex', flexDirection: 'column', gap: '0.1rem' }}>
-          <span className={`sb-play-title ${localOnlyPlayback ? 'is-test' : ''}`}>Soundboard · {timeOfDay}</span>
+          <span className={`sb-play-title ${localOnlyPlayback ? 'is-test' : ''}`}>
+            Soundboard · {timeOfDay}
+            {preflightReady && !micTestMode && <span className="sb-ready-pill">CALL READY</span>}
+          </span>
           {micTestMode && (
             <span style={{ fontSize: '0.62rem', color: '#fbbf24', fontWeight: 700 }}>
-              🎤 Mic mode — greetings on your speakers/headphones (quality check)
+              🎤 Mic mode — speakers only (quality check)
+            </span>
+          )}
+          {!micTestMode && (
+            <span style={{ fontSize: '0.62rem', color: 'var(--text-muted)', fontWeight: 600 }}>
+              Tap tiles = your speakers · finish checklist to arm patient path
             </span>
           )}
           {playStats.missing > 0 && (
-            <span style={{ fontSize: '0.62rem', color: '#f87171', fontWeight: 600 }}>{playStats.missing} clip{playStats.missing !== 1 ? 's' : ''} missing — tap ⚙️</span>
+            <span style={{ fontSize: '0.62rem', color: '#f87171', fontWeight: 600 }}>{playStats.missing} clip{playStats.missing !== 1 ? 's' : ''} missing — ⚙️ Setup</span>
           )}
         </div>
 
@@ -1139,7 +1154,7 @@ export const GreetingsPanel = ({ onEditModeChange, onExitStudio, micTestMode = f
               }}
             />
           </label>
-          <label className="sb-gallery-ctrl" title="Show labels on all tiles (off = hover only)">
+          <label className="sb-gallery-ctrl" title="Show labels on all tiles">
             <input
               type="checkbox"
               checked={showChrome}
@@ -1151,23 +1166,10 @@ export const GreetingsPanel = ({ onEditModeChange, onExitStudio, micTestMode = f
             />
             Labels
           </label>
-          <ElementHintTarget
-            elementId="sb-test-mode-toggle"
-            icon="🧪"
-            heading="Test Mode = hear locally"
-            body="ON: greetings play on your speakers only (nothing to VB-Cable). OFF: greeting goes to VB out (must be CABLE Input). Windows Listen only works when VB out = CABLE Input."
-            color="#f59e0b"
-          >
-            <label id="sb-test-mode-toggle" style={{ display: 'flex', alignItems: 'center', gap: '0.25rem', fontSize: '0.7rem', color: localOnlyPlayback ? '#f59e0b' : 'var(--text-muted)', cursor: micTestMode ? 'default' : 'pointer', background: localOnlyPlayback ? 'rgba(245, 158, 11, 0.1)' : 'transparent', padding: '0.2rem 0.4rem', borderRadius: '4px', border: localOnlyPlayback ? '1px solid rgba(245, 158, 11, 0.3)' : '1px solid transparent', transition: 'all 0.2s' }}>
-              <input type="checkbox" checked={localOnlyPlayback} disabled={micTestMode} onChange={(e) => setTestMode(e.target.checked)} style={{ cursor: micTestMode ? 'default' : 'pointer' }} />
-              🧪 Test
-            </label>
-          </ElementHintTarget>
-
-          <button type="button" className="sb-open-setup-btn" onClick={() => openSettings('bg_app')} title="App-wide background image">
-            🖼️ Fondo
+          <button type="button" className="sb-open-setup-btn" onClick={() => openSettings('bg_app')} title="App background image">
+            🖼️
           </button>
-          <button type="button" className="sb-open-setup-btn" onClick={openSettings} title="Record clips, upload audio, button cover images">
+          <button type="button" className="sb-open-setup-btn" onClick={openSettings} title="Record / upload clips">
             ⚙️ Setup
           </button>
           {onExitStudio && (
@@ -1178,118 +1180,202 @@ export const GreetingsPanel = ({ onEditModeChange, onExitStudio, micTestMode = f
         </div>
       </div>
 
-      <div className="sb-vol-strip">
-        {showSinkRouteTip && (
-          <div
-            className="sb-route-tip"
-            role="status"
-            style={{
-              gridColumn: '1 / -1',
-              fontSize: '0.68rem',
-              lineHeight: 1.35,
-              color: '#fde68a',
-              background: 'rgba(245,158,11,0.12)',
-              border: '1px solid rgba(245,158,11,0.35)',
-              borderRadius: 6,
-              padding: '0.4rem 0.55rem',
-              marginBottom: '0.35rem',
-            }}
-          >
-            <strong>Can&apos;t hear greetings?</strong> {sinkRouteDiag.tip}{' '}
-            Or flip <strong>🧪 Test</strong> + raise <strong>🔊 You (Local)</strong>.
-          </div>
-        )}
-        <div className="sb-vol-row">
-          <span style={{ color: localOnlyPlayback ? '#f59e0b' : 'var(--text-muted)' }}>🔊 You (Local)</span>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-            <input type="range" min="0" max="1" step="0.05" value={localVolume} onChange={(e) => changeLocalVolume(parseFloat(e.target.value))} style={{ width: '60px', accentColor: '#ef4444' }} title="Your Speakers Volume" />
-            <div style={{ width: '30px', height: '6px', background: 'rgba(255,255,255,0.1)', borderRadius: '3px', overflow: 'hidden' }}>
-               <div style={{ width: playingKey ? `${localVolume * (40 + Math.random() * 60)}%` : '0%', height: '100%', background: localOnlyPlayback ? '#f59e0b' : '#ef4444', transition: 'width 0.1s' }} />
-            </div>
-          </div>
+      {micTestMode && (
+        <div className="sb-preflight sb-preflight--mic">
+          <span className="sb-preflight-sub">Tap tiles — your speakers only. ⚙️ Setup for health check.</span>
+          <label className="sb-pf-vol" title="Speaker volume">
+            <span>🔊</span>
+            <input type="range" min="0" max="1" step="0.05" value={localVolume} onChange={(e) => changeLocalVolume(parseFloat(e.target.value))} />
+          </label>
         </div>
-        <div className="sb-vol-row">
-          <span style={{ color: localOnlyPlayback ? 'rgba(255,255,255,0.2)' : 'var(--text-muted)' }}>🎤 Call (Virtual Mic)</span>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', opacity: localOnlyPlayback ? 0.3 : 1 }}>
-            <input type="range" disabled={localOnlyPlayback} min="0" max="1" step="0.05" value={sinkVolume} onChange={(e) => changeSinkVolume(parseFloat(e.target.value))} style={{ width: '60px', accentColor: '#10b981' }} title="Interpreter Call Volume" />
-            <div style={{ width: '30px', height: '6px', background: 'rgba(255,255,255,0.1)', borderRadius: '3px', overflow: 'hidden' }}>
-               <div style={{ width: (playingKey && blobs[playingKey] && !localOnlyPlayback) ? `${sinkVolume * (40 + Math.random() * 60)}%` : '0%', height: '100%', background: '#10b981', transition: 'width 0.1s' }} />
-            </div>
-          </div>
-        </div>
-        <div className="sb-vol-row">
-          <ElementHintTarget
-            elementId="sb-mic-monitor-btn"
-            icon="👂"
-            heading="Mic Monitor"
-            body="Hear your live mic on speakers (record path check). Not for greeting playback — use 🧪 Test for that."
-            color="#f59e0b"
-          >
-            <button
-              id="sb-mic-monitor-btn"
-              type="button"
-              onClick={() => setMonitorMic(m => !m)}
-              style={{
-                background: monitorMic ? 'rgba(245, 158, 11, 0.2)' : 'transparent',
-                color: monitorMic ? '#fbbf24' : 'var(--text-muted)',
-                border: monitorMic ? '1px solid rgba(245,158,11,0.4)' : '1px solid transparent',
-                borderRadius: '4px', padding: '0.1rem 0.4rem', cursor: 'pointer', fontSize: '0.7rem',
-                fontWeight: monitorMic ? 700 : 400,
-                animation: monitorMic ? 'pulseGlow 2s infinite' : 'none'
-              }}
-            >
-              {monitorMic ? '🔴 Mic Monitor ON' : '👂 Mic Monitor'}
-            </button>
-          </ElementHintTarget>
-          {monitorMic && (
-            <input type="range" min="0" max="1" step="0.05" value={monitorVolume}
-              onChange={e => setMonitorVolume(parseFloat(e.target.value))}
-              style={{ width: '60px', accentColor: '#f59e0b' }} title="Monitor Volume" />
-          )}
-        </div>
-      </div>
+      )}
 
-      <div className="sb-route-debug">
-        <button
-          type="button"
-          className="sb-route-debug-toggle"
-          onClick={() => setRouteDebugOpen((v) => !v)}
-          aria-expanded={routeDebugOpen}
-        >
-          {routeDebugOpen ? '▾' : '▸'} Route debug
-        </button>
-        {routeDebugOpen && (
-          <div className="sb-route-debug-body">
-            <div>Route mode: {readRouteModePreference()}</div>
-            <div>STT active: {typeof window !== 'undefined' && window.__CAT_STT_ACTIVE ? 'YES' : 'no'}</div>
-            <div>Sink: {sinkLabel}</div>
-            <div>Mic: {micLabel}</div>
-            <div>Local only: {localOnlyPlayback ? 'ON' : 'OFF'}{micTestMode ? ' (mic mode)' : ''}</div>
-            <div>Passthrough: {sinkPlaybackActive ? 'MUTED/CLIP' : 'OPEN'}</div>
-            <div>
-              Last route test:{' '}
-              {lastRouteTest
-                ? `${ROUTE_TEST_LABELS[lastRouteTest.result] || lastRouteTest.result} (${lastRouteTest.clipKey})`
-                : '—'}
+      {!micTestMode && (
+        <div className="sb-preflight" id="sb-preflight-check" data-guide="greeting-preflight">
+          <div className="sb-preflight-head">
+            <strong>Will callers hear it?</strong>
+            <span className="sb-preflight-sub">3 steps — same order every time</span>
+          </div>
+
+          <div className="sb-preflight-pick">
+            <span>Clip:</span>
+            <button type="button" className={`sb-pf-lang${checkLang === 'en' ? ' is-on' : ''}`} onClick={() => setCheckLang('en')}>EN</button>
+            <button type="button" className={`sb-pf-lang${checkLang === 'es' ? ' is-on' : ''}`} onClick={() => setCheckLang('es')}>ES</button>
+            <span className="sb-preflight-slot">{TIME_SLOT_META[timeOfDay].icon} {TIME_SLOT_META[timeOfDay].name}</span>
+            {!checkHasClip && (
+              <button type="button" className="sb-filter-chip" onClick={() => openSettings(checkKey)}>Add clip</button>
+            )}
+          </div>
+
+          <div className="sb-preflight-steps">
+            <div className={`sb-pf-step${preflight.quality === 'ok' ? ' is-done' : ''}${preflight.quality === 'fail' ? ' is-fail' : ''}`}>
+              <span className={preflightDot(preflight.quality)} aria-hidden />
+              <div className="sb-pf-step-body">
+                <span className="sb-pf-step-title">1 · Clip quality</span>
+                <span className="sb-pf-step-hint">
+                  {checkHasClip
+                    ? (checkHealth?.label || 'Not checked — Deepgram scores legibility')
+                    : 'Record this greeting in Setup first'}
+                </span>
+              </div>
+              <button
+                type="button"
+                className="sb-pf-btn"
+                disabled={!checkHasClip || isAnalyzing === checkKey}
+                onClick={() => analyzeHealth(checkKey)}
+              >
+                {isAnalyzing === checkKey ? '…' : checkHealth ? 'Re-check' : 'Check'}
+              </button>
             </div>
-            <div className="sb-route-diag-log" style={{ marginTop: '0.35rem', fontSize: '0.65rem', opacity: 0.85, maxHeight: '72px', overflow: 'auto' }}>
-              {getRouteDiagnostics().slice(0, 6).map((e, i) => (
-                <div key={i}>{formatRouteDiagLine(e)}</div>
-              ))}
-              {!getRouteDiagnostics().length && <div>— no route events yet —</div>}
+
+            <div className={`sb-pf-step${playingKey === checkKey && !routeLive ? ' is-active' : ''}`}>
+              <span className={preflightDot(preflight.quality === 'ok' ? 'ok' : 'pending')} aria-hidden />
+              <div className="sb-pf-step-body">
+                <span className="sb-pf-step-title">2 · You hear it</span>
+                <span className="sb-pf-step-hint">Your speakers — not the patient path</span>
+              </div>
+              <button
+                type="button"
+                className="sb-pf-btn sb-pf-btn--you"
+                disabled={!checkHasClip}
+                onClick={() => playAudioBlock(checkKey, false)}
+              >
+                {playingKey === checkKey && !routeLive ? '⏹ Stop' : '🔊 Hear'}
+              </button>
+            </div>
+
+            <div className={`sb-pf-step${preflight.caller === 'ok' ? ' is-done' : ''}${preflight.caller === 'confirm' ? ' is-active' : ''}`}>
+              <span className={preflightDot(preflight.caller)} aria-hidden />
+              <div className="sb-pf-step-body">
+                <span className="sb-pf-step-title">3 · Caller hears it</span>
+                <span className="sb-pf-step-hint">
+                  {preflight.caller === 'ok'
+                    ? 'CALL OK ✓ — tiles fire to patient path'
+                    : `VB out → ${sinkLabel}${showSinkRouteTip ? ' · fix routing in header' : ''}`}
+                </span>
+              </div>
+              <div className="sb-pf-step-actions">
+                <button
+                  type="button"
+                  className="sb-pf-btn sb-pf-btn--caller"
+                  disabled={!checkHasClip || !selectedSinkId || preflight.quality === 'fail'}
+                  onClick={() => playAudioBlock(checkKey, true, { bypassGate: true, callerOnly: true })}
+                  title={selectedSinkId ? 'Same path as on-call greetings' : 'Pick CABLE Input in header 🔊'}
+                >
+                  {playingKey === checkKey && routeLive ? '⏹ Stop' : '📡 Send'}
+                </button>
+                {preflight.caller === 'confirm' && (
+                  <>
+                    <button type="button" className="sb-pf-btn sb-pf-btn--ok" onClick={confirmManualCallOk}>CALL OK</button>
+                    <button type="button" className="sb-pf-btn" onClick={declineManualCallOk}>No</button>
+                  </>
+                )}
+              </div>
             </div>
           </div>
-        )}
-      </div>
+
+          {showSinkRouteTip && (
+            <div className="sb-route-tip" role="status">
+              <strong>Routing:</strong> {sinkRouteDiag.tip}
+            </div>
+          )}
+
+          <div className="sb-preflight-foot">
+            <label className="sb-pf-vol" title="Speaker volume for step 2">
+              <span>🔊 You</span>
+              <input type="range" min="0" max="1" step="0.05" value={localVolume} onChange={(e) => changeLocalVolume(parseFloat(e.target.value))} />
+            </label>
+            <label className="sb-pf-vol" title="Patient-path volume for step 3">
+              <span>📡 Caller</span>
+              <input type="range" min="0" max="1" step="0.05" value={sinkVolume} onChange={(e) => changeSinkVolume(parseFloat(e.target.value))} />
+            </label>
+            <button
+              type="button"
+              className="sb-pf-btn sb-pf-btn--ghost"
+              disabled={!selectedSinkId}
+              onClick={() => playTestToneSink(selectedSinkId, sinkVolume).catch(() => {
+                setSafetyNotice('⚠️ VB beep failed — check 🔊 in header');
+                window.setTimeout(() => setSafetyNotice(''), 4500);
+              })}
+              title="Short beep through VB-Cable (no clip needed)"
+            >
+              Beep cable
+            </button>
+            <button type="button" className="sb-pf-btn sb-pf-btn--ghost" onClick={() => setAdvancedOpen((v) => !v)}>
+              {advancedOpen ? 'Less ▴' : 'More ▾'}
+            </button>
+          </div>
+        </div>
+      )}
+
+      {advancedOpen && (
+        <div className="sb-advanced">
+          <div className="sb-vol-row">
+            <ElementHintTarget
+              elementId="sb-mic-monitor-btn"
+              icon="👂"
+              heading="Mic Monitor"
+              body="Hear your live mic on speakers (record path check). Not for greeting playback."
+              color="#f59e0b"
+            >
+              <button
+                id="sb-mic-monitor-btn"
+                type="button"
+                onClick={() => setMonitorMic((m) => !m)}
+                className={`sb-pf-monitor${monitorMic ? ' is-on' : ''}`}
+              >
+                {monitorMic ? '🔴 Mic Monitor ON' : '👂 Mic Monitor'}
+              </button>
+            </ElementHintTarget>
+            {monitorMic && (
+              <input type="range" min="0" max="1" step="0.05" value={monitorVolume}
+                onChange={(e) => setMonitorVolume(parseFloat(e.target.value))}
+                style={{ width: '60px', accentColor: '#f59e0b' }} title="Monitor Volume" />
+            )}
+          </div>
+          <div className="sb-route-debug">
+            <button
+              type="button"
+              className="sb-route-debug-toggle"
+              onClick={() => setRouteDebugOpen((v) => !v)}
+              aria-expanded={routeDebugOpen}
+            >
+              {routeDebugOpen ? '▾' : '▸'} Route debug
+            </button>
+            {routeDebugOpen && (
+              <div className="sb-route-debug-body">
+                <div>Route mode: {readRouteModePreference()}</div>
+                <div>STT active: {typeof window !== 'undefined' && window.__CAT_STT_ACTIVE ? 'YES' : 'no'}</div>
+                <div>Sink: {sinkLabel}</div>
+                <div>Mic: {micLabel}</div>
+                <div>Mic mode: {micTestMode ? 'ON' : 'OFF'}</div>
+                <div>Passthrough: {sinkPlaybackActive ? 'MUTED/CLIP' : 'OPEN'}</div>
+                <div>
+                  Last route test:{' '}
+                  {lastRouteTest
+                    ? `${ROUTE_TEST_LABELS[lastRouteTest.result] || lastRouteTest.result} (${lastRouteTest.clipKey})`
+                    : '—'}
+                </div>
+                <div className="sb-route-diag-log" style={{ marginTop: '0.35rem', fontSize: '0.65rem', opacity: 0.85, maxHeight: '72px', overflow: 'auto' }}>
+                  {getRouteDiagnostics().slice(0, 6).map((e, i) => (
+                    <div key={i}>{formatRouteDiagLine(e)}</div>
+                  ))}
+                  {!getRouteDiagnostics().length && <div>— no route events yet —</div>}
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
       
       <div className="sb-grid sb-grid--gallery">
         {ACTIONS.map((action) => {
           const activeKey = action.dynamic ? `${action.id}_${timeOfDay}` : action.id;
           const hasAudio = !!blobs[activeKey];
-          const callerBlocked = hasAudio && !localOnlyPlayback && (
-            !isCallerReady(healthScores[activeKey]) ||
-            !isCallPathReady(manualCallOk, activeKey, selectedSinkId, selectedMicId)
-          );
+          const callReady = !micTestMode
+            && isCallerReady(healthScores[activeKey])
+            && isCallPathReady(manualCallOk, activeKey, selectedSinkId, selectedMicId);
+          const callerBlocked = hasAudio && !callReady && !micTestMode;
           const hasThumb = !!blobs[`url_thumb_${action.id}`];
           const bgImage = hasThumb ? `url(${blobs[`url_thumb_${action.id}`]})` : undefined;
           const isItPlaying = playingKey === activeKey;
@@ -1318,12 +1404,14 @@ export const GreetingsPanel = ({ onEditModeChange, onExitStudio, micTestMode = f
               key={action.id}
               type="button"
               className={`sb-slot sb-slot--ready${hasThumb ? ' has-thumb' : ''}${isItPlaying ? ' is-playing' : ''}${callerBlocked ? ' is-blocked' : ''}${action.lang ? ` sb-slot--${action.lang}` : ''}`}
-              onClick={() => playAudioBlock(activeKey, !localOnlyPlayback, { bypassGate: false })}
+              onClick={() => playAudioBlock(activeKey, callReady, { bypassGate: false })}
               style={bgImage ? { backgroundImage: bgImage } : undefined}
               title={
-                callerBlocked
-                  ? 'Blocked from virtual mic — local preview only (Setup → Call Test + confirm CALL OK, or 🧪 Test Mode)'
-                  : `${action.label} — tap to play`
+                micTestMode
+                  ? `${action.label} — your speakers`
+                  : callerBlocked
+                    ? 'Local preview — finish checklist above to arm patient path'
+                    : `${action.label} — fires to patient path`
               }
             >
               <div className="sb-slot-overlay" />

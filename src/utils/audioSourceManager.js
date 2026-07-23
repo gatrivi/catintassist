@@ -79,6 +79,7 @@ export const isVbCableSinkLabel = (label) => {
   if (!l) return false;
   if (l.includes("cable output")) return false;
   if (l.includes("cable input")) return true;
+  if (/\bcable in\b/.test(l)) return true;
   if (l.includes("voicemeeter input")) return true;
   return false;
 };
@@ -89,8 +90,22 @@ export const pickVbCableSttInputDevice = (inputDevices = []) => {
 };
 
 export const pickVbCableSinkDevice = (outputDevices = []) => {
-  const match = outputDevices.find((d) => isVbCableSinkLabel(d.label));
-  return match?.deviceId || "";
+  const matches = outputDevices.filter((d) => isVbCableSinkLabel(d.label));
+  // ponytail: plain CABLE Input beats 16ch variant — fewer silent-route reports.
+  const plain = matches.find((d) => !/16\s*ch/i.test(d.label || ""));
+  return (plain || matches[0])?.deviceId || "";
+};
+
+/** Cable mode: replace missing/wrong VB out (speakers, swapped sides, etc.). */
+export const needsVbCableSinkAutoFix = ({ sinkId = "", sinkLabel = "" } = {}) => {
+  if (!sinkId) return true;
+  const diag = diagnoseVbCableRoute({
+    cableMode: true,
+    sttInputLabel: "",
+    sinkLabel,
+    sinkId,
+  });
+  return !diag.ok && String(diag.code || "").startsWith("sink_");
 };
 
 /**

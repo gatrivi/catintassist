@@ -119,9 +119,41 @@ export const truncateDeviceLabel = (label, max = 14) => {
   return `${clean.slice(0, max - 1)}…`;
 };
 
-/** Mic mode or studio test mode — local speakers/headphones only (no VB-Cable). */
-export const isLocalOnlyPlayback = (micTestMode = false, testMode = false) =>
-  Boolean(micTestMode || testMode);
+/** Mic mode — local speakers/headphones only (no VB-Cable). */
+export const isLocalOnlyPlayback = (micTestMode = false) => Boolean(micTestMode);
 
 /** @deprecated use isLocalOnlyPlayback */
 export const isLocalOnlySoundboardPlayback = isLocalOnlyPlayback;
+
+export const CLIP_HEALTH_MIN = 0.5;
+
+/** Deepgram health score passes caller-path gate. */
+export const isClipHealthOk = (score) => score !== undefined && score !== null && score >= CLIP_HEALTH_MIN;
+
+/**
+ * 3-step off-call preflight: quality → you hear → caller path.
+ * @returns {'missing'|'pending'|'ok'|'fail'|'confirm'}
+ */
+export const getPreflightSteps = ({
+  hasClip,
+  healthScore,
+  callPathOk,
+  awaitingConfirm,
+}) => ({
+  quality: !hasClip
+    ? 'missing'
+    : healthScore === undefined || healthScore === null
+      ? 'pending'
+      : isClipHealthOk(healthScore)
+        ? 'ok'
+        : 'fail',
+  caller: !hasClip
+    ? 'missing'
+    : callPathOk
+      ? 'ok'
+      : awaitingConfirm
+        ? 'confirm'
+        : 'pending',
+});
+
+export const isPreflightReady = (steps) => steps.quality === 'ok' && steps.caller === 'ok';

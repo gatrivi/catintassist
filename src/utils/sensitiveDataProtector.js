@@ -274,7 +274,7 @@ export const maskDateUnits = (text) => {
 
 /**
  * Split for highlight/copy: date → dosage → money units, then number regex on gaps.
- * @returns {{ type: 'text'|'number'|'date'|'dosage'|'money', value: string, copyValue?: string }[]}
+ * @returns {{ type: 'text'|'number'|'date'|'dosage'|'money'|'address'|'email', value: string, copyValue?: string }[]}
  */
 export const findDosageUnits = (text) => {
   if (!text) return [];
@@ -311,6 +311,84 @@ export const findMoneyUnits = (text) => {
   return units;
 };
 
+const STREET_TYPE_WORD =
+  '(?:street|st|avenue|ave|boulevard|blvd|drive|dr|road|rd|lane|ln|court|ct|place|pl|way|circle|cir|highway|hwy|parkway|pkwy|terrace|ter)';
+
+const US_STATE_NAMES =
+  'Alabama|Alaska|Arizona|Arkansas|California|Colorado|Connecticut|Delaware|Florida|Georgia|Hawaii|Idaho|Illinois|Indiana|Iowa|Kansas|Kentucky|Louisiana|Maine|Maryland|Massachusetts|Michigan|Minnesota|Mississippi|Missouri|Montana|Nebraska|Nevada|New Hampshire|New Jersey|New Mexico|New York|North Carolina|North Dakota|Ohio|Oklahoma|Oregon|Pennsylvania|Rhode Island|South Carolina|South Dakota|Tennessee|Texas|Utah|Vermont|Virginia|Washington|West Virginia|Wisconsin|Wyoming';
+
+/** Address spans for highlight/copy (street #, unit, zip) — display only. */
+export const findAddressUnits = (text) => {
+  if (!text) return [];
+  const units = [];
+  const overlaps = (start, end) =>
+    units.some((u) => !(end <= u.start || start >= u.end));
+
+  const push = (start, end, raw, copyValue) => {
+    if (start < 0 || end <= start || overlaps(start, end)) return;
+    units.push({
+      start,
+      end,
+      text: raw,
+      copyValue: copyValue ?? raw.trim(),
+    });
+  };
+
+  const streetBeforeType = new RegExp(
+    `\\b(\\d{1,6})\\s*,?\\s*(?:[A-Za-z][\\w.'-]+\\s+){0,2}${STREET_TYPE_WORD}\\b`,
+    'gi',
+  );
+  let m;
+  while ((m = streetBeforeType.exec(text))) {
+    const num = m[1];
+    push(m.index, m.index + num.length, num, copyableDigits(num));
+  }
+
+  const numberCue = /\b(?:number|no\.?|#)\s+(\d{1,6})\b/gi;
+  while ((m = numberCue.exec(text))) {
+    const num = m[1];
+    push(m.index + m[0].indexOf(num), m.index + m[0].indexOf(num) + num.length, num, copyableDigits(num));
+  }
+
+  const unitRe = /\b(?:unit|apt|apartment|suite|ste)\s*,?\s*#?\s*(\d{1,6})\b/gi;
+  while ((m = unitRe.exec(text))) {
+    const num = m[1];
+    push(m.index + m[0].indexOf(num), m.index + m[0].indexOf(num) + num.length, num, copyableDigits(num));
+  }
+
+  const stateZip = new RegExp(`\\b(?:${US_STATE_NAMES})\\s*,?\\s*(\\d{5})(?:-(\\d{4}))?\\b`, 'gi');
+  while ((m = stateZip.exec(text))) {
+    const zip = m[1] + (m[2] ? `-${m[2]}` : '');
+    push(m.index + m[0].indexOf(m[1]), m.index + m[0].indexOf(m[1]) + zip.length, zip, zip);
+  }
+
+  const zipCue = /\b(?:zip(?:\s*code)?|postal(?:\s*code)?|c[oó]digo postal)\s*(?:is\s*)?(\d{5})(?:-(\d{4}))?\b/gi;
+  while ((m = zipCue.exec(text))) {
+    const zip = m[1] + (m[2] ? `-${m[2]}` : '');
+    push(m.index + m[0].indexOf(m[1]), m.index + m[0].indexOf(m[1]) + zip.length, zip, zip);
+  }
+
+  return units.sort((a, b) => a.start - b.start);
+};
+
+/** Email spans for highlight/copy. */
+export const findEmailUnits = (text) => {
+  if (!text) return [];
+  const units = [];
+  const re = /\b[A-Za-z0-9](?:[A-Za-z0-9._%+-]*[A-Za-z0-9])?@[A-Za-z0-9](?:[A-Za-z0-9.-]*[A-Za-z0-9])?\.[A-Za-z]{2,}\b/g;
+  let m;
+  while ((m = re.exec(text))) {
+    const raw = m[0];
+    units.push({
+      start: m.index,
+      end: m.index + raw.length,
+      text: raw,
+      copyValue: raw,
+    });
+  }
+  return units;
+};
+
 /** Merge non-overlapping typed units; earlier/longer wins on overlap. */
 const mergeTypedUnits = (groups) => {
   const all = [];
@@ -332,6 +410,8 @@ export const splitHighlightSegments = (text) => {
     { type: 'date', units: findDateUnits(text) },
     { type: 'dosage', units: findDosageUnits(text) },
     { type: 'money', units: findMoneyUnits(text) },
+    { type: 'address', units: findAddressUnits(text) },
+    { type: 'email', units: findEmailUnits(text) },
   ]);
   const segments = [];
   let cursor = 0;
@@ -375,10 +455,20 @@ export const copyableSensitiveValue = (value, type = 'number') => {
     if (units[0]?.copyValue) return units[0].copyValue;
     return String(value || '').trim();
   }
+  if (type === 'address') {
+    const units = findAddressUnits(String(value));
+    if (units[0]?.copyValue) return units[0].copyValue;
+    return copyableDigits(value);
+  }
+  if (type === 'email') {
+    const units = findEmailUnits(String(value));
+    if (units[0]?.copyValue) return units[0].copyValue;
+    return String(value || '').trim();
+  }
   return copyableDigits(value);
 };
 
-export const stitchSingleDigitSequences = (text, { minDigits = 2 } = {}) => {
+export const stitchSingleDigitSequences = (text, { minDigits = 2, ignoreAddressGuard = false } = {}) => {
   if (!text) return text;
   return text.replace(SINGLE_DIGIT_RUN_RE, (match, offset, full) => {
     const parts = match.split(/[\s,.-]+/).filter(Boolean);
@@ -386,7 +476,7 @@ export const stitchSingleDigitSequences = (text, { minDigits = 2 } = {}) => {
 
     const before = full.slice(Math.max(0, offset - 40), offset);
     const after = full.slice(offset + match.length, offset + match.length + 40);
-    if (looksLikeAddressFragment(before, after)) return match;
+    if (!ignoreAddressGuard && looksLikeAddressFragment(before, after)) return match;
     if (looksLikeDateFragment(before, after)) return match;
 
     const trailingPunct = match.match(/[,.]$/)?.[0] || '';
@@ -396,13 +486,12 @@ export const stitchSingleDigitSequences = (text, { minDigits = 2 } = {}) => {
 
 /**
  * Sentinel display brakes (Phase C).
- * - Skip stitch: date/address/email/spelling (digit runs are not phone dictation)
+ * - Skip stitch: date/email/spelling (address may stitch — phone format still skipped)
  * - Skip phone/SSN format: those + dosage/medication/price (keep stitch for "5 0 0 mg")
  * - phone + ssn modes: full transforms allowed
  */
 export const DISPLAY_SKIP_STITCH_MODES = new Set([
   'date',
-  'address',
   'email',
   'spelling',
 ]);
@@ -436,13 +525,14 @@ export const applyDisplayProtections = (text, lang = 'en', { applyNumberWords = 
   const sentinel = detectSentinelContext(out, lang);
   const skipStitch = shouldSkipDigitStitch(sentinel.mode);
   const skipPhone = shouldSkipPhoneFormat(sentinel.mode);
+  const stitchOpts = { ignoreAddressGuard: sentinel.mode === 'address' };
 
   const { text: masked, restore } = maskDateUnits(out);
   out = masked;
 
   if (!skipStitch) {
     const afterWords = out;
-    out = stitchSingleDigitSequences(out);
+    out = stitchSingleDigitSequences(out, stitchOpts);
     if (out !== afterWords) {
       flagVanish('display_digit_stitch', {
         before: afterWords,
@@ -608,6 +698,8 @@ const EN_SENTINELS = {
   ],
   address: [
     /\b(mailing|home|street|billing)?\s*address\b/i,
+    /\b(?:for\s+)?verification\b/i,
+    /\bhipaa\b/i,
     /\blive(s)? (at|on)\b/i,
     /\bzip( code)?\b/i,
     /\bapartment\b/i,

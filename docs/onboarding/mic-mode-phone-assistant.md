@@ -34,7 +34,7 @@ Use CatIntAssist on a **phone or tablet** (or Cursor preview) when you cannot sh
 Route log: `window.__CAT_ROUTE_DIAG` shows `routeMode: local_speakers` when mic mode plays.
 
 ## Quick test (phone)
-1. Turn **🎤** ON → CONNECT (allow mic).
+1. Turn **🎤** ON → CONNECT (allow mic). **v4.84.34:** green button fires mic prompt on the same tap (no 280ms delay).
 2. Speak — transcript appears.
 3. Tap a **Greetings** clip or translation **🔊** — audio plays on **your** speaker, not VB-Cable.
 4. Soundboard Studio: **Test Mode** checkbox is forced ON (same behavior).

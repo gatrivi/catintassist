@@ -14,6 +14,7 @@ import {
   isVbCableSttInputLabel,
   pickVbCableSinkDevice,
   pickVbCableSttInputDevice,
+  needsVbCableSinkAutoFix,
   diagnoseVbCableRoute,
   canUseTabCapture,
   classifyTabCaptureError,
@@ -97,6 +98,27 @@ describe("audioSourceManager", () => {
     ];
     expect(pickVbCableSttInputDevice(inputs)).toBe("cable-out");
     expect(pickVbCableSinkDevice(outputs)).toBe("cable-in");
+  });
+
+  test("pickVbCableSinkDevice prefers plain CABLE Input over 16ch", () => {
+    const outputs = [
+      { deviceId: "16ch", label: "CABLE In 16ch (VB-Audio Virtual Cable)", kind: "audiooutput" },
+      { deviceId: "plain", label: "CABLE Input (VB-Audio Virtual Cable)", kind: "audiooutput" },
+    ];
+    expect(pickVbCableSinkDevice(outputs)).toBe("plain");
+  });
+
+  test("needsVbCableSinkAutoFix flags speakers and empty sink", () => {
+    expect(needsVbCableSinkAutoFix({ sinkId: "", sinkLabel: "" })).toBe(true);
+    expect(
+      needsVbCableSinkAutoFix({ sinkId: "spk1", sinkLabel: "Default - Speakers (Realtek)" }),
+    ).toBe(true);
+    expect(
+      needsVbCableSinkAutoFix({
+        sinkId: "in",
+        sinkLabel: "CABLE Input (VB-Audio Virtual Cable)",
+      }),
+    ).toBe(false);
   });
 
   test("VB-Cable device label helpers distinguish in vs out", () => {

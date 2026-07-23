@@ -1,4 +1,4 @@
-import React, { act } from 'react';
+import React from 'react';
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 
@@ -6,8 +6,6 @@ import { ConnectInterpretButton } from './ConnectInterpretButton';
 
 describe('ConnectInterpretButton', () => {
   test('Connect button is visible and clickable', async () => {
-    jest.useFakeTimers();
-
     const onSingle = jest.fn();
 
     render(<ConnectInterpretButton onSingle={onSingle} />);
@@ -18,13 +16,22 @@ describe('ConnectInterpretButton', () => {
 
     await userEvent.click(btn);
 
-    // onSingle is delayed via DOUBLE_TAP_MS timeout
-    expect(onSingle).not.toHaveBeenCalled();
-    act(() => {
-      jest.advanceTimersByTime(300);
-    });
-
+    // Immediate fire — preserves user gesture for getUserMedia on mobile.
     expect(onSingle).toHaveBeenCalledTimes(1);
+  });
+
+  test('double-tap calls onDouble', async () => {
+    const onSingle = jest.fn();
+    const onDouble = jest.fn();
+
+    render(<ConnectInterpretButton onSingle={onSingle} onDouble={onDouble} />);
+
+    const btn = screen.getByRole('button', { name: /connect/i });
+    await userEvent.click(btn);
+    expect(onSingle).toHaveBeenCalledTimes(1);
+
+    await userEvent.click(btn);
+    expect(onDouble).toHaveBeenCalledTimes(1);
   });
 
   test('shows mode icon + robot when provider ready', () => {

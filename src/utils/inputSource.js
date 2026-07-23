@@ -44,20 +44,37 @@ export async function acquireInputSource(kind, opts = {}) {
   }
 
   if (source === "mic") {
+    if (!navigator.mediaDevices?.getUserMedia) {
+      throw new Error("Microphone requires HTTPS (secure context).");
+    }
     let micId = null;
     try {
       micId = localStorage.getItem(MIC_DEVICE_KEY);
     } catch (_) {}
-    const audio = micId
-      ? {
-          deviceId: { exact: micId },
-          echoCancellation: true,
-          noiseSuppression: true,
-          autoGainControl: true,
-        }
-      : true;
-    const stream = await navigator.mediaDevices.getUserMedia({ audio });
-    return { stream, kind: "mic" };
+    const withProcessing = {
+      echoCancellation: true,
+      noiseSuppression: true,
+      autoGainControl: true,
+    };
+    try {
+      const audio = micId
+        ? { deviceId: { exact: micId }, ...withProcessing }
+        : true;
+      const stream = await navigator.mediaDevices.getUserMedia({ audio });
+      return { stream, kind: "mic" };
+    } catch (err) {
+      // Mobile deviceIds go stale; exact constraint → silent OverconstrainedError.
+      if (
+        micId &&
+        (err?.name === "OverconstrainedError" || err?.name === "NotFoundError")
+      ) {
+        const stream = await navigator.mediaDevices.getUserMedia({
+          audio: withProcessing,
+        });
+        return { stream, kind: "mic" };
+      }
+      throw err;
+    }
   }
 
   if (source === "virtualCable") {

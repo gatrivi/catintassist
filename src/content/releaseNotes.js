@@ -25,6 +25,103 @@ import { APP_VERSION } from '../constants/version';
 /** Newest first. Only the entry matching APP_VERSION is shown on load. */
 export const RELEASE_NOTES_CATALOG = [
   {
+    version: '4.84.34',
+    id: 'mobile-mic-connect-v1',
+    highlightElementIds: ['header-connect-btn', 'audio-route-mic-mode-btn'],
+    es: {
+      title: 'Mic en celular',
+      intro: 'CONNECT en el teléfono pide el micrófono de inmediato (ya no se pierde el gesto).',
+      sections: [
+        {
+          heading: 'Qué cambió',
+          bullets: [
+            'Un toque al botón verde → prompt de mic al toque',
+            'Modo 🎤 gana sobre VB-Cable guardado',
+            'Si el mic guardado falla, usa el mic por defecto',
+          ],
+        },
+      ],
+    },
+    en: {
+      title: 'Mobile mic connect',
+      intro: 'CONNECT on phone requests the mic immediately (user gesture no longer lost).',
+      sections: [
+        {
+          heading: 'What changed',
+          bullets: [
+            'One tap green → mic prompt right away',
+            '🎤 mic mode wins over saved VB-Cable',
+            'Stale mic deviceId falls back to default mic',
+          ],
+        },
+      ],
+    },
+  },
+  {
+    version: '4.84.33',
+    id: 'greeting-preflight-v1',
+    highlightElementIds: ['sb-preflight-check'],
+    es: {
+      title: 'Checklist de saludos',
+      intro: 'Off-call: 3 pasos claros — calidad, tú escuchas, caller escucha.',
+      sections: [
+        {
+          heading: 'Flujo',
+          bullets: [
+            '1 Check · 2 Hear · 3 Send + CALL OK',
+            'Tiles = altavoces hasta terminar checklist',
+            'Beep cable = prueba VB sin clip',
+          ],
+        },
+      ],
+    },
+    en: {
+      title: 'Greeting preflight checklist',
+      intro: 'Off-call: one 3-step panel — quality, you hear it, caller hears it.',
+      sections: [
+        {
+          heading: 'Flow',
+          bullets: [
+            '1 Check · 2 Hear · 3 Send + CALL OK',
+            'Tiles = speakers until checklist done',
+            'Beep cable = test VB path without a clip',
+          ],
+        },
+      ],
+    },
+  },
+  {
+    version: '4.84.30',
+    id: 'app-confirm-dialogs-v1',
+    highlightElementIds: ['quick-notes-textarea'],
+    es: {
+      title: 'Confirmaciones en la app',
+      intro: 'Borrar notas y limpiar el log ya no usan el popup feo del navegador.',
+      sections: [
+        {
+          heading: 'Dónde',
+          bullets: [
+            'Notas: 🗑️ → diálogo en la app',
+            'Transcripción: Clear log → diálogo en la app',
+          ],
+        },
+      ],
+    },
+    en: {
+      title: 'In-app confirm dialogs',
+      intro: 'Clear notes and clear log no longer use the ugly browser popup.',
+      sections: [
+        {
+          heading: 'Where',
+          bullets: [
+            'Notes: 🗑️ → in-app dialog',
+            'Transcript: Clear log → in-app dialog',
+          ],
+        },
+      ],
+    },
+  },
+  {
     version: '4.84.28',
     id: 'stt-medical-filler-fix-v1',
     highlightElementIds: ['audio-route-stt-summary', 'audio-route-zap-btn'],

@@ -89,4 +89,13 @@ describe('buildOffCallStatusLabel', () => {
       })
     ).toBe('Mic connected');
   });
+  test('error shows real connectionMessage not generic Deepgram error', () => {
+    expect(
+      buildOffCallStatusLabel({
+        connectionState: 'error',
+        connectionMessage: 'Microphone access was denied. Please allow microphone permissions and press Connect again.',
+        apiKeyMissing: false,
+      })
+    ).toMatch(/Microphone access was denied/);
+  });
 });

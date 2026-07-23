@@ -58,18 +58,17 @@ export const ConnectInterpretButton = ({
     }
 
     lastClickAtRef.current = now;
-    timeoutRef.current = setTimeout(() => {
-      lastClickAtRef.current = 0;
-      timeoutRef.current = null;
-      setIsPendingDoubleTap(false);
-      // If the parent says double-tap is required, first tap only arms UI.
-      if (!requireDoubleTapIndicator) onSingle?.();
-    }, DOUBLE_TAP_MS);
 
+    // First tap only arms UI when double-tap is required.
     if (requireDoubleTapIndicator) {
       setIsPendingDoubleTap(true);
       onArmDoubleTap?.();
+      return;
     }
+
+    // Fire immediately — mobile Safari/Chrome drop user activation after setTimeout,
+    // so delayed getUserMedia/getDisplayMedia never shows a permission prompt.
+    onSingle?.();
   };
 
   const hintBody = doubleTitle

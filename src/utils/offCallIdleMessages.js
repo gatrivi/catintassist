@@ -130,7 +130,12 @@ export const buildOffCallStatusLabel = ({
   if (settingsOpen && apiKeyMissingNoVault) return 'Add Deepgram key';
   if (vaultStatus === 'unlocking') return 'Unlocking key…';
   if (connectionState === 'connecting') return connectionMessage || 'Connecting…';
-  if (connectionState === 'error') return 'Deepgram error';
+  // Prefer real failure text — "Deepgram error" hid mic-denied on mobile.
+  if (connectionState === 'error') {
+    const msg = (connectionMessage || '').trim();
+    if (msg) return msg.length > 48 ? `${msg.slice(0, 45)}…` : msg;
+    return 'Deepgram error';
+  }
   if (connectionState === 'disconnected' && connectionMessage) return connectionMessage;
   if (isRememberExpired() && apiKeyMissing) return 'Key session expired';
   if (vaultNeedsDecrypt) return 'Deepgram locked';
@@ -189,12 +194,14 @@ export const buildOffCallIdleDetail = (ctx) => {
     lines.push(connectionMessage || 'Connecting to Deepgram…');
     lines.push('Starting interpretation…');
   } else if (connectionState === 'error') {
+    const detail = (connectionMessage || '').trim();
     lines.push(
-      mode === 'virtualCable'
-        ? 'Deepgram is not working (STT). Press ⚡ Zap, then check Settings key and VB-Cable Output.'
-        : mode === 'mic'
-          ? 'Deepgram is not working (STT). Press ⚡ Zap, then check Settings key and mic permissions.'
-          : 'Deepgram is not working (STT engine). Press ⚡ Zap, then check Settings key, WebSocket, and tab/mic permissions.'
+      detail ||
+        (mode === 'virtualCable'
+          ? 'Deepgram is not working (STT). Press ⚡ Zap, then check Settings key and VB-Cable Output.'
+          : mode === 'mic'
+            ? 'Deepgram is not working (STT). Press ⚡ Zap, then check Settings key and mic permissions.'
+            : 'Deepgram is not working (STT engine). Press ⚡ Zap, then check Settings key, WebSocket, and tab/mic permissions.')
     );
     showDiagnostics = true;
   } else if (isRememberExpired() && apiKeyMissing) {
