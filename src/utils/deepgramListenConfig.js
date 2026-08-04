@@ -54,6 +54,14 @@ export const getMediaRecorderOptions = () => {
   if (MediaRecorder.isTypeSupported('audio/webm')) return { mimeType: 'audio/webm' };
   return undefined;
 };
+
+/** Tab share includes video — STT must record audio-only webm, not video/webm. */
+export const buildAudioOnlyStream = (stream) => {
+  if (!stream || typeof MediaStream === 'undefined') return null;
+  const tracks = stream.getAudioTracks();
+  if (!tracks.length) return null;
+  return new MediaStream(tracks);
+};
 export const getInterimProcessThrottleMs = (mode) => getSttLatencyConfig(mode).interimProcessMs;
 export const getInterimFlushMs = (mode) => getSttLatencyConfig(mode).interimFlushMs;
 

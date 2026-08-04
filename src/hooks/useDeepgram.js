@@ -40,6 +40,7 @@ import { applyDeepgramTranscriptPayload } from "../utils/applyDeepgramTranscript
 import {
   STT_LATENCY_CHANGED_EVENT,
   buildListenUrl,
+  buildAudioOnlyStream,
   getInterimFlushMs,
   getInterimProcessThrottleMs,
   getMediaRecorderOptions,
@@ -687,6 +688,23 @@ export const useDeepgram = () => {
         return;
       }
 
+      // ponytail: tear down stale sockets/recorder before opening new ones (reuse-stream path).
+      clearKeepalive();
+      try {
+        if (mediaRecorderRef.current?.state !== "inactive") {
+          mediaRecorderRef.current.stop();
+        }
+      } catch (_) {}
+      mediaRecorderRef.current = null;
+      try {
+        socketRefEn.current?.close();
+      } catch (_) {}
+      try {
+        socketRefEs.current?.close();
+      } catch (_) {}
+      socketRefEn.current = null;
+      socketRefEs.current = null;
+
       setConnectionState("connecting");
       setConnectionMessage("Initializing Sockets...");
 
@@ -724,11 +742,29 @@ export const useDeepgram = () => {
         setConnectionState("connected");
         setConnectionMessage("Live");
         try {
-          if (!mediaRecorderRef.current) {
+          const needsRecorder =
+            !mediaRecorderRef.current ||
+            mediaRecorderRef.current.state === "inactive";
+          if (needsRecorder) {
+            if (mediaRecorderRef.current) {
+              try {
+                mediaRecorderRef.current.stop();
+              } catch (_) {}
+              mediaRecorderRef.current = null;
+            }
+            const audioStream = buildAudioOnlyStream(stream);
+            if (!audioStream) {
+              failConnection(
+                "No audio track on stream — enable Share audio on tab or try mic mode.",
+                { failureCategory: FAILURE.AUDIO },
+              );
+              return;
+            }
+            const audioTrack = audioStream.getAudioTracks()[0];
             const mrOpts = getMediaRecorderOptions();
             mediaRecorderRef.current = mrOpts
-              ? new MediaRecorder(stream, mrOpts)
-              : new MediaRecorder(stream);
+              ? new MediaRecorder(audioStream, mrOpts)
+              : new MediaRecorder(audioStream);
             mediaRecorderRef.current.addEventListener("dataavailable", (e) => {
               if (e.data.size > 0) {
                 const audioNow = Date.now();
@@ -754,8 +790,12 @@ export const useDeepgram = () => {
                     sttTrace("1 sound received + 2 sound sent", {
                       bytes: e.data.size,
                       type: e.data.type,
+                      mimeType: mediaRecorderRef.current?.mimeType || null,
                       lanes,
                       firstAudioChunk,
+                      trackMuted: audioTrack?.muted,
+                      trackEnabled: audioTrack?.enabled,
+                      trackReadyState: audioTrack?.readyState,
                     });
                     syncConnectProgress({
                       audioChunksSent: true,
@@ -765,6 +805,13 @@ export const useDeepgram = () => {
                   }
                 }
                 if (firstAudioChunk) {
+                  if (audioTrack?.muted || !audioTrack?.enabled) {
+                    critLog("warn", "audio track muted/disabled — DG may return empty", {
+                      muted: audioTrack?.muted,
+                      enabled: audioTrack?.enabled,
+                      readyState: audioTrack?.readyState,
+                    });
+                  }
                   clearKeepalive();
                   clearWatchdog();
                 }
@@ -857,11 +904,16 @@ export const useDeepgram = () => {
               lastEmptyTranscriptAt: dgMessageAt,
               emptyTranscriptStreak: (connectFlagsRef.current.emptyTranscriptStreak || 0) + 1,
             });
-            sttTrace("4 Deepgram processed empty transcript", {
-              lang,
-              confidence: alt?.confidence ?? null,
-              words: alt?.words?.length || 0,
-            });
+            // Empty interim Results are normal DG keepalive — only log finals to reduce noise.
+            if (received.is_final || received.speech_final) {
+              sttTrace("4 Deepgram processed empty transcript", {
+                lang,
+                confidence: alt?.confidence ?? null,
+                words: alt?.words?.length || 0,
+                isFinal: !!received.is_final,
+                speechFinal: !!received.speech_final,
+              });
+            }
             return;
           }
 
