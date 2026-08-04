@@ -45,6 +45,23 @@ export const getSttLatencyConfig = (mode = loadSttLatencyMode()) =>
   STT_LATENCY_MODES[mode] || STT_LATENCY_MODES.fast;
 
 export const getMediaRecorderTimeslice = (mode) => getSttLatencyConfig(mode).mediaRecorderMs;
+
+/** Prefer webm/opus — Deepgram decode reliability (matches soundboard record path). */
+export const getMediaRecorderOptions = () => {
+  if (typeof MediaRecorder === 'undefined') return undefined;
+  const opus = { mimeType: 'audio/webm;codecs=opus', audioBitsPerSecond: 128000 };
+  if (MediaRecorder.isTypeSupported(opus.mimeType)) return opus;
+  if (MediaRecorder.isTypeSupported('audio/webm')) return { mimeType: 'audio/webm' };
+  return undefined;
+};
+
+/** Tab share includes video — STT must record audio-only webm, not video/webm. */
+export const buildAudioOnlyStream = (stream) => {
+  if (!stream || typeof MediaStream === 'undefined') return null;
+  const tracks = stream.getAudioTracks();
+  if (!tracks.length) return null;
+  return new MediaStream(tracks);
+};
 export const getInterimProcessThrottleMs = (mode) => getSttLatencyConfig(mode).interimProcessMs;
 export const getInterimFlushMs = (mode) => getSttLatencyConfig(mode).interimFlushMs;
 

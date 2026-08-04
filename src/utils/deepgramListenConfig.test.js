@@ -4,6 +4,8 @@ import {
   getInterimFlushMs,
   getInterimProcessThrottleMs,
   getMediaRecorderTimeslice,
+  getMediaRecorderOptions,
+  buildAudioOnlyStream,
   getDeepgramModel,
   loadSttLatencyMode,
   saveSttLatencyMode,
@@ -35,6 +37,31 @@ describe('deepgramListenConfig', () => {
     expect(getDeepgramModel('en-US')).toBe('nova-3-general');
     expect(getDeepgramModel('es-419')).toBe('nova-3-general');
     expect(getDeepgramModel('multi')).toBe('nova-3-general');
+  });
+
+  test('buildAudioOnlyStream strips video tracks', () => {
+    if (typeof MediaStream === 'undefined') return;
+    const audio = { kind: 'audio', enabled: true, muted: false };
+    const video = { kind: 'video', enabled: true, muted: false };
+    const stream = {
+      getAudioTracks: () => [audio],
+      getVideoTracks: () => [video],
+    };
+    const audioOnly = buildAudioOnlyStream(stream);
+    expect(audioOnly).not.toBeNull();
+    expect(audioOnly.getAudioTracks()).toEqual([audio]);
+    expect(audioOnly.getVideoTracks()).toEqual([]);
+  });
+
+  test('getMediaRecorderOptions prefers webm/opus when supported', () => {
+    const opts = getMediaRecorderOptions();
+    if (typeof MediaRecorder !== 'undefined' && MediaRecorder.isTypeSupported('audio/webm;codecs=opus')) {
+      expect(opts?.mimeType).toBe('audio/webm;codecs=opus');
+    } else if (typeof MediaRecorder !== 'undefined' && MediaRecorder.isTypeSupported('audio/webm')) {
+      expect(opts?.mimeType).toBe('audio/webm');
+    } else {
+      expect(opts).toBeUndefined();
+    }
   });
 
   test('fast mode uses aggressive timings', () => {
