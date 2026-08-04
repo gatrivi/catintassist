@@ -4,6 +4,7 @@ import {
   getInterimFlushMs,
   getInterimProcessThrottleMs,
   getMediaRecorderTimeslice,
+  getMediaRecorderOptions,
   getDeepgramModel,
   loadSttLatencyMode,
   saveSttLatencyMode,
@@ -35,6 +36,17 @@ describe('deepgramListenConfig', () => {
     expect(getDeepgramModel('en-US')).toBe('nova-3-general');
     expect(getDeepgramModel('es-419')).toBe('nova-3-general');
     expect(getDeepgramModel('multi')).toBe('nova-3-general');
+  });
+
+  test('getMediaRecorderOptions prefers webm/opus when supported', () => {
+    const opts = getMediaRecorderOptions();
+    if (typeof MediaRecorder !== 'undefined' && MediaRecorder.isTypeSupported('audio/webm;codecs=opus')) {
+      expect(opts?.mimeType).toBe('audio/webm;codecs=opus');
+    } else if (typeof MediaRecorder !== 'undefined' && MediaRecorder.isTypeSupported('audio/webm')) {
+      expect(opts?.mimeType).toBe('audio/webm');
+    } else {
+      expect(opts).toBeUndefined();
+    }
   });
 
   test('fast mode uses aggressive timings', () => {

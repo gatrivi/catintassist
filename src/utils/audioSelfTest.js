@@ -98,7 +98,7 @@ export const formatHealthDisplay = (score) => {
 
 export const analyzeBlobHealth = async (blob, apiKey) => {
   if (!blob || !apiKey) return null;
-  const res = await fetch('https://api.deepgram.com/v1/listen?model=nova-2&smart_format=true', {
+  const res = await fetch('https://api.deepgram.com/v1/listen?model=nova-3-general&smart_format=true', {
     method: 'POST',
     headers: {
       Authorization: `Token ${apiKey}`,

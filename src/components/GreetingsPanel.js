@@ -28,7 +28,7 @@ import {
 import { useAudioSettings } from '../contexts/AudioSettingsContext';
 import { diagnoseVbCableRoute } from '../utils/audioSourceManager';
 import AudioEditorPanel from './AudioEditorPanel';
-import { getRuntimeDeepgramKey } from '../utils/deepgramRuntimeKey';
+import { getEffectiveDeepgramKey } from '../utils/deepgramRuntimeKey';
 import { ElementHintTarget } from './ElementHint';
 
 const TIME_SLOTS = ['morning', 'afternoon', 'evening'];
@@ -425,10 +425,7 @@ export const GreetingsPanel = ({ onEditModeChange, onExitStudio, micTestMode = f
     const blob = await loadFile(key);
     if (!blob) return;
 
-    const API_KEY =
-      getRuntimeDeepgramKey() ||
-      localStorage.getItem('DEEPGRAM_API_KEY') ||
-      process.env.REACT_APP_DEEPGRAM_API_KEY;
+    const API_KEY = getEffectiveDeepgramKey();
     if (!API_KEY) return;
 
     setIsAnalyzing(key);

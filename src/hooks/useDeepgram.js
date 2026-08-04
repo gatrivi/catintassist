@@ -42,6 +42,7 @@ import {
   buildListenUrl,
   getInterimFlushMs,
   getInterimProcessThrottleMs,
+  getMediaRecorderOptions,
   getMediaRecorderTimeslice,
   loadSttLatencyMode,
 } from "../utils/deepgramListenConfig";
@@ -724,7 +725,10 @@ export const useDeepgram = () => {
         setConnectionMessage("Live");
         try {
           if (!mediaRecorderRef.current) {
-            mediaRecorderRef.current = new MediaRecorder(stream);
+            const mrOpts = getMediaRecorderOptions();
+            mediaRecorderRef.current = mrOpts
+              ? new MediaRecorder(stream, mrOpts)
+              : new MediaRecorder(stream);
             mediaRecorderRef.current.addEventListener("dataavailable", (e) => {
               if (e.data.size > 0) {
                 const audioNow = Date.now();
