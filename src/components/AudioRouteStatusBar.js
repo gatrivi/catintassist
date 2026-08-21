@@ -6,6 +6,7 @@ import {
   AUDIO_SOURCE_MODE_VIRTUAL_CABLE,
   diagnoseVbCableRoute,
   pickVbCableSinkDevice,
+  pickVbCableSttInputDevice,
 } from '../utils/audioSourceManager';
 import { truncateDeviceLabel } from '../utils/audioSelfTest';
 import { ElementHintTarget } from './ElementHint';
@@ -155,6 +156,11 @@ export const AudioRouteStatusBar = ({
     [outputDevices],
   );
 
+  const suggestedCableSttId = useMemo(
+    () => pickVbCableSttInputDevice(inputDevices),
+    [inputDevices],
+  );
+
   const cableRouteDiag = useMemo(
     () =>
       diagnoseVbCableRoute({
@@ -166,9 +172,19 @@ export const AudioRouteStatusBar = ({
     [isCableMode, cableInRawLabel, sinkRawLabel, selectedSinkId],
   );
 
+  const sttRouteBad =
+    isCableMode && !cableRouteDiag.ok && String(cableRouteDiag.code || '').startsWith('stt_');
+  const sinkRouteBad =
+    isCableMode && !cableRouteDiag.ok && String(cableRouteDiag.code || '').startsWith('sink_');
+
   const fixCableSink = () => {
     if (!suggestedCableSinkId) return;
     changeSinkId(suggestedCableSinkId);
+  };
+
+  const fixCableSttIn = () => {
+    if (!suggestedCableSttId) return;
+    changeCableInputId(suggestedCableSttId);
   };
 
   const timeSincePacket = Date.now() - (lastDataTime || 0);
@@ -204,9 +220,9 @@ export const AudioRouteStatusBar = ({
   const sttInState = isMicAttached
     ? (selectedMicId || inputDevices.length ? 'ok' : 'warn')
     : isCableAttached
-      ? critical
+      ? sttRouteBad || critical
         ? 'err'
-        : stale
+        : stale || sinkRouteBad
           ? 'warn'
           : 'ok'
       : tabStreamReady || audioAttached
@@ -216,15 +232,19 @@ export const AudioRouteStatusBar = ({
   const enOk = connectProgress?.socketEn === 'open';
   const esOk = connectProgress?.socketEs === 'open';
   const sttState =
-    connectionState === 'connected' && enOk && esOk
-      ? 'ok'
-      : connectionState === 'connecting'
-        ? 'warn'
-        : connectionState === 'error'
-          ? 'err'
-          : audioAttached
-            ? 'warn'
-            : 'idle';
+    sttRouteBad && isActive
+      ? 'err'
+      : connectionState === 'connected' && enOk && esOk
+        ? critical || stale
+          ? (critical ? 'err' : 'warn')
+          : 'ok'
+        : connectionState === 'connecting'
+          ? 'warn'
+          : connectionState === 'error'
+            ? 'err'
+            : audioAttached
+              ? 'warn'
+              : 'idle';
 
   const sttInHintBody = useMemo(() => {
     if (isMicAttached) {
@@ -232,30 +252,68 @@ export const AudioRouteStatusBar = ({
         ? 'Mic mode: your microphone feeds Deepgram. Green dot = mic ready.'
         : 'Mic mode on but no mic selected — pick one in the 🎤 dropdown.';
     }
-    if (isCableAttached) {
-      if (critical) return 'VB-Cable input: no audio 60s+ — check cable routing or reconnect STT.';
-      if (stale) return 'VB-Cable input: audio stale 30s+ — may need ↻ STT reconnect.';
-      return 'VB-Cable carries call audio into Deepgram for transcription.';
+    if (isCableAttached || isCableMode) {
+      if (sttRouteBad) {
+        const cur = cableInRawLabel || 'nothing';
+        return `Fix: 📥 is "${cur}" — pick CABLE Output (not Communications, not CABLE Input). That is call audio into Deepgram. Then Zap if still ·no data.`;
+      }
+      if (sinkRouteBad) return cableRouteDiag.tip;
+      if (critical) {
+        return 'No transcript 60s+. Confirm 📥 = CABLE Output, call tab plays into the cable, then tap ⚡ Zap.';
+      }
+      if (stale) return 'Audio stale 30s+. Check 📥 = CABLE Output, then ↻ STT or Zap.';
+      return 'Headset/VB mode: 📥 CABLE Output feeds Deepgram. Green = route looks ok.';
     }
     if (tabStreamReady || audioAttached) {
       return 'Tab share: browser tab audio is routed to Deepgram. Green = stream attached.';
     }
     return 'Tab STT off — CONNECT and share a tab (or use mic mode) to send audio.';
-  }, [isMicAttached, isCableAttached, tabStreamReady, audioAttached, selectedMicId, inputDevices.length, stale, critical]);
+  }, [
+    isMicAttached,
+    isCableAttached,
+    isCableMode,
+    sttRouteBad,
+    sinkRouteBad,
+    cableInRawLabel,
+    cableRouteDiag.tip,
+    tabStreamReady,
+    audioAttached,
+    selectedMicId,
+    inputDevices.length,
+    stale,
+    critical,
+  ]);
 
   const sttSummaryHintBody = useMemo(() => {
-    if (enOk && esOk) return 'Both EN and ES Deepgram sockets open — dual-language STT active.';
+    if (sttRouteBad) {
+      const cur = cableInRawLabel || 'wrong device';
+      return `·no data likely: 📥 is "${cur}". Set STT in to CABLE Output, then Zap.`;
+    }
+    if (enOk && esOk && !critical && !stale) {
+      return 'Both EN and ES Deepgram sockets open — dual-language STT active.';
+    }
     if (connectionState === 'connecting') return 'Opening Deepgram EN + ES websockets…';
     if (connectionState === 'error') return 'Deepgram error — check API key in Settings or tap Zap to reconnect.';
     if (connectionState === 'connected') {
       const parts = [`EN ${enOk ? 'open' : 'closed'}`, `ES ${esOk ? 'open' : 'closed'}`];
-      if (critical) return `${parts.join(' · ')} — no transcript data 60s+; try Zap or reconnect.`;
+      if (critical) {
+        return `${parts.join(' · ')} — no data 60s+. Check 📥 = CABLE Output (headset mode), then Zap.`;
+      }
       if (stale) return `${parts.join(' · ')} — no data 30s+; audio may not be reaching Deepgram.`;
       return `Connected but partial: ${parts.join(' · ')}.`;
     }
     if (audioAttached) return 'Audio attached but Deepgram not connected — press CONNECT.';
     return 'Deepgram disconnected — press CONNECT to start speech-to-text.';
-  }, [enOk, esOk, connectionState, audioAttached, stale, critical]);
+  }, [
+    sttRouteBad,
+    cableInRawLabel,
+    enOk,
+    esOk,
+    connectionState,
+    audioAttached,
+    stale,
+    critical,
+  ]);
 
   const sttInHintColor = sttInState === 'ok' ? '#10b981' : sttInState === 'err' ? '#ef4444' : '#f59e0b';
   const sttSummaryHintColor =
@@ -334,11 +392,16 @@ export const AudioRouteStatusBar = ({
           <ElementHintTarget
             elementId="audio-route-cable-in-select"
             icon="📥"
-            heading="STT in = CABLE Output"
-            body="Recording side of VB-Cable. Deepgram listens here. Not CABLE Input. Windows “Listen to this device” on CABLE Output → headphones = hear the cable."
-            color={cableRouteDiag.code?.startsWith('stt_') ? '#f59e0b' : '#38bdf8'}
+            heading="Call audio into the app"
+            body={
+              sttRouteBad
+                ? `Now: "${cableInRawLabel || 'none'}". Must be CABLE Output — the recording side of VB-Cable. Not Communications. Not CABLE Input.`
+                : 'Must be CABLE Output. Deepgram listens here. Windows “Listen to this device” on CABLE Output → headphones = hear the call.'
+            }
+            color={sttRouteBad ? '#ef4444' : '#38bdf8'}
+            allowDuringCall
           >
-            <label className="audio-route-device-pick" title={`STT in: ${cableInLabel}`}>
+            <label className="audio-route-device-pick" title={`Call audio in: ${cableInLabel}`}>
               <span className="audio-route-device-pick-label">📥</span>
               <select
                 id="audio-route-cable-in-select"
@@ -346,7 +409,7 @@ export const AudioRouteStatusBar = ({
                 style={{
                   ...selectStyle,
                   borderColor:
-                    cableRouteDiag.code?.startsWith('stt_')
+                    sttRouteBad
                       ? 'rgba(239,68,68,0.55)'
                       : selectedCableInputId
                         ? 'rgba(16,185,129,0.45)'
@@ -371,9 +434,10 @@ export const AudioRouteStatusBar = ({
         <ElementHintTarget
           elementId="audio-route-mic-select"
           icon="🎤"
-          heading="Mic = your real mic"
-          body="Physical headset/mic. App pipes it through VB out to the patient. Not CABLE Output."
+          heading="Your real headset mic"
+          body="Physical mic for speaking. App pipes it through 🔊 VB out to the patient. Not CABLE Output."
           color="#a78bfa"
+          allowDuringCall
         >
           <label className="audio-route-device-pick" title={`Mic: ${micDeviceLabel}`}>
             <span className="audio-route-device-pick-label">🎤</span>
@@ -399,13 +463,14 @@ export const AudioRouteStatusBar = ({
         <ElementHintTarget
           elementId="audio-route-sink-select"
           icon="🔊"
-          heading="VB out = CABLE Input"
+          heading="App audio out to the call"
           body={
-            cableRouteDiag.ok
-              ? 'Playback side of VB-Cable. Greetings + mic land here so the call app (mic = CABLE Output) hears you. Speakers here = you hear it, patient does not.'
+            cableRouteDiag.ok || !isCableMode
+              ? 'Must be CABLE Input. Greetings + your mic land here so the call app (mic = CABLE Output) hears you. Speakers here = you hear it, patient does not.'
               : cableRouteDiag.tip
           }
-          color={cableRouteDiag.ok ? '#34d399' : '#ef4444'}
+          color={isCableMode && !cableRouteDiag.ok && sinkRouteBad ? '#ef4444' : '#34d399'}
+          allowDuringCall
         >
           <label className="audio-route-device-pick" title={`VB out: ${outLabel}`}>
             <span className="audio-route-device-pick-label">🔊</span>
@@ -415,7 +480,7 @@ export const AudioRouteStatusBar = ({
               style={{
                 ...selectStyle,
                 borderColor:
-                  isCableMode && !cableRouteDiag.ok && cableRouteDiag.code?.startsWith('sink_')
+                  isCableMode && sinkRouteBad
                     ? 'rgba(239,68,68,0.7)'
                     : selectedSinkId
                       ? 'rgba(16,185,129,0.45)'
@@ -446,8 +511,34 @@ export const AudioRouteStatusBar = ({
           </span>
         )}
         {isCableMode &&
-          !cableRouteDiag.ok &&
-          cableRouteDiag.code?.startsWith('sink_') &&
+          sttRouteBad &&
+          suggestedCableSttId &&
+          suggestedCableSttId !== selectedCableInputId && (
+            <button
+              type="button"
+              id="audio-route-fix-stt-btn"
+              className="audio-route-inline-btn"
+              style={{
+                background: 'rgba(255,255,255,0.06)',
+                border: '1px solid rgba(56,189,248,0.55)',
+                borderRadius: 4,
+                color: '#7dd3fc',
+                cursor: 'pointer',
+                fontSize: compact ? '0.62rem' : '0.68rem',
+                fontWeight: 800,
+                lineHeight: 1,
+                padding: '0.16rem 0.42rem',
+                minHeight: compact ? 22 : 24,
+                whiteSpace: 'nowrap',
+              }}
+              onClick={fixCableSttIn}
+              title="Set call-audio in to detected CABLE Output"
+            >
+              Fix → CABLE Out
+            </button>
+          )}
+        {isCableMode &&
+          sinkRouteBad &&
           suggestedCableSinkId &&
           suggestedCableSinkId !== selectedSinkId && (
             <button
@@ -476,9 +567,10 @@ export const AudioRouteStatusBar = ({
 
         <ElementHintTarget
           elementId="audio-route-stt-in-badge"
-          heading="STT audio in"
+          heading={sttRouteBad ? 'Cable STT — wrong input' : 'Cable / Tab / Mic STT'}
           body={sttInHintBody}
           color={sttInHintColor}
+          allowDuringCall
         >
           <span
             id="audio-route-stt-in-badge"
@@ -491,9 +583,10 @@ export const AudioRouteStatusBar = ({
 
         <ElementHintTarget
           elementId="audio-route-stt-summary"
-          heading="Deepgram STT"
+          heading={critical || sttRouteBad ? 'Deepgram — no data' : 'Deepgram STT'}
           body={sttSummaryHintBody}
           color={sttSummaryHintColor}
+          allowDuringCall
         >
           <span
             id="audio-route-stt-summary"

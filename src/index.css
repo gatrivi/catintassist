@@ -3237,11 +3237,11 @@ body {
   white-space: pre-line;
 }
 
-.app-container[data-call-mode="true"] .element-hint-panel {
+.app-container[data-call-mode="true"] .element-hint-panel:not(.element-hint-panel--during-call) {
   display: none;
 }
 
-body:has(.app-container[data-call-mode="true"]) .element-hint-panel {
+body:has(.app-container[data-call-mode="true"]) .element-hint-panel:not(.element-hint-panel--during-call) {
   display: none;
 }
 

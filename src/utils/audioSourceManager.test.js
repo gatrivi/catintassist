@@ -158,6 +158,19 @@ describe("audioSourceManager", () => {
     expect(sttIn.code).toBe("stt_is_cable_input");
   });
 
+  test("diagnoseVbCableRoute flags Communications as wrong STT in", () => {
+    const d = diagnoseVbCableRoute({
+      cableMode: true,
+      sttInputLabel: "Communications",
+      sinkLabel: "CABLE Input (VB-Audio Virtual Cable)",
+      sinkId: "in",
+    });
+    expect(d.ok).toBe(false);
+    expect(d.code).toBe("stt_not_cable_output");
+    expect(d.tip).toMatch(/CABLE Output/i);
+    expect(d.tip).toMatch(/Communications/i);
+  });
+
   test("diagnoseVbCableRoute ok when Input/Output correct", () => {
     const d = diagnoseVbCableRoute({
       cableMode: true,

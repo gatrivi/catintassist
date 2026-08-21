@@ -81,9 +81,13 @@ const clamp = (n, min, max) => Math.max(min, Math.min(max, n));
 /** Portal panel — rich tooltip with element selector + copy. */
 export const ElementHintPanel = ({ hint, copied, onCopy, onKeepOpen, onHide }) => {
   const color = hint.color || '#3b82f6';
+  // ponytail: allowDuringCall escapes call-mode CSS hide (I/O fix tips)
+  const panelClass = hint.allowDuringCall
+    ? 'element-hint-panel element-hint-panel--during-call'
+    : 'element-hint-panel';
   return (
     <div
-      className="element-hint-panel"
+      className={panelClass}
       style={{
         position: 'fixed',
         left: hint.x,
@@ -134,13 +138,21 @@ export const ElementHintTarget = ({
   icon,
   color,
   placement = 'auto',
+  /** I/O strip: keep fix tips visible during ON CALL (v4.84.35). */
+  allowDuringCall = false,
   children,
 }) => {
   const { show, hide, keepOpen } = useElementHint();
   const selector = buildElementSelector({ elementId, guideKey, fallback: heading });
 
   const open = (e) => {
-    if (document.querySelector('.app-container[data-call-mode="true"]')) return;
+    // ponytail: default suppress during call; allowDuringCall for Cable STT fix tips
+    if (
+      !allowDuringCall &&
+      document.querySelector('.app-container[data-call-mode="true"]')
+    ) {
+      return;
+    }
     const rect = e.currentTarget.getBoundingClientRect();
     const resolvedPlacement = placement === 'auto'
       ? (rect.top < 160 ? 'below' : 'above')
@@ -156,6 +168,7 @@ export const ElementHintTarget = ({
       body,
       icon,
       color,
+      allowDuringCall,
     });
   };
 

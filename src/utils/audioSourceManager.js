@@ -179,7 +179,7 @@ export const diagnoseVbCableRoute = ({
       short: sttIsInput ? "STT in ≠ Output" : "STT in check",
       tip: sttIsInput
         ? "📥 STT in needs CABLE Output (hear from cable). CABLE Input is for VB out only."
-        : "📥 STT in should be CABLE Output so Deepgram hears the call.",
+        : `📥 "${sttInputLabel}" is not call audio. Pick CABLE Output — not Communications / Default mic.`,
     };
   }
 
