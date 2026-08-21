@@ -25,6 +25,76 @@ import { APP_VERSION } from '../constants/version';
 /** Newest first. Only the entry matching APP_VERSION is shown on load. */
 export const RELEASE_NOTES_CATALOG = [
   {
+    version: '4.85.0',
+    id: 'legal-consent-gate-v1',
+    highlightElementIds: ['header-settings-btn'],
+    es: {
+      title: 'Términos y privacidad',
+      intro: 'Nuevo texto legal integrado: se acepta una vez y queda en Configuración → Legal.',
+      sections: [
+        {
+          heading: 'Qué hay',
+          bullets: [
+            'Términos de uso · Política de privacidad · Aviso médico',
+            'Tus transcripciones quedan en tu navegador; la nube solo sincroniza preferencias',
+            'STT/traducción corren con TUS claves (bring-your-own-key)',
+          ],
+        },
+      ],
+    },
+    en: {
+      title: 'Terms & privacy',
+      intro: 'Built-in legal text: accept once on first launch, always available in Settings → Legal.',
+      sections: [
+        {
+          heading: "What's inside",
+          bullets: [
+            'Terms of Use · Privacy Policy · Medical disclaimer',
+            'Transcripts stay in your browser; cloud sync carries prefs only',
+            'STT/translation run on YOUR own API keys (bring-your-own-key)',
+          ],
+        },
+      ],
+    },
+  },
+  {
+    version: '4.84.35',
+    id: 'cable-stt-smart-tips-v1',
+    highlightElementIds: [
+      'audio-route-cable-in-select',
+      'audio-route-stt-in-badge',
+      'audio-route-fix-stt-btn',
+    ],
+    es: {
+      title: 'Tips Cable STT',
+      intro: 'En llamada: hover en Cable STT / ·no data explica el arreglo. Fix → CABLE Out.',
+      sections: [
+        {
+          heading: 'Qué mirar',
+          bullets: [
+            '📥 = CABLE Output (no Communications)',
+            '🎤 = tu mic real · 🔊 = CABLE Input',
+            'Tips I/O siguen visibles en ON CALL',
+          ],
+        },
+      ],
+    },
+    en: {
+      title: 'Cable STT smart tips',
+      intro: 'On call: hover Cable STT / ·no data tells you the fix. Fix → CABLE Out button.',
+      sections: [
+        {
+          heading: 'Recipe',
+          bullets: [
+            '📥 = CABLE Output (not Communications)',
+            '🎤 = real mic · 🔊 = CABLE Input',
+            'I/O tips stay visible during ON CALL',
+          ],
+        },
+      ],
+    },
+  },
+  {
     version: '4.84.34',
     id: 'mobile-mic-connect-v1',
     highlightElementIds: ['header-connect-btn', 'audio-route-mic-mode-btn'],

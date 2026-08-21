@@ -49,6 +49,9 @@ import {
 import { getDeepgramBlockReason, getDeepgramSettingsPrompt } from "./utils/deepgramSettingsPrompt";
 import { applyThemePalette, loadThemePalette } from "./utils/themePalette";
 import { APP_VERSION_LABEL } from "./constants/version";
+import { LegalModal } from "./components/LegalModal";
+import { LEGAL_VERSION } from "./content/legal";
+import { acceptLegalConsent, isLegalConsentAccepted } from "./utils/legalConsent";
 import { setSttActive } from "./utils/routeDiagnostics";
 import { isWellbeingDockEnabled } from "./utils/wellbeingDock";
 import {
@@ -991,15 +994,33 @@ const Dashboard = () => {
   );
 };
 
+/** First-run terms gate — blocks the whole app (and Firebase init) until agreed. */
+function LegalConsentGate({ children }) {
+  const [accepted, setAccepted] = useState(() => isLegalConsentAccepted(LEGAL_VERSION));
+  if (accepted) return children;
+  return (
+    <LegalModal
+      open
+      mode="consent"
+      onAccept={() => {
+        acceptLegalConsent(LEGAL_VERSION);
+        setAccepted(true);
+      }}
+    />
+  );
+}
+
 function App() {
   return (
-    <AuthProvider>
-      <AudioSettingsProvider>
-        <SessionProvider>
-          <Dashboard />
-        </SessionProvider>
-      </AudioSettingsProvider>
-    </AuthProvider>
+    <LegalConsentGate>
+      <AuthProvider>
+        <AudioSettingsProvider>
+          <SessionProvider>
+            <Dashboard />
+          </SessionProvider>
+        </AudioSettingsProvider>
+      </AuthProvider>
+    </LegalConsentGate>
   );
 }
 

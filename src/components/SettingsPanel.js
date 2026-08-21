@@ -42,6 +42,8 @@ import {
   loadSttLatencyMode,
   saveSttLatencyMode,
 } from '../utils/deepgramListenConfig';
+import { LegalModal } from './LegalModal';
+import { LEGAL_VERSION } from '../content/legal';
 
 const MOODS = ['auto', 'default', 'fast', 'chill'];
 const MOOD_LABELS = { auto: 'Trans Auto', default: 'Default', fast: 'Fast', chill: 'Chill' };
@@ -63,6 +65,7 @@ export default function SettingsPanel({
     setAutoAttachEnabled,
   } = useSession();
   const [section, setSection] = useState(initialSection);
+  const [legalOpen, setLegalOpen] = useState(false);
   const [personalDock, setPersonalDock] = useState(isWellbeingDockEnabled);
   const [componentVisibility, setComponentVisibility] = useState(loadComponentVisibility);
   const [showVersionBadge, setShowVersionBadge] = useState(() => {
@@ -162,7 +165,7 @@ export default function SettingsPanel({
         </div>
 
         <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap', marginTop: 10 }}>
-          {['account', 'deepgram', 'language', 'translation', 'behavior', 'data', 'layout', 'display', 'audio'].map((id) => (
+          {['account', 'deepgram', 'language', 'translation', 'behavior', 'data', 'layout', 'display', 'audio', 'legal'].map((id) => (
             <button
               key={id}
               type="button"
@@ -185,7 +188,9 @@ export default function SettingsPanel({
                           ? 'Layout'
                           : id === 'audio'
                             ? 'Audio'
-                            : 'Display'}
+                            : id === 'legal'
+                              ? 'Legal'
+                              : 'Display'}
             </button>
           ))}
         </div>
@@ -694,6 +699,36 @@ export default function SettingsPanel({
             )}
           </div>
         )}
+        {section === 'legal' && (
+          <div style={{ marginTop: 12, fontSize: 11, color: 'rgba(255,255,255,0.65)', lineHeight: 1.5 }}>
+            <p style={{ margin: '0 0 8px' }}>
+              Terms of Use, Privacy Policy, and the medical/professional disclaimer —
+              legal text v{LEGAL_VERSION}.
+            </p>
+            <p style={{ margin: '0 0 10px', fontSize: 10, color: 'rgba(255,255,255,0.45)' }}>
+              Transcripts stay on this device. Cloud sync carries UI prefs only. STT/translation
+              run on your own provider keys.
+            </p>
+            <button
+              type="button"
+              onClick={() => setLegalOpen(true)}
+              style={{
+                background: 'rgba(255,255,255,0.06)',
+                border: '1px solid rgba(255,255,255,0.12)',
+                borderRadius: 4,
+                color: '#fff',
+                cursor: 'pointer',
+                fontFamily: 'inherit',
+                fontSize: 11,
+                padding: '5px 10px',
+              }}
+            >
+              Open legal text
+            </button>
+          </div>
+        )}
+
+        <LegalModal open={legalOpen} mode="view" onClose={() => setLegalOpen(false)} />
       </div>
     </div>
   );

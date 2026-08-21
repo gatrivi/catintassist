@@ -3,6 +3,13 @@
 **Version source:** `src/constants/version.js` (must match `package.json` + top-right UI pill)
 
 ---
+## v4.85.0 — Legal pack: consent gate + in-app legal text
+- First launch: **terms consent gate** blocks the app (and Firebase init) until "I have read and agree" — `catint_legal_consent_v1` stores version + timestamp; legal version bump re-prompts
+- **Settings → Legal** tab: summary + full text viewer (Terms of Use · Privacy Policy · Medical & Professional Disclaimer · Data & API Keys) — `src/content/legal.js` is the single source
+- Content matches actual data flows: transcripts local-only (IndexedDB), cloud sync = UI prefs whitelist, STT/translation = bring-your-own-key, HIPAA grace purge documented
+- `LICENSE` file added (personal-use license, all rights reserved)
+- Tests: `legalConsent.test.js` + `legal.test.js` (13 cases)
+
 
 ## v4.84.28 — Fix STT: drop medical model (filler_words conflict)
 - Root cause: EN socket used `nova-3-medical` + `filler_words=true` — Deepgram only allows filler words on **general** models → EN lane dies / garbles

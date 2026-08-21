@@ -2,7 +2,18 @@ const fs = require('fs');
 const path = require('path');
 const { spawnSync } = require('child_process');
 
-const ROOT = path.resolve(__dirname, '..');
+// Jest's rootDir comes from process.cwd() (true on-disk casing on Windows);
+// match it so --runTestsByPath paths line up even when invoked with
+// different drive/path casing.
+function trueCasePath(p) {
+  const parent = path.dirname(p);
+  if (parent === p) return p;
+  const base = path.basename(p);
+  const hit = fs.readdirSync(parent).find((e) => e.toLowerCase() === base.toLowerCase());
+  return path.join(trueCasePath(parent), hit !== undefined ? hit : base);
+}
+
+const ROOT = trueCasePath(path.resolve(__dirname, '..'));
 const SRC = path.join(ROOT, 'src');
 const BATCH_SIZE = Math.max(1, Number(process.env.CAT_TEST_BATCH_SIZE) || 8);
 const extraArgs = process.argv.slice(2);

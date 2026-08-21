@@ -6,6 +6,8 @@
 - [`CHANGELOG.md`](../CHANGELOG.md)
 - [`transcription-pane/corrections.md`](../transcription-pane/corrections.md)
 
+- **Launch verdict + remaining gaps:** [`product-launch-assessment.md`](product-launch-assessment.md) (2026-08-21)
+
 ---
 
 ## Fixed in v4.77.0 ✅
@@ -30,8 +32,8 @@
 
 | Item | Notes |
 |------|-------|
-| **Privacy / terms / HIPAA disclaimer** | Operational notes added — [`compliance/operational-notes.md`](../compliance/operational-notes.md) (not legal advice) |
-| **API keys in localStorage** | Documented — [`compliance/api-keys.md`](../compliance/api-keys.md) |
+| ~~**Privacy / terms / HIPAA disclaimer**~~ | **DONE v4.85.0** — consent gate on first launch + Settings → Legal viewer (`src/content/legal.js`). Counsel review still recommended before paid sale |
+| ~~**API keys in localStorage**~~ | **DONE v4.85.0** — BYOK model disclosed in-app (legal "Data & API Keys" section); docs: [`compliance/api-keys.md`](../compliance/api-keys.md) |
 | **Soundboard patient audio** | Verify passthrough on prod stack ([`soundboard/README.md`](../soundboard/README.md)) |
 | **Phase 0 STT checklist** | [`ROADMAP.md`](../ROADMAP.md) — split translate, zombie re-attach |
 
