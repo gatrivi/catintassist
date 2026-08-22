@@ -63,6 +63,24 @@ Minimal, PHI-safe (no audio ever touches our servers):
 
 Est. build: 2–4 focused sessions. The BYOK tier needs none of this and can sell immediately.
 
-## 6. Answer in one line
+## 6. One-time purchase tier: "own the app" (~$250)
 
-**Charge $19/mo BYOK now; $49/mo all-inclusive managed (40 h STT + translation included, $1.50/h overage) once the token broker exists — after collapsing the dual STT lanes to one socket to halve API costs.**
+Buy CatIntAssist outright with 1 year of API included ("LTD" — lifetime deal).
+
+**Never bundle *uncapped* API into a one-time price.** Year-1 COGS per user (single-socket):
+
+| Usage | 12-mo Deepgram cost (PAYG / Growth) | vs $250 |
+|---|---|---|
+| Light 10 h/mo | $92 / $78 | ok |
+| Mid 20 h/mo | $185 / $156 | eats most of it |
+| Heavy 40 h/mo | $370 / $312 | **underwater by ~$120** |
+
+**Workable structure:**
+- **Founder License — $249 one-time:** the app for life **+ 12 months of managed API capped at 15 h/month** (fair-use; overage $1.50/h). Worst-case year-1 COGS ≈ $83–104 → **$145–165 gross margin**, and the buyer still saves ~$140 vs Ava's metered math for the same hours.
+- After month 12 the license persists but API defaults to **BYOK at no charge** (the app already supports it), or renews convenience API at **$49/year** (~$4/mo, margin-safe). Nobody loses access; you stop subsidizing only their minutes.
+- Cash framing: 50 LTD sales ≈ **$12,450 upfront ≈ $9k+ gross margin** — funds the token-broker build and a Deepgram Growth commit (drops COGS another 16%).
+- Enforcement: selling "the app itself" from a JS bundle needs license keys bound at login (extend the existing edge middleware: per-user license key instead of shared passwords). Copying the bundle stays technically possible, but the API gate makes pirated copies worthless — the API *is* the moat. The token broker is therefore mandatory for the LTD, not optional.
+
+## 7. Answer in one line
+
+Ladder: Free trial (14d/3h) → **BYOK $19/mo** (sellable now) → **Founder LTD $249 once** (15 h/mo capped year 1; needs token broker + license keys) → **Pro $49/mo managed** self-serve → Team seats later. Before any managed tier: collapse the dual STT lanes to one socket to halve API costs.
