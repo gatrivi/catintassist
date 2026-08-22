@@ -39,6 +39,20 @@ Route log: `window.__CAT_ROUTE_DIAG` shows `routeMode: local_speakers` when mic 
 3. Tap a **Greetings** clip or translation **🔊** — audio plays on **your** speaker, not VB-Cable.
 4. Soundboard Studio: **Test Mode** checkbox is forced ON (same behavior).
 
+## Verified (2026-08-21, production catintassist.gatrivi.com)
+
+Chromium end-to-end: mic permission → stream attach → **both EN+ES `nova-3-general` sockets open** →
+~17 PCM frames/sec upstream → Deepgram `Results` (VAD `is_final`/`speech_final`) streaming back →
+caption UI live. Same key+params+audio replayed to Deepgram transcribes cleanly
+("…appointment tomorrow at 09:15. Take 2 tablets every 8 with food." — smart_format working).
+Audio-disconnect banner + **Re-attach** (timer/transcript preserved) verified under forced failure.
+Mobile pitfalls already covered: stale-deviceId fallback (`inputSource.js`), same-tap getUserMedia
+(v4.84.34), HTTPS secure-context check.
+
+Watch item: stop → CONNECT within the HIPAA grace window did not always re-dial sockets in the
+desktop harness (fresh page load always worked). If a phone user reports "connect does nothing
+after a call", have them reload first, then investigate the reconnect race.
+
 ## Limits
 - Mic mode does **not** send greetings/TTS to the remote party — production calls on desktop still need tab mode + VB-Cable + CALL OK.
 - Browser `SpeechSynthesis` TTS fallback is always local (no sink).
