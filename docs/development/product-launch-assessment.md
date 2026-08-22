@@ -6,6 +6,7 @@
 
 ---
 
+- **Pricing decision + COGS math:** [`pricing-research.md`](pricing-research.md) (2026-08-21) — $19 BYOK / $49 managed-40h recommendation
 ## 1. What the product is
 
 A browser workspace for English↔Spanish medical interpreters: live bilingual captions (Deepgram streaming, user's key), translation lanes, call-state recovery, number protection, productivity scoreboard, soundboard. BYOK = no per-minute server cost, no PHI touching your servers — the single biggest compliance simplifier for a solo seller.
