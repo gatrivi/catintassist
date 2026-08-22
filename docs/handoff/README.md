@@ -4,8 +4,8 @@
 
 Outside agents: pick **one** spec below. Do not re-read the whole repo.
 
-## Current app version
-Top-right must show **v4.84.8** after this ship.
+**Current app version**
+Top-right must show **v4.85.0** after this ship.
 
 ## What's new (docs)
 - [`docs/development/sensitive-data-approach.md`](../development/sensitive-data-approach.md) — A–E + ES name chips (v4.84.3–4.84.8)
@@ -31,6 +31,7 @@ Top-right must show **v4.84.8** after this ship.
 | 5 | Scoreboard polish | [`03_scoreboard.md`](03_scoreboard.md) | `GameScoreboard.js`, `DashboardHeader.js` |
 | 6 | Auth + DB (future) | [`06_auth_db.md`](06_auth_db.md) | read only until approved |
 | 7 | STT soft outage | [`07_stt_soft_outage.md`](07_stt_soft_outage.md) | `useDeepgram.js`, `captionEngine.js`, `TranscriptionBoard.js` |
+| 8 | Productization / launch | [`08_productization.md`](08_productization.md) | `middleware.js`, `src/content/legal.js`, `src/utils/legalConsent.js` |
 
 ## Also read
 - [`docs/cursor-agent/README.md`](../cursor-agent/README.md) — touch-only file table
