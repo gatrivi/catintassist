@@ -25,6 +25,21 @@ import { APP_VERSION } from '../constants/version';
 /** Newest first. Only the entry matching APP_VERSION is shown on load. */
 export const RELEASE_NOTES_CATALOG = [
   {
+    version: '4.84.37',
+    id: 'tab-stt-route-recovery-v1',
+    highlightElementIds: ['audio-route-tab-mode-btn', 'header-connect-btn'],
+    es: {
+      title: 'Tab STT corregido',
+      intro: 'Elegir Marcador apaga Mic STT antes de CONNECT.',
+      sections: [{ heading: 'Outage', bullets: ['Marcador (🔖) → CONNECT → pestaña de llamada', 'Marcá Compartir audio en Chrome'] }],
+    },
+    en: {
+      title: 'Tab STT fixed',
+      intro: 'Selecting Tab turns off Mic STT before CONNECT.',
+      sections: [{ heading: 'Outage', bullets: ['Tab (🔖) → CONNECT → call tab', 'Check Share audio in Chrome'] }],
+    },
+  },
+  {
     version: '4.84.34',
     id: 'mobile-mic-connect-v1',
     highlightElementIds: ['header-connect-btn', 'audio-route-mic-mode-btn'],

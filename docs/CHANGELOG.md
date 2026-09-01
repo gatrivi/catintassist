@@ -2,6 +2,9 @@
 
 **Version source:** `src/constants/version.js` (must match `package.json` + top-right UI pill)
 
+## v4.84.37 - Tab STT route recovery
+- Selecting Tab or VB-Cable clears the saved Mic STT override before Connect.
+
 ---
 
 ## v4.84.28 — Fix STT: drop medical model (filler_words conflict)

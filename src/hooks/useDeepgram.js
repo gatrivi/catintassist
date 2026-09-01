@@ -646,6 +646,22 @@ export const useDeepgram = () => {
     [stopStreamTracks],
   );
 
+  // A saved mic flag wins during source selection. Keep the three route
+  // choices exclusive so Tab/VB cannot silently reconnect the microphone.
+  useEffect(() => {
+    const onAudioSourceModeChanged = (event) => {
+      const mode = event?.detail?.mode;
+      if (
+        (mode === "tab" || mode === AUDIO_SOURCE_MODE_VIRTUAL_CABLE) &&
+        micTestModeRef.current
+      ) {
+        setMicTestMode(false);
+      }
+    };
+    window.addEventListener("catint_audio_source_mode_changed", onAudioSourceModeChanged);
+    return () => window.removeEventListener("catint_audio_source_mode_changed", onAudioSourceModeChanged);
+  }, [setMicTestMode]);
+
   // Mobile UX: if the user selected a physical mic device, default to mic-mode STT.
   // This keeps the green Connect button and the actual audio route in sync.
   useEffect(() => {
