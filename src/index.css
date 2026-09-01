@@ -5416,14 +5416,18 @@ body:has(.app-container[data-call-mode="true"]) .element-hint-panel {
 }
 .stm-insert {
   display: inline;
-  background: rgba(56, 189, 248, 0.12);
+  background: rgba(56, 189, 248, 0.10);
   border-radius: 2px;
+  box-decoration-break: clone;
+  -webkit-box-decoration-break: clone;
+  animation: stm-arrive 180ms ease-out both;
 }
 .stm-delete {
   display: inline;
   text-decoration: line-through;
   opacity: 0.45;
   color: #94a3b8;
+  animation: stm-old-word 180ms ease-out both;
 }
 .stm-delete--protected {
   opacity: 0.7;
@@ -5434,11 +5438,14 @@ body:has(.app-container[data-call-mode="true"]) .element-hint-panel {
   background: rgba(251, 191, 36, 0.12);
   border-radius: 2px;
   padding: 0 1px;
+  box-decoration-break: clone;
+  -webkit-box-decoration-break: clone;
 }
 .stm-replace-from {
   text-decoration: line-through;
   opacity: 0.55;
   color: #94a3b8;
+  animation: stm-old-word 180ms ease-out both;
 }
 .stm-replace-arrow {
   opacity: 0.7;
@@ -5448,6 +5455,7 @@ body:has(.app-container[data-call-mode="true"]) .element-hint-panel {
 .stm-replace-to {
   color: #fef3c7;
   font-weight: 600;
+  animation: stm-arrive 180ms ease-out both;
 }
 .stm-replace--protected .stm-replace-to,
 .stm-replace--instant {
@@ -5455,6 +5463,23 @@ body:has(.app-container[data-call-mode="true"]) .element-hint-panel {
   font-weight: 700;
   background: rgba(252, 211, 77, 0.15);
   border-radius: 2px;
+}
+
+/* Only the changed fragment fades. Stable words remain at full opacity. */
+@keyframes stm-arrive {
+  from {
+    opacity: 0.58;
+    background-color: rgba(56, 189, 248, 0.24);
+  }
+  to {
+    opacity: 1;
+    background-color: transparent;
+  }
+}
+
+@keyframes stm-old-word {
+  from { opacity: 0.78; }
+  to { opacity: 0.45; }
 }
 
 .bubble-col-translation {

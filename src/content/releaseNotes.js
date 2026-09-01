@@ -25,6 +25,21 @@ import { APP_VERSION } from '../constants/version';
 /** Newest first. Only the entry matching APP_VERSION is shown on load. */
 export const RELEASE_NOTES_CATALOG = [
   {
+    version: '4.84.43',
+    id: 'live-text-soft-cues-v1',
+    highlightElementIds: ['main-transcript'],
+    es: {
+      title: 'Texto vivo mÃ¡s claro',
+      intro: 'Las palabras nuevas y corregidas entran con una seÃ±al suave. Lo que ya leÃ­ste no se mueve ni desaparece.',
+      sections: [{ heading: 'Lectura', bullets: ['Transiciones cortas, sin rebote ni destello repetido'] }],
+    },
+    en: {
+      title: 'Clearer live text',
+      intro: 'New and corrected words get a soft cue. Text you already read does not move or disappear.',
+      sections: [{ heading: 'Reading', bullets: ['Short transitions, with no bounce or repeated flash'] }],
+    },
+  },
+  {
     version: '4.84.42',
     id: 'tab-proof-chip-v1',
     highlightElementIds: ['audio-route-tab-proof', 'audio-route-tab-mode-btn'],

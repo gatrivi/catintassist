@@ -2,6 +2,9 @@
 
 **Version source:** `src/constants/version.js` (must match `package.json` + top-right UI pill)
 
+## v4.84.43 - Softer live text cues
+- Only arriving or corrected words softly fade in; already-readable transcript text stays fixed and visible.
+
 ## v4.84.42 - Tab proof at a glance
 - Persistent Tab proof chip shows: pick tab, attached/opening Deepgram, packets reaching Deepgram, then live text.
 
