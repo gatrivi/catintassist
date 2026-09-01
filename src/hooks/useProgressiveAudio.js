@@ -1,5 +1,9 @@
 import { useCallback, useRef, useMemo, useState } from 'react';
 
+// Workstation safety: synthetic reward/alert sounds stay opt-in. They must
+// never compete with live patient/caller audio.
+const WORK_SAFE_SOUND_EFFECTS_ENABLED = false;
+
 export const useProgressiveAudio = () => {
   const audioCtxRef = useRef(null);
   const audioFailedRef = useRef(false);
@@ -14,6 +18,7 @@ export const useProgressiveAudio = () => {
   }, []);
 
   const initAudio = useCallback(() => {
+    if (!WORK_SAFE_SOUND_EFFECTS_ENABLED) return;
     if (typeof window === 'undefined') return;
     if (audioFailedRef.current) return;
     try {

@@ -25,6 +25,21 @@ import { APP_VERSION } from '../constants/version';
 /** Newest first. Only the entry matching APP_VERSION is shown on load. */
 export const RELEASE_NOTES_CATALOG = [
   {
+    version: '4.84.41',
+    id: 'work-safe-silence-v1',
+    highlightElementIds: ['header-connect-btn'],
+    es: {
+      title: 'Silencio de trabajo',
+      intro: 'Apagamos todos los efectos sintéticos. Audio de llamada, TTS y saludos siguen igual.',
+      sections: [{ heading: 'Seguro', bullets: ['No monedas, pings ni alertas automáticas'] }],
+    },
+    en: {
+      title: 'Work-safe silence',
+      intro: 'All synthetic effects are off. Call audio, TTS, and greetings are unchanged.',
+      sections: [{ heading: 'Safe', bullets: ['No automatic coins, pings, or alerts'] }],
+    },
+  },
+  {
     version: '4.84.40',
     id: 'always-visible-stt-route-v1',
     highlightElementIds: ['audio-route-tab-mode-btn', 'audio-route-stt-in-badge', 'audio-route-stt-summary'],

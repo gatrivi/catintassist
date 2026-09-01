@@ -1,10 +1,15 @@
 import { useRef, useCallback } from 'react';
 
+// Workstation safety: call-reward sounds are disabled until intentionally
+// redesigned as explicit, low-volume opt-in controls.
+const WORK_SAFE_SOUND_EFFECTS_ENABLED = false;
+
 export const useRewardAudio = () => {
   const audioCtxRef = useRef(null);
 
   // Must be called on the INITIAL "Connect" button click
   const initAudio = useCallback(() => {
+    if (!WORK_SAFE_SOUND_EFFECTS_ENABLED) return;
     if (!audioCtxRef.current) {
       const AudioContext = window.AudioContext || window.webkitAudioContext;
       audioCtxRef.current = new AudioContext();

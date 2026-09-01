@@ -2,6 +2,9 @@
 
 **Version source:** `src/constants/version.js` (must match `package.json` + top-right UI pill)
 
+## v4.84.41 - Work-safe silence
+- Disabled all synthetic reward and alert sound effects. Call audio, TTS, and soundboard clips are unchanged.
+
 ## v4.84.40 - Always-visible STT route
 - The compact I/O strip remains visible during calls: selected Tab/Cable/Mic route plus Deepgram state.
 
