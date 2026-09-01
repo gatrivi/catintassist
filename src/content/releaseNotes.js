@@ -25,6 +25,21 @@ import { APP_VERSION } from '../constants/version';
 /** Newest first. Only the entry matching APP_VERSION is shown on load. */
 export const RELEASE_NOTES_CATALOG = [
   {
+    version: '4.84.40',
+    id: 'always-visible-stt-route-v1',
+    highlightElementIds: ['audio-route-tab-mode-btn', 'audio-route-stt-in-badge', 'audio-route-stt-summary'],
+    es: {
+      title: 'Ruta STT siempre visible',
+      intro: 'En llamada, la barra I/O queda arriba: Tab/Cable/Mic, entrada STT y estado Deepgram.',
+      sections: [{ heading: 'Chequeo', bullets: ['🔖✓ + Tab STT + DG EN·ES = audio de pestaña conectado'] }],
+    },
+    en: {
+      title: 'STT route always visible',
+      intro: 'During a call, the I/O strip stays at the top: Tab/Cable/Mic, STT input, and Deepgram state.',
+      sections: [{ heading: 'Check', bullets: ['🔖✓ + Tab STT + DG EN·ES = tab audio connected'] }],
+    },
+  },
+  {
     version: '4.84.39',
     id: 'tab-stt-fail-closed-v1',
     highlightElementIds: ['audio-route-tab-mode-btn', 'header-connect-btn'],

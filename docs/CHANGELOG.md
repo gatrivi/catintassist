@@ -2,6 +2,9 @@
 
 **Version source:** `src/constants/version.js` (must match `package.json` + top-right UI pill)
 
+## v4.84.40 - Always-visible STT route
+- The compact I/O strip remains visible during calls: selected Tab/Cable/Mic route plus Deepgram state.
+
 ## v4.84.39 - Tab fails closed
 - Tab STT never automatically switches to the physical microphone. Bad tab sharing remains a visible Tab error.
 

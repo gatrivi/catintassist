@@ -736,7 +736,8 @@ const SessionControlsSticky = React.memo(({
           <SettingsButton />
         </div>
       </div>
-      {(!(isActive && !callModeExpanded) || isZombieCall || connectionState !== 'connected' || !audioAttached) && (
+      {/* Always visible: Tab/Cable/Mic + DG state are critical during a call. */}
+      {
         <AudioRouteStatusBar
           micTestMode={micTestMode}
           setMicTestMode={setMicTestMode}
@@ -767,7 +768,7 @@ const SessionControlsSticky = React.memo(({
           soundboardOpen={soundboardOpen}
           compact
         />
-      )}
+      }
     </>
   );
 });
