@@ -2,6 +2,9 @@
 
 **Version source:** `src/constants/version.js` (must match `package.json` + top-right UI pill)
 
+## v4.84.42 - Tab proof at a glance
+- Persistent Tab proof chip shows: pick tab, attached/opening Deepgram, packets reaching Deepgram, then live text.
+
 ## v4.84.41 - Work-safe silence
 - Disabled all synthetic reward and alert sound effects. Call audio, TTS, and soundboard clips are unchanged.
 

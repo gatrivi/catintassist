@@ -261,6 +261,24 @@ export const AudioRouteStatusBar = ({
   const sttSummaryHintColor =
     sttState === 'ok' ? '#10b981' : sttState === 'err' ? '#ef4444' : sttState === 'warn' ? '#f59e0b' : '#94a3b8';
 
+  // One glance proof for the only work-call route: browser tab → Deepgram → text.
+  const tabProof = (() => {
+    if (!isTabMode && !tabStreamReady) return null;
+    if (connectionState === 'error') {
+      return { state: 'err', label: 'TAB · RETRY', title: 'Tab connection failed. Press Connect and choose the call tab with Share audio.' };
+    }
+    if (!tabStreamReady) {
+      return { state: 'warn', label: 'TAB · PICK', title: 'Press Connect, choose the call tab, then check Share audio.' };
+    }
+    if (!connectProgress?.audioChunksSent) {
+      return { state: 'warn', label: 'TAB ✓ · DG…', title: 'Tab audio is attached; opening Deepgram and waiting for audio packets.' };
+    }
+    if (connectProgress?.transcriptReceived) {
+      return { state: 'ok', label: 'TAB ✓ · TEXT ✓', title: 'Tab audio reached Deepgram and text has returned.' };
+    }
+    return { state: 'ok', label: 'TAB ✓ · DG ✓ · SPEAK', title: 'Tab audio is reaching Deepgram. Waiting for speech text.' };
+  })();
+
   const btn = {
     background: 'rgba(255,255,255,0.06)',
     border: '1px solid rgba(255,255,255,0.12)',
@@ -329,6 +347,13 @@ export const AudioRouteStatusBar = ({
             {routeMicLabel}
           </button>
         </div>
+
+        {tabProof && (
+          <span id="audio-route-tab-proof" className="audio-route-badge" title={tabProof.title}>
+            <Dot state={tabProof.state} />
+            <span>{tabProof.label}</span>
+          </span>
+        )}
 
         {isCableMode && (
           <ElementHintTarget

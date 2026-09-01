@@ -25,6 +25,21 @@ import { APP_VERSION } from '../constants/version';
 /** Newest first. Only the entry matching APP_VERSION is shown on load. */
 export const RELEASE_NOTES_CATALOG = [
   {
+    version: '4.84.42',
+    id: 'tab-proof-chip-v1',
+    highlightElementIds: ['audio-route-tab-proof', 'audio-route-tab-mode-btn'],
+    es: {
+      title: 'Prueba de Tab',
+      intro: 'Un chip confirma cada paso: elegir pestaña, conexión a Deepgram y texto en vivo.',
+      sections: [{ heading: 'Bueno', bullets: ['TAB ✓ · TEXT ✓ = está funcionando'] }],
+    },
+    en: {
+      title: 'Tab proof',
+      intro: 'One chip confirms each step: pick tab, Deepgram connection, and live text.',
+      sections: [{ heading: 'Good', bullets: ['TAB ✓ · TEXT ✓ = working'] }],
+    },
+  },
+  {
     version: '4.84.41',
     id: 'work-safe-silence-v1',
     highlightElementIds: ['header-connect-btn'],
