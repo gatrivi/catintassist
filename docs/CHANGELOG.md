@@ -2,6 +2,9 @@
 
 **Version source:** `src/constants/version.js` (must match `package.json` + top-right UI pill)
 
+## v4.84.38 - Stop rapid sound loop
+- Removed the 150ms celebration coin loop. Audio only plays on explicit call/day events or once per minute.
+
 ## v4.84.37 - Tab STT route recovery
 - Selecting Tab or VB-Cable clears the saved Mic STT override before Connect.
 

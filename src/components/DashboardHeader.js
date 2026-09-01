@@ -74,21 +74,9 @@ const CelebrationParticles = ({ type, label, coins, onDismiss }) => {
   const emojis = ['🪙', '🪙', '💸', '💵', '💰', '💎'];
   const spread = type === 'month' ? 800 : (type === 'day' ? 600 : 350);
   const originX = type === 'month' ? '0px' : '-185px';
-  const audioEngine = useProgressiveAudio();
-
-  // Cap particles
+  // Cap particles. Celebration audio is fired once by its explicit event
+  // handler; never tie sound to this rendering animation.
   const safeCoinCount = Math.min(60, coins);
-
-  useEffect(() => {
-    if (isClosing) return;
-    // ONLY play the rapid coin loop for Day/Month jackpots. 
-    // Standard calls now use the clean Denomination Summary sounds.
-    if (type === 'call') return; 
-
-    audioEngine.initAudio();
-    const iv = setInterval(() => { audioEngine.playCoin(); }, 150);
-    return () => clearInterval(iv);
-  }, [isClosing, audioEngine, type]);
   
   const handleDismiss = () => {
     setIsClosing(true);

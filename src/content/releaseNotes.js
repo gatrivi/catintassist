@@ -25,6 +25,21 @@ import { APP_VERSION } from '../constants/version';
 /** Newest first. Only the entry matching APP_VERSION is shown on load. */
 export const RELEASE_NOTES_CATALOG = [
   {
+    version: '4.84.38',
+    id: 'stop-rapid-celebration-audio-v1',
+    highlightElementIds: [],
+    es: {
+      title: 'Audio sin loop',
+      intro: 'Quitamos el sonido de monedas que se repetía varias veces por segundo.',
+      sections: [{ heading: 'Ahora', bullets: ['Los sonidos solo salen por eventos o una vez por minuto'] }],
+    },
+    en: {
+      title: 'No rapid audio loop',
+      intro: 'Removed the coin sound that repeated several times per second.',
+      sections: [{ heading: 'Now', bullets: ['Sounds only play on events or once per minute'] }],
+    },
+  },
+  {
     version: '4.84.37',
     id: 'tab-stt-route-recovery-v1',
     highlightElementIds: ['audio-route-tab-mode-btn', 'header-connect-btn'],
