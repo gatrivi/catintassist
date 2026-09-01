@@ -2,6 +2,9 @@
 
 **Version source:** `src/constants/version.js` (must match `package.json` + top-right UI pill)
 
+## v4.84.47 - No duplicate source text
+- A failed translation leaves its pane empty; the center rail turns amber while retrying instead of repeating the source language.
+
 ## v4.84.46 - Small-screen call chrome
 - STT status is a single compact row; Greetings becomes a bottom drawer; the always-visible goal line is blue banked time plus orange current-call time.
 

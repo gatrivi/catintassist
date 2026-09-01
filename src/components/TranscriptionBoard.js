@@ -379,6 +379,7 @@ const BubbleRail = ({
   isThisPlaying,
   canPlay,
   onPlayClick,
+  translationFallback = false,
 }) => {
   const steps = ['translating', 'processing', 'ready'];
   const currentIndex = steps.indexOf(engineStatus === 'buffering' ? 'processing' : engineStatus);
@@ -401,7 +402,7 @@ const BubbleRail = ({
             fill={
               i <= currentIndex
                 ? i === 2
-                  ? '#10b981'
+                  ? translationFallback ? '#f59e0b' : '#10b981'
                   : '#3b82f6'
                 : 'rgba(255,255,255,0.12)'
             }
@@ -620,6 +621,7 @@ const TranslatedBubble = ({
             isThisPlaying={isThisPlaying}
             canPlay={Boolean(translation && audioUrl)}
             onPlayClick={() => (isThisPlaying ? stopTTS() : playTTS(translation, targetLang, audioUrl))}
+            translationFallback={translationIsSourceFallback}
           />
         )}
       </div>
@@ -633,10 +635,7 @@ const TranslatedBubble = ({
         <div className="bubble-line bubble-line-translation">
           {translation ? (
             translationIsSourceFallback ? (
-              <span className="translation-source-fallback" title="Source is shown while translation retries">
-                <span className="translation-source-fallback-label">SOURCE · RETRYING</span>
-                <MemoInteractiveText text={translation} scramble={targetScramble} applyNumberWords={targetUsesNumberWords} lang={targetLang} protectionsActive={protectionsActive} />
-              </span>
+              null
             ) : (
               <MemoInteractiveText text={translation} scramble={targetScramble} applyNumberWords={targetUsesNumberWords} lang={targetLang} protectionsActive={protectionsActive} />
             )

@@ -25,6 +25,21 @@ import { APP_VERSION } from '../constants/version';
 /** Newest first. Only the entry matching APP_VERSION is shown on load. */
 export const RELEASE_NOTES_CATALOG = [
   {
+    version: '4.84.47',
+    id: 'hide-source-translation-fallback-v1',
+    highlightElementIds: ['main-transcript'],
+    es: {
+      title: 'Sin texto duplicado',
+      intro: 'Si falla la traducci\\u00f3n, no repetimos el idioma fuente. El carril central queda ambar durante el reintento.',
+      sections: [{ heading: 'Lectura', bullets: ['La segunda columna solo muestra traducci\\u00f3n real'] }],
+    },
+    en: {
+      title: 'No duplicate source text',
+      intro: 'If translation fails, the source language is not repeated. The center rail turns amber while retrying.',
+      sections: [{ heading: 'Reading', bullets: ['The second column only shows a real translation'] }],
+    },
+  },
+  {
     version: '4.84.46',
     id: 'small-screen-call-chrome-v1',
     highlightElementIds: ['compact-call-goal-meter', 'audio-route-tab-proof'],
