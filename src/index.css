@@ -3599,6 +3599,24 @@ body:has(.app-container[data-call-mode="true"]) .element-hint-panel {
   }
 }
 
+.audio-route-day-totals {
+  display: inline-flex;
+  gap: 0.3rem;
+  align-items: center;
+  padding: 0.08rem 0.28rem;
+  border: 1px solid rgba(148, 163, 184, 0.24);
+  border-radius: 4px;
+  color: rgba(226, 232, 240, 0.78);
+  background: rgba(15, 23, 42, 0.42);
+  font: 800 0.58rem/1 var(--font-mono);
+  letter-spacing: 0.025em;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.audio-route-day-totals b { color: #38bdf8; }
+.audio-route-day-totals span { color: #fb923c; }
+
 /* Connect / stop — always visible while scrolling the header
    (stale wrapper neutralized; sticky chrome now lives in `.session-controls-sticky-row`). */
 .session-controls-sticky {

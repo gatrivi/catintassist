@@ -36,6 +36,11 @@ const Dot = ({ state, title }) => (
   />
 );
 
+const formatDailyDuration = (seconds = 0) => {
+  const safe = Math.max(0, Math.floor(seconds));
+  return `${Math.floor(safe / 3600)}h${String(Math.floor((safe % 3600) / 60)).padStart(2, '0')}`;
+};
+
 const selectStyle = {
   fontSize: '0.6rem',
   fontWeight: 700,
@@ -66,6 +71,8 @@ export const AudioRouteStatusBar = ({
   lastDataTime = 0,
   isActive = false,
   isZombieCall = false,
+  totalOnCallSeconds = 0,
+  totalOffCallSeconds = 0,
   onReconnectStream,
   onReconnectAudioSource,
   onSwitchToTabShare,
@@ -532,6 +539,16 @@ export const AudioRouteStatusBar = ({
             </span>
           </span>
         </ElementHintTarget>
+
+        {connectionState === 'disconnected' && !isActive && !isZombieCall && (
+          <span
+            id="audio-route-day-totals"
+            className="audio-route-day-totals"
+            title="Workday totals: ON is time in calls; OFF is available plus breaks during the shift."
+          >
+            TODAY <b>ON {formatDailyDuration(totalOnCallSeconds)}</b> <span>OFF {formatDailyDuration(totalOffCallSeconds)}</span>
+          </span>
+        )}
 
         {onOpenSoundboard && !isActive && (
           <ElementHintTarget

@@ -2,6 +2,9 @@
 
 **Version source:** `src/constants/version.js` (must match `package.json` + top-right UI pill)
 
+## v4.85.3 - Disconnected shift totals
+- The disconnected I/O strip now shows daily ON-call and OFF-call workday totals. Deepgram remains closed between calls because streaming is billed by processed audio duration, not recognized words.
+
 ## v4.85.2 - Stop keeps Tab ready
 - Stop now closes Deepgram between calls while retaining the selected Tab MediaStream. The next Connect reuses it without the tab picker; explicit source switch or browser sharing stop still releases it.
 

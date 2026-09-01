@@ -25,6 +25,21 @@ import { APP_VERSION } from '../constants/version';
 /** Newest first. Only the entry matching APP_VERSION is shown on load. */
 export const RELEASE_NOTES_CATALOG = [
   {
+    version: '4.85.3',
+    id: 'disconnected-shift-totals-v1',
+    highlightElementIds: ['audio-route-day-totals'],
+    es: {
+      title: 'Totales de turno',
+      intro: 'Con Deepgram desconectado ver\u00e1s ON (en llamada) y OFF (disponible + descanso) del d\u00eda.',
+      sections: [{ heading: 'Cuota', bullets: ['Deepgram se cierra entre llamadas; Tab queda listo'] }],
+    },
+    en: {
+      title: 'Shift totals',
+      intro: 'With Deepgram disconnected, see today ON (calls) and OFF (available + break) time.',
+      sections: [{ heading: 'Quota', bullets: ['Deepgram closes between calls; Tab stays ready'] }],
+    },
+  },
+  {
     version: '4.85.2',
     id: 'stop-keeps-tab-ready-v1',
     highlightElementIds: ['header-stop-btn'],
