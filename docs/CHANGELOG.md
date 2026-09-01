@@ -2,6 +2,9 @@
 
 **Version source:** `src/constants/version.js` (must match `package.json` + top-right UI pill)
 
+## v4.85.2 - Stop keeps Tab ready
+- Stop now closes Deepgram between calls while retaining the selected Tab MediaStream. The next Connect reuses it without the tab picker; explicit source switch or browser sharing stop still releases it.
+
 ## v4.85.1 - Always-visible workday line
 - Compact call mode now shows the 09:00-18:00 timeline: blue calls, orange available time, red breaks, a white current-time line, and literal ON / OFF / LEFT totals.
 

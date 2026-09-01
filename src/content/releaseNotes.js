@@ -25,6 +25,21 @@ import { APP_VERSION } from '../constants/version';
 /** Newest first. Only the entry matching APP_VERSION is shown on load. */
 export const RELEASE_NOTES_CATALOG = [
   {
+    version: '4.85.2',
+    id: 'stop-keeps-tab-ready-v1',
+    highlightElementIds: ['header-stop-btn'],
+    es: {
+      title: 'Tab listo entre llamadas',
+      intro: 'STOP cierra Deepgram, pero conserva la pesta\u00f1a elegida. CONNECT la reutiliza sin pedirla otra vez.',
+      sections: [{ heading: 'Suelta Tab solo cuando', bullets: ['Cambias fuente o detienes el uso compartido en el navegador'] }],
+    },
+    en: {
+      title: 'Tab stays ready between calls',
+      intro: 'STOP closes Deepgram but preserves the selected tab. CONNECT reuses it without asking again.',
+      sections: [{ heading: 'Tab releases only when', bullets: ['You switch source or stop browser sharing'] }],
+    },
+  },
+  {
     version: '4.85.1',
     id: 'always-visible-workday-line-v1',
     highlightElementIds: ['compact-call-goal-meter'],

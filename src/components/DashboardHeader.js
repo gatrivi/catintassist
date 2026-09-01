@@ -377,8 +377,8 @@ const SessionControlsSticky = React.memo(({
             <ElementHintTarget
               elementId="header-stop-btn"
               guideKey="stop"
-              heading="Stop / disconnect"
-              body="End the current interpretation session and disconnect Deepgram."
+              heading="Stop call / keep tab"
+              body="End this interpretation session. Deepgram stops, but the selected Tab stays ready for the next call."
               color="#94a3b8"
             >
               <button
@@ -387,7 +387,7 @@ const SessionControlsSticky = React.memo(({
                 type="button"
                 className="header-chrome-btn"
                 onClick={handleStop}
-                title="STOP / DISCONNECT"
+                title="STOP CALL â€” TAB STAYS READY"
               >
                 <StopIcon size={14} />
               </button>
@@ -1124,7 +1124,10 @@ export const DashboardHeader = ({
       setTimeout(() => setCelebration(null), 4000);
     });
     // ponytail: keep tab/STT attached between calls — next green press starts call only.
-  }, [stopSession, RATE_PER_MINUTE, arsRate, audioEngine]);
+    // Stop Deepgram for privacy, but preserve the active tab MediaStream.
+    // The next Connect reuses it and does not open the tab picker.
+    onStopAudio?.();
+  }, [stopSession, RATE_PER_MINUTE, arsRate, audioEngine, onStopAudio]);
 
   const handleEndDay = () => {
     setCallModeExpanded(false);

@@ -78,7 +78,7 @@ const deepgramKeyRejectedMessage = () => {
 
 const MIC_DEVICE_KEY = "CATINTASSIST_MIC_ID";
 // Work calls are browser audio. A failed Tab capture must fail closed.
-const NEVER_AUTO_FALLBACK_TO_PHYSICAL_MIC = false;
+const NEVER_AUTO_FALLBACK_TO_PHYSICAL_MIC = true;
 
 const acquireAudioStreamForSource = async (source) => {
   const { stream } = await acquireInputSource(mapLegacySourceToKind(source));
@@ -1200,6 +1200,8 @@ export const useDeepgram = () => {
   );
 
   const stopRecording = useCallback(() => {
+    // Close Deepgram between calls but intentionally preserve streamRef tracks.
+    // A subsequent Connect reuses the already-authorized tab without its picker.
     isActiveRef.current = false;
     turnWordsBaseRef.current = 0;
     currentTurnIdRef.current = null;
