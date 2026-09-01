@@ -25,6 +25,21 @@ import { APP_VERSION } from '../constants/version';
 /** Newest first. Only the entry matching APP_VERSION is shown on load. */
 export const RELEASE_NOTES_CATALOG = [
   {
+    version: '4.84.48',
+    id: 'reject-cached-translation-echo-v1',
+    highlightElementIds: ['main-transcript'],
+    es: {
+      title: 'Sin eco guardado',
+      intro: 'Un texto en ingl\\u00e9s guardado por error ya no puede mostrarse como traducci\\u00f3n al espa\\u00f1ol.',
+      sections: [{ heading: 'Protecci\\u00f3n', bullets: ['Los ecos viejos se descartan y se vuelve a traducir'] }],
+    },
+    en: {
+      title: 'No cached echo',
+      intro: 'An old English echo can no longer appear as a Spanish translation.',
+      sections: [{ heading: 'Protection', bullets: ['Old echoes are discarded and translation retries'] }],
+    },
+  },
+  {
     version: '4.84.47',
     id: 'hide-source-translation-fallback-v1',
     highlightElementIds: ['main-transcript'],

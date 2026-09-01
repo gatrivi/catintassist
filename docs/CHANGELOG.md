@@ -2,6 +2,9 @@
 
 **Version source:** `src/constants/version.js` (must match `package.json` + top-right UI pill)
 
+## v4.84.48 - Cached translation echo guard
+- Old cached source-language echoes are discarded before rendering; they cannot appear as a translation.
+
 ## v4.84.47 - No duplicate source text
 - A failed translation leaves its pane empty; the center rail turns amber while retrying instead of repeating the source language.
 

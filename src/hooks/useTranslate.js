@@ -77,6 +77,16 @@ const emptyMeta = {
   tried: [],
 };
 
+/** Old cached rows can predate the echo guard. Never rehydrate them as translations. */
+export const discardPersistedPassthroughEntries = (entries = {}, sourceLang, targetLang) =>
+  Object.fromEntries(
+    Object.entries(entries).filter(([, entry]) => {
+      const source = String(entry?.sourceText || '').trim();
+      const translated = String(entry?.text || '').trim();
+      return !source || !translated || !isTranslationPassthrough(source, translated, sourceLang, targetLang);
+    }),
+  );
+
 /** Debounce ms for translation — 0 on bubble split so first chunk re-translates immediately. */
 export function resolveTranslateDebounceMs({ isSplitRewrite, forceTrigger, mood = 'auto' }) {
   if (isSplitRewrite) return 0;
@@ -142,7 +152,13 @@ export const useTranslate = (
     const keys = Object.keys(persistedTranslations);
     if (!keys.length) return;
     hydratedRef.current = true;
-    translationsMapRef.current = { ...persistedTranslations };
+    const persistedSourceLang = normalizeLang(lang);
+    const persistedTargetLang = getOppositeLang(persistedSourceLang, languagePair);
+    translationsMapRef.current = discardPersistedPassthroughEntries(
+      persistedTranslations,
+      persistedSourceLang,
+      persistedTargetLang,
+    );
     const composed = composeCaptionTranslation(translationsMapRef.current);
     if (composed) {
       const hasPassthrough = Object.values(translationsMapRef.current)
