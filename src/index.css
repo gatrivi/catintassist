@@ -257,6 +257,38 @@ body {
   flex-shrink: 0;
   max-height: none;
   overflow: visible;
+  padding-bottom: 5px !important;
+}
+
+/* v4.84.46 — always-visible call goal: blue banked, orange live call. */
+.compact-call-goal-meter {
+  position: absolute;
+  left: 6px;
+  right: 6px;
+  bottom: 1px;
+  height: 3px;
+  overflow: hidden;
+  border-radius: 99px;
+  background: rgba(251, 146, 60, 0.2);
+  pointer-events: auto;
+}
+
+.compact-call-goal-meter__banked,
+.compact-call-goal-meter__live {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  transition: width 0.7s linear, left 0.7s linear;
+}
+
+.compact-call-goal-meter__banked {
+  left: 0;
+  background: #38bdf8;
+}
+
+.compact-call-goal-meter__live {
+  background: #f97316;
+  box-shadow: 0 0 7px rgba(249, 115, 22, 0.75);
 }
 
 .dashboard-header--call-expanded {
@@ -3496,7 +3528,38 @@ body:has(.app-container[data-call-mode="true"]) .element-hint-panel {
 
   /* AudioRouteStatusBar: allow wrap on narrow headers */
   .audio-route-status-main {
-    flex-wrap: wrap !important;
+    flex-wrap: nowrap !important;
+    overflow-x: auto;
+    scrollbar-width: none;
+    min-width: 0;
+  }
+
+  /* Keep the two operational rows visible. Extra audio controls scroll sideways,
+     never push the transcript below the fold. */
+  .app-container[data-call-mode="true"] .audio-route-status-bar.is-compact {
+    min-height: 28px;
+    max-height: 30px;
+    overflow: hidden;
+  }
+
+  .app-container[data-call-mode="true"] .on-call-soundboard-strip {
+    position: fixed;
+    right: 6px;
+    bottom: 6px;
+    z-index: 500;
+    width: auto;
+    max-width: calc(100vw - 12px);
+    min-height: 24px;
+    max-height: 30px;
+    margin: 0;
+    padding: 0.1rem 0.25rem;
+    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.42);
+  }
+
+  .app-container[data-call-mode="true"] .on-call-soundboard-strip.is-expanded {
+    width: min(330px, calc(100vw - 12px));
+    max-height: 45vh;
+    overflow-y: auto;
   }
 }
 

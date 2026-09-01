@@ -25,6 +25,21 @@ import { APP_VERSION } from '../constants/version';
 /** Newest first. Only the entry matching APP_VERSION is shown on load. */
 export const RELEASE_NOTES_CATALOG = [
   {
+    version: '4.84.46',
+    id: 'small-screen-call-chrome-v1',
+    highlightElementIds: ['compact-call-goal-meter', 'audio-route-tab-proof'],
+    es: {
+      title: 'Llamada compacta',
+      intro: 'La ruta STT queda visible. Azul = llamadas cerradas; naranja = llamada actual. Saludos van abajo.',
+      sections: [{ heading: 'Pantalla chica', bullets: ['Sin filas que tapen la transcripci\\u00f3n'] }],
+    },
+    en: {
+      title: 'Compact call view',
+      intro: 'The STT route stays visible. Blue = banked calls; orange = current call. Greetings move to the bottom.',
+      sections: [{ heading: 'Small screen', bullets: ['No rows cover the transcript'] }],
+    },
+  },
+  {
     version: '4.84.45',
     id: 'release-notes-utf8-fix-v1',
     highlightElementIds: ['main-transcript'],

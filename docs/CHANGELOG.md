@@ -2,6 +2,9 @@
 
 **Version source:** `src/constants/version.js` (must match `package.json` + top-right UI pill)
 
+## v4.84.46 - Small-screen call chrome
+- STT status is a single compact row; Greetings becomes a bottom drawer; the always-visible goal line is blue banked time plus orange current-call time.
+
 ## v4.84.45 - Spanish release-note encoding
 - Spanish release notes use Unicode escapes so accented characters cannot render as mojibake.
 
