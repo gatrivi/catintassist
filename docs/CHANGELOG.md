@@ -2,6 +2,15 @@
 
 **Version source:** `src/constants/version.js` (must match `package.json` + top-right UI pill)
 
+## v4.85.1 - Always-visible workday line
+- Compact call mode now shows the 09:00-18:00 timeline: blue calls, orange available time, red breaks, a white current-time line, and literal ON / OFF / LEFT totals.
+
+## v4.85.0 - Translation outage gateway
+- Translation tries the private Vercel gateway first: Azure, DeepL, Google Cloud, then Amazon Translate. Browser-only Google/MyMemory remain last-resort legacy fallbacks.
+
+## v4.84.49 - Live bilingual translation
+- Translation runs at each 10 new live words, on sentence completion, and on splits. Source-language echoes are rejected.
+
 ## v4.84.48 - Cached translation echo guard
 - Old cached source-language echoes are discarded before rendering; they cannot appear as a translation.
 

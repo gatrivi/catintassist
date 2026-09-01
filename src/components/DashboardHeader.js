@@ -1177,13 +1177,6 @@ export const DashboardHeader = ({
   
   const unbankedMins = isActive ? (sessionSeconds / 60) : 0;
   const totalDailyMins = stats.dailyMinutes + unbankedMins;
-  const compactGoalBankedRatio = dailyGoal > 0
-    ? Math.min(1, Math.max(0, stats.dailyMinutes / dailyGoal))
-    : 0;
-  const compactGoalLiveRatio = dailyGoal > 0
-    ? Math.min(1, Math.max(0, totalDailyMins / dailyGoal))
-    : 0;
-  const compactGoalLiveWidth = Math.max(0, compactGoalLiveRatio - compactGoalBankedRatio);
   const liveBreakMins = (stats.dailyBreakMinutes || 0) + (breakSeconds / 60);
   const totalOffCallMins = (stats.dailyAvailMinutes || 0) + (stats.dailyBreakMinutes || 0) + (availSeconds / 60) + (breakSeconds / 60);
   const totalOffCallSeconds = (
@@ -1192,6 +1185,16 @@ export const DashboardHeader = ({
     + (breakSeconds || 0)
   );
   const totalOnCallSeconds = Math.floor((stats.dailyMinutes || 0) * 60) + (isActive ? sessionSeconds : 0);
+  const compactWorkdaySegments = dailyTimeline
+    .map((evt, index) => {
+      const start = Math.max(dailyShiftStartMs, evt.start || dailyShiftStartMs);
+      const end = Math.min(dailyShiftEndMs, evt.end || now.getTime());
+      const left = Math.max(0, Math.min(100, ((start - dailyShiftStartMs) / dailyShiftDuration) * 100));
+      const right = Math.max(0, Math.min(100, ((end - dailyShiftStartMs) / dailyShiftDuration) * 100));
+      return { index, type: evt.type, left, width: Math.max(0, right - left) };
+    })
+    .filter((segment) => segment.width > 0);
+  const compactShiftRemainingSeconds = Math.max(0, Math.floor((dailyShiftEndMs - now.getTime()) / 1000));
 
   // CATCH-UP LOGIC: Dynamic shifts and SUCCESS ZONES
   const ABSOLUTE_END = 23;
@@ -2907,18 +2910,26 @@ ${isInDeficit ? `⚠️ DEFICIT: Behind pace by ${Math.round(monthlyDeficitMins)
         offCallStatusLabel={offCallStatusLabel}
       />
 
-      {headerCallCompact && dailyGoal > 0 && (
+      {headerCallCompact && (
         <div
           id="compact-call-goal-meter"
           className="compact-call-goal-meter"
-          title={`Today: ${Math.round(totalDailyMins)}m / ${Math.round(dailyGoal)}m. Blue = banked calls; orange = current call.`}
-          aria-label={`Today ${Math.round(totalDailyMins)} of ${Math.round(dailyGoal)} minutes. Blue is banked calls and orange is the current call.`}
+          title={`Workday: ${formatTime(totalOnCallSeconds)} on call; ${formatTime(totalOffCallSeconds)} off call; ${formatTime(compactShiftRemainingSeconds)} left. Blue = calls; orange = available; red = break.`}
+          aria-label={`Workday timeline: ${formatTime(totalOnCallSeconds)} on call, ${formatTime(totalOffCallSeconds)} off call, and ${formatTime(compactShiftRemainingSeconds)} left.`}
         >
-          <div className="compact-call-goal-meter__banked" style={{ width: `${compactGoalBankedRatio * 100}%` }} />
-          <div
-            className="compact-call-goal-meter__live"
-            style={{ left: `${compactGoalBankedRatio * 100}%`, width: `${compactGoalLiveWidth * 100}%` }}
-          />
+          <span className="compact-call-goal-meter__readout" aria-hidden="true">
+            <b>ON {formatTime(totalOnCallSeconds)}</b><span>OFF {formatTime(totalOffCallSeconds)}</span><span>LEFT {formatTime(compactShiftRemainingSeconds)}</span>
+          </span>
+          <div className="compact-call-goal-meter__track" aria-hidden="true">
+            {compactWorkdaySegments.map((segment) => (
+              <span
+                key={`${segment.type}-${segment.index}`}
+                className={`compact-call-goal-meter__segment compact-call-goal-meter__segment--${segment.type}`}
+                style={{ left: `${segment.left}%`, width: `${segment.width}%` }}
+              />
+            ))}
+            <span className="compact-call-goal-meter__now" style={{ left: `${shiftElapsedRatio * 100}%` }} />
+          </div>
         </div>
       )}
 

@@ -25,6 +25,51 @@ import { APP_VERSION } from '../constants/version';
 /** Newest first. Only the entry matching APP_VERSION is shown on load. */
 export const RELEASE_NOTES_CATALOG = [
   {
+    version: '4.85.1',
+    id: 'always-visible-workday-line-v1',
+    highlightElementIds: ['compact-call-goal-meter'],
+    es: {
+      title: 'L\u00ednea de jornada',
+      intro: 'Siempre visible: azul = llamada, naranja = disponible, rojo = descanso; tambi\u00e9n ON, OFF y tiempo restante.',
+      sections: [{ heading: 'De un vistazo', bullets: ['La l\u00ednea blanca marca la hora actual'] }],
+    },
+    en: {
+      title: 'Workday line',
+      intro: 'Always visible: blue = call, orange = available, red = break; with ON, OFF, and time left.',
+      sections: [{ heading: 'At a glance', bullets: ['The white line marks the current time'] }],
+    },
+  },
+  {
+    version: '4.85.0',
+    id: 'translation-outage-gateway-v1',
+    highlightElementIds: ['main-transcript'],
+    es: {
+      title: 'Respaldo de traducci\\u00f3n',
+      intro: 'La app usa una puerta privada: Azure, DeepL, Google y Amazon antes de los respaldos de navegador.',
+      sections: [{ heading: 'Seguro', bullets: ['Las nuevas claves y el texto pasan por la puerta privada'] }],
+    },
+    en: {
+      title: 'Translation backup',
+      intro: 'The app uses a private gateway: Azure, DeepL, Google, and Amazon before browser fallbacks.',
+      sections: [{ heading: 'Safe', bullets: ['New keys and call text use the private gateway'] }],
+    },
+  },
+  {
+    version: '4.84.49',
+    id: 'live-translation-every-ten-words-v1',
+    highlightElementIds: ['main-transcript'],
+    es: {
+      title: 'Traducci\\u00f3n en vivo',
+      intro: 'Mientras hablan, la traducci\\u00f3n sale cada 10 palabras nuevas; no espera siempre al final.',
+      sections: [{ heading: 'Seguro', bullets: ['Un eco del idioma fuente nunca cuenta como traducci\\u00f3n'] }],
+    },
+    en: {
+      title: 'Live translation',
+      intro: 'While they speak, translation runs every 10 new words instead of always waiting for the end.',
+      sections: [{ heading: 'Safe', bullets: ['A source-language echo never counts as a translation'] }],
+    },
+  },
+  {
     version: '4.84.48',
     id: 'reject-cached-translation-echo-v1',
     highlightElementIds: ['main-transcript'],
