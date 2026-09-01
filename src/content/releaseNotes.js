@@ -25,6 +25,21 @@ import { APP_VERSION } from '../constants/version';
 /** Newest first. Only the entry matching APP_VERSION is shown on load. */
 export const RELEASE_NOTES_CATALOG = [
   {
+    version: '4.84.45',
+    id: 'release-notes-utf8-fix-v1',
+    highlightElementIds: ['main-transcript'],
+    es: {
+      title: 'Texto en espa\\u00f1ol correcto',
+      intro: 'Las notas ahora usan caracteres seguros: traducci\\u00f3n, se\\u00f1al y revisi\\u00f3n se ven correctamente.',
+      sections: [{ heading: 'Listo', bullets: ['Sin caracteres rotos ni texto mojibake'] }],
+    },
+    en: {
+      title: 'Correct Spanish text',
+      intro: 'Release notes now use safe characters, so Spanish renders correctly.',
+      sections: [{ heading: 'Done', bullets: ['No broken or mojibake characters'] }],
+    },
+  },
+  {
     version: '4.84.44',
     id: 'translation-source-fallback-label-v1',
     highlightElementIds: ['main-transcript'],
