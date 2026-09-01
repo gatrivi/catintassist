@@ -25,6 +25,39 @@ import { APP_VERSION } from '../constants/version';
 /** Newest first. Only the entry matching APP_VERSION is shown on load. */
 export const RELEASE_NOTES_CATALOG = [
   {
+    version: '4.85.1',
+    id: 'tab-stt-route-recovery-v1',
+    highlightElementIds: ['audio-route-tab-mode-btn', 'header-connect-btn'],
+    es: {
+      title: 'Tab STT corregido',
+      intro: 'Elegir Marcador ahora apaga Mic STT antes de CONNECT.',
+      sections: [
+        {
+          heading: 'Durante outage',
+          bullets: [
+            'Marcador (🔖) → CONNECT → elegí la pestaña de la llamada',
+            'Marcá Compartir audio en el selector del navegador',
+            'No vuelve a capturar el micrófono físico por una opción guardada',
+          ],
+        },
+      ],
+    },
+    en: {
+      title: 'Tab STT fixed',
+      intro: 'Selecting Tab now turns off Mic STT before CONNECT.',
+      sections: [
+        {
+          heading: 'During an outage',
+          bullets: [
+            'Tab (🔖) → CONNECT → choose the call tab',
+            'Check Share audio in the browser picker',
+            'A saved mic choice can no longer capture the physical mic instead',
+          ],
+        },
+      ],
+    },
+  },
+  {
     version: '4.85.0',
     id: 'legal-consent-gate-v1',
     highlightElementIds: ['header-settings-btn'],

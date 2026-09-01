@@ -3,6 +3,9 @@
 **Version source:** `src/constants/version.js` (must match `package.json` + top-right UI pill)
 
 ---
+## v4.85.1 — Tab STT route recovery
+- Selecting **Tab** or **VB-Cable** now clears the saved Mic STT override before Connect. Tab can no longer silently capture the physical microphone.
+
 ## v4.85.0 — Legal pack: consent gate + in-app legal text
 - First launch: **terms consent gate** blocks the app (and Firebase init) until "I have read and agree" — `catint_legal_consent_v1` stores version + timestamp; legal version bump re-prompts
 - **Settings → Legal** tab: summary + full text viewer (Terms of Use · Privacy Policy · Medical & Professional Disclaimer · Data & API Keys) — `src/content/legal.js` is the single source
