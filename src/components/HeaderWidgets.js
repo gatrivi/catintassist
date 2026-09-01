@@ -4,9 +4,12 @@ import { DialGoalSelector } from './DialGoalSelector';
 export { PlayIcon, StopIcon, KeyIcon } from './HeaderIcons';
 
 export const formatTime = (totalSeconds) => {
-  const hours = Math.floor(totalSeconds / 3600);
-  const minutes = Math.floor((totalSeconds % 3600) / 60);
-  const seconds = totalSeconds % 60;
+  // Timer inputs are accumulated from minute fractions. Always display whole
+  // seconds: never leak a value such as `9.000000000007276` into the HUD.
+  const safeSeconds = Math.max(0, Math.floor(Number(totalSeconds) || 0));
+  const hours = Math.floor(safeSeconds / 3600);
+  const minutes = Math.floor((safeSeconds % 3600) / 60);
+  const seconds = safeSeconds % 60;
   if (hours > 0) {
     return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
   }

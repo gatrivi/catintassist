@@ -2,6 +2,10 @@
 
 **Version source:** `src/constants/version.js` (must match `package.json` + top-right UI pill)
 
+## v4.85.4 - Clear compact call HUD
+- During a call, the I/O strip now shows only Tab proof and Deepgram state; device dropdowns and setup controls are hidden until off-call.
+- Removed duplicate slot-style daily timers and normalized all HUD duration inputs to whole seconds, fixing the floating-point OFF value.
+
 ## v4.85.3 - Disconnected shift totals
 - The disconnected I/O strip now shows daily ON-call and OFF-call workday totals. Deepgram remains closed between calls because streaming is billed by processed audio duration, not recognized words.
 

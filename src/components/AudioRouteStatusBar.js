@@ -321,6 +321,30 @@ export const AudioRouteStatusBar = ({
       title={`Audio I/O · v${APP_VERSION}`}
     >
       <div className="audio-route-status-main">
+        {compact && (
+          <div className="audio-route-compact-proof" aria-label={`${tabProof?.label || sttInLabel}; Deepgram ${enOk && esOk ? 'EN and ES ready' : connectionState}`}>
+            <span className="audio-route-compact-proof__route" title={tabProof?.title || sttInHintBody}>
+              <Dot state={tabProof?.state || sttInState} />
+              {tabProof?.label || sttInLabel}
+            </span>
+            <span className="audio-route-compact-proof__dg" title={sttSummaryHintBody}>
+              <Dot state={sttState === 'idle' ? 'idle' : sttState} />
+              DG {enOk && esOk ? 'EN/ES' : connectionState}
+            </span>
+            {(stale || critical || (isActive && isDeepgramError)) && onReconnectStream && (
+              <button
+                id="audio-route-zap-btn"
+                type="button"
+                className="audio-route-compact-proof__zap"
+                onClick={onReconnectStream}
+                title="Reconnect Deepgram stream"
+              >
+                ZAP
+              </button>
+            )}
+          </div>
+        )}
+        <div className="audio-route-status-full">
         <div className="audio-route-source-toggle" role="group" aria-label="STT route">
           <button
             type="button"
@@ -657,6 +681,7 @@ export const AudioRouteStatusBar = ({
             ⚡ Zap
           </button>
         )}
+        </div>
       </div>
 
       {isMoreOpen && (

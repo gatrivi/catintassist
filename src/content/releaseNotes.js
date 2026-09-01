@@ -25,6 +25,21 @@ import { APP_VERSION } from '../constants/version';
 /** Newest first. Only the entry matching APP_VERSION is shown on load. */
 export const RELEASE_NOTES_CATALOG = [
   {
+    version: '4.85.4',
+    id: 'compact-hud-clarity-v1',
+    highlightElementIds: ['compact-call-goal-meter'],
+    es: {
+      title: 'HUD de llamada claro',
+      intro: 'En llamada, la barra muestra solo prueba de Tab, Deepgram y ON/OFF/LEFT.',
+      sections: [{ heading: 'Sin ruido', bullets: ['Los controles de dispositivos quedan fuera de la vista de llamada', 'Los tiempos no muestran decimales'] }],
+    },
+    en: {
+      title: 'Clear call HUD',
+      intro: 'During a call, the bar shows only Tab proof, Deepgram, and ON/OFF/LEFT.',
+      sections: [{ heading: 'No clutter', bullets: ['Device setup stays out of the call view', 'Timers never show decimals'] }],
+    },
+  },
+  {
     version: '4.85.3',
     id: 'disconnected-shift-totals-v1',
     highlightElementIds: ['audio-route-day-totals'],

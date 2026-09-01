@@ -45,7 +45,6 @@ import { HeaderMetricsStrip } from './HeaderMetricsStrip';
 import { playTestToneLocal, playTestToneSink } from '../utils/audioSelfTest';
 import { APP_VERSION_LABEL } from '../constants/version';
 import { SlotMicroValue } from './SlotMicroValue';
-import { SessionStatusTimers } from './SessionStatusTimers';
 import { needsUserSuppliedDeepgramKey } from '../utils/deepgramRuntimeKey';
 import {
   STT_LATENCY_CHANGED_EVENT,
@@ -557,13 +556,6 @@ const SessionControlsSticky = React.memo(({
                 </span>
               )}
               <span className="call-micro-bar-slot call-micro-bar-reserved" aria-hidden="true" />
-              {!showConnecting && (
-                <SessionStatusTimers
-                  onCallSeconds={totalOnCallSeconds}
-                  offCallSeconds={totalOffCallSeconds}
-                  compact
-                />
-              )}
             </div>
             ) : (
             <div className="call-micro-bar-center call-micro-bar-center--compact" title="Call timer">
@@ -576,13 +568,6 @@ const SessionControlsSticky = React.memo(({
                   <SlotMicroValue text={formatTime(sessionSeconds)} />
                 )}
               </span>
-              {!showConnecting && (
-                <SessionStatusTimers
-                  onCallSeconds={totalOnCallSeconds}
-                  offCallSeconds={totalOffCallSeconds}
-                  compact
-                />
-              )}
             </div>
             )
           ) : (
@@ -609,11 +594,6 @@ const SessionControlsSticky = React.memo(({
                 >
                   {offCallStatusLabel}
                 </span>
-                <SessionStatusTimers
-                  onCallSeconds={totalOnCallSeconds}
-                  offCallSeconds={totalOffCallSeconds}
-                  compact
-                />
               </div>
             </div>
           )}
@@ -1184,12 +1164,12 @@ export const DashboardHeader = ({
   const totalDailyMins = stats.dailyMinutes + unbankedMins;
   const liveBreakMins = (stats.dailyBreakMinutes || 0) + (breakSeconds / 60);
   const totalOffCallMins = (stats.dailyAvailMinutes || 0) + (stats.dailyBreakMinutes || 0) + (availSeconds / 60) + (breakSeconds / 60);
-  const totalOffCallSeconds = (
+  const totalOffCallSeconds = Math.max(0, Math.floor(
     ((stats.dailyAvailMinutes || 0) + (stats.dailyBreakMinutes || 0)) * 60
     + (availSeconds || 0)
     + (breakSeconds || 0)
-  );
-  const totalOnCallSeconds = Math.floor((stats.dailyMinutes || 0) * 60) + (isActive ? sessionSeconds : 0);
+  ));
+  const totalOnCallSeconds = Math.max(0, Math.floor((stats.dailyMinutes || 0) * 60) + (isActive ? Math.floor(sessionSeconds || 0) : 0));
   const compactWorkdaySegments = dailyTimeline
     .map((evt, index) => {
       const start = Math.max(dailyShiftStartMs, evt.start || dailyShiftStartMs);
