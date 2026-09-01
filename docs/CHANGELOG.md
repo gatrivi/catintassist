@@ -2,6 +2,9 @@
 
 **Version source:** `src/constants/version.js` (must match `package.json` + top-right UI pill)
 
+## v4.84.44 - Translation state is explicit
+- A source fallback in the translation column is labeled `SOURCE · RETRYING`; it cannot be mistaken for a valid translation.
+
 ## v4.84.43 - Softer live text cues
 - Only arriving or corrected words softly fade in; already-readable transcript text stays fixed and visible.
 

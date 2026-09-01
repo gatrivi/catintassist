@@ -25,6 +25,21 @@ import { APP_VERSION } from '../constants/version';
 /** Newest first. Only the entry matching APP_VERSION is shown on load. */
 export const RELEASE_NOTES_CATALOG = [
   {
+    version: '4.84.44',
+    id: 'translation-source-fallback-label-v1',
+    highlightElementIds: ['main-transcript'],
+    es: {
+      title: 'TraducciÃ³n honesta',
+      intro: 'Si un motor falla, la segunda columna dice SOURCE Â· RETRYING. Nunca parece una traducciÃ³n real.',
+      sections: [{ heading: 'Chequeo', bullets: ['Texto sin etiqueta = traducciÃ³n; SOURCE = reintento activo'] }],
+    },
+    en: {
+      title: 'Truthful translation state',
+      intro: 'If an engine fails, the second column says SOURCE Â· RETRYING. It never looks like a real translation.',
+      sections: [{ heading: 'Check', bullets: ['No label = translation; SOURCE = active retry'] }],
+    },
+  },
+  {
     version: '4.84.43',
     id: 'live-text-soft-cues-v1',
     highlightElementIds: ['main-transcript'],

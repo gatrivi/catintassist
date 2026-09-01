@@ -145,10 +145,18 @@ export const useTranslate = (
     translationsMapRef.current = { ...persistedTranslations };
     const composed = composeCaptionTranslation(translationsMapRef.current);
     if (composed) {
+      const hasPassthrough = Object.values(translationsMapRef.current)
+        .some((entry) => entry?.passthrough);
       setTranslation(composed);
       setEngineStatus('ready');
-      setTranslationMeta({ engineId: 'idb', quality: 'ok', failures: [], tried: ['idb'] });
-      hasGoodTranslationRef.current = true;
+      setTranslationMeta({
+        engineId: 'idb',
+        quality: hasPassthrough ? 'failed' : 'ok',
+        failures: [],
+        tried: ['idb'],
+        passthrough: hasPassthrough,
+      });
+      hasGoodTranslationRef.current = !hasPassthrough;
       if (text) {
         const norm = text.trim().replace(/\s+/g, ' ');
         lastTranslatedTextRef.current = norm;
@@ -361,6 +369,7 @@ export const useTranslate = (
         let lastMeta = emptyMeta;
         let anyOk = false;
         let anyFailed = false;
+        let anyPassthrough = false;
 
         for (const { segmentId, text: segText } of labeled) {
           if (signal.aborted) break;
@@ -402,6 +411,7 @@ export const useTranslate = (
           persistIfSealed(entry);
           if (entry.status === 'ok' || entry.status === 'weak') anyOk = true;
           if (entry.status === 'failed' || entry.passthrough || entry.warning) anyFailed = true;
+          if (entry.passthrough) anyPassthrough = true;
         }
 
         if (signal.aborted) return;
@@ -415,6 +425,7 @@ export const useTranslate = (
         setTranslationMeta({
           ...lastMeta,
           quality: anyOk && !anyFailed ? lastMeta.quality : anyOk ? 'weak' : 'failed',
+          passthrough: anyPassthrough,
         });
 
         if (!langPairRef.current) langPairRef.current = langPair;

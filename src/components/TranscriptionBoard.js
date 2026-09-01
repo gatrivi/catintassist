@@ -549,6 +549,7 @@ const TranslatedBubble = ({
   const targetScramble = false;
   const translationFailed =
     engineStatus === 'ready' && !translation?.trim() && translationMeta?.quality === 'failed';
+  const translationIsSourceFallback = Boolean(translationMeta?.passthrough);
   const translationTitle = translationFailed
     ? 'Translation failed — check Settings → Translation for engine status'
     : undefined;
@@ -631,7 +632,14 @@ const TranslatedBubble = ({
       >
         <div className="bubble-line bubble-line-translation">
           {translation ? (
-            <MemoInteractiveText text={translation} scramble={targetScramble} applyNumberWords={targetUsesNumberWords} lang={targetLang} protectionsActive={protectionsActive} />
+            translationIsSourceFallback ? (
+              <span className="translation-source-fallback" title="Source is shown while translation retries">
+                <span className="translation-source-fallback-label">SOURCE · RETRYING</span>
+                <MemoInteractiveText text={translation} scramble={targetScramble} applyNumberWords={targetUsesNumberWords} lang={targetLang} protectionsActive={protectionsActive} />
+              </span>
+            ) : (
+              <MemoInteractiveText text={translation} scramble={targetScramble} applyNumberWords={targetUsesNumberWords} lang={targetLang} protectionsActive={protectionsActive} />
+            )
           ) : translationFailed ? (
             <span style={{ opacity: 0.3, fontSize: '0.7rem' }}>⚠️ translation failed</span>
           ) : autoRetranslatePending || engineStatus === 'translating' ? (

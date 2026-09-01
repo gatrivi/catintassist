@@ -5492,6 +5492,24 @@ body:has(.app-container[data-call-mode="true"]) .element-hint-panel {
   text-align: left;
 }
 
+.translation-source-fallback {
+  color: #cbd5e1;
+}
+
+.translation-source-fallback-label {
+  display: inline-block;
+  margin-right: 0.45em;
+  padding: 0 0.3em;
+  border-radius: 2px;
+  color: #fbbf24;
+  background: rgba(251, 191, 36, 0.12);
+  font-size: 0.62em;
+  font-style: normal;
+  font-weight: 800;
+  letter-spacing: 0.05em;
+  vertical-align: 0.12em;
+}
+
 .confidence-word {
   border-radius: 2px;
   transition: color 160ms ease, opacity 160ms ease;
