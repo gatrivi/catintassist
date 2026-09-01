@@ -84,6 +84,8 @@ Read the trace like this:
 - Persisted old duplicate captions may still exist until render guard or clearing transcript handles them.
 
 ## Still Open
+- **Tab capture correctness first:** Tab mode must fail visibly when Chrome returns no shared-audio track; it must never auto-switch to the physical microphone. Add a focused regression test before VB-Cable work.
+- **VB-Cable deferred:** validate Windows `CABLE Output` monitoring and CatIntAssist STT independently only after Tab capture passes the live proof.
 - Manually verify live Deepgram after hard refresh on `v4.80.1`.
 - Confirm `wordConfidenceCount > 0` in live traces.
 - Confirm low-confidence words are visibly dim/underlined.

@@ -2,6 +2,9 @@
 
 **Version source:** `src/constants/version.js` (must match `package.json` + top-right UI pill)
 
+## v4.84.39 - Tab fails closed
+- Tab STT never automatically switches to the physical microphone. Bad tab sharing remains a visible Tab error.
+
 ## v4.84.38 - Stop rapid sound loop
 - Removed the 150ms celebration coin loop. Audio only plays on explicit call/day events or once per minute.
 

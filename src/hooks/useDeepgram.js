@@ -77,6 +77,8 @@ const deepgramKeyRejectedMessage = () => {
 };
 
 const MIC_DEVICE_KEY = "CATINTASSIST_MIC_ID";
+// Work calls are browser audio. A failed Tab capture must fail closed.
+const NEVER_AUTO_FALLBACK_TO_PHYSICAL_MIC = false;
 
 const acquireAudioStreamForSource = async (source) => {
   const { stream } = await acquireInputSource(mapLegacySourceToKind(source));
@@ -1339,7 +1341,7 @@ export const useDeepgram = () => {
       );
       const stream = await acquireAudioStreamForSource(source);
       const ok = beginStream(stream, source);
-      if (!ok && source === "tab" && !micTestModeRef.current && hasSelectedMicDevice()) {
+      if (NEVER_AUTO_FALLBACK_TO_PHYSICAL_MIC && !ok && source === "tab" && !micTestModeRef.current && hasSelectedMicDevice()) {
         // Tab capture didn't yield usable audio — switch to mic mode so `audioAttached` can unblock STT.
         setConnectionState("connecting");
         setConnectionMessage("No tab audio detected — falling back to microphone...");
@@ -1365,7 +1367,7 @@ export const useDeepgram = () => {
           abortConnectAttempt(tabErr.message);
           return false;
         }
-        if (tabErr.suggestMicFallback) {
+        if (NEVER_AUTO_FALLBACK_TO_PHYSICAL_MIC && tabErr.suggestMicFallback) {
           try {
             setConnectionState("connecting");
             setConnectionMessage("Tab capture unavailable — trying microphone...");
@@ -1446,7 +1448,7 @@ export const useDeepgram = () => {
       );
       const stream = await acquireAudioStreamForSource(source);
       const ok = beginStream(stream, source);
-      if (!ok && source === "tab" && !micTestModeRef.current && hasSelectedMicDevice()) {
+      if (NEVER_AUTO_FALLBACK_TO_PHYSICAL_MIC && !ok && source === "tab" && !micTestModeRef.current && hasSelectedMicDevice()) {
         // Tab capture didn't yield usable audio — switch to mic mode so `audioAttached` can unblock STT.
         setConnectionState("connecting");
         setConnectionMessage("No tab audio detected — falling back to microphone...");
@@ -1472,7 +1474,7 @@ export const useDeepgram = () => {
           abortConnectAttempt(tabErr.message);
           return false;
         }
-        if (tabErr.suggestMicFallback) {
+        if (NEVER_AUTO_FALLBACK_TO_PHYSICAL_MIC && tabErr.suggestMicFallback) {
           try {
             setConnectionState("connecting");
             setConnectionMessage("Tab capture unavailable — trying microphone...");

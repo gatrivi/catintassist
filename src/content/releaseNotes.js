@@ -25,9 +25,24 @@ import { APP_VERSION } from '../constants/version';
 /** Newest first. Only the entry matching APP_VERSION is shown on load. */
 export const RELEASE_NOTES_CATALOG = [
   {
+    version: '4.84.39',
+    id: 'tab-stt-fail-closed-v1',
+    highlightElementIds: ['audio-route-tab-mode-btn', 'header-connect-btn'],
+    es: {
+      title: 'Tab primero',
+      intro: 'Si la pestaña no comparte audio, CatIntAssist muestra error. Nunca cambia solo al micrófono físico.',
+      sections: [{ heading: 'Llamadas', bullets: ['🔖 Tab → CONNECT → pestaña de llamada → Compartir audio'] }],
+    },
+    en: {
+      title: 'Tab first',
+      intro: 'If a tab is not sharing audio, CatIntAssist shows an error. It never switches itself to the physical mic.',
+      sections: [{ heading: 'Calls', bullets: ['🔖 Tab → CONNECT → call tab → Share audio'] }],
+    },
+  },
+  {
     version: '4.84.38',
     id: 'stop-rapid-celebration-audio-v1',
-    highlightElementIds: [],
+    highlightElementIds: ['header-connect-btn'],
     es: {
       title: 'Audio sin loop',
       intro: 'Quitamos el sonido de monedas que se repetía varias veces por segundo.',
