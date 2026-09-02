@@ -944,7 +944,8 @@ body {
 
 .app-container[data-off-call-view="scoreboard"] > .dashboard-header.dashboard-header--off-call-scoreboard.dashboard-header--metrics-expanded {
   flex: 0 0 auto;
-  max-height: 38%;
+  /* Expanded means detail inside a scrollable scoreboard, never a takeover. */
+  max-height: min(28vh, 180px);
   overflow-y: auto;
   overflow-x: hidden;
 }

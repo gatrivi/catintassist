@@ -25,6 +25,21 @@ import { APP_VERSION } from '../constants/version';
 /** Newest first. Only the entry matching APP_VERSION is shown on load. */
 export const RELEASE_NOTES_CATALOG = [
   {
+    version: '4.85.6',
+    id: 'scoreboard-grid-budget-v1',
+    highlightElementIds: ['header-metrics-expand-btn', 'header-app-logo-btn'],
+    es: {
+      title: 'Cuadrícula sin takeover',
+      intro: 'Metrics abre directamente las 12 métricas dentro de un panel acotado.',
+      sections: [{ heading: 'Verificación', bullets: ['Pase el mouse por el ícono de CatIntAssist para ver la versión'] }],
+    },
+    en: {
+      title: 'Grid without takeover',
+      intro: 'Metrics opens directly on the 12 metrics inside a capped panel.',
+      sections: [{ heading: 'Verification', bullets: ['Hover the CatIntAssist icon to see the version'] }],
+    },
+  },
+  {
     version: '4.85.5',
     id: 'scoreboard-small-screen-restore-v1',
     highlightElementIds: ['header-metrics-expand-btn'],

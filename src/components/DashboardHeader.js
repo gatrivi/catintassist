@@ -344,6 +344,7 @@ const SessionControlsSticky = React.memo(({
               type="button"
               className="btn-icon tiny-btn app-logo-btn"
               aria-label={`CatIntAssist ${APP_VERSION_LABEL}`}
+              title={`CatIntAssist ${APP_VERSION_LABEL}`}
             >
               <img
                 className="app-logo-img"
@@ -921,6 +922,9 @@ export const DashboardHeader = ({
   const toggleOffCallMetricsExpanded = useCallback(() => {
     setOffCallMetricsExpanded((prev) => {
       const next = !prev;
+      // The arrow means “show the comprehensive scoreboard”, not the compact
+      // game card. Open directly on the 12 metric grid.
+      if (next) setScoreView('numbers');
       try {
         localStorage.setItem(OFF_CALL_METRICS_EXPANDED_KEY, next ? 'true' : 'false');
       } catch {
@@ -934,6 +938,7 @@ export const DashboardHeader = ({
 
   const expandOffCallMetrics = useCallback(() => {
     setOffCallMetricsExpanded(true);
+    setScoreView('numbers');
     try {
       localStorage.setItem(OFF_CALL_METRICS_EXPANDED_KEY, 'true');
     } catch {

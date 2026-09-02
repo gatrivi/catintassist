@@ -2,6 +2,10 @@
 
 **Version source:** `src/constants/version.js` (must match `package.json` + top-right UI pill)
 
+## v4.85.6 - Bounded scoreboard grid
+- Metrics now opens the 12-cell number grid directly, inside a capped 28vh/180px scroll area; it cannot take over the transcription workspace.
+- Hovering the CatIntAssist icon now always shows the build version.
+
 ## v4.85.5 - Scoreboard restore at 900px
 - Restored the off-call scoreboard strip at small-screen widths. Its Metrics button, 12-cell grid, and three progress bars are reachable again; call-mode chrome remains compact.
 
