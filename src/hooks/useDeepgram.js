@@ -47,7 +47,7 @@ import {
   getMediaRecorderTimeslice,
   loadSttLatencyMode,
 } from "../utils/deepgramListenConfig";
-import { readMicTestMode, writeMicTestMode } from "../utils/micMode";
+import { writeMicTestMode } from "../utils/micMode";
 import { traceCaptionArrayDiff } from "../utils/vanishTrace";
 
 const CAPTIONS_CLEARED_EVENT = "catint_captions_cleared";
@@ -86,17 +86,6 @@ const acquireAudioStreamForSource = async (source) => {
     throw new Error(`InputSource ${source} did not yield a MediaStream`);
   }
   return stream;
-};
-
-// Heuristic: only auto-switch to mic mode on small screens to avoid surprising desktop users.
-const isLikelyMobile = () => {
-  try {
-    const w = typeof window !== "undefined" ? window.innerWidth : 9999;
-    const ua = typeof navigator !== "undefined" ? navigator.userAgent || "" : "";
-    return w <= 600 || /Android|iPhone|iPad|iPod/i.test(ua);
-  } catch (_) {
-    return false;
-  }
 };
 
 export const useDeepgram = () => {
@@ -158,7 +147,9 @@ export const useDeepgram = () => {
   });
   const [sttLanguage, setSttLanguage] = useState("auto");
   const [lastDataTime, setLastDataTime] = useState(0);
-  const [micTestMode, setMicTestModeState] = useState(readMicTestMode);
+  // Work calls must always start on Tab STT. A past mic test may never hijack
+  // the next call after refresh.
+  const [micTestMode, setMicTestModeState] = useState(false);
   const [tabStreamReady, setTabStreamReady] = useState(readTabStreamReady);
   const [cableStreamReady, setCableStreamReady] = useState(false);
   const [attachedAudioSourceMode, setAttachedAudioSourceMode] = useState("tab"); // 'tab' | 'mic' | 'virtualCable'
@@ -167,7 +158,7 @@ export const useDeepgram = () => {
   const langModeRef = useRef("auto");
   const languagePairRef = useRef(loadLanguagePair());
   const reconnectStreamRef = useRef(null);
-  const micTestModeRef = useRef(readMicTestMode());
+  const micTestModeRef = useRef(false);
   const streamSourceRef = useRef(null); // 'mic' | 'tab'
   const socketRefEn = useRef(null);
   const socketRefEs = useRef(null);
@@ -662,30 +653,6 @@ export const useDeepgram = () => {
     };
     window.addEventListener("catint_audio_source_mode_changed", onAudioSourceModeChanged);
     return () => window.removeEventListener("catint_audio_source_mode_changed", onAudioSourceModeChanged);
-  }, [setMicTestMode]);
-
-  // Mobile UX: if the user selected a physical mic device, default to mic-mode STT.
-  // This keeps the green Connect button and the actual audio route in sync.
-  useEffect(() => {
-    const ensureMicModeForMobile = () => {
-      if (!isLikelyMobile()) return;
-      try {
-        const micId = localStorage.getItem(MIC_DEVICE_KEY);
-        if (micId && !micTestModeRef.current) setMicTestMode(true);
-      } catch (_) {}
-    };
-
-    const onMicDeviceChanged = (e) => {
-      const deviceId = e?.detail?.deviceId ?? "";
-      if (!deviceId) return;
-      if (!isLikelyMobile()) return;
-      if (micTestModeRef.current) return;
-      setMicTestMode(true);
-    };
-
-    ensureMicModeForMobile();
-    window.addEventListener("catint_mic_device_changed", onMicDeviceChanged);
-    return () => window.removeEventListener("catint_mic_device_changed", onMicDeviceChanged);
   }, [setMicTestMode]);
 
   const startDeepgram = useCallback(
@@ -1343,7 +1310,7 @@ export const useDeepgram = () => {
       );
       const stream = await acquireAudioStreamForSource(source);
       const ok = beginStream(stream, source);
-      if (NEVER_AUTO_FALLBACK_TO_PHYSICAL_MIC && !ok && source === "tab" && !micTestModeRef.current && hasSelectedMicDevice()) {
+      if (!NEVER_AUTO_FALLBACK_TO_PHYSICAL_MIC && !ok && source === "tab" && !micTestModeRef.current && hasSelectedMicDevice()) {
         // Tab capture didn't yield usable audio — switch to mic mode so `audioAttached` can unblock STT.
         setConnectionState("connecting");
         setConnectionMessage("No tab audio detected — falling back to microphone...");
@@ -1369,7 +1336,7 @@ export const useDeepgram = () => {
           abortConnectAttempt(tabErr.message);
           return false;
         }
-        if (NEVER_AUTO_FALLBACK_TO_PHYSICAL_MIC && tabErr.suggestMicFallback) {
+        if (!NEVER_AUTO_FALLBACK_TO_PHYSICAL_MIC && tabErr.suggestMicFallback) {
           try {
             setConnectionState("connecting");
             setConnectionMessage("Tab capture unavailable — trying microphone...");
@@ -1450,7 +1417,7 @@ export const useDeepgram = () => {
       );
       const stream = await acquireAudioStreamForSource(source);
       const ok = beginStream(stream, source);
-      if (NEVER_AUTO_FALLBACK_TO_PHYSICAL_MIC && !ok && source === "tab" && !micTestModeRef.current && hasSelectedMicDevice()) {
+      if (!NEVER_AUTO_FALLBACK_TO_PHYSICAL_MIC && !ok && source === "tab" && !micTestModeRef.current && hasSelectedMicDevice()) {
         // Tab capture didn't yield usable audio — switch to mic mode so `audioAttached` can unblock STT.
         setConnectionState("connecting");
         setConnectionMessage("No tab audio detected — falling back to microphone...");
@@ -1476,7 +1443,7 @@ export const useDeepgram = () => {
           abortConnectAttempt(tabErr.message);
           return false;
         }
-        if (NEVER_AUTO_FALLBACK_TO_PHYSICAL_MIC && tabErr.suggestMicFallback) {
+        if (!NEVER_AUTO_FALLBACK_TO_PHYSICAL_MIC && tabErr.suggestMicFallback) {
           try {
             setConnectionState("connecting");
             setConnectionMessage("Tab capture unavailable — trying microphone...");

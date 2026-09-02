@@ -25,6 +25,21 @@ import { APP_VERSION } from '../constants/version';
 /** Newest first. Only the entry matching APP_VERSION is shown on load. */
 export const RELEASE_NOTES_CATALOG = [
   {
+    version: '4.85.7',
+    id: 'tab-only-call-start-v1',
+    highlightElementIds: ['audio-route-force-tab-btn'],
+    es: {
+      title: 'Llamadas por pestaña',
+      intro: 'Una prueba de micrófono anterior ya no puede tomar la siguiente llamada.',
+      sections: [{ heading: 'Salida rápida', bullets: ['Si Mic aparece durante una llamada, pulse USE TAB'] }],
+    },
+    en: {
+      title: 'Tab-only call start',
+      intro: 'A previous microphone test can no longer take over the next call.',
+      sections: [{ heading: 'Quick exit', bullets: ['If Mic appears during a call, press USE TAB'] }],
+    },
+  },
+  {
     version: '4.85.6',
     id: 'scoreboard-grid-budget-v1',
     highlightElementIds: ['header-metrics-expand-btn', 'header-app-logo-btn'],

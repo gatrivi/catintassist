@@ -331,6 +331,20 @@ export const AudioRouteStatusBar = ({
               <Dot state={sttState === 'idle' ? 'idle' : sttState} />
               DG {enOk && esOk ? 'EN/ES' : connectionState}
             </span>
+            {mobileMicMode && onSwitchToTabShare && (
+              <button
+                id="audio-route-force-tab-btn"
+                type="button"
+                className="audio-route-compact-proof__zap"
+                onClick={async () => {
+                  setMicTestMode?.(false);
+                  await onSwitchToTabShare();
+                }}
+                title="Emergency exit: stop microphone STT and choose the call tab"
+              >
+                USE TAB
+              </button>
+            )}
             {(stale || critical || (isActive && isDeepgramError)) && onReconnectStream && (
               <button
                 id="audio-route-zap-btn"

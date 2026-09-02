@@ -2,6 +2,10 @@
 
 **Version source:** `src/constants/version.js` (must match `package.json` + top-right UI pill)
 
+## v4.85.7 - Tab-only work calls
+- Disabled the inverted physical-mic fallback and stopped persisting mic-test mode into later calls. Tab failure now stays a visible Tab failure.
+- If an active call is on Mic, the compact HUD now exposes `USE TAB` to reopen the tab picker immediately.
+
 ## v4.85.6 - Bounded scoreboard grid
 - Metrics now opens the 12-cell number grid directly, inside a capped 28vh/180px scroll area; it cannot take over the transcription workspace.
 - Hovering the CatIntAssist icon now always shows the build version.
