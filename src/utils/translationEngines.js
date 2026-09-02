@@ -2,7 +2,6 @@
 
 import { getTranslationApiKeys, getTranslationKeyStatus } from './translationRuntimeKeys';
 
-const AZURE_TRANSLATE_URL = 'https://api.cognitive.microsofttranslator.com/translate';
 const DEFAULT_AZURE_REGION = 'brazilsouth';
 
 const BLACKBOX = {};
@@ -44,7 +43,7 @@ export const isEngineBlocked = (id) => {
   return until > Date.now();
 };
 
-const FREE_ENGINES = new Set(['mymemory']);
+const LOCAL_TRANSLATE_ENGINE = 'local_stt';
 const GATEWAY_ENGINE = 'gateway';
 const FREE_ENGINE_BLACKLIST_MS = 10 * 60 * 1000; // 10m — network blips
 const RATE_LIMIT_BLACKLIST_MS = 30 * 60 * 1000; // 30m — don't hammer 429 APIs
@@ -55,7 +54,7 @@ export const blacklistEngine = (id, ttlMs, reason = 'error') => {
     ttlMs ??
     (rateLimited
       ? RATE_LIMIT_BLACKLIST_MS
-      : FREE_ENGINES.has(id)
+      : id === LOCAL_TRANSLATE_ENGINE
         ? FREE_ENGINE_BLACKLIST_MS
         : BLACKBOX_TTL);
   BLACKBOX[id] = Date.now();
@@ -139,10 +138,6 @@ let lastAzureOutcome = null; // { status: 'ok'|'unauthorized'|'error', at: numbe
 
 export const getLastAzureOutcome = () => lastAzureOutcome;
 
-const recordAzureOutcome = (status) => {
-  lastAzureOutcome = { status, at: Date.now() };
-};
-
 /**
  * Visible Azure line for Settings / Phase 0.
  * "ok" only after a successful Azure request — key presence alone is never ok.
@@ -209,7 +204,7 @@ export const getTranslationEngineHealth = () => {
   const keys = getTranslationKeyStatus();
   const apiKeys = getTranslationApiKeys();
   const chain = buildEngineChain('en', 'es', apiKeys);
-  const blocked = [GATEWAY_ENGINE, 'mymemory'].filter((id) =>
+  const blocked = [LOCAL_TRANSLATE_ENGINE, GATEWAY_ENGINE].filter((id) =>
     isEngineBlocked(id),
   );
   return {
@@ -223,7 +218,20 @@ export const getTranslationEngineHealth = () => {
   };
 };
 
+/**
+ * Browser boundary: translation traffic may only reach our own gateway.
+ * Never add a provider URL here: it leaks keys, produces CORS noise, and
+ * makes every caption compete with a provider from the call tab.
+ */
 const buildFetchers = (sLang, tLang, keys, signal) => ({
+  [LOCAL_TRANSLATE_ENGINE]: async (text) => {
+    const r = await fetch('http://127.0.0.1:59200/stt/translate', {
+      method: 'POST', signal, headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ text, from_lang: sLang, to_lang: tLang }),
+    });
+    if (!r.ok) throw new Error(`local translator ${r.status}`);
+    return (await r.json())?.text || '';
+  },
   [GATEWAY_ENGINE]: async (text) => {
     const r = await fetch('/api/translate', {
       method: 'POST', signal, headers: { 'Content-Type': 'application/json' },
@@ -232,104 +240,15 @@ const buildFetchers = (sLang, tLang, keys, signal) => ({
     if (!r.ok) throw new Error(`gateway ${r.status}`);
     return (await r.json())?.translation || '';
   },
-  deepl: async (text) => {
-    if (!keys.DEEPL) throw new Error('no key');
-    const r = await fetch('https://api-free.deepl.com/v2/translate', {
-      method: 'POST',
-      signal,
-      headers: {
-        Authorization: `DeepL-Auth-Key ${keys.DEEPL}`,
-        'Content-Type': 'application/x-www-form-urlencoded',
-      },
-      body: new URLSearchParams({
-        text,
-        target_lang: tLang.toUpperCase(),
-        source_lang: sLang.toUpperCase(),
-      }),
-    });
-    if (!r.ok) throw new Error(`deepl ${r.status}`);
-    const d = await r.json();
-    return d.translations?.[0]?.text;
-  },
-  azure: async (text) => {
-    if (!keys.AZURE) throw new Error('no key');
-    const region = keys.AZURE_REGION || DEFAULT_AZURE_REGION;
-    const url = `${AZURE_TRANSLATE_URL}?api-version=3.0&from=${sLang}&to=${tLang}`;
-    const r = await fetch(url, {
-      method: 'POST',
-      signal,
-      headers: {
-        'Ocp-Apim-Subscription-Key': keys.AZURE,
-        'Ocp-Apim-Subscription-Region': region,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify([{ Text: text }]),
-    });
-    if (!r.ok) throw new Error(`azure ${r.status}`);
-    const d = await r.json();
-    recordAzureOutcome('ok');
-    return d?.[0]?.translations?.[0]?.text;
-  },
-  openai: async (text) => {
-    if (!keys.OPENAI) throw new Error('no key');
-    const r = await fetch('https://api.openai.com/v1/chat/completions', {
-      method: 'POST',
-      signal,
-      headers: {
-        Authorization: `Bearer ${keys.OPENAI}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        model: 'gpt-4o-mini',
-        messages: [
-          {
-            role: 'system',
-            content: `Translate from ${sLang} to ${tLang}. Return ONLY the direct translation.`,
-          },
-          { role: 'user', content: text },
-        ],
-        temperature: 0,
-      }),
-    });
-    if (!r.ok) throw new Error(`openai ${r.status}`);
-    const d = await r.json();
-    return d.choices?.[0]?.message?.content;
-  },
-  google_gtx: async (text) => {
-    const r = await fetch(
-      `https://translate.googleapis.com/translate_a/single?client=gtx&sl=${sLang}&tl=${tLang}&dt=t&q=${encodeURIComponent(text)}`,
-      { signal },
-    );
-    if (!r.ok) throw new Error(`gtx ${r.status}`);
-    const d = await r.json();
-    return (
-      d?.[0]
-        ?.map((s) => s[0])
-        .filter(Boolean)
-        .join(' ')
-        .replace(/\s+/g, ' ')
-        .trim() || ''
-    );
-  },
-  mymemory: async (text) => {
-    const r = await fetch(
-      `https://api.mymemory.translated.net/get?q=${encodeURIComponent(text)}&langpair=${sLang}|${tLang}`,
-      { signal },
-    );
-    if (!r.ok) throw new Error(`mymemory ${r.status}`);
-    const d = await r.json();
-    return d?.responseData?.translatedText;
-  },
 });
 
 /** Browser-safe chain — lingva removed (CORS blocked on custom domains). */
 export const buildEngineChain = (sLang, tLang, keys, { forceFree = false } = {}) => {
-  // Browser never calls paid providers or Google GTX directly: keys stay on
-  // the server and Google blocks production origins with CORS.
-  const chain = forceFree ? [] : [GATEWAY_ENGINE];
-  chain.push('mymemory');
-  let candidates = chain;
-  if (forceFree) candidates = chain.filter((id) => FREE_ENGINES.has(id));
+  // Local model first; server fallback second. Neither browser request calls a
+  // third-party provider, so Azure/Google cannot create DevTools noise.
+  const candidates = forceFree
+    ? [LOCAL_TRANSLATE_ENGINE]
+    : [LOCAL_TRANSLATE_ENGINE, GATEWAY_ENGINE];
   return candidates.filter((id) => !isEngineBlocked(id));
 };
 
@@ -394,9 +313,6 @@ export const translateWithFallback = async ({
       failures.push({ id, reason });
       logEngineFailOnce(id, reason);
       onEngineFail?.(id, reason);
-      if (id === 'azure') {
-        recordAzureOutcome(reason === 'unauthorized' ? 'unauthorized' : 'error');
-      }
       if (
         isRateLimitError(e) ||
         isBrowserFetchError(e) ||

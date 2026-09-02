@@ -17,33 +17,33 @@ describe('translationEngines v4.54', () => {
     clearSessionEngineBlacklist();
   });
 
-  test('buildEngineChain excludes lingva', () => {
+  test('buildEngineChain uses only the local translator and our gateway', () => {
     const chain = buildEngineChain('en', 'es', {});
     expect(chain).not.toContain('lingva');
-    expect(chain).toEqual(['gateway', 'mymemory']);
+    expect(chain).toEqual(['local_stt', 'gateway']);
   });
 
   test('buildEngineChain keeps paid providers off the browser', () => {
     const chain = buildEngineChain('en', 'es', { DEEPL: 'x', AZURE: 'x' });
-    expect(chain).toEqual(['gateway', 'mymemory']);
+    expect(chain).toEqual(['local_stt', 'gateway']);
     expect(chain).not.toEqual(expect.arrayContaining(['azure', 'deepl', 'google_gtx', 'openai']));
   });
 
-  test('gateway failure falls through to the single free browser translation', async () => {
+  test('local translator failure falls through to our gateway', async () => {
     global.fetch = jest
       .fn()
       .mockResolvedValueOnce({ ok: false, status: 503, json: async () => ({}) })
-      .mockResolvedValueOnce({ ok: true, json: async () => ({ responseData: { translatedText: 'Hola' } }) });
+      .mockResolvedValueOnce({ ok: true, json: async () => ({ translation: 'Hola' }) });
 
     const result = await translateWithFallback({ text: 'Hello', sLang: 'en', tLang: 'es', keys: {} });
 
-    expect(result).toMatchObject({ text: 'Hola', engineId: 'mymemory', quality: 'ok' });
+    expect(result).toMatchObject({ text: 'Hola', engineId: 'gateway', quality: 'ok' });
   });
 
-  test('translateWithFallback never sends configured Azure keys from the browser', async () => {
+  test('translateWithFallback calls the local translator without provider keys', async () => {
     global.fetch = jest.fn().mockResolvedValue({
       ok: true,
-      json: async () => ({ translation: 'Hola mundo' }),
+      json: async () => ({ text: 'Hola mundo' }),
     });
 
     const result = await translateWithFallback({
@@ -55,9 +55,9 @@ describe('translationEngines v4.54', () => {
 
     expect(result.quality).toBe('ok');
     expect(result.text).toBe('Hola mundo');
-    expect(result.engineId).toBe('gateway');
+    expect(result.engineId).toBe('local_stt');
     expect(global.fetch).toHaveBeenCalledWith(
-      '/api/translate',
+      'http://127.0.0.1:59200/stt/translate',
       expect.objectContaining({
         headers: expect.objectContaining({ 'Content-Type': 'application/json' }),
       }),
@@ -83,14 +83,14 @@ describe('translationEngines v4.54', () => {
   });
 
   test('blacklistEngine blocks via sessionStorage', () => {
-    blacklistEngine('mymemory', 60000);
-    expect(isEngineBlocked('mymemory')).toBe(true);
+    blacklistEngine('local_stt', 60000);
+    expect(isEngineBlocked('local_stt')).toBe(true);
   });
 
   test('translateWithFallback weak accept on short passthrough last engine', async () => {
     global.fetch = jest.fn()
-      .mockResolvedValueOnce({ ok: true, json: async () => ({}) })
-      .mockResolvedValueOnce({ ok: true, json: async () => ({ responseData: { translatedText: 'No.' } }) });
+      .mockResolvedValueOnce({ ok: true, json: async () => ({ text: 'No.' }) })
+      .mockResolvedValueOnce({ ok: true, json: async () => ({ translation: 'No.' }) });
 
     const result = await translateWithFallback({
       text: 'No.',
@@ -103,7 +103,7 @@ describe('translationEngines v4.54', () => {
 
     expect(result.quality).toBe('weak');
     expect(result.text).toBe('No.');
-    expect(result.engineId).toBe('mymemory');
+    expect(result.engineId).toBe('gateway');
   });
 
   test('translateWithFallback weak accept on long passthrough when all reject', async () => {
@@ -112,8 +112,8 @@ describe('translationEngines v4.54', () => {
     const echoed = longEn;
 
     global.fetch = jest.fn()
-      .mockResolvedValueOnce({ ok: true, json: async () => ({}) })
-      .mockResolvedValueOnce({ ok: true, json: async () => ({ responseData: { translatedText: echoed } }) });
+      .mockResolvedValueOnce({ ok: true, json: async () => ({ text: echoed }) })
+      .mockResolvedValueOnce({ ok: true, json: async () => ({ translation: echoed }) });
 
     const result = await translateWithFallback({
       text: longEn,
@@ -129,12 +129,12 @@ describe('translationEngines v4.54', () => {
 
   test('translateWithFallback retries free engines when chain was empty (transient only)', async () => {
     blacklistEngine('gateway', 60000, 'cors_or_network');
-    blacklistEngine('mymemory', 60000, 'cors_or_network');
+    blacklistEngine('local_stt', 60000, 'cors_or_network');
     expect(buildEngineChain('en', 'es', {})).toEqual([]);
 
     global.fetch = jest.fn().mockResolvedValue({
       ok: true,
-      json: async () => ({ responseData: { translatedText: 'Hola' } }),
+      json: async () => ({ text: 'Hola' }),
     });
 
     const result = await translateWithFallback({
@@ -150,7 +150,7 @@ describe('translationEngines v4.54', () => {
 
   test('translateWithFallback does not retry rate-limited engines', async () => {
     blacklistEngine('gateway', 60000, 'rate_limit');
-    blacklistEngine('mymemory', 60000, 'rate_limit');
+    blacklistEngine('local_stt', 60000, 'rate_limit');
     expect(buildEngineChain('en', 'es', {})).toEqual([]);
 
     global.fetch = jest.fn();

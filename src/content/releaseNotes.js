@@ -25,6 +25,21 @@ import { APP_VERSION } from '../constants/version';
 /** Newest first. Only the entry matching APP_VERSION is shown on load. */
 export const RELEASE_NOTES_CATALOG = [
   {
+    version: '4.85.14',
+    id: 'quiet-local-translation-v1',
+    highlightElementIds: ['header-app-logo-btn'],
+    es: {
+      title: 'TraducciÃ³n local',
+      intro: 'La traducciÃ³n usa primero el servicio local, una frase por vez.',
+      sections: [{ heading: 'Sin ruido', bullets: ['No mÃ¡s errores Azure 401 ni Google CORS en el navegador.'] }],
+    },
+    en: {
+      title: 'Local translation',
+      intro: 'Translation uses the local service first, one mouthful at a time.',
+      sections: [{ heading: 'Quiet', bullets: ['No more Azure 401 or Google CORS browser errors.'] }],
+    },
+  },
+  {
     version: '4.85.13',
     id: 'vb-auto-route-v1',
     highlightElementIds: ['audio-route-active-vb-btn'],

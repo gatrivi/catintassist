@@ -2,6 +2,10 @@
 
 **Version source:** `src/constants/version.js` (must match `package.json` + top-right UI pill)
 
+## v4.85.14 - Quiet local translation
+- Browser translation now calls the local `127.0.0.1:59200/stt/translate` service first, one mouthful at a time.
+- Azure, Google GTX, and MyMemory are no longer browser requests, so their 401/CORS errors cannot pile up in DevTools. The Vercel gateway remains the fallback.
+
 ## v4.85.13 - One-click VB work route
 - `VB` now auto-selects detected `CABLE Output` for STT and saves it for the shift.
 - If CABLE Output is missing, VB refuses to start rather than capture the default physical mic.

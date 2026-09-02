@@ -68,13 +68,23 @@ const aws = async (text, from, to) => {
   return (await r.json())?.TranslatedText || '';
 };
 
+// Last-resort service fallback. Kept server-side so the browser never makes a
+// CORS-prone third-party translation request.
+const mymemory = async (text, from, to) => {
+  const r = await timedFetch(
+    `https://api.mymemory.translated.net/get?q=${encodeURIComponent(text)}&langpair=${from}|${to}`,
+  );
+  if (!r.ok) throw new Error(`http_${r.status}`);
+  return (await r.json())?.responseData?.translatedText || '';
+};
+
 module.exports = async (req, res) => {
   if (req.method !== 'POST') return res.status(405).json({ error: 'method_not_allowed' });
   const { text, sourceLang, targetLang } = req.body || {};
   if (typeof text !== 'string' || !text.trim() || text.length > 5000) return res.status(400).json({ error: 'invalid_text' });
   if (!['en', 'es'].includes(sourceLang) || !['en', 'es'].includes(targetLang) || sourceLang === targetLang) return res.status(400).json({ error: 'invalid_language_pair' });
   const failures = [];
-  for (const [id, translate] of [['azure', azure], ['deepl', deepl], ['google_cloud', google], ['aws', aws]]) {
+  for (const [id, translate] of [['azure', azure], ['deepl', deepl], ['google_cloud', google], ['aws', aws], ['mymemory', mymemory]]) {
     try {
       const translation = await translate(text.trim(), sourceLang, targetLang);
       if (translation) return res.status(200).json({ translation, engineId: id });
