@@ -2,11 +2,12 @@
 
 const IN_FLIGHT = new Map();
 let activeSlots = 0;
-const MAX_SLOTS = 2;
+// Free/public engines: one mouthful at a time avoids bursty request patterns.
+export const TRANSLATION_MAX_SLOTS = 1;
 const waitQueue = [];
 
 const pumpQueue = () => {
-  while (activeSlots < MAX_SLOTS && waitQueue.length) {
+  while (activeSlots < TRANSLATION_MAX_SLOTS && waitQueue.length) {
     const next = waitQueue.shift();
     next();
   }
@@ -24,7 +25,7 @@ export const withTranslationSlot = (fn) =>
           pumpQueue();
         });
     };
-    if (activeSlots < MAX_SLOTS) run();
+    if (activeSlots < TRANSLATION_MAX_SLOTS) run();
     else waitQueue.push(run);
   });
 

@@ -44,7 +44,8 @@ export const isEngineBlocked = (id) => {
   return until > Date.now();
 };
 
-const FREE_ENGINES = new Set(['google_gtx', 'mymemory']);
+const FREE_ENGINES = new Set(['mymemory']);
+const GATEWAY_ENGINE = 'gateway';
 const FREE_ENGINE_BLACKLIST_MS = 10 * 60 * 1000; // 10m — network blips
 const RATE_LIMIT_BLACKLIST_MS = 30 * 60 * 1000; // 30m — don't hammer 429 APIs
 
@@ -208,7 +209,7 @@ export const getTranslationEngineHealth = () => {
   const keys = getTranslationKeyStatus();
   const apiKeys = getTranslationApiKeys();
   const chain = buildEngineChain('en', 'es', apiKeys);
-  const blocked = ['deepl', 'azure', 'openai', 'google_gtx', 'mymemory'].filter((id) =>
+  const blocked = [GATEWAY_ENGINE, 'mymemory'].filter((id) =>
     isEngineBlocked(id),
   );
   return {
@@ -223,6 +224,14 @@ export const getTranslationEngineHealth = () => {
 };
 
 const buildFetchers = (sLang, tLang, keys, signal) => ({
+  [GATEWAY_ENGINE]: async (text) => {
+    const r = await fetch('/api/translate', {
+      method: 'POST', signal, headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ text, sourceLang: sLang, targetLang: tLang }),
+    });
+    if (!r.ok) throw new Error(`gateway ${r.status}`);
+    return (await r.json())?.translation || '';
+  },
   deepl: async (text) => {
     if (!keys.DEEPL) throw new Error('no key');
     const r = await fetch('https://api-free.deepl.com/v2/translate', {
@@ -315,11 +324,10 @@ const buildFetchers = (sLang, tLang, keys, signal) => ({
 
 /** Browser-safe chain — lingva removed (CORS blocked on custom domains). */
 export const buildEngineChain = (sLang, tLang, keys, { forceFree = false } = {}) => {
-  const chain = [];
-  if (keys.DEEPL) chain.push('deepl');
-  if (keys.AZURE) chain.push('azure');
-  if (keys.OPENAI) chain.push('openai');
-  chain.push('google_gtx', 'mymemory');
+  // Browser never calls paid providers or Google GTX directly: keys stay on
+  // the server and Google blocks production origins with CORS.
+  const chain = forceFree ? [] : [GATEWAY_ENGINE];
+  chain.push('mymemory');
   let candidates = chain;
   if (forceFree) candidates = chain.filter((id) => FREE_ENGINES.has(id));
   return candidates.filter((id) => !isEngineBlocked(id));

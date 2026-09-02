@@ -44,6 +44,7 @@ import { AudioRouteStatusBar } from './AudioRouteStatusBar';
 import { HeaderMetricsStrip } from './HeaderMetricsStrip';
 import { playTestToneLocal, playTestToneSink } from '../utils/audioSelfTest';
 import { APP_VERSION_LABEL } from '../constants/version';
+import { getAppStatus } from '../utils/appStatus';
 import { SlotMicroValue } from './SlotMicroValue';
 import { needsUserSuppliedDeepgramKey } from '../utils/deepgramRuntimeKey';
 import {
@@ -274,6 +275,7 @@ const SessionControlsSticky = React.memo(({
   virtualCableFailure = null,
   onReconnectAudioSource,
   onSwitchToTabShare,
+  onSwitchToVirtualCable,
 
   sttLanguage = 'auto',
   onToggleLanguage,
@@ -292,6 +294,15 @@ const SessionControlsSticky = React.memo(({
   }, []);
 
   const sttLatencyLabel = getSttLatencyConfig(sttLatencyMode).label;
+  const appStatus = getAppStatus({
+    isActive,
+    isZombieCall,
+    apiKeyMissing,
+    apiKeyRejected,
+    connectionState,
+    connectProgress,
+    virtualCableFailure,
+  });
 
   const longPressRef = useRef(null);
   const didLongPressRef = useRef(false);
@@ -342,12 +353,12 @@ const SessionControlsSticky = React.memo(({
             <button
               id="header-app-logo-btn"
               type="button"
-              className="btn-icon tiny-btn app-logo-btn"
-              aria-label={`CatIntAssist ${APP_VERSION_LABEL}`}
-              title={`CatIntAssist ${APP_VERSION_LABEL}`}
+              className={`btn-icon tiny-btn app-logo-btn app-logo-btn--${appStatus.tone}`}
+              aria-label={`CatIntAssist ${appStatus.label}. ${APP_VERSION_LABEL}`}
+              title={`${appStatus.title} ${APP_VERSION_LABEL}`}
             >
               <img
-                className="app-logo-img"
+                className={`app-logo-img app-logo-img--${appStatus.tone}`}
                 src={`${process.env.PUBLIC_URL || ''}/favicon-96x96.png`}
                 alt=""
                 width={22}
@@ -717,7 +728,7 @@ const SessionControlsSticky = React.memo(({
           <SettingsButton />
         </div>
       </div>
-      {/* Always visible: Tab/Cable/Mic + DG state are critical during a call. */}
+      {/* Always visible: TAB/VB source switch + Deepgram proof during a call. */}
       {
         <AudioRouteStatusBar
           micTestMode={micTestMode}
@@ -738,6 +749,7 @@ const SessionControlsSticky = React.memo(({
           onReconnectStream={onReconnectStream}
           onReconnectAudioSource={onReconnectAudioSource}
           onSwitchToTabShare={onSwitchToTabShare}
+          onSwitchToVirtualCable={onSwitchToVirtualCable}
           onTestLocal={() => playTestToneLocal()}
           onTestRoute={async () => {
             const sinkId = localStorage.getItem('CATINTASSIST_SINK_ID');
@@ -788,6 +800,7 @@ export const DashboardHeader = ({
   soundboardOpen = false,
   onReconnectAudioSource,
   onSwitchToTabShare,
+  onSwitchToVirtualCable,
 }) => {
   const { isActive, sessionSeconds, sessionEarnings, stats, updateStat, stopSession, endDay, RATE_PER_MINUTE, arsRate, setArsRate, isBreakActive, breakSeconds, startBreak, stopBreak, availSeconds, isEditingScoreboard, setIsEditingScoreboard, visibleCards, toggleCard, visibleMetrics, toggleMetric, scoreboardPreset, applyScoreboardPreset, isNotesOpen, setIsNotesOpen, isToolbarVisible, setIsToolbarVisible, isHeatmapOpen, setIsHeatmapOpen, isZombieCall, isScoreboardHelpVisible, setIsScoreboardHelpVisible, isHold, setIsHold, dailyTimeline, historyTimeline, dailyLog, lastActivityTime, lastEnglishActivityTime, isCallDetectionEnabled, setIsCallDetectionEnabled, callFocusMode, setCallFocusMode, minutesSinceLastBreak, vaultStatus } = useSession();
 
@@ -2890,6 +2903,7 @@ ${isInDeficit ? `⚠️ DEFICIT: Behind pace by ${Math.round(monthlyDeficitMins)
         virtualCableFailure={virtualCableFailure}
         onReconnectAudioSource={onReconnectAudioSource}
         onSwitchToTabShare={onSwitchToTabShare}
+        onSwitchToVirtualCable={onSwitchToVirtualCable}
         onOpenLanguageSettings={() => {
           try {
             window.dispatchEvent(new CustomEvent('cat_show_language_settings'));

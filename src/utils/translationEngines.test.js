@@ -7,8 +7,6 @@ import {
   classifyEngineFailure,
   translateWithFallback,
   clearSessionEngineBlacklist,
-  getAzureStatusLabel,
-  isAzureFallbackOnly,
 } from './translationEngines';
 import { isTranslationPassthrough } from './translationQuality';
 
@@ -22,19 +20,30 @@ describe('translationEngines v4.54', () => {
   test('buildEngineChain excludes lingva', () => {
     const chain = buildEngineChain('en', 'es', {});
     expect(chain).not.toContain('lingva');
-    expect(chain).toEqual(['google_gtx', 'mymemory']);
+    expect(chain).toEqual(['gateway', 'mymemory']);
   });
 
-  test('buildEngineChain puts azure after deepl when both keys present', () => {
+  test('buildEngineChain keeps paid providers off the browser', () => {
     const chain = buildEngineChain('en', 'es', { DEEPL: 'x', AZURE: 'x' });
-    expect(chain.indexOf('deepl')).toBeLessThan(chain.indexOf('azure'));
-    expect(chain).toContain('azure');
+    expect(chain).toEqual(['gateway', 'mymemory']);
+    expect(chain).not.toEqual(expect.arrayContaining(['azure', 'deepl', 'google_gtx', 'openai']));
   });
 
-  test('translateWithFallback uses azure when configured', async () => {
+  test('gateway failure falls through to the single free browser translation', async () => {
+    global.fetch = jest
+      .fn()
+      .mockResolvedValueOnce({ ok: false, status: 503, json: async () => ({}) })
+      .mockResolvedValueOnce({ ok: true, json: async () => ({ responseData: { translatedText: 'Hola' } }) });
+
+    const result = await translateWithFallback({ text: 'Hello', sLang: 'en', tLang: 'es', keys: {} });
+
+    expect(result).toMatchObject({ text: 'Hola', engineId: 'mymemory', quality: 'ok' });
+  });
+
+  test('translateWithFallback never sends configured Azure keys from the browser', async () => {
     global.fetch = jest.fn().mockResolvedValue({
       ok: true,
-      json: async () => [{ translations: [{ text: 'Hola mundo', to: 'es' }] }],
+      json: async () => ({ translation: 'Hola mundo' }),
     });
 
     const result = await translateWithFallback({
@@ -46,14 +55,11 @@ describe('translationEngines v4.54', () => {
 
     expect(result.quality).toBe('ok');
     expect(result.text).toBe('Hola mundo');
-    expect(result.engineId).toBe('azure');
+    expect(result.engineId).toBe('gateway');
     expect(global.fetch).toHaveBeenCalledWith(
-      expect.stringContaining('api.cognitive.microsofttranslator.com'),
+      '/api/translate',
       expect.objectContaining({
-        headers: expect.objectContaining({
-          'Ocp-Apim-Subscription-Key': 'test-key',
-          'Ocp-Apim-Subscription-Region': 'brazilsouth',
-        }),
+        headers: expect.objectContaining({ 'Content-Type': 'application/json' }),
       }),
     );
   });
@@ -76,54 +82,15 @@ describe('translationEngines v4.54', () => {
     expect(isRateLimitError(new Error('azure 403'))).toBe(false);
   });
 
-  test('getAzureStatusLabel: ok only after success', async () => {
-    localStorage.setItem('AZURE_TRANSLATOR_KEY', 'test-key');
-    global.fetch = jest.fn().mockResolvedValue({
-      ok: true,
-      json: async () => [{ translations: [{ text: 'Hola', to: 'es' }] }],
-    });
-    await translateWithFallback({
-      text: 'Hi',
-      sLang: 'en',
-      tLang: 'es',
-      keys: { AZURE: 'test-key', AZURE_REGION: 'brazilsouth' },
-    });
-    expect(getAzureStatusLabel()).toBe('Azure: ok');
-  });
-
-  test('azure 401 records unauthorized and fallback-only', async () => {
-    localStorage.setItem('AZURE_TRANSLATOR_KEY', 'bad-key');
-    global.fetch = jest.fn().mockResolvedValue({
-      ok: false,
-      status: 401,
-      json: async () => ({}),
-    });
-    blacklistEngine('google_gtx', 60000, 'error');
-    blacklistEngine('mymemory', 60000, 'error');
-
-    await translateWithFallback({
-      text: 'Hello',
-      sLang: 'en',
-      tLang: 'es',
-      keys: { AZURE: 'bad-key', AZURE_REGION: 'brazilsouth' },
-    });
-
-    expect(getAzureStatusLabel()).toBe('Azure: unauthorized / key-region mismatch');
-    expect(isAzureFallbackOnly()).toBe(true);
-  });
-
   test('blacklistEngine blocks via sessionStorage', () => {
     blacklistEngine('mymemory', 60000);
     expect(isEngineBlocked('mymemory')).toBe(true);
   });
 
   test('translateWithFallback weak accept on short passthrough last engine', async () => {
-    blacklistEngine('mymemory', 60000);
-
-    global.fetch = jest.fn().mockResolvedValue({
-      ok: true,
-      json: async () => [[['No.', 'No.', null, null]]],
-    });
+    global.fetch = jest.fn()
+      .mockResolvedValueOnce({ ok: true, json: async () => ({}) })
+      .mockResolvedValueOnce({ ok: true, json: async () => ({ responseData: { translatedText: 'No.' } }) });
 
     const result = await translateWithFallback({
       text: 'No.',
@@ -136,7 +103,7 @@ describe('translationEngines v4.54', () => {
 
     expect(result.quality).toBe('weak');
     expect(result.text).toBe('No.');
-    expect(result.engineId).toBe('google_gtx');
+    expect(result.engineId).toBe('mymemory');
   });
 
   test('translateWithFallback weak accept on long passthrough when all reject', async () => {
@@ -144,10 +111,9 @@ describe('translationEngines v4.54', () => {
       'Your call may be recorded for quality assurance and training purposes thank you for holding';
     const echoed = longEn;
 
-    global.fetch = jest.fn().mockResolvedValue({
-      ok: true,
-      json: async () => [[['echo', echoed, null, null]]],
-    });
+    global.fetch = jest.fn()
+      .mockResolvedValueOnce({ ok: true, json: async () => ({}) })
+      .mockResolvedValueOnce({ ok: true, json: async () => ({ responseData: { translatedText: echoed } }) });
 
     const result = await translateWithFallback({
       text: longEn,
@@ -162,13 +128,13 @@ describe('translationEngines v4.54', () => {
   });
 
   test('translateWithFallback retries free engines when chain was empty (transient only)', async () => {
-    blacklistEngine('google_gtx', 60000, 'cors_or_network');
+    blacklistEngine('gateway', 60000, 'cors_or_network');
     blacklistEngine('mymemory', 60000, 'cors_or_network');
     expect(buildEngineChain('en', 'es', {})).toEqual([]);
 
     global.fetch = jest.fn().mockResolvedValue({
       ok: true,
-      json: async () => [[['Hola', 'Hola', null, null]]],
+      json: async () => ({ responseData: { translatedText: 'Hola' } }),
     });
 
     const result = await translateWithFallback({
@@ -183,7 +149,7 @@ describe('translationEngines v4.54', () => {
   });
 
   test('translateWithFallback does not retry rate-limited engines', async () => {
-    blacklistEngine('google_gtx', 60000, 'rate_limit');
+    blacklistEngine('gateway', 60000, 'rate_limit');
     blacklistEngine('mymemory', 60000, 'rate_limit');
     expect(buildEngineChain('en', 'es', {})).toEqual([]);
 

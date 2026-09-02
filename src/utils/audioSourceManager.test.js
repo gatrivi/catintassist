@@ -73,10 +73,10 @@ describe("audioSourceManager", () => {
     expect(nextMode).toBe(AUDIO_SOURCE_MODE_TAB);
   });
 
-  test("classify NotSupportedError suggests mic fallback", () => {
+  test("Tab failure never suggests a physical mic fallback", () => {
     const err = { name: "NotSupportedError", message: "Not supported" };
     const out = classifyTabCaptureError(err);
-    expect(out.suggestMicFallback).toBe(true);
+    expect(out.suggestMicFallback).toBe(false);
     expect(out.message).toMatch(/not supported|Chrome/i);
   });
 

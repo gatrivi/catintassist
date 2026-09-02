@@ -25,6 +25,96 @@ import { APP_VERSION } from '../constants/version';
 /** Newest first. Only the entry matching APP_VERSION is shown on load. */
 export const RELEASE_NOTES_CATALOG = [
   {
+    version: '4.85.13',
+    id: 'vb-auto-route-v1',
+    highlightElementIds: ['audio-route-active-vb-btn'],
+    es: {
+      title: 'VB para trabajar',
+      intro: 'VB encuentra CABLE Output automáticamente y no usa el micrófono físico.',
+      sections: [{ heading: 'Uso', bullets: ['Dejá el call tab en CABLE Input y tocá VB. Sin picker de pestaña.'] }],
+    },
+    en: {
+      title: 'VB work route',
+      intro: 'VB finds CABLE Output automatically and never uses the physical mic.',
+      sections: [{ heading: 'Use', bullets: ['Keep the call tab on CABLE Input and press VB. No tab picker.'] }],
+    },
+  },
+  {
+    version: '4.85.12',
+    id: 'translation-browser-safety-v1',
+    highlightElementIds: ['header-app-logo-btn'],
+    es: {
+      title: 'Traducción sin ruido',
+      intro: 'El navegador ya no prueba claves pagas ni Google directamente.',
+      sections: [{ heading: 'Ruta', bullets: ['Gateway seguro → un respaldo gratuito. Sin 401 ni bloqueos CORS del navegador.'] }],
+    },
+    en: {
+      title: 'Quiet translation',
+      intro: 'The browser no longer probes paid keys or Google directly.',
+      sections: [{ heading: 'Route', bullets: ['Secure gateway → one free fallback. No browser 401s or Google CORS blocks.'] }],
+    },
+  },
+  {
+    version: '4.85.11',
+    id: 'translation-request-guard-v1',
+    highlightElementIds: ['header-app-logo-btn'],
+    es: {
+      title: 'Traducción tranquila',
+      intro: 'La app espera una frase corta y envía una traducción por vez.',
+      sections: [{ heading: 'Protección', bullets: ['Mínimo 2 palabras · actualizaciones live cada 10 palabras nuevas · sin ráfagas.'] }],
+    },
+    en: {
+      title: 'Calm translation',
+      intro: 'The app waits for a short phrase and sends one translation at a time.',
+      sections: [{ heading: 'Guard', bullets: ['At least 2 words · live updates every 10 new words · no bursts.'] }],
+    },
+  },
+  {
+    version: '4.85.10',
+    id: 'simple-translation-fallback-v1',
+    highlightElementIds: ['header-app-logo-btn'],
+    es: {
+      title: 'Traducción simple lista',
+      intro: 'La traducción ahora tiene una ruta corta y segura de respaldo.',
+      sections: [{ heading: 'Orden', bullets: ['Gateway seguro → Google → MyMemory. Si una ruta falla, prueba la siguiente.'] }],
+    },
+    en: {
+      title: 'Simple translation ready',
+      intro: 'Translation now has a short, safe fallback route.',
+      sections: [{ heading: 'Order', bullets: ['Secure gateway → Google → MyMemory. If one route fails, it tries the next.'] }],
+    },
+  },
+  {
+    version: '4.85.9',
+    id: 'cat-status-beacon-v1',
+    highlightElementIds: ['header-app-logo-btn'],
+    es: {
+      title: 'Gato de estado',
+      intro: 'El gato del encabezado ahora muestra el estado de la app.',
+      sections: [{ heading: 'Colores', bullets: ['Verde: STT live · azul: conectando · naranja: revisar · rojo: error · gris: listo.'] }],
+    },
+    en: {
+      title: 'Status cat',
+      intro: 'The header cat now shows the app state.',
+      sections: [{ heading: 'Colors', bullets: ['Green: STT live · blue: connecting · amber: check · red: error · gray: ready.'] }],
+    },
+  },
+  {
+    version: '4.85.8',
+    id: 'tab-vb-active-switcher-v1',
+    highlightElementIds: ['audio-route-active-tab-btn', 'audio-route-active-vb-btn'],
+    es: {
+      title: 'Fuente STT de llamada',
+      intro: 'La fila fija muestra TAB y VB; Mic no puede tomar una llamada.',
+      sections: [{ heading: 'Cambio seguro', bullets: ['El nuevo audio se obtiene antes de soltar el actual. Si falla, el texto sigue.'] }],
+    },
+    en: {
+      title: 'Live-call STT source',
+      intro: 'The fixed row shows TAB and VB; Mic cannot take a work call.',
+      sections: [{ heading: 'Safe switch', bullets: ['New audio is acquired before releasing the current stream. On failure, captions continue.'] }],
+    },
+  },
+  {
     version: '4.85.7',
     id: 'tab-only-call-start-v1',
     highlightElementIds: ['audio-route-force-tab-btn'],

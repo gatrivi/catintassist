@@ -299,22 +299,22 @@ export const classifyTabCaptureError = (err) => {
   if (name === "NotSupportedError" || !canUseTabCapture()) {
     return {
       message: embedded
-        ? "Tab capture is not available in Cursor's preview browser. Open catintassist.gatrivi.com in Chrome or Edge, or press 🎤 for mic mode."
-        : "Tab audio capture is not supported in this browser. Use Chrome/Edge, or press 🎤 for microphone mode.",
-      suggestMicFallback: true,
+        ? "Tab capture is not available in Cursor's preview browser. Open catintassist.gatrivi.com in Chrome or Edge."
+        : "Tab audio capture is not supported in this browser. Use Chrome or Edge.",
+      suggestMicFallback: false,
     };
   }
   if (name === "NotAllowedError" || name === "PermissionDeniedError") {
     return {
-      message: "Tab sharing was blocked. Allow it in the browser prompt, or use 🎤 mic mode.",
-      suggestMicFallback: true,
+      message: "Tab sharing was blocked. Allow it in the browser prompt, then choose TAB again.",
+      suggestMicFallback: false,
     };
   }
   return {
     message: err?.message
       ? `Tab capture failed: ${err.message}`
-      : "Tab capture failed. Try 🎤 mic mode or open the app in Chrome/Edge.",
-    suggestMicFallback: true,
+      : "Tab capture failed. Try TAB again or open the app in Chrome/Edge.",
+    suggestMicFallback: false,
   };
 };
 

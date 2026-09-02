@@ -94,6 +94,20 @@ export function resolveTranslateDebounceMs({ isSplitRewrite, forceTrigger, mood 
   return forceTrigger ? (mood === 'auto' ? 800 : 200) : debounceTimes[mood] || 600;
 }
 
+/** Auto mode: wait for a small mouthful, then translate only meaningful updates. */
+export const shouldRunAutoTranslation = ({
+  isFinal,
+  isComplete,
+  isSplitRewrite,
+  wordCount,
+  lastWordCount,
+}) => {
+  // Do not spend a request on a single STT word ("um", "yes", a partial name).
+  if (wordCount < 2) return false;
+  if (isFinal || isComplete || isSplitRewrite) return true;
+  return wordCount >= 10 && wordCount - lastWordCount >= 10;
+};
+
 export const useTranslate = (
   text,
   lang,
@@ -179,7 +193,7 @@ export const useTranslate = (
         prevTextRef.current = norm;
       }
     }
-  }, [persistedTranslations, text]);
+  }, [lang, languagePair, persistedTranslations, text]);
 
   const sourceLang = normalizeLang(lang);
   const targetLang = getOppositeLang(sourceLang, languagePair);
@@ -283,7 +297,13 @@ export const useTranslate = (
     if (mood === 'auto') {
       const sealed = isFinal !== false;
       const complete = isSentenceComplete(normText);
-      if (!sealed && !complete && !isSplitRewrite) return;
+      if (!shouldRunAutoTranslation({
+        isFinal: sealed,
+        isComplete: complete,
+        isSplitRewrite,
+        wordCount,
+        lastWordCount: lastWordCountRef.current,
+      })) return;
       if (normText === lastTranslatedTextRef.current && hasGoodTranslationRef.current) return;
     }
 
@@ -303,7 +323,13 @@ export const useTranslate = (
     const hasPunctuation = /[.,?]/.test(normText);
     const forceTrigger =
       mood === 'auto'
-        ? isSentenceComplete(normText) || isSplitRewrite
+        ? shouldRunAutoTranslation({
+          isFinal: isFinal !== false,
+          isComplete: isSentenceComplete(normText),
+          isSplitRewrite,
+          wordCount,
+          lastWordCount: lastWordCountRef.current,
+        })
         : wordCount >= 10 || hasPunctuation;
 
     if (normText.length < 3 && !/\w/.test(normText)) return;
@@ -401,11 +427,17 @@ export const useTranslate = (
           segmentSources.push({ key: requestId, sourceText: segText });
 
           const res = await fetchChunk(segText);
+          // The generic engine keeps legitimate weak short answers. At this
+          // EN/ES boundary, however, an echoed source is never a translation.
+          const sourceEcho = Boolean(res.text) && isTranslationPassthrough(segText, res.text, sLang, tLang);
+          const usableRes = sourceEcho
+            ? { ...res, text: '', quality: 'failed' }
+            : res;
           lastMeta = {
-            engineId: res.engineId,
-            quality: res.quality,
-            failures: res.failures || [],
-            tried: res.tried || [],
+            engineId: usableRes.engineId,
+            quality: usableRes.quality,
+            failures: usableRes.failures || [],
+            tried: usableRes.tried || [],
           };
 
           const prev = translationsMapRef.current[requestId] || null;
@@ -417,9 +449,9 @@ export const useTranslate = (
             targetLang: tLang,
             previousEntry: prev,
             engineResult: {
-              text: res.text || '',
-              engineId: res.engineId,
-              quality: res.quality || (res.text ? 'ok' : 'failed'),
+              text: usableRes.text || '',
+              engineId: usableRes.engineId,
+              quality: usableRes.quality || (usableRes.text ? 'ok' : 'failed'),
               requestId,
             },
           });

@@ -5,7 +5,9 @@
 import {
   canUseTabCapture,
   readSelectedVirtualCableInputDeviceId,
+  persistSelectedVirtualCableInputDeviceId,
   buildVirtualCableGetUserMediaConstraints,
+  pickVbCableSttInputDevice,
 } from "./audioSourceManager";
 
 export const INPUT_SOURCE_KINDS = Object.freeze([
@@ -18,6 +20,22 @@ export const INPUT_SOURCE_KINDS = Object.freeze([
 ]);
 
 const MIC_DEVICE_KEY = "CATINTASSIST_MIC_ID";
+
+/** Resolve only a real CABLE Output device. Never fall back to default mic. */
+export const resolveVirtualCableInputDeviceId = async ({
+  savedDeviceId = readSelectedVirtualCableInputDeviceId(),
+  enumerateDevicesFn = navigator.mediaDevices?.enumerateDevices?.bind(navigator.mediaDevices),
+} = {}) => {
+  if (savedDeviceId) return savedDeviceId;
+  if (!enumerateDevicesFn) throw new Error("VB-Cable device list is unavailable.");
+  const devices = await enumerateDevicesFn();
+  const deviceId = pickVbCableSttInputDevice(devices.filter((d) => d.kind === "audioinput"));
+  if (!deviceId) {
+    throw new Error("CABLE Output was not found. Choose TAB or reconnect VB-Cable.");
+  }
+  persistSelectedVirtualCableInputDeviceId(deviceId);
+  return deviceId;
+};
 
 /** @typedef {'tab'|'mic'|'virtualCable'|'mockStream'|'audioFile'|'fixture'} InputSourceKind */
 
@@ -78,7 +96,7 @@ export async function acquireInputSource(kind, opts = {}) {
   }
 
   if (source === "virtualCable") {
-    const deviceId = readSelectedVirtualCableInputDeviceId();
+    const deviceId = await resolveVirtualCableInputDeviceId();
     const constraints = buildVirtualCableGetUserMediaConstraints(deviceId);
     const stream = await navigator.mediaDevices.getUserMedia(constraints);
     return { stream, kind: "virtualCable" };

@@ -76,6 +76,7 @@ export const AudioRouteStatusBar = ({
   onReconnectStream,
   onReconnectAudioSource,
   onSwitchToTabShare,
+  onSwitchToVirtualCable,
   onTestLocal,
   onTestRoute,
   onOpenSoundboard,
@@ -119,6 +120,11 @@ export const AudioRouteStatusBar = ({
   };
   const selectMicMode = () => {
     setMicTestMode?.(true);
+  };
+
+  const switchWorkSource = async (source) => {
+    if (source === 'virtualCable') return onSwitchToVirtualCable?.();
+    return onSwitchToTabShare?.();
   };
 
   useEffect(() => {
@@ -323,28 +329,14 @@ export const AudioRouteStatusBar = ({
       <div className="audio-route-status-main">
         {compact && (
           <div className="audio-route-compact-proof" aria-label={`${tabProof?.label || sttInLabel}; Deepgram ${enOk && esOk ? 'EN and ES ready' : connectionState}`}>
-            <span className="audio-route-compact-proof__route" title={tabProof?.title || sttInHintBody}>
-              <Dot state={tabProof?.state || sttInState} />
-              {tabProof?.label || sttInLabel}
-            </span>
+            <div className="audio-route-compact-source-toggle" role="group" aria-label="Active call STT source">
+              <button id="audio-route-active-tab-btn" type="button" className={`audio-route-compact-source-btn${isTabMode ? ' is-active is-tab' : ''}`} onClick={() => switchWorkSource('tab')} aria-pressed={isTabMode} title="TAB: choose the call tab and share audio. The current stream stays live if the picker fails.">TAB</button>
+              <button id="audio-route-active-vb-btn" type="button" className={`audio-route-compact-source-btn${isCableMode ? ' is-active is-cable' : ''}`} onClick={() => switchWorkSource('virtualCable')} aria-pressed={isCableMode} title="VB: use CABLE Output for Deepgram. The current stream stays live if cable acquisition fails.">VB</button>
+            </div>
             <span className="audio-route-compact-proof__dg" title={sttSummaryHintBody}>
               <Dot state={sttState === 'idle' ? 'idle' : sttState} />
-              DG {enOk && esOk ? 'EN/ES' : connectionState}
+              {connectProgress?.transcriptReceived ? 'TEXT ✓' : `DG ${enOk && esOk ? 'EN/ES' : connectionState}`}
             </span>
-            {mobileMicMode && onSwitchToTabShare && (
-              <button
-                id="audio-route-force-tab-btn"
-                type="button"
-                className="audio-route-compact-proof__zap"
-                onClick={async () => {
-                  setMicTestMode?.(false);
-                  await onSwitchToTabShare();
-                }}
-                title="Emergency exit: stop microphone STT and choose the call tab"
-              >
-                USE TAB
-              </button>
-            )}
             {(stale || critical || (isActive && isDeepgramError)) && onReconnectStream && (
               <button
                 id="audio-route-zap-btn"

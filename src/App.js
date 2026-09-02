@@ -840,10 +840,14 @@ const Dashboard = () => {
         virtualCableFailure={virtualCableFailure}
         onReconnectAudioSource={() => switchAudioSourceModeSafely?.(configuredAudioSourceMode)}
         onSwitchToTabShare={async () => {
-          try {
-            switchAudioSourceMode("tab");
-          } catch (_) {}
-          return switchAudioSourceModeSafely?.("tab");
+          const ok = await switchAudioSourceModeSafely?.("tab");
+          if (ok) switchAudioSourceMode("tab");
+          return ok;
+        }}
+        onSwitchToVirtualCable={async () => {
+          const ok = await switchAudioSourceModeSafely?.("virtualCable");
+          if (ok) switchAudioSourceMode("virtualCable");
+          return ok;
         }}
         offCallWorkspace={offCallWorkspace}
         onCycleWorkspace={cycleWorkspaceView}

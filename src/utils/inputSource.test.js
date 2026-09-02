@@ -1,4 +1,9 @@
-import { INPUT_SOURCE_KINDS, mapLegacySourceToKind, acquireInputSource } from "./inputSource";
+import {
+  INPUT_SOURCE_KINDS,
+  mapLegacySourceToKind,
+  acquireInputSource,
+  resolveVirtualCableInputDeviceId,
+} from "./inputSource";
 
 describe("inputSource", () => {
   test("kinds include audioFile not file", () => {
@@ -49,5 +54,24 @@ describe("inputSource", () => {
         autoGainControl: true,
       },
     });
+  });
+
+  test("VB auto-selects CABLE Output and never selects the default mic", async () => {
+    const deviceId = await resolveVirtualCableInputDeviceId({
+      savedDeviceId: '',
+      enumerateDevicesFn: async () => [
+        { kind: 'audioinput', deviceId: 'real-mic', label: 'Microphone (HS-220U)' },
+        { kind: 'audioinput', deviceId: 'cable-output', label: 'CABLE Output (VB-Audio Virtual Cable)' },
+      ],
+    });
+    expect(deviceId).toBe('cable-output');
+    expect(localStorage.getItem('CATINTASSIST_VIRTUAL_CABLE_INPUT_DEVICE_ID')).toBe('cable-output');
+  });
+
+  test("VB refuses to start when CABLE Output is absent", async () => {
+    await expect(resolveVirtualCableInputDeviceId({
+      savedDeviceId: '',
+      enumerateDevicesFn: async () => [{ kind: 'audioinput', deviceId: 'real-mic', label: 'Microphone' }],
+    })).rejects.toThrow(/CABLE Output was not found/);
   });
 });

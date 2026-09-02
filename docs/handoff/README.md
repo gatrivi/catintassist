@@ -1,11 +1,19 @@
-# Agent Handoff Index (v4.84.8)
+# Agent Handoff Index (v4.85.13)
 
 **Read first:** [`00_global_rules.md`](00_global_rules.md)
 
 Outside agents: pick **one** spec below. Do not re-read the whole repo.
 
 ## Current app version
-Top-right must show **v4.84.8** after this ship.
+Top-right must show **v4.85.13** after this ship.
+
+## Current operating invariants
+- Active-call STT controls are fixed and reachable: `TAB` + `VB` in a 30px row. Never remove them; a compact UI may only move secondary setup behind a labeled expander.
+- Switching acquires new audio before releasing old audio. Failed TAB/VB switch keeps captions and the working stream.
+- VB resolves `CABLE Output` automatically or fails closed. It must never capture a default physical mic.
+- Header cat is the quiet app-health beacon: gray ready · blue connecting · green STT live · amber check · red error. Silence alone is not an error.
+- Translation is gateway → one free fallback. Browser must never call paid providers or Google GTX directly. Wait for 2 words; one request runs at a time; live updates require 10 new words. Gateway failure must fall through to visible fallback—not blank text.
+- Full tests are currently blocked by existing dirty translation-engine work; do not discard or stage it with unrelated changes.
 
 ## What's new (docs)
 - [`docs/development/sensitive-data-approach.md`](../development/sensitive-data-approach.md) — A–E + ES name chips (v4.84.3–4.84.8)

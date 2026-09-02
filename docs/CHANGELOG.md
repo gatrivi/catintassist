@@ -2,6 +2,31 @@
 
 **Version source:** `src/constants/version.js` (must match `package.json` + top-right UI pill)
 
+## v4.85.13 - One-click VB work route
+- `VB` now auto-selects detected `CABLE Output` for STT and saves it for the shift.
+- If CABLE Output is missing, VB refuses to start rather than capture the default physical mic.
+
+## v4.85.12 - Translation browser safety
+- Browser no longer calls Azure, DeepL, OpenAI, or Google GTX directly. This stops invalid-key 401s and Google CORS request noise.
+- Translation uses the server gateway first, then one rate-limited free fallback; no translation result still falls back visibly rather than blank.
+
+## v4.85.11 - Translation request guard
+- Auto translation waits for at least two words, then sends on a final/sentence, split, or each 10 new live words.
+- Translation requests are serialized: one active request at a time across bubbles.
+
+## v4.85.10 - Simple translation fallback
+- Translation tries the server gateway first, keeping any provider keys off the browser.
+- If no server provider is ready, it falls through to Google GTX, then MyMemory; a failed gateway cannot leave the translation pane blank.
+
+## v4.85.9 - Status cat
+- Header cat is gray while ready, blue while connecting, green when both STT lanes are live, amber when attention is needed, and red on STT error.
+- Silent patients do not turn the cat red; status is based on connection health, not speech volume.
+
+## v4.85.8 - Active-call TAB/VB switcher
+- The fixed 30px call row now exposes `TAB`, `VB`, and concise Deepgram/text proof at 900×600.
+- Source switches acquire first and persist only after success; failed TAB/VB acquisition leaves the current captions and stream live.
+- Work-call connection now selects only Tab or VB-Cable. Physical Mic remains for off-call/testing tools.
+
 ## v4.85.7 - Tab-only work calls
 - Disabled the inverted physical-mic fallback and stopped persisting mic-test mode into later calls. Tab failure now stays a visible Tab failure.
 - If an active call is on Mic, the compact HUD now exposes `USE TAB` to reopen the tab picker immediately.

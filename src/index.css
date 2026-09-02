@@ -524,6 +524,18 @@ body {
   height: 18px !important;
 }
 
+/* v4.85.9: the cat is a quiet app-health beacon, not a diagnostic panel. */
+.app-logo-btn--idle { box-shadow: 0 0 0 1px rgba(148,163,184,0.26); }
+.app-logo-btn--connecting { box-shadow: 0 0 9px rgba(56,189,248,0.65); }
+.app-logo-btn--live { box-shadow: 0 0 10px rgba(52,211,153,0.78); }
+.app-logo-btn--warn { box-shadow: 0 0 10px rgba(251,146,60,0.82); }
+.app-logo-btn--error { box-shadow: 0 0 11px rgba(248,113,113,0.9); }
+.app-logo-img--idle { filter: grayscale(0.65) brightness(0.82); }
+.app-logo-img--connecting { filter: sepia(0.75) saturate(2) hue-rotate(155deg) brightness(1.1); animation-duration: 3s; }
+.app-logo-img--live { filter: sepia(0.7) saturate(2.2) hue-rotate(95deg) brightness(1.12); }
+.app-logo-img--warn { filter: sepia(0.85) saturate(2.4) hue-rotate(335deg) brightness(1.12); animation-duration: 8s; }
+.app-logo-img--error { filter: sepia(0.9) saturate(3) hue-rotate(305deg) brightness(1.12); animation-duration: 2s; }
+
 .off-call-status-column {
   min-width: 0;
   overflow: hidden;
@@ -3623,6 +3635,37 @@ body:has(.app-container[data-call-mode="true"]) .element-hint-panel {
 
 .audio-route-compact-proof__route { color: #d1fae5; }
 .audio-route-compact-proof__dg { color: rgba(255,255,255,0.7); }
+
+/* v4.85.8: active calls reserve one fixed 30px TAB/VB source row. */
+.app-container[data-call-mode="true"] .audio-route-status-bar.is-compact {
+  min-height: 30px;
+  max-height: 30px;
+}
+
+.audio-route-compact-source-toggle {
+  display: inline-flex;
+  align-items: center;
+  height: 24px;
+  border: 1px solid rgba(255,255,255,0.18);
+  border-radius: 4px;
+  overflow: hidden;
+  flex-shrink: 0;
+}
+
+.audio-route-compact-source-btn {
+  height: 22px;
+  min-width: 34px;
+  border: 0;
+  border-right: 1px solid rgba(255,255,255,0.12);
+  background: rgba(255,255,255,0.04);
+  color: rgba(226,232,240,0.8);
+  cursor: pointer;
+  font: 900 0.62rem/1 var(--font-mono);
+}
+
+.audio-route-compact-source-btn:last-child { border-right: 0; }
+.audio-route-compact-source-btn.is-active.is-tab { background: rgba(59,130,246,0.3); color: #dbeafe; }
+.audio-route-compact-source-btn.is-active.is-cable { background: rgba(245,158,11,0.26); color: #fef3c7; }
 
 .audio-route-compact-proof__zap {
   border: 1px solid rgba(14, 165, 233, 0.65);
