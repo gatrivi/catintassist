@@ -3544,14 +3544,15 @@ body:has(.app-container[data-call-mode="true"]) .element-hint-panel {
     gap: 0.35rem;
   }
 
-  /* Prevent metrics/progress expansion from forcing extra rows. */
-  .header-metrics-strip {
+  /* Keep call chrome tight. The off-call scoreboard owns its 20% header area,
+     so its summary/expand control must remain reachable at 900px. */
+  .dashboard-header:not(.dashboard-header--off-call-scoreboard) .header-metrics-strip {
     display: none !important;
   }
-  .header-progress-stack {
+  .dashboard-header:not(.dashboard-header--off-call-scoreboard) .header-progress-stack {
     display: none !important;
   }
-  .header-metrics-expand-btn {
+  .dashboard-header:not(.dashboard-header--off-call-scoreboard) .header-metrics-expand-btn {
     display: none !important;
   }
 

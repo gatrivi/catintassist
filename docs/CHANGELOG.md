@@ -2,6 +2,9 @@
 
 **Version source:** `src/constants/version.js` (must match `package.json` + top-right UI pill)
 
+## v4.85.5 - Scoreboard restore at 900px
+- Restored the off-call scoreboard strip at small-screen widths. Its Metrics button, 12-cell grid, and three progress bars are reachable again; call-mode chrome remains compact.
+
 ## v4.85.4 - Clear compact call HUD
 - During a call, the I/O strip now shows only Tab proof and Deepgram state; device dropdowns and setup controls are hidden until off-call.
 - Removed duplicate slot-style daily timers and normalized all HUD duration inputs to whole seconds, fixing the floating-point OFF value.

@@ -25,6 +25,21 @@ import { APP_VERSION } from '../constants/version';
 /** Newest first. Only the entry matching APP_VERSION is shown on load. */
 export const RELEASE_NOTES_CATALOG = [
   {
+    version: '4.85.5',
+    id: 'scoreboard-small-screen-restore-v1',
+    highlightElementIds: ['header-metrics-expand-btn'],
+    es: {
+      title: 'Scoreboard restaurado',
+      intro: 'En pantallas chicas vuelve el botón Metrics para abrir las 12 métricas y las 3 barras.',
+      sections: [{ heading: 'Uso', bullets: ['Fuera de llamada: Metrics abre la cuadrícula y las barras'] }],
+    },
+    en: {
+      title: 'Scoreboard restored',
+      intro: 'On small screens, Metrics again opens all 12 metrics and the three progress bars.',
+      sections: [{ heading: 'Use', bullets: ['Off-call: Metrics opens the grid and bars'] }],
+    },
+  },
+  {
     version: '4.85.4',
     id: 'compact-hud-clarity-v1',
     highlightElementIds: ['compact-call-goal-meter'],
