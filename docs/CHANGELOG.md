@@ -2,6 +2,10 @@
 
 **Version source:** `src/constants/version.js` (must match `package.json` + top-right UI pill)
 
+## v4.86.3 - On/off-call timers + connect width
+- Header strip summary now shows today's `📞Xm` (on-call) vs `📡Ym` (off-call = avail+break) next to the daily/monthly summary — glanceable slack/hustle tracker.
+- Connect button widened to exactly 2× button cell (two emojis read as two glued buttons).
+
 ## v4.86.2 - 12-grid fit fix
 - Expanded scoreboard panel cap raised to `min(38vh, 260px)` — 4th grid row (switcher row) no longer clipped.
 - Scoreboard grid cells compacted (min-height 56→42px, tighter padding/gap, smaller value font) to reduce padding waste.

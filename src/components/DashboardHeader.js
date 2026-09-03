@@ -1709,6 +1709,8 @@ export const DashboardHeader = ({
       showStudioHint={showStudioHint}
       showBars={showBars}
       showQuickRow={showQuickRow}
+      onCallMins={totalDailyMins}
+      offCallMins={totalOffCallMins}
     />
   );
 

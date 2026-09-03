@@ -25,6 +25,21 @@ import { APP_VERSION } from '../constants/version';
 /** Newest first. Only the entry matching APP_VERSION is shown on load. */
 export const RELEASE_NOTES_CATALOG = [
   {
+    version: '4.86.3',
+    id: 'oncall-timers-v1',
+    highlightElementIds: ['header-metrics-expand-btn'],
+    es: {
+      title: 'Timers on/off-call visibles',
+      intro: 'La franja muestra 📞 minutos en llamada y 📡 fuera de llamada de hoy.',
+      sections: [{ heading: 'Tambien', bullets: ['Boton Connect ahora 2x de ancho para su doble emoji'] }],
+    },
+    en: {
+      title: 'On/off-call timers visible',
+      intro: 'The strip shows today\u2019s 📞 on-call and 📡 off-call minutes at a glance.',
+      sections: [{ heading: 'Also', bullets: ['Connect button now 2x wide for its two emojis'] }],
+    },
+  },
+  {
     version: '4.86.2',
     id: 'scoreboard-fit-fix-v1',
     highlightElementIds: ['header-metrics-expand-btn'],

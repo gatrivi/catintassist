@@ -40,6 +40,8 @@ const CompactBar = ({ fill = 0, pending = null, color = '#a855f7', title, onMous
  * Single component for collapsed and expanded header (no duplicate expand row).
  */
 export const HeaderMetricsStrip = ({
+  onCallMins,
+  offCallMins,
   totalDailyMins,
   dailyGoal,
   monthPct,
@@ -78,6 +80,12 @@ export const HeaderMetricsStrip = ({
       <div className="header-metrics-strip-row">
         <span className="header-metrics-summary">
           {Math.round(totalDailyMins)}m/{Math.round(dailyGoal)}m · {monthPct}% mo · {arsLabel}
+          {onCallMins != null && offCallMins != null && (
+            <span title="Today: on-call (calls) vs off-call (avail + break) time" style={{ opacity: 0.85 }}>
+              {' '}· <span style={{ color: '#34d399' }}>📞{Math.round(onCallMins)}m</span>
+              {' '}<span style={{ color: '#fbbf24' }}>📡{Math.round(offCallMins)}m</span>
+            </span>
+          )}
         </span>
         <ElementHintTarget
           elementId="header-metrics-expand-btn"

@@ -365,6 +365,13 @@ body {
   flex-shrink: 0;
 }
 
+/* Connect shows a two-emoji label (robot + headset) — keep it 2 cells wide
+   so it reads as two glued buttons and stays proportional (v4.86.3). */
+.session-controls-left-cluster .connect-interpret-btn {
+  width: calc(var(--btn-icon) * 2) !important;
+  min-width: calc(var(--btn-icon) * 2);
+}
+
 /* Gray chrome — mic, goals, STT, lang, key, notes, zap, expand (match settings gear). */
 .header-chrome-btn,
 .settings-scoreboard-btn {
