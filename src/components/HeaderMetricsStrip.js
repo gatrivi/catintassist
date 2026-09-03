@@ -67,6 +67,9 @@ export const HeaderMetricsStrip = ({
   showStudioHint = false,
   showBars = true,
   showQuickRow = true,
+  showExpandToggle = true,
+  /** True when the expanded income HUD is showing — summary already duplicated there. */
+  detailShown = false,
 }) => {
   const arsLabel = liveDailyArs >= 1000
     ? `AR$${Math.round(liveDailyArs / 1000)}k`
@@ -79,7 +82,8 @@ export const HeaderMetricsStrip = ({
     <div className="header-metrics-strip" data-guide="scoreboard">
       <div className="header-metrics-strip-row">
         <span className="header-metrics-summary">
-          {Math.round(totalDailyMins)}m/{Math.round(dailyGoal)}m · {monthPct}% mo · {arsLabel}
+          {Math.round(totalDailyMins)}m/{Math.round(dailyGoal)}m
+          {!detailShown && <span> · {monthPct}% mo · {arsLabel}</span>}
           {onCallMins != null && offCallMins != null && (
             <span title="Today: on-call (calls) vs off-call (avail + break) time" style={{ opacity: 0.85 }}>
               {' '}· <span style={{ color: '#34d399' }}>📞{Math.round(onCallMins)}m</span>
@@ -87,6 +91,7 @@ export const HeaderMetricsStrip = ({
             </span>
           )}
         </span>
+        {showExpandToggle && (
         <ElementHintTarget
           elementId="header-metrics-expand-btn"
           guideKey="metrics-expand"
@@ -106,6 +111,7 @@ export const HeaderMetricsStrip = ({
           <span>{expanded ? 'Less' : 'Metrics'}</span>
         </button>
         </ElementHintTarget>
+        )}
       </div>
       {showQuickRow && (onScoreViewChange || onCycleWorkspace) && (
         <div className="header-metrics-quick-row">

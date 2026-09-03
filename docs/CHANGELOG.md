@@ -2,6 +2,11 @@
 
 **Version source:** `src/constants/version.js` (must match `package.json` + top-right UI pill)
 
+## v4.86.4 - Strip de-clutter (low-hanging fruit 1-2)
+- Metrics toggle hidden in full-HUD mode where it had no effect (dead button).
+- Strip summary drops `% mo · AR$` when the expanded income HUD already shows them; day progress + 📞/📡 timers always visible.
+- Audit notes + revert paths: `docs/development/scoreboard-ux-notes.md`.
+
 ## v4.86.3 - On/off-call timers + connect width
 - Header strip summary now shows today's `📞Xm` (on-call) vs `📡Ym` (off-call = avail+break) next to the daily/monthly summary — glanceable slack/hustle tracker.
 - Connect button widened to exactly 2× button cell (two emojis read as two glued buttons).

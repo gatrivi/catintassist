@@ -25,6 +25,21 @@ import { APP_VERSION } from '../constants/version';
 /** Newest first. Only the entry matching APP_VERSION is shown on load. */
 export const RELEASE_NOTES_CATALOG = [
   {
+    version: '4.86.4',
+    id: 'strip-declutter-v1',
+    highlightElementIds: ['header-metrics-expand-btn'],
+    es: {
+      title: 'Franja sin duplicados',
+      intro: 'Con el HUD grande, la franja muestra solo progreso del dia y timers.',
+      sections: [{ heading: 'Notas', bullets: ['Boton Metrics oculto donde ya no hacia nada'] }],
+    },
+    en: {
+      title: 'Strip without duplicates',
+      intro: 'With the big HUD, the strip shows only day progress and timers.',
+      sections: [{ heading: 'Notes', bullets: ['Metrics button hidden where it did nothing'] }],
+    },
+  },
+  {
     version: '4.86.3',
     id: 'oncall-timers-v1',
     highlightElementIds: ['header-metrics-expand-btn'],

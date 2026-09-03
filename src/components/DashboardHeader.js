@@ -1711,6 +1711,9 @@ export const DashboardHeader = ({
       showQuickRow={showQuickRow}
       onCallMins={totalDailyMins}
       offCallMins={totalOffCallMins}
+      // Dead toggle guard: full HUD already shows everything — expanding does nothing.
+      showExpandToggle={isCollapsed || offCallScoreboardView || !showExpandedIncome}
+      detailShown={!isCollapsed && showExpandedIncome && !offCallScoreboardView}
     />
   );
 
