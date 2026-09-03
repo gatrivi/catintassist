@@ -2,6 +2,11 @@
 
 **Version source:** `src/constants/version.js` (must match `package.json` + top-right UI pill)
 
+## v4.86.2 - 12-grid fit fix
+- Expanded scoreboard panel cap raised to `min(38vh, 260px)` — 4th grid row (switcher row) no longer clipped.
+- Scoreboard grid cells compacted (min-height 56→42px, tighter padding/gap, smaller value font) to reduce padding waste.
+
+
 ## v4.86.1 - Local dev translation gateway
 - `npm run gateway` serves `api/translate.js` on `127.0.0.1:59210`; `src/setupProxy.js` routes dev `/api/translate` to it. Translation now works under `npm start` without the Vercel gateway (falls through Azure/DeepL/Google/AWS/MyMemory using `.env` server keys).
 

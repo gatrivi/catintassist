@@ -25,6 +25,21 @@ import { APP_VERSION } from '../constants/version';
 /** Newest first. Only the entry matching APP_VERSION is shown on load. */
 export const RELEASE_NOTES_CATALOG = [
   {
+    version: '4.86.2',
+    id: 'scoreboard-fit-fix-v1',
+    highlightElementIds: ['header-metrics-expand-btn'],
+    es: {
+      title: 'Cuadricula 12 completa',
+      intro: 'La cuadricula de 12 metricas ya no se corta: mas alto, celdas compactas.',
+      sections: [{ heading: 'Ajustes', bullets: ['Panel expandido hasta 38vh/260px', 'Celdas y fuente mas compactas'] }],
+    },
+    en: {
+      title: 'Full 12-cell grid',
+      intro: 'The 12-metric grid no longer clips: taller panel, compact cells.',
+      sections: [{ heading: 'Changes', bullets: ['Expanded panel up to 38vh/260px', 'Tighter cells and font'] }],
+    },
+  },
+  {
     version: '4.86.1',
     id: 'local-translate-gateway-v1',
     highlightElementIds: ['header-settings-btn'],
