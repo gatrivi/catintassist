@@ -44,6 +44,7 @@ This is the single source of truth for *documentation + onboarding*.
 - [`docs/tts/README.md`](tts/README.md): local TTS contract + where it plugs in
 
 ## Maintenance / Agent Rules
+- [`development/critical-feature-failure-contract.md`](development/critical-feature-failure-contract.md): call-critical failure and recovery invariant
 - [`docs/cursor-agent/README.md`](cursor-agent/README.md): Cursor agent “touch only these files” guidance
 - [`docs/api/README.md`](api/README.md): Deepgram / Web Audio / MediaStream / CRA crib sheets (anti-hallucination)
 - [`docs/CHANGELOG.md`](CHANGELOG.md): recent version notes

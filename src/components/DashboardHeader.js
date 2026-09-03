@@ -30,6 +30,7 @@ import { buildHeaderStripMetrics } from '../utils/headerMetrics';
 import {
   buildOffCallStatusLabel,
 } from '../utils/offCallIdleMessages';
+import { dispatchOpenDeepgramSettings } from '../utils/deepgramSettingsPrompt';
 import { DialGoalSelector } from './DialGoalSelector';
 import { ElementHintTarget, useElementHint, buildHintPayload } from './ElementHint';
 import { useProgressiveAudio } from '../hooks/useProgressiveAudio';
@@ -1592,7 +1593,7 @@ export const DashboardHeader = ({
   const connectRequireDoubleTapIndicator = false;
 
   const connectLabel = vaultNeedsDecrypt
-    ? 'Decrypt'
+    ? 'Unlock key'
     : isZombieCall
     ? 'Re-attach'
     : audioAttached
@@ -1605,7 +1606,7 @@ export const DashboardHeader = ({
   const connectSingleTitle = isZombieCall
     ? 'Re-attach to your call (timer saved)'
     : vaultNeedsDecrypt
-      ? 'Unlock Deepgram with your password (gear icon)'
+      ? 'Saved Deepgram key is locked — open it now, then press Unlock'
       : apiKeyMissingNoVault
         ? 'Connect tab audio — if STT fails, add Deepgram key in Settings (gear)'
       : audioAttached
@@ -1618,7 +1619,7 @@ export const DashboardHeader = ({
   const connectDoubleTitle = micTestMode
     ? 'Pick a different microphone'
     : vaultNeedsDecrypt
-      ? 'Unlock Deepgram with your password'
+      ? 'Open the saved-key Unlock form'
       : apiKeyMissingNoVault
         ? 'Enter your Deepgram key in Settings'
       : configuredAudioSourceMode === "virtualCable"
@@ -1626,6 +1627,15 @@ export const DashboardHeader = ({
         : 'Pick a different browser tab';
 
   const connectOnSingle = (() => {
+    // CRITICAL STT RECOVERY: a locked saved key must open its one-step fix.
+    // Never start audio capture here: it wastes time and ends in an opaque
+    // Deepgram failure during a live patient call.
+    if (vaultNeedsDecrypt) {
+      return () => dispatchOpenDeepgramSettings('connect', 'vault_locked');
+    }
+    if (apiKeyMissingNoVault) {
+      return () => dispatchOpenDeepgramSettings('connect', 'bundled_missing');
+    }
     if (isZombieCall) return onRecovery;
     if (!audioAttached) return onAttachAudio;
     return onStartCall;

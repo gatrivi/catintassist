@@ -21,6 +21,7 @@ Each handoff spec lists allowed files. Do not refactor unrelated code.
 - Do not destroy existing translations on bubble split (`useTranslate.js` sticky pairs)
 - Weak short accepts (`"K."`, `"Yes"`) are intentional — not errors
 - Lingva removed from chain — do not re-add browser CORS mirrors
+- **Critical-call recovery:** a blocked STT/key/audio route must state what failed, give its one-step fix, and take the operator there. Never replace the locked-key Unlock path with a generic error or a doomed capture attempt; see [`../development/critical-feature-failure-contract.md`](../development/critical-feature-failure-contract.md).
 
 ## Persistence today
 - Stats: `localStorage` key `catintassist_stats`

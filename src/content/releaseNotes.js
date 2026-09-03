@@ -25,6 +25,21 @@ import { APP_VERSION } from '../constants/version';
 /** Newest first. Only the entry matching APP_VERSION is shown on load. */
 export const RELEASE_NOTES_CATALOG = [
   {
+    version: '4.85.17',
+    id: 'deepgram-locked-key-recovery-v1',
+    highlightElementIds: ['header-connect-btn'],
+    es: {
+      title: 'Recuperar llave Deepgram',
+      intro: 'Si la llave guardada esta bloqueada, Connect abre Unlock directamente.',
+      sections: [{ heading: 'En llamada', bullets: ['Presione Unlock. Si la contraseña ya esta escrita, un clic restaura transcripcion.'] }],
+    },
+    en: {
+      title: 'Recover Deepgram key',
+      intro: 'If the saved key is locked, Connect opens Unlock directly.',
+      sections: [{ heading: 'In a call', bullets: ['Press Unlock. If the password is already entered, one click restores transcription.'] }],
+    },
+  },
+  {
     version: '4.85.16',
     id: 'deepgram-console-outage-logs-v1',
     highlightElementIds: ['header-app-logo-btn'],

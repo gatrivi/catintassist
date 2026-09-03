@@ -777,7 +777,9 @@ const Dashboard = () => {
             setSettingsOpen(true);
           }}
         >
-          {isRememberExpired()
+          {getDeepgramBlockReason() === "vault_locked"
+            ? "🔐 Saved Deepgram key locked — tap here, then press Unlock"
+            : isRememberExpired()
             ? "🔐 Password expired — open Settings (⚙)"
             : "🔑 No STT key in this build — paste in Settings (⚙) or set REACT_APP_DEEPGRAM_API_KEY on Vercel + redeploy"}
         </div>

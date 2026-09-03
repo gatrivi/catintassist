@@ -30,9 +30,9 @@ const PROMPTS = {
   },
   vault_locked: {
     title: 'Unlock your saved key',
-    body: 'An encrypted Deepgram key is stored on this device. Enter your master password below.',
+    body: 'Your saved Deepgram key is locked on this device. Press Unlock below. If the password is already filled in, just press Unlock; otherwise enter it first.',
     onConnect:
-      'You pressed Connect — unlock your saved Deepgram key to start transcription.',
+      'Transcription is blocked: the saved Deepgram key is locked. The key vault is open below — press Unlock to restore transcription.',
   },
   remember_expired: {
     title: 'Session expired',
@@ -65,12 +65,23 @@ export const getDeepgramSettingsPrompt = (reason, trigger = 'general') => {
   };
 };
 
-/** Soft nudge only — never hijack Connect into Settings. */
+/**
+ * Critical-call recovery: no usable key means STT cannot work. Take the
+ * operator directly to the saved-key Unlock form instead of leaving a vague
+ * failure after audio capture. Do not remove this without an equally direct,
+ * tested recovery path.
+ */
 export const notifyDeepgramKeyNeeded = (trigger = 'connect') => {
   try {
+    const reason = getDeepgramBlockReason() || 'no_key';
     window.dispatchEvent(
       new CustomEvent('cat_deepgram_key_needed', {
-        detail: { reason: getDeepgramBlockReason() || 'no_key', trigger },
+        detail: { reason, trigger },
+      }),
+    );
+    window.dispatchEvent(
+      new CustomEvent('cat_show_settings', {
+        detail: { section: 'deepgram', reason, trigger },
       }),
     );
   } catch (_) {}

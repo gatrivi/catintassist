@@ -2,6 +2,10 @@
 
 **Version source:** `src/constants/version.js` (must match `package.json` + top-right UI pill)
 
+## v4.85.17 - Locked-key critical-call recovery
+- If a saved Deepgram key is locked, Connect now opens the Deepgram vault directly. Press **Unlock**; if the password is already present, one click restores transcription.
+- Missing/locked-key failures now say what broke and show the immediate recovery instead of attempting audio capture first.
+
 ## v4.85.16 - Deepgram console outage logs
 - Console now logs Deepgram startup, socket open/error/close, API-key failures, and final connection failures.
 
