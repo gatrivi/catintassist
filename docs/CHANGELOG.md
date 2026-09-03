@@ -2,6 +2,9 @@
 
 **Version source:** `src/constants/version.js` (must match `package.json` + top-right UI pill)
 
+## v4.85.16 - Deepgram console outage logs
+- Console now logs Deepgram startup, socket open/error/close, API-key failures, and final connection failures.
+
 ## v4.85.15 - Ghost-call close
 - After the existing three warnings and 7 minutes without Deepgram speech, the app now stops both the work session and Deepgram.
 - Holds are excluded. This preserves the conservative threshold while preventing forgotten STOP from skewing time or leaving STT open.

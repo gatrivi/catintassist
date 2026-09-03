@@ -25,6 +25,21 @@ import { APP_VERSION } from '../constants/version';
 /** Newest first. Only the entry matching APP_VERSION is shown on load. */
 export const RELEASE_NOTES_CATALOG = [
   {
+    version: '4.85.16',
+    id: 'deepgram-console-outage-logs-v1',
+    highlightElementIds: ['header-app-logo-btn'],
+    es: {
+      title: 'Logs de Deepgram',
+      intro: 'La consola ahora muestra inicio, sockets y errores de Deepgram.',
+      sections: [{ heading: 'Outage', bullets: ['Abra DevTools Console y filtre por Deepgram.'] }],
+    },
+    en: {
+      title: 'Deepgram logs',
+      intro: 'Console now shows Deepgram startup, sockets, and errors.',
+      sections: [{ heading: 'Outage', bullets: ['Open DevTools Console and filter by Deepgram.'] }],
+    },
+  },
+  {
     version: '4.85.15',
     id: 'ghost-call-close-v1',
     highlightElementIds: ['header-app-logo-btn'],

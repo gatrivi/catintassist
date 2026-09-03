@@ -247,7 +247,9 @@ export const useDeepgram = () => {
   const critLog = useCallback((level, message, extra = {}) => {
     try {
       const now = Date.now();
-      if (now - lastCritLogAtRef.current < 5000) return;
+      // Connection failures must always leave one DevTools breadcrumb. Only
+      // rate-limit info/warn chatter; no transcript or audio data is logged.
+      if (level !== "error" && now - lastCritLogAtRef.current < 5000) return;
       lastCritLogAtRef.current = now;
       const phase = connectFlagsRef.current?.phase;
       const attemptId = connectAttemptIdRef.current;
@@ -523,6 +525,7 @@ export const useDeepgram = () => {
 
   const failConnection = useCallback(
     (message, extra = {}) => {
+      console.error("[Deepgram] CONNECTION FAILED", { message, ...extra });
       critLog("warn", "failConnection", {
         message,
         failureCategory: extra?.failureCategory,
@@ -560,6 +563,12 @@ export const useDeepgram = () => {
       setConnectionMessage(message);
       const keyInfo = getDeepgramKeyInfo();
       const cat = extra.failureCategory;
+      critLog("error", "connection failed", {
+        category: cat || FAILURE.UNKNOWN,
+        message: String(message || "").slice(0, 220),
+        closeCode: extra.lastCloseCode ?? null,
+        source: streamSourceRef.current || "none",
+      });
       syncConnectProgress({
         phase: "error",
         lastError: message,
@@ -659,6 +668,11 @@ export const useDeepgram = () => {
     (stream) => {
       const API_KEY = getEffectiveDeepgramKey();
       if (!API_KEY) {
+        console.error("[Deepgram] API KEY MISSING");
+        critLog("error", "credential unavailable", {
+          reason: "browser_key_missing",
+          source: streamSourceRef.current || "none",
+        });
         setConnectionState("error");
         const msg =
           "Deepgram API key is missing. Open Settings (gear) → Deepgram, or set REACT_APP_DEEPGRAM_API_KEY on Vercel and redeploy.";
@@ -696,6 +710,13 @@ export const useDeepgram = () => {
       const pair = languagePairRef.current;
       const multiMode = usesMultiSocket(pair);
       const protectionsOn = isEnEsProtectionMode(pair);
+      console.log("[Deepgram] STARTING", {
+        source: streamSourceRef.current,
+        pair,
+        multiMode,
+        latencyMode: sttLatencyModeRef.current,
+        audioTracks: stream?.getAudioTracks?.().length,
+      });
 
       const tryStartStreaming = (stream) => {
         const socketsReady = multiMode
@@ -817,11 +838,13 @@ export const useDeepgram = () => {
 
       const createSocket = (lang, stream, { socketSide = "En", isFirst = false } = {}) => {
         const url = buildListenUrl(lang, sttLatencyModeRef.current);
+        console.log("[Deepgram] OPENING SOCKET", { lang, socketSide, url });
         const ws = new WebSocket(url, ["token", API_KEY]);
         const sk = socketSide === "En" ? "socketEn" : "socketEs";
         const skClose = socketSide === "En" ? "socketEnClose" : "socketEsClose";
 
         ws.onopen = () => {
+          console.log("[Deepgram] SOCKET OPEN", { lang, socketSide });
           reconnectAttemptsRef.current = 0;
           syncConnectProgress({ [sk]: "open" });
           critLog("info", `socket open (${lang}/${socketSide})`, {
@@ -864,6 +887,7 @@ export const useDeepgram = () => {
               received?.description ||
               JSON.stringify(received?.error || received);
             if (isLikelyApiKeyRejected(errText)) {
+              console.error("[Deepgram] API KEY REJECTED", received);
               const msg = deepgramKeyRejectedMessage();
               failConnection(msg, {
                 failureCategory: FAILURE.AUTH,
@@ -1074,9 +1098,7 @@ export const useDeepgram = () => {
         ws.onclose = (event) => {
           const code = event?.code;
           const reason = event?.reason || "";
-          if (process.env.NODE_ENV !== "production") {
-            console.log(`[Deepgram] ${lang} Close`, code, reason);
-          }
+          console.error("[Deepgram] SOCKET CLOSED", { lang, socketSide, code, reason });
           syncConnectProgress({
             [sk]: "error",
             [skClose]: `${code}${reason ? `: ${reason}` : ""}`,
@@ -1127,7 +1149,8 @@ export const useDeepgram = () => {
           }
         };
 
-        ws.onerror = () => {
+        ws.onerror = (event) => {
+          console.error("[Deepgram] WEBSOCKET ERROR", { lang, socketSide, event });
           if (connectFlagsRef.current.phase === "ready") return;
           if (connectFlagsRef.current.phase !== "connecting") return;
           syncConnectProgress({ [sk]: "error" });
