@@ -2,7 +2,7 @@
 
 ## End-to-end (on call)
 Mic/tab → Deepgram WS → captions (via `useDeepgram`)
-→ `useTranslate` (DeepL/Google fallbacks)
+→ `useTranslate` (local CATTS CTranslate2 Marian → Vercel gateway fallback)
 → `TranscriptionBoard` UI (render transcription + translation)
 → (spoken output, if enabled) `useTTS`
 → `setSinkId` / virtual mic routing

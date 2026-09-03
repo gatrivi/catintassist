@@ -42,6 +42,7 @@ This is the single source of truth for *documentation + onboarding*.
 - [`docs/soundboard/README.md`](soundboard/README.md): greetings, audio safety, and health gates
 - [`docs/soundscape/README.md`](soundscape/README.md): progressive audio feedback rules
 - [`docs/tts/README.md`](tts/README.md): local TTS contract + where it plugs in
+- [`development/translation-incident-2026-09-03.md`](development/translation-incident-2026-09-03.md): local CATTS translator outage assessment and safe recovery checks
 
 ## Maintenance / Agent Rules
 - [`development/critical-feature-failure-contract.md`](development/critical-feature-failure-contract.md): call-critical failure and recovery invariant
