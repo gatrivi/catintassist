@@ -2,6 +2,11 @@
 
 **Version source:** `src/constants/version.js` (must match `package.json` + top-right UI pill)
 
+## v4.86.5 - Draggable scoreboard + sticky-row timers
+- Grab bar at the bottom of the expanded scoreboard (portal mode): drag to resize height 18–80vh, persisted in `catint_scoreboard_max_vh`.
+- 📞/📡 today timers now also live next to the Connect button in the sticky row (visible even when it says Disconnected).
+- Smart tooltips (ElementHint) added for the timers chip; grab bar has title/aria.
+
 ## v4.86.4 - Strip de-clutter (low-hanging fruit 1-2)
 - Metrics toggle hidden in full-HUD mode where it had no effect (dead button).
 - Strip summary drops `% mo · AR$` when the expanded income HUD already shows them; day progress + 📞/📡 timers always visible.

@@ -70,6 +70,7 @@ import {
 } from '../utils/languageConfig';
 
 const OFF_CALL_METRICS_EXPANDED_KEY = 'catint_off_call_metrics_expanded_v1';
+const SCOREBOARD_MAX_VH_KEY = 'catint_scoreboard_max_vh';
 const CelebrationParticles = ({ type, label, coins, onDismiss }) => {
   const [isClosing, setIsClosing] = useState(false);
   const emojis = ['🪙', '🪙', '💸', '💵', '💰', '💎'];
@@ -258,6 +259,9 @@ const SessionControlsSticky = React.memo(({
   sessionArsLive,
   totalOffCallSeconds = 0,
   totalOnCallSeconds = 0,
+  // Today timers (minutes) — shown next to Connect in the sticky row (v4.86.5)
+  onCallMins = 0,
+  offCallMins = 0,
   callModeExpanded,
   setCallModeExpanded,
   isNotesOpen,
@@ -405,6 +409,23 @@ const SessionControlsSticky = React.memo(({
               </button>
             </ElementHintTarget>
           )}
+
+          {/* Today timers: on-call vs off-call at a glance (v4.86.5) */}
+          <ElementHintTarget
+            elementId="header-oncall-timers"
+            heading="On / off-call today"
+            body="📞 minutes on calls vs 📡 minutes off-call (avail + break) today."
+            color="#34d399"
+          >
+            <span
+              id="header-oncall-timers"
+              className="header-oncall-timers"
+              title="Today: 📞 on-call vs 📡 off-call (avail + break)"
+            >
+              <span style={{ color: '#34d399' }}>📞{Math.round(onCallMins)}m</span>
+              <span style={{ color: '#fbbf24' }}>📡{Math.round(offCallMins)}m</span>
+            </span>
+          </ElementHintTarget>
 
           <ElementHintTarget
             elementId="header-break-btn"
@@ -932,6 +953,33 @@ export const DashboardHeader = ({
       return false;
     }
   });
+
+  // User-resizable scoreboard height (vh), persisted (v4.86.5).
+  const [scoreboardMaxVh, setScoreboardMaxVh] = useState(() => {
+    try {
+      const v = Number(localStorage.getItem(SCOREBOARD_MAX_VH_KEY));
+      return v >= 18 && v <= 80 ? v : 38;
+    } catch (_) { return 38; }
+  });
+  const startScoreboardResize = useCallback((e) => {
+    e.preventDefault();
+    const headerEl = e.currentTarget.parentElement;
+    const onMove = (ev) => {
+      const rect = headerEl.getBoundingClientRect();
+      const vh = Math.round(Math.min(80, Math.max(18, ((ev.clientY - rect.top) / window.innerHeight) * 100)));
+      setScoreboardMaxVh(vh);
+    };
+    const onUp = () => {
+      window.removeEventListener('mousemove', onMove);
+      window.removeEventListener('mouseup', onUp);
+      setScoreboardMaxVh((v) => {
+        try { localStorage.setItem(SCOREBOARD_MAX_VH_KEY, String(v)); } catch (_) {}
+        return v;
+      });
+    };
+    window.addEventListener('mousemove', onMove);
+    window.addEventListener('mouseup', onUp);
+  }, []);
 
   const toggleOffCallMetricsExpanded = useCallback(() => {
     setOffCallMetricsExpanded((prev) => {
@@ -2851,7 +2899,7 @@ ${isInDeficit ? `⚠️ DEFICIT: Behind pace by ${Math.round(monthlyDeficitMins)
 
   return (
     <>
-    <header className={`dashboard-header glass-panel${headerMinimal ? ' dashboard-header--minimal' : ''}${headerCallCompact ? ' dashboard-header--call-compact' : ''}${isActive && callModeExpanded ? ' dashboard-header--call-expanded' : ''}${offCallScoreboardView ? ' dashboard-header--off-call-scoreboard' : ''}${offCallScoreboardView && offCallMetricsExpanded ? ' dashboard-header--metrics-expanded' : ''}`} style={{ position: 'relative', zIndex: 100 }}>
+    <header className={`dashboard-header glass-panel${headerMinimal ? ' dashboard-header--minimal' : ''}${headerCallCompact ? ' dashboard-header--call-compact' : ''}${isActive && callModeExpanded ? ' dashboard-header--call-expanded' : ''}${offCallScoreboardView ? ' dashboard-header--off-call-scoreboard' : ''}${offCallScoreboardView && offCallMetricsExpanded ? ' dashboard-header--metrics-expanded' : ''}`} style={{ position: 'relative', zIndex: 100, ...(offCallScoreboardView && offCallMetricsExpanded ? { maxHeight: `${scoreboardMaxVh}vh` } : {}) }}>
       {versionLabel && (
         <div className="app-version-pill" style={{ position: 'absolute', top: 6, right: 8 }}>
           {versionLabel}
@@ -2861,6 +2909,8 @@ ${isInDeficit ? `⚠️ DEFICIT: Behind pace by ${Math.round(monthlyDeficitMins)
         isActive={isActive}
         isBreakActive={isBreakActive}
         isZombieCall={isZombieCall}
+        onCallMins={totalDailyMins}
+        offCallMins={totalOffCallMins}
         apiKeyMissing={apiKeyMissing}
         vaultNeedsDecrypt={vaultNeedsDecrypt}
         apiKeyMissingNoVault={apiKeyMissingNoVault}
@@ -2963,6 +3013,20 @@ ${isInDeficit ? `⚠️ DEFICIT: Behind pace by ${Math.round(monthlyDeficitMins)
           : offCallScoreboardView && !offCallMetricsExpanded
             ? renderOffCallCollapsedBody()
             : renderWorkspaceBody()
+      )}
+
+      {/* Grab bar: drag to resize scoreboard height (v4.86.5) */}
+      {offCallScoreboardView && offCallMetricsExpanded && (
+        <div
+          className="scoreboard-grab-bar"
+          role="separator"
+          aria-orientation="horizontal"
+          aria-label="Drag to resize scoreboard height"
+          title="Drag to resize scoreboard height (stays per browser)"
+          onMouseDown={startScoreboardResize}
+        >
+          <span className="scoreboard-grab-bar-grip" />
+        </div>
       )}
 
       {isTodayDialOpen && createPortal(

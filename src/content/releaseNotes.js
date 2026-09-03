@@ -25,6 +25,21 @@ import { APP_VERSION } from '../constants/version';
 /** Newest first. Only the entry matching APP_VERSION is shown on load. */
 export const RELEASE_NOTES_CATALOG = [
   {
+    version: '4.86.5',
+    id: 'scoreboard-grab-bar-v1',
+    highlightElementIds: ['header-oncall-timers'],
+    es: {
+      title: 'Scoreboard a tu medida',
+      intro: 'Arrastra la barra inferior del scoreboard para cambiar su altura; se recuerda.',
+      sections: [{ heading: 'Tambien', bullets: ['Timers 📞/📡 junto al boton Connect', 'Tooltips inteligentes en la franja'] }],
+    },
+    en: {
+      title: 'Scoreboard your size',
+      intro: 'Drag the bottom bar of the scoreboard to resize it; the height is remembered.',
+      sections: [{ heading: 'Also', bullets: ['📞/📡 timers next to the Connect button', 'Smart tooltips on the strip'] }],
+    },
+  },
+  {
     version: '4.86.4',
     id: 'strip-declutter-v1',
     highlightElementIds: ['header-metrics-expand-btn'],

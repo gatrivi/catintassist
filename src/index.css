@@ -4743,6 +4743,39 @@ body:has(.app-container[data-call-mode="true"]) .element-hint-panel {
   .metric-cell-val { font-size: 0.65rem; }
   .metric-watermark { font-size: 1.1rem; }
 }
+/* ── Scoreboard grab bar (v4.86.5) ─────────────────────────────── */
+.scoreboard-grab-bar {
+  flex: 0 0 auto;
+  height: 10px;
+  cursor: ns-resize;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(255, 255, 255, 0.04);
+  border-top: 1px solid rgba(255, 255, 255, 0.12);
+  touch-action: none;
+  user-select: none;
+}
+.scoreboard-grab-bar:hover { background: rgba(168, 85, 247, 0.18); }
+.scoreboard-grab-bar-grip {
+  width: 42px;
+  height: 3px;
+  border-radius: 2px;
+  background: rgba(255, 255, 255, 0.35);
+}
+.scoreboard-grab-bar:hover .scoreboard-grab-bar-grip { background: rgba(168, 85, 247, 0.9); }
+
+/* ── Today timers chip in sticky row (v4.86.5) ─────────────────── */
+.header-oncall-timers {
+  display: inline-flex;
+  gap: 0.3rem;
+  align-items: center;
+  font-size: 0.62rem;
+  font-weight: 800;
+  white-space: nowrap;
+  padding: 0 0.15rem;
+}
+
 /* ── Timeline Segments ────────────────────────────────────── */
 .timeline-segment {
   position: absolute;
