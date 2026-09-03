@@ -2,6 +2,10 @@
 
 **Version source:** `src/constants/version.js` (must match `package.json` + top-right UI pill)
 
+## v4.86.1 - Local dev translation gateway
+- `npm run gateway` serves `api/translate.js` on `127.0.0.1:59210`; `src/setupProxy.js` routes dev `/api/translate` to it. Translation now works under `npm start` without the Vercel gateway (falls through Azure/DeepL/Google/AWS/MyMemory using `.env` server keys).
+
+
 ## v4.86.0 - Scoreboard de-dupe + 20/80 → guideline
 - Off-call expanded Metrics no longer duplicates bars/quick-row where the card, progress stack, or outer controls already show them.
 - Flip-panel card can now be opened by the Metrics toggle outside portal mode (never alongside the expanded income HUD).

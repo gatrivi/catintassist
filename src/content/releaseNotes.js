@@ -25,6 +25,21 @@ import { APP_VERSION } from '../constants/version';
 /** Newest first. Only the entry matching APP_VERSION is shown on load. */
 export const RELEASE_NOTES_CATALOG = [
   {
+    version: '4.86.1',
+    id: 'local-translate-gateway-v1',
+    highlightElementIds: ['header-settings-btn'],
+    es: {
+      title: 'Traduccion en desarrollo local',
+      intro: 'npm run gateway levanta el gateway de traduccion local; npm start lo usa automaticamente.',
+      sections: [{ heading: 'Uso', bullets: ['Terminal 1: npm run gateway', 'Terminal 2: npm start (reiniciar)'] }],
+    },
+    en: {
+      title: 'Local dev translation',
+      intro: 'npm run gateway starts the local translation gateway; npm start uses it automatically.',
+      sections: [{ heading: 'Usage', bullets: ['Terminal 1: npm run gateway', 'Terminal 2: npm start (restart)'] }],
+    },
+  },
+  {
     version: '4.86.0',
     id: 'scoreboard-single-toggle-v1',
     highlightElementIds: ['header-metrics-expand-btn'],

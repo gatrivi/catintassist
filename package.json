@@ -1,6 +1,6 @@
 {
   "name": "catintassist",
-  "version": "4.86.0",
+  "version": "4.86.1",
   "private": true,
   "dependencies": {
     "@testing-library/dom": "^10.4.1",
@@ -17,6 +17,7 @@
     "web-vitals": "^2.1.4"
   },
   "scripts": {
+    "gateway": "node scripts/local-translate-gateway.js",
     "start": "react-scripts start",
     "build": "node scripts/build-with-local-temp.js",
     "test": "node scripts/test-in-batches.js",
