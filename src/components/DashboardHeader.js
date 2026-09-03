@@ -626,7 +626,17 @@ const SessionControlsSticky = React.memo(({
                               : '#9dffed',
                   }}
                 >
-                  {offCallStatusLabel}
+                  {/* v4.86.6: idle state shows today's timers — "Disconnected" is
+                      implied by the amber off-call timer rising. Status text kept
+                      only for error/connecting/zombie states. */}
+                  {isZombieCall || connectionState === 'error' || connectionState === 'connecting'
+                    ? offCallStatusLabel
+                    : (
+                      <span id="header-oncall-timers-center" className="header-oncall-timers">
+                        <span style={{ color: '#34d399' }}>📞{Math.round(onCallMins)}m</span>
+                        <span style={{ color: '#fbbf24' }}>📡{Math.round(offCallMins)}m</span>
+                      </span>
+                    )}
                 </span>
               </div>
             </div>

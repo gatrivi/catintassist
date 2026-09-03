@@ -2,6 +2,10 @@
 
 **Version source:** `src/constants/version.js` (must match `package.json` + top-right UI pill)
 
+## v4.86.6 - Center timers + localhost call-history seed
+- Off-call center of the sticky row shows `📞Xm 📡Ym` instead of "Disconnected" (error/connecting/zombie states keep status text).
+- `src/utils/devStatsSeed.js` (called from `index.js`): localhost-only apply-once seed of 2026-09-03 call history — 15 calls = 172m — into `catintassist_stats` before first load. Monthly absorbs only the delta.
+
 ## v4.86.5 - Draggable scoreboard + sticky-row timers
 - Grab bar at the bottom of the expanded scoreboard (portal mode): drag to resize height 18–80vh, persisted in `catint_scoreboard_max_vh`.
 - 📞/📡 today timers now also live next to the Connect button in the sticky row (visible even when it says Disconnected).

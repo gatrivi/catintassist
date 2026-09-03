@@ -25,6 +25,21 @@ import { APP_VERSION } from '../constants/version';
 /** Newest first. Only the entry matching APP_VERSION is shown on load. */
 export const RELEASE_NOTES_CATALOG = [
   {
+    version: '4.86.6',
+    id: 'center-timers-seed-v1',
+    highlightElementIds: ['header-oncall-timers-center'],
+    es: {
+      title: 'Timers al centro',
+      intro: 'El centro muestra 📞/📡 en vez de Disconnected; historial de hoy precargado en local.',
+      sections: [{ heading: 'Hoy', bullets: ['15 llamadas = 172m sembradas (solo localhost)'] }],
+    },
+    en: {
+      title: 'Timers in the center',
+      intro: 'Center shows 📞/📡 instead of Disconnected; today\u2019s call history preloaded locally.',
+      sections: [{ heading: 'Today', bullets: ['15 calls = 172m seeded (localhost only)'] }],
+    },
+  },
+  {
     version: '4.86.5',
     id: 'scoreboard-grab-bar-v1',
     highlightElementIds: ['header-oncall-timers'],
