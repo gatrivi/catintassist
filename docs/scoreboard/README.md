@@ -1,8 +1,9 @@
-# Scoreboard (v4.48.2)
+# Scoreboard (v4.86.0)
 
-## 20/80 rule (hard constraint)
-- Scoreboard occupies top ~20% of viewport height.
-- Transcription + translation uses the remaining ~80%.
+## 20/80 rule (guideline, not hard cap)
+- **On-call (default):** transcription + translation get ~80% of viewport; scoreboard chrome stays minimal.
+- **Off-call:** the scoreboard may take more space when the user explicitly expands it (Metrics toggle / expanded HUD) — a big scoreboard is legitimate when no call needs the room.
+- **Hard rule that remains:** transcription must stay visible at all times; never let scoreboard chrome fully cover or crowd out the transcript panes.
 
 ## Core layout / components
 - High-density grid layout (condensed view).

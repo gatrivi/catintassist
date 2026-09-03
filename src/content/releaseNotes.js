@@ -25,6 +25,21 @@ import { APP_VERSION } from '../constants/version';
 /** Newest first. Only the entry matching APP_VERSION is shown on load. */
 export const RELEASE_NOTES_CATALOG = [
   {
+    version: '4.86.0',
+    id: 'scoreboard-single-toggle-v1',
+    highlightElementIds: ['header-metrics-expand-btn'],
+    es: {
+      title: 'Scoreboard sin duplicados',
+      intro: 'Fuera de llamada, Metrics abre el panel de score sin repetir barras ni botones.',
+      sections: [{ heading: 'Cambios', bullets: ['Barras y fila rapida solo donde no estan duplicadas', 'Regla 20/80 pasa a guia: el scoreboard puede crecer fuera de llamada'] }],
+    },
+    en: {
+      title: 'Scoreboard without duplicates',
+      intro: 'Off-call, Metrics opens the score panel without repeating bars or buttons.',
+      sections: [{ heading: 'Changes', bullets: ['Bars and quick row only where not duplicated', '20/80 rule is now a guideline: scoreboard may grow off-call'] }],
+    },
+  },
+  {
     version: '4.85.17',
     id: 'deepgram-locked-key-recovery-v1',
     highlightElementIds: ['header-connect-btn'],

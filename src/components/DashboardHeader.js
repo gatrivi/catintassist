@@ -1720,9 +1720,14 @@ export const DashboardHeader = ({
   const renderWorkspaceBody = () => (
       <div className={`dashboard-header-fill${offCallScoreboardView ? ' scoreboard-workspace scoreboard-workspace--header' : ''}`} data-guide={offCallScoreboardView ? 'scoreboard' : undefined}>
       <>
-      {offCallScoreboardView && offCallMetricsExpanded && renderHeaderMetricsStrip(true)}
-      {/* COLLAPSED VIEW (hidden when in compact call mode) */}
-      {(!isActive || callModeExpanded) && isCollapsed && (
+      {/* Expanded strip: portal keeps bars+quick row; non-portal dedupes (progress stack + outer controls row own those) */}
+      {offCallMetricsExpanded && renderHeaderMetricsStrip(true, {
+        showBars: offCallScoreboardView,
+        showQuickRow: offCallScoreboardView,
+      })}
+      {/* COLLAPSED VIEW (hidden when in compact call mode).
+          Card also opens via Metrics toggle, but never alongside the expanded income HUD (showExpandedIncome). */}
+      {(!isActive || callModeExpanded) && (isCollapsed || (offCallMetricsExpanded && !showExpandedIncome)) && (
         <div className="condensed-header-card">
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', padding: '0.15rem 0.35rem 0', flexWrap: 'wrap' }}>
             {!offCallScoreboardView && (

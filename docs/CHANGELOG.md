@@ -2,6 +2,12 @@
 
 **Version source:** `src/constants/version.js` (must match `package.json` + top-right UI pill)
 
+## v4.86.0 - Scoreboard de-dupe + 20/80 → guideline
+- Off-call expanded Metrics no longer duplicates bars/quick-row where the card, progress stack, or outer controls already show them.
+- Flip-panel card can now be opened by the Metrics toggle outside portal mode (never alongside the expanded income HUD).
+- 20/80 space rule relaxed to a guideline (docs/scoreboard/README.md): scoreboard may grow off-call; transcription must always stay visible.
+
+
 ## v4.85.17 - Locked-key critical-call recovery
 - If a saved Deepgram key is locked, Connect now opens the Deepgram vault directly. Press **Unlock**; if the password is already present, one click restores transcription.
 - Missing/locked-key failures now say what broke and show the immediate recovery instead of attempting audio capture first.
