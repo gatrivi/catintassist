@@ -1,11 +1,11 @@
-# Agent Handoff Index (v4.85.14)
+# Agent Handoff Index (v4.85.15)
 
 **Read first:** [`00_global_rules.md`](00_global_rules.md)
 
 Outside agents: pick **one** spec below. Do not re-read the whole repo.
 
 ## Current app version
-Top-right must show **v4.85.14** after this ship.
+Top-right must show **v4.85.15** after this ship.
 
 ## Current operating invariants
 - Active-call STT controls are fixed and reachable: `TAB` + `VB` in a 30px row. Never remove them; a compact UI may only move secondary setup behind a labeled expander.

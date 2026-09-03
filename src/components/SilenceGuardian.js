@@ -2,13 +2,14 @@ import { useEffect, useRef, useState } from 'react';
 import { useSession } from '../contexts/SessionContext';
 import { useProgressiveAudio } from '../hooks/useProgressiveAudio';
 import { safeSet } from '../contexts/SessionContext';
+import { shouldAutoEndGhostCall } from '../utils/callEndGuard';
 
 /**
  * SilenceGuardian monitors for runaway metrics caused by silent "ghost" calls
  * or forgotten disconnects. It prompts the user if no audio activity is detected
  * for a sustained period while the session is active.
  */
-export const SilenceGuardian = ({ lastDataTime }) => {
+export const SilenceGuardian = ({ lastDataTime, onStopAudio }) => {
   const { isActive, lastActivityTime, stopSession, startBreak, isHold } = useSession();
   const audioEngine = useProgressiveAudio();
   const [, setShowWarning] = useState(false);
@@ -81,7 +82,10 @@ export const SilenceGuardian = ({ lastDataTime }) => {
         setShowWarning((w) => (w ? false : w));
       }
 
-      if (silenceSecs > 420 && pc >= 3) {
+      if (shouldAutoEndGhostCall({ silenceSecs, promptCount: pc, isHold })) {
+        // The existing seven-minute guard was ending the scoreboard only.
+        // Stop Deepgram too: an ended call must not keep billing/audio alive.
+        onStopAudio?.();
         stopSession();
         startBreak();
         setShowWarning(false);
@@ -108,6 +112,7 @@ export const SilenceGuardian = ({ lastDataTime }) => {
     isHold,
     startBreak,
     stopSession,
+    onStopAudio,
     doNotShowDisconnectTooltip,
   ]);
 

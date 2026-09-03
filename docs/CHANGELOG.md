@@ -2,6 +2,10 @@
 
 **Version source:** `src/constants/version.js` (must match `package.json` + top-right UI pill)
 
+## v4.85.15 - Ghost-call close
+- After the existing three warnings and 7 minutes without Deepgram speech, the app now stops both the work session and Deepgram.
+- Holds are excluded. This preserves the conservative threshold while preventing forgotten STOP from skewing time or leaving STT open.
+
 ## v4.85.14 - Quiet local translation
 - Browser translation now calls the local `127.0.0.1:59200/stt/translate` service first, one mouthful at a time.
 - Azure, Google GTX, and MyMemory are no longer browser requests, so their 401/CORS errors cannot pile up in DevTools. The Vercel gateway remains the fallback.

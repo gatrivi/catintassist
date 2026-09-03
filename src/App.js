@@ -808,7 +808,7 @@ const Dashboard = () => {
         />
       </div>
 
-      <SilenceGuardian lastDataTime={lastDataTime} />
+      <SilenceGuardian lastDataTime={lastDataTime} onStopAudio={stopRecording} />
 
       <a href="#main-transcript" className="skip-to-main">
         Skip to transcript

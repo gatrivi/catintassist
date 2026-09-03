@@ -25,6 +25,21 @@ import { APP_VERSION } from '../constants/version';
 /** Newest first. Only the entry matching APP_VERSION is shown on load. */
 export const RELEASE_NOTES_CATALOG = [
   {
+    version: '4.85.15',
+    id: 'ghost-call-close-v1',
+    highlightElementIds: ['header-app-logo-btn'],
+    es: {
+      title: 'Cierre de llamada olvidada',
+      intro: 'Tras 7 minutos sin habla y tres avisos, la llamada se cierra sola.',
+      sections: [{ heading: 'Seguro', bullets: ['En espera no se cierra. Se detienen el contador y Deepgram.'] }],
+    },
+    en: {
+      title: 'Forgotten-call close',
+      intro: 'After 7 minutes without speech and three warnings, the call closes itself.',
+      sections: [{ heading: 'Safe', bullets: ['Holds are excluded. Both the timer and Deepgram stop.'] }],
+    },
+  },
+  {
     version: '4.85.14',
     id: 'quiet-local-translation-v1',
     highlightElementIds: ['header-app-logo-btn'],
