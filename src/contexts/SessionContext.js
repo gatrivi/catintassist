@@ -544,16 +544,9 @@ export const SessionProvider = ({ children }) => {
     commitAvailTime();
     
     if (!isRecovery) {
-      // UX: new call starts → clear pinned messages so they don't bleed across calls.
-      const skipPins = !!skipPinnedClearOnceRef.current;
-      if (skipPins) {
-        skipPinnedClearOnceRef.current = false;
-      } else {
-        try {
-          localStorage.removeItem('catint_pinned_msgs');
-        } catch {}
-        window.dispatchEvent(new CustomEvent('catint_pinned_cleared'));
-      }
+      // v4.86.8: pins now PERSIST across calls (product decision).
+      // Consume the one-shot skip flag so stale state never accumulates.
+      if (skipPinnedClearOnceRef.current) skipPinnedClearOnceRef.current = false;
       setSessionSeconds(0);
       accumulatorRef.current = 0;
     }
@@ -619,13 +612,10 @@ export const SessionProvider = ({ children }) => {
       setLastCallSummary(summary);
     }
 
-    // HIPAA/UX: wipe transcript log + pins as soon as the call ends (summary already captured).
+    // HIPAA/UX: wipe transcript log as soon as the call ends (summary already captured).
+    // v4.86.8: pinned messages PERSIST across calls — they are references, not PHI dumps.
     clearCaptions();
     purgeTranslationCache();
-    try {
-      safeLocalStorageSet('catint_pinned_msgs', JSON.stringify([]));
-      window.dispatchEvent(new CustomEvent('catint_pinned_cleared'));
-    } catch (e) {}
     requestHipaaDisconnectGrace();
 
     let billableSecs = sessionSeconds;
@@ -668,11 +658,8 @@ export const SessionProvider = ({ children }) => {
 
   // End of Day: commit daily total to log, check streak, reset counters
   const endDay = (onDayEnded) => {
-    // HIPAA: ensure any residual user-entered content is destroyed at latest.
-    try {
-      safeLocalStorageSet('catint_pinned_msgs', JSON.stringify([]));
-      window.dispatchEvent(new CustomEvent('catint_pinned_cleared'));
-    } catch (e) {}
+    // HIPAA: ensure residual notes trash is destroyed at latest.
+    // v4.86.8: pins persist — no longer wiped at end of day.
     purgeNotesTrashAtEndOfDay();
 
     commitAvailTime();

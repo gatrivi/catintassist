@@ -2,6 +2,10 @@
 
 **Version source:** `src/constants/version.js` (must match `package.json` + top-right UI pill)
 
+## v4.86.8 - Pins persist across calls
+- **Bug fix:** pinned messages were auto-wiped at call start, call end, AND end-of-day — "unpinning themselves". Pins now persist across calls and days.
+- Kept: explicit HIPAA wipe-all still clears pins (via `catint_pinned_cleared`); clear-log dialog behavior unchanged ("Pinned messages stay").
+
 ## v4.86.7 - Auto-start on speech default ON
 - Speech auto-start (`speechAutoConnect`) now defaults to **on** for fresh profiles — if a listening stream detects speech while off-call, the session starts automatically (existing toggle in Settings still respected: `'0'` stays off).
 - Auto-stop verified: SilenceGuardian ends ghost calls after 3 silence prompts + 7 min, and trailing silence >30s is deducted from billable time at STOP.
