@@ -2,6 +2,11 @@
 
 **Version source:** `src/constants/version.js` (must match `package.json` + top-right UI pill)
 
+## v4.86.7 - Auto-start on speech default ON
+- Speech auto-start (`speechAutoConnect`) now defaults to **on** for fresh profiles — if a listening stream detects speech while off-call, the session starts automatically (existing toggle in Settings still respected: `'0'` stays off).
+- Auto-stop verified: SilenceGuardian ends ghost calls after 3 silence prompts + 7 min, and trailing silence >30s is deducted from billable time at STOP.
+- Total-mins editing: 📞/☕ edit buttons → TimeEditModal (live timer / ±add / set total; fixes daily+monthly together).
+
 ## v4.86.6 - Center timers + localhost call-history seed
 - Off-call center of the sticky row shows `📞Xm 📡Ym` instead of "Disconnected" (error/connecting/zombie states keep status text).
 - `src/utils/devStatsSeed.js` (called from `index.js`): localhost-only apply-once seed of 2026-09-03 call history — 15 calls = 172m — into `catintassist_stats` before first load. Monthly absorbs only the delta.

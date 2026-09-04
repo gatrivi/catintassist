@@ -70,9 +70,11 @@ export const SessionProvider = ({ children }) => {
 
   const [speechAutoConnect, setSpeechAutoConnect] = useState(() => {
     try {
-      return localStorage.getItem('catint_speech_auto_v1') === '1';
+      // v4.86.7: default ON — user requested auto start on speech. Toggle in Settings.
+      const stored = localStorage.getItem('catint_speech_auto_v1');
+      return stored === null ? true : stored === '1';
     } catch {
-      return false;
+      return true;
     }
   });
   const speechAutoConnectRef = useRef(speechAutoConnect);
