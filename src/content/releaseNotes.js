@@ -25,6 +25,21 @@ import { APP_VERSION } from '../constants/version';
 /** Newest first. Only the entry matching APP_VERSION is shown on load. */
 export const RELEASE_NOTES_CATALOG = [
   {
+    version: '4.88.4',
+    id: 'dedupe-timers-v1',
+    highlightElementIds: ['daily-targets-chip'],
+    es: {
+      title: 'Menos repetición',
+      intro: 'v4.88.4 — Se eliminaron duplicados: los tiempos 📞/📡 y $ aparecen una sola vez (fila pegada + franja de la barra de estado). El resumen del marcador ahora solo muestra % del mes.',
+      sections: [{ heading: 'Limpieza', bullets: ['Centro inactivo vacío (el timer ámbar ya indica el estado)'] }],
+    },
+    en: {
+      title: 'Less repetition',
+      intro: 'v4.88.4 — Duplicates removed: 📞/📡 timers and $ now appear once (sticky row + status-bar strip). Scoreboard summary shows only monthly %.',
+      sections: [{ heading: 'Cleanup', bullets: ['Idle center emptied (amber off-call timer already implies state)'] }],
+    },
+  },
+  {
     version: '4.88.3',
     id: 'status-bar-targets-strip-v1',
     highlightElementIds: ['daily-targets-chip'],

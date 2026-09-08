@@ -641,24 +641,11 @@ const SessionControlsSticky = React.memo(({
                               : '#9dffed',
                   }}
                 >
-                  {/* v4.86.6: idle state shows today's timers — "Disconnected" is
-                      implied by the amber off-call timer rising. Status text kept
-                      only for error/connecting/zombie states. */}
-                  {isZombieCall || connectionState === 'error' || connectionState === 'connecting'
+                  {/* v4.88.4: timers live once in the sticky row + status-bar strip;
+                      idle center stays empty (amber off-call timer implies state). */}
+                  {(isZombieCall || connectionState === 'error' || connectionState === 'connecting')
                     ? offCallStatusLabel
-                    : (
-                      <span id="header-oncall-timers-center" className="header-oncall-timers">
-                        <span
-                          id="header-daily-income-center"
-                          style={{ color: '#fb923c', fontWeight: 800, fontSize: '0.85rem' }}
-                          title="Earned today (live) — v4.87.0"
-                        >
-                          ${Math.round(dailyIncomeArs).toLocaleString('en-US')}
-                        </span>
-                        <span style={{ color: '#34d399' }}>📞{Math.round(onCallMins)}m</span>
-                        <span style={{ color: '#fbbf24' }}>📡{Math.round(offCallMins)}m</span>
-                      </span>
-                    )}
+                    : null}
                 </span>
               </div>
             </div>

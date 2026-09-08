@@ -71,9 +71,7 @@ export const HeaderMetricsStrip = ({
   /** True when the expanded income HUD is showing — summary already duplicated there. */
   detailShown = false,
 }) => {
-  const arsLabel = liveDailyArs >= 1000
-    ? `AR$${Math.round(liveDailyArs / 1000)}k`
-    : `AR$${liveDailyArs}`;
+  // v4.88.4: arsLabel removed — $ earnings live in the sticky row + status-bar strip.
 
   const hover = (payload) => (e) => onBarHover?.(e, payload);
   const leave = () => onBarLeave?.();
@@ -81,15 +79,10 @@ export const HeaderMetricsStrip = ({
   return (
     <div className="header-metrics-strip" data-guide="scoreboard">
       <div className="header-metrics-strip-row">
+        {/* v4.88.4: mins/$/📞📡 moved out — they live in the sticky row and the
+            status-bar targets strip. Only monthly % stays here (not shown elsewhere). */}
         <span className="header-metrics-summary">
-          {Math.round(totalDailyMins)}m/{Math.round(dailyGoal)}m
-          {!detailShown && <span> · {monthPct}% mo · {arsLabel}</span>}
-          {onCallMins != null && offCallMins != null && (
-            <span title="Today: on-call (calls) vs off-call (avail + break) time" style={{ opacity: 0.85 }}>
-              {' '}· <span style={{ color: '#34d399' }}>📞{Math.round(onCallMins)}m</span>
-              {' '}<span style={{ color: '#fbbf24' }}>📡{Math.round(offCallMins)}m</span>
-            </span>
-          )}
+          {!detailShown && <span title={`Month: ${monthPct}% of 5500m pace`}>{monthPct}% mo</span>}
         </span>
         {showExpandToggle && (
         <ElementHintTarget

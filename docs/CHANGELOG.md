@@ -2,6 +2,10 @@
 
 **Version source:** `src/constants/version.js` (must match `package.json` + top-right UI pill)
 
+## v4.88.4 - De-duplicated timers/earnings
+
+- **Cleanup:** the `$ 📞 📡` block no longer renders twice (center idle slot emptied; sticky row keeps it). Header metrics summary trimmed to `X% mo` — mins/$/📞📡 live in the sticky row and the status-bar targets strip.
+
 ## v4.88.3 - Readable status-bar targets strip
 
 - **New:** status bar center shows 3 readable current/target pairs: `💵 $earned/$target · ⏱ done/target · ☕ break taken/max`. Break max = total break for today that still lets you hit the $1200-pace minutes by 18:00; hover adds the 5500m fallback and 23:00 overtime slack. Chip turns orange when 18h is no longer reachable.
