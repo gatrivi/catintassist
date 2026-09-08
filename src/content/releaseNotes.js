@@ -25,6 +25,29 @@ import { APP_VERSION } from '../constants/version';
 /** Newest first. Only the entry matching APP_VERSION is shown on load. */
 export const RELEASE_NOTES_CATALOG = [
   {
+    version: '4.88.0',
+    id: 'study-cue-cards-v1',
+    highlightElementIds: ['study-cue-cards'],
+    es: {
+      title: 'Tarjetas de estudio',
+      intro: 'v4.88.0 — Entre llamadas y en espera: tarjetas de glosario EN→ES, avisos NO-SAY, siglas y recordatorios de calidad. Elige el dominio (chips) antes del turno.',
+      sections: [{ heading: 'Nuevo', bullets: [
+        'Rotación automática cada 10s; toca la tarjeta para revelar la respuesta',
+        'Dominios: auto, seguros, educación, servicios, finanzas, social, médico',
+        'Ajustes → Pantalla para ocultar las tarjetas',
+      ] }],
+    },
+    en: {
+      title: 'Study cue cards',
+      intro: 'v4.88.0 — Between calls and on hold: EN→ES glossary cards, NO-SAY warnings, acronyms, and QA reminders. Pick a domain (chips) before your shift.',
+      sections: [{ heading: 'New', bullets: [
+        'Auto-rotates every 10s; tap the card to reveal the answer',
+        'Domains: auto, insurance, education, utilities, financial, social, medical',
+        'Settings → Display to hide the cards',
+      ] }],
+    },
+  },
+  {
     version: '4.87.5',
     id: 'call-log-import-authoritative-v1',
     highlightElementIds: ['settings-data-import'],

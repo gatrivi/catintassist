@@ -12,6 +12,8 @@ import {
   pickRotatingAdvice,
 } from '../utils/offCallIdleMessages';
 import { needsUserSuppliedDeepgramKey } from '../utils/deepgramRuntimeKey';
+import { StudyCueCards } from './StudyCueCards';
+import { COMPONENT_IDS } from '../utils/componentVisibility';
 
 /** Off-call main (~80%): guidance + future transcript workspace below dashboard-header. */
 export const OffCallWorkspace = ({
@@ -94,8 +96,13 @@ export const OffCallWorkspace = ({
             {detail.lines.map((line) => (
               <p key={line} className="interpret-pane-idle-line">{line}</p>
             ))}
-            {detail.showRotatingTip && (
-              <p className="interpret-pane-tip">{rotatingTip}</p>
+            {/* v4.88.0: cue cards supersede the rotating tip in healthy idle */}
+            {detail.showRotatingTip && isComponentVisible(COMPONENT_IDS.study_cue_cards) ? (
+              <StudyCueCards variant="idle" />
+            ) : (
+              detail.showRotatingTip && (
+                <p className="interpret-pane-tip">{rotatingTip}</p>
+              )
             )}
             {detail.showChecklist && (
               <ul className="interpret-pane-checklist">

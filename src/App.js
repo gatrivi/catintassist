@@ -52,9 +52,11 @@ import { APP_VERSION_LABEL } from "./constants/version";
 import { setSttActive } from "./utils/routeDiagnostics";
 import { isWellbeingDockEnabled } from "./utils/wellbeingDock";
 import {
+  COMPONENT_IDS,
   isComponentVisible,
   useComponentVisibilityRefresh,
 } from "./utils/componentVisibility";
+import { StudyCueCards } from "./components/StudyCueCards";
 import "./index.css";
 
 const focusQuickNotesSoon = () => {
@@ -96,6 +98,7 @@ const Dashboard = () => {
     isNotesOpen,
     setIsNotesOpen,
     isActive,
+    isHold,
     hipaaGraceActive,
     isBreakActive,
     isZombieCall,
@@ -905,6 +908,12 @@ const Dashboard = () => {
         <main id="main-transcript" className={`main-content ${isNotesOpen ? "notes-open" : ""}`}>
           {isActive && <OnCallSoundboardStrip micTestMode={micTestMode} />}
           <div className="transcription-pane" data-guide="transcript">
+            {/* v4.88.0: hold time becomes study time — cards fade in over the transcript */}
+            {isActive && isHold && isComponentVisible(COMPONENT_IDS.study_cue_cards, { isActive }) && (
+              <div className="study-hold-overlay">
+                <StudyCueCards variant="hold" />
+              </div>
+            )}
             <TranscriptionBoard
               captions={captions}
               isActive={isActive}

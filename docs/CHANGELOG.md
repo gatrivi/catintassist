@@ -2,6 +2,14 @@
 
 **Version source:** `src/constants/version.js` (must match `package.json` + top-right UI pill)
 
+## v4.88.0 - Study cue cards (between calls + on hold)
+
+- **New:** rotating study cards in the off-call idle pane (supersede the rotating tip) and as a fade-in overlay over the transcript during HOLD — dead hold time becomes study time.
+- **Cards:** EN→ES glossary, NO-SAY warnings (aseguranza→seguro, enrolarse→inscribirse, always usted, first person), acronyms, QA reminders. Tap to reveal, auto-rotate 10s, skip.
+- **Domain picker:** chips on the card (auto/insurance/education/utilities/financial/social/medical/all), persisted `catint_study_domain_v1`. QA cards show in every domain.
+- **Data:** `src/utils/studyDecks.js` — seeded starter deck (~55 cards). Full LanguagesCX glossary: paste cleaned rows into `STUDY_CARDS`; jest validator (`validateDecks`) fails the build on duplicate EN terms (airbag/appointment/license dupes) or empty fields.
+- **Toggle:** Settings → Display → "Study cue cards" (`study_cue_cards`, default always).
+
 ## v4.87.5 - Vertical paste hardening
 
 - **Bug:** v4.87.4's vertical regrouping required an exact-match date line — NBSP / odd line endings from the client app copy made it bail (49 skipped, 0 rows).

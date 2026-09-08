@@ -15,6 +15,7 @@ export const COMPONENT_IDS = {
   expanded_income_cards: 'expanded_income_cards',
   mic_meter_strip: 'mic_meter_strip',
   off_call_guide: 'off_call_guide',
+  study_cue_cards: 'study_cue_cards',
   wellbeing_dock: 'wellbeing_dock',
 };
 
@@ -29,6 +30,7 @@ export const COMPONENT_LABELS = {
   [COMPONENT_IDS.expanded_income_cards]: 'Expanded bounty / income cards',
   [COMPONENT_IDS.mic_meter_strip]: 'Mic level meter strip',
   [COMPONENT_IDS.off_call_guide]: 'Off-call welcome guide (interpret pane)',
+  [COMPONENT_IDS.study_cue_cards]: 'Study cue cards (between calls + on hold)',
   [COMPONENT_IDS.wellbeing_dock]: 'Wellbeing dock (bottom widgets)',
 };
 
@@ -42,6 +44,7 @@ export const DEFAULT_COMPONENT_VISIBILITY = {
   [COMPONENT_IDS.expanded_income_cards]: 'off_call',
   [COMPONENT_IDS.mic_meter_strip]: 'always',
   [COMPONENT_IDS.off_call_guide]: 'hidden',
+  [COMPONENT_IDS.study_cue_cards]: 'always',
   [COMPONENT_IDS.wellbeing_dock]: 'hidden',
 };
 
