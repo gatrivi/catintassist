@@ -25,6 +25,27 @@ import { APP_VERSION } from '../constants/version';
 /** Newest first. Only the entry matching APP_VERSION is shown on load. */
 export const RELEASE_NOTES_CATALOG = [
   {
+    version: '4.87.3',
+    id: 'interpreter-cue-highlight-v1',
+    highlightElementIds: ['main-transcript'],
+    es: {
+      title: 'Mensajes al intérprete en celeste',
+      intro: 'v4.87.3 — Si un mensaje empieza con "Intérprete," la burbuja se pinta celeste (borde, fondo y texto) para que no lo leas como si fuera del paciente.',
+      sections: [{ heading: 'Nuevo', bullets: [
+        'Detecta "Interpreter," / "Intérprete," (EN/ES) al inicio del mensaje',
+        'Celeste gana sobre el color de idioma y sobre las alertas de longitud',
+      ] }],
+    },
+    en: {
+      title: 'Interpreter-addressed messages in light blue',
+      intro: 'v4.87.3 — Messages starting with "Interpreter," now render light blue (border, background and text) so you never read them as patient speech.',
+      sections: [{ heading: 'New', bullets: [
+        'Detects "Interpreter," / "Intérprete," (EN/ES) at the start of a message',
+        'Light blue wins over language color and length warnings',
+      ] }],
+    },
+  },
+  {
     version: '4.87.2',
     id: 'speech-autostart-stale-closure-v1',
     highlightElementIds: ['header-calldetect-btn'],

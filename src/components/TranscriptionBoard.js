@@ -48,6 +48,9 @@ import {
   CORRECTIONS_CHANGED_EVENT,
 } from '../utils/transcriptCorrections';
 
+// Messages addressed TO the interpreter ("Interpreter, ..." / "Intérprete, ...") — light blue so they're never read as patient speech.
+const INTERPRETER_CUE_RE = /^\s*(interpreter|int[ée]rprete|interprete)\s*[,.:;:]/i;
+
 // EL TABLERO DE TEXTO: Aquí es donde aparece todo lo que dicen en la llamada.
 // Muestra quién habla, lo traduce y te deja copiar los números con un clic.
 const getBubbleStyle = (text, isCurrent, lang, pair) => {
@@ -58,6 +61,13 @@ const getBubbleStyle = (text, isCurrent, lang, pair) => {
 
   let baseBorder = isRight ? 'rgba(16, 185, 129, 0.4)' : 'rgba(59, 130, 246, 0.4)';
   let baseBg = isRight ? 'rgba(16, 185, 129, 0.03)' : 'rgba(59, 130, 246, 0.03)';
+
+  if (INTERPRETER_CUE_RE.test(text)) {
+    // Cue wins over lang color and length warnings — it's a meta-message, not content.
+    baseBorder = 'rgba(125, 211, 252, 0.85)';
+    baseBg = 'rgba(125, 211, 252, 0.10)';
+    return { borderLeft: `3px solid ${baseBorder}`, backgroundColor: baseBg };
+  }
 
   if (wordCount >= 40) {
     baseBorder = 'rgba(239, 68, 68, 0.6)';
@@ -477,7 +487,7 @@ const TranslatedBubble = ({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [text, lang, userCorrected, correctionsRev]);
 
-  const { translation, audioUrl, engineStatus, translationMeta, targetLang } = useTranslate(
+  const { translation, audioUrl, engineStatus, translationMeta, targetLang, isStale } = useTranslate(
     displaySourceText,
     lang,
     prefetchTTS,
@@ -494,7 +504,9 @@ const TranslatedBubble = ({
     },
   );
   const isThisPlaying = playingUrl && audioUrl && playingUrl === audioUrl;
-  const transcriptColor = '#ffffff';
+  const transcriptColor = INTERPRETER_CUE_RE.test(displaySourceText || text)
+    ? '#bae6fd' // light blue text for "Interpreter, ..." messages (matches bubble tint)
+    : '#ffffff';
   const translationColor = '#a1a1aa';
 
   const isTranslationStuck = isTranslationStuckForRetranslate(
@@ -637,7 +649,12 @@ const TranslatedBubble = ({
             translationIsSourceFallback ? (
               null
             ) : (
-              <MemoInteractiveText text={translation} scramble={targetScramble} applyNumberWords={targetUsesNumberWords} lang={targetLang} protectionsActive={protectionsActive} />
+              <>
+                <MemoInteractiveText text={translation} scramble={targetScramble} applyNumberWords={targetUsesNumberWords} lang={targetLang} protectionsActive={protectionsActive} />
+                {(isStale || engineStatus === 'translating') && (
+                  <span className="bubble-stale-badge" title="Source updated — refreshing translation…" style={{ opacity: 0.45, fontSize: '0.65rem', marginLeft: '0.35rem' }}>↻</span>
+                )}
+              </>
             )
           ) : translationFailed ? (
             <span style={{ opacity: 0.3, fontSize: '0.7rem' }}>⚠️ translation failed</span>
