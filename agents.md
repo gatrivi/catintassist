@@ -5,6 +5,13 @@ alwaysApply: true
 
 cats interpreter assistant app
 
+## PUSH BUDGET (Vercel FREE — account at risk)
+- Every push to master = a Vercel deploy. We are on the **free tier**: pushing too often can get the account closed.
+- **MAX 4 pushes per rolling hour. Over that: STOP and ask the user first.**
+- **Log every push** in [`docs/push-log.md`](docs/push-log.md). Use the guard script — it pushes, logs and enforces the budget:
+  `node scripts/safe-push.js "label"` (add `--allow-over` ONLY after the user approves).
+- Batch work: one push per verified feature set (tests + build green), never per commit.
+
 ## Answer length (agents)
 Replies and plan **summaries** should land in three tiers:
 - **60%** of answers: **<40 words**

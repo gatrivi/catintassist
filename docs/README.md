@@ -3,6 +3,8 @@
 This is the single source of truth for *documentation + onboarding*.
 
 ## What's new
+- **2026-09-08** — **PUSH BUDGET (Vercel free)**: max 4 pushes/hour, every push logged — [`push-log.md`](push-log.md) · guard script `scripts/safe-push.js`
+- **2026-09-07** — Full read-only app audit (translation latency root causes, soundboard garble candidates, secrets-in-bundle, test failures) — [`DIAGNOSIS-2026-09-07.md`](DIAGNOSIS-2026-09-07.md)
 - **v4.84.29** — Button colors + SB chrome (live/test/danger/chrome) — [`development/button-sizing.md`](development/button-sizing.md)
 - **v4.84.24** — Sticky bottom transcript follow (default ON) — [`CHANGELOG.md`](CHANGELOG.md)
 - **v4.84.23** — Connect button: mode SVG + robot when Deepgram ready — [`CHANGELOG.md`](CHANGELOG.md)
@@ -28,6 +30,7 @@ This is the single source of truth for *documentation + onboarding*.
 - [`docs/handoff/00_global_rules.md`](handoff/00_global_rules.md): hard constraints (80/20, stability, tests)
 
 ## Start Here
+- [Second microphone cable](development/second-mic-cable.md): installation prerequisite, separate routing, and pending app support (2026-09-05).
 - [`docs/ROADMAP.md`](ROADMAP.md): product phases 0–3, do-not-yet list, future inbox
 - [`docs/onboarding/quickstart.md`](onboarding/quickstart.md): install, run locally, and dev/sanity checks
 - [`docs/onboarding/release-notes.md`](onboarding/release-notes.md): **novedades / what's new** — bilingual modal + VB-Cable guide (v4.84.20)
