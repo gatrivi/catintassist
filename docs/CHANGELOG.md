@@ -2,6 +2,10 @@
 
 **Version source:** `src/constants/version.js` (must match `package.json` + top-right UI pill)
 
+## v4.89.0 - HUD inspector (hover any element, click to copy selector)
+
+- **New:** ⌖ toggle bottom-right (or Alt+I): hover ANY hud element — incl. plain container divs — shows name + unique CSS selector; click tooltip (or press C) copies `name :: selector` for bug reports. Works during calls. `src/components/HudInspector.js`.
+
 ## v4.88.4 - De-duplicated timers/earnings
 
 - **Cleanup:** the `$ 📞 📡` block no longer renders twice (center idle slot emptied; sticky row keeps it). Header metrics summary trimmed to `X% mo` — mins/$/📞📡 live in the sticky row and the status-bar targets strip.

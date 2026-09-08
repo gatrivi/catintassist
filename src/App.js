@@ -35,6 +35,7 @@ import { OffCallWorkspace } from "./components/OffCallWorkspace";
 import { SplashScreen } from "./components/SplashScreen";
 import { GuideHostProvider } from "./contexts/GuideHostContext";
 import { ElementHintProvider } from "./components/ElementHint";
+import { HudInspectorHost } from "./components/HudInspector";
 import { isSplashSeenThisSession } from "./utils/splashStorage";
 import { isAppGuideDone } from "./utils/appGuideStorage";
 import { getReleaseNoteForVersion } from "./content/releaseNotes";
@@ -1001,6 +1002,7 @@ const Dashboard = () => {
         </button>
       </div>
     </div>
+    <HudInspectorHost />
     </GuideHostProvider>
     </ElementHintProvider>
   );

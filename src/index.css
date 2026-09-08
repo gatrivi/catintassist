@@ -3501,6 +3501,71 @@ body:has(.app-container[data-call-mode="true"]) .element-hint-panel {
   display: none;
 }
 
+/* HudInspector (v4.89.0): hover-anything tooltip + click-to-copy selector. */
+.hud-inspector-toggle {
+  position: fixed;
+  right: 10px;
+  bottom: 10px;
+  z-index: 1300;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  border: 1px solid var(--panel-border);
+  background: rgba(2, 6, 23, 0.85);
+  color: #7dd3fc;
+  font-size: 0.9rem;
+  line-height: 1;
+  cursor: pointer;
+  opacity: 0.55;
+}
+.hud-inspector-toggle:hover { opacity: 1; border-color: #38bdf8; }
+.hud-inspector-toggle.is-on {
+  opacity: 1;
+  background: rgba(56, 189, 248, 0.22);
+  border-color: #38bdf8;
+  box-shadow: 0 0 10px rgba(56, 189, 248, 0.5);
+}
+.hud-inspector-tip {
+  position: fixed;
+  z-index: 1299;
+  max-width: 300px;
+  background: rgba(2, 6, 23, 0.92);
+  border: 1px solid #38bdf8;
+  border-radius: 6px;
+  box-shadow: 0 8px 22px rgba(0, 0, 0, 0.55);
+  padding: 0.35rem 0.45rem;
+  cursor: pointer;
+  pointer-events: auto;
+}
+.hud-inspector-name {
+  font-size: 0.6rem;
+  font-weight: 900;
+  color: #fff;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+.hud-inspector-sel {
+  display: block;
+  margin-top: 0.2rem;
+  font-size: 0.56rem;
+  font-family: var(--font-mono, monospace);
+  color: #7dd3fc;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid var(--panel-border);
+  border-radius: 4px;
+  padding: 0.12rem 0.3rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 270px;
+}
+.hud-inspector-copy {
+  display: block;
+  margin-top: 0.2rem;
+  font-size: 0.55rem;
+  color: rgba(226, 232, 240, 0.65);
+}
+
 /* Compact chip layout hotfix (v4.73.4):
    Force a tiny, single-line chip so diagnostics never overlaps header right controls. */
 .connection-diagnostics-bar.is-compact {

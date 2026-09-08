@@ -25,6 +25,21 @@ import { APP_VERSION } from '../constants/version';
 /** Newest first. Only the entry matching APP_VERSION is shown on load. */
 export const RELEASE_NOTES_CATALOG = [
   {
+    version: '4.89.0',
+    id: 'hud-inspector-v1',
+    highlightElementIds: ['hud-inspector-toggle'],
+    es: {
+      title: 'Inspector HUD',
+      intro: 'v4.89.0 — Botón ⌖ abajo a la derecha (o Alt+I): pasá el mouse sobre CUALQUIER elemento, incluso divs contenedores, y ves su nombre + selector. Clic en el tooltip para copiarlo y pegarlo al reportar fallas.',
+      sections: [{ heading: 'Uso', bullets: ['Funciona también durante la llamada', 'Tecla C copia el selector bajo el mouse'] }],
+    },
+    en: {
+      title: 'HUD inspector',
+      intro: 'v4.89.0 — ⌖ button bottom-right (or Alt+I): hover ANY element, even container divs, to see its name + selector. Click the tooltip to copy it for bug reports.',
+      sections: [{ heading: 'Use', bullets: ['Works during calls too', 'Press C to copy the hovered selector'] }],
+    },
+  },
+  {
     version: '4.88.4',
     id: 'dedupe-timers-v1',
     highlightElementIds: ['daily-targets-chip'],
