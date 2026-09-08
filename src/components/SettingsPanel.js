@@ -26,6 +26,7 @@ import { TestHarnessPanel, isTestHarnessEnabled } from './TestHarnessPanel';
 import { Phase0SmokeDashboard, isPhase0SmokeEnabled } from './Phase0SmokeDashboard';
 import { AuthPanel } from './AuthPanel';
 import { CorrectionsBackupPanel } from './CorrectionsBackupPanel';
+import { CallLogImportPanel } from './CallLogImportPanel';
 import { useAuth } from '../contexts/AuthContext';
 import { useAudioSource } from '../hooks/useAudioSource';
 import { getDeepgramSettingsPrompt } from '../utils/deepgramSettingsPrompt';
@@ -346,7 +347,7 @@ export default function SettingsPanel({
               Speech Auto Connect — start call when speech detected
             </label>
             <p style={{ fontSize: 10, color: 'rgba(255,255,255,0.5)', marginTop: 6 }}>
-              Requires audio attached. Trailing silence deducted on STOP if you forgot the button.
+              v4.92.0: between calls the app keeps its ears open (idle ear — Deepgram gets NO audio, only pings, so no usage) and starts the call by itself when speech appears. Requires audio attached (one CONNECT press per browser session).
             </p>
             <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12, cursor: 'pointer', marginTop: 14 }}>
               <input
@@ -442,7 +443,9 @@ export default function SettingsPanel({
 
         {section === 'data' && (
           <div style={{ marginTop: 12 }}>
-            <div style={{ fontSize: 11, color: '#93c5fd', marginBottom: 8 }}>Taught corrections</div>
+            <div style={{ fontSize: 11, color: '#93c5fd', marginBottom: 8 }}>Company call log import</div>
+            <CallLogImportPanel />
+            <div style={{ fontSize: 11, color: '#93c5fd', marginBottom: 8, marginTop: 14 }}>Taught corrections</div>
             <CorrectionsBackupPanel />
             <p style={{ fontSize: 10, color: 'rgba(255,255,255,0.45)', marginTop: 14, lineHeight: 1.45 }}>
               Compliance notes: <code>docs/compliance/operational-notes.md</code>

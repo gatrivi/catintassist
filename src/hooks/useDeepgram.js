@@ -49,9 +49,20 @@ import {
 } from "../utils/deepgramListenConfig";
 import { writeMicTestMode } from "../utils/micMode";
 import { traceCaptionArrayDiff } from "../utils/vanishTrace";
+import { updateVadLoudFrames, shouldWakeFromVad } from "../utils/idleEar";
 
 const CAPTIONS_CLEARED_EVENT = "catint_captions_cleared";
 const STT_TRACE_LIMIT = 300;
+
+/** Opt-in per-chunk/per-message console spam. Buffer (`window.__catintSttTrace`) always runs. */
+const STT_VERBOSE_KEY = "catint_stt_verbose";
+export const isSttVerbose = () => {
+  try {
+    return localStorage.getItem(STT_VERBOSE_KEY) === "1";
+  } catch {
+    return false;
+  }
+};
 
 const TAB_STREAM_READY_KEY = "catint_tab_stream_ok_v1";
 const readTabStreamReady = () => {
@@ -198,6 +209,15 @@ export const useDeepgram = () => {
   const connectAttemptIdRef = useRef(0);
   const watchdogTimeoutRef = useRef(null);
   const keepaliveIntervalRef = useRef(null);
+  // ── IDLE EAR (v4.92.0): always-on speech detection between calls ──
+  const idleEarActiveRef = useRef(false);
+  const idleKeepAliveRef = useRef(null);
+  const vadIntervalRef = useRef(null);
+  const vadCtxRef = useRef(null);
+  const vadLoudFramesRef = useRef(0);
+  const startRecordingRef = useRef(null);
+  const speechAutoConnectRef = useRef(speechAutoConnect);
+  useEffect(() => { speechAutoConnectRef.current = speechAutoConnect; }, [speechAutoConnect]);
   const connectFailTimerRef = useRef(null);
   const connectFlagsRef = useRef({
     phase: "idle",
@@ -273,7 +293,9 @@ export const useDeepgram = () => {
     const trace = (window.__catintSttTrace ??= []);
     trace.push(entry);
     if (trace.length > STT_TRACE_LIMIT) trace.splice(0, trace.length - STT_TRACE_LIMIT);
-    console.info(`[CAT STT] ${stage}`, entry);
+    // v4.91.0: console.info per audio chunk + per Results msg was a CPU sink
+    // with DevTools open. Buffer always; print only when verbose opted in.
+    if (isSttVerbose()) console.info(`[CAT STT] ${stage}`, entry);
   }, []);
 
   const patchKeyProgress = useCallback(() => {
@@ -1198,20 +1220,169 @@ export const useDeepgram = () => {
     ],
   );
 
+  // ── IDLE EAR ENGINE (v4.92.0) ───────────────────────────────────────────
+  // After STOP: sockets stay OPEN (KeepAlive pings only — zero audio sent to
+  // Deepgram = zero usage) and a local VAD watches the preserved stream.
+  // Speech → resume recorder → transcript → trySpeechAutoStart starts the
+  // call by itself. First attach still needs one CONNECT press (browser rule).
+
+  /** Tear down VAD + idle keepalive. */
+  const stopIdleEar = useCallback(() => {
+    idleEarActiveRef.current = false;
+    if (vadIntervalRef.current) { clearInterval(vadIntervalRef.current); vadIntervalRef.current = null; }
+    if (idleKeepAliveRef.current) { clearInterval(idleKeepAliveRef.current); idleKeepAliveRef.current = null; }
+    try { vadCtxRef.current?.close(); } catch (_) {}
+    vadCtxRef.current = null;
+  }, []);
+
+  /** Rebuild just the MediaRecorder and stream into the already-open sockets. */
+  const startRecorderOnSockets = useCallback((stream) => {
+    try {
+      if (mediaRecorderRef.current) {
+        try { mediaRecorderRef.current.stop(); } catch (_) {}
+        mediaRecorderRef.current = null;
+      }
+      const audioStream = buildAudioOnlyStream(stream);
+      if (!audioStream) return false;
+      const multiMode = usesMultiSocket(languagePairRef.current);
+      const mrOpts = getMediaRecorderOptions();
+      mediaRecorderRef.current = mrOpts
+        ? new MediaRecorder(audioStream, mrOpts)
+        : new MediaRecorder(audioStream);
+      mediaRecorderRef.current.addEventListener("dataavailable", (e) => {
+        if (e.data.size > 0) {
+          try {
+            if (socketRefEn.current?.readyState === 1) socketRefEn.current.send(e.data);
+            if (!multiMode && socketRefEs.current?.readyState === 1) socketRefEs.current.send(e.data);
+          } catch (_) {}
+          lastAudioProgressAtRef.current = Date.now();
+          syncConnectProgress({ audioChunksSent: true, lastAudioChunkAt: Date.now() });
+        }
+      });
+      mediaRecorderRef.current.start(getMediaRecorderTimeslice(sttLatencyModeRef.current));
+      return true;
+    } catch (err) {
+      console.error("[IdleEar] recorder resume failed:", err);
+      return false;
+    }
+  }, [syncConnectProgress]);
+
+  /** VAD heard speech → resume audio into warm sockets (or full reconnect). */
+  const wakeFromIdleEar = useCallback(() => {
+    if (!idleEarActiveRef.current) return;
+    stopIdleEar();
+    const stream = streamRef.current;
+    const multiMode = usesMultiSocket(languagePairRef.current);
+    const enOpen = socketRefEn.current?.readyState === 1;
+    const esOk = multiMode || socketRefEs.current?.readyState === 1;
+    if (stream?.active && stream.getAudioTracks().length > 0 && enOpen && esOk) {
+      if (startRecorderOnSockets(stream)) {
+        setConnectionState("connected");
+        setConnectionMessage("Speech detected — reconnecting…");
+        return;
+      }
+    }
+    // Cold path: sockets died while idle — full rebuild from the preserved
+    // stream (reuse path, no tab picker, no user gesture needed).
+    startRecordingRef.current?.();
+  }, [stopIdleEar, startRecorderOnSockets]);
+
+  const wakeFromIdleEarRef = useRef(wakeFromIdleEar);
+  wakeFromIdleEarRef.current = wakeFromIdleEar;
+
+  /** Enter idle-ear from stopRecording. Returns false → full disconnect. */
+  const enterIdleEar = useCallback(() => {
+    if (!speechAutoConnectRef.current) return false;
+    const stream = streamRef.current;
+    if (!stream?.active || stream.getAudioTracks().length === 0) return false;
+
+    // Stop ONLY the recorder — sockets stay open, no audio leaves the machine.
+    try {
+      if (mediaRecorderRef.current && mediaRecorderRef.current.state !== "inactive") {
+        mediaRecorderRef.current.stop();
+      }
+    } catch (_) {}
+    mediaRecorderRef.current = null;
+    idleEarActiveRef.current = true;
+    setConnectionState("connected");
+    setConnectionMessage("Idle ear — listening for speech (auto-connect on)");
+    syncConnectProgress({
+      phase: "ready",
+      audioStreamReady: true,
+      socketsOpen: true,
+      socketEn: "open",
+      socketEs: usesMultiSocket(languagePairRef.current) ? "skipped" : "open",
+      audioChunksSent: false,
+    });
+
+    // Deepgram closes a socket after ~10s without audio — KeepAlive every 4s.
+    idleKeepAliveRef.current = setInterval(() => {
+      const multiMode = usesMultiSocket(languagePairRef.current);
+      const payload = JSON.stringify({ type: "KeepAlive" });
+      const enOpen = socketRefEn.current?.readyState === 1;
+      const esOpen = multiMode || socketRefEs.current?.readyState === 1;
+      try {
+        if (enOpen) socketRefEn.current.send(payload);
+        if (!multiMode && socketRefEs.current?.readyState === 1) socketRefEs.current.send(payload);
+      } catch (_) {}
+      if (!enOpen && !esOpen) {
+        // Sockets died while idle — clean up; VAD wake will rebuild from stream.
+        stopIdleEar();
+        closeConnections();
+      }
+    }, 4000);
+
+    // Local VAD (WebAudio RMS) — speech energy never leaves the machine.
+    try {
+      const Ctx = window.AudioContext || window.webkitAudioContext;
+      const ctx = new Ctx();
+      if (ctx.state === "suspended" && ctx.resume) ctx.resume();
+      vadCtxRef.current = ctx;
+      const srcNode = ctx.createMediaStreamSource(new MediaStream(stream.getAudioTracks()));
+      const analyser = ctx.createAnalyser();
+      analyser.fftSize = 512;
+      srcNode.connect(analyser);
+      const buf = new Uint8Array(analyser.frequencyBinCount);
+      vadLoudFramesRef.current = 0;
+      vadIntervalRef.current = setInterval(() => {
+        if (!idleEarActiveRef.current) return;
+        try {
+          analyser.getByteTimeDomainData(buf);
+          let sum = 0;
+          for (let i = 0; i < buf.length; i++) {
+            const v = (buf[i] - 128) / 128;
+            sum += v * v;
+          }
+          const rms = Math.sqrt(sum / buf.length);
+          vadLoudFramesRef.current = updateVadLoudFrames({ rms, prevLoudFrames: vadLoudFramesRef.current });
+          if (shouldWakeFromVad(vadLoudFramesRef.current)) wakeFromIdleEarRef.current();
+        } catch (_) {}
+      }, 100);
+    } catch (e) {
+      critLog("warn", "idle ear VAD unavailable", { err: String(e) });
+    }
+    return true;
+  }, [speechAutoConnectRef, stopIdleEar, syncConnectProgress, closeConnections, critLog]);
+  // ────────────────────────────────────────────────────────────────────────
+
   const stopRecording = useCallback(() => {
-    // Close Deepgram between calls but intentionally preserve streamRef tracks.
-    // A subsequent Connect reuses the already-authorized tab without its picker.
+    // v4.92.0: idle ear — between calls keep Deepgram sockets warm (KeepAlive
+    // only, NO audio sent = no tokens) and listen locally for speech to
+    // auto-start the next call. Falls back to full disconnect when idle-ear
+    // is off or the stream is gone. Stream tracks stay preserved either way.
     isActiveRef.current = false;
     turnWordsBaseRef.current = 0;
     currentTurnIdRef.current = null;
-    closeConnections();
+    if (!enterIdleEar()) {
+      closeConnections();
+    }
     // HIPAA grace: do not destroy transcription/translation immediately;
     // defer to SessionContext finalizer (15s leeway for quick reconnect).
     if (!hipaaGraceActiveRef?.current) {
       resetCaptionEngine();
       clearCaptions();
     }
-  }, [closeConnections, clearCaptions, hipaaGraceActiveRef, resetCaptionEngine]);
+  }, [enterIdleEar, closeConnections, clearCaptions, hipaaGraceActiveRef, resetCaptionEngine]);
 
   const stopRecordingRef = useRef(stopRecording);
   stopRecordingRef.current = stopRecording;
@@ -1392,6 +1563,8 @@ export const useDeepgram = () => {
       return false;
     }
   }, [beginStream, startDeepgram, clearWatchdog, setMicTestMode, resetConnectProgress, abortConnectAttempt]);
+
+  startRecordingRef.current = startRecording; // idle-ear wake path (v4.92.0)
 
   // Force re-open picker (tab) or re-request mic (double-tap connect).
   const startRecordingFresh = useCallback(async () => {
@@ -1610,6 +1783,14 @@ export const useDeepgram = () => {
     };
     window.addEventListener(STT_LATENCY_CHANGED_EVENT, onLatencyChange);
     return () => window.removeEventListener(STT_LATENCY_CHANGED_EVENT, onLatencyChange);
+  }, []);
+
+  // v4.92.0: unmount — release idle-ear resources (VAD context + intervals).
+  useEffect(() => () => {
+    idleEarActiveRef.current = false;
+    if (vadIntervalRef.current) clearInterval(vadIntervalRef.current);
+    if (idleKeepAliveRef.current) clearInterval(idleKeepAliveRef.current);
+    try { vadCtxRef.current?.close(); } catch (_) {}
   }, []);
 
   return {

@@ -1,3 +1,3 @@
 /** Single source of truth for app version (UI + package.json should match). */
-export const APP_VERSION = '4.91.0';
-export const APP_VERSION_LABEL = `v${APP_VERSION} - auto break · $ tips`;
+export const APP_VERSION = '4.92.0';
+export const APP_VERSION_LABEL = `v${APP_VERSION} - always-on ear`;

@@ -2,10 +2,19 @@
 
 **Version source:** `src/constants/version.js` (must match `package.json` + top-right UI pill)
 
+## v4.92.0 - Always-on ear (speech detection between calls, zero cost)
+
+- **New:** after STOP the Deepgram sockets stay warm (KeepAlive pings only — NO audio is sent, so zero Deepgram usage) and a local VAD (WebAudio RMS on the preserved tab/cable stream) watches for speech. Speech ~0.3s → recorder resumes → transcript → existing speech auto-connect starts the call by itself. No CONNECT press between calls anymore.
+- **Rules:** `src/utils/idleEar.js` (tested). Falls back to full disconnect when Speech Auto Connect is OFF or the stream is gone. Sockets died while idle → wake rebuilds them from the preserved stream (no tab picker, no gesture). One CONNECT press per browser session remains (browser gesture rule for tab capture).
+- **Fix:** `startSession` now cancels the 15s HIPAA finalizer — an auto-started call inside the grace window no longer wipes its own transcript. Call-detect toggle now also disables speech auto-start.
+
 ## v4.91.0 - Smart tooltips on daily-targets chip
 
 - **New:** hover the 💵 ⏱ ☕ chip → instant floating panel, all USD: earned/target today (%), on-call minutes to go ≈ $, break taken + what still fits by 18:00 + cost per break minute, month vs $1200, 5500m floor, 18:00/23:00 overtime slack. Replaces the slow native `title` tooltips. `src/components/DailyTargetsChip.js`.
 - **Move:** chip lives in `session-controls-center` now (off-call under status line, in-call beside micro-bar grid, bar stays 32px) — moved out of the I/O strip.
+- **Tighten:** metrics summary + quick buttons share one line (`header-metrics-strip` row-wrap, bars drop below); I/O strip contents forced single-line scroll (`audio-route-status-main` nowrap).
+- **Fix:** compact goal meter no longer overlays the I/O bar — in-flow second row (`dashboard-header--call-compact`).
+- **Space:** 4px padding on every item in the header rows (strip, quick, I/O, micro-bar).
 
 ## v4.90.0 - Auto break (counts ALL no-transcription time)
 

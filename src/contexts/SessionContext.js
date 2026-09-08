@@ -601,6 +601,9 @@ export const SessionProvider = ({ children }) => {
   const startSession = (isRecovery = false) => {
     // v4.87.2: guard — a second start while active wipes sessionSeconds/timeline.
     if (isActive && !isRecovery) return;
+    // v4.92.0: auto-start within the 15s HIPAA grace MUST cancel the finalizer,
+    // or it wipes the live transcript mid-call. Idempotent for manual paths.
+    cancelHipaaDisconnectGrace();
     updateActivity();
     setLastEnglishActivityTime(Date.now());
     callHadSpeechRef.current = false;
@@ -677,8 +680,15 @@ export const SessionProvider = ({ children }) => {
     isActiveStateRef.current = isActive;
   }, [isActive]);
 
+  // v4.92.0: live toggle for auto-start (socket closures read the ref).
+  const isCallDetectionEnabledRef = useRef(isCallDetectionEnabled);
+  useEffect(() => {
+    isCallDetectionEnabledRef.current = isCallDetectionEnabled;
+  }, [isCallDetectionEnabled]);
+
   const trySpeechAutoStart = useCallback(() => {
-    if (!speechAutoConnectRef.current || isActiveStateRef.current) return false;
+    // v4.92.0: call-detect toggle OFF also disables speech auto-start.
+    if (!speechAutoConnectRef.current || !isCallDetectionEnabledRef.current || isActiveStateRef.current) return false;
     startSessionRef.current(false);
     return true;
   }, []);

@@ -160,4 +160,6 @@ CURRENT INBOX
 - [x] v4.89.1: hold auto-resume — click outside study overlay or any speech lifts hold (`holdState.js` + `App.js`)
 - [x] v4.90.0: auto break — break timer counts ALL time with no transcription (3s grace, off-call + mid-call dead air); hold (provider keywords) pauses it; speech banks it (`breakState.js`)
 - [x] v4.91.0: daily-targets chip smart tooltips — hover 💵⏱☕ = instant USD panel (earned/target, mins to go ≈ $, break cost, month pace) (`DailyTargetsChip.js`)
+- [x] v4.92.0: always-on ear — after STOP sockets stay warm ($0: no audio sent) + local VAD; speech auto-starts the call, no CONNECT press between calls (`idleEar.js`)
+- [x] v4.91.0: daily-targets chip moved FROM I/O strip TO header `session-controls-center` (off-call + in-call, bar stays 32px)
 </details>

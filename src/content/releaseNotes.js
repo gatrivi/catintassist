@@ -25,6 +25,35 @@ import { APP_VERSION } from '../constants/version';
 /** Newest first. Only the entry matching APP_VERSION is shown on load. */
 export const RELEASE_NOTES_CATALOG = [
   {
+    version: '4.92.0',
+    id: 'idle-ear-v1',
+    highlightElementIds: ['daily-targets-chip'],
+    es: {
+      title: 'Oreja siempre prendida: la llamada se conecta sola',
+      intro: 'v4.92.0 — Ya no precCONNECT entre llamadas: después de STOP las orejas quedan prendidas (Deepgram NO recibe audio, solo pings = no gasta nada) y con que el provider hable, la llamada arranca sola.',
+      sections: [
+        { heading: 'Cómo funciona', bullets: [
+          'STOP → sockets calientes + VAD local escucha (sin audio enviado = $0)',
+          'Voz detectada (~0,3s) → grabadora vuelve → llamada arranca sola',
+          'Un solo CONNECT por sesión del navegador (regla del navegador)',
+          'Settings → Speech Auto Connect debe estar prendido',
+        ] },
+      ],
+    },
+    en: {
+      title: 'Always-on ear: calls start themselves',
+      intro: 'v4.92.0 — No more pressing CONNECT between calls: after STOP the app keeps listening (Deepgram receives NO audio, only pings = zero usage). When speech appears, the call starts by itself.',
+      sections: [
+        { heading: 'How it works', bullets: [
+          'STOP → warm sockets + local VAD (no audio sent = $0)',
+          'Speech detected (~0.3s) → recorder resumes → call auto-starts',
+          'One CONNECT press per browser session (browser rule)',
+          'Settings → Speech Auto Connect must be ON',
+        ] },
+      ],
+    },
+  },
+  {
     version: '4.91.0',
     id: 'daily-targets-smart-tooltip-v1',
     highlightElementIds: ['daily-targets-chip'],
