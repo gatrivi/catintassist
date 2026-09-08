@@ -259,9 +259,15 @@ const SessionControlsSticky = React.memo(({
   sessionArsLive,
   totalOffCallSeconds = 0,
   totalOnCallSeconds = 0,
+  // v4.87.0: daily $1200-goal chip in status bar
+  dailyMinutes = 0,
+  monthlyMinutes = 0,
+  ratePerMinute = 0.13,
   // Today timers (minutes) — shown next to Connect in the sticky row (v4.86.5)
   onCallMins = 0,
   offCallMins = 0,
+  // Daily income (ARS) — big orange counter in the sticky row (v4.87.0)
+  dailyIncomeArs = 0,
   callModeExpanded,
   setCallModeExpanded,
   isNotesOpen,
@@ -422,6 +428,13 @@ const SessionControlsSticky = React.memo(({
               className="header-oncall-timers"
               title="Today: 📞 on-call vs 📡 off-call (avail + break)"
             >
+              <span
+                id="header-daily-income"
+                style={{ color: '#fb923c', fontWeight: 800, fontSize: '0.85rem' }}
+                title="Earned today (live) — v4.87.0"
+              >
+                ${Math.round(dailyIncomeArs).toLocaleString('en-US')}
+              </span>
               <span style={{ color: '#34d399' }}>📞{Math.round(onCallMins)}m</span>
               <span style={{ color: '#fbbf24' }}>📡{Math.round(offCallMins)}m</span>
             </span>
@@ -633,6 +646,13 @@ const SessionControlsSticky = React.memo(({
                     ? offCallStatusLabel
                     : (
                       <span id="header-oncall-timers-center" className="header-oncall-timers">
+                        <span
+                          id="header-daily-income-center"
+                          style={{ color: '#fb923c', fontWeight: 800, fontSize: '0.85rem' }}
+                          title="Earned today (live) — v4.87.0"
+                        >
+                          ${Math.round(dailyIncomeArs).toLocaleString('en-US')}
+                        </span>
                         <span style={{ color: '#34d399' }}>📞{Math.round(onCallMins)}m</span>
                         <span style={{ color: '#fbbf24' }}>📡{Math.round(offCallMins)}m</span>
                       </span>
@@ -778,6 +798,9 @@ const SessionControlsSticky = React.memo(({
           isZombieCall={isZombieCall}
           totalOnCallSeconds={totalOnCallSeconds}
           totalOffCallSeconds={totalOffCallSeconds}
+          dailyMinutes={stats.dailyMinutes}
+          monthlyMinutes={stats.monthlyMinutes}
+          ratePerMinute={RATE_PER_MINUTE}
           onReconnectStream={onReconnectStream}
           onReconnectAudioSource={onReconnectAudioSource}
           onSwitchToTabShare={onSwitchToTabShare}
@@ -2004,6 +2027,19 @@ export const DashboardHeader = ({
                       <HelpLabel text="7. $ MONTH" />
                       <div className="metric-cell-val"><StatNumber value={monthlyArs} prefix="$" size="lg" /></div>
                       <MetricPct>{metricPcts.arsMonth}</MetricPct>
+                      {/* v4.87.0: monthly minutes visible + one-click editable target */}
+                      <button
+                        type="button"
+                        onClick={(e) => { e.stopPropagation(); setIsTodayDialOpen(true); }}
+                        title={`Month: ${Math.round(stats.monthlyMinutes)}m of ${stats.goalMinutes}m target — click to edit target`}
+                        style={{
+                          background: 'rgba(251,146,60,0.12)', border: '1px solid rgba(251,146,60,0.4)',
+                          borderRadius: 4, color: '#fdba74', cursor: 'pointer',
+                          fontSize: '0.6rem', fontWeight: 800, padding: '0.1rem 0.35rem',
+                        }}
+                      >
+                        {Math.round(stats.monthlyMinutes)} / {stats.goalMinutes}m ✎
+                      </button>
                       <div className="metric-cell-label">$ MONTH</div>
                     </div>
                     )}
@@ -2921,6 +2957,7 @@ ${isInDeficit ? `⚠️ DEFICIT: Behind pace by ${Math.round(monthlyDeficitMins)
         isZombieCall={isZombieCall}
         onCallMins={totalDailyMins}
         offCallMins={totalOffCallMins}
+        dailyIncomeArs={todayArsLive}
         apiKeyMissing={apiKeyMissing}
         vaultNeedsDecrypt={vaultNeedsDecrypt}
         apiKeyMissingNoVault={apiKeyMissingNoVault}
@@ -2965,6 +3002,9 @@ ${isInDeficit ? `⚠️ DEFICIT: Behind pace by ${Math.round(monthlyDeficitMins)
         sessionArsLive={sessionArsLive}
         totalOffCallSeconds={totalOffCallSeconds}
         totalOnCallSeconds={totalOnCallSeconds}
+        dailyMinutes={Math.round(stats.dailyMinutes)}
+        monthlyMinutes={stats.monthlyMinutes}
+        ratePerMinute={RATE_PER_MINUTE}
         callModeExpanded={callModeExpanded}
         setCallModeExpanded={setCallModeExpanded}
         isNotesOpen={isNotesOpen}

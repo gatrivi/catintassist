@@ -25,6 +25,27 @@ import { APP_VERSION } from '../constants/version';
 /** Newest first. Only the entry matching APP_VERSION is shown on load. */
 export const RELEASE_NOTES_CATALOG = [
   {
+    version: '4.88.1',
+    id: 'daily-targets-chip-v1',
+    highlightElementIds: ['daily-targets-chip'],
+    es: {
+      title: 'Meta diaria siempre visible',
+      intro: 'v4.88.1 — La barra de estado muestra cuántos minutos y USD necesitas HOY para llegar a $1200/mes, y cuánto falta en el mes. Pasa el mouse para ver el piso de 5500m.',
+      sections: [{ heading: 'Nuevo', bullets: [
+        'Meta principal: $1200/mes (~9231m a $0.13/min)',
+        'Fallo de respaldo: 5500m/mes (mantiene tu tarifa)',
+      ] }],
+    },
+    en: {
+      title: 'Daily targets always visible',
+      intro: 'v4.88.1 — Status bar now shows the minutes and USD you need TODAY to hit $1200/mo, plus what is left this month. Hover for the 5500m fallback floor.',
+      sections: [{ heading: 'New', bullets: [
+        'Primary goal: $1200/mo (~9231m @ $0.13/min)',
+        'Fallback floor: 5500m/mo (keeps your rate)',
+      ] }],
+    },
+  },
+  {
     version: '4.88.0',
     id: 'study-cue-cards-v1',
     highlightElementIds: ['study-cue-cards'],

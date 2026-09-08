@@ -2,6 +2,11 @@
 
 **Version source:** `src/constants/version.js` (must match `package.json` + top-right UI pill)
 
+## v4.88.1 - Daily targets in status bar
+
+- **New:** always-visible chip in the I/O status bar: minutes + USD needed TODAY for the $1200/mo goal, plus minutes left this month. Hover shows the 5500m fallback floor numbers.
+- **Goal tiers:** primary $1200/mo (~9231m @ $0.13/min); fallback 5500m/mo (rate floor). `src/components/DailyTargetsChip.js`.
+
 ## v4.88.0 - Study cue cards (between calls + on hold)
 
 - **New:** rotating study cards in the off-call idle pane (supersede the rotating tip) and as a fade-in overlay over the transcript during HOLD — dead hold time becomes study time.

@@ -8,12 +8,14 @@ import {
   pickVbCableSinkDevice,
 } from '../utils/audioSourceManager';
 import { truncateDeviceLabel } from '../utils/audioSelfTest';
+import { displayDeviceName, hasHiddenLabels, readKnownDeviceLabels } from '../utils/audioDeviceLabels';
 import { ElementHintTarget } from './ElementHint';
 import {
   isComponentVisible,
   useComponentVisibilityRefresh,
 } from '../utils/componentVisibility';
 import { APP_VERSION } from '../constants/version';
+import { DailyTargetsChip } from './DailyTargetsChip';
 
 const dotColor = (state) => {
   if (state === 'ok') return '#10b981';
@@ -73,6 +75,9 @@ export const AudioRouteStatusBar = ({
   isZombieCall = false,
   totalOnCallSeconds = 0,
   totalOffCallSeconds = 0,
+  dailyMinutes = 0,
+  monthlyMinutes = 0,
+  ratePerMinute = 0.13,
   onReconnectStream,
   onReconnectAudioSource,
   onSwitchToTabShare,
@@ -94,7 +99,9 @@ export const AudioRouteStatusBar = ({
     fetchDevices,
     micLevel,
     micStatus,
+    restoreLiveMic,
   } = useAudioSettings();
+  const [micRestoreFlash, setMicRestoreFlash] = useState('');
   const {
     selectedInputDeviceId: selectedCableInputId,
     refreshSelectedDeviceId: changeCableInputId,
@@ -131,12 +138,15 @@ export const AudioRouteStatusBar = ({
     fetchDevices({ requestMicPermissionForLabels: false });
   }, [fetchDevices]);
 
-  const formatDeviceOption = (device, kind) => {
-    const raw = (device?.label || '').trim();
-    if (raw) return truncateDeviceLabel(raw, 22);
-    const short = device?.deviceId?.slice(0, 8) || '?';
-    return kind === 'mic' ? `Mic ${short}…` : `Output ${short}…`;
-  };
+  // v4.87.0: remembered labels keep options readable on fresh origins (no raw id hash).
+  const knownLabels = useMemo(
+    () => readKnownDeviceLabels(),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [inputDevices, outputDevices],
+  );
+  const outNamesHidden = hasHiddenLabels(outputDevices);
+  const formatDeviceOption = (device, kind, index = 0) =>
+    truncateDeviceLabel(displayDeviceName(device, index, kind, knownLabels), 26);
 
   const micDeviceLabel = useMemo(() => {
     const dev = inputDevices.find((d) => d.deviceId === selectedMicId);
@@ -327,6 +337,8 @@ export const AudioRouteStatusBar = ({
       title={`Audio I/O · v${APP_VERSION}`}
     >
       <div className="audio-route-status-main">
+        {/* v4.87.0: daily $1200-goal targets always visible */}
+        <DailyTargetsChip dailyMinutes={dailyMinutes} monthlyMinutes={monthlyMinutes} ratePerMinute={ratePerMinute} />
         {compact && (
           <div className="audio-route-compact-proof" aria-label={`${tabProof?.label || sttInLabel}; Deepgram ${enOk && esOk ? 'EN and ES ready' : connectionState}`}>
             <div className="audio-route-compact-source-toggle" role="group" aria-label="Active call STT source">
@@ -337,6 +349,31 @@ export const AudioRouteStatusBar = ({
               <Dot state={sttState === 'idle' ? 'idle' : sttState} />
               {connectProgress?.transcriptReceived ? 'TEXT ✓' : `DG ${enOk && esOk ? 'EN/ES' : connectionState}`}
             </span>
+            {!mobileMicMode && (
+              <span
+                className="audio-route-compact-proof__dg"
+                title={`Greetings go out here. Must be CABLE Input. Full picker is in the I/O strip off-call.${selectedSinkId ? '' : ' NOTHING PICKED — greetings will be blocked.'}`}
+                style={selectedSinkId ? undefined : { color: '#f59e0b' }}
+              >
+                🔊 {outLabel}
+              </span>
+            )}
+            {(micStatus === 'muted' || micStatus === 'no-signal') && (
+              <button
+                type="button"
+                id="audio-route-restore-mic-btn-compact"
+                className="audio-route-compact-proof__zap"
+                onClick={() => {
+                  const r = restoreLiveMic?.('panic_button_compact');
+                  setMicRestoreFlash(r?.ok ? 'Mic restored' : 'No mic stream');
+                  window.setTimeout(() => setMicRestoreFlash(''), 2500);
+                }}
+                title="Rebind your live mic to the caller path (use if a greeting cut your mic or audio died)"
+                style={{ borderColor: 'rgba(239,68,68,0.7)', color: '#fca5a5' }}
+              >
+                🎤 RESTORE{micRestoreFlash ? ` · ${micRestoreFlash}` : ''}
+              </button>
+            )}
             {(stale || critical || (isActive && isDeepgramError)) && onReconnectStream && (
               <button
                 id="audio-route-zap-btn"
@@ -420,9 +457,9 @@ export const AudioRouteStatusBar = ({
                 onMouseDown={() => refreshCableInputDevices()}
               >
                 <option value="">{inputDevices.length ? 'Cable in…' : 'Cable (allow perm)'}</option>
-                {inputDevices.map((d) => (
+                {inputDevices.map((d, i) => (
                   <option key={d.deviceId} value={d.deviceId}>
-                    {formatDeviceOption(d, 'mic')}
+                    {formatDeviceOption(d, 'mic', i)}
                   </option>
                 ))}
               </select>
@@ -449,9 +486,9 @@ export const AudioRouteStatusBar = ({
               onMouseDown={() => fetchDevices({ requestMicPermissionForLabels: true })}
             >
               <option value="">{inputDevices.length ? 'Mic…' : 'Mic (allow perm)'}</option>
-              {inputDevices.map((d) => (
+              {inputDevices.map((d, i) => (
                 <option key={d.deviceId} value={d.deviceId}>
-                  {formatDeviceOption(d, 'mic')}
+                  {formatDeviceOption(d, 'mic', i)}
                 </option>
               ))}
             </select>
@@ -469,7 +506,7 @@ export const AudioRouteStatusBar = ({
           }
           color={cableRouteDiag.ok ? '#34d399' : '#ef4444'}
         >
-          <label className="audio-route-device-pick" title={`VB out: ${outLabel}`}>
+          <label className="audio-route-device-pick" title={outNamesHidden ? `VB out: names hidden — tap 🎧 once (one Allow reveals them; your mic is never used). ${outLabel}` : `VB out: ${outLabel}`}>
             <span className="audio-route-device-pick-label">🔊</span>
             <select
               id="audio-route-sink-select"
@@ -488,10 +525,10 @@ export const AudioRouteStatusBar = ({
               onFocus={() => fetchDevices({ requestMicPermissionForLabels: false })}
               onMouseDown={() => fetchDevices({ requestMicPermissionForLabels: false })}
             >
-              <option value="">{outputDevices.length ? 'VB out…' : 'No outputs found'}</option>
-              {outputDevices.map((d) => (
+              <option value="">{outputDevices.length ? (outNamesHidden ? 'VB out… (names hidden)' : 'VB out…') : 'No outputs found'}</option>
+              {outputDevices.map((d, i) => (
                 <option key={d.deviceId} value={d.deviceId}>
-                  {formatDeviceOption(d, 'out')}
+                  {formatDeviceOption(d, 'out', i)}
                 </option>
               ))}
             </select>
@@ -569,6 +606,35 @@ export const AudioRouteStatusBar = ({
             </span>
           </span>
         </ElementHintTarget>
+
+        {(micStatus === 'muted' || micStatus === 'no-signal') && (
+          <button
+            type="button"
+            id="audio-route-restore-mic-btn"
+            className="audio-route-inline-btn"
+            style={{
+              background: 'rgba(239,68,68,0.15)',
+              border: '1px solid rgba(239,68,68,0.7)',
+              borderRadius: 4,
+              color: '#fca5a5',
+              cursor: 'pointer',
+              fontSize: compact ? '0.62rem' : '0.68rem',
+              fontWeight: 800,
+              lineHeight: 1,
+              padding: '0.16rem 0.42rem',
+              minHeight: compact ? 22 : 24,
+              whiteSpace: 'nowrap',
+            }}
+            onClick={() => {
+              const r = restoreLiveMic?.('panic_button');
+              setMicRestoreFlash(r?.ok ? 'Mic restored' : 'No mic stream');
+              window.setTimeout(() => setMicRestoreFlash(''), 2500);
+            }}
+            title="Rebind your live mic to the caller path (use if a greeting cut your mic or audio died)"
+          >
+            🎤 Restore Mic{micRestoreFlash ? ` · ${micRestoreFlash}` : ''}
+          </button>
+        )}
 
         {connectionState === 'disconnected' && !isActive && !isZombieCall && (
           <span
