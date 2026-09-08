@@ -156,4 +156,8 @@ CURRENT INBOX
 - [x] v4.77.0: production a11y — PWA manifest, clear-log confirm, skip link, reduced motion
 - [x] v4.78.0: audio editor export pack (`exports/audio-greeting-editor/`); Settings → Data corrections backup; compliance docs
 - [x] v4.84.3–4.84.8: sensitive data A–E + ES name chips — chips · dates · sentinels · spelling · dose/money (`docs/development/sensitive-data-approach.md`)
+- [x] v4.89.0: HUD inspector — ⌖ toggle hovers ANY element incl. divs, shows name + selector, click to copy (`HudInspector.js`)
+- [x] v4.89.1: hold auto-resume — click outside study overlay or any speech lifts hold (`holdState.js` + `App.js`)
+- [x] v4.90.0: auto break — break timer counts ALL time with no transcription (3s grace, off-call + mid-call dead air); hold (provider keywords) pauses it; speech banks it (`breakState.js`)
+- [x] v4.91.0: daily-targets chip smart tooltips — hover 💵⏱☕ = instant USD panel (earned/target, mins to go ≈ $, break cost, month pace) (`DailyTargetsChip.js`)
 </details>

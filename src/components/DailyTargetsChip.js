@@ -1,4 +1,5 @@
-import React from 'react';
+import React, { useState } from 'react';
+import { APP_VERSION } from '../constants/version';
 
 // v4.88.0: daily targets always visible in the status bar.
 // Primary goal: $1200 USD/month. Fallback (rate floor): 5500 min/month.
@@ -70,7 +71,6 @@ export const DailyTargetsChip = ({
   ratePerMinute = 0.13,
 }) => {
   const { dailyMin, leftMin } = computeGoalDay({ dailyMinutes, monthlyMinutes, ratePerMinute });
-  const goalMinutes = GOAL_USD / ratePerMinute;
   const earnedUsd = dailyMinutes * ratePerMinute;
   const targetUsd = dailyMin * ratePerMinute;
   const plan = computeEndgamePlan({ doneMins: dailyMinutes, goalDayMin: dailyMin });
@@ -84,12 +84,39 @@ export const DailyTargetsChip = ({
 
   const warn = plan.need > 0 && !plan.by18Possible;
 
+  // ── v4.91.0: SMART TOOLTIP ──────────────────────────────────────────────
+  // Hover the chip → floating panel spells every chip out in USD:
+  // earned vs target, minutes to go ≈ $, what a break minute costs, month pace.
+  const [smartTip, setSmartTip] = useState(null); // {x,y} chip top-center
+  const usd = (m) => `$${(m * ratePerMinute).toFixed(2)}`;
+  const pctToday = targetUsd > 0 ? Math.round((earnedUsd / targetUsd) * 100) : 0;
+  const tipRows = [
+    `💵 ${usd(dailyMinutes)} / $${targetUsd.toFixed(0)} today (${pctToday}%)`,
+    plan.need <= 0
+      ? '🏁 daily pace met — rest / bank buffer'
+      : `⏱ ${fmtHm(dailyMinutes)} on call · ${fmtHm(plan.need)} to go ≈ ${usd(plan.need)}`,
+    `☕ ${fmtHm(breakMinutes)} taken · ${fmtHm(breakTarget)} fits by 18:00 · each break min = -${usd(1)}`,
+    `📅 month ${usd(monthlyMinutes)} / $${GOAL_USD} · left ${fmtHm(leftMin)} ≈ ${usd(leftMin)}`,
+    `🛟 floor 5500m/mo · left ${fmtHm(fbRemaining)} ≈ ${fbDaily}m/mo`,
+    plan.by18Possible
+      ? `⏰ by 18:00 → ${fmtHm(plan.slack18)} off · by 23:00 → ${fmtHm(plan.slack23)} off`
+      : `⚠️ pace by 18:00: NO · overtime to 23:00 → ${fmtHm(plan.slack23)} off`,
+  ];
+  const showSmartTip = (e) => {
+    const r = e.currentTarget.getBoundingClientRect();
+    setSmartTip({
+      x: Math.min(Math.max(r.left + r.width / 2, 150), (window.innerWidth || 900) - 150),
+      y: r.top,
+    });
+  };
+  // ────────────────────────────────────────────────────────────────────────
+
   return (
     <span
       id="daily-targets-chip"
-      title={`$${GOAL_USD}/mo goal (${Math.round(goalMinutes)}m @ $${ratePerMinute}/min) — today: ${dailyMin}m ≈ $${targetUsd.toFixed(0)} · month left: ${leftMin}m ≈ $${(leftMin * ratePerMinute).toFixed(0)}
-Fallback floor 5500m/mo — today: ${fbDaily}m · left: ${Math.round(fbRemaining)}m
-Overtime: finish by 23:00 instead → off≤23h: ${fmtHm(plan.slack23)}`}
+      onMouseEnter={showSmartTip}
+      onMouseLeave={() => setSmartTip(null)}
+      aria-label={`Daily targets: ${usd(dailyMinutes)} of $${targetUsd.toFixed(0)} today, ${fmtHm(dailyMinutes)} on call, ${fmtHm(breakMinutes)} break taken`}
       style={{
         display: 'inline-flex',
         alignItems: 'center',
@@ -103,6 +130,7 @@ Overtime: finish by 23:00 instead → off≤23h: ${fmtHm(plan.slack23)}`}
         padding: '0.2rem 0.55rem',
         lineHeight: 1,
         minHeight: 24,
+        cursor: 'help',
       }}
     >
       <span style={pairStyle} title={`Earned today vs today's $ target`}>
@@ -120,6 +148,37 @@ Overtime: finish by 23:00 instead → off≤23h: ${fmtHm(plan.slack23)}`}
         <span style={valStyle}>{fmtHm(breakMinutes)}</span>
         <span style={tgtStyle}>/{fmtHm(breakTarget)}</span>
       </span>
+      {smartTip && (
+        <span
+          style={{
+            position: 'fixed',
+            left: smartTip.x,
+            top: smartTip.y - 6,
+            transform: 'translate(-50%, -100%)',
+            zIndex: 100000,
+            pointerEvents: 'none',
+            background: 'rgba(2, 6, 23, 0.94)',
+            border: `1px solid ${warn ? 'rgba(249,115,22,0.5)' : 'rgba(251,191,36,0.4)'}`,
+            borderRadius: 8,
+            padding: '7px 10px',
+            fontFamily: 'ui-monospace, Consolas, monospace',
+            fontSize: '0.62rem',
+            lineHeight: 1.55,
+            color: warn ? '#fdba74' : '#fde68a',
+            whiteSpace: 'nowrap',
+            boxShadow: '0 10px 26px rgba(0,0,0,0.5)',
+            textAlign: 'left',
+            display: 'block',
+          }}
+        >
+          {tipRows.map((row, i) => (
+            <span key={i} style={{ display: 'block' }}>{row}</span>
+          ))}
+          <span style={{ display: 'block', opacity: 0.55, marginTop: 2 }}>
+            rate ${ratePerMinute.toFixed(2)}/min · v{APP_VERSION}
+          </span>
+        </span>
+      )}
     </span>
   );
 };

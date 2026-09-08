@@ -25,6 +25,64 @@ import { APP_VERSION } from '../constants/version';
 /** Newest first. Only the entry matching APP_VERSION is shown on load. */
 export const RELEASE_NOTES_CATALOG = [
   {
+    version: '4.91.0',
+    id: 'daily-targets-smart-tooltip-v1',
+    highlightElementIds: ['daily-targets-chip'],
+    es: {
+      title: 'Tooltips vivos en las metas del día',
+      intro: 'v4.91.0 — Pasá el mouse por 💵 ⏱ ☕ en la barra de abajo: panel instantáneo con TODO en USD — ganado vs target, minutos que faltan ≈ $, costo del break ($0.13/min), mes y piso 5500m.',
+      sections: [
+        { heading: 'Qué ves', bullets: [
+          '💵 ganado hoy / target hoy (%)',
+          '⏱ minutos on-call · faltantes ≈ $',
+          '☕ break tomado · el que cabe por 18:00 · costo por minuto',
+          '📅 mes en curso vs $1200 · piso 5500m/mo',
+        ] },
+      ],
+    },
+    en: {
+      title: 'Smart tooltips on the daily targets chip',
+      intro: 'v4.91.0 — Hover the 💵 ⏱ ☕ chips in the bottom bar: an instant panel spells it all out in USD — earned vs target, minutes to go ≈ $, break cost ($0.13/min), month and 5500m floor.',
+      sections: [
+        { heading: 'What you see', bullets: [
+          '💵 earned today / target today (%)',
+          '⏱ on-call minutes · remaining ≈ $',
+          '☕ break taken · what fits by 18:00 · cost per minute',
+          '📅 month vs $1200 · 5500m/mo floor',
+        ] },
+      ],
+    },
+  },
+  {
+    version: '4.90.0',
+    id: 'auto-break-v1',
+    highlightElementIds: ['stop-break-btn'],
+    es: {
+      title: 'Break automático: cuenta TODO el tiempo sin transcripción',
+      intro: 'v4.90.0 — El break ahora cuenta solo: 3s sin transcripción = break corre. Hold (frases del provider: "one moment", "please hold") lo pausa. Vuelve la voz → se banca solo. STOP BREAK = gracia de 10 min.',
+      sections: [
+        { heading: 'Reglas', bullets: [
+          'Sin transcripción ≥3s → ☕ corre (en llamada y fuera de llamada)',
+          'Hold del provider → ☕ pausado (eso es trabajo, no break)',
+          'Silencio ≥5 min → reinicia el contador "trabajando sin break"',
+          'STOP BREAK → 10 min sin auto-break (trabajo de escritorio)',
+        ] },
+      ],
+    },
+    en: {
+      title: 'Auto break: counts ALL no-transcription time',
+      intro: 'v4.90.0 — Break now counts itself: 3s with no transcription = break ticks. Hold (provider phrases: "one moment", "please hold") pauses it. Speech returns → banks itself. STOP BREAK = 10 min grace.',
+      sections: [
+        { heading: 'Rules', bullets: [
+          'No transcription ≥3s → ☕ ticks (in-call and off-call)',
+          'Provider hold → ☕ paused (that is work, not break)',
+          'Silence ≥5 min → restarts the "working without break" clock',
+          'STOP BREAK → 10 min auto-break suppression (desk work)',
+        ] },
+      ],
+    },
+  },
+  {
     version: '4.89.2',
     id: 'hud-inspector-default-on-v1',
     highlightElementIds: ['hud-inspector-toggle'],

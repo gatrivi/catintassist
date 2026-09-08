@@ -2,6 +2,17 @@
 
 **Version source:** `src/constants/version.js` (must match `package.json` + top-right UI pill)
 
+## v4.91.0 - Smart tooltips on daily-targets chip
+
+- **New:** hover the 💵 ⏱ ☕ chip → instant floating panel, all USD: earned/target today (%), on-call minutes to go ≈ $, break taken + what still fits by 18:00 + cost per break minute, month vs $1200, 5500m floor, 18:00/23:00 overtime slack. Replaces the slow native `title` tooltips. `src/components/DailyTargetsChip.js`.
+- **Move:** chip lives in `session-controls-center` now (off-call under status line, in-call beside micro-bar grid, bar stays 32px) — moved out of the I/O strip.
+
+## v4.90.0 - Auto break (counts ALL no-transcription time)
+
+- **New:** break timer runs itself — 3s with no transcription detected → ☕ ticks (off-call idle AND mid-call dead air). Hold (provider keywords: "one moment", "please hold", "put you on hold"…) pauses break — that's work. Speech resumes → break banks itself into ☕ taken.
+- **Rules:** `src/utils/breakState.js` (tested). Grace 3s; ≥5 min idle restarts the "working without break" nudge; STOP BREAK suppresses auto-break 10 min (desk-work grace); no auto-break before 9am or during zombie calls.
+- **Note:** ☕ taken now includes waiting-between-calls idle — the 90m break budget and compensated log-off (18:00 + late + break) consume it accordingly.
+
 ## v4.89.2 - Inspector ON by default
 
 - **Fix:** ⌖ HUD inspector now defaults ON — hover anything, get name + selector, click copies. No toggle hunt. Off persists via ⌖/Alt+I.

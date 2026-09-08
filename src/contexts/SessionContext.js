@@ -10,6 +10,11 @@ import {
 } from '../utils/scoreboardLayout';
 import { mergeImportedDays } from '../utils/callLogImport';
 import { shouldAutoHold, shouldAutoResume } from '../utils/holdState';
+import {
+  shouldAutoBreak,
+  shouldResetWorkTimer,
+  MANUAL_BREAK_SUPPRESS_MS,
+} from '../utils/breakState';
 
 const PURGE_KEYS_PREFIX = 'trans_cache:';
 
@@ -332,6 +337,21 @@ export const SessionProvider = ({ children }) => {
   const updateEnglishActivity = () => setLastEnglishActivityTime(Date.now());
   const requestHoldIntent = () => setHoldIntentAt(Date.now());
 
+  // ── AUTO-BREAK (v4.90.0): break counts ALL time with no transcription ──
+  // Refs mirror state so the 1s auto-break loop never needs re-creating.
+  const lastActivityTimeRef = useRef(lastActivityTime);
+  const isHoldAutoRef = useRef(isHold);
+  const isBreakActiveAutoRef = useRef(isBreakActive);
+  const isZombieAutoRef = useRef(isZombieCall);
+  // A break restored after refresh is treated as auto (speech ends it).
+  const breakWasAutoRef = useRef(isBreakActive);
+  const breakStintStartRef = useRef(Date.now());
+  const manualBreakSuppressUntilRef = useRef(0);
+  useEffect(() => { lastActivityTimeRef.current = lastActivityTime; }, [lastActivityTime]);
+  useEffect(() => { isHoldAutoRef.current = isHold; }, [isHold]);
+  useEffect(() => { isBreakActiveAutoRef.current = isBreakActive; }, [isBreakActive]);
+  useEffect(() => { isZombieAutoRef.current = isZombieCall; }, [isZombieCall]);
+
   const recordTimelineEvent = useCallback((type) => {
     const now = Date.now();
     setDailyTimeline(prev => {
@@ -547,6 +567,25 @@ export const SessionProvider = ({ children }) => {
     });
   };
 
+  // v4.90.0: bank live break seconds into dailyBreakMinutes and zero the live
+  // counter (single ledger — keeps OFF CALL / break chips free of double count).
+  const bankBreakSeconds = useCallback(() => {
+    setBreakSeconds(current => {
+      if (current <= 0) return current;
+      const minutesToAdd = current / 60;
+      setStats(prev => {
+        const newStats = {
+          ...prev,
+          dailyBreakMinutes: (prev.dailyBreakMinutes || 0) + minutesToAdd,
+          lastBreakEndTime: Date.now(),
+        };
+        safeLocalStorageSet('catintassist_stats', JSON.stringify(newStats));
+        return newStats;
+      });
+      return 0;
+    });
+  }, []);
+
   // Timer for Hold
   useEffect(() => {
     let iv;
@@ -571,6 +610,9 @@ export const SessionProvider = ({ children }) => {
     if (isBreakActive) {
       stopBreak();
     }
+    // v4.90.0: work resumed — clear the STOP BREAK suppression so post-call
+    // idle counts as break again.
+    manualBreakSuppressUntilRef.current = 0;
     
     commitAvailTime();
     
@@ -749,20 +791,13 @@ export const SessionProvider = ({ children }) => {
       const m = new Date().getMinutes();
       // Trigger at 00:00–00:01 window
       if (h === 0 && m === 0 && isBreakActive) {
+        breakWasAutoRef.current = false;
         setIsBreakActive(false);
-        const minutesToAdd = breakSeconds / 60;
-        if (minutesToAdd > 0) {
-          setStats(prev => {
-            const newStats = { ...prev, dailyBreakMinutes: (prev.dailyBreakMinutes || 0) + minutesToAdd };
-            safeLocalStorageSet('catintassist_stats', JSON.stringify(newStats));
-            return newStats;
-          });
-        }
-        setBreakSeconds(0);
+        bankBreakSeconds();
       }
     }, 30000); // check every 30s is sufficient
     return () => clearInterval(midnightGuard);
-  }, [isBreakActive, breakSeconds]);
+  }, [isBreakActive, bankBreakSeconds]);
 
   useEffect(() => {
     safeLocalStorageSet('catintassist_stats', JSON.stringify(stats));
@@ -841,32 +876,74 @@ export const SessionProvider = ({ children }) => {
   }, [isActive, isBreakActive]);
 
   const startBreak = () => {
-    if (isActive) return;
+    // v4.90.0: auto-break may already be counting — never reset the live counter.
+    if (isActive || isBreakActive) return;
     commitAvailTime();
-    setBreakSeconds(0);
+    breakWasAutoRef.current = false;
+    breakStintStartRef.current = Date.now();
     setIsBreakActive(true);
     recordTimelineEvent('break');
   };
   
   const stopBreak = () => {
     updateActivity(); // <--- Reset silence timer when returning to work
+    // v4.90.0: grace so auto-break doesn't instantly re-engage after STOP BREAK
+    manualBreakSuppressUntilRef.current = Date.now() + MANUAL_BREAK_SUPPRESS_MS;
+    breakWasAutoRef.current = false;
     setIsBreakActive(false);
     recordTimelineEvent('avail');
-    const minutesToAdd = breakSeconds / 60;
-    const now = Date.now();
-    setWorkSessionStartTime(now);
-    if (minutesToAdd > 0) {
-      setStats(prev => {
-        const newStats = {
-          ...prev,
-          dailyBreakMinutes: (prev.dailyBreakMinutes || 0) + minutesToAdd,
-          lastBreakEndTime: now
-        };
-        safeLocalStorageSet('catintassist_stats', JSON.stringify(newStats));
-        return newStats;
-      });
-    }
+    bankBreakSeconds();
+    setWorkSessionStartTime(Date.now()); // deliberate break → restart "working without break"
   };
+
+  // ── AUTO-BREAK ENGINE (v4.90.0) ─────────────────────────────────────────
+  // Break counts EVERY second with no transcription detected (≥3s silence),
+  // unless hold (provider keywords: "one moment", "please hold", …) is active.
+  // Works off-call AND on dead-air mid-call; ends the moment transcription
+  // resumes or hold starts. STOP BREAK suppresses it for 10 min (desk work).
+  const engageAutoBreak = useCallback(() => {
+    breakWasAutoRef.current = true;
+    breakStintStartRef.current = Date.now();
+    setIsBreakActive(true);
+    if (!isActiveStateRef.current) {
+      commitAvailTime();            // flush pending idle-avail seconds
+      recordTimelineEvent('break'); // timeline only tracks off-call break
+    }
+  }, [commitAvailTime, recordTimelineEvent]);
+
+  const disengageAutoBreak = useCallback(() => {
+    breakWasAutoRef.current = false;
+    setIsBreakActive(false);
+    if (!isActiveStateRef.current) recordTimelineEvent('avail');
+    bankBreakSeconds();
+    // Long idle gap (≥5 min) → restart "minutes working without break" nudge
+    const stintSecs = (Date.now() - breakStintStartRef.current) / 1000;
+    if (shouldResetWorkTimer(stintSecs)) setWorkSessionStartTime(Date.now());
+  }, [bankBreakSeconds, recordTimelineEvent]);
+
+  const engageAutoBreakRef = useRef(engageAutoBreak);
+  const disengageAutoBreakRef = useRef(disengageAutoBreak);
+  engageAutoBreakRef.current = engageAutoBreak;
+  disengageAutoBreakRef.current = disengageAutoBreak;
+
+  useEffect(() => {
+    const iv = setInterval(() => {
+      const silenceSecs = (Date.now() - lastActivityTimeRef.current) / 1000;
+      const h = new Date().getHours(); // mirror avail window: no auto-break before 9am
+      const due =
+        h >= 9 &&
+        Date.now() >= manualBreakSuppressUntilRef.current &&
+        !isZombieAutoRef.current &&
+        shouldAutoBreak({ isHold: isHoldAutoRef.current, silenceSecs });
+      if (due && !isBreakActiveAutoRef.current) {
+        engageAutoBreakRef.current();
+      } else if (!due && isBreakActiveAutoRef.current && breakWasAutoRef.current) {
+        disengageAutoBreakRef.current();
+      }
+    }, 1000);
+    return () => clearInterval(iv);
+  }, []);
+  // ────────────────────────────────────────────────────────────────────────
 
   const updateStat = (key, value) => {
     setStats((prev) => ({ ...prev, [key]: Number(value) }));
