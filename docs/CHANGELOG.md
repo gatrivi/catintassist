@@ -2,6 +2,13 @@
 
 **Version source:** `src/constants/version.js` (must match `package.json` + top-right UI pill)
 
+## v4.87.4 - Call-log import: one-field-per-line paste + today is authoritative
+
+- **Bug:** pasting the client app's list copy (each field on its own line — id, date, time, mins, Yes, No, $) parsed 0 rows. Parser now regroups vertical pastes into records (closes on `$` token or new date after 6+ fields).
+- **Bug:** today's import used `Math.max(prev, imported)` — correcting to a lower value was a no-op. Import now OVERWRITES `dailyMinutes`/`callsToday` (up or down); monthly/weekly absorb the signed delta (floored at 0). Today also writes `dailyLog` + `historyTimeline` so the progress-bar timeline repaints.
+- **Removed:** `devStatsSeed.js` (localhost 09/08 59m seed) — it masked import corrections.
+- **Panel flash:** now shows `Today: old m → new m` + version tag.
+
 ## v4.87.2 - Speech auto-start: call state sticks (stale closure fix)
 - **Bug:** when a call auto-started from speech (audio attached, no call yet), the Deepgram socket handler held a stale `isActive=false` closure — `startSession()` re-ran on EVERY confident transcript, resetting the call timer to 0, spamming timeline `work` events + purse-open sound. ON-call tracking looked broken.
 - **Fix:** live refs in the Results handler (`isActiveLiveRef`, `isZombieCallLiveRef`), `trySpeechAutoStart` guard now ref-based (`isActiveStateRef`), and `startSession` refuses double-start while active (recovery exempt).

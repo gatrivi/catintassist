@@ -472,7 +472,7 @@ export const SessionProvider = ({ children }) => {
 
   // Company call-log paste import (v4.87.0): company rows are source of truth.
   // Past days overwrite dailyLog + historyTimeline (monthly gets the delta only);
-  // today seeds banked stats (live unbanked call adds on top).
+  // today is authoritative for dailyMinutes/callsToday (correction may go down).
   const importCallLog = useCallback((days) => {
     if (!Array.isArray(days) || !days.length) return { days: 0, totalMins: 0, totalCalls: 0 };
     const now = new Date();
