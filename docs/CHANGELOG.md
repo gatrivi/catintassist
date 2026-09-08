@@ -2,6 +2,10 @@
 
 **Version source:** `src/constants/version.js` (must match `package.json` + top-right UI pill)
 
+## v4.88.2 - Endgame plan in scoreboard
+
+- **New:** line under the ⏱️ mins cell: `🏁 need XhYYm on call · off≤18h: … · off≤23h: …` — on-call time still needed today for the $1200/mo pace, plus slack time if you finish by 18:00 / 23:00 (`computeEndgamePlan` in `DailyTargetsChip.js`).
+
 ## v4.88.1 - Daily targets in status bar
 
 - **New:** always-visible chip in the I/O status bar: minutes + USD needed TODAY for the $1200/mo goal, plus minutes left this month. Hover shows the 5500m fallback floor numbers.

@@ -25,6 +25,27 @@ import { APP_VERSION } from '../constants/version';
 /** Newest first. Only the entry matching APP_VERSION is shown on load. */
 export const RELEASE_NOTES_CATALOG = [
   {
+    version: '4.88.2',
+    id: 'endgame-plan-v1',
+    highlightElementIds: ['daily-targets-chip'],
+    es: {
+      title: 'Plan de cierre del día',
+      intro: 'v4.88.2 — Debajo de la celda ⏱️ del scoreboard: cuánto tiempo en llamada te falta HOY para el ritmo de $1200, y cuánto descanso te queda si terminas a las 18h o a las 23h.',
+      sections: [{ heading: 'Nuevo', bullets: [
+        '🏁 need XhYYm on call: lo que falta hoy para el ritmo de $1200/mes',
+        'off≤18h / off≤23h: descanso posible si terminás a esa hora',
+      ] }],
+    },
+    en: {
+      title: 'Endgame plan',
+      intro: 'v4.88.2 — Under the ⏱️ scoreboard cell: on-call time still needed today for the $1200 pace, and how much time off you can take finishing by 18:00 or 23:00.',
+      sections: [{ heading: 'New', bullets: [
+        '🏁 need XhYYm on call: what today still owes to the $1200/mo pace',
+        'off≤18h / off≤23h: break time possible if you finish by that hour',
+      ] }],
+    },
+  },
+  {
     version: '4.88.1',
     id: 'daily-targets-chip-v1',
     highlightElementIds: ['daily-targets-chip'],

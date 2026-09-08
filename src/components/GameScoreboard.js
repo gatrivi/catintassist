@@ -13,6 +13,7 @@ import { ConnectionDiagnosticsBar } from './ConnectionDiagnosticsBar';
 import { StatNumber } from './StatNumber';
 import { ConnectInterpretButton } from './ConnectInterpretButton';
 import { needsUserSuppliedDeepgramKey } from '../utils/deepgramRuntimeKey';
+import { computeEndgamePlan, formatEndgamePlan } from './DailyTargetsChip';
 import {
   isComponentVisible,
   shouldShowScoreboardConnect,
@@ -482,6 +483,8 @@ const MomentumBar = ({ totalDailyMins, dailyGoal, shiftElapsedMins, isActive, mi
 export const GameScoreboard = ({ 
   liveDailyArs, dailyTargetArs, monthlyArs, monthlyTargetArs, stats, dailyGoal, totalDailyMins, totalOffCallMins, shiftElapsedMins,
   pacePrediction, qualityScore, cutoffWarning, breakLeft, breakLimit, nextGoalLabel, nextMilestone, daysInMonth, currentDay, remainingDays, isActive, isBreakActive, onSwitchToNumbers, milestoneTargets,
+  // v4.88.2: $1200-pace endgame plan (need / off-time by 18h and 23h)
+  goalDayMin = 0,
   isEditingScoreboard, getCompensatedLogOff,
   isZombieCall,
   connectionState,
@@ -655,6 +658,19 @@ export const GameScoreboard = ({
                 { value: milestoneTargets?.m480Ideal, color: '#f59e0b', label: `480m Benchmark (${Math.round(milestoneTargets?.m480Ideal)}m)` }
               ]}
             />
+
+            {/* v4.88.2: endgame plan under the mins cell — what's still needed for the $1200 pace */}
+            {goalDayMin > 0 && (() => {
+              const plan = computeEndgamePlan({ doneMins: totalDailyMins, goalDayMin });
+              return (
+                <div
+                  title={`On-call time still needed today for the $1200/mo pace, and slack time left if you finish by 18:00 / 23:00. '—' means 18h is no longer reachable.`}
+                  style={{ fontSize: '0.5rem', fontWeight: 800, letterSpacing: '0.03em', color: plan.need <= 0 ? '#10b981' : plan.by18Possible ? '#fcd34d' : '#f97316', whiteSpace: 'nowrap' }}
+                >
+                  {formatEndgamePlan(plan)}
+                </div>
+              );
+            })()}
 
             <EmojiRow
               emoji="☕" emptyEmoji="🍵" className="emoji-break"

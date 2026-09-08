@@ -68,6 +68,7 @@ import {
   formatPairShort,
   LANG_PAIR_CHANGED_EVENT,
 } from '../utils/languageConfig';
+import { computeGoalDay } from './DailyTargetsChip';
 
 const OFF_CALL_METRICS_EXPANDED_KEY = 'catint_off_call_metrics_expanded_v1';
 const SCOREBOARD_MAX_VH_KEY = 'catint_scoreboard_max_vh';
@@ -1849,6 +1850,7 @@ export const DashboardHeader = ({
                     liveDailyArs={liveDailyArs} dailyTargetArs={dailyTargetArs}
                     monthlyArs={monthlyArs} monthlyTargetArs={monthlyTargetArs}
                     stats={stats} dailyGoal={dailyGoal} totalDailyMins={totalDailyMins}
+                    goalDayMin={computeGoalDay({ dailyMinutes: stats.dailyMinutes, monthlyMinutes: stats.monthlyMinutes, ratePerMinute: RATE_PER_MINUTE }).dailyMin}
                     totalOffCallMins={totalOffCallMins}
                     shiftElapsedMins={shiftElapsedMins}
                     pacePrediction={pacePrediction} qualityScore={qualityScore} cutoffWarning={cutoffWarning}
