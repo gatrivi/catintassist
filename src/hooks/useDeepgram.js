@@ -434,7 +434,14 @@ export const useDeepgram = () => {
   // Only store transcript bubbles during an active or zombie-resumed call.
   // Armed sync before React paints (Connect auto-starts call) — beginStream can
   // receive Deepgram text before isActive state commits (v4.84.28).
+  // v4.87.2: live refs for socket handlers. ws.onmessage closures are frozen at
+  // connect time; reading state directly made speech auto-start re-fire
+  // startSession on EVERY transcript (call timer reset to 0, spam events).
+  const isActiveLiveRef = useRef(isActive);
+  const isZombieCallLiveRef = useRef(isZombieCall);
   useEffect(() => {
+    isActiveLiveRef.current = isActive;
+    isZombieCallLiveRef.current = isZombieCall;
     shouldCaptureCaptionsRef.current = !!(isActive || isZombieCall);
   }, [isActive, isZombieCall]);
 
@@ -960,9 +967,11 @@ export const useDeepgram = () => {
           const laneSide = laneSideForLang(socketLaneLang, pair);
 
           if (confidence > 0.4) {
-            if (isActive) {
+            // v4.87.2: live refs — this closure may predate the auto-start it
+            // triggers, so state reads here are stale by one call.
+            if (isActiveLiveRef.current) {
               notifySpeechDuringCall();
-            } else if (speechAutoConnect && !isZombieCall) {
+            } else if (!isZombieCallLiveRef.current) {
               if (trySpeechAutoStart()) {
                 shouldCaptureCaptionsRef.current = true;
                 notifySpeechDuringCall();

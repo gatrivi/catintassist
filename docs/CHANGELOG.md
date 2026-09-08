@@ -2,6 +2,29 @@
 
 **Version source:** `src/constants/version.js` (must match `package.json` + top-right UI pill)
 
+## v4.87.2 - Speech auto-start: call state sticks (stale closure fix)
+- **Bug:** when a call auto-started from speech (audio attached, no call yet), the Deepgram socket handler held a stale `isActive=false` closure — `startSession()` re-ran on EVERY confident transcript, resetting the call timer to 0, spamming timeline `work` events + purse-open sound. ON-call tracking looked broken.
+- **Fix:** live refs in the Results handler (`isActiveLiveRef`, `isZombieCallLiveRef`), `trySpeechAutoStart` guard now ref-based (`isActiveStateRef`), and `startSession` refuses double-start while active (recovery exempt).
+- On/off-call detection itself is unchanged: transcript confidence > 0.4 → ON call; silence watchdog (3 prompts + 7 min, hold-exempt) → OFF call.
+
+## v4.87.1 - Call-log paste actually works + 09/08 seed
+
+- **Settings → Data:** paste now accepts space-separated rows (chat/monitor copy with no tabs) + space header, not just TSV/CSV — your 4-row paste previews 59m/4 calls instead of "No valid rows".
+- **Today import:** seeds via max() (never clobbers live-banked minutes), monthly/weekly absorb the seeded delta, re-import is a no-op — counter keeps going up, hot-reload safe (localStorage + apply-once seed).
+- **Localhost seed:** 2026-09-08 hardcoded — 4 calls = 59m (09:02 13m, 09:35 10m, 10:29 7m, 10:41 29m) so 📞 shows 59m on fresh :3001.
+- **Soundboard Studio:** 14 verbatim handbook scripts (`scripts.txt`, "By the Book") preloaded as recording texts — openers, direct dial, repeat/segments/interrupt/static, ghost, stay/leave, blocked, voicemail, operator 12241, closing, LEP bye. `greeting_en/es` + `sign_off` updated to verbatim. One-time reseed overwrites stale stored texts only (recorded audio untouched; stale legibility health cleared for reseeded keys).
+- **VB-out picker selectable:** remembers device labels across origins, explicit hand-pick never auto-overridden, blank slots show stable names + one-Allow guidance, Voicemeeter sink strictly means Standard input.
+
+## v4.87.0 - Daily income bar + editable month target
+- **Status bar:** big orange `$ earned today` (live) next to 📞 on-call / 📡 off-call totals (both header spots: side timers + center idle block).
+- **Scoreboard ($ MONTH cell):** shows `month minutes / target` pill — click ✎ opens the goal dial to edit the monthly target (default 5500m).
+- **Soundboard:** default route back to `passthrough` — the v4.86.2 switch to `dual_element` put two elements on the same virtual sink (patient-side garble; see `docs/soundboard/voicemod-comparison.md`). If your Studio ever set the mode explicitly, it stays as set (`localStorage CATINT_ROUTE_MODE`).
+- **Voicemeeter script:** `scripts/setup-voicemeeter-mic.ps1` now takes `-MicName` (default `Realtek`) instead of hardcoded HS-220U, and enables Strip[2]→B1 for app greetings per `docs/soundboard/voicemeeter-mic-plan.md`.
+- Tests: 61 suites / 410 tests all pass (fixed 3 stale failures); production build verified.
+- **Settings → Data:** company call-log paste import (`CallLogImportPanel`) — paste client-app rows (TSV/CSV), preview per-day on/off minutes, apply overwrites day totals + timeline and seeds today/monthly so scoreboard, progress bar + heatmap follow.
+- **VB-Cable attach:** saved CABLE Output ID is validated against live devices (old cross-origin IDs re-picked by label), blank-label origins get one permission prompt, and `OverconstrainedError` retries once — no more silent stuck-on-tab.
+- **VB-out picker selectable:** remembers every real device label, so CABLE Input / Voicemeeter Input stay readable on fresh origins; an explicit hand-pick is never auto-overridden (persistence fix); blank-label slots show "Output N · names hidden" + one-Allow guidance; Voicemeeter sink strictly means Standard input (AUX/VAIO3/numbered rejected).
+
 ## v4.86.8 - Pins persist across calls
 - **Bug fix:** pinned messages were auto-wiped at call start, call end, AND end-of-day — "unpinning themselves". Pins now persist across calls and days.
 - Kept: explicit HIPAA wipe-all still clears pins (via `catint_pinned_cleared`); clear-log dialog behavior unchanged ("Pinned messages stay").

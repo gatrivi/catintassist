@@ -8,6 +8,7 @@ import {
   saveVisibleMetrics,
   getPresetConfig,
 } from '../utils/scoreboardLayout';
+import { mergeImportedDays } from '../utils/callLogImport';
 
 const PURGE_KEYS_PREFIX = 'trans_cache:';
 
@@ -469,6 +470,33 @@ export const SessionProvider = ({ children }) => {
     setDailyLog(prev => ({ ...prev, [dateStr]: Math.round(minutes) }));
   }, []);
 
+  // Company call-log paste import (v4.87.0): company rows are source of truth.
+  // Past days overwrite dailyLog + historyTimeline (monthly gets the delta only);
+  // today seeds banked stats (live unbanked call adds on top).
+  const importCallLog = useCallback((days) => {
+    if (!Array.isArray(days) || !days.length) return { days: 0, totalMins: 0, totalCalls: 0 };
+    const now = new Date();
+    const todayStr = now.toDateString();
+    const currentMonthKey = `${now.getFullYear()}-${now.getMonth()}`;
+    // Single direct merge: this codebase treats synchronous localStorage as the
+    // durability source, and stats/log/history all persist there on every change.
+    const out = mergeImportedDays({
+      dailyLog: JSON.parse(localStorage.getItem('catintassist_daily_log') || '{}'),
+      historyTimeline: JSON.parse(localStorage.getItem('catintassist_history_timeline') || '{}'),
+      stats: JSON.parse(localStorage.getItem('catintassist_stats') || '{}'),
+      days,
+      todayStr,
+      currentMonthKey,
+    });
+    setDailyLog(out.dailyLog);
+    setHistoryTimeline(out.historyTimeline);
+    setStats(out.stats);
+    safeLocalStorageSet('catintassist_daily_log', JSON.stringify(out.dailyLog));
+    safeLocalStorageSet('catintassist_history_timeline', JSON.stringify(out.historyTimeline));
+    safeLocalStorageSet('catintassist_stats', JSON.stringify(out.stats));
+    return out.summary;
+  }, []);
+
 
   const [workSessionStartTime, setWorkSessionStartTime] = useState(() => stats.lastBreakEndTime || stats.dayStartTime || Date.now());
   const [workSessionMinutes, setWorkSessionMinutes] = useState(0);
@@ -531,6 +559,8 @@ export const SessionProvider = ({ children }) => {
 
   // EMPEZAR LLAMADA: Dejamos de descansar y empezamos a contar los minutos de la llamada.
   const startSession = (isRecovery = false) => {
+    // v4.87.2: guard — a second start while active wipes sessionSeconds/timeline.
+    if (isActive && !isRecovery) return;
     updateActivity();
     setLastEnglishActivityTime(Date.now());
     callHadSpeechRef.current = false;
@@ -596,11 +626,19 @@ export const SessionProvider = ({ children }) => {
     callLastSpeechAtRef.current = Date.now();
   }, []);
 
+  // v4.87.2: ref-based guard. Deepgram socket closures capture this callback at
+  // connect time, so a stale `isActive` here re-ran startSession on every
+  // transcript after speech auto-start (timer reset to 0, work events spam).
+  const isActiveStateRef = useRef(isActive);
+  useEffect(() => {
+    isActiveStateRef.current = isActive;
+  }, [isActive]);
+
   const trySpeechAutoStart = useCallback(() => {
-    if (!speechAutoConnectRef.current || isActive) return false;
+    if (!speechAutoConnectRef.current || isActiveStateRef.current) return false;
     startSessionRef.current(false);
     return true;
-  }, [isActive]);
+  }, []);
 
   // TERMINAR LLAMADA: Guardamos los minutos que trabajamos para no perderlos.
   const stopSession = (onCallEnded) => {
@@ -907,6 +945,7 @@ export const SessionProvider = ({ children }) => {
     updateEnglishActivity,
     dailyLog,
     commitDayToLog,
+    importCallLog,
     isZombieCall,
     clearZombieState,
     translationMood,

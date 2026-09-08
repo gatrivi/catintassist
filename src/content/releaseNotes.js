@@ -25,6 +25,71 @@ import { APP_VERSION } from '../constants/version';
 /** Newest first. Only the entry matching APP_VERSION is shown on load. */
 export const RELEASE_NOTES_CATALOG = [
   {
+    version: '4.87.2',
+    id: 'speech-autostart-stale-closure-v1',
+    highlightElementIds: ['header-calldetect-btn'],
+    es: {
+      title: 'Auto-inicio por voz: reloj de llamada arreglado',
+      intro: 'v4.87.2 — Cuando la llamada arrancaba sola por voz (audio adjunto sin llamada), cada transcripción reiniciaba el cronómetro a 0. Ahora el estado EN llamada se mantiene y el tiempo acumula.',
+      sections: [{ heading: 'Fix', bullets: [
+        'Auto-start por voz ya no se dispara repetidamente dentro de la llamada',
+        'Timer de llamada, timeline y sonidos estables tras el auto-start',
+      ] }],
+    },
+    en: {
+      title: 'Speech auto-start: call timer fixed',
+      intro: 'v4.87.2 — When a call auto-started from speech (audio attached, no call yet), every transcript reset the call timer to 0. ON-call state now sticks and time accumulates.',
+      sections: [{ heading: 'Fix', bullets: [
+        'Speech auto-start no longer re-fires repeatedly during the call',
+        'Call timer, timeline and sounds stable after auto-start',
+      ] }],
+    },
+  },
+  {
+    version: '4.87.1',
+    id: 'handbook-scripts-vb-pick-v1',
+    highlightElementIds: ['workspace-soundboard-pane', 'audio-route-sink-select'],
+    es: {
+      title: 'Scripts del manual + salida VB elegible',
+      intro: 'Soundboard Studio trae los scripts verbales del manual pre-cargados para grabar. El selector 🔊 muestra nombres reales y tu elección se mantiene.',
+      sections: [{ heading: 'Nuevo', bullets: [
+        'Studio: 14 scripts del manual (apertura, repetición, ghost, cierre…) listos para grabar',
+        '🔊 VB out: nombres recordados + la elección manual ya no se auto-cambia',
+        'Datos → importación de planilla del cliente para el scoreboard',
+      ] }],
+    },
+    en: {
+      title: 'Handbook scripts + selectable VB out',
+      intro: 'Soundboard Studio ships the handbook verbatim scripts preloaded for recording. The 🔊 picker shows real names and your pick sticks.',
+      sections: [{ heading: 'New', bullets: [
+        'Studio: 14 handbook scripts (openers, repeat, ghost, closing…) ready to record',
+        '🔊 VB out: remembered names + hand pick never auto-overridden',
+        'Data → client call-log paste import for the scoreboard',
+      ] }],
+    },
+  },
+  {
+    version: '4.87.0',
+    id: 'income-bar-month-target-v1',
+    highlightElementIds: ['header-daily-income', 'metric-m7'],
+    es: {
+      title: 'Ganancia del día + meta mensual editable',
+      intro: 'Número naranja grande con lo ganado hoy junto a 📞/📡. La meta mensual (5500m) ahora visible y editable en la celda $ MES. Sonido: ruta por defecto vuelve a passthrough (v4.86.2 la cambió y garbleaba).',
+      sections: [{ heading: 'Nuevo', bullets: [
+        'Barra de estado: $ ganado hoy (naranja) + 📞 total en llamada + 📡 total fuera',
+        'Scoreboard celda 7: minutos del mes / meta — click en ✎ para editar',
+      ] }],
+    },
+    en: {
+      title: 'Daily income + editable month target',
+      intro: 'Big orange $ earned-today next to 📞/📡 in the status bar. Month target minutes (5500m) now visible and editable in the $ MONTH cell. Soundboard default route back to passthrough (v4.86.2 switch was garbling).',
+      sections: [{ heading: 'New', bullets: [
+        'Status bar: $ earned today (orange) + 📞 total on-call + 📡 total off-call',
+        'Scoreboard cell 7: month minutes / target — click ✎ to edit',
+      ] }],
+    },
+  },
+  {
     version: '4.86.6',
     id: 'center-timers-seed-v1',
     highlightElementIds: ['header-oncall-timers-center'],
