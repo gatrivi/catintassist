@@ -2,6 +2,12 @@
 
 **Version source:** `src/constants/version.js` (must match `package.json` + top-right UI pill)
 
+## v4.87.5 - Vertical paste hardening
+
+- **Bug:** v4.87.4's vertical regrouping required an exact-match date line — NBSP / odd line endings from the client app copy made it bail (49 skipped, 0 rows).
+- **Fix:** normalize NBSP-family spaces + CR line endings before parsing; tolerant date/money token matching; vertical grouping only when no line parses as a full row on its own.
+- **Diagnosis:** "No valid rows" now shows the first skipped line so the next paste failure is self-explanatory.
+
 ## v4.87.4 - Call-log import: one-field-per-line paste + today is authoritative
 
 - **Bug:** pasting the client app's list copy (each field on its own line — id, date, time, mins, Yes, No, $) parsed 0 rows. Parser now regroups vertical pastes into records (closes on `$` token or new date after 6+ fields).

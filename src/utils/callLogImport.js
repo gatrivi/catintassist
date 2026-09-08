@@ -56,7 +56,7 @@ const isYes = (v) => /^\s*(y(es)?|true|1)\s*$/i.test(String(v || ''));
  */
 const parseSpaceRow = (line) => {
   const toks = String(line || '').trim().split(/\s+/);
-  const dateIdx = toks.findIndex((t) => /^\d{1,2}\/\d{1,2}\/\d{4}$/.test(t));
+  const dateIdx = toks.findIndex((t) => /\b\d{1,2}\/\d{1,2}\/\d{4}\b/.test(t));
   if (dateIdx < 0) return null;
   const dateStr = toks[dateIdx];
   let startStr = toks[dateIdx + 1] || '';
@@ -87,8 +87,8 @@ const parseSpaceRow = (line) => {
  * A record closes on a money token ("$0.00") or when a new date line arrives
  * after a full buffer (>=6 fields) — covers missing Pay values.
  */
-const isDateTok = (t) => /^\d{1,2}\/\d{1,2}\/\d{4}$/.test(t);
-const isMoneyTok = (t) => /^\$\d/.test(t);
+const isDateTok = (t) => /\b\d{1,2}\/\d{1,2}\/\d{4}\b/.test(t);
+const isMoneyTok = (t) => /\$\s?\d/.test(t);
 const groupVerticalRecords = (lines) => {
   if (!lines.some(isDateTok)) return null; // not vertical format
   const records = [];
@@ -104,7 +104,11 @@ const groupVerticalRecords = (lines) => {
 
 /** Parse pasted text -> { calls, skipped, total }. calls: billable-aware, sorted by start. */
 export const parseCallLogText = (text) => {
-  let lines = String(text || '').split(/\r?\n/).map((l) => l.trim()).filter(Boolean);
+  // Normalize: unicode spaces (client app copy uses NBSP) + any line ending style.
+  const clean = String(text || '')
+    .replace(/[\u00A0\u2007\u202F\u2009]/g, ' ')
+    .replace(/\r\n?/g, '\n');
+  let lines = clean.split('\n').map((l) => l.trim()).filter(Boolean);
   if (!lines.length) return { calls: [], skipped: 0, total: 0 };
   const hasTabs = lines.some((l) => l.includes('\t'));
   // Only treat commas as delimiters when a line actually has 4+ comma fields
@@ -113,11 +117,15 @@ export const parseCallLogText = (text) => {
   const delim = hasTabs ? '\t' : hasCsv ? ',' : null;
   if (!delim) {
     // One-field-per-line paste: regroup into record strings first.
-    const vertical = groupVerticalRecords(lines);
-    if (vertical) lines = vertical;
+    // Only when NO line is already a complete space-separated row.
+    if (!lines.some((l) => parseSpaceRow(l))) {
+      const vertical = groupVerticalRecords(lines);
+      if (vertical) lines = vertical;
+    }
   }
   const calls = [];
   let skipped = 0;
+  const skippedSamples = [];
   lines.forEach((line, idx) => {
     if (delim) {
       const cells = splitRow(line, delim);
@@ -146,10 +154,13 @@ export const parseCallLogText = (text) => {
     if (/customer/i.test(line) && /duration|billable/i.test(line)) return;
     const row = parseSpaceRow(line);
     if (row) calls.push(row);
-    else skipped += 1;
+    else {
+      skipped += 1;
+      if (skippedSamples.length < 3) skippedSamples.push(line.slice(0, 60));
+    }
   });
   calls.sort((a, b) => a.startMs - b.startMs);
-  return { calls, skipped, total: lines.length };
+  return { calls, skipped, skippedSamples, total: lines.length };
 };
 
 const fmtTime = (ms) => {

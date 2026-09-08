@@ -25,12 +25,12 @@ import { APP_VERSION } from '../constants/version';
 /** Newest first. Only the entry matching APP_VERSION is shown on load. */
 export const RELEASE_NOTES_CATALOG = [
   {
-    version: '4.87.4',
+    version: '4.87.5',
     id: 'call-log-import-authoritative-v1',
     highlightElementIds: ['settings-data-import'],
     es: {
       title: 'Importar call log ahora corrige',
-      intro: 'v4.87.4 — Pegar el historial en Ajustes → Datos ahora sobreescribe los minutos de HOY (arriba o abajo) y repinta la barra de progreso.',
+      intro: 'v4.87.5 — Pegar el historial (una campo por línea o filas) ahora sobreescribe los minutos de HOY (arriba o abajo) y repinta la barra de progreso.',
       sections: [{ heading: 'Arreglado', bullets: [
         'Importar es autoritativo: corrige sobre- y sub-contos',
         'HOY también entra al timeline/heatmap',
@@ -38,7 +38,7 @@ export const RELEASE_NOTES_CATALOG = [
     },
     en: {
       title: 'Call-log import now corrects',
-      intro: 'v4.87.4 — Pasting call history in Settings → Data now overwrites TODAY\'s minutes (up or down) and repaints the progress bar.',
+      intro: 'v4.87.5 — Pasting call history (one field per line or rows) now overwrites TODAY\'s minutes (up or down) and repaints the progress bar.',
       sections: [{ heading: 'Fixed', bullets: [
         'Import is authoritative: fixes over- and under-counts',
         'TODAY also lands in the timeline/heatmap',

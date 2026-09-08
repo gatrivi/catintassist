@@ -10,8 +10,8 @@ export function CallLogImportPanel() {
 
   const parsed = useMemo(() => {
     if (!paste.trim()) return null;
-    const { calls, skipped } = parseCallLogText(paste);
-    return { days: groupCallsByDay(calls), skipped };
+    const { calls, skipped, skippedSamples } = parseCallLogText(paste);
+    return { days: groupCallsByDay(calls), skipped, skippedSamples };
   }, [paste]);
 
   const flash = (msg, ms = 5000) => {
@@ -32,7 +32,7 @@ export function CallLogImportPanel() {
     const s = importCallLog(parsed.days);
     setPaste('');
     const todayNote = s.todayNew != null ? ` Today: ${s.todayOld}m → ${s.todayNew}m.` : '';
-    flash(`Applied ${s.days} day(s) · ${s.totalCalls} billable calls · ${s.totalMins}m.${todayNote} (v4.87.4)`);
+    flash(`Applied ${s.days} day(s) · ${s.totalCalls} billable calls · ${s.totalMins}m.${todayNote} (v4.87.5)`);
   };
 
   return (
@@ -54,7 +54,12 @@ export function CallLogImportPanel() {
       />
       {parsed && (
         <div style={{ fontSize: 11 }}>
-          {parsed.days.length === 0 && <span style={{ color: '#f87171' }}>No valid rows{parsed.skipped ? ` · ${parsed.skipped} skipped` : ''}.</span>}
+          {parsed.days.length === 0 && (
+            <span style={{ color: '#f87171' }}>
+              No valid rows{parsed.skipped ? ` · ${parsed.skipped} skipped` : ''}.
+              {parsed.skippedSamples?.length ? ` First skipped: ${JSON.stringify(parsed.skippedSamples[0])}` : ''}
+            </span>
+          )}
           {parsed.days.map((d) => (
             <div key={d.dateStr} style={{ color: '#e2e8f0', padding: '3px 0', borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
               <strong>{d.dateStr}</strong> · {d.billableCalls}/{d.calls} calls ·{' '}

@@ -63,6 +63,20 @@ describe('callLogImport', () => {
     expect(days[0].billableCalls).toBe(7);
   });
 
+  test('parses one-field-per-line paste with NBSP + CR endings (client app copy)', () => {
+    const nbsp = '\u00A0';
+    const pasted = [
+      '91836', '09/08/2026' + nbsp, nbsp + '12:17' + nbsp + 'PM', '19', 'Yes', 'No', '$0.00',
+      '7074', '09/08/2026', '12:03 PM', '7', 'Yes', 'No', '$0.00',
+    ].join('\r');
+    const { calls, skipped, skippedSamples } = parseCallLogText(pasted);
+    expect(skipped).toBe(0);
+    expect(calls).toHaveLength(2);
+    expect(skippedSamples).toEqual([]);
+    expect(calls[0].customerId).toBe('7074'); // 12:03 PM sorts before 12:17 PM
+    expect(calls.find((c) => c.customerId === '91836').mins).toBe(19);
+  });
+
   test('12h edge cases: 12 AM vs 12 PM', () => {
     const { calls } = parseCallLogText('1,09/08/2026,12:05 AM,5,Yes,No,$0\n2,09/08/2026,12:05 PM,5,Yes,No,$0');
     expect(new Date(calls[0].startMs).getHours()).toBe(0);
