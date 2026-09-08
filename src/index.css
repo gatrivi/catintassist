@@ -1390,6 +1390,21 @@ body {
   backdrop-filter: blur(4px);
   animation: study-hold-fade-in 0.4s ease;
   z-index: 5;
+  cursor: pointer;
+}
+
+/* v4.89.1: click-through wrapper — card stays the flex item, clicks inside don't resume */
+.study-hold-card-wrap {
+  display: contents;
+}
+.study-hold-card-wrap .study-cue-cards {
+  cursor: default;
+}
+
+.study-cue-resume-hint {
+  font-size: 0.62rem;
+  color: #7dd3fc;
+  font-weight: 700;
 }
 
 .study-cue-hold .study-card {

@@ -2,6 +2,10 @@
 
 **Version source:** `src/constants/version.js` (must match `package.json` + top-right UI pill)
 
+## v4.89.1 - Hold auto-resume (click-outside + speech)
+
+- **Fix:** study hold overlay no longer traps you — click outside the card (or Enter/Escape) resumes; any detected speech (<2s silence) auto-lifts hold. Rules in `src/utils/holdState.js` (tested); overlay click in `App.js`.
+
 ## v4.89.0 - HUD inspector (hover any element, click to copy selector)
 
 - **New:** ⌖ toggle bottom-right (or Alt+I): hover ANY hud element — incl. plain container divs — shows name + unique CSS selector; click tooltip (or press C) copies `name :: selector` for bug reports. Works during calls. `src/components/HudInspector.js`.

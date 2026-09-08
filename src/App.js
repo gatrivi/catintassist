@@ -100,6 +100,7 @@ const Dashboard = () => {
     setIsNotesOpen,
     isActive,
     isHold,
+    setIsHold,
     hipaaGraceActive,
     isBreakActive,
     isZombieCall,
@@ -910,9 +911,23 @@ const Dashboard = () => {
           {isActive && <OnCallSoundboardStrip micTestMode={micTestMode} />}
           <div className="transcription-pane" data-guide="transcript">
             {/* v4.88.0: hold time becomes study time — cards fade in over the transcript */}
+            {/* v4.89.1: click outside the card (or just speak) resumes the call */}
             {isActive && isHold && isComponentVisible(COMPONENT_IDS.study_cue_cards, { isActive }) && (
-              <div className="study-hold-overlay">
-                <StudyCueCards variant="hold" />
+              <div
+                className="study-hold-overlay"
+                onClick={() => setIsHold(false)}
+                onKeyDown={(e) => {
+                  if (e.target !== e.currentTarget) return;
+                  if (e.key === 'Enter' || e.key === 'Escape') setIsHold(false);
+                }}
+                role="button"
+                tabIndex={0}
+                aria-label="Resume call"
+                title="Click outside the card (or just speak) to resume the call"
+              >
+                <div className="study-hold-card-wrap" onClick={(e) => e.stopPropagation()}>
+                  <StudyCueCards variant="hold" />
+                </div>
               </div>
             )}
             <TranscriptionBoard

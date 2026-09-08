@@ -9,6 +9,7 @@ import {
   getPresetConfig,
 } from '../utils/scoreboardLayout';
 import { mergeImportedDays } from '../utils/callLogImport';
+import { shouldAutoHold, shouldAutoResume } from '../utils/holdState';
 
 const PURGE_KEYS_PREFIX = 'trans_cache:';
 
@@ -772,15 +773,18 @@ export const SessionProvider = ({ children }) => {
       timerRef.current = setInterval(() => {
         setSessionSeconds(prev => prev + 1);
 
-        // SMART HOLD AUTO-TRIGGER
-        // If a hold phrase was recently detected (<30s) and there's silence (>3s), auto-activate hold
+        // SMART HOLD AUTO-TRIGGER + AUTO-RESUME (v4.89.1: speech = back)
+        // Hold phrase recently detected (<30s) + silence (>3s) → hold.
+        // Any speech while holding (<2s silence) → resume.
         const silenceSecs = (Date.now() - lastActivityTime) / 1000;
-        const wasHoldRequestedRecently = (Date.now() - holdIntentAt) < 30000;
-        
-        if (!isHold && wasHoldRequestedRecently && silenceSecs >= 3) {
+        const holdIntentAgeMs = Date.now() - holdIntentAt;
+
+        if (shouldAutoResume({ isHold, silenceSecs })) {
+          setIsHold(false);
+        } else if (shouldAutoHold({ isHold, holdIntentAgeMs, silenceSecs })) {
           setIsHold(true);
           // Reset intent so it doesn't trigger again immediately if they speak and stop
-          setHoldIntentAt(0); 
+          setHoldIntentAt(0);
         }
       }, 1000);
     } else {

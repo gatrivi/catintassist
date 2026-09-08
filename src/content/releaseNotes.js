@@ -25,6 +25,21 @@ import { APP_VERSION } from '../constants/version';
 /** Newest first. Only the entry matching APP_VERSION is shown on load. */
 export const RELEASE_NOTES_CATALOG = [
   {
+    version: '4.89.1',
+    id: 'hold-auto-resume-v1',
+    highlightElementIds: ['study-cue-cards'],
+    es: {
+      title: 'Hold ya no te atrapa',
+      intro: 'v4.89.1 — Clic fuera de la tarjeta de estudio = llamada resumida. Y si hablás (cualquiera de los dos), el hold se levanta solo. La tarjeta lo dice: 🔊.',
+      sections: [{ heading: 'Reglas', bullets: ['Clic fuera / Enter / Escape → resume', 'Voz detectada (<2s silencio) → resume solo'] }],
+    },
+    en: {
+      title: 'Hold no longer traps you',
+      intro: 'v4.89.1 — Click outside the study card = call resumed. And any detected speech auto-lifts hold. The card says it: 🔊.',
+      sections: [{ heading: 'Rules', bullets: ['Click outside / Enter / Escape → resume', 'Speech detected (<2s silence) → auto-resume'] }],
+    },
+  },
+  {
     version: '4.89.0',
     id: 'hud-inspector-v1',
     highlightElementIds: ['hud-inspector-toggle'],

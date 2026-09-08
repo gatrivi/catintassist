@@ -121,6 +121,9 @@ export const StudyCueCards = ({ variant = 'idle' }) => {
       </button>
       <footer className="study-cue-meta">
         <span>{(idx % deck.length) + 1}/{deck.length}</span>
+        {variant === 'hold' && (
+          <span className="study-cue-resume-hint">🔊 speak or click outside to resume</span>
+        )}
         <button type="button" className="study-cue-skip" onClick={() => setIdx((n) => n + 1)}>
           skip ▸
         </button>
