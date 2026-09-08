@@ -2,6 +2,10 @@
 
 **Version source:** `src/constants/version.js` (must match `package.json` + top-right UI pill)
 
+## v4.88.3 - Readable status-bar targets strip
+
+- **New:** status bar center shows 3 readable current/target pairs: `💵 $earned/$target · ⏱ done/target · ☕ break taken/max`. Break max = total break for today that still lets you hit the $1200-pace minutes by 18:00; hover adds the 5500m fallback and 23:00 overtime slack. Chip turns orange when 18h is no longer reachable.
+
 ## v4.88.2 - Endgame plan in scoreboard
 
 - **New:** line under the ⏱️ mins cell: `🏁 need XhYYm on call · off≤18h: … · off≤23h: …` — on-call time still needed today for the $1200/mo pace, plus slack time if you finish by 18:00 / 23:00 (`computeEndgamePlan` in `DailyTargetsChip.js`).

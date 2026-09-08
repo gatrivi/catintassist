@@ -25,6 +25,27 @@ import { APP_VERSION } from '../constants/version';
 /** Newest first. Only the entry matching APP_VERSION is shown on load. */
 export const RELEASE_NOTES_CATALOG = [
   {
+    version: '4.88.3',
+    id: 'status-bar-targets-strip-v1',
+    highlightElementIds: ['daily-targets-chip'],
+    es: {
+      title: 'Barra de estado legible',
+      intro: 'v4.88.3 — La barra de estado ahora muestra 3 pares actual/objetivo bien legibles: 💵 ganado/$objetivo · ⏱ hecho/objetivo · ☕ descanso tomado/máximo (para llegar a las 18h).',
+      sections: [{ heading: 'Nuevo', bullets: [
+        '☕ objetivo = descanso TOTAL posible hoy y aún cumplir el ritmo de $1200 a las 18h',
+        'Pasá el mouse: piso 5500m y tiempo libre si terminás a las 23h',
+      ] }],
+    },
+    en: {
+      title: 'Readable status bar',
+      intro: 'v4.88.3 — Status bar now shows 3 readable current/target pairs: 💵 earned/$target · ⏱ done/target · ☕ break taken/max (to still hit 18:00).',
+      sections: [{ heading: 'New', bullets: [
+        '☕ target = TOTAL break you can take today and still hit the $1200 pace by 18:00',
+        'Hover: 5500m fallback floor and slack if you finish by 23:00',
+      ] }],
+    },
+  },
+  {
     version: '4.88.2',
     id: 'endgame-plan-v1',
     highlightElementIds: ['daily-targets-chip'],

@@ -77,6 +77,7 @@ export const AudioRouteStatusBar = ({
   totalOffCallSeconds = 0,
   dailyMinutes = 0,
   monthlyMinutes = 0,
+  breakMinutes = 0,
   ratePerMinute = 0.13,
   onReconnectStream,
   onReconnectAudioSource,
@@ -338,7 +339,7 @@ export const AudioRouteStatusBar = ({
     >
       <div className="audio-route-status-main">
         {/* v4.87.0: daily $1200-goal targets always visible */}
-        <DailyTargetsChip dailyMinutes={dailyMinutes} monthlyMinutes={monthlyMinutes} ratePerMinute={ratePerMinute} />
+        <DailyTargetsChip dailyMinutes={dailyMinutes} monthlyMinutes={monthlyMinutes} breakMinutes={breakMinutes} ratePerMinute={ratePerMinute} />
         {compact && (
           <div className="audio-route-compact-proof" aria-label={`${tabProof?.label || sttInLabel}; Deepgram ${enOk && esOk ? 'EN and ES ready' : connectionState}`}>
             <div className="audio-route-compact-source-toggle" role="group" aria-label="Active call STT source">

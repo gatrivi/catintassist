@@ -263,6 +263,7 @@ const SessionControlsSticky = React.memo(({
   // v4.87.0: daily $1200-goal chip in status bar
   dailyMinutes = 0,
   monthlyMinutes = 0,
+  breakMinutes = 0,
   ratePerMinute = 0.13,
   // Today timers (minutes) — shown next to Connect in the sticky row (v4.86.5)
   onCallMins = 0,
@@ -801,6 +802,7 @@ const SessionControlsSticky = React.memo(({
           totalOffCallSeconds={totalOffCallSeconds}
           dailyMinutes={dailyMinutes}
           monthlyMinutes={monthlyMinutes}
+          breakMinutes={breakMinutes}
           ratePerMinute={ratePerMinute}
           onReconnectStream={onReconnectStream}
           onReconnectAudioSource={onReconnectAudioSource}
@@ -3004,8 +3006,9 @@ ${isInDeficit ? `⚠️ DEFICIT: Behind pace by ${Math.round(monthlyDeficitMins)
         sessionArsLive={sessionArsLive}
         totalOffCallSeconds={totalOffCallSeconds}
         totalOnCallSeconds={totalOnCallSeconds}
-        dailyMinutes={Math.round(stats.dailyMinutes)}
+        dailyMinutes={Math.round(totalDailyMins)}
         monthlyMinutes={stats.monthlyMinutes}
+        breakMinutes={Math.round(liveBreakMins)}
         ratePerMinute={RATE_PER_MINUTE}
         callModeExpanded={callModeExpanded}
         setCallModeExpanded={setCallModeExpanded}
