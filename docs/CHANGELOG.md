@@ -2,6 +2,10 @@
 
 **Version source:** `src/constants/version.js` (must match `package.json` + top-right UI pill)
 
+## v4.89.2 - Inspector ON by default
+
+- **Fix:** ⌖ HUD inspector now defaults ON — hover anything, get name + selector, click copies. No toggle hunt. Off persists via ⌖/Alt+I.
+
 ## v4.89.1 - Hold auto-resume (click-outside + speech)
 
 - **Fix:** study hold overlay no longer traps you — click outside the card (or Enter/Escape) resumes; any detected speech (<2s silence) auto-lifts hold. Rules in `src/utils/holdState.js` (tested); overlay click in `App.js`.

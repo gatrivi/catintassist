@@ -7,6 +7,16 @@ import { createPortal } from 'react-dom';
 
 const STORE_KEY = 'hud-inspector-on';
 
+/** v4.89.2: default ON — zero friction bug reports. Explicit off persists. */
+export const readInspectorEnabled = () => {
+  try {
+    const v = localStorage.getItem(STORE_KEY);
+    return v === null ? true : v === '1';
+  } catch (_) {
+    return true;
+  }
+};
+
 /** Friendly name: data-hud-name > data-guide > aria-label > title > #id > .class > <tag>. */
 export const resolveHudName = (el) => {
   if (!el || typeof el.getAttribute !== 'function') return '<unknown>';
@@ -84,9 +94,7 @@ export const copyText = async (text) => {
 };
 
 export const HudInspectorHost = () => {
-  const [on, setOn] = useState(() => {
-    try { return localStorage.getItem(STORE_KEY) === '1'; } catch (_) { return false; }
-  });
+  const [on, setOn] = useState(readInspectorEnabled);
   const [tip, setTip] = useState(null); // { x, y, name, selector, below }
   const [copied, setCopied] = useState(false);
   const lastElRef = useRef(null);

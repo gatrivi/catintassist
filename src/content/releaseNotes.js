@@ -25,6 +25,21 @@ import { APP_VERSION } from '../constants/version';
 /** Newest first. Only the entry matching APP_VERSION is shown on load. */
 export const RELEASE_NOTES_CATALOG = [
   {
+    version: '4.89.2',
+    id: 'hud-inspector-default-on-v1',
+    highlightElementIds: ['hud-inspector-toggle'],
+    es: {
+      title: 'Inspector siempre activo',
+      intro: 'v4.89.2 — El inspector ⌖ ahora viene PRENDIDO: pasá el mouse sobre lo que sea y ves nombre + selector, clic para copiar. Para apagarlo: ⌖ o Alt+I.',
+      sections: [{ heading: 'Detalle', bullets: ['Sin fricción: nada que activar antes de reportar'] }],
+    },
+    en: {
+      title: 'Inspector on by default',
+      intro: 'v4.89.2 — The ⌖ inspector is now ON out of the box: hover anything for name + selector, click to copy. Turn off via ⌖ or Alt+I.',
+      sections: [{ heading: 'Detail', bullets: ['Zero friction: nothing to enable before reporting'] }],
+    },
+  },
+  {
     version: '4.89.1',
     id: 'hold-auto-resume-v1',
     highlightElementIds: ['study-cue-cards'],

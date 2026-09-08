@@ -1,4 +1,4 @@
-import { resolveHudName, buildUniqueSelector } from './HudInspector';
+import { resolveHudName, buildUniqueSelector, readInspectorEnabled } from './HudInspector';
 
 const fakeEl = (attrs = {}, extra = {}) => ({
   tagName: 'DIV',
@@ -29,5 +29,14 @@ describe('HudInspector naming + selectors', () => {
     const child = fakeEl({}, { tagName: 'DIV', className: 'call-micro-bar-center', parentElement: parent });
     const sel = buildUniqueSelector(child);
     expect(sel).toContain('div.call-micro-bar-center');
+  });
+
+  it('inspector defaults ON (no stored pref), respects stored off', () => {
+    localStorage.clear();
+    expect(readInspectorEnabled()).toBe(true);
+    localStorage.setItem('hud-inspector-on', '0');
+    expect(readInspectorEnabled()).toBe(false);
+    localStorage.setItem('hud-inspector-on', '1');
+    expect(readInspectorEnabled()).toBe(true);
   });
 });
