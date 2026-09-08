@@ -1,18 +1,18 @@
-# Agent Handoff Index (v4.85.15)
+# Agent Handoff Index (v4.88.4)
 
 **Read first:** [`00_global_rules.md`](00_global_rules.md)
 
 Outside agents: pick **one** spec below. Do not re-read the whole repo.
 
 ## Current app version
-Top-right must show **v4.85.15** after this ship.
+Top-right must show **v4.88.4** after this ship. Status: [`11_daily_targets_hud_2026-09-08.md`](11_daily_targets_hud_2026-09-08.md) (targets/HUD session, v4.88.1–4.88.4 pushed) + [`10_session_status_2026-09-08.md`](10_session_status_2026-09-08.md) (big session) + little session on call-log paste — coordinate before staging (dirty tree).
 
 ## Current operating invariants
 - Active-call STT controls are fixed and reachable: `TAB` + `VB` in a 30px row. Never remove them; a compact UI may only move secondary setup behind a labeled expander.
 - Switching acquires new audio before releasing old audio. Failed TAB/VB switch keeps captions and the working stream.
-- VB resolves `CABLE Output` automatically or fails closed. It must never capture a default physical mic.
+- VB resolves `CABLE Output` automatically or fails closed. It must never capture a default physical mic. Saved IDs validate vs live enumeration; explicit VB-out picks are never auto-overridden (`CATINTASSIST_SINK_EXPLICIT`).
 - Header cat is the quiet app-health beacon: gray ready · blue connecting · green STT live · amber check · red error. Silence alone is not an error.
-- Translation is local translator → Vercel gateway. Browser must never call a third-party provider. Wait for 2 words; one request runs at a time; live updates require 10 new words. Failure must remain visible, never blank.
+- Translation is local TTT (`127.0.0.1:59200/stt/translate`, Marian int8, CORS includes `:3001`) → Vercel gateway. Browser must never call a third-party provider. No provider keys in `.env`, so gateway fallback 503s — local-only is correct. Wait for 2 words; one request runs at a time; live updates require 10 new words. Failure must remain visible, never blank.
 - Full tests are currently blocked by existing dirty translation-engine work; do not discard or stage it with unrelated changes.
 
 ## What's new (docs)
@@ -39,6 +39,9 @@ Top-right must show **v4.85.15** after this ship.
 | 5 | Scoreboard polish | [`03_scoreboard.md`](03_scoreboard.md) | `GameScoreboard.js`, `DashboardHeader.js` |
 | 6 | Auth + DB (future) | [`06_auth_db.md`](06_auth_db.md) | read only until approved |
 | 7 | STT soft outage | [`07_stt_soft_outage.md`](07_stt_soft_outage.md) | `useDeepgram.js`, `captionEngine.js`, `TranscriptionBoard.js` |
+| 8 | Translation freeze (uncommitted) | [`08_translation_freeze.md`](08_translation_freeze.md) | `useTranslate.js`, `TranscriptionBoard.js` |
+| 9 | Voicemeeter safeguards (pending) | [`09_voicemeeter_safeguards.md`](09_voicemeeter_safeguards.md) | `AudioSettingsContext.js`, `AudioRouteStatusBar.js`, `audioRoutePassthrough.js` |
+| 10 | Session status 2026-09-08 | [`10_session_status_2026-09-08.md`](10_session_status_2026-09-08.md) | read-only status — big vs little session split |
 
 ## Also read
 - [`docs/cursor-agent/README.md`](../cursor-agent/README.md) — touch-only file table
