@@ -25,6 +25,28 @@ import { APP_VERSION } from '../constants/version';
 /** Newest first. Only the entry matching APP_VERSION is shown on load. */
 export const RELEASE_NOTES_CATALOG = [
   {
+    version: '4.95.4',
+    id: 'live-counters-perf-v1',
+    highlightElementIds: ['metric-m1', 'metric-m4'],
+    es: {
+      title: 'Contadores vivos, sin lag',
+      intro: 'v4.95.4 — Vuelven los contadores dinámicos: $ TODAY sube cada segundo en llamada y MINS/LEFT/OFF muestran segundos tickeando. Sin odómetro pesado: mismo 1Hz que ya existía, 0 timers extra.',
+      sections: [{ heading: 'Qué cambió', bullets: [
+        '$ TODAY + llamada actual tickean cada segundo (en llamada)',
+        'MINS TODAY / LEFT / OFF CALL con segundos vivos',
+        'Adiós strip odómetro pesado (menos nodos, sin jitter)',
+      ] }],
+    },
+    en: {
+      title: 'Live counters, no lag',
+      intro: 'v4.95.4 — Dynamic counters are back: $ TODAY climbs every second in-call and MINS/LEFT/OFF show ticking seconds. No heavy odometer: same existing 1Hz tick, 0 extra timers.',
+      sections: [{ heading: 'What changed', bullets: [
+        '$ TODAY + current call tick every second (in-call)',
+        'MINS TODAY / LEFT / OFF CALL with live seconds',
+        'Heavy odometer strip removed (fewer nodes, no jitter)',
+      ] }],
+    },
+  },  {
     version: '4.95.3',
     id: 'hud-inspector-off-by-default-v1',
     highlightElementIds: ['hud-inspector-toggle'],

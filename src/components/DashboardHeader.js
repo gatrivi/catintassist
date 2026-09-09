@@ -1,7 +1,6 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { StatNumber } from './StatNumber';
-import { LiveRollingNumber } from './LiveRollingNumber';
 import { useRewardAudio } from '../hooks/useRewardAudio';
 import { useSession } from '../contexts/SessionContext';
 import { useAudioSettings } from '../contexts/AudioSettingsContext';
@@ -1334,18 +1333,19 @@ export const DashboardHeader = ({
   const monthlyArs = Math.round(stats.monthlyMinutes * RATE_PER_MINUTE * arsRate);
   const monthlyTargetArs = Math.round(stats.goalMinutes * RATE_PER_MINUTE * arsRate);
   const currentBounty = Math.max(0, dailyTargetArs - liveDailyArs);
-  const arsPerSecond = (RATE_PER_MINUTE / 60) * arsRate;
   const sessionArsLive = Math.round(sessionEarnings * arsRate);
   // liveDailyArs already includes the current call (totalDailyMins = dailyMinutes + unbankedMins),
   // so this is the live "$ today" figure as-is — don't add sessionArsLive again or it double-counts.
   const todayArsLive = liveDailyArs;
 
-  const renderLiveArs = (discreteValue, size = 'lg', prefix = '$') =>
-    isActive ? (
-      <LiveRollingNumber value={discreteValue} ratePerSecond={arsPerSecond} prefix={prefix} size={size} />
-    ) : (
-      <StatNumber value={discreteValue} prefix={prefix} size={size} />
-    );
+  // v4.95.4: perf live counters — old odometer (LiveRollingNumber, 30-div
+  // strip per digit + per-digit timers) replaced by 1Hz StatNumber ticks.
+  // Values already re-render every second via sessionSeconds/availSeconds,
+  // and $ TODAY moves ~2 AR$/s, so the roll is visible with zero extra
+  // timers, nodes, or layout thrash. tabular-nums keeps width stable.
+  const renderLiveArs = (discreteValue, size = 'lg', prefix = '$') => (
+    <StatNumber value={discreteValue} prefix={prefix} size={size} />
+  );
 
   const renderSessionArs = (size = 'sm', prefix = 'AR$') => renderLiveArs(sessionArsLive, size, prefix);
 
@@ -1547,6 +1547,26 @@ export const DashboardHeader = ({
   const formatValue = (mins) => {
     if (showAsHours) return formatHoursMins(mins);
     return `${Math.round(mins)}m`;
+  };
+
+  // v4.95.4: per-second live time — same value as formatValue but with a
+  // ticking seconds suffix so time visibly rolls every second (old dynamic
+  // counter feel). Zero extra timers: parent already re-renders at 1Hz via
+  // session/avail/break seconds. Off-call (avail) ticks off-call; on-call
+  // cells tick only when isActive, else fall back to formatValue (frozen = correct).
+  const formatLiveMins = (mins, shouldTick) => {
+    if (!shouldTick) return formatValue(mins);
+    if (showAsHours) {
+      const totalSecs = Math.max(0, Math.floor(mins * 60));
+      const h = Math.floor(totalSecs / 3600);
+      const m = Math.floor((totalSecs % 3600) / 60);
+      const s = totalSecs % 60;
+      return `${h}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
+    }
+    const totalSecs = Math.max(0, Math.floor(mins * 60));
+    const m = Math.floor(totalSecs / 60);
+    const s = totalSecs % 60;
+    return `${m}m ${String(s).padStart(2, '0')}s`;
   };
 
   // SIMPLIFIED 12-STEP ENGINE (5500m floor based)
@@ -1941,7 +1961,7 @@ export const DashboardHeader = ({
                     >
                       <MetricVisibilityToggle metricKey="m1" />
                       <HelpLabel text="1. MINS TODAY" />
-                      <div className="metric-cell-val" style={{ color: '#f87171' }}><StatNumber value={formatValue(totalDailyMins)} size="lg" format={false} /></div>
+                      <div className="metric-cell-val" style={{ color: '#f87171' }}><StatNumber value={formatLiveMins(totalDailyMins, isActive)} size="lg" format={false} /></div>
                       <MetricPct>{metricPcts.minsToday}</MetricPct>
                       <div className="metric-cell-label">MINS TODAY</div>
                     </div>
@@ -1959,7 +1979,7 @@ export const DashboardHeader = ({
                     >
                       <MetricVisibilityToggle metricKey="m2" />
                       <HelpLabel text="2. LEFT TODAY" />
-                      <div className="metric-cell-val" style={{ color: '#fca5a5' }}><StatNumber value={formatValue(Math.max(0, dailyGoal - totalDailyMins))} size="lg" format={false} /></div>
+                      <div className="metric-cell-val" style={{ color: '#fca5a5' }}><StatNumber value={formatLiveMins(Math.max(0, dailyGoal - totalDailyMins), isActive)} size="lg" format={false} /></div>
                       <MetricPct>{metricPcts.leftToday}</MetricPct>
                       <div className="metric-cell-label">LEFT TODAY</div>
                     </div>
@@ -2102,7 +2122,7 @@ export const DashboardHeader = ({
                     >
                       <MetricVisibilityToggle metricKey="m9" />
                       <HelpLabel text="9. OFF CALL" />
-                      <div className="metric-cell-val" style={{ color: '#fdba74' }}><StatNumber value={formatValue(totalOffCallMins)} size="lg" format={false} /></div>
+                      <div className="metric-cell-val" style={{ color: '#fdba74' }}><StatNumber value={formatLiveMins(totalOffCallMins, !isActive)} size="lg" format={false} /></div>
                       <MetricPct>{metricPcts.offCall}</MetricPct>
                       <div className="metric-cell-label">OFF CALL</div>
                     </div>
