@@ -849,7 +849,7 @@ export const GreetingsPanel = ({ onEditModeChange, onExitStudio, micTestMode = f
               </div>
             ) : null}
             <span className={`sb-clip-status ${hasBlob ? 'sb-clip-status--saved' : 'sb-clip-status--missing'}`}>
-              {hasBlob ? 'SAVED' : 'MISSING'}
+              {hasBlob ? 'SAVED' : 'not recorded'}
             </span>
             {routeBadge && (
               <span className={routeBadge.className} title={routeBadge.title}>

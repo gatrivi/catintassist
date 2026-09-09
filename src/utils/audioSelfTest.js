@@ -75,14 +75,14 @@ export const classifyHealthScore = (score) => {
   if (score >= 0.9) return { label: 'PEACHES', color: '#10b981', width: '100%' };
   if (score >= 0.75) return { label: 'GOOD', color: '#34d399', width: '75%' };
   if (score >= 0.5) return { label: 'PASSING', color: '#fbbf24', width: '50%' };
-  return { label: 'UNACCEPTABLE', color: '#ef4444', width: '25%' };
+  return { label: 'UNACCEPTABLE', color: '#fb923c', width: '25%' };
 };
 
 const HEALTH_EMOJI = {
   PEACHES: ' 🍑',
   GOOD: ' ✅',
   PASSING: ' ⚠️',
-  UNACCEPTABLE: ' ⛔',
+  UNACCEPTABLE: ' ⚠️',
 };
 
 /** UI label with emoji — single display source for GreetingsPanel. */

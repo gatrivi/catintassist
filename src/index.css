@@ -1843,9 +1843,9 @@ body {
 }
 
 .sb-slot-pill.is-missing {
-  color: #f87171;
-  border-color: rgba(239, 68, 68, 0.3);
-  background: rgba(239, 68, 68, 0.06);
+  color: #94a3b8;
+  border-color: rgba(148, 163, 184, 0.3);
+  background: rgba(148, 163, 184, 0.06);
 }
 
 .sb-action-head:hover {
@@ -1894,7 +1894,7 @@ body {
 }
 
 .sb-action-count--ok { color: #34d399; }
-.sb-action-count--warn { color: #f87171; }
+.sb-action-count--warn { color: #fbbf24; }
 
 .sb-action-body {
   padding: 0.55rem 0.7rem 0.7rem;
@@ -1964,7 +1964,7 @@ body {
 }
 
 .sb-clip-status--saved { color: #34d399; }
-.sb-clip-status--missing { color: #f87171; }
+.sb-clip-status--missing { color: #94a3b8; }
 .sb-clip-status--test { color: #94a3b8; }
 
 .sb-call-ok {
@@ -2084,14 +2084,17 @@ body {
   cursor: not-allowed;
 }
 
-.sb-btn--record,
+/* v4.95.2: Record idles neutral (red reads as alarm); only Stop stays red. */
+.sb-btn--record {
+  background: var(--btn-test-bg);
+  color: var(--btn-test-text);
+  border-color: var(--btn-test-border);
+}
+
 .sb-btn--stop {
   background: var(--btn-danger-bg);
   color: var(--btn-danger-text);
   border-color: var(--btn-danger-border);
-}
-
-.sb-btn--stop {
   animation: pulseGlow 2s infinite;
 }
 
@@ -2772,7 +2775,7 @@ body {
 
 .sb-storage-orphans {
   font-size: 0.62rem;
-  color: #f87171;
+  color: #fbbf24;
   margin: 0 0 0.4rem;
   word-break: break-all;
 }
