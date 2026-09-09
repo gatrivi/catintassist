@@ -327,6 +327,44 @@ body {
 }
 
 .compact-call-goal-meter__segment { transition: width 0.7s linear, left 0.7s linear; }
+
+/* v4.88.5: meter-only HUD — 3rd call-header mode (compact / expanded / meter).
+   Hides the sticky timers (the meter readout replaces them); big readable meter. */
+.dashboard-header--meter-only .session-controls-center { display: none; }
+.dashboard-header--meter-only .compact-call-goal-meter {
+  position: static;
+  flex: 1 1 auto;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  height: 24px;
+  margin: 1px 2px 0;
+}
+.dashboard-header--meter-only .compact-call-goal-meter__readout {
+  position: static;
+  flex: 0 0 auto;
+  font-size: 0.68rem;
+  line-height: 1;
+}
+.dashboard-header--meter-only .compact-call-goal-meter__track {
+  position: relative;
+  flex: 1 1 auto;
+  height: 10px;
+}
+
+/* v4.88.5: off-call — hard separation between metrics strip and I/O bar (no overlap) */
+.dashboard-header--off-call-scoreboard .audio-route-status-bar {
+  position: relative;
+  z-index: 2;
+  margin-top: 2px;
+  border-top: 1px solid rgba(255, 255, 255, 0.07);
+  padding-top: 2px;
+}
+.dashboard-header--off-call-scoreboard .header-metrics-strip {
+  position: relative;
+  z-index: 3;
+}
+
 .compact-call-goal-meter__segment--work {
   background: #38bdf8;
   box-shadow: 0 0 7px rgba(56, 189, 248, 0.7);

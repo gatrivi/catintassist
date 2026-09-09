@@ -295,6 +295,9 @@ const SessionControlsSticky = React.memo(({
   onOpenLanguageSettings,
   languagePairLabel,
   offCallStatusLabel = 'Ready',
+  // v4.88.5: 3rd HUD mode — meter-only (extra compact) during calls
+  meterOnly = false,
+  onToggleMeterHud,
 }) => {
   const showConnecting = isActive && connectionState !== 'connected';
   const slackText = `SLACK ${formatTime(silenceCount)}`;
@@ -658,6 +661,19 @@ const SessionControlsSticky = React.memo(({
         </div>
 
         <div className="session-controls-right-cluster">
+          {(isActive || isZombieCall) && (
+            <button
+              id="header-meter-hud-btn"
+              type="button"
+              className="header-chrome-btn"
+              onClick={onToggleMeterHud}
+              title={meterOnly ? 'Meter-only HUD — click to exit' : 'Meter-only HUD (extra compact): just timeline meter + targets'}
+              aria-pressed={meterOnly}
+              style={{ fontSize: '0.7rem', opacity: meterOnly ? 1 : 0.65 }}
+            >
+              📊
+            </button>
+          )}
           {((isActive || isZombieCall) && !callModeExpanded) && (
             <ElementHintTarget
               elementId="header-expand-btn"
@@ -974,6 +990,8 @@ export const DashboardHeader = ({
   const [rateView, setRateView] = useState('effective'); // 'effective' | 'active'
   const [overtimeMode, setOvertimeMode] = useState('tail'); // 'tail' | 'under'
   const [callModeExpanded, setCallModeExpanded] = useState(false); // User can pin full header during calls
+  // v4.88.5: 3rd HUD mode during calls — meter-only (goal meter as extra-compact HUD)
+  const [hudMeterOnly, setHudMeterOnly] = useState(() => localStorage.getItem('catint_hud_meter_only_v1') === '1');
   const [offCallMetricsExpanded, setOffCallMetricsExpanded] = useState(() => {
     try {
       return localStorage.getItem(OFF_CALL_METRICS_EXPANDED_KEY) === 'true';
@@ -1025,6 +1043,14 @@ export const DashboardHeader = ({
   }, []);
 
   const headerCallCompact = (isActive || isZombieCall) && !callModeExpanded;
+  // v4.88.5: meter-only HUD — 3rd mode during calls (compact / expanded / meter)
+  const meterOnlyMode = headerCallCompact && hudMeterOnly;
+  const toggleMeterHud = useCallback(() => {
+    setHudMeterOnly((v) => {
+      if (!v) setCallModeExpanded(false); // entering meter mode always starts from compact
+      return !v;
+    });
+  }, []);
 
   const expandOffCallMetrics = useCallback(() => {
     setOffCallMetricsExpanded(true);
@@ -1052,6 +1078,11 @@ export const DashboardHeader = ({
   useEffect(() => {
     if (!isActive) setCallModeExpanded(false);
   }, [isActive]);
+
+  // v4.88.5: persist meter-only HUD choice; never expands during a call end state
+  useEffect(() => {
+    localStorage.setItem('catint_hud_meter_only_v1', hudMeterOnly ? '1' : '0');
+  }, [hudMeterOnly]);
 
   useEffect(() => {
     const onPrepare = (e) => {
@@ -2941,7 +2972,7 @@ ${isInDeficit ? `⚠️ DEFICIT: Behind pace by ${Math.round(monthlyDeficitMins)
 
   return (
     <>
-    <header className={`dashboard-header glass-panel${headerMinimal ? ' dashboard-header--minimal' : ''}${headerCallCompact ? ' dashboard-header--call-compact' : ''}${isActive && callModeExpanded ? ' dashboard-header--call-expanded' : ''}${offCallScoreboardView ? ' dashboard-header--off-call-scoreboard' : ''}${offCallScoreboardView && offCallMetricsExpanded ? ' dashboard-header--metrics-expanded' : ''}`} style={{ position: 'relative', zIndex: 100, ...(offCallScoreboardView && offCallMetricsExpanded ? { maxHeight: `${scoreboardMaxVh}vh` } : {}) }}>
+    <header className={`dashboard-header glass-panel${headerMinimal ? ' dashboard-header--minimal' : ''}${headerCallCompact ? ' dashboard-header--call-compact' : ''}${isActive && callModeExpanded ? ' dashboard-header--call-expanded' : ''}${offCallScoreboardView ? ' dashboard-header--off-call-scoreboard' : ''}${offCallScoreboardView && offCallMetricsExpanded ? ' dashboard-header--metrics-expanded' : ''}${meterOnlyMode ? ' dashboard-header--meter-only' : ''}`} style={{ position: 'relative', zIndex: 100, ...(offCallScoreboardView && offCallMetricsExpanded ? { maxHeight: `${scoreboardMaxVh}vh` } : {}) }}>
       {versionLabel && (
         <div className="app-version-pill" style={{ position: 'absolute', top: 6, right: 8 }}>
           {versionLabel}
@@ -3029,12 +3060,14 @@ ${isInDeficit ? `⚠️ DEFICIT: Behind pace by ${Math.round(monthlyDeficitMins)
         languagePairLabel={languagePairLabel}
         versionLabel={versionLabel}
         offCallStatusLabel={offCallStatusLabel}
+        meterOnly={meterOnlyMode}
+        onToggleMeterHud={toggleMeterHud}
       />
 
       {headerCallCompact && (
         <div
           id="compact-call-goal-meter"
-          className="compact-call-goal-meter"
+          className={`compact-call-goal-meter${meterOnlyMode ? ' compact-call-goal-meter--big' : ''}`}
           title={`Workday: ${formatTime(totalOnCallSeconds)} on call; ${formatTime(totalOffCallSeconds)} off call; ${formatTime(compactShiftRemainingSeconds)} left. Blue = calls; orange = available; red = break.`}
           aria-label={`Workday timeline: ${formatTime(totalOnCallSeconds)} on call, ${formatTime(totalOffCallSeconds)} off call, and ${formatTime(compactShiftRemainingSeconds)} left.`}
         >
@@ -3051,6 +3084,10 @@ ${isInDeficit ? `⚠️ DEFICIT: Behind pace by ${Math.round(monthlyDeficitMins)
             ))}
             <span className="compact-call-goal-meter__now" style={{ left: `${shiftElapsedRatio * 100}%` }} />
           </div>
+          {/* v4.88.5: meter-only HUD carries the daily targets beside the timeline */}
+          {meterOnlyMode && (
+            <DailyTargetsChip dailyMinutes={Math.round(totalDailyMins)} monthlyMinutes={stats.monthlyMinutes} breakMinutes={Math.round(liveBreakMins)} ratePerMinute={RATE_PER_MINUTE} />
+          )}
         </div>
       )}
 

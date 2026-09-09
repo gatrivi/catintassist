@@ -2,6 +2,11 @@
 
 **Version source:** `src/constants/version.js` (must match `package.json` + top-right UI pill)
 
+## v4.95.1 - Meter-only HUD mode
+
+- **New:** 3rd HUD mode during calls — 📊 button (top-right, next to ⌃) toggles meter-only: sticky timers hidden, big workday timeline (ON/OFF/LEFT, larger font, static layout) + 💵⏱☕ targets strip. Persisted `catint_hud_meter_only_v1`.
+- **Fix:** off-call — metrics strip and I/O bar now have hard separation (border + z-index), no overlap.
+
 ## v4.94.1 - CPU freeze fix (blank caption row)
 
 - **Root cause:** an empty live-draft caption row (created when the overlap cleaner emptied the first transcript of a turn) could never seal and stayed in state forever. Every board render skipped it and fired a forced `console.warn` (`ui_blank_caption_skipped`) — 4×/sec all call long × full-board render + layout reads = 100% CPU freeze. NOT the translation API changes.

@@ -25,6 +25,27 @@ import { APP_VERSION } from '../constants/version';
 /** Newest first. Only the entry matching APP_VERSION is shown on load. */
 export const RELEASE_NOTES_CATALOG = [
   {
+    version: '4.95.1',
+    id: 'meter-hud-mode-v1',
+    highlightElementIds: ['header-meter-hud-btn'],
+    es: {
+      title: 'HUD de solo medidor',
+      intro: 'v4.95.1 — Tercer modo de HUD en llamadas: 📊 arriba a la derecha alterna compacto ↔ solo medidor. Solo medidor = cronómetro de jornada grande (ON/OFF/LEFT) + metas 💵⏱☕. También separa métricas vs barra I/O off-call.',
+      sections: [{ heading: 'Nuevo', bullets: [
+        '📊 toggle persistente (recordado entre llamadas)',
+        'Medidor legible: fuente grande, ya no queda detrás del HUD',
+      ] }],
+    },
+    en: {
+      title: 'Meter-only HUD',
+      intro: 'v4.95.1 — Third HUD mode during calls: 📊 top-right toggles compact ↔ meter-only. Meter-only = big workday timeline (ON/OFF/LEFT) + 💵⏱☕ targets. Also separates metrics strip vs I/O bar off-call.',
+      sections: [{ heading: 'New', bullets: [
+        '📊 persistent toggle (remembered across calls)',
+        'Readable meter: big font, no longer stuck behind the HUD',
+      ] }],
+    },
+  },
+  {
     version: '4.94.1',
     id: 'cpu-freeze-blank-row-v1',
     highlightElementIds: ['header-connect-btn'],
