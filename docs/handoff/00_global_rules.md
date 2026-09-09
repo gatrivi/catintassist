@@ -33,3 +33,6 @@ Each handoff spec lists allowed files. Do not refactor unrelated code.
 - **Answer tiers:** 60% <40w · 30% <80w · 10% <120w (summaries + replies; see `AGENTS.md`)
 - Laconic replies; user is often on call
 - Mention version number in feature messages
+
+## Token budget
+- Cheapest tool first; batch features per session; one judge/visual pass max — see [`../development/agent-token-budget.md`](../development/agent-token-budget.md)

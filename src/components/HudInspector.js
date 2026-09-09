@@ -5,16 +5,23 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 
-const STORE_KEY = 'hud-inspector-on';
+const STORE_KEY = 'hud-inspector-on-v2';
+export const INSPECTOR_CHANGED_EVENT = 'hud-inspector-changed';
 
-/** v4.89.2: default ON — zero friction bug reports. Explicit off persists. */
+/** v4.95.3: default OFF — debug tool, opt-in via Settings > Display or ⌖. v2 key resets v4.89.2 auto-ON. */
 export const readInspectorEnabled = () => {
   try {
     const v = localStorage.getItem(STORE_KEY);
-    return v === null ? true : v === '1';
+    return v === '1';
   } catch (_) {
-    return true;
+    return false;
   }
+};
+
+/** Shared setter so Settings panel + floating toggle stay in sync. */
+export const setInspectorEnabled = (next) => {
+  try { localStorage.setItem(STORE_KEY, next ? '1' : '0'); } catch (_) { /* noop */ }
+  try { window.dispatchEvent(new CustomEvent(INSPECTOR_CHANGED_EVENT, { detail: { enabled: !!next } })); } catch (_) { /* noop */ }
 };
 
 /** Friendly name: data-hud-name > data-guide > aria-label > title > #id > .class > <tag>. */
@@ -106,6 +113,7 @@ export const HudInspectorHost = () => {
 
   useEffect(() => {
     try { localStorage.setItem(STORE_KEY, on ? '1' : '0'); } catch (_) { /* noop */ }
+    try { window.dispatchEvent(new CustomEvent(INSPECTOR_CHANGED_EVENT, { detail: { enabled: on } })); } catch (_) { /* noop */ }
     if (!on) {
       setTip(null);
       if (lastElRef.current) {
@@ -116,6 +124,23 @@ export const HudInspectorHost = () => {
   }, [on]);
 
   // Alt+I toggles inspector without hunting for the button mid-call.
+  // Also syncs when Settings > Display flips the toggle.
+  useEffect(() => {
+    const onExternal = (e) => {
+      const next = e?.detail?.enabled;
+      if (typeof next === 'boolean') setOn(next);
+      else setOn(readInspectorEnabled());
+    };
+    const onStorage = (e) => {
+      if (!e || e.key === STORE_KEY) setOn(readInspectorEnabled());
+    };
+    window.addEventListener(INSPECTOR_CHANGED_EVENT, onExternal);
+    window.addEventListener('storage', onStorage);
+    return () => {
+      window.removeEventListener(INSPECTOR_CHANGED_EVENT, onExternal);
+      window.removeEventListener('storage', onStorage);
+    };
+  }, []);
   useEffect(() => {
     const onKey = (e) => {
       if (e.altKey && (e.key === 'i' || e.key === 'I')) {

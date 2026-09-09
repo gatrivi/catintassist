@@ -31,12 +31,12 @@ describe('HudInspector naming + selectors', () => {
     expect(sel).toContain('div.call-micro-bar-center');
   });
 
-  it('inspector defaults ON (no stored pref), respects stored off', () => {
+  it('inspector defaults OFF (no stored pref), respects stored on', () => {
     localStorage.clear();
-    expect(readInspectorEnabled()).toBe(true);
-    localStorage.setItem('hud-inspector-on', '0');
     expect(readInspectorEnabled()).toBe(false);
-    localStorage.setItem('hud-inspector-on', '1');
+    localStorage.setItem('hud-inspector-on-v2', '0');
+    expect(readInspectorEnabled()).toBe(false);
+    localStorage.setItem('hud-inspector-on-v2', '1');
     expect(readInspectorEnabled()).toBe(true);
   });
 });

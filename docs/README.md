@@ -3,6 +3,7 @@
 This is the single source of truth for *documentation + onboarding*.
 
 ## What's new
+- **2026-09-09** — **Agent token budget playbook**: cheapest-tool-first, batch sessions, single judge pass — [`development/agent-token-budget.md`](development/agent-token-budget.md)
 - **2026-09-08** — **PUSH BUDGET (Vercel free)**: max 4 pushes/hour, every push logged — [`push-log.md`](push-log.md) · guard script `scripts/safe-push.js`
 - **2026-09-07** — Full read-only app audit (translation latency root causes, soundboard garble candidates, secrets-in-bundle, test failures) — [`DIAGNOSIS-2026-09-07.md`](DIAGNOSIS-2026-09-07.md)
 - **v4.84.29** — Button colors + SB chrome (live/test/danger/chrome) — [`development/button-sizing.md`](development/button-sizing.md)
@@ -48,6 +49,7 @@ This is the single source of truth for *documentation + onboarding*.
 - [`development/translation-incident-2026-09-03.md`](development/translation-incident-2026-09-03.md): local CATTS translator outage assessment and safe recovery checks
 
 ## Maintenance / Agent Rules
+- [`development/agent-token-budget.md`](development/agent-token-budget.md): token budget rules — batch sessions, cheapest tool first
 - [`development/critical-feature-failure-contract.md`](development/critical-feature-failure-contract.md): call-critical failure and recovery invariant
 - [`docs/cursor-agent/README.md`](cursor-agent/README.md): Cursor agent “touch only these files” guidance
 - [`docs/api/README.md`](api/README.md): Deepgram / Web Audio / MediaStream / CRA crib sheets (anti-hallucination)

@@ -25,6 +25,26 @@ import { APP_VERSION } from '../constants/version';
 /** Newest first. Only the entry matching APP_VERSION is shown on load. */
 export const RELEASE_NOTES_CATALOG = [
   {
+    version: '4.95.3',
+    id: 'hud-inspector-off-by-default-v1',
+    highlightElementIds: ['hud-inspector-toggle'],
+    es: {
+      title: 'Inspector apagado por defecto',
+      intro: 'v4.95.3 — El inspector ⌖ de selectores ya viene APAGADO (estaba prendido y molestaba en trabajo). Se prende desde Ajustes > Display o con Alt+I.',
+      sections: [{ heading: 'Qué cambió', bullets: [
+        '⌖ apagado por defecto (antes prendido)',
+        'Toggle en Ajustes > Display para prenderlo cuando lo necesites',
+      ] }],
+    },
+    en: {
+      title: 'Inspector off by default',
+      intro: 'v4.95.3 — The ⌖ selector inspector now ships OFF (it was ON and getting in the way at work). Turn it on via Settings > Display or Alt+I.',
+      sections: [{ heading: 'What changed', bullets: [
+        '⌖ off by default (was on)',
+        'Toggle in Settings > Display when you need it',
+      ] }],
+    },
+  },  {
     version: '4.95.1',
     id: 'meter-hud-mode-v1',
     highlightElementIds: ['header-meter-hud-btn'],

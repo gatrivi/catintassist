@@ -12,6 +12,14 @@ cats interpreter assistant app
   `node scripts/safe-push.js "label"` (add `--allow-over` ONLY after the user approves).
 - Batch work: one push per verified feature set (tests + build green), never per commit.
 
+## TOKEN BUDGET (agents — protect core token bags)
+Full rules: [`docs/development/agent-token-budget.md`](docs/development/agent-token-budget.md). TLDR:
+- Batch features per session (one verified set + one push); context reload is the hidden cost.
+- Cheapest tool first: known file Read < Grep < Explore agent < general agent < browser screenshots < judge render.
+- Broad "where is X" searches → delegate to Explore agent; single lookups → direct Read.
+- Visual QA: one judge pass at the end, never pre-screen images yourself too.
+- No re-reads to verify edits; no screenshot sessions when tests/build answer it.
+
 ## Answer length (agents)
 Replies and plan **summaries** should land in three tiers:
 - **60%** of answers: **<40 words**

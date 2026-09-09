@@ -3,7 +3,7 @@
 div-header-metrics y header-metrics-strip-row
 header-metrics-quick-row audio-route-status-main
 
-compact-goal-meter-readout
+compact-goal-meter__readout
 
 ✝✝✝✝✝✝✝✝✝✝✝✝✝✝✝
 ✝✝✝✝✝✝✝✝✝✝✝✝✝✝✝

@@ -43,6 +43,11 @@ import {
   loadSttLatencyMode,
   saveSttLatencyMode,
 } from '../utils/deepgramListenConfig';
+import {
+  INSPECTOR_CHANGED_EVENT,
+  readInspectorEnabled,
+  setInspectorEnabled,
+} from './HudInspector';
 
 const MOODS = ['auto', 'default', 'fast', 'chill'];
 const MOOD_LABELS = { auto: 'Trans Auto', default: 'Default', fast: 'Fast', chill: 'Chill' };
@@ -77,6 +82,7 @@ export default function SettingsPanel({
   const [themeStatus, setThemeStatus] = useState('');
   const [languagePair, setLanguagePair] = useState(loadLanguagePair);
   const [sttLatencyMode, setSttLatencyMode] = useState(loadSttLatencyMode);
+  const [inspectorOn, setInspectorOn] = useState(readInspectorEnabled);
   const {
     currentSourceMode,
     switchAudioSourceMode,
@@ -121,8 +127,15 @@ export default function SettingsPanel({
 
   useEffect(() => {
     const onLatencyChange = (e) => setSttLatencyMode(e.detail || loadSttLatencyMode());
+    const onInspectorChange = (e) => setInspectorOn(
+      typeof e?.detail?.enabled === 'boolean' ? e.detail.enabled : readInspectorEnabled(),
+    );
     window.addEventListener(STT_LATENCY_CHANGED_EVENT, onLatencyChange);
-    return () => window.removeEventListener(STT_LATENCY_CHANGED_EVENT, onLatencyChange);
+    window.addEventListener(INSPECTOR_CHANGED_EVENT, onInspectorChange);
+    return () => {
+      window.removeEventListener(STT_LATENCY_CHANGED_EVENT, onLatencyChange);
+      window.removeEventListener(INSPECTOR_CHANGED_EVENT, onInspectorChange);
+    };
   }, []);
 
   if (!open) return null;
@@ -533,6 +546,28 @@ export default function SettingsPanel({
                 style={{ margin: 0 }}
               />
               Show build version badge (debug)
+            </label>
+            <label
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: 8,
+                fontSize: 10,
+                color: '#93c5fd',
+                cursor: 'pointer',
+                marginBottom: 10,
+              }}
+            >
+              <input
+                type="checkbox"
+                checked={inspectorOn}
+                onChange={(e) => {
+                  setInspectorOn(e.target.checked);
+                  setInspectorEnabled(e.target.checked);
+                }}
+                style={{ margin: 0 }}
+              />
+              HUD inspector ⌖ (debug hover selectors, Alt+I)
             </label>
             <p style={{ fontSize: 10, color: 'rgba(255,255,255,0.5)', margin: '0 0 10px' }}>
               Progress bars = monthly + daily timelines. Changes save instantly.
