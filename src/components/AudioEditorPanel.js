@@ -72,6 +72,14 @@ function spliceAudioBuffer(ctx, original, replacement, startSec, endSec) {
   out.set(original.getChannelData(0).slice(0, startSample), 0);
   if (replacement) out.set(replacement.getChannelData(0), startSample);
   out.set(original.getChannelData(0).slice(endSample), startSample + repLength);
+  // v4.95.0: short fades at the two splice seams remove the click heard at
+  // silence-removal boundaries.
+  const fadeLen = Math.min(Math.floor(0.008 * sr), Math.floor(newLength / 4));
+  for (let i = 0; i < fadeLen; i++) {
+    const g = i / fadeLen;
+    if (startSample + repLength + i < newLength) out[startSample + repLength + i] *= g;
+    if (startSample - 1 - i >= 0) out[startSample - 1 - i] *= g;
+  }
   return result;
 }
 

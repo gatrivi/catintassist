@@ -61,14 +61,14 @@ export function OnCallSoundboardStrip({ micTestMode = false, collapsed: collapse
   const [collapsed, setCollapsed] = useState(collapsedProp ?? true);
   const [blobs, setBlobs] = useState({});
   const [thumbs, setThumbs] = useState({});
-  const [healthScores] = useState(() => {
+  const [healthScores, setHealthScores] = useState(() => {
     try {
       return JSON.parse(localStorage.getItem('catint_audio_health')) || {};
     } catch {
       return {};
     }
   });
-  const [manualCallOk] = useState(() => loadManualCallOk());
+  const [manualCallOk, setManualCallOk] = useState(() => loadManualCallOk());
   const [timeOfDay, setTimeOfDay] = useState(getTimeOfDay);
   const [playingKey, setPlayingKey] = useState(null);
   const [playbackProgress, setPlaybackProgress] = useState(0);
@@ -86,6 +86,23 @@ export function OnCallSoundboardStrip({ micTestMode = false, collapsed: collapse
     tick();
     const id = setInterval(tick, 60000);
     return () => clearInterval(id);
+  }, []);
+
+  // Re-read gates when Studio updates them in another view/tab, or on refocus —
+  // they were snapshotted once on mount, so a fresh CALL OK never unblocked tiles.
+  useEffect(() => {
+    const refresh = () => {
+      try { setHealthScores(JSON.parse(localStorage.getItem('catint_audio_health')) || {}); } catch { /* ignore */ }
+      setManualCallOk(loadManualCallOk());
+    };
+    window.addEventListener('storage', refresh);
+    window.addEventListener('focus', refresh);
+    window.addEventListener('catint_gates_updated', refresh);
+    return () => {
+      window.removeEventListener('storage', refresh);
+      window.removeEventListener('focus', refresh);
+      window.removeEventListener('catint_gates_updated', refresh);
+    };
   }, []);
 
   useEffect(() => {

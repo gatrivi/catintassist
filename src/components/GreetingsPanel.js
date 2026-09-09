@@ -183,7 +183,7 @@ export const GreetingsPanel = ({ onEditModeChange, onExitStudio, micTestMode = f
   const [mode, setMode] = useState('play'); // 'play' | 'settings'
   const [timeOfDay, setTimeOfDay] = useState('morning');
   const [blobs, setBlobs] = useState({});
-  const [healthScores, setHealthScores] = useState(() => JSON.parse(localStorage.getItem('catint_audio_health')) || {});
+  const [healthScores, setHealthScores] = useState(() => { try { return JSON.parse(localStorage.getItem('catint_audio_health')) || {}; } catch { return {}; } });
   const [heardByRobot, setHeardByRobot] = useState(() => {
     try { return JSON.parse(localStorage.getItem('catint_audio_health_heard')) || {}; } catch { return {}; }
   });
@@ -397,6 +397,7 @@ export const GreetingsPanel = ({ onEditModeChange, onExitStudio, micTestMode = f
     if (!pendingRouteConfirm) return;
     const { clipKey } = pendingRouteConfirm;
     setManualCallOkStore((prev) => setManualCallOk(prev, clipKey, selectedSinkId, selectedMicId));
+    try { window.dispatchEvent(new Event('catint_gates_updated')); } catch (_) {}
     setPendingRouteConfirm(null);
     setLastRouteTest({ clipKey, result: 'manual_ok', at: Date.now() });
   };
@@ -472,6 +473,7 @@ export const GreetingsPanel = ({ onEditModeChange, onExitStudio, micTestMode = f
       setHealthScores((prev) => {
         const next = { ...prev, [key]: probe.score };
         try { localStorage.setItem('catint_audio_health', JSON.stringify(next)); } catch (_) {}
+        try { window.dispatchEvent(new Event('catint_gates_updated')); } catch (_) {}
         return next;
       });
       setHeardByRobot((prev) => {

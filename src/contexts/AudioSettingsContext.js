@@ -290,6 +290,9 @@ export const AudioSettingsProvider = ({ children }) => {
   /** Watchdog: never leave the caller path without a mic on teardown paths. */
   useEffect(() => {
     const onHide = () => {
+      // Never stomp a playing clip — the watchdog rebinding the live mic here
+      // used to cut greetings mid-playback when the tab was hidden/unhidden.
+      if (sinkPlaybackActiveRef.current) return;
       try {
         const el = passthroughAudioRef.current;
         const mic = micStreamRef.current;

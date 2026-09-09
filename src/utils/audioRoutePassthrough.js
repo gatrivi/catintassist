@@ -16,6 +16,14 @@ const RAMP_MS = 50;
 export function readRouteModePreference() {
   try {
     const v = localStorage.getItem('CATINT_ROUTE_MODE');
+    // v4.95.0: one-time migration — machines that lived through the v4.86.2
+    // dual-element default may still store it; that pref garbled patient audio.
+    if (v === ROUTE_MODE.DUAL_ELEMENT && !localStorage.getItem('CATINT_ROUTE_MODE_MIGRATED')) {
+      localStorage.setItem('CATINT_ROUTE_MODE', ROUTE_MODE.PASSTHROUGH);
+      localStorage.setItem('CATINT_ROUTE_MODE_MIGRATED', '1');
+      return ROUTE_MODE.PASSTHROUGH;
+    }
+    localStorage.setItem('CATINT_ROUTE_MODE_MIGRATED', '1');
     return v === ROUTE_MODE.DUAL_ELEMENT ? ROUTE_MODE.DUAL_ELEMENT : ROUTE_MODE.PASSTHROUGH;
   } catch {
     return ROUTE_MODE.PASSTHROUGH;
@@ -42,6 +50,31 @@ export async function decodeBlobToBuffer(blob, AudioContextCtor = window.AudioCo
 }
 
 /**
+ * Peak-normalize an AudioBuffer in place to targetDbFS (default −1 dB).
+ * v4.95.0: clips previously played at whatever level they were recorded at,
+ * so "sounds fine to me" proved nothing about the patient path.
+ */
+export function normalizePeak(buffer, targetDb = -1) {
+  let peak = 0;
+  for (let ch = 0; ch < buffer.numberOfChannels; ch++) {
+    const data = buffer.getChannelData(ch);
+    for (let i = 0; i < data.length; i++) {
+      const abs = Math.abs(data[i]);
+      if (abs > peak) peak = abs;
+    }
+  }
+  if (peak <= 0.00001) return buffer; // silence — nothing to scale
+  const target = Math.pow(10, targetDb / 20);
+  const scale = target / peak;
+  if (scale > 0.98 && scale < 1.02) return buffer; // already there
+  for (let ch = 0; ch < buffer.numberOfChannels; ch++) {
+    const data = buffer.getChannelData(ch);
+    for (let i = 0; i < data.length; i++) data[i] *= scale;
+  }
+  return buffer;
+}
+
+/**
  * Play buffer through passthrough element (replaces srcObject; restores on end).
  * @returns {{ promise: Promise<void>, stop: () => void, duration: number }}
  */
@@ -50,6 +83,7 @@ export function playBufferViaPassthrough(passthroughEl, buffer, ctx, {
   sinkId,
   savedSrcObject = null,
   onProgress,
+  normalize = true,
 }) {
   if (!passthroughEl || !buffer || !ctx) {
     return { promise: Promise.reject(new Error('missing passthrough args')), stop: () => {}, duration: 0 };
@@ -97,7 +131,20 @@ export function playBufferViaPassthrough(passthroughEl, buffer, ctx, {
       passthroughEl.srcObject = dest.stream;
       passthroughEl.volume = 1;
       passthroughEl.muted = false;
-      await passthroughEl.play().catch(() => {});
+      // v4.95.0: autoplay rejection was swallowed here (.catch(() => {})) —
+      // the patient simply heard nothing. NotAllowedError is fatal: surface it
+      // so callers can show a warning / fall back. Other errors (e.g. AbortError
+      // from a rapid srcObject swap) are logged and playback continues.
+      try {
+        await passthroughEl.play();
+      } catch (err) {
+        if (err?.name === 'NotAllowedError') {
+          throw new Error('autoplay_blocked');
+        }
+        console.warn('passthrough play() warning:', err);
+      }
+
+      if (normalize) normalizePeak(buffer);
 
       const now = ctx.currentTime;
       gain.gain.linearRampToValueAtTime(volume, now + RAMP_MS / 1000);
