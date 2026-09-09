@@ -505,9 +505,17 @@ export const GreetingsPanel = ({ onEditModeChange, onExitStudio, micTestMode = f
 
   const startRecording = async (key) => {
     try {
-      const constraints = selectedMicId
-        ? { audio: { deviceId: { exact: selectedMicId } } }
-        : { audio: true };
+      // v4.95.1: no browser DSP — echoCancellation/noiseSuppression chop speech
+      // and tank legibility scores. Same raw-mic policy as the live passthrough.
+      const base = selectedMicId ? { deviceId: { exact: selectedMicId } } : true;
+      const constraints = {
+        audio: {
+          ...(typeof base === 'object' ? base : {}),
+          echoCancellation: false,
+          noiseSuppression: false,
+          autoGainControl: false,
+        },
+      };
       const stream = await navigator.mediaDevices.getUserMedia(constraints);
       // Use higher bitrate and webm/opus for better reliability
       const options = { mimeType: 'audio/webm;codecs=opus', audioBitsPerSecond: 128000 };
@@ -892,6 +900,23 @@ export const GreetingsPanel = ({ onEditModeChange, onExitStudio, micTestMode = f
             <div id="record-vol-bar" className="sb-record-meter-fill" style={{ width: '0%' }} />
           </div>
         )}
+
+        {/* v4.95.1: teleprompter — the script is the scoring reference, show it
+            while recording (always) and on demand otherwise. */}
+        {(() => {
+          const baseId = String(key).replace(/_(morning|afternoon|evening)$/, '');
+          const script = getSoundboardItem(baseId)?.text || '';
+          if (!script) return null;
+          if (recordingKey === key) {
+            return <div className="sb-script sb-script--live">{script}</div>;
+          }
+          return (
+            <details className="sb-script">
+              <summary>¶ Script</summary>
+              <p>{script}</p>
+            </details>
+          );
+        })()}
 
         <div className="sb-clip-footer">
           <label className="sb-audio-btn">

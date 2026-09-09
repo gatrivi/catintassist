@@ -2163,6 +2163,28 @@ body {
   transition: width 0.05s ease;
 }
 
+/* v4.95.1: greeting script teleprompter */
+.sb-script summary {
+  cursor: pointer;
+  font-size: 0.7rem;
+  opacity: 0.7;
+  margin-top: 0.25rem;
+}
+.sb-script p,
+.sb-script--live {
+  margin: 0.25rem 0 0;
+  padding: 0.4rem 0.5rem;
+  font-size: 0.85rem;
+  line-height: 1.35;
+  background: rgba(0, 0, 0, 0.35);
+  border-left: 2px solid var(--btn-danger-text);
+  border-radius: 2px;
+}
+.sb-script--live {
+  font-size: 0.95rem;
+  background: rgba(0, 0, 0, 0.55);
+}
+
 .sb-clip-footer {
   display: flex;
   flex-wrap: wrap;
