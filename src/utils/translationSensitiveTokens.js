@@ -1,6 +1,10 @@
 /**
- * Sensitive-token extract / diff / salvage for translation reliability (v4.82.0).
+ * Sensitive-token extract / diff for translation reliability (v4.82.0).
  * Digit-normalized compare: 5551234567 ≡ 555-123-4567 (not missing).
+ * v4.93.0: the visible `[⚠ Check: …]` salvage markers are GONE (user request —
+ * they made transcripts unreadable and fired on ordinary words like "7 minutes").
+ * Digit loss is still tracked via entry.warning/missingTokens and the
+ * preserve-previous-good rule; nothing is injected into visible text.
  */
 import { copyableDigits } from './sensitiveDataProtector';
 
@@ -9,12 +13,10 @@ const PHONE_RE =
 const DOB_RE = /\b\d{1,2}[/-]\d{1,2}[/-]\d{2,4}\b/g;
 const DOSAGE_RE =
   /\b\d+(?:[.,]\d+)?\s*(?:mg|mcg|g|ml|cc|iu|units?|mEq|milligrams?|micrograms?|gramos?|miligramos?|mililitros?|unidades?)\b/gi;
+// v4.93.0: street suffix is REQUIRED — "7 minutes" / "1 of" / "5 to" are not addresses.
 const ADDRESS_RE =
-  /\b\d{1,6}\s+[A-Za-zÁÉÍÓÚÑáéíóúñ][A-Za-zÁÉÍÓÚÑáéíóúñ0-9.'-]*(?:\s+(?:St|Street|Ave|Avenue|Rd|Road|Blvd|Dr|Drive|Ln|Lane|Ct|Court|Way|Calle|Avenida|Carrera)\.?)?\b/gi;
+  /\b\d{1,6}\s+(?:[A-Za-zÁÉÍÓÚÑáéíóúñ][A-Za-zÁÉÍÓÚÑáéíóúñ0-9.'-]*\s+){0,3}?(?:St|Street|Ave|Avenue|Rd|Road|Blvd|Dr|Drive|Ln|Lane|Ct|Court|Way|Calle|Avenida|Carrera)\.?\b/gi;
 const ID_RE = /\b(?:SSN|ID|MRN|member\s*#?)\s*[:#]?\s*[\dA-Za-z-]{4,}\b|\b\d{3}-\d{2}-\d{4}\b|\b\d{9}\b/gi;
-
-const SALVAGE_PREFIX = ' [⚠ Check: ';
-const SALVAGE_SUFFIX = ']';
 
 const uniq = (arr) => [...new Set(arr.filter(Boolean))];
 
@@ -63,10 +65,7 @@ const flattenTokens = (bag) => {
   ];
 };
 
-/**
- * Tokens in `before` not present in `after` (digit-normalized).
- * @returns {string[]} display forms from source that are missing
- */
+/** @returns {string[]} display forms from source that are missing */
 export function diffSensitiveTokens(beforeText, afterText) {
   const before = flattenTokens(
     typeof beforeText === 'string' ? extractSensitiveTokens(beforeText) : beforeText,
@@ -77,14 +76,3 @@ export function diffSensitiveTokens(beforeText, afterText) {
   const afterNorm = new Set(after.map(normalizeTokenForCompare));
   return before.filter((tok) => !afterNorm.has(normalizeTokenForCompare(tok)));
 }
-
-/** Append explicit salvage markers: ` [⚠ Check: TOKEN]` */
-export function salvageSensitiveTokens(translated, missing) {
-  const base = String(translated || '').trim();
-  const list = (missing || []).map((t) => String(t).trim()).filter(Boolean);
-  if (!list.length) return base;
-  const markers = list.map((t) => `${SALVAGE_PREFIX}${t}${SALVAGE_SUFFIX}`).join('');
-  return `${base}${markers}`.trim();
-}
-
-export const SENSITIVE_SALVAGE_MARKER_RE = /\[⚠ Check:\s*([^\]]+)\]/g;

@@ -60,6 +60,28 @@ describe('segmentLongMonologue', () => {
       expect(s.split(/\s+/).length).toBeLessThanOrEqual(45);
     });
   });
+
+  test('v4.94.0: never sends a paragraph — default chunks stay tiny', () => {
+    const para =
+      'The patient says her name is Maria Lopez, she is forty two years old, and she needs a new appointment next week. Please call her back, at three pm, before the clinic closes.';
+    const segs = segmentLongMonologue(para);
+    expect(segs.length).toBeGreaterThanOrEqual(3);
+    segs.forEach((s) => {
+      // Hard ceiling with defaults: one sentence or one comma-clause at a time.
+      expect(s.split(/\s+/).length).toBeLessThanOrEqual(14);
+    });
+    // First sentence exceeded the cap → split happened at a comma, not mid-clause.
+    expect(segs[0].endsWith(',')).toBe(true);
+    // Short second sentence stays whole.
+    expect(segs[segs.length - 1]).toBe('Please call her back, at three pm, before the clinic closes.');
+  });
+
+  test('v4.94.0: comma-less long sentence hard-chunks at cap', () => {
+    const words = Array.from({ length: 30 }, (_, i) => `w${i}`);
+    const segs = segmentLongMonologue(words.join(' '));
+    expect(segs.length).toBe(3);
+    segs.forEach((s) => expect(s.split(/\s+/).length).toBeLessThanOrEqual(14));
+  });
 });
 
 describe('applyTranslationResult', () => {
@@ -202,7 +224,7 @@ describe('applyTranslationResult', () => {
     expect(next[sibKey].text).toBe('Hermano ok');
   });
 
-  test('sensitive token loss salvages with Check marker', () => {
+  test('sensitive token loss flags weak but keeps text clean (no Check markers)', () => {
     const sourceText = 'My callback number is 5551234567.';
     const sourceHash = hashTranslationSource(sourceText);
     const requestId = buildSegmentRequestId({
@@ -228,8 +250,9 @@ describe('applyTranslationResult', () => {
       },
     );
     expect(entry.warning).toBe('sensitive_token_loss');
-    expect(entry.text).toContain('[⚠ Check:');
-    expect(entry.text).toMatch(/555/);
+    expect(entry.status).toBe('weak_digit_loss');
+    // v4.93.0: text stays clean — no [⚠ Check: …] markers in visible text
+    expect(entry.text).not.toContain('[⚠ Check:');
   });
 
   test('reformatted phone is not missing', () => {
@@ -288,7 +311,7 @@ describe('assignSegmentIds + shouldPersist', () => {
       shouldPersistTranslationEntry({
         status: 'warning',
         warning: 'sensitive_token_loss',
-        text: 'x [⚠ Check: 1]',
+        text: 'x',
       }),
     ).toBe(true);
   });

@@ -1,0 +1,53 @@
+
+[tests] batch 1/9 (8 files)
+(node:6636) [DEP0040] DeprecationWarning: The `punycode` module is deprecated. Please use a userland alternative instead.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+FAIL src/content/releaseNotes.test.js
+  ● releaseNotes content › catalog has entry for current APP_VERSION
+
+    expect(received).toBeTruthy()
+
+    Received: null
+
+    [0m [90m 4 |[39m describe([32m'releaseNotes content'[39m[33m,[39m () [33m=>[39m {
+     [90m 5 |[39m   test([32m'catalog has entry for current APP_VERSION'[39m[33m,[39m () [33m=>[39m {
+    [31m[1m>[22m[39m[90m 6 |[39m     expect(getReleaseNoteForVersion([33mAPP_VERSION[39m))[33m.[39mtoBeTruthy()[33m;[39m
+     [90m   |[39m                                                   [31m[1m^[22m[39m
+     [90m 7 |[39m   })[33m;[39m
+     [90m 8 |[39m
+     [90m 9 |[39m   test([32m'each catalog entry has bilingual copy and highlights'[39m[33m,[39m () [33m=>[39m {[0m
+
+      at Object.<anonymous> (src/content/releaseNotes.test.js:6:51)
+
+  ● releaseNotes content › each catalog entry has bilingual copy and highlights
+
+    expect(received).toBeGreaterThan(expected)
+
+    Expected: > 0
+    Received:   0
+
+    [0m [90m 11 |[39m       expect(entry[33m.[39mversion)[33m.[39mtoBeTruthy()[33m;[39m
+     [90m 12 |[39m       expect(entry[33m.[39mid)[33m.[39mtoBeTruthy()[33m;[39m
+    [31m[1m>[22m[39m[90m 13 |[39m       expect(entry[33m.[39mhighlightElementIds[33m?[39m[33m.[39mlength)[33m.[39mtoBeGreaterThan([35m0[39m)[33m;[39m
+     [90m    |[39m                                                 [31m[1m^[22m[39m
+     [90m 14 |[39m       expect(entry[33m.[39mes[33m?[39m[33m.[39mtitle)[33m.[39mtoBeTruthy()[33m;[39m
+     [90m 15 |[39m       expect(entry[33m.[39men[33m?[39m[33m.[39mtitle)[33m.[39mtoBeTruthy()[33m;[39m
+     [90m 16 |[39m       expect(entry[33m.[39mes[33m.[39msections[33m.[39mlength)[33m.[39mtoBeGreaterThan([35m0[39m)[33m;[39m[0m
+
+      at forEach (src/content/releaseNotes.test.js:13:49)
+          at Array.forEach (<anonymous>)
+      at Object.<anonymous> (src/content/releaseNotes.test.js:10:27)
+
+PASS src/components/HudInspector.test.js
+PASS src/components/ReleaseNotesModal.test.js
+PASS src/components/AudioRouteStatusBar.test.js
+PASS src/components/ConnectInterpretButton.test.js
+PASS src/components/ConfirmDialog.test.js
+PASS src/components/ElementHint.test.js
+PASS src/content/appGuideContent.test.js
+
+Test Suites: 1 failed, 7 passed, 8 total
+Tests:       2 failed, 23 passed, 25 total
+Snapshots:   0 total
+Time:        6.57 s, estimated 7 s
+Ran all test suites within paths "C:\zengatrivi\REACTJS\catintassist\src\components\AudioRouteStatusBar.test.js", "C:\zengatrivi\REACTJS\catintassist\src\components\ConfirmDialog.test.js", "C:\zengatrivi\REACTJS\catintassist\src\components\ConnectInterpretButton.test.js", "C:\zengatrivi\REACTJS\catintassist\src\components\ElementHint.test.js", "C:\zengatrivi\REACTJS\catintassist\src\components\HudInspector.test.js", "C:\zengatrivi\REACTJS\catintassist\src\components\ReleaseNotesModal.test.js", "C:\zengatrivi\REACTJS\catintassist\src\content\appGuideContent.test.js", "C:\zengatrivi\REACTJS\catintassist\src\content\releaseNotes.test.js".

@@ -21,15 +21,45 @@ export const INPUT_SOURCE_KINDS = Object.freeze([
 
 const MIC_DEVICE_KEY = "CATINTASSIST_MIC_ID";
 
-/** Resolve only a real CABLE Output device. Never fall back to default mic. */
+/**
+ * Resolve only a real CABLE Output device. Never fall back to default mic.
+ *
+ * v4.87.0: always validate the saved ID against live enumeration. Chrome
+ * deviceIds are origin-scoped (prod vs localhost:3001 give different IDs),
+ * so a saved ID from another origin would otherwise die in getUserMedia
+ * with OverconstrainedError and leave the user stuck on tab share.
+ * Also prompts once for temp mic permission when labels are blank (fresh
+ * origin), otherwise CABLE Output is unfindable by label.
+ */
 export const resolveVirtualCableInputDeviceId = async ({
   savedDeviceId = readSelectedVirtualCableInputDeviceId(),
   enumerateDevicesFn = navigator.mediaDevices?.enumerateDevices?.bind(navigator.mediaDevices),
+  getUserMediaFn = navigator.mediaDevices?.getUserMedia?.bind(navigator.mediaDevices),
 } = {}) => {
-  if (savedDeviceId) return savedDeviceId;
-  if (!enumerateDevicesFn) throw new Error("VB-Cable device list is unavailable.");
-  const devices = await enumerateDevicesFn();
-  const deviceId = pickVbCableSttInputDevice(devices.filter((d) => d.kind === "audioinput"));
+  const listInputs = async () => {
+    if (!enumerateDevicesFn) throw new Error("VB-Cable device list is unavailable.");
+    const devices = await enumerateDevicesFn();
+    return (devices || []).filter((d) => d.kind === "audioinput");
+  };
+  let inputs;
+  try {
+    inputs = await listInputs();
+  } catch (_) {
+    if (savedDeviceId) return savedDeviceId;
+    throw new Error("VB-Cable device list is unavailable.");
+  }
+  if (savedDeviceId && inputs.some((d) => d.deviceId === savedDeviceId)) return savedDeviceId;
+  let deviceId = pickVbCableSttInputDevice(inputs);
+  if (!deviceId && inputs.some((d) => !d.label) && getUserMediaFn) {
+    try {
+      const s = await getUserMediaFn({ audio: true, video: false });
+      s.getTracks?.().forEach((t) => t.stop());
+    } catch (_) {}
+    try {
+      inputs = await listInputs();
+    } catch (_) {}
+    deviceId = pickVbCableSttInputDevice(inputs);
+  }
   if (!deviceId) {
     throw new Error("CABLE Output was not found. Choose TAB or reconnect VB-Cable.");
   }
@@ -96,10 +126,21 @@ export async function acquireInputSource(kind, opts = {}) {
   }
 
   if (source === "virtualCable") {
+    const tryAcquire = (deviceId) =>
+      navigator.mediaDevices.getUserMedia(buildVirtualCableGetUserMediaConstraints(deviceId));
     const deviceId = await resolveVirtualCableInputDeviceId();
-    const constraints = buildVirtualCableGetUserMediaConstraints(deviceId);
-    const stream = await navigator.mediaDevices.getUserMedia(constraints);
-    return { stream, kind: "virtualCable" };
+    try {
+      const stream = await tryAcquire(deviceId);
+      return { stream, kind: "virtualCable" };
+    } catch (err) {
+      if (err?.name !== "OverconstrainedError" && err?.name !== "NotFoundError") throw err;
+      // Stale exact deviceId (e.g. saved on another origin) — drop it,
+      // re-pick CABLE Output by label once, and retry. Never fall to default mic.
+      persistSelectedVirtualCableInputDeviceId("");
+      const freshId = await resolveVirtualCableInputDeviceId({ savedDeviceId: "" });
+      const stream = await tryAcquire(freshId);
+      return { stream, kind: "virtualCable" };
+    }
   }
 
   // Default: tab share

@@ -1,6 +1,6 @@
 {
   "id": "sensitive-token-loss",
-  "label": "Missing phone salvaged with Check marker",
+  "label": "Missing phone flags weak digit-loss; text stays clean (no Check marker)",
   "captionId": "cap-phi",
   "targetLang": "es",
   "segments": [
@@ -14,7 +14,7 @@
     }
   ],
   "expect": {
-    "composedIncludes": ["[⚠ Check:", "555"],
+    "composedExcludes": ["[⚠ Check:"],
     "entryWarnings": { "seg-0": "sensitive_token_loss" }
   }
 }

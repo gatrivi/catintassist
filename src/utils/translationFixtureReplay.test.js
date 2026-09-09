@@ -20,6 +20,7 @@ describe('splitLongForTranslation', () => {
     const words = Array.from({ length: 90 }, (_, i) => `word${i}`).join(' ');
     const segs = splitLongForTranslation(words, { maxWords: 40 });
     expect(segs.length).toBeGreaterThanOrEqual(2);
-    segs.forEach((s) => expect(s.split(/\s+/).length).toBeLessThanOrEqual(45));
+    // v4.94.0 hard ceiling: explicit maxWords 40 clamps to 24 words max.
+    segs.forEach((s) => expect(s.split(/\s+/).length).toBeLessThanOrEqual(24));
   });
 });

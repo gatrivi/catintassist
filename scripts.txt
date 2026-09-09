@@ -1,0 +1,64 @@
+Script Bank (By the Book)
+Text in quotes = verbatim from the handbook. Anything said to the LEP (red text in the doc) is delivered in the LEP's language.
+
+1. Opening the call
+Greeting to Client (regular call):
+
+"Good evening, my name is [First name], interpreter ID [ID], and I will be your [language] interpreter. Please speak in clear, short sentences so that I can interpret everything. Before we begin, I need to ask you a few questions."
+
+Verify the client: "Where are you calling from?" (must match the info on screen; if not, note name + ID in comments)
+
+Greeting to LEP (regular call, in LEP language):
+
+"Good evening, I will be your [language] interpreter. Everything you say will stay confidential. Please speak in clear, short sentences so that I can interpret everything."
+
+2. LEP Direct Dial (LEP calls us first)
+"Good morning, I will be your [language] interpreter. Everything you say will stay confidential. Please speak in clear, short sentences so that I can interpret everything. What is the phone number you are trying to reach?" (confirm/read the number back)
+
+Then, before dialing: ask the LEP for name + callback number in case you must leave a message, tell them "we can only remain on the line for 5 minutes," and ask which department they need. When the operator answers: state "we are the interpreters with the patient/customer on the line" and request the department. Once connected: "we have the patient/customer on the line, who wishes to speak with the [department]." ❌ Never ask "Where are you calling from?" (if platform demands verification: "What is the name of your company/hospital, please?")
+
+3. During the call (interventions — always announce first)
+Golden rule opener: "This is the interpreter speaking…"
+
+Requesting repetition: "Ma'am, this is the interpreter, could you repeat what you said please?" → then render: "Thank you very much. This is the interpreter speaking. I'm sorry, I was asking for some repetition. Your customer stated…"
+Long message / need shorter segments: "This is the interpreter speaking, I do apologize for interrupting, but for the sake of accuracy, would you mind providing me with shorter segments please?"
+Accidental interruption: "I do apologize for interrupting, please go ahead." / "I'm sorry Sir/Ma'am, please continue."
+Covering a pause (checking notes/terminology): "This is the interpreter, I am sorry, there is some static on the line, I am checking my settings to see if I can improve my audio quality, would you mind repeating the information one more time please?"
+⚠️ Breaks/holds: the handbook has no verbatim break script, but the "keep the client in the loop" rule means any pause must be announced with "This is the interpreter speaking…" and a brief explanation — never silence.
+
+4. Dial-outs
+Collect first: Who should I ask for? Who should I say is calling? If we reach voicemail, would you like to leave a message? What should it say? Callback number?
+
+Verify the person who answers is the right one (HIPAA). Voicemail example (always identify as the interpreter):
+
+"Good morning, this is an interpreter in Dr. Michael's representation, this message is for Mrs. Maria Espinoza, her appointment will be in the Kaiser Permanent Hospital at 8:30 in the morning. If you cannot attend, please reach out to us at your earliest convenience at this phone number 333.333.3333. Have a good day."
+
+Two interpreters on the line: politely ask the other to disconnect (service was accidentally requested); or ask if our services are needed — if not, thank them and disengage.
+
+5. Special situations
+Ghost call (no client, 2-min limit): repeatedly attempt "This is the interpreter speaking, hello, hello." After 2 minutes:
+
+"This is the interpreter speaking, I do apologize for the inconvenience, but since I am not able to hear my client on the line, I will disengage. My name is [name], my ID [ID], have a great day!"
+
+Client/LEP unresponsive: announce you're still on the line, try contact for ≥2 min, then give the disengagement speech in English and the LEP's language, and report as "Ghost Call."
+
+Offering to disconnect (parties communicating on their own):
+
+"This is the interpreter speaking. I am sorry Sir, it seems you are able to communicate with your customer/patient. Would you like me to remain on the line with you, or should I disconnect? I would be happy to remain on the line — it's just that we need to make sure services are still needed. Thank you."
+
+Blocked by missing intake: "I do apologize for the inconvenience, but the system will not let me proceed without the information needed. Please call us back when you have the information and we will be happy to assist. Once again, I do apologize for the inconvenience."
+
+Legal calls: happy to help with basic terminology; if it requires legal expertise: state you don't hold a legal certification and, for accuracy purposes, ask them to reach a legal interpreter.
+
+Operator-led calls (Client ID 12241): stay silent until the operator instructs you, then: "Hello. This is the interpreter speaking. One moment please, while I introduce myself to the LEP/patient." — then full intro to the LEP in their language.
+
+6. Closing (mandatory)
+Offer more help: "Is there anything else I can do to assist you?" / "May the interpreter be of further assistance?" / "Can I help you with something else?" ❌ Never "Is that it?"
+
+Sign-off (every call):
+
+"My name is ______, ID ______, thank you for using our services."
+
+Optional goodbye to LEP: "Thank you for using our services, have a nice day. Goodbye Sir/Ma'am."
+
+Then disconnect immediately — staying on after goodbye or after being told services aren't needed is a major violation (loitering = automatic separation).

@@ -98,6 +98,11 @@ export const HudInspectorHost = () => {
   const [tip, setTip] = useState(null); // { x, y, name, selector, below }
   const [copied, setCopied] = useState(false);
   const lastElRef = useRef(null);
+  // v4.93.1 CPU fix: mousemove fires 60-120/s; coalesce via rAF, skip work
+  // when hovering the same element, cache selector per element (WeakMap).
+  const rafIdRef = useRef(0);
+  const pendingEventRef = useRef(null);
+  const selectorCacheRef = useRef(new WeakMap());
 
   useEffect(() => {
     try { localStorage.setItem(STORE_KEY, on ? '1' : '0'); } catch (_) { /* noop */ }
@@ -132,12 +137,31 @@ export const HudInspectorHost = () => {
 
   useEffect(() => {
     if (!on) return undefined;
-    const move = (e) => {
+    const cachedSelector = (el) => {
+      const cache = selectorCacheRef.current;
+      let sel = cache.get(el);
+      if (sel === undefined) {
+        sel = buildUniqueSelector(el);
+        try { cache.set(el, sel); } catch (_) { /* noop */ }
+      }
+      return sel;
+    };
+    const process = (e) => {
+      rafIdRef.current = 0;
       const t = e.target;
       if (!(t instanceof Element)) return;
       if (t.closest('.hud-inspector-tip, .hud-inspector-toggle')) return;
+      // Same element as last frame → nothing changed, skip setState entirely.
+      if (t === lastElRef.current) return;
       const app = t.closest('.app-container');
-      if (!app) { setTip(null); return; }
+      if (!app) {
+        if (lastElRef.current) {
+          try { lastElRef.current.style.outline = ''; } catch (_) { /* noop */ }
+          lastElRef.current = null;
+        }
+        setTip((prev) => (prev === null ? prev : null));
+        return;
+      }
       const rect = t.getBoundingClientRect();
       if (rect.width === 0 && rect.height === 0) return;
       if (lastElRef.current && lastElRef.current !== t) {
@@ -151,9 +175,15 @@ export const HudInspectorHost = () => {
         y: below ? rect.bottom : rect.top,
         below,
         name: resolveHudName(t),
-        selector: buildUniqueSelector(t),
+        selector: cachedSelector(t),
       });
       setCopied(false);
+    };
+    const move = (e) => {
+      // Coalesce the mousemove storm to one update per animation frame.
+      pendingEventRef.current = e;
+      if (rafIdRef.current) return;
+      rafIdRef.current = requestAnimationFrame(() => process(pendingEventRef.current));
     };
     const leave = () => {
       setTip(null);
@@ -165,6 +195,8 @@ export const HudInspectorHost = () => {
     document.addEventListener('mousemove', move, { passive: true });
     document.addEventListener('mouseleave', leave);
     return () => {
+      if (rafIdRef.current) cancelAnimationFrame(rafIdRef.current);
+      rafIdRef.current = 0;
       document.removeEventListener('mousemove', move);
       document.removeEventListener('mouseleave', leave);
       leave();

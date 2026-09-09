@@ -11,6 +11,9 @@ import {
   buildVirtualCableFailureUiState,
   getAudioSourceModeAfterVirtualCableFailure,
   isVbCableSinkLabel,
+  readSinkExplicit,
+  persistSinkExplicit,
+  shouldAutoFixSink,
   isVbCableSttInputLabel,
   pickVbCableSinkDevice,
   pickVbCableSttInputDevice,
@@ -167,6 +170,29 @@ describe("audioSourceManager", () => {
     });
     expect(d.ok).toBe(true);
     expect(d.code).toBe("ok");
+  });
+
+  test("explicit user sink pick is never auto-fixed", () => {
+    expect(shouldAutoFixSink({ explicit: true, sinkId: "vm", sinkLabel: "Voicemeeter Input (VB-Audio)" })).toBe(false);
+    expect(shouldAutoFixSink({ explicit: true, sinkId: "", sinkLabel: "" })).toBe(true);
+    expect(shouldAutoFixSink({ explicit: false, sinkId: "", sinkLabel: "" })).toBe(true);
+    expect(shouldAutoFixSink({ explicit: false, sinkId: "in", sinkLabel: "CABLE Input (VB-Audio)" })).toBe(false);
+  });
+
+  test("sink explicit flag persists", () => {
+    expect(readSinkExplicit()).toBe(false);
+    persistSinkExplicit(true);
+    expect(readSinkExplicit()).toBe(true);
+    persistSinkExplicit(false);
+    expect(readSinkExplicit()).toBe(false);
+  });
+
+  test("Voicemeeter sink accepts Standard input only", () => {
+    expect(isVbCableSinkLabel("Voicemeeter Input (VB-Audio Voicemeeter VAIO)")).toBe(true);
+    expect(isVbCableSinkLabel("Voicemeeter Input")).toBe(true);
+    expect(isVbCableSinkLabel("Voicemeeter Aux Input (VB-Audio Voicemeeter AUX VAIO)")).toBe(false);
+    expect(isVbCableSinkLabel("Voicemeeter Input 1 (Potato)")).toBe(false);
+    expect(isVbCableSinkLabel("Speakers (HS-220U)")).toBe(false);
   });
 
   test("tab share cancel is detected", () => {

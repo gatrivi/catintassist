@@ -5,7 +5,7 @@
 Outside agents: pick **one** spec below. Do not re-read the whole repo.
 
 ## Current app version
-Top-right must show **v4.88.4** after this ship. Status: [`11_daily_targets_hud_2026-09-08.md`](11_daily_targets_hud_2026-09-08.md) (targets/HUD session, v4.88.1–4.88.4 pushed) + [`10_session_status_2026-09-08.md`](10_session_status_2026-09-08.md) (big session) + little session on call-log paste — coordinate before staging (dirty tree).
+Top-right must show **v4.94.0** (uncommitted — local only). Status: [`12_tiny_translate_chunks_2026-09-09.md`](12_tiny_translate_chunks_2026-09-09.md) (translate chunk fix, push scope pending) + [`11_cpu_sink_fix_2026-09-09.md`](11_cpu_sink_fix_2026-09-09.md) + [`10_session_status_2026-09-08.md`](10_session_status_2026-09-08.md) — coordinate before staging (very dirty tree).
 
 ## Current operating invariants
 - Active-call STT controls are fixed and reachable: `TAB` + `VB` in a 30px row. Never remove them; a compact UI may only move secondary setup behind a labeled expander.
@@ -42,6 +42,8 @@ Top-right must show **v4.88.4** after this ship. Status: [`11_daily_targets_hud_
 | 8 | Translation freeze (uncommitted) | [`08_translation_freeze.md`](08_translation_freeze.md) | `useTranslate.js`, `TranscriptionBoard.js` |
 | 9 | Voicemeeter safeguards (pending) | [`09_voicemeeter_safeguards.md`](09_voicemeeter_safeguards.md) | `AudioSettingsContext.js`, `AudioRouteStatusBar.js`, `audioRoutePassthrough.js` |
 | 10 | Session status 2026-09-08 | [`10_session_status_2026-09-08.md`](10_session_status_2026-09-08.md) | read-only status — big vs little session split |
+| 11 | CPU sink fix 2026-09-09 | [`11_cpu_sink_fix_2026-09-09.md`](11_cpu_sink_fix_2026-09-09.md) | read-only status — uncommitted, do not push |
+| 12 | Tiny translate chunks 2026-09-09 | [`12_tiny_translate_chunks_2026-09-09.md`](12_tiny_translate_chunks_2026-09-09.md) | `translationApplicator.js`, `useTranslate.js` — uncommitted, push scope pending |
 
 ## Also read
 - [`docs/cursor-agent/README.md`](../cursor-agent/README.md) — touch-only file table

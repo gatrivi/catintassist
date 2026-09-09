@@ -134,9 +134,13 @@ export const useTranslate = (
   const prevTextRef = useRef('');
   const lastTranslatedTextRef = useRef('');
   const lastWordCountRef = useRef(0);
+  // v4.86.1 freeze: keep readable translation on STT edits; badge via isStale.
+  const [isStale, setIsStale] = useState(false);
+  const prevSegmentsRef = useRef([]);
   const debounceTimerRef = useRef(null);
   const abortControllerRef = useRef(null);
   const hasGoodTranslationRef = useRef(false);
+  const translationRef = useRef('');
   const translationsMapRef = useRef({ ...(persistedTranslations || {}) });
   const hydratedRef = useRef(false);
   const onPersistRef = useRef(onPersistTranslation);
@@ -215,6 +219,7 @@ export const useTranslate = (
       setAudioUrl(null);
       setEngineStatus('idle');
       setTranslationMeta(emptyMeta);
+      setIsStale(false);
       prevTextRef.current = '';
       return;
     }
@@ -277,14 +282,16 @@ export const useTranslate = (
       prevTextRef.current && !isIncrementalTranscriptGrowth(prevTextRef.current, normText);
 
     if (isSplitRewrite) {
-      lastTranslatedTextRef.current = '';
+      // v4.86.1 freeze: never blank readable text. Keep display + map (tail
+      // bubble reuses same captionId so prefix carries over); mark stale.
+      // Only reset word gate so the new tail re-triggers promptly.
       lastWordCountRef.current = 0;
-      hasGoodTranslationRef.current = false;
-      // Drop composed display; keep map entries for other keys until new source hashes apply
-      setTranslation('');
-      setAudioUrl(null);
-      setTranslationMeta(emptyMeta);
+      if (translationRef.current) setIsStale(true);
       setEngineStatus('translating');
+    } else if (normText !== lastTranslatedTextRef.current && translationRef.current) {
+      // Incremental growth with a readable translation on screen: freeze
+      // display until the tail fetch resolves (badge via isStale).
+      setIsStale(true);
     }
     prevTextRef.current = normText;
 
@@ -404,7 +411,9 @@ export const useTranslate = (
       };
 
       try {
-        const rawSegments = splitLongForTranslation(sourceForTranslate, { maxWords: 40 });
+        // v4.94.0: tiny chunks only — one sentence or one comma-clause per
+        // request. Long chunks stalled the local model for minutes.
+        const rawSegments = splitLongForTranslation(sourceForTranslate);
         const labeled = assignSegmentIds(rawSegments);
         const activeKeys = [];
         const segmentSources = [];
@@ -412,6 +421,16 @@ export const useTranslate = (
         let anyOk = false;
         let anyFailed = false;
         let anyPassthrough = false;
+
+        // v4.86.1 tail-only: reuse good translations for unchanged prefix
+        // segments so small STT edits don't refetch (or destroy) them.
+        const prevBySource = new Map();
+        Object.values(translationsMapRef.current || {}).forEach((e) => {
+          const src = String(e?.sourceText || '').trim().replace(/\s+/g, ' ');
+          if (src && e?.text && (e.status === 'ok' || e.status === 'weak')) {
+            if (!prevBySource.has(src)) prevBySource.set(src, e);
+          }
+        });
 
         for (const { segmentId, text: segText } of labeled) {
           if (signal.aborted) break;
@@ -425,6 +444,34 @@ export const useTranslate = (
           });
           activeKeys.push(requestId);
           segmentSources.push({ key: requestId, sourceText: segText });
+
+          // Exact-text prefix hit: carry over, no network, no display churn.
+          const carried = prevBySource.get(segText);
+          if (carried && carried.targetLang === tLang) {
+            const { state: nextMap, entry } = applyTranslationResult(translationsMapRef.current, {
+              captionId: capId,
+              segmentId,
+              sourceText: segText,
+              sourceHash,
+              targetLang: tLang,
+              engineResult: {
+                text: carried.text,
+                engineId: carried.engineId,
+                quality: carried.quality || carried.status || 'ok',
+                requestId,
+              },
+            });
+            translationsMapRef.current = nextMap;
+            persistIfSealed(entry);
+            lastMeta = {
+              engineId: entry.engineId,
+              quality: entry.quality,
+              failures: [],
+              tried: ['carry-prefix'],
+            };
+            if (entry.status === 'ok' || entry.status === 'weak') anyOk = true;
+            continue;
+          }
 
           const res = await fetchChunk(segText);
           // The generic engine keeps legitimate weak short answers. At this
@@ -477,10 +524,15 @@ export const useTranslate = (
         });
 
         if (!langPairRef.current) langPairRef.current = langPair;
-        setTranslation(composed || sourceForTranslate);
-        hasGoodTranslationRef.current = anyOk || Boolean(composed);
+        // v4.86.1 freeze: a failed/empty round must never overwrite readable text.
+        if (anyOk || !hasGoodTranslationRef.current) {
+          setTranslation(composed || sourceForTranslate);
+          hasGoodTranslationRef.current = anyOk || Boolean(composed);
+        }
+        prevSegmentsRef.current = labeled.map((s) => s.text);
         lastTranslatedTextRef.current = normText;
         lastWordCountRef.current = wordCount;
+        setIsStale(false);
 
         if (
           shouldPrefetch &&
@@ -493,7 +545,11 @@ export const useTranslate = (
           setAudioUrl(url);
         }
       } catch (e) {
-        if (e.name !== 'AbortError') console.error('[Trans] Catch:', e);
+        if (e.name !== 'AbortError') {
+          console.error('[Trans] Catch:', e);
+          // Failed round: keep frozen display, drop the badge.
+          setIsStale(false);
+        }
       } finally {
         if (!signal.aborted) {
           setIsTranslating(false);
@@ -524,10 +580,16 @@ export const useTranslate = (
     persistIfSealed,
   ]);
 
+  // Mirror for the freeze check above (ref avoids an effect dep loop).
+  useEffect(() => {
+    translationRef.current = translation;
+  }, [translation]);
+
   return {
     translation,
     audioUrl,
     isTranslating,
+    isStale,
     engineStatus,
     translationMeta,
     targetLang: (langPairRef.current || currentLangPair).split('-')[1],

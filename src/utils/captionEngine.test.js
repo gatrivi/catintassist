@@ -257,4 +257,25 @@ describe("captionEngine", () => {
     });
     expect(new Set(rows.map((r) => r.id)).size).toBe(rows.length);
   });
+
+  // v4.93.2: blank live drafts must never reach the UI (CPU freeze fix)
+  test("mergeCaptionsForUi drops blank live draft", () => {
+    const finals = [{ id: "a", text: "Hello.", isFinal: true }];
+    const blank = { id: "b", isFinal: false, enFinalized: "", enInterim: "" };
+    const merged = mergeCaptionsForUi({ finals, liveDraft: blank });
+    expect(merged).toEqual(finals);
+  });
+
+  test("reduceTranscriptEvent drops freshly appended blank draft on overlap_empty_freeze", () => {
+    const ctx = makeCtx();
+    // First event with empty transcript after silence creates a new blank draft,
+    // overlap cleaner empties it -> freeze branch must drop the blank row.
+    const state1 = reduceTranscriptEvent([], makeEvent({ transcript: "hello", isSilentBreak: true }), ctx);
+    expect(state1[state1.length - 1].id).toBeTruthy();
+    // Simulate a later event whose cleaned text comes out empty on a fresh bubble.
+    const state2 = reduceTranscriptEvent([], makeEvent({ transcript: "", isSilentBreak: true }), ctx);
+    const texts = state2.map((c) => (c.text || "").trim());
+    expect(texts.every(Boolean)).toBe(true);
+    expect(state2.filter((c) => !c.text?.trim())).toHaveLength(0);
+  });
 });

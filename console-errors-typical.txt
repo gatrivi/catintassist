@@ -1,0 +1,1812 @@
+{at: '2026-09-04T19:56:16.170Z', ms: 0.3, stage: '6 caption engine committed', rows: 150, lastRowId: 'dg-es-2790.07-i', …}
+vanishTrace.js:64 [CAT VANISH] live_to_sealed_swap {at: '2026-09-04T19:56:16.171Z', ms: 27273151, flag: 'VANISH', reason: 'live_to_sealed_swap', id: 'dg-es-2790.07-i', …}
+flagVanish @ vanishTrace.js:64
+(anonymous) @ vanishTrace.js:161
+(anonymous) @ vanishTrace.js:136
+(anonymous) @ useDeepgram.js:305
+(anonymous) @ SessionContext.js:212
+basicStateReducer @ react-dom-client.production.js:4551
+updateReducerImpl @ react-dom-client.production.js:4628
+updateReducer @ react-dom-client.production.js:4555
+useState @ react-dom-client.production.js:5703
+(anonymous) @ react.production.js:526
+(anonymous) @ SessionContext.js:55
+renderWithHooks @ react-dom-client.production.js:4351
+updateFunctionComponent @ react-dom-client.production.js:6497
+beginWork @ react-dom-client.production.js:7473
+performUnitOfWork @ react-dom-client.production.js:11305
+workLoopSync @ react-dom-client.production.js:11182
+renderRootSync @ react-dom-client.production.js:11163
+performWorkOnRoot @ react-dom-client.production.js:10690
+performWorkOnRootViaSchedulerTask @ react-dom-client.production.js:12078
+performWorkUntilDeadline @ scheduler.production.js:151
+postMessage
+(anonymous) @ scheduler.production.js:202
+performWorkUntilDeadline @ scheduler.production.js:187
+postMessage
+(anonymous) @ scheduler.production.js:202
+performWorkUntilDeadline @ scheduler.production.js:187
+postMessage
+(anonymous) @ scheduler.production.js:202
+performWorkUntilDeadline @ scheduler.production.js:187
+postMessage
+(anonymous) @ scheduler.production.js:202
+(anonymous) @ scheduler.production.js:325
+scheduleTaskForRootDuringMicrotask @ react-dom-client.production.js:12055
+processRootScheduleInMicrotask @ react-dom-client.production.js:11978
+(anonymous) @ react-dom-client.production.js:12095
+setTimeout
+(anonymous) @ useTranslate.js:352
+commitHookEffectListMount @ react-dom-client.production.js:8583
+commitPassiveMountOnFiber @ react-dom-client.production.js:10126
+recursivelyTraversePassiveMountEffects @ react-dom-client.production.js:10101
+commitPassiveMountOnFiber @ react-dom-client.production.js:10241
+recursivelyTraversePassiveMountEffects @ react-dom-client.production.js:10101
+commitPassiveMountOnFiber @ react-dom-client.production.js:10241
+recursivelyTraversePassiveMountEffects @ react-dom-client.production.js:10101
+commitPassiveMountOnFiber @ react-dom-client.production.js:10241
+recursivelyTraversePassiveMountEffects @ react-dom-client.production.js:10101
+commitPassiveMountOnFiber @ react-dom-client.production.js:10241
+recursivelyTraversePassiveMountEffects @ react-dom-client.production.js:10101
+commitPassiveMountOnFiber @ react-dom-client.production.js:10241
+recursivelyTraversePassiveMountEffects @ react-dom-client.production.js:10101
+commitPassiveMountOnFiber @ react-dom-client.production.js:10241
+recursivelyTraversePassiveMountEffects @ react-dom-client.production.js:10101
+commitPassiveMountOnFiber @ react-dom-client.production.js:10120
+recursivelyTraversePassiveMountEffects @ react-dom-client.production.js:10101
+commitPassiveMountOnFiber @ react-dom-client.production.js:10241
+recursivelyTraversePassiveMountEffects @ react-dom-client.production.js:10101
+commitPassiveMountOnFiber @ react-dom-client.production.js:10241
+recursivelyTraversePassiveMountEffects @ react-dom-client.production.js:10101
+commitPassiveMountOnFiber @ react-dom-client.production.js:10241
+recursivelyTraversePassiveMountEffects @ react-dom-client.production.js:10101
+commitPassiveMountOnFiber @ react-dom-client.production.js:10241
+recursivelyTraversePassiveMountEffects @ react-dom-client.production.js:10101
+commitPassiveMountOnFiber @ react-dom-client.production.js:10120
+recursivelyTraversePassiveMountEffects @ react-dom-client.production.js:10101
+commitPassiveMountOnFiber @ react-dom-client.production.js:10241
+recursivelyTraversePassiveMountEffects @ react-dom-client.production.js:10101
+commitPassiveMountOnFiber @ react-dom-client.production.js:10120
+recursivelyTraversePassiveMountEffects @ react-dom-client.production.js:10101
+commitPassiveMountOnFiber @ react-dom-client.production.js:10120
+recursivelyTraversePassiveMountEffects @ react-dom-client.production.js:10101
+commitPassiveMountOnFiber @ react-dom-client.production.js:10241
+recursivelyTraversePassiveMountEffects @ react-dom-client.production.js:10101
+commitPassiveMountOnFiber @ react-dom-client.production.js:10120
+recursivelyTraversePassiveMountEffects @ react-dom-client.production.js:10101
+commitPassiveMountOnFiber @ react-dom-client.production.js:10241
+recursivelyTraversePassiveMountEffects @ react-dom-client.production.js:10101
+commitPassiveMountOnFiber @ react-dom-client.production.js:10120
+recursivelyTraversePassiveMountEffects @ react-dom-client.production.js:10101
+commitPassiveMountOnFiber @ react-dom-client.production.js:10241
+recursivelyTraversePassiveMountEffects @ react-dom-client.production.js:10101
+commitPassiveMountOnFiber @ react-dom-client.production.js:10120
+recursivelyTraversePassiveMountEffects @ react-dom-client.production.js:10101
+commitPassiveMountOnFiber @ react-dom-client.production.js:10120
+recursivelyTraversePassiveMountEffects @ react-dom-client.production.js:10101
+commitPassiveMountOnFiber @ react-dom-client.production.js:10241
+recursivelyTraversePassiveMountEffects @ react-dom-client.production.js:10101
+commitPassiveMountOnFiber @ react-dom-client.production.js:10137
+flushPassiveEffects @ react-dom-client.production.js:11763
+(anonymous) @ react-dom-client.production.js:11498
+performWorkUntilDeadline @ scheduler.production.js:151
+postMessage
+(anonymous) @ scheduler.production.js:202
+performWorkUntilDeadline @ scheduler.production.js:187
+postMessage
+(anonymous) @ scheduler.production.js:202
+(anonymous) @ scheduler.production.js:325
+scheduleTaskForRootDuringMicrotask @ react-dom-client.production.js:12055
+processRootScheduleInMicrotask @ react-dom-client.production.js:11978
+(anonymous) @ react-dom-client.production.js:12095
+postMessage
+(anonymous) @ scheduler.production.js:202
+performWorkUntilDeadline @ scheduler.production.js:187
+postMessage
+(anonymous) @ scheduler.production.js:202
+performWorkUntilDeadline @ scheduler.production.js:187
+postMessage
+(anonymous) @ scheduler.production.js:202
+performWorkUntilDeadline @ scheduler.production.js:187
+postMessage
+(anonymous) @ scheduler.production.js:202
+performWorkUntilDeadline @ scheduler.production.js:187
+postMessage
+(anonymous) @ scheduler.production.js:202
+performWorkUntilDeadline @ scheduler.production.js:187
+postMessage
+(anonymous) @ scheduler.production.js:202
+performWorkUntilDeadline @ scheduler.production.js:187
+postMessage
+(anonymous) @ scheduler.production.js:202
+performWorkUntilDeadline @ scheduler.production.js:187
+postMessage
+(anonymous) @ scheduler.production.js:202
+performWorkUntilDeadline @ scheduler.production.js:187
+postMessage
+(anonymous) @ scheduler.production.js:202
+(anonymous) @ scheduler.production.js:325
+scheduleTaskForRootDuringMicrotask @ react-dom-client.production.js:12055
+processRootScheduleInMicrotask @ react-dom-client.production.js:11978
+(anonymous) @ react-dom-client.production.js:12095
+setInterval
+(anonymous) @ SessionContext.js:745
+commitHookEffectListMount @ react-dom-client.production.js:8583
+commitPassiveMountOnFiber @ react-dom-client.production.js:10126
+recursivelyTraversePassiveMountEffects @ react-dom-client.production.js:10101
+commitPassiveMountOnFiber @ react-dom-client.production.js:10241
+recursivelyTraversePassiveMountEffects @ react-dom-client.production.js:10101
+commitPassiveMountOnFiber @ react-dom-client.production.js:10120
+recursivelyTraversePassiveMountEffects @ react-dom-client.production.js:10101
+commitPassiveMountOnFiber @ react-dom-client.production.js:10241
+recursivelyTraversePassiveMountEffects @ react-dom-client.production.js:10101
+commitPassiveMountOnFiber @ react-dom-client.production.js:10120
+recursivelyTraversePassiveMountEffects @ react-dom-client.production.js:10101
+commitPassiveMountOnFiber @ react-dom-client.production.js:10120
+recursivelyTraversePassiveMountEffects @ react-dom-client.production.js:10101
+commitPassiveMountOnFiber @ react-dom-client.production.js:10241
+recursivelyTraversePassiveMountEffects @ react-dom-client.production.js:10101
+commitPassiveMountOnFiber @ react-dom-client.production.js:10137
+flushPassiveEffects @ react-dom-client.production.js:11763
+(anonymous) @ react-dom-client.production.js:11498
+performWorkUntilDeadline @ scheduler.production.js:151
+postMessage
+(anonymous) @ scheduler.production.js:202
+performWorkUntilDeadline @ scheduler.production.js:187
+postMessage
+(anonymous) @ scheduler.production.js:202
+(anonymous) @ scheduler.production.js:325
+scheduleTaskForRootDuringMicrotask @ react-dom-client.production.js:12055
+processRootScheduleInMicrotask @ react-dom-client.production.js:11978
+(anonymous) @ react-dom-client.production.js:12095
+vanishTrace.js:64 [CAT VANISH] live_to_sealed_swap {at: '2026-09-04T19:56:16.212Z', ms: 27273193, flag: 'VANISH', reason: 'live_to_sealed_swap', id: 'dg-es-2790.07-i', …}
+flagVanish @ vanishTrace.js:64
+(anonymous) @ vanishTrace.js:161
+(anonymous) @ vanishTrace.js:136
+(anonymous) @ TranscriptionBoard.js:785
+commitHookEffectListMount @ react-dom-client.production.js:8583
+commitPassiveMountOnFiber @ react-dom-client.production.js:10126
+recursivelyTraversePassiveMountEffects @ react-dom-client.production.js:10101
+commitPassiveMountOnFiber @ react-dom-client.production.js:10241
+recursivelyTraversePassiveMountEffects @ react-dom-client.production.js:10101
+commitPassiveMountOnFiber @ react-dom-client.production.js:10241
+recursivelyTraversePassiveMountEffects @ react-dom-client.production.js:10101
+commitPassiveMountOnFiber @ react-dom-client.production.js:10241
+recursivelyTraversePassiveMountEffects @ react-dom-client.production.js:10101
+commitPassiveMountOnFiber @ react-dom-client.production.js:10241
+recursivelyTraversePassiveMountEffects @ react-dom-client.production.js:10101
+commitPassiveMountOnFiber @ react-dom-client.production.js:10120
+recursivelyTraversePassiveMountEffects @ react-dom-client.production.js:10101
+commitPassiveMountOnFiber @ react-dom-client.production.js:10241
+recursivelyTraversePassiveMountEffects @ react-dom-client.production.js:10101
+commitPassiveMountOnFiber @ react-dom-client.production.js:10120
+recursivelyTraversePassiveMountEffects @ react-dom-client.production.js:10101
+commitPassiveMountOnFiber @ react-dom-client.production.js:10120
+recursivelyTraversePassiveMountEffects @ react-dom-client.production.js:10101
+commitPassiveMountOnFiber @ react-dom-client.production.js:10241
+recursivelyTraversePassiveMountEffects @ react-dom-client.production.js:10101
+commitPassiveMountOnFiber @ react-dom-client.production.js:10120
+recursivelyTraversePassiveMountEffects @ react-dom-client.production.js:10101
+commitPassiveMountOnFiber @ react-dom-client.production.js:10241
+recursivelyTraversePassiveMountEffects @ react-dom-client.production.js:10101
+commitPassiveMountOnFiber @ react-dom-client.production.js:10120
+recursivelyTraversePassiveMountEffects @ react-dom-client.production.js:10101
+commitPassiveMountOnFiber @ react-dom-client.production.js:10241
+recursivelyTraversePassiveMountEffects @ react-dom-client.production.js:10101
+commitPassiveMountOnFiber @ react-dom-client.production.js:10120
+recursivelyTraversePassiveMountEffects @ react-dom-client.production.js:10101
+commitPassiveMountOnFiber @ react-dom-client.production.js:10120
+recursivelyTraversePassiveMountEffects @ react-dom-client.production.js:10101
+commitPassiveMountOnFiber @ react-dom-client.production.js:10241
+recursivelyTraversePassiveMountEffects @ react-dom-client.production.js:10101
+commitPassiveMountOnFiber @ react-dom-client.production.js:10137
+flushPassiveEffects @ react-dom-client.production.js:11763
+(anonymous) @ react-dom-client.production.js:11498
+performWorkUntilDeadline @ scheduler.production.js:151
+postMessage
+(anonymous) @ scheduler.production.js:202
+performWorkUntilDeadline @ scheduler.production.js:187
+postMessage
+(anonymous) @ scheduler.production.js:202
+performWorkUntilDeadline @ scheduler.production.js:187
+postMessage
+(anonymous) @ scheduler.production.js:202
+performWorkUntilDeadline @ scheduler.production.js:187
+postMessage
+(anonymous) @ scheduler.production.js:202
+performWorkUntilDeadline @ scheduler.production.js:187
+postMessage
+(anonymous) @ scheduler.production.js:202
+(anonymous) @ scheduler.production.js:325
+scheduleTaskForRootDuringMicrotask @ react-dom-client.production.js:12055
+processRootScheduleInMicrotask @ react-dom-client.production.js:11978
+(anonymous) @ react-dom-client.production.js:12095
+setTimeout
+(anonymous) @ useTranslate.js:352
+commitHookEffectListMount @ react-dom-client.production.js:8583
+commitPassiveMountOnFiber @ react-dom-client.production.js:10126
+recursivelyTraversePassiveMountEffects @ react-dom-client.production.js:10101
+commitPassiveMountOnFiber @ react-dom-client.production.js:10241
+recursivelyTraversePassiveMountEffects @ react-dom-client.production.js:10101
+commitPassiveMountOnFiber @ react-dom-client.production.js:10241
+recursivelyTraversePassiveMountEffects @ react-dom-client.production.js:10101
+commitPassiveMountOnFiber @ react-dom-client.production.js:10241
+recursivelyTraversePassiveMountEffects @ react-dom-client.production.js:10101
+commitPassiveMountOnFiber @ react-dom-client.production.js:10241
+recursivelyTraversePassiveMountEffects @ react-dom-client.production.js:10101
+commitPassiveMountOnFiber @ react-dom-client.production.js:10241
+recursivelyTraversePassiveMountEffects @ react-dom-client.production.js:10101
+commitPassiveMountOnFiber @ react-dom-client.production.js:10241
+recursivelyTraversePassiveMountEffects @ react-dom-client.production.js:10101
+commitPassiveMountOnFiber @ react-dom-client.production.js:10120
+recursivelyTraversePassiveMountEffects @ react-dom-client.production.js:10101
+commitPassiveMountOnFiber @ react-dom-client.production.js:10241
+recursivelyTraversePassiveMountEffects @ react-dom-client.production.js:10101
+commitPassiveMountOnFiber @ react-dom-client.production.js:10241
+recursivelyTraversePassiveMountEffects @ react-dom-client.production.js:10101
+commitPassiveMountOnFiber @ react-dom-client.production.js:10241
+recursivelyTraversePassiveMountEffects @ react-dom-client.production.js:10101
+commitPassiveMountOnFiber @ react-dom-client.production.js:10241
+recursivelyTraversePassiveMountEffects @ react-dom-client.production.js:10101
+commitPassiveMountOnFiber @ react-dom-client.production.js:10120
+recursivelyTraversePassiveMountEffects @ react-dom-client.production.js:10101
+commitPassiveMountOnFiber @ react-dom-client.production.js:10241
+recursivelyTraversePassiveMountEffects @ react-dom-client.production.js:10101
+commitPassiveMountOnFiber @ react-dom-client.production.js:10120
+recursivelyTraversePassiveMountEffects @ react-dom-client.production.js:10101
+commitPassiveMountOnFiber @ react-dom-client.production.js:10120
+recursivelyTraversePassiveMountEffects @ react-dom-client.production.js:10101
+commitPassiveMountOnFiber @ react-dom-client.production.js:10241
+recursivelyTraversePassiveMountEffects @ react-dom-client.production.js:10101
+commitPassiveMountOnFiber @ react-dom-client.production.js:10120
+recursivelyTraversePassiveMountEffects @ react-dom-client.production.js:10101
+commitPassiveMountOnFiber @ react-dom-client.production.js:10241
+recursivelyTraversePassiveMountEffects @ react-dom-client.production.js:10101
+commitPassiveMountOnFiber @ react-dom-client.production.js:10120
+recursivelyTraversePassiveMountEffects @ react-dom-client.production.js:10101
+commitPassiveMountOnFiber @ react-dom-client.production.js:10241
+recursivelyTraversePassiveMountEffects @ react-dom-client.production.js:10101
+commitPassiveMountOnFiber @ react-dom-client.production.js:10120
+recursivelyTraversePassiveMountEffects @ react-dom-client.production.js:10101
+commitPassiveMountOnFiber @ react-dom-client.production.js:10120
+recursivelyTraversePassiveMountEffects @ react-dom-client.production.js:10101
+commitPassiveMountOnFiber @ react-dom-client.production.js:10241
+recursivelyTraversePassiveMountEffects @ react-dom-client.production.js:10101
+commitPassiveMountOnFiber @ react-dom-client.production.js:10137
+flushPassiveEffects @ react-dom-client.production.js:11763
+(anonymous) @ react-dom-client.production.js:11498
+performWorkUntilDeadline @ scheduler.production.js:151
+postMessage
+(anonymous) @ scheduler.production.js:202
+performWorkUntilDeadline @ scheduler.production.js:187
+postMessage
+(anonymous) @ scheduler.production.js:202
+(anonymous) @ scheduler.production.js:325
+scheduleTaskForRootDuringMicrotask @ react-dom-client.production.js:12055
+processRootScheduleInMicrotask @ react-dom-client.production.js:11978
+(anonymous) @ react-dom-client.production.js:12095
+postMessage
+(anonymous) @ scheduler.production.js:202
+performWorkUntilDeadline @ scheduler.production.js:187
+postMessage
+(anonymous) @ scheduler.production.js:202
+performWorkUntilDeadline @ scheduler.production.js:187
+postMessage
+(anonymous) @ scheduler.production.js:202
+performWorkUntilDeadline @ scheduler.production.js:187
+postMessage
+(anonymous) @ scheduler.production.js:202
+performWorkUntilDeadline @ scheduler.production.js:187
+postMessage
+(anonymous) @ scheduler.production.js:202
+performWorkUntilDeadline @ scheduler.production.js:187
+postMessage
+(anonymous) @ scheduler.production.js:202
+performWorkUntilDeadline @ scheduler.production.js:187
+postMessage
+(anonymous) @ scheduler.production.js:202
+performWorkUntilDeadline @ scheduler.production.js:187
+postMessage
+(anonymous) @ scheduler.production.js:202
+performWorkUntilDeadline @ scheduler.production.js:187
+postMessage
+(anonymous) @ scheduler.production.js:202
+(anonymous) @ scheduler.production.js:325
+scheduleTaskForRootDuringMicrotask @ react-dom-client.production.js:12055
+processRootScheduleInMicrotask @ react-dom-client.production.js:11978
+(anonymous) @ react-dom-client.production.js:12095
+setInterval
+(anonymous) @ SessionContext.js:745
+commitHookEffectListMount @ react-dom-client.production.js:8583
+commitPassiveMountOnFiber @ react-dom-client.production.js:10126
+recursivelyTraversePassiveMountEffects @ react-dom-client.production.js:10101
+commitPassiveMountOnFiber @ react-dom-client.production.js:10241
+recursivelyTraversePassiveMountEffects @ react-dom-client.production.js:10101
+commitPassiveMountOnFiber @ react-dom-client.production.js:10120
+recursivelyTraversePassiveMountEffects @ react-dom-client.production.js:10101
+commitPassiveMountOnFiber @ react-dom-client.production.js:10241
+recursivelyTraversePassiveMountEffects @ react-dom-client.production.js:10101
+commitPassiveMountOnFiber @ react-dom-client.production.js:10120
+recursivelyTraversePassiveMountEffects @ react-dom-client.production.js:10101
+commitPassiveMountOnFiber @ react-dom-client.production.js:10120
+recursivelyTraversePassiveMountEffects @ react-dom-client.production.js:10101
+commitPassiveMountOnFiber @ react-dom-client.production.js:10241
+recursivelyTraversePassiveMountEffects @ react-dom-client.production.js:10101
+commitPassiveMountOnFiber @ react-dom-client.production.js:10137
+flushPassiveEffects @ react-dom-client.production.js:11763
+(anonymous) @ react-dom-client.production.js:11498
+performWorkUntilDeadline @ scheduler.production.js:151
+postMessage
+(anonymous) @ scheduler.production.js:202
+performWorkUntilDeadline @ scheduler.production.js:187
+postMessage
+(anonymous) @ scheduler.production.js:202
+(anonymous) @ scheduler.production.js:325
+scheduleTaskForRootDuringMicrotask @ react-dom-client.production.js:12055
+processRootScheduleInMicrotask @ react-dom-client.production.js:11978
+(anonymous) @ react-dom-client.production.js:12095
+TranscriptionBoard.js:813 [CAT STT] 7 string rendered in TranscriptionBoard {at: '2026-09-04T19:56:16.213Z', ms: 27273194, stage: '7 string rendered in TranscriptionBoard', rows: 150, id: 'dg-es-2790.07-i', …}
+translationEngines.js:236  POST https://catintassist.gatrivi.com/api/translate net::ERR_ABORTED 503 (Service Unavailable)
+(anonymous) @ translationEngines.js:236
+(anonymous) @ translationEngines.js:291
+(anonymous) @ useTranslate.js:392
+Promise.then
+run @ translationRequestQueue.js:21
+(anonymous) @ translationRequestQueue.js:12
+(anonymous) @ translationRequestQueue.js:25
+Promise.finally
+run @ translationRequestQueue.js:23
+(anonymous) @ translationRequestQueue.js:12
+(anonymous) @ translationRequestQueue.js:25
+Promise.finally
+run @ translationRequestQueue.js:23
+(anonymous) @ translationRequestQueue.js:12
+(anonymous) @ translationRequestQueue.js:25
+Promise.finally
+run @ translationRequestQueue.js:23
+(anonymous) @ translationRequestQueue.js:12
+(anonymous) @ translationRequestQueue.js:25
+Promise.finally
+run @ translationRequestQueue.js:23
+(anonymous) @ translationRequestQueue.js:12
+(anonymous) @ translationRequestQueue.js:25
+Promise.finally
+run @ translationRequestQueue.js:23
+(anonymous) @ translationRequestQueue.js:12
+(anonymous) @ translationRequestQueue.js:25
+Promise.finally
+run @ translationRequestQueue.js:23
+(anonymous) @ translationRequestQueue.js:12
+(anonymous) @ translationRequestQueue.js:25
+Promise.finally
+run @ translationRequestQueue.js:23
+(anonymous) @ translationRequestQueue.js:12
+(anonymous) @ translationRequestQueue.js:25
+Promise.finally
+run @ translationRequestQueue.js:23
+(anonymous) @ translationRequestQueue.js:12
+(anonymous) @ translationRequestQueue.js:25
+Promise.finally
+run @ translationRequestQueue.js:23
+(anonymous) @ translationRequestQueue.js:12
+(anonymous) @ translationRequestQueue.js:25
+Promise.finally
+run @ translationRequestQueue.js:23
+(anonymous) @ translationRequestQueue.js:12
+(anonymous) @ translationRequestQueue.js:25
+Promise.finally
+run @ translationRequestQueue.js:23
+(anonymous) @ translationRequestQueue.js:12
+(anonymous) @ translationRequestQueue.js:25
+Promise.finally
+run @ translationRequestQueue.js:23
+(anonymous) @ translationRequestQueue.js:12
+(anonymous) @ translationRequestQueue.js:25
+Promise.finally
+run @ translationRequestQueue.js:23
+(anonymous) @ translationRequestQueue.js:12
+(anonymous) @ translationRequestQueue.js:25
+Promise.finally
+run @ translationRequestQueue.js:23
+(anonymous) @ translationRequestQueue.js:12
+(anonymous) @ translationRequestQueue.js:25
+Promise.finally
+run @ translationRequestQueue.js:23
+(anonymous) @ translationRequestQueue.js:12
+(anonymous) @ translationRequestQueue.js:25
+Promise.finally
+run @ translationRequestQueue.js:23
+(anonymous) @ translationRequestQueue.js:12
+(anonymous) @ translationRequestQueue.js:25
+Promise.finally
+run @ translationRequestQueue.js:23
+(anonymous) @ translationRequestQueue.js:12
+(anonymous) @ translationRequestQueue.js:25
+Promise.finally
+run @ translationRequestQueue.js:23
+(anonymous) @ translationRequestQueue.js:12
+(anonymous) @ translationRequestQueue.js:25
+Promise.finally
+run @ translationRequestQueue.js:23
+(anonymous) @ translationRequestQueue.js:12
+(anonymous) @ translationRequestQueue.js:25
+Promise.finally
+run @ translationRequestQueue.js:23
+(anonymous) @ translationRequestQueue.js:12
+(anonymous) @ translationRequestQueue.js:25
+Promise.finally
+run @ translationRequestQueue.js:23
+(anonymous) @ translationRequestQueue.js:28
+(anonymous) @ translationRequestQueue.js:17
+(anonymous) @ useTranslate.js:391
+Promise.then
+(anonymous) @ translationRequestQueue.js:34
+(anonymous) @ useTranslate.js:390
+(anonymous) @ useTranslate.js:429
+setTimeout
+(anonymous) @ useTranslate.js:352
+commitHookEffectListMount @ react-dom-client.production.js:8583
+commitPassiveMountOnFiber @ react-dom-client.production.js:10126
+recursivelyTraversePassiveMountEffects @ react-dom-client.production.js:10101
+commitPassiveMountOnFiber @ react-dom-client.production.js:10241
+recursivelyTraversePassiveMountEffects @ react-dom-client.production.js:10101
+commitPassiveMountOnFiber @ react-dom-client.production.js:10241
+recursivelyTraversePassiveMountEffects @ react-dom-client.production.js:10101
+commitPassiveMountOnFiber @ react-dom-client.production.js:10241
+recursivelyTraversePassiveMountEffects @ react-dom-client.production.js:10101
+commitPassiveMountOnFiber @ react-dom-client.production.js:10241
+recursivelyTraversePassiveMountEffects @ react-dom-client.production.js:10101
+commitPassiveMountOnFiber @ react-dom-client.production.js:10241
+recursivelyTraversePassiveMountEffects @ react-dom-client.production.js:10101
+commitPassiveMountOnFiber @ react-dom-client.production.js:10241
+recursivelyTraversePassiveMountEffects @ react-dom-client.production.js:10101
+commitPassiveMountOnFiber @ react-dom-client.production.js:10120
+recursivelyTraversePassiveMountEffects @ react-dom-client.production.js:10101
+commitPassiveMountOnFiber @ react-dom-client.production.js:10241
+recursivelyTraversePassiveMountEffects @ react-dom-client.production.js:10101
+commitPassiveMountOnFiber @ react-dom-client.production.js:10241
+recursivelyTraversePassiveMountEffects @ react-dom-client.production.js:10101
+commitPassiveMountOnFiber @ react-dom-client.production.js:10241
+recursivelyTraversePassiveMountEffects @ react-dom-client.production.js:10101
+commitPassiveMountOnFiber @ react-dom-client.production.js:10241
+recursivelyTraversePassiveMountEffects @ react-dom-client.production.js:10101
+commitPassiveMountOnFiber @ react-dom-client.production.js:10120
+recursivelyTraversePassiveMountEffects @ react-dom-client.production.js:10101
+commitPassiveMountOnFiber @ react-dom-client.production.js:10241
+recursivelyTraversePassiveMountEffects @ react-dom-client.production.js:10101
+commitPassiveMountOnFiber @ react-dom-client.production.js:10120
+recursivelyTraversePassiveMountEffects @ react-dom-client.production.js:10101
+commitPassiveMountOnFiber @ react-dom-client.production.js:10120
+recursivelyTraversePassiveMountEffects @ react-dom-client.production.js:10101
+commitPassiveMountOnFiber @ react-dom-client.production.js:10241
+recursivelyTraversePassiveMountEffects @ react-dom-client.production.js:10101
+commitPassiveMountOnFiber @ react-dom-client.production.js:10120
+recursivelyTraversePassiveMountEffects @ react-dom-client.production.js:10101
+commitPassiveMountOnFiber @ react-dom-client.production.js:10241
+recursivelyTraversePassiveMountEffects @ react-dom-client.production.js:10101
+commitPassiveMountOnFiber @ react-dom-client.production.js:10120
+recursivelyTraversePassiveMountEffects @ react-dom-client.production.js:10101
+commitPassiveMountOnFiber @ react-dom-client.production.js:10241
+recursivelyTraversePassiveMountEffects @ react-dom-client.production.js:10101
+commitPassiveMountOnFiber @ react-dom-client.production.js:10120
+recursivelyTraversePassiveMountEffects @ react-dom-client.production.js:10101
+commitPassiveMountOnFiber @ react-dom-client.production.js:10120
+recursivelyTraversePassiveMountEffects @ react-dom-client.production.js:10101
+commitPassiveMountOnFiber @ react-dom-client.production.js:10241
+recursivelyTraversePassiveMountEffects @ react-dom-client.production.js:10101
+commitPassiveMountOnFiber @ react-dom-client.production.js:10137
+flushPassiveEffects @ react-dom-client.production.js:11763
+flushPendingEffects @ react-dom-client.production.js:11739
+performSyncWorkOnRoot @ react-dom-client.production.js:12085
+flushSyncWorkAcrossRoots_impl @ react-dom-client.production.js:11956
+flushSpawnedWork @ react-dom-client.production.js:11726
+commitRoot @ react-dom-client.production.js:11521
+commitRootWhenReady @ react-dom-client.production.js:10920
+performWorkOnRoot @ react-dom-client.production.js:10826
+performWorkOnRootViaSchedulerTask @ react-dom-client.production.js:12078
+performWorkUntilDeadline @ scheduler.production.js:151
+postMessage
+(anonymous) @ scheduler.production.js:202
+(anonymous) @ scheduler.production.js:325
+scheduleTaskForRootDuringMicrotask @ react-dom-client.production.js:12055
+processRootScheduleInMicrotask @ react-dom-client.production.js:11978
+(anonymous) @ react-dom-client.production.js:12095
+setTimeout
+(anonymous) @ useDeepgram.js:313
+(anonymous) @ useDeepgram.js:1081
+translationEngines.js:236  POST https://catintassist.gatrivi.com/api/translate 503 (Service Unavailable)
+(anonymous) @ translationEngines.js:236
+(anonymous) @ translationEngines.js:291
+(anonymous) @ useTranslate.js:392
+Promise.then
+run @ translationRequestQueue.js:21
+(anonymous) @ translationRequestQueue.js:12
+(anonymous) @ translationRequestQueue.js:25
+Promise.finally
+run @ translationRequestQueue.js:23
+(anonymous) @ translationRequestQueue.js:12
+(anonymous) @ translationRequestQueue.js:25
+Promise.finally
+run @ translationRequestQueue.js:23
+(anonymous) @ translationRequestQueue.js:12
+(anonymous) @ translationRequestQueue.js:25
+Promise.finally
+run @ translationRequestQueue.js:23
+(anonymous) @ translationRequestQueue.js:12
+(anonymous) @ translationRequestQueue.js:25
+Promise.finally
+run @ translationRequestQueue.js:23
+(anonymous) @ translationRequestQueue.js:12
+(anonymous) @ translationRequestQueue.js:25
+Promise.finally
+run @ translationRequestQueue.js:23
+(anonymous) @ translationRequestQueue.js:12
+(anonymous) @ translationRequestQueue.js:25
+Promise.finally
+run @ translationRequestQueue.js:23
+(anonymous) @ translationRequestQueue.js:12
+(anonymous) @ translationRequestQueue.js:25
+Promise.finally
+run @ translationRequestQueue.js:23
+(anonymous) @ translationRequestQueue.js:12
+(anonymous) @ translationRequestQueue.js:25
+Promise.finally
+run @ translationRequestQueue.js:23
+(anonymous) @ translationRequestQueue.js:12
+(anonymous) @ translationRequestQueue.js:25
+Promise.finally
+run @ translationRequestQueue.js:23
+(anonymous) @ translationRequestQueue.js:12
+(anonymous) @ translationRequestQueue.js:25
+Promise.finally
+run @ translationRequestQueue.js:23
+(anonymous) @ translationRequestQueue.js:12
+(anonymous) @ translationRequestQueue.js:25
+Promise.finally
+run @ translationRequestQueue.js:23
+(anonymous) @ translationRequestQueue.js:12
+(anonymous) @ translationRequestQueue.js:25
+Promise.finally
+run @ translationRequestQueue.js:23
+(anonymous) @ translationRequestQueue.js:12
+(anonymous) @ translationRequestQueue.js:25
+Promise.finally
+run @ translationRequestQueue.js:23
+(anonymous) @ translationRequestQueue.js:12
+(anonymous) @ translationRequestQueue.js:25
+Promise.finally
+run @ translationRequestQueue.js:23
+(anonymous) @ translationRequestQueue.js:12
+(anonymous) @ translationRequestQueue.js:25
+Promise.finally
+run @ translationRequestQueue.js:23
+(anonymous) @ translationRequestQueue.js:12
+(anonymous) @ translationRequestQueue.js:25
+Promise.finally
+run @ translationRequestQueue.js:23
+(anonymous) @ translationRequestQueue.js:12
+(anonymous) @ translationRequestQueue.js:25
+Promise.finally
+run @ translationRequestQueue.js:23
+(anonymous) @ translationRequestQueue.js:12
+(anonymous) @ translationRequestQueue.js:25
+Promise.finally
+run @ translationRequestQueue.js:23
+(anonymous) @ translationRequestQueue.js:12
+(anonymous) @ translationRequestQueue.js:25
+Promise.finally
+run @ translationRequestQueue.js:23
+(anonymous) @ translationRequestQueue.js:12
+(anonymous) @ translationRequestQueue.js:25
+Promise.finally
+run @ translationRequestQueue.js:23
+(anonymous) @ translationRequestQueue.js:12
+(anonymous) @ translationRequestQueue.js:25
+Promise.finally
+run @ translationRequestQueue.js:23
+(anonymous) @ translationRequestQueue.js:12
+(anonymous) @ translationRequestQueue.js:25
+Promise.finally
+run @ translationRequestQueue.js:23
+(anonymous) @ translationRequestQueue.js:28
+(anonymous) @ translationRequestQueue.js:17
+(anonymous) @ useTranslate.js:391
+Promise.then
+(anonymous) @ translationRequestQueue.js:34
+(anonymous) @ useTranslate.js:390
+(anonymous) @ useTranslate.js:429
+setTimeout
+(anonymous) @ useTranslate.js:352
+commitHookEffectListMount @ react-dom-client.production.js:8583
+commitPassiveMountOnFiber @ react-dom-client.production.js:10126
+recursivelyTraversePassiveMountEffects @ react-dom-client.production.js:10101
+commitPassiveMountOnFiber @ react-dom-client.production.js:10241
+recursivelyTraversePassiveMountEffects @ react-dom-client.production.js:10101
+commitPassiveMountOnFiber @ react-dom-client.production.js:10241
+recursivelyTraversePassiveMountEffects @ react-dom-client.production.js:10101
+commitPassiveMountOnFiber @ react-dom-client.production.js:10241
+recursivelyTraversePassiveMountEffects @ react-dom-client.production.js:10101
+commitPassiveMountOnFiber @ react-dom-client.production.js:10241
+recursivelyTraversePassiveMountEffects @ react-dom-client.production.js:10101
+commitPassiveMountOnFiber @ react-dom-client.production.js:10241
+recursivelyTraversePassiveMountEffects @ react-dom-client.production.js:10101
+commitPassiveMountOnFiber @ react-dom-client.production.js:10241
+recursivelyTraversePassiveMountEffects @ react-dom-client.production.js:10101
+commitPassiveMountOnFiber @ react-dom-client.production.js:10120
+recursivelyTraversePassiveMountEffects @ react-dom-client.production.js:10101
+commitPassiveMountOnFiber @ react-dom-client.production.js:10241
+recursivelyTraversePassiveMountEffects @ react-dom-client.production.js:10101
+commitPassiveMountOnFiber @ react-dom-client.production.js:10241
+recursivelyTraversePassiveMountEffects @ react-dom-client.production.js:10101
+commitPassiveMountOnFiber @ react-dom-client.production.js:10241
+recursivelyTraversePassiveMountEffects @ react-dom-client.production.js:10101
+commitPassiveMountOnFiber @ react-dom-client.production.js:10241
+recursivelyTraversePassiveMountEffects @ react-dom-client.production.js:10101
+commitPassiveMountOnFiber @ react-dom-client.production.js:10120
+recursivelyTraversePassiveMountEffects @ react-dom-client.production.js:10101
+commitPassiveMountOnFiber @ react-dom-client.production.js:10241
+recursivelyTraversePassiveMountEffects @ react-dom-client.production.js:10101
+commitPassiveMountOnFiber @ react-dom-client.production.js:10120
+recursivelyTraversePassiveMountEffects @ react-dom-client.production.js:10101
+commitPassiveMountOnFiber @ react-dom-client.production.js:10120
+recursivelyTraversePassiveMountEffects @ react-dom-client.production.js:10101
+commitPassiveMountOnFiber @ react-dom-client.production.js:10241
+recursivelyTraversePassiveMountEffects @ react-dom-client.production.js:10101
+commitPassiveMountOnFiber @ react-dom-client.production.js:10120
+recursivelyTraversePassiveMountEffects @ react-dom-client.production.js:10101
+commitPassiveMountOnFiber @ react-dom-client.production.js:10241
+recursivelyTraversePassiveMountEffects @ react-dom-client.production.js:10101
+commitPassiveMountOnFiber @ react-dom-client.production.js:10120
+recursivelyTraversePassiveMountEffects @ react-dom-client.production.js:10101
+commitPassiveMountOnFiber @ react-dom-client.production.js:10241
+recursivelyTraversePassiveMountEffects @ react-dom-client.production.js:10101
+commitPassiveMountOnFiber @ react-dom-client.production.js:10120
+recursivelyTraversePassiveMountEffects @ react-dom-client.production.js:10101
+commitPassiveMountOnFiber @ react-dom-client.production.js:10120
+recursivelyTraversePassiveMountEffects @ react-dom-client.production.js:10101
+commitPassiveMountOnFiber @ react-dom-client.production.js:10241
+recursivelyTraversePassiveMountEffects @ react-dom-client.production.js:10101
+commitPassiveMountOnFiber @ react-dom-client.production.js:10137
+flushPassiveEffects @ react-dom-client.production.js:11763
+flushPendingEffects @ react-dom-client.production.js:11739
+performSyncWorkOnRoot @ react-dom-client.production.js:12085
+flushSyncWorkAcrossRoots_impl @ react-dom-client.production.js:11956
+flushSpawnedWork @ react-dom-client.production.js:11726
+commitRoot @ react-dom-client.production.js:11521
+commitRootWhenReady @ react-dom-client.production.js:10920
+performWorkOnRoot @ react-dom-client.production.js:10826
+performWorkOnRootViaSchedulerTask @ react-dom-client.production.js:12078
+performWorkUntilDeadline @ scheduler.production.js:151
+postMessage
+(anonymous) @ scheduler.production.js:202
+(anonymous) @ scheduler.production.js:325
+scheduleTaskForRootDuringMicrotask @ react-dom-client.production.js:12055
+processRootScheduleInMicrotask @ react-dom-client.production.js:11978
+(anonymous) @ react-dom-client.production.js:12095
+setTimeout
+(anonymous) @ useDeepgram.js:313
+(anonymous) @ useDeepgram.js:1081
+useDeepgram.js:276 [CAT STT] 1 sound received + 2 sound sent {at: '2026-09-04T19:56:16.529Z', ms: 27273510, stage: '1 sound received + 2 sound sent', bytes: 1949, type: 'audio/webm;codecs=opus', …}
+translationEngines.js:236  POST https://catintassist.gatrivi.com/api/translate 503 (Service Unavailable)
+(anonymous) @ translationEngines.js:236
+(anonymous) @ translationEngines.js:291
+(anonymous) @ useTranslate.js:392
+Promise.then
+run @ translationRequestQueue.js:21
+(anonymous) @ translationRequestQueue.js:12
+(anonymous) @ translationRequestQueue.js:25
+Promise.finally
+run @ translationRequestQueue.js:23
+(anonymous) @ translationRequestQueue.js:12
+(anonymous) @ translationRequestQueue.js:25
+Promise.finally
+run @ translationRequestQueue.js:23
+(anonymous) @ translationRequestQueue.js:12
+(anonymous) @ translationRequestQueue.js:25
+Promise.finally
+run @ translationRequestQueue.js:23
+(anonymous) @ translationRequestQueue.js:12
+(anonymous) @ translationRequestQueue.js:25
+Promise.finally
+run @ translationRequestQueue.js:23
+(anonymous) @ translationRequestQueue.js:12
+(anonymous) @ translationRequestQueue.js:25
+Promise.finally
+run @ translationRequestQueue.js:23
+(anonymous) @ translationRequestQueue.js:12
+(anonymous) @ translationRequestQueue.js:25
+Promise.finally
+run @ translationRequestQueue.js:23
+(anonymous) @ translationRequestQueue.js:12
+(anonymous) @ translationRequestQueue.js:25
+Promise.finally
+run @ translationRequestQueue.js:23
+(anonymous) @ translationRequestQueue.js:12
+(anonymous) @ translationRequestQueue.js:25
+Promise.finally
+run @ translationRequestQueue.js:23
+(anonymous) @ translationRequestQueue.js:12
+(anonymous) @ translationRequestQueue.js:25
+Promise.finally
+run @ translationRequestQueue.js:23
+(anonymous) @ translationRequestQueue.js:12
+(anonymous) @ translationRequestQueue.js:25
+Promise.finally
+run @ translationRequestQueue.js:23
+(anonymous) @ translationRequestQueue.js:12
+(anonymous) @ translationRequestQueue.js:25
+Promise.finally
+run @ translationRequestQueue.js:23
+(anonymous) @ translationRequestQueue.js:12
+(anonymous) @ translationRequestQueue.js:25
+Promise.finally
+run @ translationRequestQueue.js:23
+(anonymous) @ translationRequestQueue.js:12
+(anonymous) @ translationRequestQueue.js:25
+Promise.finally
+run @ translationRequestQueue.js:23
+(anonymous) @ translationRequestQueue.js:12
+(anonymous) @ translationRequestQueue.js:25
+Promise.finally
+run @ translationRequestQueue.js:23
+(anonymous) @ translationRequestQueue.js:12
+(anonymous) @ translationRequestQueue.js:25
+Promise.finally
+run @ translationRequestQueue.js:23
+(anonymous) @ translationRequestQueue.js:12
+(anonymous) @ translationRequestQueue.js:25
+Promise.finally
+run @ translationRequestQueue.js:23
+(anonymous) @ translationRequestQueue.js:12
+(anonymous) @ translationRequestQueue.js:25
+Promise.finally
+run @ translationRequestQueue.js:23
+(anonymous) @ translationRequestQueue.js:12
+(anonymous) @ translationRequestQueue.js:25
+Promise.finally
+run @ translationRequestQueue.js:23
+(anonymous) @ translationRequestQueue.js:12
+(anonymous) @ translationRequestQueue.js:25
+Promise.finally
+run @ translationRequestQueue.js:23
+(anonymous) @ translationRequestQueue.js:12
+(anonymous) @ translationRequestQueue.js:25
+Promise.finally
+run @ translationRequestQueue.js:23
+(anonymous) @ translationRequestQueue.js:12
+(anonymous) @ translationRequestQueue.js:25
+Promise.finally
+run @ translationRequestQueue.js:23
+(anonymous) @ translationRequestQueue.js:12
+(anonymous) @ translationRequestQueue.js:25
+Promise.finally
+run @ translationRequestQueue.js:23
+(anonymous) @ translationRequestQueue.js:12
+(anonymous) @ translationRequestQueue.js:25
+Promise.finally
+run @ translationRequestQueue.js:23
+(anonymous) @ translationRequestQueue.js:28
+(anonymous) @ translationRequestQueue.js:17
+(anonymous) @ useTranslate.js:391
+Promise.then
+(anonymous) @ translationRequestQueue.js:34
+(anonymous) @ useTranslate.js:390
+(anonymous) @ useTranslate.js:429
+setTimeout
+(anonymous) @ useTranslate.js:352
+commitHookEffectListMount @ react-dom-client.production.js:8583
+commitPassiveMountOnFiber @ react-dom-client.production.js:10126
+recursivelyTraversePassiveMountEffects @ react-dom-client.production.js:10101
+commitPassiveMountOnFiber @ react-dom-client.production.js:10241
+recursivelyTraversePassiveMountEffects @ react-dom-client.production.js:10101
+commitPassiveMountOnFiber @ react-dom-client.production.js:10241
+recursivelyTraversePassiveMountEffects @ react-dom-client.production.js:10101
+commitPassiveMountOnFiber @ react-dom-client.production.js:10241
+recursivelyTraversePassiveMountEffects @ react-dom-client.production.js:10101
+commitPassiveMountOnFiber @ react-dom-client.production.js:10241
+recursivelyTraversePassiveMountEffects @ react-dom-client.production.js:10101
+commitPassiveMountOnFiber @ react-dom-client.production.js:10241
+recursivelyTraversePassiveMountEffects @ react-dom-client.production.js:10101
+commitPassiveMountOnFiber @ react-dom-client.production.js:10241
+recursivelyTraversePassiveMountEffects @ react-dom-client.production.js:10101
+commitPassiveMountOnFiber @ react-dom-client.production.js:10120
+recursivelyTraversePassiveMountEffects @ react-dom-client.production.js:10101
+commitPassiveMountOnFiber @ react-dom-client.production.js:10241
+recursivelyTraversePassiveMountEffects @ react-dom-client.production.js:10101
+commitPassiveMountOnFiber @ react-dom-client.production.js:10241
+recursivelyTraversePassiveMountEffects @ react-dom-client.production.js:10101
+commitPassiveMountOnFiber @ react-dom-client.production.js:10241
+recursivelyTraversePassiveMountEffects @ react-dom-client.production.js:10101
+commitPassiveMountOnFiber @ react-dom-client.production.js:10241
+recursivelyTraversePassiveMountEffects @ react-dom-client.production.js:10101
+commitPassiveMountOnFiber @ react-dom-client.production.js:10120
+recursivelyTraversePassiveMountEffects @ react-dom-client.production.js:10101
+commitPassiveMountOnFiber @ react-dom-client.production.js:10241
+recursivelyTraversePassiveMountEffects @ react-dom-client.production.js:10101
+commitPassiveMountOnFiber @ react-dom-client.production.js:10120
+recursivelyTraversePassiveMountEffects @ react-dom-client.production.js:10101
+commitPassiveMountOnFiber @ react-dom-client.production.js:10120
+recursivelyTraversePassiveMountEffects @ react-dom-client.production.js:10101
+commitPassiveMountOnFiber @ react-dom-client.production.js:10241
+recursivelyTraversePassiveMountEffects @ react-dom-client.production.js:10101
+commitPassiveMountOnFiber @ react-dom-client.production.js:10120
+recursivelyTraversePassiveMountEffects @ react-dom-client.production.js:10101
+commitPassiveMountOnFiber @ react-dom-client.production.js:10241
+recursivelyTraversePassiveMountEffects @ react-dom-client.production.js:10101
+commitPassiveMountOnFiber @ react-dom-client.production.js:10120
+recursivelyTraversePassiveMountEffects @ react-dom-client.production.js:10101
+commitPassiveMountOnFiber @ react-dom-client.production.js:10241
+recursivelyTraversePassiveMountEffects @ react-dom-client.production.js:10101
+commitPassiveMountOnFiber @ react-dom-client.production.js:10120
+recursivelyTraversePassiveMountEffects @ react-dom-client.production.js:10101
+commitPassiveMountOnFiber @ react-dom-client.production.js:10120
+recursivelyTraversePassiveMountEffects @ react-dom-client.production.js:10101
+commitPassiveMountOnFiber @ react-dom-client.production.js:10241
+recursivelyTraversePassiveMountEffects @ react-dom-client.production.js:10101
+commitPassiveMountOnFiber @ react-dom-client.production.js:10137
+flushPassiveEffects @ react-dom-client.production.js:11763
+flushPendingEffects @ react-dom-client.production.js:11739
+performSyncWorkOnRoot @ react-dom-client.production.js:12085
+flushSyncWorkAcrossRoots_impl @ react-dom-client.production.js:11956
+flushSpawnedWork @ react-dom-client.production.js:11726
+commitRoot @ react-dom-client.production.js:11521
+commitRootWhenReady @ react-dom-client.production.js:10920
+performWorkOnRoot @ react-dom-client.production.js:10826
+performWorkOnRootViaSchedulerTask @ react-dom-client.production.js:12078
+performWorkUntilDeadline @ scheduler.production.js:151
+postMessage
+(anonymous) @ scheduler.production.js:202
+(anonymous) @ scheduler.production.js:325
+scheduleTaskForRootDuringMicrotask @ react-dom-client.production.js:12055
+processRootScheduleInMicrotask @ react-dom-client.production.js:11978
+(anonymous) @ react-dom-client.production.js:12095
+setTimeout
+(anonymous) @ useDeepgram.js:313
+(anonymous) @ useDeepgram.js:1081
+useDeepgram.js:276 [CAT STT] 1 sound received + 2 sound sent {at: '2026-09-04T19:56:17.048Z', ms: 27274029, stage: '1 sound received + 2 sound sent', bytes: 1949, type: 'audio/webm;codecs=opus', …}
+translationEngines.js:236  POST https://catintassist.gatrivi.com/api/translate 503 (Service Unavailable)
+(anonymous) @ translationEngines.js:236
+(anonymous) @ translationEngines.js:291
+(anonymous) @ useTranslate.js:392
+Promise.then
+run @ translationRequestQueue.js:21
+(anonymous) @ translationRequestQueue.js:12
+(anonymous) @ translationRequestQueue.js:25
+Promise.finally
+run @ translationRequestQueue.js:23
+(anonymous) @ translationRequestQueue.js:12
+(anonymous) @ translationRequestQueue.js:25
+Promise.finally
+run @ translationRequestQueue.js:23
+(anonymous) @ translationRequestQueue.js:12
+(anonymous) @ translationRequestQueue.js:25
+Promise.finally
+run @ translationRequestQueue.js:23
+(anonymous) @ translationRequestQueue.js:12
+(anonymous) @ translationRequestQueue.js:25
+Promise.finally
+run @ translationRequestQueue.js:23
+(anonymous) @ translationRequestQueue.js:12
+(anonymous) @ translationRequestQueue.js:25
+Promise.finally
+run @ translationRequestQueue.js:23
+(anonymous) @ translationRequestQueue.js:12
+(anonymous) @ translationRequestQueue.js:25
+Promise.finally
+run @ translationRequestQueue.js:23
+(anonymous) @ translationRequestQueue.js:12
+(anonymous) @ translationRequestQueue.js:25
+Promise.finally
+run @ translationRequestQueue.js:23
+(anonymous) @ translationRequestQueue.js:12
+(anonymous) @ translationRequestQueue.js:25
+Promise.finally
+run @ translationRequestQueue.js:23
+(anonymous) @ translationRequestQueue.js:12
+(anonymous) @ translationRequestQueue.js:25
+Promise.finally
+run @ translationRequestQueue.js:23
+(anonymous) @ translationRequestQueue.js:12
+(anonymous) @ translationRequestQueue.js:25
+Promise.finally
+run @ translationRequestQueue.js:23
+(anonymous) @ translationRequestQueue.js:12
+(anonymous) @ translationRequestQueue.js:25
+Promise.finally
+run @ translationRequestQueue.js:23
+(anonymous) @ translationRequestQueue.js:12
+(anonymous) @ translationRequestQueue.js:25
+Promise.finally
+run @ translationRequestQueue.js:23
+(anonymous) @ translationRequestQueue.js:12
+(anonymous) @ translationRequestQueue.js:25
+Promise.finally
+run @ translationRequestQueue.js:23
+(anonymous) @ translationRequestQueue.js:12
+(anonymous) @ translationRequestQueue.js:25
+Promise.finally
+run @ translationRequestQueue.js:23
+(anonymous) @ translationRequestQueue.js:12
+(anonymous) @ translationRequestQueue.js:25
+Promise.finally
+run @ translationRequestQueue.js:23
+(anonymous) @ translationRequestQueue.js:12
+(anonymous) @ translationRequestQueue.js:25
+Promise.finally
+run @ translationRequestQueue.js:23
+(anonymous) @ translationRequestQueue.js:12
+(anonymous) @ translationRequestQueue.js:25
+Promise.finally
+run @ translationRequestQueue.js:23
+(anonymous) @ translationRequestQueue.js:12
+(anonymous) @ translationRequestQueue.js:25
+Promise.finally
+run @ translationRequestQueue.js:23
+(anonymous) @ translationRequestQueue.js:12
+(anonymous) @ translationRequestQueue.js:25
+Promise.finally
+run @ translationRequestQueue.js:23
+(anonymous) @ translationRequestQueue.js:12
+(anonymous) @ translationRequestQueue.js:25
+Promise.finally
+run @ translationRequestQueue.js:23
+(anonymous) @ translationRequestQueue.js:12
+(anonymous) @ translationRequestQueue.js:25
+Promise.finally
+run @ translationRequestQueue.js:23
+(anonymous) @ translationRequestQueue.js:12
+(anonymous) @ translationRequestQueue.js:25
+Promise.finally
+run @ translationRequestQueue.js:23
+(anonymous) @ translationRequestQueue.js:12
+(anonymous) @ translationRequestQueue.js:25
+Promise.finally
+run @ translationRequestQueue.js:23
+(anonymous) @ translationRequestQueue.js:12
+(anonymous) @ translationRequestQueue.js:25
+Promise.finally
+run @ translationRequestQueue.js:23
+(anonymous) @ translationRequestQueue.js:28
+(anonymous) @ translationRequestQueue.js:17
+(anonymous) @ useTranslate.js:391
+Promise.then
+(anonymous) @ translationRequestQueue.js:34
+(anonymous) @ useTranslate.js:390
+(anonymous) @ useTranslate.js:429
+setTimeout
+(anonymous) @ useTranslate.js:352
+commitHookEffectListMount @ react-dom-client.production.js:8583
+commitPassiveMountOnFiber @ react-dom-client.production.js:10126
+recursivelyTraversePassiveMountEffects @ react-dom-client.production.js:10101
+commitPassiveMountOnFiber @ react-dom-client.production.js:10241
+recursivelyTraversePassiveMountEffects @ react-dom-client.production.js:10101
+commitPassiveMountOnFiber @ react-dom-client.production.js:10241
+recursivelyTraversePassiveMountEffects @ react-dom-client.production.js:10101
+commitPassiveMountOnFiber @ react-dom-client.production.js:10241
+recursivelyTraversePassiveMountEffects @ react-dom-client.production.js:10101
+commitPassiveMountOnFiber @ react-dom-client.production.js:10241
+recursivelyTraversePassiveMountEffects @ react-dom-client.production.js:10101
+commitPassiveMountOnFiber @ react-dom-client.production.js:10241
+recursivelyTraversePassiveMountEffects @ react-dom-client.production.js:10101
+commitPassiveMountOnFiber @ react-dom-client.production.js:10241
+recursivelyTraversePassiveMountEffects @ react-dom-client.production.js:10101
+commitPassiveMountOnFiber @ react-dom-client.production.js:10120
+recursivelyTraversePassiveMountEffects @ react-dom-client.production.js:10101
+commitPassiveMountOnFiber @ react-dom-client.production.js:10241
+recursivelyTraversePassiveMountEffects @ react-dom-client.production.js:10101
+commitPassiveMountOnFiber @ react-dom-client.production.js:10241
+recursivelyTraversePassiveMountEffects @ react-dom-client.production.js:10101
+commitPassiveMountOnFiber @ react-dom-client.production.js:10241
+recursivelyTraversePassiveMountEffects @ react-dom-client.production.js:10101
+commitPassiveMountOnFiber @ react-dom-client.production.js:10241
+recursivelyTraversePassiveMountEffects @ react-dom-client.production.js:10101
+commitPassiveMountOnFiber @ react-dom-client.production.js:10120
+recursivelyTraversePassiveMountEffects @ react-dom-client.production.js:10101
+commitPassiveMountOnFiber @ react-dom-client.production.js:10241
+recursivelyTraversePassiveMountEffects @ react-dom-client.production.js:10101
+commitPassiveMountOnFiber @ react-dom-client.production.js:10120
+recursivelyTraversePassiveMountEffects @ react-dom-client.production.js:10101
+commitPassiveMountOnFiber @ react-dom-client.production.js:10120
+recursivelyTraversePassiveMountEffects @ react-dom-client.production.js:10101
+commitPassiveMountOnFiber @ react-dom-client.production.js:10241
+recursivelyTraversePassiveMountEffects @ react-dom-client.production.js:10101
+commitPassiveMountOnFiber @ react-dom-client.production.js:10120
+recursivelyTraversePassiveMountEffects @ react-dom-client.production.js:10101
+commitPassiveMountOnFiber @ react-dom-client.production.js:10241
+recursivelyTraversePassiveMountEffects @ react-dom-client.production.js:10101
+commitPassiveMountOnFiber @ react-dom-client.production.js:10120
+recursivelyTraversePassiveMountEffects @ react-dom-client.production.js:10101
+commitPassiveMountOnFiber @ react-dom-client.production.js:10241
+recursivelyTraversePassiveMountEffects @ react-dom-client.production.js:10101
+commitPassiveMountOnFiber @ react-dom-client.production.js:10120
+recursivelyTraversePassiveMountEffects @ react-dom-client.production.js:10101
+commitPassiveMountOnFiber @ react-dom-client.production.js:10120
+recursivelyTraversePassiveMountEffects @ react-dom-client.production.js:10101
+commitPassiveMountOnFiber @ react-dom-client.production.js:10241
+recursivelyTraversePassiveMountEffects @ react-dom-client.production.js:10101
+commitPassiveMountOnFiber @ react-dom-client.production.js:10137
+flushPassiveEffects @ react-dom-client.production.js:11763
+flushPendingEffects @ react-dom-client.production.js:11739
+performSyncWorkOnRoot @ react-dom-client.production.js:12085
+flushSyncWorkAcrossRoots_impl @ react-dom-client.production.js:11956
+flushSpawnedWork @ react-dom-client.production.js:11726
+commitRoot @ react-dom-client.production.js:11521
+commitRootWhenReady @ react-dom-client.production.js:10920
+performWorkOnRoot @ react-dom-client.production.js:10826
+performWorkOnRootViaSchedulerTask @ react-dom-client.production.js:12078
+performWorkUntilDeadline @ scheduler.production.js:151
+postMessage
+(anonymous) @ scheduler.production.js:202
+(anonymous) @ scheduler.production.js:325
+scheduleTaskForRootDuringMicrotask @ react-dom-client.production.js:12055
+processRootScheduleInMicrotask @ react-dom-client.production.js:11978
+(anonymous) @ react-dom-client.production.js:12095
+setTimeout
+(anonymous) @ useDeepgram.js:313
+(anonymous) @ useDeepgram.js:1081
+useDeepgram.js:276 [CAT STT] 3 Deepgram websocket message received {at: '2026-09-04T19:56:17.240Z', ms: 27274220, stage: '3 Deepgram websocket message received', lang: 'es', type: 'Results', …}
+useDeepgram.js:276 [CAT STT] 3 Deepgram websocket message received {at: '2026-09-04T19:56:17.281Z', ms: 27274262, stage: '3 Deepgram websocket message received', lang: 'en', type: 'Results', …}
+translationEngines.js:236  POST https://catintassist.gatrivi.com/api/translate 503 (Service Unavailable)
+(anonymous) @ translationEngines.js:236
+(anonymous) @ translationEngines.js:291
+(anonymous) @ useTranslate.js:392
+Promise.then
+run @ translationRequestQueue.js:21
+(anonymous) @ translationRequestQueue.js:12
+(anonymous) @ translationRequestQueue.js:25
+Promise.finally
+run @ translationRequestQueue.js:23
+(anonymous) @ translationRequestQueue.js:12
+(anonymous) @ translationRequestQueue.js:25
+Promise.finally
+run @ translationRequestQueue.js:23
+(anonymous) @ translationRequestQueue.js:12
+(anonymous) @ translationRequestQueue.js:25
+Promise.finally
+run @ translationRequestQueue.js:23
+(anonymous) @ translationRequestQueue.js:12
+(anonymous) @ translationRequestQueue.js:25
+Promise.finally
+run @ translationRequestQueue.js:23
+(anonymous) @ translationRequestQueue.js:12
+(anonymous) @ translationRequestQueue.js:25
+Promise.finally
+run @ translationRequestQueue.js:23
+(anonymous) @ translationRequestQueue.js:12
+(anonymous) @ translationRequestQueue.js:25
+Promise.finally
+run @ translationRequestQueue.js:23
+(anonymous) @ translationRequestQueue.js:12
+(anonymous) @ translationRequestQueue.js:25
+Promise.finally
+run @ translationRequestQueue.js:23
+(anonymous) @ translationRequestQueue.js:12
+(anonymous) @ translationRequestQueue.js:25
+Promise.finally
+run @ translationRequestQueue.js:23
+(anonymous) @ translationRequestQueue.js:12
+(anonymous) @ translationRequestQueue.js:25
+Promise.finally
+run @ translationRequestQueue.js:23
+(anonymous) @ translationRequestQueue.js:12
+(anonymous) @ translationRequestQueue.js:25
+Promise.finally
+run @ translationRequestQueue.js:23
+(anonymous) @ translationRequestQueue.js:12
+(anonymous) @ translationRequestQueue.js:25
+Promise.finally
+run @ translationRequestQueue.js:23
+(anonymous) @ translationRequestQueue.js:12
+(anonymous) @ translationRequestQueue.js:25
+Promise.finally
+run @ translationRequestQueue.js:23
+(anonymous) @ translationRequestQueue.js:12
+(anonymous) @ translationRequestQueue.js:25
+Promise.finally
+run @ translationRequestQueue.js:23
+(anonymous) @ translationRequestQueue.js:12
+(anonymous) @ translationRequestQueue.js:25
+Promise.finally
+run @ translationRequestQueue.js:23
+(anonymous) @ translationRequestQueue.js:12
+(anonymous) @ translationRequestQueue.js:25
+Promise.finally
+run @ translationRequestQueue.js:23
+(anonymous) @ translationRequestQueue.js:12
+(anonymous) @ translationRequestQueue.js:25
+Promise.finally
+run @ translationRequestQueue.js:23
+(anonymous) @ translationRequestQueue.js:12
+(anonymous) @ translationRequestQueue.js:25
+Promise.finally
+run @ translationRequestQueue.js:23
+(anonymous) @ translationRequestQueue.js:12
+(anonymous) @ translationRequestQueue.js:25
+Promise.finally
+run @ translationRequestQueue.js:23
+(anonymous) @ translationRequestQueue.js:12
+(anonymous) @ translationRequestQueue.js:25
+Promise.finally
+run @ translationRequestQueue.js:23
+(anonymous) @ translationRequestQueue.js:12
+(anonymous) @ translationRequestQueue.js:25
+Promise.finally
+run @ translationRequestQueue.js:23
+(anonymous) @ translationRequestQueue.js:12
+(anonymous) @ translationRequestQueue.js:25
+Promise.finally
+run @ translationRequestQueue.js:23
+(anonymous) @ translationRequestQueue.js:12
+(anonymous) @ translationRequestQueue.js:25
+Promise.finally
+run @ translationRequestQueue.js:23
+(anonymous) @ translationRequestQueue.js:12
+(anonymous) @ translationRequestQueue.js:25
+Promise.finally
+run @ translationRequestQueue.js:23
+(anonymous) @ translationRequestQueue.js:12
+(anonymous) @ translationRequestQueue.js:25
+Promise.finally
+run @ translationRequestQueue.js:23
+(anonymous) @ translationRequestQueue.js:12
+(anonymous) @ translationRequestQueue.js:25
+Promise.finally
+run @ translationRequestQueue.js:23
+(anonymous) @ translationRequestQueue.js:28
+(anonymous) @ translationRequestQueue.js:17
+(anonymous) @ useTranslate.js:391
+Promise.then
+(anonymous) @ translationRequestQueue.js:34
+(anonymous) @ useTranslate.js:390
+(anonymous) @ useTranslate.js:429
+setTimeout
+(anonymous) @ useTranslate.js:352
+commitHookEffectListMount @ react-dom-client.production.js:8583
+commitPassiveMountOnFiber @ react-dom-client.production.js:10126
+recursivelyTraversePassiveMountEffects @ react-dom-client.production.js:10101
+commitPassiveMountOnFiber @ react-dom-client.production.js:10241
+recursivelyTraversePassiveMountEffects @ react-dom-client.production.js:10101
+commitPassiveMountOnFiber @ react-dom-client.production.js:10241
+recursivelyTraversePassiveMountEffects @ react-dom-client.production.js:10101
+commitPassiveMountOnFiber @ react-dom-client.production.js:10241
+recursivelyTraversePassiveMountEffects @ react-dom-client.production.js:10101
+commitPassiveMountOnFiber @ react-dom-client.production.js:10241
+recursivelyTraversePassiveMountEffects @ react-dom-client.production.js:10101
+commitPassiveMountOnFiber @ react-dom-client.production.js:10241
+recursivelyTraversePassiveMountEffects @ react-dom-client.production.js:10101
+commitPassiveMountOnFiber @ react-dom-client.production.js:10241
+recursivelyTraversePassiveMountEffects @ react-dom-client.production.js:10101
+commitPassiveMountOnFiber @ react-dom-client.production.js:10120
+recursivelyTraversePassiveMountEffects @ react-dom-client.production.js:10101
+commitPassiveMountOnFiber @ react-dom-client.production.js:10241
+recursivelyTraversePassiveMountEffects @ react-dom-client.production.js:10101
+commitPassiveMountOnFiber @ react-dom-client.production.js:10241
+recursivelyTraversePassiveMountEffects @ react-dom-client.production.js:10101
+commitPassiveMountOnFiber @ react-dom-client.production.js:10241
+recursivelyTraversePassiveMountEffects @ react-dom-client.production.js:10101
+commitPassiveMountOnFiber @ react-dom-client.production.js:10241
+recursivelyTraversePassiveMountEffects @ react-dom-client.production.js:10101
+commitPassiveMountOnFiber @ react-dom-client.production.js:10120
+recursivelyTraversePassiveMountEffects @ react-dom-client.production.js:10101
+commitPassiveMountOnFiber @ react-dom-client.production.js:10241
+recursivelyTraversePassiveMountEffects @ react-dom-client.production.js:10101
+commitPassiveMountOnFiber @ react-dom-client.production.js:10120
+recursivelyTraversePassiveMountEffects @ react-dom-client.production.js:10101
+commitPassiveMountOnFiber @ react-dom-client.production.js:10120
+recursivelyTraversePassiveMountEffects @ react-dom-client.production.js:10101
+commitPassiveMountOnFiber @ react-dom-client.production.js:10241
+recursivelyTraversePassiveMountEffects @ react-dom-client.production.js:10101
+commitPassiveMountOnFiber @ react-dom-client.production.js:10120
+recursivelyTraversePassiveMountEffects @ react-dom-client.production.js:10101
+commitPassiveMountOnFiber @ react-dom-client.production.js:10241
+recursivelyTraversePassiveMountEffects @ react-dom-client.production.js:10101
+commitPassiveMountOnFiber @ react-dom-client.production.js:10120
+recursivelyTraversePassiveMountEffects @ react-dom-client.production.js:10101
+commitPassiveMountOnFiber @ react-dom-client.production.js:10241
+recursivelyTraversePassiveMountEffects @ react-dom-client.production.js:10101
+commitPassiveMountOnFiber @ react-dom-client.production.js:10120
+recursivelyTraversePassiveMountEffects @ react-dom-client.production.js:10101
+commitPassiveMountOnFiber @ react-dom-client.production.js:10120
+recursivelyTraversePassiveMountEffects @ react-dom-client.production.js:10101
+commitPassiveMountOnFiber @ react-dom-client.production.js:10241
+recursivelyTraversePassiveMountEffects @ react-dom-client.production.js:10101
+commitPassiveMountOnFiber @ react-dom-client.production.js:10137
+flushPassiveEffects @ react-dom-client.production.js:11763
+flushPendingEffects @ react-dom-client.production.js:11739
+performSyncWorkOnRoot @ react-dom-client.production.js:12085
+flushSyncWorkAcrossRoots_impl @ react-dom-client.production.js:11956
+flushSpawnedWork @ react-dom-client.production.js:11726
+commitRoot @ react-dom-client.production.js:11521
+commitRootWhenReady @ react-dom-client.production.js:10920
+performWorkOnRoot @ react-dom-client.production.js:10826
+performWorkOnRootViaSchedulerTask @ react-dom-client.production.js:12078
+performWorkUntilDeadline @ scheduler.production.js:151
+postMessage
+(anonymous) @ scheduler.production.js:202
+(anonymous) @ scheduler.production.js:325
+scheduleTaskForRootDuringMicrotask @ react-dom-client.production.js:12055
+processRootScheduleInMicrotask @ react-dom-client.production.js:11978
+(anonymous) @ react-dom-client.production.js:12095
+setTimeout
+(anonymous) @ useDeepgram.js:313
+(anonymous) @ useDeepgram.js:1081
+translationEngines.js:236  POST https://catintassist.gatrivi.com/api/translate 503 (Service Unavailable)
+(anonymous) @ translationEngines.js:236
+(anonymous) @ translationEngines.js:291
+(anonymous) @ useTranslate.js:392
+Promise.then
+run @ translationRequestQueue.js:21
+(anonymous) @ translationRequestQueue.js:12
+(anonymous) @ translationRequestQueue.js:25
+Promise.finally
+run @ translationRequestQueue.js:23
+(anonymous) @ translationRequestQueue.js:12
+(anonymous) @ translationRequestQueue.js:25
+Promise.finally
+run @ translationRequestQueue.js:23
+(anonymous) @ translationRequestQueue.js:12
+(anonymous) @ translationRequestQueue.js:25
+Promise.finally
+run @ translationRequestQueue.js:23
+(anonymous) @ translationRequestQueue.js:12
+(anonymous) @ translationRequestQueue.js:25
+Promise.finally
+run @ translationRequestQueue.js:23
+(anonymous) @ translationRequestQueue.js:12
+(anonymous) @ translationRequestQueue.js:25
+Promise.finally
+run @ translationRequestQueue.js:23
+(anonymous) @ translationRequestQueue.js:12
+(anonymous) @ translationRequestQueue.js:25
+Promise.finally
+run @ translationRequestQueue.js:23
+(anonymous) @ translationRequestQueue.js:12
+(anonymous) @ translationRequestQueue.js:25
+Promise.finally
+run @ translationRequestQueue.js:23
+(anonymous) @ translationRequestQueue.js:12
+(anonymous) @ translationRequestQueue.js:25
+Promise.finally
+run @ translationRequestQueue.js:23
+(anonymous) @ translationRequestQueue.js:12
+(anonymous) @ translationRequestQueue.js:25
+Promise.finally
+run @ translationRequestQueue.js:23
+(anonymous) @ translationRequestQueue.js:12
+(anonymous) @ translationRequestQueue.js:25
+Promise.finally
+run @ translationRequestQueue.js:23
+(anonymous) @ translationRequestQueue.js:12
+(anonymous) @ translationRequestQueue.js:25
+Promise.finally
+run @ translationRequestQueue.js:23
+(anonymous) @ translationRequestQueue.js:12
+(anonymous) @ translationRequestQueue.js:25
+Promise.finally
+run @ translationRequestQueue.js:23
+(anonymous) @ translationRequestQueue.js:12
+(anonymous) @ translationRequestQueue.js:25
+Promise.finally
+run @ translationRequestQueue.js:23
+(anonymous) @ translationRequestQueue.js:12
+(anonymous) @ translationRequestQueue.js:25
+Promise.finally
+run @ translationRequestQueue.js:23
+(anonymous) @ translationRequestQueue.js:12
+(anonymous) @ translationRequestQueue.js:25
+Promise.finally
+run @ translationRequestQueue.js:23
+(anonymous) @ translationRequestQueue.js:12
+(anonymous) @ translationRequestQueue.js:25
+Promise.finally
+run @ translationRequestQueue.js:23
+(anonymous) @ translationRequestQueue.js:12
+(anonymous) @ translationRequestQueue.js:25
+Promise.finally
+run @ translationRequestQueue.js:23
+(anonymous) @ translationRequestQueue.js:12
+(anonymous) @ translationRequestQueue.js:25
+Promise.finally
+run @ translationRequestQueue.js:23
+(anonymous) @ translationRequestQueue.js:12
+(anonymous) @ translationRequestQueue.js:25
+Promise.finally
+run @ translationRequestQueue.js:23
+(anonymous) @ translationRequestQueue.js:12
+(anonymous) @ translationRequestQueue.js:25
+Promise.finally
+run @ translationRequestQueue.js:23
+(anonymous) @ translationRequestQueue.js:12
+(anonymous) @ translationRequestQueue.js:25
+Promise.finally
+run @ translationRequestQueue.js:23
+(anonymous) @ translationRequestQueue.js:12
+(anonymous) @ translationRequestQueue.js:25
+Promise.finally
+run @ translationRequestQueue.js:23
+(anonymous) @ translationRequestQueue.js:12
+(anonymous) @ translationRequestQueue.js:25
+Promise.finally
+run @ translationRequestQueue.js:23
+(anonymous) @ translationRequestQueue.js:12
+(anonymous) @ translationRequestQueue.js:25
+Promise.finally
+run @ translationRequestQueue.js:23
+(anonymous) @ translationRequestQueue.js:12
+(anonymous) @ translationRequestQueue.js:25
+Promise.finally
+run @ translationRequestQueue.js:23
+(anonymous) @ translationRequestQueue.js:12
+(anonymous) @ translationRequestQueue.js:25
+Promise.finally
+run @ translationRequestQueue.js:23
+(anonymous) @ translationRequestQueue.js:28
+(anonymous) @ translationRequestQueue.js:17
+(anonymous) @ useTranslate.js:391
+Promise.then
+(anonymous) @ translationRequestQueue.js:34
+(anonymous) @ useTranslate.js:390
+(anonymous) @ useTranslate.js:429
+setTimeout
+(anonymous) @ useTranslate.js:352
+commitHookEffectListMount @ react-dom-client.production.js:8583
+commitPassiveMountOnFiber @ react-dom-client.production.js:10126
+recursivelyTraversePassiveMountEffects @ react-dom-client.production.js:10101
+commitPassiveMountOnFiber @ react-dom-client.production.js:10241
+recursivelyTraversePassiveMountEffects @ react-dom-client.production.js:10101
+commitPassiveMountOnFiber @ react-dom-client.production.js:10241
+recursivelyTraversePassiveMountEffects @ react-dom-client.production.js:10101
+commitPassiveMountOnFiber @ react-dom-client.production.js:10241
+recursivelyTraversePassiveMountEffects @ react-dom-client.production.js:10101
+commitPassiveMountOnFiber @ react-dom-client.production.js:10241
+recursivelyTraversePassiveMountEffects @ react-dom-client.production.js:10101
+commitPassiveMountOnFiber @ react-dom-client.production.js:10241
+recursivelyTraversePassiveMountEffects @ react-dom-client.production.js:10101
+commitPassiveMountOnFiber @ react-dom-client.production.js:10241
+recursivelyTraversePassiveMountEffects @ react-dom-client.production.js:10101
+commitPassiveMountOnFiber @ react-dom-client.production.js:10120
+recursivelyTraversePassiveMountEffects @ react-dom-client.production.js:10101
+commitPassiveMountOnFiber @ react-dom-client.production.js:10241
+recursivelyTraversePassiveMountEffects @ react-dom-client.production.js:10101
+commitPassiveMountOnFiber @ react-dom-client.production.js:10241
+recursivelyTraversePassiveMountEffects @ react-dom-client.production.js:10101
+commitPassiveMountOnFiber @ react-dom-client.production.js:10241
+recursivelyTraversePassiveMountEffects @ react-dom-client.production.js:10101
+commitPassiveMountOnFiber @ react-dom-client.production.js:10241
+recursivelyTraversePassiveMountEffects @ react-dom-client.production.js:10101
+commitPassiveMountOnFiber @ react-dom-client.production.js:10120
+recursivelyTraversePassiveMountEffects @ react-dom-client.production.js:10101
+commitPassiveMountOnFiber @ react-dom-client.production.js:10241
+recursivelyTraversePassiveMountEffects @ react-dom-client.production.js:10101
+commitPassiveMountOnFiber @ react-dom-client.production.js:10120
+recursivelyTraversePassiveMountEffects @ react-dom-client.production.js:10101
+commitPassiveMountOnFiber @ react-dom-client.production.js:10120
+recursivelyTraversePassiveMountEffects @ react-dom-client.production.js:10101
+commitPassiveMountOnFiber @ react-dom-client.production.js:10241
+recursivelyTraversePassiveMountEffects @ react-dom-client.production.js:10101
+commitPassiveMountOnFiber @ react-dom-client.production.js:10120
+recursivelyTraversePassiveMountEffects @ react-dom-client.production.js:10101
+commitPassiveMountOnFiber @ react-dom-client.production.js:10241
+recursivelyTraversePassiveMountEffects @ react-dom-client.production.js:10101
+commitPassiveMountOnFiber @ react-dom-client.production.js:10120
+recursivelyTraversePassiveMountEffects @ react-dom-client.production.js:10101
+commitPassiveMountOnFiber @ react-dom-client.production.js:10241
+recursivelyTraversePassiveMountEffects @ react-dom-client.production.js:10101
+commitPassiveMountOnFiber @ react-dom-client.production.js:10120
+recursivelyTraversePassiveMountEffects @ react-dom-client.production.js:10101
+commitPassiveMountOnFiber @ react-dom-client.production.js:10120
+recursivelyTraversePassiveMountEffects @ react-dom-client.production.js:10101
+commitPassiveMountOnFiber @ react-dom-client.production.js:10241
+recursivelyTraversePassiveMountEffects @ react-dom-client.production.js:10101
+commitPassiveMountOnFiber @ react-dom-client.production.js:10137
+flushPassiveEffects @ react-dom-client.production.js:11763
+flushPendingEffects @ react-dom-client.production.js:11739
+performSyncWorkOnRoot @ react-dom-client.production.js:12085
+flushSyncWorkAcrossRoots_impl @ react-dom-client.production.js:11956
+flushSpawnedWork @ react-dom-client.production.js:11726
+commitRoot @ react-dom-client.production.js:11521
+commitRootWhenReady @ react-dom-client.production.js:10920
+performWorkOnRoot @ react-dom-client.production.js:10826
+performWorkOnRootViaSchedulerTask @ react-dom-client.production.js:12078
+performWorkUntilDeadline @ scheduler.production.js:151
+postMessage
+(anonymous) @ scheduler.production.js:202
+(anonymous) @ scheduler.production.js:325
+scheduleTaskForRootDuringMicrotask @ react-dom-client.production.js:12055
+processRootScheduleInMicrotask @ react-dom-client.production.js:11978
+(anonymous) @ react-dom-client.production.js:12095
+setTimeout
+(anonymous) @ useDeepgram.js:313
+(anonymous) @ useDeepgram.js:1081
+useDeepgram.js:276 [CAT STT] 1 sound received + 2 sound sent {at: '2026-09-04T19:56:17.667Z', ms: 27274647, stage: '1 sound received + 2 sound sent', bytes: 2932, type: 'audio/webm;codecs=opus', …}
+translationEngines.js:236  POST https://catintassist.gatrivi.com/api/translate 503 (Service Unavailable)
+(anonymous) @ translationEngines.js:236
+(anonymous) @ translationEngines.js:291
+(anonymous) @ useTranslate.js:392
+Promise.then
+run @ translationRequestQueue.js:21
+(anonymous) @ translationRequestQueue.js:12
+(anonymous) @ translationRequestQueue.js:25
+Promise.finally
+run @ translationRequestQueue.js:23
+(anonymous) @ translationRequestQueue.js:12
+(anonymous) @ translationRequestQueue.js:25
+Promise.finally
+run @ translationRequestQueue.js:23
+(anonymous) @ translationRequestQueue.js:12
+(anonymous) @ translationRequestQueue.js:25
+Promise.finally
+run @ translationRequestQueue.js:23
+(anonymous) @ translationRequestQueue.js:12
+(anonymous) @ translationRequestQueue.js:25
+Promise.finally
+run @ translationRequestQueue.js:23
+(anonymous) @ translationRequestQueue.js:12
+(anonymous) @ translationRequestQueue.js:25
+Promise.finally
+run @ translationRequestQueue.js:23
+(anonymous) @ translationRequestQueue.js:12
+(anonymous) @ translationRequestQueue.js:25
+Promise.finally
+run @ translationRequestQueue.js:23
+(anonymous) @ translationRequestQueue.js:12
+(anonymous) @ translationRequestQueue.js:25
+Promise.finally
+run @ translationRequestQueue.js:23
+(anonymous) @ translationRequestQueue.js:12
+(anonymous) @ translationRequestQueue.js:25
+Promise.finally
+run @ translationRequestQueue.js:23
+(anonymous) @ translationRequestQueue.js:12
+(anonymous) @ translationRequestQueue.js:25
+Promise.finally
+run @ translationRequestQueue.js:23
+(anonymous) @ translationRequestQueue.js:12
+(anonymous) @ translationRequestQueue.js:25
+Promise.finally
+run @ translationRequestQueue.js:23
+(anonymous) @ translationRequestQueue.js:12
+(anonymous) @ translationRequestQueue.js:25
+Promise.finally
+run @ translationRequestQueue.js:23
+(anonymous) @ translationRequestQueue.js:12
+(anonymous) @ translationRequestQueue.js:25
+Promise.finally
+run @ translationRequestQueue.js:23
+(anonymous) @ translationRequestQueue.js:12
+(anonymous) @ translationRequestQueue.js:25
+Promise.finally
+run @ translationRequestQueue.js:23
+(anonymous) @ translationRequestQueue.js:12
+(anonymous) @ translationRequestQueue.js:25
+Promise.finally
+run @ translationRequestQueue.js:23
+(anonymous) @ translationRequestQueue.js:12
+(anonymous) @ translationRequestQueue.js:25
+Promise.finally
+run @ translationRequestQueue.js:23
+(anonymous) @ translationRequestQueue.js:12
+(anonymous) @ translationRequestQueue.js:25
+Promise.finally
+run @ translationRequestQueue.js:23
+(anonymous) @ translationRequestQueue.js:12
+(anonymous) @ translationRequestQueue.js:25
+Promise.finally
+run @ translationRequestQueue.js:23
+(anonymous) @ translationRequestQueue.js:12
+(anonymous) @ translationRequestQueue.js:25
+Promise.finally
+run @ translationRequestQueue.js:23
+(anonymous) @ translationRequestQueue.js:12
+(anonymous) @ translationRequestQueue.js:25
+Promise.finally
+run @ translationRequestQueue.js:23
+(anonymous) @ translationRequestQueue.js:12
+(anonymous) @ translationRequestQueue.js:25
+Promise.finally
+run @ translationRequestQueue.js:23
+(anonymous) @ translationRequestQueue.js:12
+(anonymous) @ translationRequestQueue.js:25
+Promise.finally
+run @ translationRequestQueue.js:23
+(anonymous) @ translationRequestQueue.js:12
+(anonymous) @ translationRequestQueue.js:25
+Promise.finally
+run @ translationRequestQueue.js:23
+(anonymous) @ translationRequestQueue.js:12
+(anonymous) @ translationRequestQueue.js:25
+Promise.finally
+run @ translationRequestQueue.js:23
+(anonymous) @ translationRequestQueue.js:12
+(anonymous) @ translationRequestQueue.js:25
+Promise.finally
+run @ translationRequestQueue.js:23
+(anonymous) @ translationRequestQueue.js:12
+(anonymous) @ translationRequestQueue.js:25
+Promise.finally
+run @ translationRequestQueue.js:23
+(anonymous) @ translationRequestQueue.js:12
+(anonymous) @ translationRequestQueue.js:25
+Promise.finally
+run @ translationRequestQueue.js:23
+(anonymous) @ translationRequestQueue.js:12
+(anonymous) @ translationRequestQueue.js:25
+Promise.finally
+run @ translationRequestQueue.js:23
+(anonymous) @ translationRequestQueue.js:28
+(anonymous) @ translationRequestQueue.js:17
+(anonymous) @ useTranslate.js:391
+Promise.then
+(anonymous) @ translationRequestQueue.js:34
+(anonymous) @ useTranslate.js:390
+(anonymous) @ useTranslate.js:429
+setTimeout
+(anonymous) @ useTranslate.js:352
+commitHookEffectListMount @ react-dom-client.production.js:8583
+commitPassiveMountOnFiber @ react-dom-client.production.js:10126
+recursivelyTraversePassiveMountEffects @ react-dom-client.production.js:10101
+commitPassiveMountOnFiber @ react-dom-client.production.js:10241
+recursivelyTraversePassiveMountEffects @ react-dom-client.production.js:10101
+commitPassiveMountOnFiber @ react-dom-client.production.js:10241
+recursivelyTraversePassiveMountEffects @ react-dom-client.production.js:10101
+commitPassiveMountOnFiber @ react-dom-client.production.js:10241
+recursivelyTraversePassiveMountEffects @ react-dom-client.production.js:10101
+commitPassiveMountOnFiber @ react-dom-client.production.js:10241
+recursivelyTraversePassiveMountEffects @ react-dom-client.production.js:10101
+commitPassiveMountOnFiber @ react-dom-client.production.js:10241
+recursivelyTraversePassiveMountEffects @ react-dom-client.production.js:10101
+commitPassiveMountOnFiber @ react-dom-client.production.js:10241
+recursivelyTraversePassiveMountEffects @ react-dom-client.production.js:10101
+commitPassiveMountOnFiber @ react-dom-client.production.js:10120
+recursivelyTraversePassiveMountEffects @ react-dom-client.production.js:10101
+commitPassiveMountOnFiber @ react-dom-client.production.js:10241
+recursivelyTraversePassiveMountEffects @ react-dom-client.production.js:10101
+commitPassiveMountOnFiber @ react-dom-client.production.js:10241
+recursivelyTraversePassiveMountEffects @ react-dom-client.production.js:10101
+commitPassiveMountOnFiber @ react-dom-client.production.js:10241
+recursivelyTraversePassiveMountEffects @ react-dom-client.production.js:10101
+commitPassiveMountOnFiber @ react-dom-client.production.js:10241
+recursivelyTraversePassiveMountEffects @ react-dom-client.production.js:10101
+commitPassiveMountOnFiber @ react-dom-client.production.js:10120
+recursivelyTraversePassiveMountEffects @ react-dom-client.production.js:10101
+commitPassiveMountOnFiber @ react-dom-client.production.js:10241
+recursivelyTraversePassiveMountEffects @ react-dom-client.production.js:10101
+commitPassiveMountOnFiber @ react-dom-client.production.js:10120
+recursivelyTraversePassiveMountEffects @ react-dom-client.production.js:10101
+commitPassiveMountOnFiber @ react-dom-client.production.js:10120
+recursivelyTraversePassiveMountEffects @ react-dom-client.production.js:10101
+commitPassiveMountOnFiber @ react-dom-client.production.js:10241
+recursivelyTraversePassiveMountEffects @ react-dom-client.production.js:10101
+commitPassiveMountOnFiber @ react-dom-client.production.js:10120
+recursivelyTraversePassiveMountEffects @ react-dom-client.production.js:10101
+commitPassiveMountOnFiber @ react-dom-client.production.js:10241
+recursivelyTraversePassiveMountEffects @ react-dom-client.production.js:10101
+commitPassiveMountOnFiber @ react-dom-client.production.js:10120
+recursivelyTraversePassiveMountEffects @ react-dom-client.production.js:10101
+commitPassiveMountOnFiber @ react-dom-client.production.js:10241
+recursivelyTraversePassiveMountEffects @ react-dom-client.production.js:10101
+commitPassiveMountOnFiber @ react-dom-client.production.js:10120
+recursivelyTraversePassiveMountEffects @ react-dom-client.production.js:10101
+commitPassiveMountOnFiber @ react-dom-client.production.js:10120
+recursivelyTraversePassiveMountEffects @ react-dom-client.production.js:10101
+commitPassiveMountOnFiber @ react-dom-client.production.js:10241
+recursivelyTraversePassiveMountEffects @ react-dom-client.production.js:10101
+commitPassiveMountOnFiber @ react-dom-client.production.js:10137
+flushPassiveEffects @ react-dom-client.production.js:11763
+flushPendingEffects @ react-dom-client.production.js:11739
+performSyncWorkOnRoot @ react-dom-client.production.js:12085
+flushSyncWorkAcrossRoots_impl @ react-dom-client.production.js:11956
+flushSpawnedWork @ react-dom-client.production.js:11726
+commitRoot @ react-dom-client.production.js:11521
+commitRootWhenReady @ react-dom-client.production.js:10920
+performWorkOnRoot @ react-dom-client.production.js:10826
+performWorkOnRootViaSchedulerTask @ react-dom-client.production.js:12078
+performWorkUntilDeadline @ scheduler.production.js:151
+postMessage
+(anonymous) @ scheduler.production.js:202
+(anonymous) @ scheduler.production.js:325
+scheduleTaskForRootDuringMicrotask @ react-dom-client.production.js:12055
+processRootScheduleInMicrotask @ react-dom-client.production.js:11978
+(anonymous) @ react-dom-client.production.js:12095
+setTimeout
+(anonymous) @ useDeepgram.js:313
+(anonymous) @ useDeepgram.js:1081
+useDeepgram.js:276 [CAT STT] 3 Deepgram websocket message received {at: '2026-09-04T19:56:18.153Z', ms: 27275134, stage: '3 Deepgram websocket message received', lang: 'en', type: 'Results', …}
+useDeepgram.js:276 [CAT STT] 1 sound received + 2 sound sent {at: '2026-09-04T19:56:18.173Z', ms: 27275154, stage: '1 sound received + 2 sound sent', bytes: 1949, type: 'audio/webm;codecs=opus', …}
+translationEngines.js:236  POST https://catintassist.gatrivi.com/api/translate net::ERR_ABORTED 503 (Service Unavailable)
+(anonymous) @ translationEngines.js:236
+(anonymous) @ translationEngines.js:291
+(anonymous) @ useTranslate.js:392
+Promise.then
+run @ translationRequestQueue.js:21
+(anonymous) @ translationRequestQueue.js:12
+(anonymous) @ translationRequestQueue.js:25
+Promise.finally
+run @ translationRequestQueue.js:23
+(anonymous) @ translationRequestQueue.js:12
+(anonymous) @ translationRequestQueue.js:25
+Promise.finally
+run @ translationRequestQueue.js:23
+(anonymous) @ translationRequestQueue.js:12
+(anonymous) @ translationRequestQueue.js:25
+Promise.finally
+run @ translationRequestQueue.js:23
+(anonymous) @ translationRequestQueue.js:12
+(anonymous) @ translationRequestQueue.js:25
+Promise.finally
+run @ translationRequestQueue.js:23
+(anonymous) @ translationRequestQueue.js:12
+(anonymous) @ translationRequestQueue.js:25
+Promise.finally
+run @ translationRequestQueue.js:23
+(anonymous) @ translationRequestQueue.js:12
+(anonymous) @ translationRequestQueue.js:25
+Promise.finally
+run @ translationRequestQueue.js:23
+(anonymous) @ translationRequestQueue.js:12
+(anonymous) @ translationRequestQueue.js:25
+Promise.finally
+run @ translationRequestQueue.js:23
+(anonymous) @ translationRequestQueue.js:12
+(anonymous) @ translationRequestQueue.js:25
+Promise.finally
+run @ translationRequestQueue.js:23
+(anonymous) @ translationRequestQueue.js:12
+(anonymous) @ translationRequestQueue.js:25
+Promise.finally
+run @ translationRequestQueue.js:23
+(anonymous) @ translationRequestQueue.js:12
+(anonymous) @ translationRequestQueue.js:25
+Promise.finally
+run @ translationRequestQueue.js:23
+(anonymous) @ translationRequestQueue.js:12
+(anonymous) @ translationRequestQueue.js:25
+Promise.finally
+run @ translationRequestQueue.js:23
+(anonymous) @ translationRequestQueue.js:12
+(anonymous) @ translationRequestQueue.js:25
+Promise.finally
+run @ translationRequestQueue.js:23
+(anonymous) @ translationRequestQueue.js:12
+(anonymous) @ translationRequestQueue.js:25
+Promise.finally
+run @ translationRequestQueue.js:23
+(anonymous) @ translationRequestQueue.js:12
+(anonymous) @ translationRequestQueue.js:25
+Promise.finally
+run @ translationRequestQueue.js:23
+(anonymous) @ translationRequestQueue.js:12
+(anonymous) @ translationRequestQueue.js:25
+Promise.finally
+run @ translationRequestQueue.js:23
+(anonymous) @ translationRequestQueue.js:12
+(anonymous) @ translationRequestQueue.js:25
+Promise.finally
+run @ translationRequestQueue.js:23
+(anonymous) @ translationRequestQueue.js:12
+(anonymous) @ translationRequestQueue.js:25
+Promise.finally
+run @ translationRequestQueue.js:23
+(anonymous) @ translationRequestQueue.js:12
+(anonymous) @ translationRequestQueue.js:25
+Promise.finally
+run @ translationRequestQueue.js:23
+(anonymous) @ translationRequestQueue.js:12
+(anonymous) @ translationRequestQueue.js:25
+Promise.finally
+run @ translationRequestQueue.js:23
+(anonymous) @ translationRequestQueue.js:12
+(anonymous) @ translationRequestQueue.js:25
+Promise.finally
+run @ translationRequestQueue.js:23
+(anonymous) @ translationRequestQueue.js:12
+(anonymous) @ translationRequestQueue.js:25
+Promise.finally
+run @ translationRequestQueue.js:23
+(anonymous) @ translationRequestQueue.js:12
+(anonymous) @ translationRequestQueue.js:25
+Promise.finally
+run @ translationRequestQueue.js:23
+(anonymous) @ translationRequestQueue.js:12
+(anonymous) @ translationRequestQueue.js:25
+Promise.finally
+run @ translationRequestQueue.js:23
+(anonymous) @ translationRequestQueue.js:12
+(anonymous) @ translationRequestQueue.js:25
+Promise.finally
+run @ translationRequestQueue.js:23
+(anonymous) @ translationRequestQueue.js:12
+(anonymous) @ translationRequestQueue.js:25
+Promise.finally
+run @ translationRequestQueue.js:23
+(anonymous) @ translationRequestQueue.js:12
+(anonymous) @ translationRequestQueue.js:25
+Promise.finally
+run @ translationRequestQueue.js:23
+(anonymous) @ translationRequestQueue.js:12
+(anonymous) @ translationRequestQueue.js:25
+Promise.finally
+run @ translationRequestQueue.js:23
+(anonymous) @ translationRequestQueue.js:12
+(anonymous) @ translationRequestQueue.js:25
+Promise.finally
+run @ translationRequestQueue.js:23
+(anonymous) @ translationRequestQueue.js:28
+(anonymous) @ translationRequestQueue.js:17
+(anonymous) @ useTranslate.js:391
+Promise.then
+(anonymous) @ translationRequestQueue.js:34
+(anonymous) @ useTranslate.js:390
+(anonymous) @ useTranslate.js:429
+setTimeout
+(anonymous) @ useTranslate.js:352
+commitHookEffectListMount @ react-dom-client.production.js:8583
+commitPassiveMountOnFiber @ react-dom-client.production.js:10126
+recursivelyTraversePassiveMountEffects @ react-dom-client.production.js:10101
+commitPassiveMountOnFiber @ react-dom-client.production.js:10241
+recursivelyTraversePassiveMountEffects @ react-dom-client.production.js:10101
+commitPassiveMountOnFiber @ react-dom-client.production.js:10241
+recursivelyTraversePassiveMountEffects @ react-dom-client.production.js:10101
+commitPassiveMountOnFiber @ react-dom-client.production.js:10241
+recursivelyTraversePassiveMountEffects @ react-dom-client.production.js:10101
+commitPassiveMountOnFiber @ react-dom-client.production.js:10241
+recursivelyTraversePassiveMountEffects @ react-dom-client.production.js:10101
+commitPassiveMountOnFiber @ react-dom-client.production.js:10241
+recursivelyTraversePassiveMountEffects @ react-dom-client.production.js:10101
+commitPassiveMountOnFiber @ react-dom-client.production.js:10241
+recursivelyTraversePassiveMountEffects @ react-dom-client.production.js:10101
+commitPassiveMountOnFiber @ react-dom-client.production.js:10120
+recursivelyTraversePassiveMountEffects @ react-dom-client.production.js:10101
+commitPassiveMountOnFiber @ react-dom-client.production.js:10241
+recursivelyTraversePassiveMountEffects @ react-dom-client.production.js:10101
+commitPassiveMountOnFiber @ react-dom-client.production.js:10241
+recursivelyTraversePassiveMountEffects @ react-dom-client.production.js:10101
+commitPassiveMountOnFiber @ react-dom-client.production.js:10241
+recursivelyTraversePassiveMountEffects @ react-dom-client.production.js:10101
+commitPassiveMountOnFiber @ react-dom-client.production.js:10241
+recursivelyTraversePassiveMountEffects @ react-dom-client.production.js:10101
+commitPassiveMountOnFiber @ react-dom-client.production.js:10120
+recursivelyTraversePassiveMountEffects @ react-dom-client.production.js:10101
+commitPassiveMountOnFiber @ react-dom-client.production.js:10241
+recursivelyTraversePassiveMountEffects @ react-dom-client.production.js:10101
+commitPassiveMountOnFiber @ react-dom-client.production.js:10120
+recursivelyTraversePassiveMountEffects @ react-dom-client.production.js:10101
+commitPassiveMountOnFiber @ react-dom-client.production.js:10120
+recursivelyTraversePassiveMountEffects @ react-dom-client.production.js:10101
+commitPassiveMountOnFiber @ react-dom-client.production.js:10241
+recursivelyTraversePassiveMountEffects @ react-dom-client.production.js:10101
+commitPassiveMountOnFiber @ react-dom-client.production.js:10120
+recursivelyTraversePassiveMountEffects @ react-dom-client.production.js:10101
+commitPassiveMountOnFiber @ react-dom-client.production.js:10241
+recursivelyTraversePassiveMountEffects @ react-dom-client.production.js:10101
+commitPassiveMountOnFiber @ react-dom-client.production.js:10120
+recursivelyTraversePassiveMountEffects @ react-dom-client.production.js:10101
+commitPassiveMountOnFiber @ react-dom-client.production.js:10241
+recursivelyTraversePassiveMountEffects @ react-dom-client.production.js:10101
+commitPassiveMountOnFiber @ react-dom-client.production.js:10120
+recursivelyTraversePassiveMountEffects @ react-dom-client.production.js:10101
+commitPassiveMountOnFiber @ react-dom-client.production.js:10120
+recursivelyTraversePassiveMountEffects @ react-dom-client.production.js:10101
+commitPassiveMountOnFiber @ react-dom-client.production.js:10241
+recursivelyTraversePassiveMountEffects @ react-dom-client.production.js:10101
+commitPassiveMountOnFiber @ react-dom-client.production.js:10137
+flushPassiveEffects @ react-dom-client.production.js:11763
+flushPendingEffects @ react-dom-client.production.js:11739
+performSyncWorkOnRoot @ react-dom-client.production.js:12085
+flushSyncWorkAcrossRoots_impl @ react-dom-client.production.js:11956
+flushSpawnedWork @ react-dom-client.production.js:11726
+commitRoot @ react-dom-client.production.js:11521
+commitRootWhenReady @ react-dom-client.production.js:10920
+performWorkOnRoot @ react-dom-client.production.js:10826
+performWorkOnRootViaSchedulerTask @ react-dom-client.production.js:12078
+performWorkUntilDeadline @ scheduler.production.js:151
+postMessage
+(anonymous) @ scheduler.production.js:202
+(anonymous) @ scheduler.production.js:325
+scheduleTaskForRootDuringMicrotask @ react-dom-client.production.js:12055
+processRootScheduleInMicrotask @ react-dom-client.production.js:11978
+(anonymous) @ react-dom-client.production.js:12095
+setTimeout
+(anonymous) @ useDeepgram.js:313
+(anonymous) @ useDeepgram.js:1081
+useDeepgram.js:276 [CAT STT] 3 

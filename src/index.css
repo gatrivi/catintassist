@@ -273,7 +273,24 @@ body {
 }
 
 .dashboard-header--call-compact {
-  padding-bottom: 21px !important;
+  padding-bottom: 0.25rem !important;
+}
+
+/* v4.91.0: breathing room — 4px padding on every item in the header rows. */
+.header-metrics-strip-row > *,
+.header-metrics-quick-row > *,
+.audio-route-status-main > *,
+.off-call-targets-row > *,
+.call-micro-bar-row > * {
+  padding: 4px;
+}
+
+/* v4.91.0: goal meter is its own row below the buttons, never an overlay. */
+.dashboard-header--call-compact .compact-call-goal-meter {
+  position: static;
+  margin: 1px 2px 0;
+  height: 19px;
+  flex-shrink: 0;
 }
 
 .compact-call-goal-meter__readout {
@@ -997,9 +1014,24 @@ body {
   flex-shrink: 0;
   padding: 0.1rem 0.25rem 0.15rem;
   display: flex;
-  flex-direction: column;
-  gap: 0.2rem;
+  flex-direction: row;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.2rem 0.35rem;
   min-height: 0;
+}
+
+/* v4.91.0: summary + quick buttons share one line; bars (if shown) drop below. */
+.dashboard-header--off-call-scoreboard .header-metrics-strip-row {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+.dashboard-header--off-call-scoreboard .header-metrics-quick-row {
+  flex: 0 0 auto;
+}
+.dashboard-header--off-call-scoreboard .header-metrics-bars {
+  flex: 1 1 100%;
+  min-width: 0;
 }
 
 .header-metrics-strip-row {
@@ -2907,7 +2939,9 @@ body {
 .audio-route-status-main {
   display: flex;
   align-items: center;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
+  overflow-x: auto;
+  scrollbar-width: thin;
   gap: 0.25rem;
   min-width: 0;
   width: 100%;
@@ -3806,7 +3840,24 @@ body:has(.app-container[data-call-mode="true"]) .element-hint-panel {
   }
 
   /* Sticky strip should be tighter in compact mode. */
-  .session-controls-sticky-row {
+.off-call-targets-row {
+  display: flex;
+  justify-content: center;
+}
+
+/* v4.89.3: daily targets chip rides beside the micro-bar grid (single row, bar stays 32px). */
+.call-micro-bar-row {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  min-width: 0;
+}
+.call-micro-bar-row > .call-micro-bar-center {
+  flex: 1;
+  min-width: 0;
+}
+
+.session-controls-sticky-row {
     padding: 2px 4px;
     margin-bottom: 0.1rem;
     gap: 0.35rem;

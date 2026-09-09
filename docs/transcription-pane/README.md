@@ -98,4 +98,19 @@ Standing rule (also in `AGENTS.md` MAINVIEW + `handoff/00_global_rules.md`):
 
 Manual smoke: long correction only changes the span; prefix stays; phone does not vanish; seal/split does not blank the line.
 
+## 13) Reload / hot-reload mid-call = transcript gap (incident 2026-09-08)
+What happened: dev-server hot-reload restarted the app during a live 911 call.
+Deepgram sockets + tab audio died with the reload; speech during the gap was
+never transcribed, and post-reload text is a new session (no backfill).
+
+Rules:
+- **Never run `npm start` (hot-reload) during live calls.** Dev edits can
+  recompile at any moment and kill the call session.
+- Live shifts: use the **production build** (`npm run build` / deployed URL).
+- If dev must stay up alongside: **code-freeze while on a call** — hot-reload
+  fires on file save, so no saves/edits until STOP.
+- After any reload mid-call: expect the yellow **Re-attach** banner; re-attach
+  or reconnect, and note the gap — anything said while down is unrecoverable
+  unless the call recording exists elsewhere.
+
 

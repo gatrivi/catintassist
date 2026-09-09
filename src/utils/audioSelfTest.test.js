@@ -7,6 +7,8 @@ import {
   getPreflightSteps,
   isPreflightReady,
   isClipHealthOk,
+  scoreTranscriptRecall,
+  analyzeClipLegibility,
 } from './audioSelfTest';
 
 describe('audioSelfTest', () => {
@@ -53,5 +55,33 @@ describe('audioSelfTest', () => {
     expect(confirm.caller).toBe('confirm');
     expect(isClipHealthOk(0.49)).toBe(false);
     expect(isClipHealthOk(0.5)).toBe(true);
+  });
+
+  test('scoreTranscriptRecall matches heard words vs script', () => {
+    expect(scoreTranscriptRecall('Hello this is your interpreter', 'Hello, this is your interpreter. How can I help you today?')).toBeCloseTo(5 / 11);
+    expect(scoreTranscriptRecall('', 'Hello there')).toBe(0);
+    expect(scoreTranscriptRecall('anything', '')).toBe(1);
+    expect(scoreTranscriptRecall('BUENO', 'bueno')).toBe(1);
+  });
+
+  test('analyzeClipLegibility weights confidence by recall', async () => {
+    const heard = 'Thank you for holding I appreciate your patience';
+    global.fetch = jest.fn(async () => ({
+      ok: true,
+      json: async () => ({ results: { channels: [{ alternatives: [{ confidence: 0.95, transcript: heard }] }] } }),
+    }));
+    const r = await analyzeClipLegibility(new Blob(['x']), 'k', 'Thank you for holding. I appreciate your patience.');
+    expect(r.transcript).toBe(heard);
+    expect(r.recall).toBe(1);
+    expect(r.score).toBeCloseTo(0.95);
+    const wrong = await analyzeClipLegibility(new Blob(['x']), 'k', 'Thank you for holding. I appreciate your patience.');
+    global.fetch = jest.fn(async () => ({
+      ok: true,
+      json: async () => ({ results: { channels: [{ alternatives: [{ confidence: 0.99, transcript: 'blah blah blah blah' }] }] } }),
+    }));
+    const w = await analyzeClipLegibility(new Blob(['x']), 'k', 'Thank you for holding. I appreciate your patience.');
+    expect(w.score).toBeLessThan(0.5);
+    expect(wrong.score).toBeGreaterThan(w.score);
+    delete global.fetch;
   });
 });

@@ -68,7 +68,7 @@ import {
   formatPairShort,
   LANG_PAIR_CHANGED_EVENT,
 } from '../utils/languageConfig';
-import { computeGoalDay } from './DailyTargetsChip';
+import { DailyTargetsChip, computeGoalDay } from './DailyTargetsChip';
 
 const OFF_CALL_METRICS_EXPANDED_KEY = 'catint_off_call_metrics_expanded_v1';
 const SCOREBOARD_MAX_VH_KEY = 'catint_scoreboard_max_vh';
@@ -550,7 +550,8 @@ const SessionControlsSticky = React.memo(({
 
         <div className="session-controls-center">
           {isActive ? (
-            callModeExpanded ? (
+            <div className="call-micro-bar-row">
+            {callModeExpanded ? (
             <div className="call-micro-bar-center">
               <span
                 className="call-micro-bar-slot call-micro-bar-hold"
@@ -618,7 +619,9 @@ const SessionControlsSticky = React.memo(({
                 )}
               </span>
             </div>
-            )
+            )}
+              <DailyTargetsChip dailyMinutes={dailyMinutes} monthlyMinutes={monthlyMinutes} breakMinutes={breakMinutes} ratePerMinute={ratePerMinute} />
+            </div>
           ) : (
             <div className="off-call-status-column" style={{ display: 'flex', flexDirection: 'column', gap: '0.15rem' }}>
               <div className="call-micro-bar-center off-call-status-bar" title={offCallStatusLabel}>
@@ -641,12 +644,14 @@ const SessionControlsSticky = React.memo(({
                               : '#9dffed',
                   }}
                 >
-                  {/* v4.88.4: timers live once in the sticky row + status-bar strip;
-                      idle center stays empty (amber off-call timer implies state). */}
+                  {/* v4.89.3: daily targets chip fills the idle center (moved from I/O strip). */}
                   {(isZombieCall || connectionState === 'error' || connectionState === 'connecting')
                     ? offCallStatusLabel
                     : null}
                 </span>
+              </div>
+              <div className="off-call-targets-row">
+                <DailyTargetsChip dailyMinutes={dailyMinutes} monthlyMinutes={monthlyMinutes} breakMinutes={breakMinutes} ratePerMinute={ratePerMinute} />
               </div>
             </div>
           )}

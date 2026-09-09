@@ -2,6 +2,32 @@
 
 **Version source:** `src/constants/version.js` (must match `package.json` + top-right UI pill)
 
+## v4.94.1 - CPU freeze fix (blank caption row)
+
+- **Root cause:** an empty live-draft caption row (created when the overlap cleaner emptied the first transcript of a turn) could never seal and stayed in state forever. Every board render skipped it and fired a forced `console.warn` (`ui_blank_caption_skipped`) — 4×/sec all call long × full-board render + layout reads = 100% CPU freeze. NOT the translation API changes.
+- **Fix 1 (`captionEngine.js`):** `mergeCaptionsForUi` never merges a blank live draft; the `overlap_empty_freeze` branch drops a freshly appended all-empty draft instead of keeping it (also stops blank rows persisting to IDB / resurrecting on reload).
+- **Fix 2 (`TranscriptionBoard.js`):** blank-caption vanish log deduped by id — once per session, not per render.
+- **Fix 3 (`sensitiveDataProtector.js`, pre-existing red tests):** ssn/phone sentinels now override the address/date guards in both `stitchSingleDigitSequences` and `formatPhoneAndSSNDigits` — "Medicaid ID 1013159516, Madison Avenue May 8" groups to `101-315-9516` again.
+- Release notes entry added (4.94.1) and 4.93.0's empty `highlightElementIds` fixed. All 71 test files green, build clean.
+
+## v4.94.0 - Tiny translate chunks (one sentence/comma per local API request)
+
+- **Fix (user request):** translation requests to the local model were up to 40-word chunks — paragraphs stalled it and translations arrived minutes later. Requests are now **one sentence or one comma-clause at a time, max 14 words**; hard ceiling 24 regardless of what a caller passes.
+- `segmentLongMonologue` (`translationApplicator.js`): sentence peel → comma/semicolon split → clause groups ≤14 words. `useTranslate.js` no longer overrides with `maxWords: 40`.
+- Regression tests added; 52 translation tests pass, build clean.
+
+## v4.93.1 - CPU sink fix (inspector + mic meter + transcript tick)
+
+- **HUD inspector:** mousemove storm (60-120 setStates/sec + layout thrash per pixel) → rAF-coalesced, same-element short-circuit, per-element selector cache. Same feature, ~zero idle cost.
+- **Mic meter:** 60fps analyser + DOM writes → ~10Hz analysis, rounded values, identical writes skipped. Quiet frames still tick so the 3s no-signal timer fires.
+- **Transcript:** in-call freshness tick 250ms → 1000ms (4 full-board renders/sec → 1; windows are 1400/4500ms so indicators stay correct).
+
+## v4.93.0 - No more [⚠ Check: …] badges in transcripts
+
+- **Fix (user request):** removed the `[⚠ Check: …]` salvage markers that made translations unreadable. Root cause: the "address" regex treated ANY `number + word` ("7 minutes", "1 of", "5 to") as a sensitive address, flooding every sentence with badges.
+- **Safety kept:** digit-loss still flags `weak_digit_loss` and preserves the previous good translation (`translationApplicator.js`); only the text injection is gone. Legacy persisted text with markers is stripped on display (`composeCaptionTranslation`).
+- **Tests:** `translationSensitiveTokens` regression — time phrases yield zero tokens; real addresses ("123 Main Street") still detected.
+
 ## v4.92.0 - Always-on ear (speech detection between calls, zero cost)
 
 - **New:** after STOP the Deepgram sockets stay warm (KeepAlive pings only — NO audio is sent, so zero Deepgram usage) and a local VAD (WebAudio RMS on the preserved tab/cable stream) watches for speech. Speech ~0.3s → recorder resumes → transcript → existing speech auto-connect starts the call by itself. No CONNECT press between calls anymore.
@@ -15,6 +41,7 @@
 - **Tighten:** metrics summary + quick buttons share one line (`header-metrics-strip` row-wrap, bars drop below); I/O strip contents forced single-line scroll (`audio-route-status-main` nowrap).
 - **Fix:** compact goal meter no longer overlays the I/O bar — in-flow second row (`dashboard-header--call-compact`).
 - **Space:** 4px padding on every item in the header rows (strip, quick, I/O, micro-bar).
+- **CPU:** `[CAT STT]` per-chunk console spam now opt-in (`localStorage catint_stt_verbose=1`); dead translate gateway (502) backs off 90s instead of refiring per segment.
 
 ## v4.90.0 - Auto break (counts ALL no-transcription time)
 

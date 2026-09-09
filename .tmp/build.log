@@ -1,0 +1,43 @@
+
+> catintassist@4.94.1 build
+> node scripts/build-with-local-temp.js
+
+Creating an optimized production build...
+Browserslist: browsers data (caniuse-lite) is 8 months old. Please run:
+  npx update-browserslist-db@latest
+  Why you should do it regularly: https://github.com/browserslist/update-db#readme
+Browserslist: browsers data (caniuse-lite) is 8 months old. Please run:
+  npx update-browserslist-db@latest
+  Why you should do it regularly: https://github.com/browserslist/update-db#readme
+Compiled with warnings.
+
+[eslint] 
+src\contexts\SessionContext.js
+  Line 556:9:  The 'commitAvailTime' function makes the dependencies of useCallback Hook (at line 922) change on every render. To fix this, wrap the definition of 'commitAvailTime' in its own useCallback() Hook  react-hooks/exhaustive-deps
+
+src\hooks\useDeepgram.js
+  Line 259:9:   The 'syncConnectProgress' function makes the dependencies of useCallback Hook (at line 1268) change on every render. To fix this, wrap the definition of 'syncConnectProgress' in its own useCallback() Hook  react-hooks/exhaustive-deps
+  Line 259:9:   The 'syncConnectProgress' function makes the dependencies of useCallback Hook (at line 1365) change on every render. To fix this, wrap the definition of 'syncConnectProgress' in its own useCallback() Hook  react-hooks/exhaustive-deps
+  Line 1200:5:  React Hook useCallback has an unnecessary dependency: 'speechAutoConnect'. Either exclude it or remove the dependency array                                                                                   react-hooks/exhaustive-deps
+
+Search for the keywords to learn more about each warning.
+To ignore, add // eslint-disable-next-line to the line before.
+
+File sizes after gzip:
+
+  437.39 kB (+597 B)  build\static\js\main.99c53751.js
+  22.37 kB            build\static\css\main.306b2dcd.css
+
+The project was built assuming it is hosted at /.
+You can control this with the homepage field in your package.json.
+
+The build folder is ready to be deployed.
+You may serve it with a static server:
+
+  npm install -g serve
+  serve -s build
+
+Find out more about deployment here:
+
+  https://cra.link/deployment
+

@@ -1,6 +1,6 @@
 {
   "id": "long-monologue",
-  "label": "Long monologue splits into 35-45 word chunks",
+  "label": "Long monologue splits into tiny sentence chunks (v4.94.0)",
   "captionId": "cap-long",
   "targetLang": "es",
   "maxWords": 40,

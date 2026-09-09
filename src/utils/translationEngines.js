@@ -47,16 +47,20 @@ const LOCAL_TRANSLATE_ENGINE = 'local_stt';
 const GATEWAY_ENGINE = 'gateway';
 const FREE_ENGINE_BLACKLIST_MS = 10 * 60 * 1000; // 10m — network blips
 const RATE_LIMIT_BLACKLIST_MS = 30 * 60 * 1000; // 30m — don't hammer 429 APIs
+const SERVER_ERROR_BLACKLIST_MS = 90 * 1000; // 90s — dead gateway, retry soon but don't hammer per segment
 
 export const blacklistEngine = (id, ttlMs, reason = 'error') => {
   const rateLimited = reason === 'rate_limit';
+  const serverDown = reason === 'server_error';
   const effectiveTtl =
     ttlMs ??
     (rateLimited
       ? RATE_LIMIT_BLACKLIST_MS
-      : id === LOCAL_TRANSLATE_ENGINE
-        ? FREE_ENGINE_BLACKLIST_MS
-        : BLACKBOX_TTL);
+      : serverDown
+        ? SERVER_ERROR_BLACKLIST_MS
+        : id === LOCAL_TRANSLATE_ENGINE
+          ? FREE_ENGINE_BLACKLIST_MS
+          : BLACKBOX_TTL);
   BLACKBOX[id] = Date.now();
   BLACKBOX_TTLS[id] = effectiveTtl;
   BLACKBOX_REASONS[id] = reason;
@@ -65,13 +69,13 @@ export const blacklistEngine = (id, ttlMs, reason = 'error') => {
   writeSessionBlacklist(session);
 };
 
-/** Clear only transient blocks (network blips) — keep rate_limit cooldowns. */
+/** Clear only transient blocks (network blips) — keep rate_limit + server_error cooldowns. */
 export const clearTransientEngineBlacklist = () => {
   const session = readSessionBlacklist();
   Object.keys(session).forEach((id) => {
     const entry = session[id];
     const reason = typeof entry === 'object' ? entry.reason : 'error';
-    if (reason === 'rate_limit') return;
+    if (reason === 'rate_limit' || reason === 'server_error') return;
     delete session[id];
     delete BLACKBOX[id];
     delete BLACKBOX_TTLS[id];
@@ -125,10 +129,22 @@ export const isBrowserFetchError = (err) => {
   );
 };
 
+/** Dead upstream (502 Bad Gateway, 503…) — back off instead of hammering per segment. */
+export const isServerError = (err) => {
+  const s = `${err?.message || err || ''}`.toLowerCase();
+  return (
+    /\b50\d\b/.test(s) ||
+    s.includes('bad gateway') ||
+    s.includes('service unavailable') ||
+    s.includes('server error')
+  );
+};
+
 export const classifyEngineFailure = (err) => {
   if (isUnauthorizedError(err)) return 'unauthorized';
   if (isRateLimitError(err)) return 'rate_limit';
   if (isBrowserFetchError(err)) return 'cors_or_network';
+  if (isServerError(err)) return 'server_error';
   if (`${err?.message || ''}`.includes('timeout')) return 'timeout';
   return 'error';
 };
@@ -316,7 +332,8 @@ export const translateWithFallback = async ({
       if (
         isRateLimitError(e) ||
         isBrowserFetchError(e) ||
-        reason === 'unauthorized'
+        reason === 'unauthorized' ||
+        reason === 'server_error'
       ) {
         blacklistEngine(id, undefined, reason);
       }

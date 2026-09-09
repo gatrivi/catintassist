@@ -15,7 +15,6 @@ import {
   useComponentVisibilityRefresh,
 } from '../utils/componentVisibility';
 import { APP_VERSION } from '../constants/version';
-import { DailyTargetsChip } from './DailyTargetsChip';
 
 const dotColor = (state) => {
   if (state === 'ok') return '#10b981';
@@ -338,8 +337,6 @@ export const AudioRouteStatusBar = ({
       title={`Audio I/O · v${APP_VERSION}`}
     >
       <div className="audio-route-status-main">
-        {/* v4.87.0: daily $1200-goal targets always visible */}
-        <DailyTargetsChip dailyMinutes={dailyMinutes} monthlyMinutes={monthlyMinutes} breakMinutes={breakMinutes} ratePerMinute={ratePerMinute} />
         {compact && (
           <div className="audio-route-compact-proof" aria-label={`${tabProof?.label || sttInLabel}; Deepgram ${enOk && esOk ? 'EN and ES ready' : connectionState}`}>
             <div className="audio-route-compact-source-toggle" role="group" aria-label="Active call STT source">

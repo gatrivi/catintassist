@@ -1,4 +1,4 @@
-/** Translation quality helpers — v4.50.0 / v4.82.0 long-monologue chunks */
+/** Translation quality helpers — v4.50.0 / v4.94.0 tiny sentence chunks */
 
 import { peelCompleteSentences } from './transcriptFormat';
 import {
@@ -88,8 +88,9 @@ export const splitTranslatableSegments = (text) => {
 };
 
 /**
- * Sentence peel + ~35–45 word chunks for API requests (v4.82.0).
- * Replaces the old >80-word hard reject.
+ * Sentence peel + tiny chunks for API requests (v4.94.0).
+ * One sentence or one comma-clause at a time — never a paragraph: the local
+ * model returns tiny chunks in seconds but paragraphs stall for minutes.
  */
 export const splitLongForTranslation = (text, { maxWords = DEFAULT_MAX_SEGMENT_WORDS } = {}) =>
   segmentLongMonologue(text, { maxWords });

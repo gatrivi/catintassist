@@ -2,7 +2,6 @@ import {
   extractSensitiveTokens,
   normalizeTokenForCompare,
   diffSensitiveTokens,
-  salvageSensitiveTokens,
 } from './translationSensitiveTokens';
 
 describe('translationSensitiveTokens', () => {
@@ -29,8 +28,19 @@ describe('translationSensitiveTokens', () => {
     expect(normalizeTokenForCompare(missing[0])).toBe('d:5551234567');
   });
 
-  test('salvage uses Check marker', () => {
-    const out = salvageSensitiveTokens('Hola', ['555-123-4567']);
-    expect(out).toBe('Hola [⚠ Check: 555-123-4567]');
+  // v4.93.0 regression: ordinary phrases must NOT look like "addresses".
+  // These false positives flooded transcripts with [⚠ Check: …] markers.
+  test('ordinary words are not sensitive tokens', () => {
+    const bag = extractSensitiveTokens(
+      'allow up between 7 minutes 5 to 7 minutes to receive the email, but it can take up to 15 minutes. Select 1 of the providers.',
+    );
+    expect(bag.addresses).toEqual([]);
+    expect(bag.phones).toEqual([]);
+    expect(bag.ids).toEqual([]);
+  });
+
+  test('real street addresses still detected', () => {
+    const bag = extractSensitiveTokens('Send it to 123 Main Street please.');
+    expect(bag.addresses.length).toBeGreaterThan(0);
   });
 });

@@ -1,0 +1,1452 @@
+
+[tests] batch 1/9 (8 files)
+(node:3404) [DEP0040] DeprecationWarning: The `punycode` module is deprecated. Please use a userland alternative instead.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+PASS src/content/releaseNotes.test.js
+PASS src/components/ReleaseNotesModal.test.js
+PASS src/components/AudioRouteStatusBar.test.js
+PASS src/components/ConnectInterpretButton.test.js
+PASS src/components/ConfirmDialog.test.js
+PASS src/content/appGuideContent.test.js
+PASS src/components/HudInspector.test.js
+PASS src/components/ElementHint.test.js
+
+Test Suites: 8 passed, 8 total
+Tests:       25 passed, 25 total
+Snapshots:   0 total
+Time:        25.973 s
+Ran all test suites within paths "C:\zengatrivi\REACTJS\catintassist\src\components\AudioRouteStatusBar.test.js", "C:\zengatrivi\REACTJS\catintassist\src\components\ConfirmDialog.test.js", "C:\zengatrivi\REACTJS\catintassist\src\components\ConnectInterpretButton.test.js", "C:\zengatrivi\REACTJS\catintassist\src\components\ElementHint.test.js", "C:\zengatrivi\REACTJS\catintassist\src\components\HudInspector.test.js", "C:\zengatrivi\REACTJS\catintassist\src\components\ReleaseNotesModal.test.js", "C:\zengatrivi\REACTJS\catintassist\src\content\appGuideContent.test.js", "C:\zengatrivi\REACTJS\catintassist\src\content\releaseNotes.test.js".
+
+[tests] batch 2/9 (8 files)
+(node:21512) [DEP0040] DeprecationWarning: The `punycode` module is deprecated. Please use a userland alternative instead.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+PASS src/hooks/useDeepgram.verbose.test.js (12.081 s)
+PASS src/services/soundboardMetaService.test.js
+PASS src/services/cloudSync.test.js
+PASS src/hooks/useTranslate.persisted.test.js
+PASS src/utils/audioDeviceLabels.test.js
+PASS src/utils/appStatus.test.js
+PASS src/hooks/useTranslate.split.test.js
+PASS src/hooks/useTranslate.auto.test.js
+
+Test Suites: 8 passed, 8 total
+Tests:       24 passed, 24 total
+Snapshots:   0 total
+Time:        34.171 s
+Ran all test suites within paths "C:\zengatrivi\REACTJS\catintassist\src\hooks\useDeepgram.verbose.test.js", "C:\zengatrivi\REACTJS\catintassist\src\hooks\useTranslate.auto.test.js", "C:\zengatrivi\REACTJS\catintassist\src\hooks\useTranslate.persisted.test.js", "C:\zengatrivi\REACTJS\catintassist\src\hooks\useTranslate.split.test.js", "C:\zengatrivi\REACTJS\catintassist\src\services\cloudSync.test.js", "C:\zengatrivi\REACTJS\catintassist\src\services\soundboardMetaService.test.js", "C:\zengatrivi\REACTJS\catintassist\src\utils\appStatus.test.js", "C:\zengatrivi\REACTJS\catintassist\src\utils\audioDeviceLabels.test.js".
+
+[tests] batch 3/9 (8 files)
+(node:21124) [DEP0040] DeprecationWarning: The `punycode` module is deprecated. Please use a userland alternative instead.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+PASS src/utils/captionEngine.test.js (6.209 s)
+  ● Console
+
+    console.warn
+      [CAT VANISH] caption_bubble_split {
+        at: '2026-09-09T17:15:35.430Z',
+        ms: 6052,
+        flag: 'VANISH',
+        reason: 'caption_bubble_split',
+        id: 'dg-en-2.5-i',
+        turnId: 'turn-1788974135423',
+        beforeChars: 11,
+        afterChars: 6,
+        beforeWords: 2,
+        afterWords: 1,
+        lost: [ 'tail' ],
+        lostCount: 1,
+        remount: true,
+        derender: false,
+        stage: 'captionEngine.sealSplit',
+        extra: { sealedCount: 1, hasTail: true, sealedIds: [ 'dg-en-2.5-i' ] },
+        beforePreview: 'Hello. tail',
+        afterPreview: 'Hello.'
+      }
+
+    [0m [90m 62 |[39m
+     [90m 63 |[39m   [90m// eslint-disable-next-line no-console[39m
+    [31m[1m>[22m[39m[90m 64 |[39m   console[33m.[39mwarn([32m'[CAT VANISH]'[39m[33m,[39m reason[33m,[39m entry)[33m;[39m
+     [90m    |[39m           [31m[1m^[22m[39m
+     [90m 65 |[39m   [36mreturn[39m entry[33m;[39m
+     [90m 66 |[39m }
+     [90m 67 |[39m[0m
+
+      at flagVanish (src/utils/vanishTrace.js:64:11)
+      at reduceTranscriptEvent (src/utils/captionEngine.js:403:17)
+      at Object.<anonymous> (src/utils/captionEngine.test.js:106:44)
+
+    console.warn
+      [CAT VANISH] caption_bubble_split {
+        at: '2026-09-09T17:15:35.663Z',
+        ms: 6284,
+        flag: 'VANISH',
+        reason: 'caption_bubble_split',
+        id: 'dg-en-2.5-i',
+        turnId: 'turn-1788974135658',
+        beforeChars: 11,
+        afterChars: 6,
+        beforeWords: 2,
+        afterWords: 1,
+        lost: [ 'tail' ],
+        lostCount: 1,
+        remount: true,
+        derender: false,
+        stage: 'captionEngine.sealSplit',
+        extra: { sealedCount: 1, hasTail: true, sealedIds: [ 'dg-en-2.5-i' ] },
+        beforePreview: 'Hello. tail',
+        afterPreview: 'Hello.'
+      }
+
+    [0m [90m 62 |[39m
+     [90m 63 |[39m   [90m// eslint-disable-next-line no-console[39m
+    [31m[1m>[22m[39m[90m 64 |[39m   console[33m.[39mwarn([32m'[CAT VANISH]'[39m[33m,[39m reason[33m,[39m entry)[33m;[39m
+     [90m    |[39m           [31m[1m^[22m[39m
+     [90m 65 |[39m   [36mreturn[39m entry[33m;[39m
+     [90m 66 |[39m }
+     [90m 67 |[39m[0m
+
+      at flagVanish (src/utils/vanishTrace.js:64:11)
+      at reduceTranscriptEvent (src/utils/captionEngine.js:403:17)
+      at Object.<anonymous> (src/utils/captionEngine.test.js:134:44)
+
+    console.log
+      [OVERLAP] 1 words: tail
+
+      at removeOverlapPreservingDigitSequences (src/utils/sensitiveDataProtector.js:1033:56)
+
+    console.warn
+      [CAT VANISH] overlap_strip {
+        at: '2026-09-09T17:15:35.730Z',
+        ms: 6351,
+        flag: 'VANISH',
+        reason: 'overlap_strip',
+        id: null,
+        turnId: null,
+        beforeChars: 10,
+        afterChars: 4,
+        beforeWords: 2,
+        afterWords: 1,
+        lost: [ 'tail' ],
+        lostCount: 1,
+        remount: false,
+        derender: false,
+        stage: 'removeOverlapPreservingDigitSequences',
+        extra: { bestOverlap: 1, baseTail: 'Hello. tail' },
+        beforePreview: ' tail more',
+        afterPreview: 'more'
+      }
+
+    [0m [90m 62 |[39m
+     [90m 63 |[39m   [90m// eslint-disable-next-line no-console[39m
+    [31m[1m>[22m[39m[90m 64 |[39m   console[33m.[39mwarn([32m'[CAT VANISH]'[39m[33m,[39m reason[33m,[39m entry)[33m;[39m
+     [90m    |[39m           [31m[1m^[22m[39m
+     [90m 65 |[39m   [36mreturn[39m entry[33m;[39m
+     [90m 66 |[39m }
+     [90m 67 |[39m[0m
+
+      at flagVanish (src/utils/vanishTrace.js:64:11)
+      at removeOverlapPreservingDigitSequences (src/utils/sensitiveDataProtector.js:1046:15)
+      at reduceTranscriptEvent (src/utils/captionEngine.js:244:56)
+      at Object.<anonymous> (src/utils/captionEngine.test.js:148:47)
+
+    console.warn
+      [CAT VANISH] caption_bubble_split {
+        at: '2026-09-09T17:15:35.741Z',
+        ms: 6363,
+        flag: 'VANISH',
+        reason: 'caption_bubble_split',
+        id: 'dg-en-2.5-i',
+        turnId: 'turn-1788974135738',
+        beforeChars: 11,
+        afterChars: 6,
+        beforeWords: 2,
+        afterWords: 1,
+        lost: [ 'tail' ],
+        lostCount: 1,
+        remount: true,
+        derender: false,
+        stage: 'captionEngine.sealSplit',
+        extra: { sealedCount: 1, hasTail: true, sealedIds: [ 'dg-en-2.5-i' ] },
+        beforePreview: 'Hello. tail',
+        afterPreview: 'Hello.'
+      }
+
+    [0m [90m 62 |[39m
+     [90m 63 |[39m   [90m// eslint-disable-next-line no-console[39m
+    [31m[1m>[22m[39m[90m 64 |[39m   console[33m.[39mwarn([32m'[CAT VANISH]'[39m[33m,[39m reason[33m,[39m entry)[33m;[39m
+     [90m    |[39m           [31m[1m^[22m[39m
+     [90m 65 |[39m   [36mreturn[39m entry[33m;[39m
+     [90m 66 |[39m }
+     [90m 67 |[39m[0m
+
+      at flagVanish (src/utils/vanishTrace.js:64:11)
+      at reduceTranscriptEvent (src/utils/captionEngine.js:403:17)
+      at Object.<anonymous> (src/utils/captionEngine.test.js:170:44)
+
+    console.warn
+      [CAT VANISH] overlap_empty_freeze {
+        at: '2026-09-09T17:15:35.814Z',
+        ms: 6435,
+        flag: 'VANISH',
+        reason: 'overlap_empty_freeze',
+        id: 'dg-en-2.5-i',
+        turnId: 'turn-1788974135813',
+        beforeChars: 0,
+        afterChars: 0,
+        beforeWords: 0,
+        afterWords: 0,
+        lost: [],
+        lostCount: 0,
+        remount: false,
+        derender: false,
+        stage: 'captionEngine.interim',
+        extra: { note: 'cleaned empty — keep prev bubble', transcriptPreview: '' },
+        beforePreview: '',
+        afterPreview: ''
+      }
+
+    [0m [90m 62 |[39m
+     [90m 63 |[39m   [90m// eslint-disable-next-line no-console[39m
+    [31m[1m>[22m[39m[90m 64 |[39m   console[33m.[39mwarn([32m'[CAT VANISH]'[39m[33m,[39m reason[33m,[39m entry)[33m;[39m
+     [90m    |[39m           [31m[1m^[22m[39m
+     [90m 65 |[39m   [36mreturn[39m entry[33m;[39m
+     [90m 66 |[39m }
+     [90m 67 |[39m[0m
+
+      at flagVanish (src/utils/vanishTrace.js:64:11)
+      at reduceTranscriptEvent (src/utils/captionEngine.js:246:15)
+      at Object.<anonymous> (src/utils/captionEngine.test.js:276:41)
+
+PASS src/utils/callEndGuard.test.js
+PASS src/utils/audioSourceManager.test.js
+PASS src/utils/audioEditorCoreExport.test.js
+PASS src/utils/audioRoutePassthrough.test.js
+PASS src/utils/audioSelfTest.test.js
+PASS src/utils/callLogImport.test.js
+PASS src/utils/breakState.test.js
+
+Test Suites: 8 passed, 8 total
+Tests:       65 passed, 65 total
+Snapshots:   0 total
+Time:        28.268 s
+Ran all test suites within paths "C:\zengatrivi\REACTJS\catintassist\src\utils\audioEditorCoreExport.test.js", "C:\zengatrivi\REACTJS\catintassist\src\utils\audioRoutePassthrough.test.js", "C:\zengatrivi\REACTJS\catintassist\src\utils\audioSelfTest.test.js", "C:\zengatrivi\REACTJS\catintassist\src\utils\audioSourceManager.test.js", "C:\zengatrivi\REACTJS\catintassist\src\utils\breakState.test.js", "C:\zengatrivi\REACTJS\catintassist\src\utils\callEndGuard.test.js", "C:\zengatrivi\REACTJS\catintassist\src\utils\callLogImport.test.js", "C:\zengatrivi\REACTJS\catintassist\src\utils\captionEngine.test.js".
+
+[tests] batch 4/9 (8 files)
+(node:22332) [DEP0040] DeprecationWarning: The `punycode` module is deprecated. Please use a userland alternative instead.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+PASS src/utils/componentVisibility.test.js
+PASS src/utils/deepgramDiagnostics.test.js
+PASS src/utils/deepgramListenConfig.test.js
+PASS src/utils/deepgramRuntimeKey.test.js
+PASS src/utils/diffWordsStable.test.js
+PASS src/utils/defaultBackgrounds.test.js
+PASS src/utils/devSimulateCaptions.test.js
+PASS src/utils/deepgramSettingsPrompt.test.js
+
+Test Suites: 8 passed, 8 total
+Tests:       42 passed, 42 total
+Snapshots:   0 total
+Time:        18.339 s
+Ran all test suites within paths "C:\zengatrivi\REACTJS\catintassist\src\utils\componentVisibility.test.js", "C:\zengatrivi\REACTJS\catintassist\src\utils\deepgramDiagnostics.test.js", "C:\zengatrivi\REACTJS\catintassist\src\utils\deepgramListenConfig.test.js", "C:\zengatrivi\REACTJS\catintassist\src\utils\deepgramRuntimeKey.test.js", "C:\zengatrivi\REACTJS\catintassist\src\utils\deepgramSettingsPrompt.test.js", "C:\zengatrivi\REACTJS\catintassist\src\utils\defaultBackgrounds.test.js", "C:\zengatrivi\REACTJS\catintassist\src\utils\devSimulateCaptions.test.js", "C:\zengatrivi\REACTJS\catintassist\src\utils\diffWordsStable.test.js".
+
+[tests] batch 5/9 (8 files)
+(node:17804) [DEP0040] DeprecationWarning: The `punycode` module is deprecated. Please use a userland alternative instead.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+PASS src/utils/inputSource.test.js
+PASS src/utils/fixtureReplay.test.js
+  ● Console
+
+    console.warn
+      [CAT VANISH] caption_lane_text_rewrite {
+        at: '2026-09-09T17:16:34.418Z',
+        ms: 2190,
+        flag: 'VANISH',
+        reason: 'caption_lane_text_rewrite',
+        id: 'dg-en-1-i',
+        turnId: 'turn-1700000000000',
+        beforeChars: 35,
+        afterChars: 50,
+        beforeWords: 8,
+        afterWords: 8,
+        lost: [ 'five', 'five', 'five', 'one', 'two' ],
+        lostCount: 5,
+        remount: false,
+        derender: false,
+        stage: 'captionEngine.assignText',
+        extra: { winnerLang: 'en', shouldFinalize: true, enLen: 50, esLen: 0 },
+        beforePreview: 'my number is five five five one two',
+        afterPreview: 'My callback number is 5551234567 for John Example.'
+      }
+
+    [0m [90m 62 |[39m
+     [90m 63 |[39m   [90m// eslint-disable-next-line no-console[39m
+    [31m[1m>[22m[39m[90m 64 |[39m   console[33m.[39mwarn([32m'[CAT VANISH]'[39m[33m,[39m reason[33m,[39m entry)[33m;[39m
+     [90m    |[39m           [31m[1m^[22m[39m
+     [90m 65 |[39m   [36mreturn[39m entry[33m;[39m
+     [90m 66 |[39m }
+     [90m 67 |[39m[0m
+
+      at flagVanish (src/utils/vanishTrace.js:64:11)
+      at reduceTranscriptEvent (src/utils/captionEngine.js:314:17)
+      at applyDeepgramTranscriptPayload (src/utils/applyDeepgramTranscriptPayload.js:68:41)
+      at replayFixtureEvents (src/utils/fixtureReplay.js:61:51)
+      at Object.<anonymous> (src/utils/fixtureReplay.test.js:86:48)
+
+    console.warn
+      [CAT VANISH] caption_lane_text_rewrite {
+        at: '2026-09-09T17:16:34.659Z',
+        ms: 2407,
+        flag: 'VANISH',
+        reason: 'caption_lane_text_rewrite',
+        id: 'dg-en-2-i',
+        turnId: 'turn-1700000000000',
+        beforeChars: 42,
+        afterChars: 48,
+        beforeWords: 5,
+        afterWords: 8,
+        lost: [ 'five', 'hundred', 'milligrams' ],
+        lostCount: 3,
+        remount: false,
+        derender: false,
+        stage: 'captionEngine.assignText',
+        extra: { winnerLang: 'en', shouldFinalize: true, enLen: 48, esLen: 0 },
+        beforePreview: 'take examplecillin five hundred milligrams',
+        afterPreview: 'Take Examplecillin 500 mg twice daily with food.'
+      }
+
+    [0m [90m 62 |[39m
+     [90m 63 |[39m   [90m// eslint-disable-next-line no-console[39m
+    [31m[1m>[22m[39m[90m 64 |[39m   console[33m.[39mwarn([32m'[CAT VANISH]'[39m[33m,[39m reason[33m,[39m entry)[33m;[39m
+     [90m    |[39m           [31m[1m^[22m[39m
+     [90m 65 |[39m   [36mreturn[39m entry[33m;[39m
+     [90m 66 |[39m }
+     [90m 67 |[39m[0m
+
+      at flagVanish (src/utils/vanishTrace.js:64:11)
+      at reduceTranscriptEvent (src/utils/captionEngine.js:314:17)
+      at applyDeepgramTranscriptPayload (src/utils/applyDeepgramTranscriptPayload.js:68:41)
+      at replayFixtureEvents (src/utils/fixtureReplay.js:61:51)
+      at Object.<anonymous> (src/utils/fixtureReplay.test.js:102:48)
+
+    console.warn
+      [CAT VANISH] caption_lane_text_rewrite {
+        at: '2026-09-09T17:16:34.695Z',
+        ms: 2443,
+        flag: 'VANISH',
+        reason: 'caption_lane_text_rewrite',
+        id: 'dg-en-1-i',
+        turnId: 'turn-1700000000000',
+        beforeChars: 35,
+        afterChars: 50,
+        beforeWords: 8,
+        afterWords: 8,
+        lost: [ 'five', 'five', 'five', 'one', 'two' ],
+        lostCount: 5,
+        remount: false,
+        derender: false,
+        stage: 'captionEngine.assignText',
+        extra: { winnerLang: 'en', shouldFinalize: true, enLen: 50, esLen: 0 },
+        beforePreview: 'my number is five five five one two',
+        afterPreview: 'My callback number is 5551234567 for John Example.'
+      }
+
+    [0m [90m 62 |[39m
+     [90m 63 |[39m   [90m// eslint-disable-next-line no-console[39m
+    [31m[1m>[22m[39m[90m 64 |[39m   console[33m.[39mwarn([32m'[CAT VANISH]'[39m[33m,[39m reason[33m,[39m entry)[33m;[39m
+     [90m    |[39m           [31m[1m^[22m[39m
+     [90m 65 |[39m   [36mreturn[39m entry[33m;[39m
+     [90m 66 |[39m }
+     [90m 67 |[39m[0m
+
+      at flagVanish (src/utils/vanishTrace.js:64:11)
+      at reduceTranscriptEvent (src/utils/captionEngine.js:314:17)
+      at applyDeepgramTranscriptPayload (src/utils/applyDeepgramTranscriptPayload.js:68:41)
+      at replayFixtureEvents (src/utils/fixtureReplay.js:61:51)
+      at Object.<anonymous> (src/utils/fixtureReplay.test.js:110:50)
+
+    console.warn
+      [CAT VANISH] caption_lane_text_rewrite {
+        at: '2026-09-09T17:16:34.700Z',
+        ms: 2448,
+        flag: 'VANISH',
+        reason: 'caption_lane_text_rewrite',
+        id: 'dg-en-2-i',
+        turnId: 'turn-1700000000000',
+        beforeChars: 42,
+        afterChars: 48,
+        beforeWords: 5,
+        afterWords: 8,
+        lost: [ 'five', 'hundred', 'milligrams' ],
+        lostCount: 3,
+        remount: false,
+        derender: false,
+        stage: 'captionEngine.assignText',
+        extra: { winnerLang: 'en', shouldFinalize: true, enLen: 48, esLen: 0 },
+        beforePreview: 'take examplecillin five hundred milligrams',
+        afterPreview: 'Take Examplecillin 500 mg twice daily with food.'
+      }
+
+    [0m [90m 62 |[39m
+     [90m 63 |[39m   [90m// eslint-disable-next-line no-console[39m
+    [31m[1m>[22m[39m[90m 64 |[39m   console[33m.[39mwarn([32m'[CAT VANISH]'[39m[33m,[39m reason[33m,[39m entry)[33m;[39m
+     [90m    |[39m           [31m[1m^[22m[39m
+     [90m 65 |[39m   [36mreturn[39m entry[33m;[39m
+     [90m 66 |[39m }
+     [90m 67 |[39m[0m
+
+      at flagVanish (src/utils/vanishTrace.js:64:11)
+      at reduceTranscriptEvent (src/utils/captionEngine.js:314:17)
+      at applyDeepgramTranscriptPayload (src/utils/applyDeepgramTranscriptPayload.js:68:41)
+      at replayFixtureEvents (src/utils/fixtureReplay.js:61:51)
+      at Object.<anonymous> (src/utils/fixtureReplay.test.js:110:50)
+
+    console.warn
+      [CAT VANISH] caption_lane_text_rewrite {
+        at: '2026-09-09T17:16:34.708Z',
+        ms: 2456,
+        flag: 'VANISH',
+        reason: 'caption_lane_text_rewrite',
+        id: 'dg-en-3-i',
+        turnId: 'turn-1700000000000',
+        beforeChars: 48,
+        afterChars: 45,
+        beforeWords: 8,
+        afterWords: 8,
+        lost: [ 'january', 'second', 'nineteen', 'seventy' ],
+        lostCount: 4,
+        remount: false,
+        derender: false,
+        stage: 'captionEngine.assignText',
+        extra: { winnerLang: 'en', shouldFinalize: true, enLen: 45, esLen: 0 },
+        beforePreview: 'date of birth is january second nineteen seventy',
+        afterPreview: 'Date of birth for John Example is 01/02/1970.'
+      }
+
+    [0m [90m 62 |[39m
+     [90m 63 |[39m   [90m// eslint-disable-next-line no-console[39m
+    [31m[1m>[22m[39m[90m 64 |[39m   console[33m.[39mwarn([32m'[CAT VANISH]'[39m[33m,[39m reason[33m,[39m entry)[33m;[39m
+     [90m    |[39m           [31m[1m^[22m[39m
+     [90m 65 |[39m   [36mreturn[39m entry[33m;[39m
+     [90m 66 |[39m }
+     [90m 67 |[39m[0m
+
+      at flagVanish (src/utils/vanishTrace.js:64:11)
+      at reduceTranscriptEvent (src/utils/captionEngine.js:314:17)
+      at applyDeepgramTranscriptPayload (src/utils/applyDeepgramTranscriptPayload.js:68:41)
+      at replayFixtureEvents (src/utils/fixtureReplay.js:61:51)
+      at Object.<anonymous> (src/utils/fixtureReplay.test.js:110:50)
+
+    console.warn
+      [CAT VANISH] caption_lane_text_rewrite {
+        at: '2026-09-09T17:16:34.712Z',
+        ms: 2461,
+        flag: 'VANISH',
+        reason: 'caption_lane_text_rewrite',
+        id: 'dg-en-4-i',
+        turnId: 'turn-1700000000000',
+        beforeChars: 28,
+        afterChars: 41,
+        beforeWords: 7,
+        afterWords: 8,
+        lost: [ 'one', 'two', 'three' ],
+        lostCount: 3,
+        remount: false,
+        derender: false,
+        stage: 'captionEngine.assignText',
+        extra: { winnerLang: 'en', shouldFinalize: true, enLen: 41, esLen: 0 },
+        beforePreview: 'i live at one two three main',
+        afterPreview: 'I live at 123 Main Street in Exampletown.'
+      }
+
+    [0m [90m 62 |[39m
+     [90m 63 |[39m   [90m// eslint-disable-next-line no-console[39m
+    [31m[1m>[22m[39m[90m 64 |[39m   console[33m.[39mwarn([32m'[CAT VANISH]'[39m[33m,[39m reason[33m,[39m entry)[33m;[39m
+     [90m    |[39m           [31m[1m^[22m[39m
+     [90m 65 |[39m   [36mreturn[39m entry[33m;[39m
+     [90m 66 |[39m }
+     [90m 67 |[39m[0m
+
+      at flagVanish (src/utils/vanishTrace.js:64:11)
+      at reduceTranscriptEvent (src/utils/captionEngine.js:314:17)
+      at applyDeepgramTranscriptPayload (src/utils/applyDeepgramTranscriptPayload.js:68:41)
+      at replayFixtureEvents (src/utils/fixtureReplay.js:61:51)
+      at Object.<anonymous> (src/utils/fixtureReplay.test.js:110:50)
+
+    console.warn
+      [CAT VANISH] caption_lane_text_rewrite {
+        at: '2026-09-09T17:16:34.749Z',
+        ms: 2497,
+        flag: 'VANISH',
+        reason: 'caption_lane_text_rewrite',
+        id: 'dg-en-6-i',
+        turnId: 'turn-1700000000000',
+        beforeChars: 37,
+        afterChars: 38,
+        beforeWords: 5,
+        afterWords: 5,
+        lost: [ 'examplecillin' ],
+        lostCount: 1,
+        remount: false,
+        derender: false,
+        stage: 'captionEngine.assignText',
+        extra: { winnerLang: 'en', shouldFinalize: true, enLen: 38, esLen: 0 },
+        beforePreview: 'the medication might be examplecillin',
+        afterPreview: 'The medication might be Examplecillin.'
+      }
+
+    [0m [90m 62 |[39m
+     [90m 63 |[39m   [90m// eslint-disable-next-line no-console[39m
+    [31m[1m>[22m[39m[90m 64 |[39m   console[33m.[39mwarn([32m'[CAT VANISH]'[39m[33m,[39m reason[33m,[39m entry)[33m;[39m
+     [90m    |[39m           [31m[1m^[22m[39m
+     [90m 65 |[39m   [36mreturn[39m entry[33m;[39m
+     [90m 66 |[39m }
+     [90m 67 |[39m[0m
+
+      at flagVanish (src/utils/vanishTrace.js:64:11)
+      at reduceTranscriptEvent (src/utils/captionEngine.js:314:17)
+      at applyDeepgramTranscriptPayload (src/utils/applyDeepgramTranscriptPayload.js:68:41)
+      at replayFixtureEvents (src/utils/fixtureReplay.js:61:51)
+      at Object.<anonymous> (src/utils/fixtureReplay.test.js:110:50)
+
+    console.warn
+      [CAT VANISH] caption_lane_text_rewrite {
+        at: '2026-09-09T17:16:34.760Z',
+        ms: 2509,
+        flag: 'VANISH',
+        reason: 'caption_lane_text_rewrite',
+        id: 'dg-en-20-i',
+        turnId: 'turn-1700000004000',
+        beforeChars: 26,
+        afterChars: 57,
+        beforeWords: 4,
+        afterWords: 8,
+        lost: [ 'disconnect' ],
+        lostCount: 1,
+        remount: false,
+        derender: false,
+        stage: 'captionEngine.assignText',
+        extra: { winnerLang: 'en', shouldFinalize: true, enLen: 57, esLen: 0 },
+        beforePreview: 'sorry about the disconnect',
+        afterPreview: 'Sorry about the disconnect. Continuing with John Example.'
+      }
+
+    [0m [90m 62 |[39m
+     [90m 63 |[39m   [90m// eslint-disable-next-line no-console[39m
+    [31m[1m>[22m[39m[90m 64 |[39m   console[33m.[39mwarn([32m'[CAT VANISH]'[39m[33m,[39m reason[33m,[39m entry)[33m;[39m
+     [90m    |[39m           [31m[1m^[22m[39m
+     [90m 65 |[39m   [36mreturn[39m entry[33m;[39m
+     [90m 66 |[39m }
+     [90m 67 |[39m[0m
+
+      at flagVanish (src/utils/vanishTrace.js:64:11)
+      at reduceTranscriptEvent (src/utils/captionEngine.js:314:17)
+      at applyDeepgramTranscriptPayload (src/utils/applyDeepgramTranscriptPayload.js:68:41)
+      at replayFixtureEvents (src/utils/fixtureReplay.js:61:51)
+      at Object.<anonymous> (src/utils/fixtureReplay.test.js:110:50)
+
+    console.warn
+      [CAT VANISH] caption_bubble_split {
+        at: '2026-09-09T17:16:34.766Z',
+        ms: 2514,
+        flag: 'VANISH',
+        reason: 'caption_bubble_split',
+        id: 'dg-en-20-i',
+        turnId: 'turn-1700000004000',
+        beforeChars: 57,
+        afterChars: 27,
+        beforeWords: 8,
+        afterWords: 4,
+        lost: [ 'Continuing', 'with', 'John', 'Example.' ],
+        lostCount: 4,
+        remount: true,
+        derender: false,
+        stage: 'captionEngine.sealSplit',
+        extra: { sealedCount: 1, hasTail: true, sealedIds: [ 'dg-en-20-i' ] },
+        beforePreview: 'Sorry about the disconnect. Continuing with John Example.',
+        afterPreview: 'Sorry about the disconnect.'
+      }
+
+    [0m [90m 62 |[39m
+     [90m 63 |[39m   [90m// eslint-disable-next-line no-console[39m
+    [31m[1m>[22m[39m[90m 64 |[39m   console[33m.[39mwarn([32m'[CAT VANISH]'[39m[33m,[39m reason[33m,[39m entry)[33m;[39m
+     [90m    |[39m           [31m[1m^[22m[39m
+     [90m 65 |[39m   [36mreturn[39m entry[33m;[39m
+     [90m 66 |[39m }
+     [90m 67 |[39m[0m
+
+      at flagVanish (src/utils/vanishTrace.js:64:11)
+      at reduceTranscriptEvent (src/utils/captionEngine.js:403:17)
+      at applyDeepgramTranscriptPayload (src/utils/applyDeepgramTranscriptPayload.js:68:41)
+      at replayFixtureEvents (src/utils/fixtureReplay.js:61:51)
+      at Object.<anonymous> (src/utils/fixtureReplay.test.js:110:50)
+
+PASS src/utils/languageConfig.test.js
+PASS src/utils/liveBubbleHeight.test.js
+PASS src/utils/idleEar.test.js
+PASS src/utils/medicalTermLexicon.test.js
+PASS src/utils/holdState.test.js
+PASS src/utils/headerMetrics.test.js
+
+Test Suites: 8 passed, 8 total
+Tests:       36 passed, 36 total
+Snapshots:   0 total
+Time:        23.991 s
+Ran all test suites within paths "C:\zengatrivi\REACTJS\catintassist\src\utils\fixtureReplay.test.js", "C:\zengatrivi\REACTJS\catintassist\src\utils\headerMetrics.test.js", "C:\zengatrivi\REACTJS\catintassist\src\utils\holdState.test.js", "C:\zengatrivi\REACTJS\catintassist\src\utils\idleEar.test.js", "C:\zengatrivi\REACTJS\catintassist\src\utils\inputSource.test.js", "C:\zengatrivi\REACTJS\catintassist\src\utils\languageConfig.test.js", "C:\zengatrivi\REACTJS\catintassist\src\utils\liveBubbleHeight.test.js", "C:\zengatrivi\REACTJS\catintassist\src\utils\medicalTermLexicon.test.js".
+
+[tests] batch 6/9 (8 files)
+(node:24516) [DEP0040] DeprecationWarning: The `punycode` module is deprecated. Please use a userland alternative instead.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+PASS src/utils/phase0SmokeChecklist.test.js (5.002 s)
+PASS src/utils/releaseHighlight.test.js
+PASS src/utils/newcomerGuide.test.js
+PASS src/utils/pinnedCaptions.test.js
+PASS src/utils/offCallIdleMessages.test.js
+PASS src/utils/motionPreference.test.js
+PASS src/utils/personalDock.test.js
+PASS src/utils/releaseNotesStorage.test.js
+
+Test Suites: 8 passed, 8 total
+Tests:       38 passed, 38 total
+Snapshots:   0 total
+Time:        25.269 s
+Ran all test suites within paths "C:\zengatrivi\REACTJS\catintassist\src\utils\motionPreference.test.js", "C:\zengatrivi\REACTJS\catintassist\src\utils\newcomerGuide.test.js", "C:\zengatrivi\REACTJS\catintassist\src\utils\offCallIdleMessages.test.js", "C:\zengatrivi\REACTJS\catintassist\src\utils\personalDock.test.js", "C:\zengatrivi\REACTJS\catintassist\src\utils\phase0SmokeChecklist.test.js", "C:\zengatrivi\REACTJS\catintassist\src\utils\pinnedCaptions.test.js", "C:\zengatrivi\REACTJS\catintassist\src\utils\releaseHighlight.test.js", "C:\zengatrivi\REACTJS\catintassist\src\utils\releaseNotesStorage.test.js".
+
+[tests] batch 7/9 (8 files)
+(node:6636) [DEP0040] DeprecationWarning: The `punycode` module is deprecated. Please use a userland alternative instead.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+PASS src/utils/sensitiveDataProtector.test.js (5.872 s)
+  ● Console
+
+    console.warn
+      [CAT VANISH] display_digit_stitch {
+        at: '2026-09-09T17:17:40.743Z',
+        ms: 5223,
+        flag: 'VANISH',
+        reason: 'display_digit_stitch',
+        id: null,
+        turnId: null,
+        beforeChars: 19,
+        afterChars: 10,
+        beforeWords: 10,
+        afterWords: 1,
+        lost: [
+          '2', '1', '2', '5',
+          '5', '5', '0', '1',
+          '0', '0'
+        ],
+        lostCount: 10,
+        remount: false,
+        derender: false,
+        stage: 'applyDisplayProtections',
+        extra: { step: 'stitchSingleDigitSequences', sentinel: null },
+        beforePreview: '2 1 2 5 5 5 0 1 0 0',
+        afterPreview: '2125550100'
+      }
+
+    [0m [90m 62 |[39m
+     [90m 63 |[39m   [90m// eslint-disable-next-line no-console[39m
+    [31m[1m>[22m[39m[90m 64 |[39m   console[33m.[39mwarn([32m'[CAT VANISH]'[39m[33m,[39m reason[33m,[39m entry)[33m;[39m
+     [90m    |[39m           [31m[1m^[22m[39m
+     [90m 65 |[39m   [36mreturn[39m entry[33m;[39m
+     [90m 66 |[39m }
+     [90m 67 |[39m[0m
+
+      at flagVanish (src/utils/vanishTrace.js:64:11)
+      at applyDisplayProtections (src/utils/sensitiveDataProtector.js:543:17)
+      at Object.<anonymous> (src/utils/sensitiveDataProtector.test.js:126:35)
+
+    console.warn
+      [CAT VANISH] display_phone_ssn_reformat {
+        at: '2026-09-09T17:17:40.984Z',
+        ms: 5462,
+        flag: 'VANISH',
+        reason: 'display_phone_ssn_reformat',
+        id: null,
+        turnId: null,
+        beforeChars: 10,
+        afterChars: 12,
+        beforeWords: 1,
+        afterWords: 1,
+        lost: [ '2125550100' ],
+        lostCount: 1,
+        remount: false,
+        derender: false,
+        stage: 'applyDisplayProtections',
+        extra: { step: 'formatPhoneAndSSNDigits', sentinel: null },
+        beforePreview: '2125550100',
+        afterPreview: '212-555-0100'
+      }
+
+    [0m [90m 62 |[39m
+     [90m 63 |[39m   [90m// eslint-disable-next-line no-console[39m
+    [31m[1m>[22m[39m[90m 64 |[39m   console[33m.[39mwarn([32m'[CAT VANISH]'[39m[33m,[39m reason[33m,[39m entry)[33m;[39m
+     [90m    |[39m           [31m[1m^[22m[39m
+     [90m 65 |[39m   [36mreturn[39m entry[33m;[39m
+     [90m 66 |[39m }
+     [90m 67 |[39m[0m
+
+      at flagVanish (src/utils/vanishTrace.js:64:11)
+      at applyDisplayProtections (src/utils/sensitiveDataProtector.js:557:17)
+      at Object.<anonymous> (src/utils/sensitiveDataProtector.test.js:126:35)
+
+    console.warn
+      [CAT VANISH] display_phone_ssn_reformat {
+        at: '2026-09-09T17:17:41.154Z',
+        ms: 5633,
+        flag: 'VANISH',
+        reason: 'display_phone_ssn_reformat',
+        id: null,
+        turnId: null,
+        beforeChars: 15,
+        afterChars: 17,
+        beforeWords: 2,
+        afterWords: 2,
+        lost: [ '5551234567' ],
+        lostCount: 1,
+        remount: false,
+        derender: false,
+        stage: 'applyDisplayProtections',
+        extra: { step: 'formatPhoneAndSSNDigits', sentinel: null },
+        beforePreview: 'call 5551234567',
+        afterPreview: 'call 555-123-4567'
+      }
+
+    [0m [90m 62 |[39m
+     [90m 63 |[39m   [90m// eslint-disable-next-line no-console[39m
+    [31m[1m>[22m[39m[90m 64 |[39m   console[33m.[39mwarn([32m'[CAT VANISH]'[39m[33m,[39m reason[33m,[39m entry)[33m;[39m
+     [90m    |[39m           [31m[1m^[22m[39m
+     [90m 65 |[39m   [36mreturn[39m entry[33m;[39m
+     [90m 66 |[39m }
+     [90m 67 |[39m[0m
+
+      at flagVanish (src/utils/vanishTrace.js:64:11)
+      at applyDisplayProtections (src/utils/sensitiveDataProtector.js:557:17)
+      at Object.<anonymous> (src/utils/sensitiveDataProtector.test.js:177:35)
+
+    console.warn
+      [CAT VANISH] display_digit_stitch {
+        at: '2026-09-09T17:17:41.251Z',
+        ms: 5729,
+        flag: 'VANISH',
+        reason: 'display_digit_stitch',
+        id: null,
+        turnId: null,
+        beforeChars: 58,
+        afterChars: 49,
+        beforeWords: 17,
+        afterWords: 8,
+        lost: [
+          '1', '2', '3', '4',
+          '5', '6', '7', '8',
+          '9', '0'
+        ],
+        lostCount: 10,
+        remount: false,
+        derender: false,
+        stage: 'applyDisplayProtections',
+        extra: { step: 'stitchSingleDigitSequences', sentinel: 'address' },
+        beforePreview: 'my mailing address is 1 2 3 4 5 6 7 8 9 0 West 34th Street',
+        afterPreview: 'my mailing address is 1234567890 West 34th Street'
+      }
+
+    [0m [90m 62 |[39m
+     [90m 63 |[39m   [90m// eslint-disable-next-line no-console[39m
+    [31m[1m>[22m[39m[90m 64 |[39m   console[33m.[39mwarn([32m'[CAT VANISH]'[39m[33m,[39m reason[33m,[39m entry)[33m;[39m
+     [90m    |[39m           [31m[1m^[22m[39m
+     [90m 65 |[39m   [36mreturn[39m entry[33m;[39m
+     [90m 66 |[39m }
+     [90m 67 |[39m[0m
+
+      at flagVanish (src/utils/vanishTrace.js:64:11)
+      at applyDisplayProtections (src/utils/sensitiveDataProtector.js:543:17)
+      at Object.<anonymous> (src/utils/sensitiveDataProtector.test.js:209:40)
+
+    console.warn
+      [CAT VANISH] display_digit_stitch {
+        at: '2026-09-09T17:17:41.274Z',
+        ms: 5752,
+        flag: 'VANISH',
+        reason: 'display_digit_stitch',
+        id: null,
+        turnId: null,
+        beforeChars: 128,
+        afterChars: 119,
+        beforeWords: 27,
+        afterWords: 18,
+        lost: [
+          '1', '9', '3',  '5,',
+          '1', '1', '1,', '9',
+          '1', '9', '1',  '3'
+        ],
+        lostCount: 12,
+        remount: false,
+        derender: false,
+        stage: 'applyDisplayProtections',
+        extra: { step: 'stitchSingleDigitSequences', sentinel: 'address' },
+        beforePreview: 'For verification through HIPAA terms, I need the number 1 9 3 5, Madison Avenue, Unit, 1 1 1, Chula Vista, California, 9',
+        afterPreview: 'For verification through HIPAA terms, I need the number 1935, Madison Avenue, Unit, 111, Chula Vista, California, 91913'
+      }
+
+    [0m [90m 62 |[39m
+     [90m 63 |[39m   [90m// eslint-disable-next-line no-console[39m
+    [31m[1m>[22m[39m[90m 64 |[39m   console[33m.[39mwarn([32m'[CAT VANISH]'[39m[33m,[39m reason[33m,[39m entry)[33m;[39m
+     [90m    |[39m           [31m[1m^[22m[39m
+     [90m 65 |[39m   [36mreturn[39m entry[33m;[39m
+     [90m 66 |[39m }
+     [90m 67 |[39m[0m
+
+      at flagVanish (src/utils/vanishTrace.js:64:11)
+      at applyDisplayProtections (src/utils/sensitiveDataProtector.js:543:17)
+      at Object.<anonymous> (src/utils/sensitiveDataProtector.test.js:217:40)
+
+    console.warn
+      [CAT VANISH] display_phone_ssn_reformat {
+        at: '2026-09-09T17:17:41.301Z',
+        ms: 5779,
+        flag: 'VANISH',
+        reason: 'display_phone_ssn_reformat',
+        id: null,
+        turnId: null,
+        beforeChars: 29,
+        afterChars: 31,
+        beforeWords: 5,
+        afterWords: 5,
+        lost: [ '5551234567' ],
+        lostCount: 1,
+        remount: false,
+        derender: false,
+        stage: 'applyDisplayProtections',
+        extra: { step: 'formatPhoneAndSSNDigits', sentinel: 'phone' },
+        beforePreview: 'my phone number is 5551234567',
+        afterPreview: 'my phone number is 555-123-4567'
+      }
+
+    [0m [90m 62 |[39m
+     [90m 63 |[39m   [90m// eslint-disable-next-line no-console[39m
+    [31m[1m>[22m[39m[90m 64 |[39m   console[33m.[39mwarn([32m'[CAT VANISH]'[39m[33m,[39m reason[33m,[39m entry)[33m;[39m
+     [90m    |[39m           [31m[1m^[22m[39m
+     [90m 65 |[39m   [36mreturn[39m entry[33m;[39m
+     [90m 66 |[39m }
+     [90m 67 |[39m[0m
+
+      at flagVanish (src/utils/vanishTrace.js:64:11)
+      at applyDisplayProtections (src/utils/sensitiveDataProtector.js:557:17)
+      at Object.<anonymous> (src/utils/sensitiveDataProtector.test.js:245:35)
+
+    console.warn
+      [CAT VANISH] display_phone_ssn_reformat {
+        at: '2026-09-09T17:17:41.310Z',
+        ms: 5788,
+        flag: 'VANISH',
+        reason: 'display_phone_ssn_reformat',
+        id: null,
+        turnId: null,
+        beforeChars: 22,
+        afterChars: 24,
+        beforeWords: 4,
+        afterWords: 4,
+        lost: [ '123456789' ],
+        lostCount: 1,
+        remount: false,
+        derender: false,
+        stage: 'applyDisplayProtections',
+        extra: { step: 'formatPhoneAndSSNDigits', sentinel: 'ssn' },
+        beforePreview: 'my social is 123456789',
+        afterPreview: 'my social is 123-45-6789'
+      }
+
+    [0m [90m 62 |[39m
+     [90m 63 |[39m   [90m// eslint-disable-next-line no-console[39m
+    [31m[1m>[22m[39m[90m 64 |[39m   console[33m.[39mwarn([32m'[CAT VANISH]'[39m[33m,[39m reason[33m,[39m entry)[33m;[39m
+     [90m    |[39m           [31m[1m^[22m[39m
+     [90m 65 |[39m   [36mreturn[39m entry[33m;[39m
+     [90m 66 |[39m }
+     [90m 67 |[39m[0m
+
+      at flagVanish (src/utils/vanishTrace.js:64:11)
+      at applyDisplayProtections (src/utils/sensitiveDataProtector.js:557:17)
+      at Object.<anonymous> (src/utils/sensitiveDataProtector.test.js:251:35)
+
+    console.warn
+      [CAT VANISH] display_digit_stitch {
+        at: '2026-09-09T17:17:41.328Z',
+        ms: 5806,
+        flag: 'VANISH',
+        reason: 'display_digit_stitch',
+        id: null,
+        turnId: null,
+        beforeChars: 36,
+        afterChars: 34,
+        beforeWords: 8,
+        afterWords: 6,
+        lost: [ '5', '0', '0' ],
+        lostCount: 3,
+        remount: false,
+        derender: false,
+        stage: 'applyDisplayProtections',
+        extra: { step: 'stitchSingleDigitSequences', sentinel: 'medication' },
+        beforePreview: 'take medication 5 0 0 mg twice daily',
+        afterPreview: 'take medication 500 mg twice daily'
+      }
+
+    [0m [90m 62 |[39m
+     [90m 63 |[39m   [90m// eslint-disable-next-line no-console[39m
+    [31m[1m>[22m[39m[90m 64 |[39m   console[33m.[39mwarn([32m'[CAT VANISH]'[39m[33m,[39m reason[33m,[39m entry)[33m;[39m
+     [90m    |[39m           [31m[1m^[22m[39m
+     [90m 65 |[39m   [36mreturn[39m entry[33m;[39m
+     [90m 66 |[39m }
+     [90m 67 |[39m[0m
+
+      at flagVanish (src/utils/vanishTrace.js:64:11)
+      at applyDisplayProtections (src/utils/sensitiveDataProtector.js:543:17)
+      at Object.<anonymous> (src/utils/sensitiveDataProtector.test.js:257:40)
+
+    console.warn
+      [CAT VANISH] display_digit_stitch {
+        at: '2026-09-09T17:17:41.349Z',
+        ms: 5827,
+        flag: 'VANISH',
+        reason: 'display_digit_stitch',
+        id: null,
+        turnId: null,
+        beforeChars: 53,
+        afterChars: 44,
+        beforeWords: 17,
+        afterWords: 8,
+        lost: [
+          '1', '0', '1', '3',
+          '1', '5', '9', '5',
+          '1', '6'
+        ],
+        lostCount: 10,
+        remount: false,
+        derender: false,
+        stage: 'applyDisplayProtections',
+        extra: { step: 'stitchSingleDigitSequences', sentinel: 'ssn' },
+        beforePreview: 'I can take the Medicaid ID number 1 0 1 3 1 5 9 5 1 6',
+        afterPreview: 'I can take the Medicaid ID number 1013159516'
+      }
+
+    [0m [90m 62 |[39m
+     [90m 63 |[39m   [90m// eslint-disable-next-line no-console[39m
+    [31m[1m>[22m[39m[90m 64 |[39m   console[33m.[39mwarn([32m'[CAT VANISH]'[39m[33m,[39m reason[33m,[39m entry)[33m;[39m
+     [90m    |[39m           [31m[1m^[22m[39m
+     [90m 65 |[39m   [36mreturn[39m entry[33m;[39m
+     [90m 66 |[39m }
+     [90m 67 |[39m[0m
+
+      at flagVanish (src/utils/vanishTrace.js:64:11)
+      at applyDisplayProtections (src/utils/sensitiveDataProtector.js:543:17)
+      at Object.<anonymous> (src/utils/sensitiveDataProtector.test.js:271:35)
+
+    console.warn
+      [CAT VANISH] display_phone_ssn_reformat {
+        at: '2026-09-09T17:17:41.361Z',
+        ms: 5839,
+        flag: 'VANISH',
+        reason: 'display_phone_ssn_reformat',
+        id: null,
+        turnId: null,
+        beforeChars: 44,
+        afterChars: 46,
+        beforeWords: 8,
+        afterWords: 8,
+        lost: [ '1013159516' ],
+        lostCount: 1,
+        remount: false,
+        derender: false,
+        stage: 'applyDisplayProtections',
+        extra: { step: 'formatPhoneAndSSNDigits', sentinel: 'ssn' },
+        beforePreview: 'I can take the Medicaid ID number 1013159516',
+        afterPreview: 'I can take the Medicaid ID number 101-315-9516'
+      }
+
+    [0m [90m 62 |[39m
+     [90m 63 |[39m   [90m// eslint-disable-next-line no-console[39m
+    [31m[1m>[22m[39m[90m 64 |[39m   console[33m.[39mwarn([32m'[CAT VANISH]'[39m[33m,[39m reason[33m,[39m entry)[33m;[39m
+     [90m    |[39m           [31m[1m^[22m[39m
+     [90m 65 |[39m   [36mreturn[39m entry[33m;[39m
+     [90m 66 |[39m }
+     [90m 67 |[39m[0m
+
+      at flagVanish (src/utils/vanishTrace.js:64:11)
+      at applyDisplayProtections (src/utils/sensitiveDataProtector.js:557:17)
+      at Object.<anonymous> (src/utils/sensitiveDataProtector.test.js:271:35)
+
+    console.warn
+      [CAT VANISH] display_digit_stitch {
+        at: '2026-09-09T17:17:41.376Z',
+        ms: 5855,
+        flag: 'VANISH',
+        reason: 'display_digit_stitch',
+        id: null,
+        turnId: null,
+        beforeChars: 47,
+        afterChars: 38,
+        beforeWords: 15,
+        afterWords: 6,
+        lost: [
+          '1', '0', '1', '3',
+          '1', '5', '9', '5',
+          '1', '6'
+        ],
+        lostCount: 10,
+        remount: false,
+        derender: false,
+        stage: 'applyDisplayProtections',
+        extra: { step: 'stitchSingleDigitSequences', sentinel: 'ssn' },
+        beforePreview: 'viene el número de afiliado 1 0 1 3 1 5 9 5 1 6',
+        afterPreview: 'viene el número de afiliado 1013159516'
+      }
+
+    [0m [90m 62 |[39m
+     [90m 63 |[39m   [90m// eslint-disable-next-line no-console[39m
+    [31m[1m>[22m[39m[90m 64 |[39m   console[33m.[39mwarn([32m'[CAT VANISH]'[39m[33m,[39m reason[33m,[39m entry)[33m;[39m
+     [90m    |[39m           [31m[1m^[22m[39m
+     [90m 65 |[39m   [36mreturn[39m entry[33m;[39m
+     [90m 66 |[39m }
+     [90m 67 |[39m[0m
+
+      at flagVanish (src/utils/vanishTrace.js:64:11)
+      at applyDisplayProtections (src/utils/sensitiveDataProtector.js:543:17)
+      at Object.<anonymous> (src/utils/sensitiveDataProtector.test.js:283:35)
+
+    console.warn
+      [CAT VANISH] display_phone_ssn_reformat {
+        at: '2026-09-09T17:17:41.381Z',
+        ms: 5859,
+        flag: 'VANISH',
+        reason: 'display_phone_ssn_reformat',
+        id: null,
+        turnId: null,
+        beforeChars: 38,
+        afterChars: 40,
+        beforeWords: 6,
+        afterWords: 6,
+        lost: [ '1013159516' ],
+        lostCount: 1,
+        remount: false,
+        derender: false,
+        stage: 'applyDisplayProtections',
+        extra: { step: 'formatPhoneAndSSNDigits', sentinel: 'ssn' },
+        beforePreview: 'viene el número de afiliado 1013159516',
+        afterPreview: 'viene el número de afiliado 101-315-9516'
+      }
+
+    [0m [90m 62 |[39m
+     [90m 63 |[39m   [90m// eslint-disable-next-line no-console[39m
+    [31m[1m>[22m[39m[90m 64 |[39m   console[33m.[39mwarn([32m'[CAT VANISH]'[39m[33m,[39m reason[33m,[39m entry)[33m;[39m
+     [90m    |[39m           [31m[1m^[22m[39m
+     [90m 65 |[39m   [36mreturn[39m entry[33m;[39m
+     [90m 66 |[39m }
+     [90m 67 |[39m[0m
+
+      at flagVanish (src/utils/vanishTrace.js:64:11)
+      at applyDisplayProtections (src/utils/sensitiveDataProtector.js:557:17)
+      at Object.<anonymous> (src/utils/sensitiveDataProtector.test.js:283:35)
+
+    console.warn
+      [CAT VANISH] display_phone_ssn_reformat {
+        at: '2026-09-09T17:17:41.418Z',
+        ms: 5896,
+        flag: 'VANISH',
+        reason: 'display_phone_ssn_reformat',
+        id: null,
+        turnId: null,
+        beforeChars: 69,
+        afterChars: 71,
+        beforeWords: 11,
+        afterWords: 11,
+        lost: [ '1013159516,' ],
+        lostCount: 1,
+        remount: false,
+        derender: false,
+        stage: 'applyDisplayProtections',
+        extra: { step: 'formatPhoneAndSSNDigits', sentinel: 'ssn' },
+        beforePreview: 'my Medicaid ID number is 1013159516, Madison Avenue appointment May 8',
+        afterPreview: 'my Medicaid ID number is 101-315-9516, Madison Avenue appointment May 8'
+      }
+
+    [0m [90m 62 |[39m
+     [90m 63 |[39m   [90m// eslint-disable-next-line no-console[39m
+    [31m[1m>[22m[39m[90m 64 |[39m   console[33m.[39mwarn([32m'[CAT VANISH]'[39m[33m,[39m reason[33m,[39m entry)[33m;[39m
+     [90m    |[39m           [31m[1m^[22m[39m
+     [90m 65 |[39m   [36mreturn[39m entry[33m;[39m
+     [90m 66 |[39m }
+     [90m 67 |[39m[0m
+
+      at flagVanish (src/utils/vanishTrace.js:64:11)
+      at applyDisplayProtections (src/utils/sensitiveDataProtector.js:557:17)
+      at Object.<anonymous> (src/utils/sensitiveDataProtector.test.js:289:35)
+
+    console.warn
+      [CAT VANISH] display_digit_stitch {
+        at: '2026-09-09T17:17:41.459Z',
+        ms: 5937,
+        flag: 'VANISH',
+        reason: 'display_digit_stitch',
+        id: null,
+        turnId: null,
+        beforeChars: 60,
+        afterChars: 56,
+        beforeWords: 11,
+        afterWords: 7,
+        lost: [ '9', '1', '9', '1', '3,' ],
+        lostCount: 5,
+        remount: false,
+        derender: false,
+        stage: 'applyDisplayProtections',
+        extra: { step: 'stitchSingleDigitSequences', sentinel: 'address' },
+        beforePreview: 'For verification through HIPAA, number 9 1 9 1 3, California',
+        afterPreview: 'For verification through HIPAA, number 91913, California'
+      }
+
+    [0m [90m 62 |[39m
+     [90m 63 |[39m   [90m// eslint-disable-next-line no-console[39m
+    [31m[1m>[22m[39m[90m 64 |[39m   console[33m.[39mwarn([32m'[CAT VANISH]'[39m[33m,[39m reason[33m,[39m entry)[33m;[39m
+     [90m    |[39m           [31m[1m^[22m[39m
+     [90m 65 |[39m   [36mreturn[39m entry[33m;[39m
+     [90m 66 |[39m }
+     [90m 67 |[39m[0m
+
+      at flagVanish (src/utils/vanishTrace.js:64:11)
+      at applyDisplayProtections (src/utils/sensitiveDataProtector.js:543:17)
+      at Object.<anonymous> (src/utils/sensitiveDataProtector.test.js:315:41)
+
+    console.warn
+      [CAT VANISH] hallucination_filler_wipe {
+        at: '2026-09-09T17:17:41.567Z',
+        ms: 6047,
+        flag: 'VANISH',
+        reason: 'hallucination_filler_wipe',
+        id: null,
+        turnId: null,
+        beforeChars: 5,
+        afterChars: 0,
+        beforeWords: 1,
+        afterWords: 0,
+        lost: [ 'bueno' ],
+        lostCount: 1,
+        remount: false,
+        derender: true,
+        stage: 'hallucinationGuard',
+        extra: { filler: 'bueno' },
+        beforePreview: 'bueno',
+        afterPreview: ''
+      }
+
+    [0m [90m 62 |[39m
+     [90m 63 |[39m   [90m// eslint-disable-next-line no-console[39m
+    [31m[1m>[22m[39m[90m 64 |[39m   console[33m.[39mwarn([32m'[CAT VANISH]'[39m[33m,[39m reason[33m,[39m entry)[33m;[39m
+     [90m    |[39m           [31m[1m^[22m[39m
+     [90m 65 |[39m   [36mreturn[39m entry[33m;[39m
+     [90m 66 |[39m }
+     [90m 67 |[39m[0m
+
+      at flagVanish (src/utils/vanishTrace.js:64:11)
+      at hallucinationGuard (src/utils/sensitiveDataProtector.js:924:17)
+      at Object.<anonymous> (src/utils/sensitiveDataProtector.test.js:457:30)
+
+    console.warn
+      [CAT VANISH] hallucination_filler_wipe {
+        at: '2026-09-09T17:17:41.575Z',
+        ms: 6053,
+        flag: 'VANISH',
+        reason: 'hallucination_filler_wipe',
+        id: null,
+        turnId: null,
+        beforeChars: 2,
+        afterChars: 0,
+        beforeWords: 1,
+        afterWords: 0,
+        lost: [ 'um' ],
+        lostCount: 1,
+        remount: false,
+        derender: true,
+        stage: 'hallucinationGuard',
+        extra: { filler: 'um' },
+        beforePreview: 'um',
+        afterPreview: ''
+      }
+
+    [0m [90m 62 |[39m
+     [90m 63 |[39m   [90m// eslint-disable-next-line no-console[39m
+    [31m[1m>[22m[39m[90m 64 |[39m   console[33m.[39mwarn([32m'[CAT VANISH]'[39m[33m,[39m reason[33m,[39m entry)[33m;[39m
+     [90m    |[39m           [31m[1m^[22m[39m
+     [90m 65 |[39m   [36mreturn[39m entry[33m;[39m
+     [90m 66 |[39m }
+     [90m 67 |[39m[0m
+
+      at flagVanish (src/utils/vanishTrace.js:64:11)
+      at hallucinationGuard (src/utils/sensitiveDataProtector.js:924:17)
+      at Object.<anonymous> (src/utils/sensitiveDataProtector.test.js:458:30)
+
+    console.warn
+      [CAT VANISH] hallucination_stutter_dedupe {
+        at: '2026-09-09T17:17:41.586Z',
+        ms: 6064,
+        flag: 'VANISH',
+        reason: 'hallucination_stutter_dedupe',
+        id: null,
+        turnId: null,
+        beforeChars: 19,
+        afterChars: 11,
+        beforeWords: 4,
+        afterWords: 2,
+        lost: [],
+        lostCount: 0,
+        remount: false,
+        derender: false,
+        stage: 'hallucinationGuard',
+        extra: null,
+        beforePreview: 'the the the patient',
+        afterPreview: 'the patient'
+      }
+
+    [0m [90m 62 |[39m
+     [90m 63 |[39m   [90m// eslint-disable-next-line no-console[39m
+    [31m[1m>[22m[39m[90m 64 |[39m   console[33m.[39mwarn([32m'[CAT VANISH]'[39m[33m,[39m reason[33m,[39m entry)[33m;[39m
+     [90m    |[39m           [31m[1m^[22m[39m
+     [90m 65 |[39m   [36mreturn[39m entry[33m;[39m
+     [90m 66 |[39m }
+     [90m 67 |[39m[0m
+
+      at flagVanish (src/utils/vanishTrace.js:64:11)
+      at hallucinationGuard (src/utils/sensitiveDataProtector.js:996:15)
+      at Object.<anonymous> (src/utils/sensitiveDataProtector.test.js:467:30)
+
+    console.log
+      [OVERLAP] 1 words: thirty
+
+      at removeOverlapPreservingDigitSequences (src/utils/sensitiveDataProtector.js:1033:56)
+
+    console.log
+      [OVERLAP] 1 words: 212
+
+      at removeOverlapPreservingDigitSequences (src/utils/sensitiveDataProtector.js:1033:56)
+
+    console.log
+      [OVERLAP] 2 words: scheduled for
+
+      at removeOverlapPreservingDigitSequences (src/utils/sensitiveDataProtector.js:1033:56)
+
+    console.log
+      [OVERLAP] 1 words: metformin
+
+      at removeOverlapPreservingDigitSequences (src/utils/sensitiveDataProtector.js:1033:56)
+
+    console.log
+      [OVERLAP] 1 words: costs
+
+      at removeOverlapPreservingDigitSequences (src/utils/sensitiveDataProtector.js:1033:56)
+
+PASS src/utils/routeDiagnostics.test.js
+  ● Console
+
+    console.debug
+      [route] play_start {
+        type: 'play_start',
+        at: 1788974264027,
+        sttActive: true,
+        clipKey: 'greeting_en_morning',
+        routeMode: 'passthrough'
+      }
+
+      at logRouteEvent (src/utils/routeDiagnostics.js:49:13)
+
+PASS src/utils/studyDecks.test.js
+PASS src/utils/stableLiveTranscript.test.js
+PASS src/utils/scratchDebug.test.js
+  ● Console
+
+    console.log
+      sentinel: {"mode":"ssn","lang":"es"}
+
+      at Object.<anonymous> (src/utils/scratchDebug.test.js:12:13)
+
+    console.log
+      masked: "viene el número de afiliado 1 0 1 3 1 5 9 5 1 6"
+
+      at Object.<anonymous> (src/utils/scratchDebug.test.js:14:13)
+
+    console.log
+      stitched: "viene el número de afiliado 1 0 1 3 1 5 9 5 1 6"
+
+      at Object.<anonymous> (src/utils/scratchDebug.test.js:15:13)
+
+    console.log
+      before: "viene el número de afiliado "
+
+      at Object.<anonymous> (src/utils/scratchDebug.test.js:18:13)
+
+    console.log
+      dateFrag: false
+
+      at Object.<anonymous> (src/utils/scratchDebug.test.js:19:13)
+
+    console.log
+      addrFrag: true
+
+      at Object.<anonymous> (src/utils/scratchDebug.test.js:20:13)
+
+PASS src/utils/scoreboardLayout.test.js
+PASS src/utils/routeVerification.test.js
+PASS src/utils/splashStorage.test.js
+
+Test Suites: 8 passed, 8 total
+Tests:       124 passed, 124 total
+Snapshots:   0 total
+Time:        20.646 s
+Ran all test suites within paths "C:\zengatrivi\REACTJS\catintassist\src\utils\routeDiagnostics.test.js", "C:\zengatrivi\REACTJS\catintassist\src\utils\routeVerification.test.js", "C:\zengatrivi\REACTJS\catintassist\src\utils\scoreboardLayout.test.js", "C:\zengatrivi\REACTJS\catintassist\src\utils\scratchDebug.test.js", "C:\zengatrivi\REACTJS\catintassist\src\utils\sensitiveDataProtector.test.js", "C:\zengatrivi\REACTJS\catintassist\src\utils\splashStorage.test.js", "C:\zengatrivi\REACTJS\catintassist\src\utils\stableLiveTranscript.test.js", "C:\zengatrivi\REACTJS\catintassist\src\utils\studyDecks.test.js".
+
+[tests] batch 8/9 (8 files)
+(node:23900) [DEP0040] DeprecationWarning: The `punycode` module is deprecated. Please use a userland alternative instead.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+PASS src/utils/translationQuality.test.js
+PASS src/utils/translationApplicator.test.js
+PASS src/utils/translationFixtureReplay.test.js
+PASS src/utils/translationEngines.test.js
+PASS src/utils/themePalette.test.js
+PASS src/utils/translationRequestQueue.test.js
+PASS src/utils/transcriptFormat.test.js
+PASS src/utils/transcriptCorrections.test.js
+
+Test Suites: 8 passed, 8 total
+Tests:       91 passed, 91 total
+Snapshots:   0 total
+Time:        7.206 s, estimated 16 s
+Ran all test suites within paths "C:\zengatrivi\REACTJS\catintassist\src\utils\themePalette.test.js", "C:\zengatrivi\REACTJS\catintassist\src\utils\transcriptCorrections.test.js", "C:\zengatrivi\REACTJS\catintassist\src\utils\transcriptFormat.test.js", "C:\zengatrivi\REACTJS\catintassist\src\utils\translationApplicator.test.js", "C:\zengatrivi\REACTJS\catintassist\src\utils\translationEngines.test.js", "C:\zengatrivi\REACTJS\catintassist\src\utils\translationFixtureReplay.test.js", "C:\zengatrivi\REACTJS\catintassist\src\utils\translationQuality.test.js", "C:\zengatrivi\REACTJS\catintassist\src\utils\translationRequestQueue.test.js".
+
+[tests] batch 9/9 (7 files)
+(node:19340) [DEP0040] DeprecationWarning: The `punycode` module is deprecated. Please use a userland alternative instead.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+PASS src/utils/translationSensitiveTokens.test.js
+PASS src/utils/vanishTrace.test.js
+  ● Console
+
+    console.warn
+      [CAT VANISH] test_reason {
+        at: '2026-09-09T17:18:04.859Z',
+        ms: 320,
+        flag: 'VANISH',
+        reason: 'test_reason',
+        id: null,
+        turnId: null,
+        beforeChars: 11,
+        afterChars: 5,
+        beforeWords: 2,
+        afterWords: 1,
+        lost: [ 'world' ],
+        lostCount: 1,
+        remount: false,
+        derender: false,
+        stage: null,
+        extra: null,
+        beforePreview: 'hello world',
+        afterPreview: 'hello'
+      }
+
+    [0m [90m 62 |[39m
+     [90m 63 |[39m   [90m// eslint-disable-next-line no-console[39m
+    [31m[1m>[22m[39m[90m 64 |[39m   console[33m.[39mwarn([32m'[CAT VANISH]'[39m[33m,[39m reason[33m,[39m entry)[33m;[39m
+     [90m    |[39m           [31m[1m^[22m[39m
+     [90m 65 |[39m   [36mreturn[39m entry[33m;[39m
+     [90m 66 |[39m }
+     [90m 67 |[39m[0m
+
+      at flagVanish (src/utils/vanishTrace.js:64:11)
+      at Object.<anonymous> (src/utils/vanishTrace.test.js:27:29)
+
+    console.warn
+      [CAT VANISH] dom_bubble_removed {
+        at: '2026-09-09T17:18:04.891Z',
+        ms: 352,
+        flag: 'VANISH',
+        reason: 'dom_bubble_removed',
+        id: null,
+        turnId: null,
+        beforeChars: 24,
+        afterChars: 0,
+        beforeWords: 4,
+        afterWords: 0,
+        lost: [ 'my', 'phone', 'is', '555-123-4567' ],
+        lostCount: 4,
+        remount: false,
+        derender: true,
+        stage: 'observeDomVanish',
+        extra: null,
+        beforePreview: 'my phone is 555-123-4567',
+        afterPreview: ''
+      }
+
+    [0m [90m 62 |[39m
+     [90m 63 |[39m   [90m// eslint-disable-next-line no-console[39m
+    [31m[1m>[22m[39m[90m 64 |[39m   console[33m.[39mwarn([32m'[CAT VANISH]'[39m[33m,[39m reason[33m,[39m entry)[33m;[39m
+     [90m    |[39m           [31m[1m^[22m[39m
+     [90m 65 |[39m   [36mreturn[39m entry[33m;[39m
+     [90m 66 |[39m }
+     [90m 67 |[39m[0m
+
+      at flagVanish (src/utils/vanishTrace.js:64:11)
+      at forEach (src/utils/vanishTrace.js:93:9)
+          at Proxy.forEach (<anonymous>)
+      at forEach (src/utils/vanishTrace.js:87:22)
+          at Array.forEach (<anonymous>)
+      at MutationObserver.<anonymous> (src/utils/vanishTrace.js:86:15)
+      at MutationObserver.invokeTheCallbackFunction (node_modules/jsdom/lib/jsdom/living/generated/MutationCallback.js:23:26)
+      at notifyMutationObservers (node_modules/jsdom/lib/jsdom/living/helpers/mutation-observers.js:160:22)
+      at node_modules/jsdom/lib/jsdom/living/helpers/mutation-observers.js:133:5
+
+    console.warn
+      [CAT VANISH] dom_bubble_relocated {
+        at: '2026-09-09T17:18:04.900Z',
+        ms: 361,
+        flag: 'VANISH',
+        reason: 'dom_bubble_relocated',
+        id: null,
+        turnId: null,
+        beforeChars: 24,
+        afterChars: 24,
+        beforeWords: 4,
+        afterWords: 4,
+        lost: [],
+        lostCount: 0,
+        remount: true,
+        derender: false,
+        stage: 'observeDomVanish',
+        extra: { gapMs: 8 },
+        beforePreview: 'my phone is 555-123-4567',
+        afterPreview: 'my phone is 555-123-4567'
+      }
+
+    [0m [90m 62 |[39m
+     [90m 63 |[39m   [90m// eslint-disable-next-line no-console[39m
+    [31m[1m>[22m[39m[90m 64 |[39m   console[33m.[39mwarn([32m'[CAT VANISH]'[39m[33m,[39m reason[33m,[39m entry)[33m;[39m
+     [90m    |[39m           [31m[1m^[22m[39m
+     [90m 65 |[39m   [36mreturn[39m entry[33m;[39m
+     [90m 66 |[39m }
+     [90m 67 |[39m[0m
+
+      at flagVanish (src/utils/vanishTrace.js:64:11)
+      at forEach (src/utils/vanishTrace.js:112:11)
+          at Proxy.forEach (<anonymous>)
+      at forEach (src/utils/vanishTrace.js:101:20)
+          at Array.forEach (<anonymous>)
+      at MutationObserver.<anonymous> (src/utils/vanishTrace.js:86:15)
+      at MutationObserver.invokeTheCallbackFunction (node_modules/jsdom/lib/jsdom/living/generated/MutationCallback.js:23:26)
+      at notifyMutationObservers (node_modules/jsdom/lib/jsdom/living/helpers/mutation-observers.js:160:22)
+      at node_modules/jsdom/lib/jsdom/living/helpers/mutation-observers.js:133:5
+
+PASS src/utils/workspaceLayout.test.js
+PASS src/utils/wellbeingDock.test.js
+PASS src/utils/translationRuntimeKeys.test.js
+PASS src/utils/wordConfidenceAlign.test.js
+PASS src/utils/wellbeingNudges.test.js
+
+Test Suites: 7 passed, 7 total
+Tests:       21 passed, 21 total
+Snapshots:   0 total
+Time:        7.091 s, estimated 8 s
+Ran all test suites within paths "C:\zengatrivi\REACTJS\catintassist\src\utils\translationRuntimeKeys.test.js", "C:\zengatrivi\REACTJS\catintassist\src\utils\translationSensitiveTokens.test.js", "C:\zengatrivi\REACTJS\catintassist\src\utils\vanishTrace.test.js", "C:\zengatrivi\REACTJS\catintassist\src\utils\wellbeingDock.test.js", "C:\zengatrivi\REACTJS\catintassist\src\utils\wellbeingNudges.test.js", "C:\zengatrivi\REACTJS\catintassist\src\utils\wordConfidenceAlign.test.js", "C:\zengatrivi\REACTJS\catintassist\src\utils\workspaceLayout.test.js".
+
+[tests] passed 71 files in fresh-memory batches

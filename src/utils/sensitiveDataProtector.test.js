@@ -258,6 +258,36 @@ describe('sentinel display gate (Phase C)', () => {
     expect(out).not.toMatch(/\d{3}-\d{3}-\d{4}/);
     expect(out).toMatch(/500\s*mg|5 0 0\s*mg/);
   });
+
+  test('Phase G: EN affiliate/Medicaid ID cues hit ssn sentinel', () => {
+    expect(detectSentinelContext('here come 2 numbers, there is the affiliate number', 'en').mode).toBe('ssn');
+    expect(detectSentinelContext('there is the Medicaid ID number, which one do you need', 'en').mode).toBe('ssn');
+    expect(detectSentinelContext('I can take the member number', 'en').mode).toBe('ssn');
+  });
+
+  test('Phase G: EN Medicaid ID digits stitch + group as one unit', () => {
+    const raw = 'I can take the Medicaid ID number 1 0 1 3 1 5 9 5 1 6';
+    expect(detectSentinelContext(raw, 'en').mode).toBe('ssn');
+    expect(applyDisplayProtections(raw, 'en')).toMatch(/101-315-9516/);
+  });
+
+  test('Phase G: ES afiliado/Medicaid cues hit ssn sentinel', () => {
+    expect(detectSentinelContext('aquí vienen 2 números, viene el número de afiliado', 'es').mode).toBe('ssn');
+    expect(detectSentinelContext('viene el número de identificación del Medicaid, cuál necesita', 'es').mode).toBe('ssn');
+    expect(detectSentinelContext('puedo tomar el número de miembro', 'es').mode).toBe('ssn');
+  });
+
+  test('Phase G: ES afiliado digits stitch + group as one unit', () => {
+    const raw = 'viene el número de afiliado 1 0 1 3 1 5 9 5 1 6';
+    expect(detectSentinelContext(raw, 'es').mode).toBe('ssn');
+    expect(applyDisplayProtections(raw, 'es')).toMatch(/101-315-9516/);
+  });
+
+  test('Phase G: ssn sentinel wins over address/date so ID digits still group', () => {
+    const raw = 'my Medicaid ID number is 1013159516, Madison Avenue appointment May 8';
+    expect(detectSentinelContext(raw, 'en').mode).toBe('ssn');
+    expect(applyDisplayProtections(raw, 'en')).toMatch(/101-315-9516/);
+  });
 });
 
 describe('findAddressUnits / findEmailUnits (Phase F)', () => {

@@ -17,7 +17,8 @@ import {
   formatRouteDiagLine,
   ROUTE_EVENT,
 } from '../utils/routeDiagnostics';
-import { analyzeBlobHealth, formatHealthDisplay, truncateDeviceLabel, isLocalOnlyPlayback, getPreflightSteps, isPreflightReady, playTestToneSink } from '../utils/audioSelfTest';
+import { analyzeClipLegibility, formatHealthDisplay, truncateDeviceLabel, isLocalOnlyPlayback, getPreflightSteps, isPreflightReady, playTestToneSink } from '../utils/audioSelfTest';
+import { getSoundboardItem } from '../services/soundboardMetaService';
 import {
   buildRouteFingerprint,
   isManualCallOk,
@@ -27,6 +28,7 @@ import {
 } from '../utils/routeVerification';
 import { useAudioSettings } from '../contexts/AudioSettingsContext';
 import { diagnoseVbCableRoute } from '../utils/audioSourceManager';
+import { displayDeviceName, readKnownDeviceLabels } from '../utils/audioDeviceLabels';
 import AudioEditorPanel from './AudioEditorPanel';
 import { getEffectiveDeepgramKey } from '../utils/deepgramRuntimeKey';
 import { ElementHintTarget } from './ElementHint';
@@ -132,6 +134,20 @@ export const ACTIONS = [
   { id: 'closer_louder', label: 'Louder', dynamic: false },
   { id: 'limit_40_en', label: '40 Word Limit', lang: 'en', dynamic: false },
   { id: 'limit_40_es', label: '40 Word Limit', lang: 'es', dynamic: false },
+  { id: 'open_client', label: 'Client Open', lang: 'en', dynamic: false },
+  { id: 'open_lep', label: 'LEP Open', lang: 'en', dynamic: false },
+  { id: 'direct_dial', label: 'Direct Dial', lang: 'en', dynamic: false },
+  { id: 'repeat', label: 'Repeat', lang: 'en', dynamic: false },
+  { id: 'segments', label: 'Segments', lang: 'en', dynamic: false },
+  { id: 'interrupt', label: 'Interrupt', lang: 'en', dynamic: false },
+  { id: 'static_cover', label: 'Static', lang: 'en', dynamic: false },
+  { id: 'ghost', label: 'Ghost', lang: 'en', dynamic: false },
+  { id: 'disengage_offer', label: 'Stay/Leave', lang: 'en', dynamic: false },
+  { id: 'blocked_intake', label: 'Blocked', lang: 'en', dynamic: false },
+  { id: 'voicemail', label: 'Voicemail', lang: 'en', dynamic: false },
+  { id: 'operator_12241', label: 'Operator', lang: 'en', dynamic: false },
+  { id: 'closing', label: 'Closing', lang: 'en', dynamic: false },
+  { id: 'signoff_lep', label: 'LEP Bye', lang: 'en', dynamic: false },
 ];
 
 const getSetupStats = (blobs) => {
@@ -168,6 +184,9 @@ export const GreetingsPanel = ({ onEditModeChange, onExitStudio, micTestMode = f
   const [timeOfDay, setTimeOfDay] = useState('morning');
   const [blobs, setBlobs] = useState({});
   const [healthScores, setHealthScores] = useState(() => JSON.parse(localStorage.getItem('catint_audio_health')) || {});
+  const [heardByRobot, setHeardByRobot] = useState(() => {
+    try { return JSON.parse(localStorage.getItem('catint_audio_health_heard')) || {}; } catch { return {}; }
+  });
   const [manualCallOk, setManualCallOkStore] = useState(() => loadManualCallOk());
   const [pendingRouteConfirm, setPendingRouteConfirm] = useState(null);
   const [lastRouteTest, setLastRouteTest] = useState(null);
@@ -334,13 +353,25 @@ export const GreetingsPanel = ({ onEditModeChange, onExitStudio, micTestMode = f
     if (selectedSinkId) bindAudioToSink(audioRefSink.current, selectedSinkId);
   }, [selectedSinkId]);
 
+  // v4.87.0: remembered labels keep the route readable on fresh origins.
+  const knownGreetLabels = readKnownDeviceLabels();
+  const sinkDev = outputDevices.find((d) => d.deviceId === selectedSinkId);
+  const micDev = inputDevices.find((d) => d.deviceId === selectedMicId);
   const sinkLabel = truncateDeviceLabel(
-    outputDevices.find((d) => d.deviceId === selectedSinkId)?.label || (selectedSinkId ? 'Virtual out' : 'Default out'),
-    18,
+    !selectedSinkId
+      ? 'Default out'
+      : sinkDev
+        ? displayDeviceName(sinkDev, outputDevices.indexOf(sinkDev), 'out', knownGreetLabels)
+        : (knownGreetLabels[selectedSinkId] || 'Output gone — re-pick'),
+    26,
   );
   const micLabel = truncateDeviceLabel(
-    inputDevices.find((d) => d.deviceId === selectedMicId)?.label || (selectedMicId ? 'Mic' : 'Default mic'),
-    18,
+    !selectedMicId
+      ? 'Default mic'
+      : micDev
+        ? displayDeviceName(micDev, inputDevices.indexOf(micDev), 'mic', knownGreetLabels)
+        : (knownGreetLabels[selectedMicId] || 'Mic gone — re-pick'),
+    26,
   );
 
   const getRouteBadge = (clipKey) => {
@@ -428,13 +459,24 @@ export const GreetingsPanel = ({ onEditModeChange, onExitStudio, micTestMode = f
     const API_KEY = getEffectiveDeepgramKey();
     if (!API_KEY) return;
 
+    // v4.86.2 legibility: score Deepgram transcript vs the known script text,
+    // so a confident-but-wrong reading can't pass. Keys may carry a time
+    // suffix (greeting_en_morning) — strip it to find the script.
+    const baseId = String(key).replace(/_(morning|afternoon|evening)$/, '');
+    const script = getSoundboardItem(baseId)?.text || '';
+
     setIsAnalyzing(key);
     try {
-      const finalScore = await analyzeBlobHealth(blob, API_KEY);
-      if (finalScore === null) return;
+      const probe = await analyzeClipLegibility(blob, API_KEY, script);
+      if (!probe) return;
       setHealthScores((prev) => {
-        const next = { ...prev, [key]: finalScore };
-        localStorage.setItem('catint_audio_health', JSON.stringify(next));
+        const next = { ...prev, [key]: probe.score };
+        try { localStorage.setItem('catint_audio_health', JSON.stringify(next)); } catch (_) {}
+        return next;
+      });
+      setHeardByRobot((prev) => {
+        const next = { ...prev, [key]: { text: probe.transcript, recall: probe.recall, at: Date.now() } };
+        try { localStorage.setItem('catint_audio_health_heard', JSON.stringify(next)); } catch (_) {}
         return next;
       });
     } catch (e) {
@@ -783,7 +825,13 @@ export const GreetingsPanel = ({ onEditModeChange, onExitStudio, micTestMode = f
             {isAnalyzing === key ? (
               <span className="sb-clip-status sb-clip-status--test" style={{ animation: 'pulseGlow 2s infinite' }}>…</span>
             ) : hasBlob ? (
-              <div className="sb-health-pill" onClick={() => analyzeHealth(key)} title="Click to re-run health check">
+              <div
+                className="sb-health-pill"
+                onClick={() => analyzeHealth(key)}
+                title={heardByRobot[key]?.text
+                  ? `Robot heard: "${heardByRobot[key].text}" (${Math.round((heardByRobot[key].recall || 0) * 100)}% of script). Click to re-check.`
+                  : 'Legibility check: sends clip to Deepgram and scores vs script. Click to run.'}
+              >
                 <span style={{ color: health?.color || '#94a3b8' }}>{health?.label || 'UNTESTED'}</span>
                 <div className="sb-health-pill-bar">
                   <div className="sb-health-pill-fill" style={{ width: health?.width || '0%', backgroundColor: health?.color || '#94a3b8' }} />

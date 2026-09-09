@@ -784,6 +784,8 @@ export const TranscriptionBoard = ({
   const liveBubbleHeightsRef = useRef(new Map());
   const lastRenderTraceRef = useRef('');
   const prevCaptionsRef = useRef([]);
+  // v4.93.2 CPU fix: log each blank caption id once per session, not per render.
+  const blankFlaggedRef = useRef(new Set());
   const [, setLiveHeightRev] = useState(0);
 
   useEffect(() => {
@@ -794,7 +796,10 @@ export const TranscriptionBoard = ({
 
   useEffect(() => {
     if (connectionState !== 'connected' || !connectProgress?.audioChunksSent) return undefined;
-    const id = window.setInterval(() => setSttNow(Date.now()), 250);
+    // v4.93.1 CPU fix: was 250ms (4 full-board renders/sec all call long).
+    // Consumers only need ~1s freshness (audio-hot window 1400ms, socket
+    // windows 4500ms, step "Xms ago" titles).
+    const id = window.setInterval(() => setSttNow(Date.now()), 1000);
     return () => window.clearInterval(id);
   }, [connectProgress?.audioChunksSent, connectionState]);
 
@@ -1322,7 +1327,8 @@ export const TranscriptionBoard = ({
 
         {captions.map((cap, i) => {
           if (!cap.text || !cap.text.trim()) {
-            if (cap.id) {
+            if (cap.id && !blankFlaggedRef.current.has(cap.id)) {
+              blankFlaggedRef.current.add(cap.id);
               flagVanish('ui_blank_caption_skipped', {
                 id: cap.id,
                 turnId: cap.turnId,

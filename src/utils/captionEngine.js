@@ -61,7 +61,9 @@ const ensureUniqueCaptionIds = (rows) => {
 
 export const mergeCaptionsForUi = (state) => {
   const { finals, liveDraft } = state || createCaptionEngineState();
-  const merged = liveDraft ? [...finals, liveDraft] : [...finals];
+  // v4.93.2 CPU fix: never merge a blank live draft — a textless row can never
+  // seal and spams ui_blank_caption_skipped on every board render.
+  const merged = liveDraft?.text?.trim() ? [...finals, liveDraft] : [...finals];
   return ensureUniqueCaptionIds(merged.slice(-CAPTION_ROW_LIMIT));
 };
 
@@ -250,6 +252,15 @@ export const reduceTranscriptEvent = (prev, event, ctx) => {
       force: true,
       extra: { note: 'cleaned empty — keep prev bubble', transcriptPreview: String(transcript).slice(0, 80) },
     });
+    // v4.93.2: if the last row is the freshly appended blank draft (all lanes
+    // empty), drop it instead of keeping a permanent blank row in state.
+    const lanesEmpty =
+      !current.text?.trim() &&
+      !current.enFinalized?.trim() && !current.enInterim?.trim() &&
+      !current.esFinalized?.trim() && !current.esInterim?.trim();
+    if (lanesEmpty && prev.length && prev[prev.length - 1].id === current.id) {
+      return prev.slice(0, -1);
+    }
     return prev;
   }
 

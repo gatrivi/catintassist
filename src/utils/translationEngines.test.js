@@ -4,9 +4,11 @@ import {
   isEngineBlocked,
   isBrowserFetchError,
   isRateLimitError,
+  isServerError,
   classifyEngineFailure,
   translateWithFallback,
   clearSessionEngineBlacklist,
+  clearTransientEngineBlacklist,
 } from './translationEngines';
 import { isTranslationPassthrough } from './translationQuality';
 
@@ -164,5 +166,34 @@ describe('translationEngines v4.54', () => {
 
     expect(global.fetch).not.toHaveBeenCalled();
     expect(result.quality).toBe('failed');
+  });
+
+  test('isServerError detects 502/503 dead gateway', () => {
+    expect(isServerError(new Error('gateway 502'))).toBe(true);
+    expect(isServerError(new Error('local translator 503'))).toBe(true);
+    expect(isServerError(new Error('Bad Gateway'))).toBe(true);
+    expect(isServerError(new Error('Failed to fetch'))).toBe(false);
+    expect(classifyEngineFailure(new Error('gateway 502'))).toBe('server_error');
+  });
+
+  test('dead gateway backs off 90s instead of hammering per segment', async () => {
+    global.fetch = jest.fn().mockResolvedValue({ ok: false, status: 502, json: async () => ({}) });
+
+    const first = await translateWithFallback({ text: 'Hello', sLang: 'en', tLang: 'es', keys: {} });
+    expect(first.quality).toBe('failed');
+    const callsAfterFirst = global.fetch.mock.calls.length;
+    expect(callsAfterFirst).toBeGreaterThan(0);
+
+    // Both engines now cooling down — next segment costs zero fetches.
+    const second = await translateWithFallback({ text: 'Hello again', sLang: 'en', tLang: 'es', keys: {} });
+    expect(second.quality).toBe('failed');
+    expect(global.fetch.mock.calls.length).toBe(callsAfterFirst);
+    expect(isEngineBlocked('gateway')).toBe(true);
+  });
+
+  test('clearTransientEngineBlacklist keeps server_error cooldowns', () => {
+    blacklistEngine('gateway', undefined, 'server_error');
+    clearTransientEngineBlacklist();
+    expect(isEngineBlocked('gateway')).toBe(true);
   });
 });

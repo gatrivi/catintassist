@@ -25,6 +25,62 @@ import { APP_VERSION } from '../constants/version';
 /** Newest first. Only the entry matching APP_VERSION is shown on load. */
 export const RELEASE_NOTES_CATALOG = [
   {
+    version: '4.94.1',
+    id: 'cpu-freeze-blank-row-v1',
+    highlightElementIds: ['header-connect-btn'],
+    es: {
+      title: 'Congelamiento CPU arreglado',
+      intro: 'v4.94.1 — Ya no se congela el CPU: una fila de transcripción vacía quedaba atrapada en el estado y se volvía a registrar ("CAT VANISH") en cada render, 4×/seg durante toda la llamada. Las filas vacías ya no llegan a la UI y cada id se registra una sola vez.',
+      sections: [
+        { heading: 'Qué cambió', bullets: [
+          'Las filas de transcripción vacías se eliminan en el motor, no en el render',
+          'Log CAT VANISH de filas vacías: una vez por id (antes: cada render)',
+          'Reloj del tablero: 1s en vez de 250ms (menos renders por llamada)',
+        ] },
+      ],
+    },
+    en: {
+      title: 'CPU freeze fixed',
+      intro: 'v4.94.1 — No more freeze: an empty transcript row got stuck in state and was re-logged ("CAT VANISH") on every render, 4×/sec all call long. Blank rows never reach the UI now, and each id logs once.',
+      sections: [
+        { heading: 'What changed', bullets: [
+          'Blank transcript rows are dropped in the engine, not at render time',
+          'CAT VANISH blank-row log: once per id (was: every render)',
+          'Board clock: 1s instead of 250ms (fewer renders per call)',
+        ] },
+      ],
+    },
+  },
+  {
+    version: '4.93.0',
+    id: 'no-check-badges-v1',
+    highlightElementIds: ['header-connect-btn'],
+    es: {
+      title: 'Adiós [⚠ Check: …] — transcripciones legibles',
+      intro: 'v4.93.0 — ELIMINADOS los badges "[⚠ Check: 7 minutes]" que ensuciaban la traducción. Eran falsos positivos ("7 minutes" no es una dirección). El texto queda limpio; la protección de dígitos sigue (mantiene la traducción buena anterior).',
+      sections: [
+        { heading: 'Qué cambió', bullets: [
+          'Cero badges [⚠ Check: …] en la transcripción/traducción',
+          '"7 minutes", "1 of", "5 to" ya no cuentan como datos sensibles',
+          'Teléfonos/fechas/dosis reales: si se pierden, se conserva la traducción buena previa (sin marcadores)',
+          'Textos viejos guardados con badges también se limpian al mostrarlos',
+        ] },
+      ],
+    },
+    en: {
+      title: 'RIP [⚠ Check: …] — readable transcripts',
+      intro: 'v4.93.0 — The "[⚠ Check: 7 minutes]" badges flooding your translation are GONE. They were false positives ("7 minutes" is not an address). Text stays clean; digit-loss safety keeps working via preserve-previous-good.',
+      sections: [
+        { heading: 'What changed', bullets: [
+          'Zero [⚠ Check: …] badges in transcription/translation',
+          '"7 minutes", "1 of", "5 to" no longer count as sensitive tokens',
+          'Real phones/dates/doses: if lost, previous good translation is kept (no markers)',
+          'Old saved text with badges is cleaned on display too',
+        ] },
+      ],
+    },
+  },
+  {
     version: '4.92.0',
     id: 'idle-ear-v1',
     highlightElementIds: ['daily-targets-chip'],

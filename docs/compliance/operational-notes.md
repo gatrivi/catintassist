@@ -22,10 +22,11 @@
 ## Operator checklist (each shift)
 
 1. Confirm you are on the **correct browser profile** (no shared family Chrome)
-2. Lock screen when away from desk
-3. End call → verify STOP; consider **Clear log** after copying needed numbers
-4. Do not screen-share transcript pane without patient consent
-5. Backup taught corrections via **Settings → Data** before clearing site data
+2. Work live calls from the **production build**, never `npm start` — hot-reload can restart mid-call and lose transcription (incident 2026-09-08, 911 call)
+3. Lock screen when away from desk
+4. End call → verify STOP; consider **Clear log** after copying needed numbers
+5. Do not screen-share transcript pane without patient consent
+6. Backup taught corrections via **Settings → Data** before clearing site data
 
 ## Before selling / deploying to others
 

@@ -7,6 +7,12 @@ export const ROUTE_MODE = {
 
 const RAMP_MS = 50;
 
+/**
+ * v4.87.0: PASSTHROUGH is default again. The v4.86.2 switch to DUAL_ELEMENT put
+ * two audio elements on the same virtual sink — the garble source patients
+ * reported (see docs/soundboard/voicemod-comparison.md). DUAL_ELEMENT stays
+ * available as an explicit Studio A/B fallback via writeRouteModePreference.
+ */
 export function readRouteModePreference() {
   try {
     const v = localStorage.getItem('CATINT_ROUTE_MODE');

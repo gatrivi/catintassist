@@ -77,13 +77,13 @@ export const convertEnglishNumberWords = (text, lang = 'en') => {
 //      Other lengths → digit groups of 3 with dashes (unchanged).
 // ---------------------------------------------------------------------------
 
-export const formatPhoneAndSSNDigits = (text) => {
+export const formatPhoneAndSSNDigits = (text, { ignoreAddressGuard = false, ignoreDateGuard = false } = {}) => {
   if (!text) return text;
   return text.replace(/\b(?:\d[\s.,-:]*){7,15}\d\b/g, (m, offset, full) => {
     const before = full.slice(Math.max(0, offset - 40), offset);
     const after = full.slice(offset + m.length, offset + m.length + 40);
-    if (looksLikeAddressFragment(before, after)) return m;
-    if (looksLikeDateFragment(before, after)) return m;
+    if (!ignoreAddressGuard && looksLikeAddressFragment(before, after)) return m;
+    if (!ignoreDateGuard && looksLikeDateFragment(before, after)) return m;
 
     const digitsOnly = m.replace(/\D/g, '');
     if (digitsOnly.length === 9) {
@@ -468,7 +468,7 @@ export const copyableSensitiveValue = (value, type = 'number') => {
   return copyableDigits(value);
 };
 
-export const stitchSingleDigitSequences = (text, { minDigits = 2, ignoreAddressGuard = false } = {}) => {
+export const stitchSingleDigitSequences = (text, { minDigits = 2, ignoreAddressGuard = false, ignoreDateGuard = false } = {}) => {
   if (!text) return text;
   return text.replace(SINGLE_DIGIT_RUN_RE, (match, offset, full) => {
     const parts = match.split(/[\s,.-]+/).filter(Boolean);
@@ -477,7 +477,7 @@ export const stitchSingleDigitSequences = (text, { minDigits = 2, ignoreAddressG
     const before = full.slice(Math.max(0, offset - 40), offset);
     const after = full.slice(offset + match.length, offset + match.length + 40);
     if (!ignoreAddressGuard && looksLikeAddressFragment(before, after)) return match;
-    if (looksLikeDateFragment(before, after)) return match;
+    if (!ignoreDateGuard && looksLikeDateFragment(before, after)) return match;
 
     const trailingPunct = match.match(/[,.]$/)?.[0] || '';
     return parts.join('') + trailingPunct;
@@ -522,10 +522,16 @@ export const applyDisplayProtections = (text, lang = 'en', { applyNumberWords = 
   if (applyNumberWords) out = convertEnglishNumberWords(out, lang);
 
   // Phase C: sentinels gate stitch/phone — display brake only (overlap unchanged).
+  // ssn/phone sentinels win over address/date guards (Phase G tests): a dictated
+  // ID/phone near "Madison Avenue" or "May 8" must still stitch + group.
   const sentinel = detectSentinelContext(out, lang);
   const skipStitch = shouldSkipDigitStitch(sentinel.mode);
   const skipPhone = shouldSkipPhoneFormat(sentinel.mode);
-  const stitchOpts = { ignoreAddressGuard: sentinel.mode === 'address' };
+  const fullTransform = sentinel.mode === 'ssn' || sentinel.mode === 'phone';
+  const stitchOpts = {
+    ignoreAddressGuard: sentinel.mode === 'address' || fullTransform,
+    ignoreDateGuard: fullTransform,
+  };
 
   const { text: masked, restore } = maskDateUnits(out);
   out = masked;
@@ -546,7 +552,7 @@ export const applyDisplayProtections = (text, lang = 'en', { applyNumberWords = 
 
   if (!skipPhone) {
     const afterStitch = out;
-    out = formatPhoneAndSSNDigits(out);
+    out = formatPhoneAndSSNDigits(out, stitchOpts);
     if (out !== afterStitch && /\d/.test(afterStitch)) {
       flagVanish('display_phone_ssn_reformat', {
         before: afterStitch,
@@ -686,6 +692,13 @@ const EN_SENTINELS = {
     /\bsocial\b/i,
     /\bssn\b/i,
     /\bsecurity number\b/i,
+    // Phase G: insurance IDs (member/affiliate/Medicaid) — same digit unit as SSN.
+    /\bmedicaid\b/i,
+    /\baffiliate[sd]?\b/i,
+    /\bmember (id|number)\b/i,
+    /\b(id|identification) number\b/i,
+    /\bpolicy number\b/i,
+    /\binsurance id\b/i,
   ],
   phone: [
     /\bphone\b/i,
@@ -740,6 +753,13 @@ const ES_SENTINELS = {
     /\bseguro social\b/i,
     /\bnúmero de seguro\b/i,
     /\bssn\b/i,
+    // Phase G: insurance IDs (afiliado/Medicaid) — same digit unit as SSN.
+    /\bmedicaid\b/i,
+    /\bafiliad[oa]s?\b/i,
+    /\bnúmero de identificaci[oó]n\b/i,
+    /\bidentificaci[oó]n\b/i,
+    /\bnúmero de miembro\b/i,
+    /\bp[oó]liza\b/i,
   ],
   phone: [
     /\btelefono\b/i,

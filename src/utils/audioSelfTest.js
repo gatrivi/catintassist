@@ -97,8 +97,36 @@ export const formatHealthDisplay = (score) => {
 };
 
 export const analyzeBlobHealth = async (blob, apiKey) => {
+  const r = await analyzeClipLegibility(blob, apiKey);
+  return r ? r.score : null;
+};
+
+const normWord = (w) => String(w || '').toLowerCase().replace(/[^a-záéíóúñü0-9]/gi, '');
+
+/**
+ * Pure: fraction of expected script words the STT transcript contains.
+ * 1 = robot heard every script word; 0 = none. Order-insensitive.
+ */
+export const scoreTranscriptRecall = (transcript, expectedText) => {
+  const heard = new Set(String(transcript || '').split(/\s+/).map(normWord).filter(Boolean));
+  const script = String(expectedText || '').split(/\s+/).map(normWord).filter(Boolean);
+  if (!script.length) return 1;
+  if (!heard.size) return 0;
+  let hit = 0;
+  script.forEach((w) => { if (heard.has(w)) hit += 1; });
+  return hit / script.length;
+};
+
+/**
+ * Legibility probe (v4.86.2): clip → Deepgram → score vs known script.
+ * score = confidence × recall, so a confident wrong reading can't pass.
+ * Without expectedText it falls back to raw confidence (legacy).
+ * @returns {Promise<{score, transcript, confidence, recall}|null>}
+ */
+export const analyzeClipLegibility = async (blob, apiKey, expectedText = '') => {
   if (!blob || !apiKey) return null;
-  const res = await fetch('https://api.deepgram.com/v1/listen?model=nova-3-general&smart_format=true', {
+  const lang = /[áéíóúñ¿¡]/i.test(String(expectedText)) ? 'es' : 'en';
+  const res = await fetch(`https://api.deepgram.com/v1/listen?model=nova-3-general&smart_format=true&language=${lang}`, {
     method: 'POST',
     headers: {
       Authorization: `Token ${apiKey}`,
@@ -108,9 +136,12 @@ export const analyzeBlobHealth = async (blob, apiKey) => {
   });
   if (!res.ok) throw new Error('Deepgram health check failed');
   const data = await res.json();
-  const conf = data.results?.channels?.[0]?.alternatives?.[0]?.confidence || 0;
+  const confidence = data.results?.channels?.[0]?.alternatives?.[0]?.confidence || 0;
   const transcript = data.results?.channels?.[0]?.alternatives?.[0]?.transcript || '';
-  return transcript.length < 3 ? 0.1 : conf;
+  if (transcript.trim().length < 3) return { score: 0.1, transcript, confidence, recall: 0 };
+  const recall = scoreTranscriptRecall(transcript, expectedText);
+  const score = expectedText?.trim() ? confidence * recall : confidence;
+  return { score, transcript, confidence, recall };
 };
 
 export const truncateDeviceLabel = (label, max = 14) => {

@@ -80,8 +80,46 @@ export const isVbCableSinkLabel = (label) => {
   if (l.includes("cable output")) return false;
   if (l.includes("cable input")) return true;
   if (/\bcable in\b/.test(l)) return true;
-  if (l.includes("voicemeeter input")) return true;
+  if (l.includes("voicemeeter input")) {
+    // Voicemeeter Standard only: plain "Voicemeeter Input" (+ optional vendor
+    // suffix). AUX / VAIO3 / numbered Potato endpoints sit on other buses.
+    return /^voicemeeter input(\s*\(.*\))?$/.test(l);
+  }
   return false;
+};
+
+/**
+ * Explicit-pick guard (v4.87.0): once the user hand-picks VB out, auto-fix
+ * must never override it (the "selection doesn't stick" bug). The flag is
+ * set by changeSinkId and cleared when the device disappears.
+ */
+export const SINK_EXPLICIT_KEY = "CATINTASSIST_SINK_EXPLICIT";
+
+export const readSinkExplicit = (
+  storage = typeof localStorage !== "undefined" ? localStorage : null,
+) => {
+  try {
+    return !!storage && storage.getItem(SINK_EXPLICIT_KEY) === "1";
+  } catch (_) {
+    return false;
+  }
+};
+
+export const persistSinkExplicit = (
+  on,
+  storage = typeof localStorage !== "undefined" ? localStorage : null,
+) => {
+  try {
+    if (!storage) return;
+    if (on) storage.setItem(SINK_EXPLICIT_KEY, "1");
+    else storage.removeItem(SINK_EXPLICIT_KEY);
+  } catch (_) {}
+};
+
+/** Pure decision: may the VB-out auto-fix replace the current sink? */
+export const shouldAutoFixSink = ({ explicit = false, sinkId = "", sinkLabel = "" } = {}) => {
+  if (explicit && sinkId) return false; // user picked it — hands off
+  return needsVbCableSinkAutoFix({ sinkId, sinkLabel });
 };
 
 export const pickVbCableSttInputDevice = (inputDevices = []) => {

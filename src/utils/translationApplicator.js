@@ -6,16 +6,15 @@
  * Key: captionId::segmentId::sourceHash::targetLang
  */
 import { peelCompleteSentences } from './transcriptFormat';
-import {
-  diffSensitiveTokens,
-  salvageSensitiveTokens,
-} from './translationSensitiveTokens';
+import { diffSensitiveTokens } from './translationSensitiveTokens';
 
 /** Target-output filler — reject when source is a real sentence. */
 export const FILLER_ONLY_RE =
   /^(bueno|um|uh|eh|ah|oh|hmm|mhm|sí|si|ok|okay|vale|pues|este|like|you know|yes|no|aja|ajá)[.!?\s…]*$/i;
 
-export const DEFAULT_MAX_SEGMENT_WORDS = 40;
+/** One sentence or one comma-clause per request (v4.94.0) — the local model
+ * crawls on paragraphs, so every request stays a tiny mouthful. */
+export const DEFAULT_MAX_SEGMENT_WORDS = 14;
 
 /** Strength: higher = safer to keep. Weaker must not overwrite stronger. */
 export const TRANSLATION_STRENGTH = {
@@ -108,7 +107,8 @@ export function isSuspiciouslyShort(source, result) {
 }
 
 export function segmentLongMonologue(text, { maxWords = DEFAULT_MAX_SEGMENT_WORDS } = {}) {
-  const cap = Math.max(20, Math.min(45, maxWords || DEFAULT_MAX_SEGMENT_WORDS));
+  // Hard ceiling 24: an explicit maxWords can never produce a paragraph request.
+  const cap = Math.max(8, Math.min(24, maxWords || DEFAULT_MAX_SEGMENT_WORDS));
   const pieces = splitSentencesLocal(text);
   const out = [];
 
@@ -118,20 +118,37 @@ export function segmentLongMonologue(text, { maxWords = DEFAULT_MAX_SEGMENT_WORD
       if (words.length) out.push(words.join(' '));
       return;
     }
-    let i = 0;
-    while (i < words.length) {
-      let end = Math.min(i + cap, words.length);
-      if (end < words.length) {
-        for (let j = end; j > i + Math.floor(cap * 0.6); j--) {
-          if (/[,;:]$/.test(words[j - 1])) {
-            end = j;
-            break;
-          }
-        }
+    // v4.94.0: break long pieces at commas/semicolons/colons first, then group
+    // clauses up to cap. Old code only looked for a comma near the 40-word edge.
+    const clauses = [];
+    let clause = [];
+    for (const w of words) {
+      clause.push(w);
+      if (/[,;:]$/.test(w)) {
+        clauses.push(clause);
+        clause = [];
       }
-      out.push(words.slice(i, end).join(' '));
-      i = end;
     }
+    if (clause.length) clauses.push(clause);
+
+    let buffer = [];
+    const flush = () => {
+      if (buffer.length) out.push(buffer.join(' '));
+      buffer = [];
+    };
+    for (const c of clauses) {
+      if (c.length > cap) {
+        // Comma-less run: hard chunk at cap.
+        flush();
+        for (let i = 0; i < c.length; i += cap) {
+          out.push(c.slice(i, i + cap).join(' '));
+        }
+        continue;
+      }
+      if (buffer.length + c.length > cap) flush();
+      buffer = buffer.concat(c);
+    }
+    flush();
   };
 
   for (const piece of pieces) pushChunked(piece);
@@ -307,13 +324,13 @@ export function applyTranslationResult(state = {}, event = {}) {
   let quality = engineResult.quality === 'weak' ? 'weak' : 'ok';
 
   if (missing.length) {
-    // Digit loss: never silently accept. Prefer prior good; else salvage + weak_digit_loss.
+    // Digit loss: never silently accept. Prefer prior good; else flag weak
+    // (v4.93.0: text stays CLEAN — no [⚠ Check: …] markers injected).
     const good = usablePrevious(prev);
     if (good && translationStrength(good) >= TRANSLATION_STRENGTH.ok) {
       const entry = preserveOrPassthrough(prev, base, sourceTextNorm, 'sensitive_token_loss');
       return { state: { ...state, [expectedKey]: entry }, entry };
     }
-    text = salvageSensitiveTokens(raw, missing);
     warning = 'sensitive_token_loss';
     missingTokens = missing;
     status = 'weak_digit_loss';
@@ -342,10 +359,14 @@ export function applyTranslationResult(state = {}, event = {}) {
 
 /**
  * Compose display text. Empty segment → source passthrough (never blank hole).
+ * v4.93.0: legacy persisted entries may still contain "[⚠ Check: …]" salvage
+ * markers — strip them at the display choke point so transcripts stay readable.
  * @param {Record<string, object>} entriesMap
  * @param {string[]} [orderedKeys]
  * @param {Array<{ key?: string, sourceText?: string }>} [segmentSources]
  */
+const LEGACY_SALVAGE_MARKER_RE = /\s*\[⚠ Check:\s*[^\]]*\]/g;
+
 export function composeCaptionTranslation(entriesMap, orderedKeys, segmentSources) {
   if (!entriesMap || typeof entriesMap !== 'object') return '';
   let keys;
@@ -371,7 +392,7 @@ export function composeCaptionTranslation(entriesMap, orderedKeys, segmentSource
   return keys
     .map((k) => {
       const e = entriesMap[k];
-      const t = String(e?.text || '').trim();
+      const t = String(e?.text || '').replace(LEGACY_SALVAGE_MARKER_RE, '').trim();
       if (t) return t;
       const src = sourceByKey.get(k) || e?.sourceText || '';
       return normalizeSource(src);

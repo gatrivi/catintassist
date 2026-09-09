@@ -8,10 +8,13 @@ import {
 import { logRouteEvent, ROUTE_EVENT } from '../utils/routeDiagnostics';
 import {
   AUDIO_SOURCE_MODE_VIRTUAL_CABLE,
-  needsVbCableSinkAutoFix,
   pickVbCableSinkDevice,
   readAudioSourceMode,
+  readSinkExplicit,
+  persistSinkExplicit,
+  shouldAutoFixSink,
 } from '../utils/audioSourceManager';
+import { rememberDeviceLabels } from '../utils/audioDeviceLabels';
 
 const AudioSettingsContext = createContext();
 
@@ -71,18 +74,22 @@ export const AudioSettingsProvider = ({ children }) => {
       const inputs = devices.filter(d => d.kind === 'audioinput');
       setOutputDevices(outputs);
       setInputDevices(inputs);
+      // v4.87.0: remember every real label — picker stays readable on fresh origins.
+      try { rememberDeviceLabels([...outputs, ...inputs]); } catch (_) {}
       let nextSinkId = selectedSinkId;
       if (nextSinkId && !outputs.some((d) => d.deviceId === nextSinkId)) {
         nextSinkId = '';
         setSelectedSinkId('');
+        persistSinkExplicit(false); // device gone — explicit pick no longer applies
       }
       // ponytail: cable mode — auto-fix VB out when empty or stuck on speakers/default.
+      // Never touches an explicit user pick (selection-stick fix).
       if (readAudioSourceMode() === AUDIO_SOURCE_MODE_VIRTUAL_CABLE) {
         const pickedSink = pickVbCableSinkDevice(outputs);
         const sinkLabel = outputs.find((d) => d.deviceId === nextSinkId)?.label || '';
         if (
           pickedSink &&
-          needsVbCableSinkAutoFix({ sinkId: nextSinkId, sinkLabel })
+          shouldAutoFixSink({ explicit: readSinkExplicit(), sinkId: nextSinkId, sinkLabel })
         ) {
           nextSinkId = pickedSink;
           setSelectedSinkId(pickedSink);
@@ -145,28 +152,47 @@ export const AudioSettingsProvider = ({ children }) => {
             source.connect(analyzer);
             
             const dataArray = new Uint8Array(analyzer.frequencyBinCount);
-            
+
+            // v4.93.1 CPU fix: this loop runs forever at 60fps while a mic is
+            // selected. Analyze ~every 6th frame (≈10Hz — plenty for a meter)
+            // and skip React state + DOM writes when the rounded value is
+            // unchanged, so idle silence costs ~zero.
+            let meterFrame = 0;
+            let lastMeterVol = -1;
+            let lastBarW = -1;
             const updateVolume = () => {
               if (!isMounted) {
                 audioCtx.close().catch(console.error);
+                return;
+              }
+              meterFrame += 1;
+              if (meterFrame % 6 !== 0) {
+                requestAnimationFrame(updateVolume);
                 return;
               }
               analyzer.getByteFrequencyData(dataArray);
               let sum = 0;
               for (let i = 0; i < dataArray.length; i++) sum += dataArray[i];
               const avg = sum / dataArray.length;
-              
+
               // Scale volume. Average is rarely > 60 in normal talking.
               const micVol = Math.min(100, (avg / 60) * 100);
               const appVol = window.__CAT_AUDIO_VOL || 0;
-              const vol = Math.min(100, micVol + appVol);
+              const vol = Math.round(Math.min(100, micVol + appVol));
+              const changed = vol !== lastMeterVol;
+              lastMeterVol = vol;
 
-              // Throttled React state + global ref for legacy top-mic-bar
+              // Throttled React state + global ref for legacy top-mic-bar.
+              // React bails out on identical setState values, so the only
+              // real cost is running this block — skip it when the rounded
+              // level didn't move during active speech. Quiet frames still
+              // run so the 3s no-signal timer can fire.
               const now = Date.now();
-              if (now - micThrottleRef.current > 100) {
+              const quiet = vol <= 2 && !sinkPlaybackActiveRef.current;
+              if ((changed || quiet) && now - micThrottleRef.current > 100) {
                 micThrottleRef.current = now;
                 window.__CAT_MIC_LEVEL = vol;
-                setMicLevel(vol);
+                if (changed) setMicLevel(vol);
                 if (sinkPlaybackActiveRef.current) {
                   setMicStatus('muted');
                 } else if (vol > 90) {
@@ -179,12 +205,15 @@ export const AudioSettingsProvider = ({ children }) => {
                   setMicStatus(now - micSilentSinceRef.current > 3000 ? 'no-signal' : 'ok');
                 }
               }
-              
+
               const bar = document.getElementById('top-mic-bar');
               if (bar) {
-                if (vol > 2) {
-                  bar.style.width = `${vol}%`;
-                  bar.style.opacity = Math.min(1, (vol / 40) + 0.2).toString();
+                const w = vol > 2 ? vol : 0;
+                if (w !== lastBarW) {
+                  lastBarW = w;
+                  if (vol > 2) {
+                    bar.style.width = `${vol}%`;
+                    bar.style.opacity = Math.min(1, (vol / 40) + 0.2).toString();
                   // Change color based on clipping
                   if (vol > 90) {
                      bar.style.background = '#ef4444';
@@ -200,6 +229,7 @@ export const AudioSettingsProvider = ({ children }) => {
                   bar.style.width = '0%';
                   bar.style.opacity = '0';
                 }
+                } // end if (w !== lastBarW)
               }
               requestAnimationFrame(updateVolume);
             };
@@ -232,6 +262,51 @@ export const AudioSettingsProvider = ({ children }) => {
       }
     };
   }, [selectedMicId, selectedSinkId]);
+
+  /**
+   * Panic restore (v4.86.2): rebind live mic to the caller path, no matter
+   * what state clip playback left behind. Safe to call anytime — it is the
+   * one-tap "Restore Mic" failsafe for crash/mid-clip emergencies.
+   */
+  const restoreLiveMic = useCallback((reason = 'manual') => {
+    try { clipPlaybackStopRef.current?.(); } catch (_) {}
+    clipPlaybackStopRef.current = null;
+    sinkPlaybackActiveRef.current = false;
+    setSinkPlaybackActiveState(false);
+    const el = passthroughAudioRef.current;
+    const mic = micStreamRef.current;
+    if (el && mic) {
+      try {
+        el.srcObject = mic;
+        el.volume = 1;
+        el.muted = false;
+        el.play().catch(() => {});
+      } catch (_) {}
+    }
+    logRouteEvent(ROUTE_EVENT.PASSTHROUGH_RESTORE, { routeMode: 'panic', reason });
+    return { ok: !!(el && mic), reason: el && mic ? undefined : 'no_mic_stream' };
+  }, []);
+
+  /** Watchdog: never leave the caller path without a mic on teardown paths. */
+  useEffect(() => {
+    const onHide = () => {
+      try {
+        const el = passthroughAudioRef.current;
+        const mic = micStreamRef.current;
+        if (el && mic && el.srcObject !== mic) {
+          el.srcObject = mic;
+          el.play().catch(() => {});
+        }
+      } catch (_) {}
+    };
+    window.addEventListener('pagehide', onHide);
+    document.addEventListener('visibilitychange', onHide);
+    return () => {
+      window.removeEventListener('pagehide', onHide);
+      document.removeEventListener('visibilitychange', onHide);
+      onHide();
+    };
+  }, []);
 
   /** Stop passthrough clip playback and restore live mic stream. */
   const stopClipToSink = useCallback(() => {
@@ -349,6 +424,7 @@ export const AudioSettingsProvider = ({ children }) => {
   const changeSinkId = (deviceId) => {
     setSelectedSinkId(deviceId);
     localStorage.setItem('CATINTASSIST_SINK_ID', deviceId);
+    persistSinkExplicit(!!deviceId); // hand-picked — auto-fix keeps hands off
   };
 
   const changeMicId = (deviceId) => {
@@ -384,6 +460,7 @@ export const AudioSettingsProvider = ({ children }) => {
       micStatus,
       playClipToSink,
       stopClipToSink,
+      restoreLiveMic,
       routeModePreference: readRouteModePreference(),
     }}>
       {children}
