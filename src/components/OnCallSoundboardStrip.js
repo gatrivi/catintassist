@@ -39,6 +39,14 @@ const getTimeOfDay = () => {
 const resolveClipKey = (slot, timeOfDay) =>
   slot.dynamic ? `${slot.actionId}_${timeOfDay}` : slot.actionId;
 
+/** v4.95.3: preferred slot key, else any saved variant — same rule for tiles and firing. */
+const resolveFireKey = (slot, timeOfDay, blobs) => {
+  const preferred = resolveClipKey(slot, timeOfDay);
+  if (blobs[preferred]) return preferred;
+  if (!slot.dynamic) return preferred;
+  return ['morning', 'afternoon', 'evening'].map((t) => `${slot.actionId}_${t}`).find((k) => blobs[k]) || preferred;
+};
+
 const readThumbSize = () => {
   try {
     const n = parseInt(localStorage.getItem(SIZE_KEY), 10);
@@ -169,7 +177,7 @@ export function OnCallSoundboardStrip({ micTestMode = false, collapsed: collapse
   }, [stopClipToSink]);
 
   const fireClip = async (slot) => {
-    const key = resolveClipKey(slot, timeOfDay);
+    const key = resolveFireKey(slot, timeOfDay, blobs);
     const blob = blobs[key];
     if (!blob) {
       flashNotice(`No clip: ${slot.label || key}`);
@@ -323,7 +331,7 @@ export function OnCallSoundboardStrip({ micTestMode = false, collapsed: collapse
           </label>
           <div className="on-call-sb-gallery">
             {ON_CALL_SLOTS.map((slot) => {
-              const key = resolveClipKey(slot, timeOfDay);
+              const key = resolveFireKey(slot, timeOfDay, blobs);
               const has = !!blobs[key];
               const action = ACTIONS.find((a) => a.id === slot.actionId);
               const label = slot.label || action?.label || slot.actionId;

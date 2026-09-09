@@ -9,6 +9,7 @@ import {
   isClipHealthOk,
   scoreTranscriptRecall,
   analyzeClipLegibility,
+  explainHealth,
 } from './audioSelfTest';
 
 describe('audioSelfTest', () => {
@@ -83,5 +84,32 @@ describe('audioSelfTest', () => {
     expect(w.score).toBeLessThan(0.5);
     expect(wrong.score).toBeGreaterThan(w.score);
     delete global.fetch;
+  });
+
+  // v4.95.3: unacceptable must explain WHY and HOW to fix.
+  test('explainHealth: unheard audio points at mic/noise', () => {
+    const e = explainHealth({ score: 0.2, recall: 0.3, confidence: 0.4 });
+    expect(e.why).toMatch(/barely hear|weak|noisy/i);
+    expect(e.fix).toMatch(/re-record/i);
+  });
+
+  test('explainHealth: wrong words point at the script', () => {
+    const e = explainHealth({ score: 0.4, recall: 0.4, confidence: 0.9 });
+    expect(e.why).toMatch(/did not match the script/i);
+  });
+
+  test('explainHealth: clean words but muddy audio points at clarity', () => {
+    const e = explainHealth({ score: 0.45, recall: 0.9, confidence: 0.4 });
+    expect(e.why).toMatch(/unclear|noise|level/i);
+  });
+
+  test('explainHealth: passing score has no fix', () => {
+    const e = explainHealth({ score: 0.8, recall: 0.9, confidence: 0.9 });
+    expect(e.fix).toBe('');
+  });
+
+  test('explainHealth: unchecked clip tells you to check or record', () => {
+    const e = explainHealth({});
+    expect(e.why).toMatch(/not checked/i);
   });
 });

@@ -17,7 +17,7 @@ import {
   formatRouteDiagLine,
   ROUTE_EVENT,
 } from '../utils/routeDiagnostics';
-import { analyzeClipLegibility, formatHealthDisplay, truncateDeviceLabel, isLocalOnlyPlayback, getPreflightSteps, isPreflightReady, playTestToneSink } from '../utils/audioSelfTest';
+import { analyzeClipLegibility, formatHealthDisplay, truncateDeviceLabel, isLocalOnlyPlayback, getPreflightSteps, isPreflightReady, playTestToneSink, explainHealth } from '../utils/audioSelfTest';
 import { getSoundboardItem } from '../services/soundboardMetaService';
 import {
   buildRouteFingerprint,
@@ -53,6 +53,24 @@ const CALL_ROUTE_MIN_SCORE = 0.5;
 
 const getActionClipKeys = (action) =>
   action.dynamic ? TIME_SLOTS.map((t) => `${action.id}_${t}`) : [action.id];
+
+/**
+ * v4.95.3: a clip recorded at another time of day still plays. Resolve the
+ * actual key to fire: prefer the current slot, else any saved variant.
+ * @returns {{ key: string|null, fromSlot: string|null }}
+ */
+export const resolvePlayableClip = (action, timeOfDay, blobs) => {
+  if (!action.dynamic) {
+    return { key: blobs[action.id] ? action.id : null, fromSlot: null };
+  }
+  const preferred = `${action.id}_${timeOfDay}`;
+  if (blobs[preferred]) return { key: preferred, fromSlot: timeOfDay };
+  const alt = TIME_SLOTS.find((t) => blobs[`${action.id}_${t}`]);
+  return alt ? { key: `${action.id}_${alt}`, fromSlot: alt } : { key: null, fromSlot: null };
+};
+
+/** Does this action have ANY playable recording (any time slot)? */
+const hasAnyVariant = (action, blobs) => getActionClipKeys(action).some((k) => blobs[k]);
 
 const getActionCompletion = (action, blobs) => {
   const keys = getActionClipKeys(action);
@@ -477,7 +495,7 @@ export const GreetingsPanel = ({ onEditModeChange, onExitStudio, micTestMode = f
         return next;
       });
       setHeardByRobot((prev) => {
-        const next = { ...prev, [key]: { text: probe.transcript, recall: probe.recall, at: Date.now() } };
+        const next = { ...prev, [key]: { text: probe.transcript, recall: probe.recall, confidence: probe.confidence, at: Date.now() } };
         try { localStorage.setItem('catint_audio_health_heard', JSON.stringify(next)); } catch (_) {}
         return next;
       });
@@ -823,6 +841,11 @@ export const GreetingsPanel = ({ onEditModeChange, onExitStudio, micTestMode = f
     const hasBlob = !!blobs[key];
     const health = getHealthMeta(healthScores[key]);
     const routeBadge = getRouteBadge(key);
+    // v4.95.3: failure needs a reason + a fix, right where you record.
+    const cardHeard = heardByRobot[key];
+    const cardExplain = hasBlob && health && health.label.startsWith('UNACCEPTABLE')
+      ? explainHealth({ score: healthScores[key], recall: cardHeard?.recall, confidence: cardHeard?.confidence })
+      : null;
     return (
       <div
         key={key}
@@ -898,6 +921,16 @@ export const GreetingsPanel = ({ onEditModeChange, onExitStudio, micTestMode = f
         {recordingKey === key && (
           <div className="sb-record-meter">
             <div id="record-vol-bar" className="sb-record-meter-fill" style={{ width: '0%' }} />
+          </div>
+        )}
+
+        {/* v4.95.3: why it failed + the fix, next to the Record button it reset. */}
+        {cardExplain && recordingKey !== key && (
+          <div className="sb-pf-why">
+            <strong>Why:</strong> {cardExplain.why}<br />
+            <strong>Fix:</strong> {cardExplain.fix}
+            {cardHeard?.text && (<><br /><em>Robot heard: “{cardHeard.text}”</em></>)}
+            <br /><strong>Now:</strong> re-record below — script is right here.
           </div>
         )}
 
@@ -1138,18 +1171,29 @@ export const GreetingsPanel = ({ onEditModeChange, onExitStudio, micTestMode = f
   }
 
   const playStats = getSetupStats(blobs);
+  // v4.95.3: count actions with no recording in ANY slot — not 3 per action.
+  const missingActions = ACTIONS.filter((a) => !hasAnyVariant(a, blobs)).length;
   const checkKey = `greeting_${checkLang}_${timeOfDay}`;
-  const checkHasClip = !!blobs[checkKey];
-  const checkCallOk = isCallPathReady(manualCallOk, checkKey, selectedSinkId, selectedMicId);
-  const checkAwaiting = pendingRouteConfirm?.clipKey === checkKey;
+  // Preflight checks the clip that would actually fire (slot fallback aware).
+  const resolvedCheck = resolvePlayableClip(ACTIONS.find((a) => a.id === `greeting_${checkLang}`) || { id: `greeting_${checkLang}`, dynamic: true }, timeOfDay, blobs);
+  const checkKeyResolved = resolvedCheck.key || checkKey;
+  const checkHasClip = !!blobs[checkKeyResolved];
+  const checkCallOk = isCallPathReady(manualCallOk, checkKeyResolved, selectedSinkId, selectedMicId);
+  const checkAwaiting = pendingRouteConfirm?.clipKey === checkKeyResolved;
   const preflight = getPreflightSteps({
     hasClip: checkHasClip,
-    healthScore: healthScores[checkKey],
+    healthScore: healthScores[checkKeyResolved],
     callPathOk: checkCallOk,
     awaitingConfirm: checkAwaiting,
   });
   const preflightReady = isPreflightReady(preflight);
-  const checkHealth = getHealthMeta(healthScores[checkKey]);
+  const checkHealth = getHealthMeta(healthScores[checkKeyResolved]);
+  const checkHeard = heardByRobot[checkKeyResolved];
+  const checkExplain = explainHealth({
+    score: healthScores[checkKeyResolved],
+    recall: checkHeard?.recall,
+    confidence: checkHeard?.confidence,
+  });
 
   const preflightDot = (state) => {
     if (state === 'ok') return 'sb-pf-dot sb-pf-dot--ok';
@@ -1205,8 +1249,8 @@ export const GreetingsPanel = ({ onEditModeChange, onExitStudio, micTestMode = f
               Tap tiles = your speakers · finish checklist to arm patient path
             </span>
           )}
-          {playStats.missing > 0 && (
-            <span style={{ fontSize: '0.62rem', color: '#f87171', fontWeight: 600 }}>{playStats.missing} clip{playStats.missing !== 1 ? 's' : ''} missing — ⚙️ Setup</span>
+          {(missingActions > 0) && (
+            <span style={{ fontSize: '0.62rem', color: '#fbbf24', fontWeight: 600 }}>{missingActions} greeting{missingActions !== 1 ? 's' : ''} not recorded yet — ⚙️ Setup</span>
           )}
         </div>
 
@@ -1275,7 +1319,7 @@ export const GreetingsPanel = ({ onEditModeChange, onExitStudio, micTestMode = f
             <button type="button" className={`sb-pf-lang${checkLang === 'es' ? ' is-on' : ''}`} onClick={() => setCheckLang('es')}>ES</button>
             <span className="sb-preflight-slot">{TIME_SLOT_META[timeOfDay].icon} {TIME_SLOT_META[timeOfDay].name}</span>
             {!checkHasClip && (
-              <button type="button" className="sb-filter-chip" onClick={() => openSettings(checkKey)}>Add clip</button>
+              <button type="button" className="sb-filter-chip" onClick={() => openSettings(checkKeyResolved)}>Add clip</button>
             )}
           </div>
 
@@ -1289,18 +1333,38 @@ export const GreetingsPanel = ({ onEditModeChange, onExitStudio, micTestMode = f
                     ? (checkHealth?.label || 'Not checked — Deepgram scores legibility')
                     : 'Record this greeting in Setup first'}
                 </span>
+                {/* v4.95.3: unacceptable must say WHY and HOW to fix — never a dead end. */}
+                {preflight.quality === 'fail' && (
+                  <span className="sb-pf-why">
+                    <strong>Why:</strong> {checkExplain.why}<br />
+                    <strong>Fix:</strong> {checkExplain.fix}
+                    {checkHeard?.text && (<><br /><em>Robot heard: “{checkHeard.text}”</em></>)}
+                  </span>
+                )}
               </div>
-              <button
-                type="button"
-                className="sb-pf-btn"
-                disabled={!checkHasClip || isAnalyzing === checkKey}
-                onClick={() => analyzeHealth(checkKey)}
-              >
-                {isAnalyzing === checkKey ? '…' : checkHealth ? 'Re-check' : 'Check'}
-              </button>
+              <div className="sb-pf-step-actions">
+                <button
+                  type="button"
+                  className="sb-pf-btn"
+                  disabled={!checkHasClip || isAnalyzing === checkKeyResolved}
+                  onClick={() => analyzeHealth(checkKeyResolved)}
+                >
+                  {isAnalyzing === checkKeyResolved ? '…' : checkHealth ? 'Re-check' : 'Check'}
+                </button>
+                {preflight.quality === 'fail' && (
+                  <button
+                    type="button"
+                    className="sb-pf-btn sb-pf-btn--fix"
+                    onClick={() => openSettings(checkKeyResolved)}
+                    title="Opens Setup at this clip — script on screen, hit Record"
+                  >
+                    🔧 Fix — re-record
+                  </button>
+                )}
+              </div>
             </div>
 
-            <div className={`sb-pf-step${playingKey === checkKey && !routeLive ? ' is-active' : ''}`}>
+            <div className={`sb-pf-step${playingKey === checkKeyResolved && !routeLive ? ' is-active' : ''}`}>
               <span className={preflightDot(preflight.quality === 'ok' ? 'ok' : 'pending')} aria-hidden />
               <div className="sb-pf-step-body">
                 <span className="sb-pf-step-title">2 · You hear it</span>
@@ -1310,9 +1374,9 @@ export const GreetingsPanel = ({ onEditModeChange, onExitStudio, micTestMode = f
                 type="button"
                 className="sb-pf-btn sb-pf-btn--you"
                 disabled={!checkHasClip}
-                onClick={() => playAudioBlock(checkKey, false)}
+                onClick={() => playAudioBlock(checkKeyResolved, false)}
               >
-                {playingKey === checkKey && !routeLive ? '⏹ Stop' : '🔊 Hear'}
+                {playingKey === checkKeyResolved && !routeLive ? '⏹ Stop' : '🔊 Hear'}
               </button>
             </div>
 
@@ -1331,10 +1395,10 @@ export const GreetingsPanel = ({ onEditModeChange, onExitStudio, micTestMode = f
                   type="button"
                   className="sb-pf-btn sb-pf-btn--caller"
                   disabled={!checkHasClip || !selectedSinkId || preflight.quality === 'fail'}
-                  onClick={() => playAudioBlock(checkKey, true, { bypassGate: true, callerOnly: true })}
+                  onClick={() => playAudioBlock(checkKeyResolved, true, { bypassGate: true, callerOnly: true })}
                   title={selectedSinkId ? 'Same path as on-call greetings' : 'Pick CABLE Input in header 🔊'}
                 >
-                  {playingKey === checkKey && routeLive ? '⏹ Stop' : '📡 Send'}
+                  {playingKey === checkKeyResolved && routeLive ? '⏹ Stop' : '📡 Send'}
                 </button>
                 {preflight.caller === 'confirm' && (
                   <>
@@ -1442,30 +1506,35 @@ export const GreetingsPanel = ({ onEditModeChange, onExitStudio, micTestMode = f
       
       <div className="sb-grid sb-grid--gallery">
         {ACTIONS.map((action) => {
-          const activeKey = action.dynamic ? `${action.id}_${timeOfDay}` : action.id;
-          const hasAudio = !!blobs[activeKey];
+          // v4.95.3: any saved time-slot variant plays — the wall of red
+          // "No afternoon clip" tiles for morning recordings is gone.
+          const resolved = resolvePlayableClip(action, timeOfDay, blobs);
+          const activeKey = resolved.key;
+          const hasAudio = !!activeKey;
+          const usesOtherSlot = hasAudio && resolved.fromSlot && resolved.fromSlot !== timeOfDay;
+          const healthKey = action.dynamic ? `${action.id}_${timeOfDay}` : action.id;
+          const shownHealth = hasAudio
+            ? (healthScores[activeKey] ?? healthScores[healthKey])
+            : healthScores[healthKey];
           const callReady = !micTestMode
-            && isCallerReady(healthScores[activeKey])
+            && isCallerReady(shownHealth)
             && isCallPathReady(manualCallOk, activeKey, selectedSinkId, selectedMicId);
           const callerBlocked = hasAudio && !callReady && !micTestMode;
           const hasThumb = !!blobs[`url_thumb_${action.id}`];
           const bgImage = hasThumb ? `url(${blobs[`url_thumb_${action.id}`]})` : undefined;
           const isItPlaying = playingKey === activeKey;
-          const otherSlotsSaved = action.dynamic
-            ? TIME_SLOTS.filter((t) => t !== timeOfDay && blobs[`${action.id}_${t}`]).map((t) => TIME_SLOT_META[t].short)
-            : [];
 
           if (!hasAudio) {
+            const otherSlotsSaved = action.dynamic
+              ? TIME_SLOTS.filter((t) => t !== timeOfDay && blobs[`${action.id}_${t}`]).map((t) => TIME_SLOT_META[t].short)
+              : [];
             return (
               <div key={action.id} className={`sb-slot sb-slot--empty ${action.lang ? `sb-slot--${action.lang}` : ''}`}>
                 {action.lang && <span className={`sb-lang-badge sb-lang-badge--${action.lang}`}>{action.lang.toUpperCase()}</span>}
                 <span className="sb-slot-name">{action.label}</span>
-                <span className="sb-slot-empty-label">No {timeOfDay} clip</span>
-                {otherSlotsSaved.length > 0 && (
-                  <span className="sb-slot-other-hint">Saved: {otherSlotsSaved.join(', ')} — add {timeOfDay} in Setup</span>
-                )}
-                <button type="button" className="sb-slot-setup-btn" onClick={() => openSettings(activeKey)}>
-                  🎙 Add audio in Setup
+                <span className="sb-slot-empty-label">Not recorded yet</span>
+                <button type="button" className="sb-slot-setup-btn" onClick={() => openSettings(`${action.id}_${timeOfDay}`)}>
+                  🎙 Record in Setup
                 </button>
               </div>
             );
@@ -1488,14 +1557,19 @@ export const GreetingsPanel = ({ onEditModeChange, onExitStudio, micTestMode = f
             >
               <div className="sb-slot-overlay" />
               {action.lang && <span className={`sb-lang-badge sb-lang-badge--${action.lang}`}>{action.lang.toUpperCase()}</span>}
+              {usesOtherSlot && (
+                <span className="sb-slot-variant-chip" title={`Playing the ${resolved.fromSlot} recording — record ${timeOfDay} in Setup to specialize`}>
+                  {TIME_SLOT_META[resolved.fromSlot].icon} {TIME_SLOT_META[resolved.fromSlot].short}
+                </span>
+              )}
               {isItPlaying && <div className="sb-slot-progress" style={{ width: `${playbackProgress * 100}%` }} />}
               {isItPlaying && <span className="sb-slot-live-badge">{playingToPatient ? 'LIVE' : '▶'}</span>}
               <span className="sb-slot-chrome">
                 <span className="sb-slot-label">
                   {isItPlaying ? '⏹ STOP' : action.label}
-                  {healthScores[activeKey] !== undefined && (
-                    <span className="sb-slot-health" style={{ color: getHealthMeta(healthScores[activeKey])?.color }}>
-                      {getHealthMeta(healthScores[activeKey])?.label}
+                  {shownHealth !== undefined && (
+                    <span className="sb-slot-health" style={{ color: getHealthMeta(shownHealth)?.color }}>
+                      {getHealthMeta(shownHealth)?.label}
                     </span>
                   )}
                 </span>

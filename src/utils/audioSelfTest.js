@@ -162,6 +162,47 @@ export const CLIP_HEALTH_MIN = 0.5;
 export const isClipHealthOk = (score) => score !== undefined && score !== null && score >= CLIP_HEALTH_MIN;
 
 /**
+ * v4.95.3: plain-language "why is it unacceptable + how do I fix it".
+ * Pure — derived only from the probe result (recall = right words?, confidence = clean audio?).
+ * @returns {{ why: string, fix: string }}
+ */
+export const explainHealth = ({ score, recall, confidence } = {}) => {
+  if (score === undefined || score === null) {
+    return {
+      why: 'Not checked yet — no Deepgram score for this clip.',
+      fix: 'Press Check to score it, or record it in Setup.',
+    };
+  }
+  if (score >= CLIP_HEALTH_MIN) {
+    return { why: 'Legible enough for the patient path.', fix: '' };
+  }
+  const r = Number.isFinite(recall) ? recall : null;
+  const c = Number.isFinite(confidence) ? confidence : null;
+  if (r !== null && r < 0.5 && c !== null && c < 0.55) {
+    return {
+      why: 'Deepgram could barely hear words at all — audio is weak or noisy.',
+      fix: 'Re-record closer to the mic; check mic level (Sound panel → Levels) and that enhancements are off.',
+    };
+  }
+  if (r !== null && r < 0.5) {
+    return {
+      why: 'The words heard did not match the script — wrong script read, or speech too broken to recognize.',
+      fix: 'Re-record reading the ¶ Script shown in Setup, at a steady pace.',
+    };
+  }
+  if (c !== null && c < 0.55) {
+    return {
+      why: 'Right words, but audio is unclear (background noise, level too low, or clipping).',
+      fix: 'Re-record in a quieter spot; raise mic level a touch; keep steady distance from the mic.',
+    };
+  }
+  return {
+    why: 'Score landed just under the 0.5 gate — borderline legibility.',
+    fix: 'Re-check once; if it stays low, re-record slower and closer to the mic.',
+  };
+};
+
+/**
  * 3-step off-call preflight: quality → you hear → caller path.
  * @returns {'missing'|'pending'|'ok'|'fail'|'confirm'}
  */

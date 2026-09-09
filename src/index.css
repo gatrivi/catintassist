@@ -1875,10 +1875,50 @@ body {
   flex-shrink: 0;
 }
 
+/* v4.95.3: EN badge was red — read as an error. Now neutral sky tint (ES keeps green). */
 .sb-lang-badge--en {
-  color: #f87171;
-  background: rgba(239, 68, 68, 0.15);
-  border: 1px solid rgba(239, 68, 68, 0.3);
+  color: #7dd3fc;
+  background: rgba(14, 165, 233, 0.15);
+  border: 1px solid rgba(14, 165, 233, 0.3);
+}
+
+/* v4.95.3: why+fix explanation under a failed health check */
+.sb-pf-why {
+  display: block;
+  font-size: 0.66rem;
+  line-height: 1.4;
+  color: var(--text-muted);
+  background: rgba(0, 0, 0, 0.25);
+  border-left: 2px solid #fbbf24;
+  border-radius: 2px;
+  padding: 0.3rem 0.45rem;
+  margin-top: 0.3rem;
+}
+.sb-pf-why strong { color: #fbbf24; }
+.sb-pf-why em { opacity: 0.85; }
+
+/* v4.95.3: the Fix button — unmissable, warm not alarming */
+.sb-pf-btn--fix {
+  background: rgba(251, 191, 36, 0.16);
+  color: #fbbf24;
+  border-color: rgba(251, 191, 36, 0.45);
+  font-weight: 700;
+}
+.sb-pf-btn--fix:hover { background: rgba(251, 191, 36, 0.26); }
+
+/* v4.95.3: chip shown when a tile plays another slot's recording */
+.sb-slot-variant-chip {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  font-size: 0.56rem;
+  font-weight: 700;
+  color: #cbd5e1;
+  background: rgba(15, 23, 42, 0.72);
+  border: 1px solid rgba(148, 163, 184, 0.35);
+  border-radius: 4px;
+  padding: 0.05rem 0.3rem;
+  z-index: 2;
 }
 
 .sb-lang-badge--es {
@@ -5700,7 +5740,8 @@ body:has(.app-container[data-call-mode="true"]) .element-hint-panel {
 }
 
 .habit-dock > button[data-tooltip]::after,
-.habit-dock .workspace-view-btn[data-tooltip]::after {
+.habit-dock .workspace-view-btn[data-tooltip]::after,
+.habit-dock-pill[data-tooltip]::after {
   content: attr(data-tooltip);
   position: absolute;
   left: 50%;
@@ -5726,9 +5767,61 @@ body:has(.app-container[data-call-mode="true"]) .element-hint-panel {
 .habit-dock > button[data-tooltip]:hover::after,
 .habit-dock > button[data-tooltip]:focus-visible::after,
 .habit-dock .workspace-view-btn[data-tooltip]:hover::after,
-.habit-dock .workspace-view-btn[data-tooltip]:focus-visible::after {
+.habit-dock .workspace-view-btn[data-tooltip]:focus-visible::after,
+.habit-dock-pill[data-tooltip]:hover::after,
+.habit-dock-pill[data-tooltip]:focus-visible::after {
   opacity: 1;
   transform: translateX(-50%) translateY(-2px);
+}
+
+/* Fan out edge tooltips so adjacent pills never pile up / clip.
+   First pill anchors left, last anchors right, middle stays centered. */
+.habit-dock > div:first-child .habit-dock-pill[data-tooltip]::after {
+  left: 0;
+  transform: none;
+}
+.habit-dock > div:first-child .habit-dock-pill[data-tooltip]:hover::after,
+.habit-dock > div:first-child .habit-dock-pill[data-tooltip]:focus-visible::after {
+  transform: translateY(-2px);
+}
+.habit-dock > div:nth-last-child(2) .habit-dock-pill[data-tooltip]::after {
+  left: auto;
+  right: 0;
+  transform: none;
+}
+.habit-dock > div:nth-last-child(2) .habit-dock-pill[data-tooltip]:hover::after,
+.habit-dock > div:nth-last-child(2) .habit-dock-pill[data-tooltip]:focus-visible::after {
+  transform: translateY(-2px);
+}
+
+/* Habit nudge toasts: one shared row above the dock, each anchored to
+   its own pill so simultaneous nudges spread horizontally instead of
+   piling vertically over the transcript. Edge toasts fan outward. */
+.habit-toast {
+  position: absolute;
+  bottom: calc(100% + 8px);
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 10000;
+  max-width: max-content;
+  white-space: nowrap;
+  border-radius: 6px;
+  padding: 6px 12px;
+  font-size: 0.75rem;
+  font-weight: 700;
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  animation: fadeSlideIn 0.3s ease-out;
+  pointer-events: none;
+}
+.habit-dock > div:first-child .habit-toast {
+  left: 0;
+  transform: none;
+}
+.habit-dock > div:nth-last-child(2) .habit-toast {
+  left: auto;
+  right: 0;
+  transform: none;
 }
 
 .app-container[data-call-mode="true"] .habit-dock {
