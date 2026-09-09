@@ -28,3 +28,11 @@ yarn-error.log*
 
 .vercel
 .env*
+
+# local scratch / dumps — never ship to produ
+.tmp/
+.zcode/
+*.mp3
+*.ogg
+/todo.txt
+/agents.md

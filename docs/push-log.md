@@ -18,3 +18,4 @@
 | 2026-09-09T17:54:01.042Z | 72b953c | docs: v4.95.0 changelog line |
 | 2026-09-09T19:42:21.285Z | 705ce4c | v4.95.1 teleprompter + raw-mic recording |
 | 2026-09-09T19:46:54.575Z | 5048724 | v4.95.2 calmer studio UI |
+| 2026-09-09T21:19:43.231Z | f6de1aa | v4.95.3 inspector off by default |
