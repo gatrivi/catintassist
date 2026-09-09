@@ -1,11 +1,14 @@
-# Agent Handoff Index (v4.88.4)
+# Agent Handoff Index (v4.94.1)
 
 **Read first:** [`00_global_rules.md`](00_global_rules.md)
 
 Outside agents: pick **one** spec below. Do not re-read the whole repo.
 
 ## Current app version
-Top-right must show **v4.94.0** (uncommitted — local only). Status: [`12_tiny_translate_chunks_2026-09-09.md`](12_tiny_translate_chunks_2026-09-09.md) (translate chunk fix, push scope pending) + [`11_cpu_sink_fix_2026-09-09.md`](11_cpu_sink_fix_2026-09-09.md) + [`10_session_status_2026-09-08.md`](10_session_status_2026-09-08.md) — coordinate before staging (very dirty tree).
+Top-right must show **v4.94.1** (pushed to master, commit 62d049d). Status: [`13_cpu_freeze_blank_caption_2026-09-09.md`](13_cpu_freeze_blank_caption_2026-09-09.md) (CPU freeze fix — DONE) + [`12_tiny_translate_chunks_2026-09-09.md`](12_tiny_translate_chunks_2026-09-09.md) + [`11_cpu_sink_fix_2026-09-09.md`](11_cpu_sink_fix_2026-09-09.md). Tree was committed + pushed 2026-09-09; tests all green.
+
+## Full tests are GREEN again
+`node scripts/test-in-batches.js` — 71 files pass. The earlier "blocked by dirty translation-engine work" note is obsolete.
 
 ## Current operating invariants
 - Active-call STT controls are fixed and reachable: `TAB` + `VB` in a 30px row. Never remove them; a compact UI may only move secondary setup behind a labeled expander.
@@ -13,7 +16,6 @@ Top-right must show **v4.94.0** (uncommitted — local only). Status: [`12_tiny_
 - VB resolves `CABLE Output` automatically or fails closed. It must never capture a default physical mic. Saved IDs validate vs live enumeration; explicit VB-out picks are never auto-overridden (`CATINTASSIST_SINK_EXPLICIT`).
 - Header cat is the quiet app-health beacon: gray ready · blue connecting · green STT live · amber check · red error. Silence alone is not an error.
 - Translation is local TTT (`127.0.0.1:59200/stt/translate`, Marian int8, CORS includes `:3001`) → Vercel gateway. Browser must never call a third-party provider. No provider keys in `.env`, so gateway fallback 503s — local-only is correct. Wait for 2 words; one request runs at a time; live updates require 10 new words. Failure must remain visible, never blank.
-- Full tests are currently blocked by existing dirty translation-engine work; do not discard or stage it with unrelated changes.
 
 ## What's new (docs)
 - [`docs/development/sensitive-data-approach.md`](../development/sensitive-data-approach.md) — A–E + ES name chips (v4.84.3–4.84.8)
