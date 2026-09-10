@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { APP_VERSION } from '../constants/version';
 import { computeCatchUp, fmtHm } from '../utils/catchUpPlan';
 
@@ -92,6 +92,56 @@ export const DailyTargetsChip = ({
 
   const warn = plan.need > 0 && !plan.by18Possible;
 
+  // v4.96.2: deficit pair text shared by the visible pair + hidden measurer
+  const deficitText = (catchUp && Math.abs(catchUp.deficitMins) > 30)
+    ? (catchUp.deficitMins > 0 ? `📉 −${fmtHm(catchUp.deficitMins)}` : `📈 +${fmtHm(-catchUp.deficitMins)}`)
+    : null;
+
+  // ── v4.96.2: width-aware degradation ──────────────────────────────────
+  // The chip is nowrap/flexShrink:0, so on a narrow window it would overflow
+  // onto the right-header buttons (STT:FAST / EN|ES). Drop low-priority pairs
+  // first: 1 = hide ☕ break, 2 = also hide 💵 dollars. Hover tooltip keeps
+  // every row, so no information is lost.
+  // A hidden always-full measurer makes fitLevel a pure function of the box
+  // width — recomputing it every render can never oscillate (no setState loop).
+  const chipRef = useRef(null);
+  const measureRef = useRef(null);
+  const usdMeasureRef = useRef(null);
+  const coffeeMeasureRef = useRef(null);
+  const [fitLevel, setFitLevel] = useState(0);
+  const checkFit = () => {
+    const chip = chipRef.current;
+    if (!chip) return;
+    // measure against the flex box that actually constrains us, not just the
+    // immediate parent (varies by mount: off-call row / call micro-bar / HUD)
+    const box = chip.closest('.session-controls-center') || chip.parentElement;
+    const full = measureRef.current;
+    if (!box || !box.clientWidth || !full) return;
+    const GAP = 11; // 0.7rem pair gap
+    const wCoffee = (coffeeMeasureRef.current?.offsetWidth ?? 0) + GAP;
+    const wUsd = (usdMeasureRef.current?.offsetWidth ?? 0) + GAP;
+    const boxW = box.clientWidth;
+    const fits = full.offsetWidth <= boxW;
+    const fits1 = full.offsetWidth - wCoffee <= boxW;
+    setFitLevel(fits ? 0 : (fits1 ? 1 : 2));
+  };
+  // re-check on every render — the chip re-renders 1Hz with the live counters,
+  // so even if RO/resize miss an event, we self-heal within a second.
+  useLayoutEffect(checkFit);
+  useEffect(() => {
+    const chip = chipRef.current;
+    if (!chip) return;
+    const ro = new ResizeObserver(checkFit);
+    ro.observe(chip);
+    if (chip.parentElement) ro.observe(chip.parentElement);
+    window.addEventListener('resize', checkFit);
+    return () => {
+      ro.disconnect();
+      window.removeEventListener('resize', checkFit);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   // ── v4.91.0: SMART TOOLTIP ──────────────────────────────────────────────
   // Hover the chip → floating panel spells every chip out in USD:
   // earned vs target, minutes to go ≈ $, what a break minute costs, month pace.
@@ -128,9 +178,42 @@ export const DailyTargetsChip = ({
   };
   // ────────────────────────────────────────────────────────────────────────
 
+  // Pair builders — used twice: visible (conditionally, by fitLevel) and inside
+  // the hidden always-full measurer with IDENTICAL styling, so `full.offsetWidth`
+  // is exactly the width the chip would have with every pair shown.
+  const mkUsd = (r) => (
+    <span key="usd" ref={r} style={pairStyle} title={`Earned today vs today's $ target`}>
+      <span style={lblStyle}>💵</span>
+      <span style={valStyle}>${earnedUsd.toFixed(2)}</span>
+      <span style={tgtStyle}>/${targetUsd.toFixed(0)}</span>
+    </span>
+  );
+  const mkTime = () => (
+    <span key="time" style={pairStyle} title={`On-call today vs today's target (${dailyMin}m)`}>
+      <span style={lblStyle}>⏱</span>
+      <span style={valStyle}>{fmtHm(dailyMinutes)}</span>
+      <span style={tgtStyle}>/{fmtHm(dailyMin)}</span>
+    </span>
+  );
+  const mkCoffee = (r) => (
+    <span key="coffee" ref={r} style={pairStyle} title={`Break taken vs total break you can take and still hit the target by 18:00 (more break → overtime toward 23:00)`}>
+      <span style={lblStyle}>☕</span>
+      <span style={valStyle}>{fmtHm(breakMinutes)}</span>
+      <span style={tgtStyle}>/{fmtHm(breakTarget)}</span>
+    </span>
+  );
+  const mkDeficit = () => deficitText && (
+    <span key="deficit" style={pairStyle} title={`Month-pace deficit: expected ${catchUp.expectedByToday}m by today · banked ${Math.round(monthlyMinutes)}m`}>
+      <span style={{ ...valStyle, fontSize: '0.72rem', color: catchUp.deficitMins > 0 ? '#f87171' : '#34d399' }}>
+        {deficitText}
+      </span>
+    </span>
+  );
+
   return (
     <span
       id="daily-targets-chip"
+      ref={chipRef}
       onMouseEnter={showSmartTip}
       onMouseLeave={() => setSmartTip(null)}
       aria-label={`Daily targets: ${usd(dailyMinutes)} of $${targetUsd.toFixed(0)} today, ${fmtHm(dailyMinutes)} on call, ${fmtHm(breakMinutes)} break taken`}
@@ -140,6 +223,7 @@ export const DailyTargetsChip = ({
         gap: '0.7rem',
         whiteSpace: 'nowrap',
         flexShrink: 0,
+        position: 'relative', // v4.96.2: anchors the hidden measurer span
         color: warn ? '#f97316' : '#fbbf24',
         background: 'rgba(251,191,36,0.07)',
         border: `1px solid ${warn ? 'rgba(249,115,22,0.4)' : 'rgba(251,191,36,0.25)'}`,
@@ -150,29 +234,21 @@ export const DailyTargetsChip = ({
         cursor: 'help',
       }}
     >
-      <span style={pairStyle} title={`Earned today vs today's $ target`}>
-        <span style={lblStyle}>💵</span>
-        <span style={valStyle}>${earnedUsd.toFixed(2)}</span>
-        <span style={tgtStyle}>/${targetUsd.toFixed(0)}</span>
+      {fitLevel < 2 && mkUsd()}
+      {mkTime()}
+      {fitLevel < 1 && mkCoffee()}
+      {mkDeficit()}
+      {/* hidden full-content measurer for fitLevel (out of flow, never seen) */}
+      <span
+        ref={measureRef}
+        aria-hidden="true"
+        style={{ position: 'absolute', left: 0, top: 0, visibility: 'hidden', display: 'inline-flex', gap: '0.7rem', whiteSpace: 'nowrap', pointerEvents: 'none' }}
+      >
+        {mkUsd(usdMeasureRef)}
+        {mkTime()}
+        {mkCoffee(coffeeMeasureRef)}
+        {mkDeficit()}
       </span>
-      <span style={pairStyle} title={`On-call today vs today's target (${dailyMin}m)`}>
-        <span style={lblStyle}>⏱</span>
-        <span style={valStyle}>{fmtHm(dailyMinutes)}</span>
-        <span style={tgtStyle}>/{fmtHm(dailyMin)}</span>
-      </span>
-      <span style={pairStyle} title={`Break taken vs total break you can take and still hit the target by 18:00 (more break → overtime toward 23:00)`}>
-        <span style={lblStyle}>☕</span>
-        <span style={valStyle}>{fmtHm(breakMinutes)}</span>
-        <span style={tgtStyle}>/{fmtHm(breakTarget)}</span>
-      </span>
-      {/* v4.96.0: month-pace deficit, always visible (hidden when within ±30m of pace) */}
-      {catchUp && Math.abs(catchUp.deficitMins) > 30 && (
-        <span style={pairStyle} title={`Month-pace deficit: expected ${catchUp.expectedByToday}m by today · banked ${Math.round(monthlyMinutes)}m`}>
-          <span style={{ ...valStyle, fontSize: '0.72rem', color: catchUp.deficitMins > 0 ? '#f87171' : '#34d399' }}>
-            {catchUp.deficitMins > 0 ? `📉 −${fmtHm(catchUp.deficitMins)}` : `📈 +${fmtHm(-catchUp.deficitMins)}`}
-          </span>
-        </span>
-      )}
       {smartTip && (
         <span
           style={{

@@ -25,6 +25,28 @@ import { APP_VERSION } from '../constants/version';
 /** Newest first. Only the entry matching APP_VERSION is shown on load. */
 export const RELEASE_NOTES_CATALOG = [
   {
+    version: '4.96.2',
+    id: 'chip-narrow-fit-v1',
+    highlightElementIds: ['daily-targets-chip'],
+    es: {
+      title: 'El chip ya no pisa los botones en ventanas angostas',
+      intro: 'v4.96.2 — En ventanas de menos de ~850px el chip de metas se desbordaba y sus contadores quedaban ENCIMA de STT:FAST / EN|ES. Ahora se degrada solo: esconde ☕ primero, luego 💵; ⏱ y 📉 (lo importante) quedan siempre. Todo el detalle sigue en el tooltip al hover.',
+      sections: [{ heading: 'Qué cambió', bullets: [
+        'Ventana angosta: ☕ se esconde primero, luego 💵',
+        '⏱ y 📉 déficit nunca se esconden ni se superponen',
+        'Sin pérdida de info: el hover muestra todas las filas',
+      ] }],
+    },
+    en: {
+      title: 'Chip no longer overlaps buttons on narrow windows',
+      intro: 'v4.96.2 — Under ~850px the goals chip overflowed and its counters painted ON TOP of STT:FAST / EN|ES. It now degrades gracefully: hides ☕ first, then 💵; ⏱ and 📉 (what matters) always stay. Hover still shows every row.',
+      sections: [{ heading: 'What changed', bullets: [
+        'Narrow window: ☕ hides first, then 💵',
+        '⏱ and 📉 deficit never hide or overlap',
+        'No information loss: hover shows all rows',
+      ] }],
+    },
+  },  {
     version: '4.96.1',
     id: 'habit-toast-fix-v1',
     highlightElementIds: ['wellbeing-dock-desk'],
