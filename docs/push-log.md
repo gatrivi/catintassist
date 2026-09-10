@@ -23,3 +23,6 @@
 | 2026-09-09T22:08:23.976Z | 2bad8e3 | v4.95.4 live counters perf - money+time roll at 1Hz, no odometer |
 | 2026-09-09T23:54:48.979Z | fd69848 | v4.95.3 explain+fix soundboard UX |
 | 2026-09-10T15:02:41.220Z | a85ac42 | v4.96.0 catch-up clarity: chip deficit number + expanded catch-up plan strip + dial-goal targets |
+| 2026-09-10T16:05:48.812Z | e258a6f | v4.96.1 habit toasts never stick — 15s cap, click-dismiss, call-start clear |
+| 2026-09-10T16:34:24.587Z | dc2ad20 | v4.96.2 chip narrow-window fit: no more counter overlap on STT/EN-ES buttons |
+| 2026-09-10T17:28:51.544Z | 5f8546e | v4.96.3 in-call header card — numbers grid replaces empty game face |
