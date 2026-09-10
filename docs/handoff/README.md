@@ -46,6 +46,8 @@ Top-right must show **v4.94.1** (pushed to master, commit 62d049d). Status: [`13
 | 10 | Session status 2026-09-08 | [`10_session_status_2026-09-08.md`](10_session_status_2026-09-08.md) | read-only status — big vs little session split |
 | 11 | CPU sink fix 2026-09-09 | [`11_cpu_sink_fix_2026-09-09.md`](11_cpu_sink_fix_2026-09-09.md) | read-only status — uncommitted, do not push |
 | 12 | Tiny translate chunks 2026-09-09 | [`12_tiny_translate_chunks_2026-09-09.md`](12_tiny_translate_chunks_2026-09-09.md) | `translationApplicator.js`, `useTranslate.js` — uncommitted, push scope pending |
+| 13 | CPU freeze blank caption 2026-09-09 | [`13_cpu_freeze_blank_caption_2026-09-09.md`](13_cpu_freeze_blank_caption_2026-09-09.md) | SHIPPED v4.94.1 — blank live draft dropped, blank vanish log once per id |
+| 14 | Habit tooltip spread 2026-09-09 | [`14_habit_tooltip_spread_2026-09-09.md`](14_habit_tooltip_spread_2026-09-09.md) | **SHIPPED v4.96.1** — fan-out CSS + toasts auto-hide 15s, pill click dismisses, call start clears |
 
 ## Also read
 - [`docs/cursor-agent/README.md`](../cursor-agent/README.md) — touch-only file table

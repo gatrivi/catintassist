@@ -91,7 +91,11 @@ export const ChoreTrackerWidget = () => {
   }, [isActive, allDone, minsSinceLastChore, playWarningPing]);
 
   const shouldNudge = !allDone && minsSinceLastChore >= REMINDER_THRESHOLD_MIN;
-  const pillBottom = '144px';
+
+  // v4.96.1: call start clears any lingering toast (transcript stays clean)
+  useEffect(() => {
+    if (isActive) setToast(null);
+  }, [isActive]);
 
   return (
     <div ref={containerRef} style={{ position: 'relative' }}>
@@ -100,7 +104,8 @@ export const ChoreTrackerWidget = () => {
         data-guide="wellbeing-dock-chores"
         data-tooltip="Chore break"
         aria-label="Chore break"
-        onClick={() => { acknowledgeNudge('chores'); setIsOpen((o) => !o); }}
+        className="habit-dock-pill"
+        onClick={() => { acknowledgeNudge('chores'); setToast(null); setIsOpen((o) => !o); }}
         style={{
           position: 'relative',
           width: '40px',
@@ -213,21 +218,11 @@ export const ChoreTrackerWidget = () => {
       {/* Toast */}
       {toast && (
         <div
+          className="habit-toast"
           style={{
-            position: 'absolute',
-            bottom: pillBottom,
-            left: '52px',
-            zIndex: 10000,
             background: 'rgba(245, 158, 11, 0.2)',
-            backdropFilter: 'blur(8px)',
             border: '1px solid rgba(245, 158, 11, 0.3)',
-            borderRadius: '6px',
-            padding: '6px 12px',
             color: '#fbbf24',
-            fontSize: '0.75rem',
-            fontWeight: 700,
-            animation: 'fadeSlideIn 0.3s ease-out',
-            pointerEvents: 'none',
           }}
         >
           {toast}

@@ -20,3 +20,6 @@
 | 2026-09-09T19:46:54.575Z | 5048724 | v4.95.2 calmer studio UI |
 | 2026-09-09T21:19:43.231Z | f6de1aa | v4.95.3 inspector off by default |
 | 2026-09-09T21:21:05.975Z | b3b2d59 | chore untrack scratch |
+| 2026-09-09T22:08:23.976Z | 2bad8e3 | v4.95.4 live counters perf - money+time roll at 1Hz, no odometer |
+| 2026-09-09T23:54:48.979Z | fd69848 | v4.95.3 explain+fix soundboard UX |
+| 2026-09-10T15:02:41.220Z | a85ac42 | v4.96.0 catch-up clarity: chip deficit number + expanded catch-up plan strip + dial-goal targets |

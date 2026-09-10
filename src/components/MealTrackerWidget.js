@@ -106,7 +106,11 @@ export const MealTrackerWidget = () => {
   }, [isActive, allDone, minsSinceLastMeal, playWarningPing]);
 
   const shouldNudge = !allDone && minsSinceLastMeal >= REMINDER_THRESHOLD_MIN;
-  const pillBottom = '98px';
+
+  // v4.96.1: call start clears any lingering toast (transcript stays clean)
+  useEffect(() => {
+    if (isActive) setToast(null);
+  }, [isActive]);
 
   return (
     <div ref={containerRef} style={{ position: 'relative' }}>
@@ -116,7 +120,7 @@ export const MealTrackerWidget = () => {
         data-tooltip="Meals and hydration"
         aria-label="Meals and hydration"
         className="habit-dock-pill"
-        onClick={() => { acknowledgeNudge('meals'); setIsOpen((o) => !o); }}
+        onClick={() => { acknowledgeNudge('meals'); setToast(null); setIsOpen((o) => !o); }}
         style={{
           position: 'relative',
           border: '1px solid rgba(255,255,255,0.1)',
@@ -259,21 +263,11 @@ export const MealTrackerWidget = () => {
       {/* Toast */}
       {toast && (
         <div
+          className="habit-toast"
           style={{
-            position: 'absolute',
-            bottom: pillBottom,
-            left: '52px',
-            zIndex: 10000,
             background: 'rgba(16, 185, 129, 0.2)',
-            backdropFilter: 'blur(8px)',
             border: '1px solid rgba(16, 185, 129, 0.3)',
-            borderRadius: '6px',
-            padding: '6px 12px',
             color: '#34d399',
-            fontSize: '0.75rem',
-            fontWeight: 700,
-            animation: 'fadeSlideIn 0.3s ease-out',
-            pointerEvents: 'none',
           }}
         >
           {toast}

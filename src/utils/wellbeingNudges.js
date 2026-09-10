@@ -33,11 +33,12 @@ export const acknowledgeNudge = (widgetId) => {
 export const getNudgePresentation = (widgetId, baseMessage) => {
   const level = getNudgeLevel(widgetId);
   if (level >= 3) {
+    // v4.96.1: never persistent — a stuck toast covered the transcript.
     return {
       level,
-      persistent: true,
+      persistent: false,
       message: `${baseMessage} — your body needs this.`,
-      durationMs: 0,
+      durationMs: 15000,
     };
   }
   if (level === 2) {
@@ -47,9 +48,4 @@ export const getNudgePresentation = (widgetId, baseMessage) => {
     return { level, persistent: false, message: baseMessage, durationMs: 5000 };
   }
   return { level: 0, persistent: false, message: baseMessage, durationMs: 3000 };
-};
-
-export const hasPersistentWellbeingAlert = () => {
-  const ids = ['desk', 'rosary', 'meals', 'chores'];
-  return ids.some((id) => getNudgeLevel(id) >= 3);
 };

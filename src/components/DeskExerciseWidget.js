@@ -115,16 +115,23 @@ export const DeskExerciseWidget = () => {
 
   const shouldNudge = !allDone && minsSinceLastSet >= REMINDER_THRESHOLD_MIN;
 
+  // v4.96.1: call start clears any lingering toast (transcript stays clean)
+  useEffect(() => {
+    if (isActive) setToast(null);
+  }, [isActive]);
+
   return (
     <div ref={containerRef} style={{ position: 'relative' }}>
       {/* Collapsed Pill */}
       <button
+        id="wellbeing-dock-desk"
         data-guide="wellbeing-dock-desk"
         data-tooltip="Desk stretches"
         aria-label="Desk stretches"
         className="habit-dock-pill"
         onClick={() => {
           acknowledgeNudge('desk');
+          setToast(null); // v4.96.1: click dismisses the visible nudge
           setIsOpen((o) => !o);
         }}
         style={{
@@ -249,22 +256,11 @@ export const DeskExerciseWidget = () => {
       {/* Toast */}
       {toast && (
         <div
+          className="habit-toast"
           style={{
-            position: 'absolute',
-            bottom: 'calc(100% + 8px)',
-            left: '50%',
-            transform: 'translateX(-50%)',
-            zIndex: 10000,
             background: 'rgba(245, 158, 11, 0.2)',
-            backdropFilter: 'blur(8px)',
             border: '1px solid rgba(245, 158, 11, 0.3)',
-            borderRadius: '6px',
-            padding: '6px 12px',
             color: '#fbbf24',
-            fontSize: '0.75rem',
-            fontWeight: 700,
-            animation: 'fadeSlideIn 0.3s ease-out',
-            pointerEvents: 'none',
           }}
         >
           {toast}

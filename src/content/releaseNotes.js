@@ -25,6 +25,31 @@ import { APP_VERSION } from '../constants/version';
 /** Newest first. Only the entry matching APP_VERSION is shown on load. */
 export const RELEASE_NOTES_CATALOG = [
   {
+    version: '4.96.1',
+    id: 'habit-toast-fix-v1',
+    highlightElementIds: ['wellbeing-dock-desk'],
+    es: {
+      title: 'Los avisos de hábitos ya no se pegan',
+      intro: 'v4.96.1 — Los avisos del dock de bienestar desaparecen solos (máx 15 s), se cierran al tocar la pastilla y se limpian al empezar una llamada. Nunca más tooltips amontonados sobre la transcripción.',
+      sections: [{ heading: 'Qué cambió', bullets: [
+        'Nivel 3 ("your body needs this") dura 15 s en vez de quedarse para siempre',
+        'Clic en la pastilla = aviso cerrado al instante',
+        'Empezar una llamada limpia cualquier aviso visible',
+        'Tooltips/toasts del dock en fila horizontal, no amontonados',
+      ] }],
+    },
+    en: {
+      title: 'Habit nudges no longer stick',
+      intro: 'v4.96.1 — Wellbeing-dock nudges auto-hide (15 s max), dismiss when you click their pill, and clear when a call starts. No more tooltip pile-ups over the transcript.',
+      sections: [{ heading: 'What changed', bullets: [
+        'Level 3 ("your body needs this") lasts 15 s instead of forever',
+        'Click a pill = instant dismissal of its toast',
+        'Starting a call clears any visible toast',
+        'Dock tooltips/toasts fan out in a row instead of stacking',
+      ] }],
+    },
+  },
+  {
     version: '4.96.0',
     id: 'catch-up-clarity-v1',
     highlightElementIds: ['daily-targets-chip'],

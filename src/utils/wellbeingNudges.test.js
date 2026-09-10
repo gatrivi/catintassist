@@ -11,7 +11,10 @@ describe('wellbeingNudges', () => {
     expect(getNudgeLevel('desk')).toBe(1);
     recordNudgeShown('desk');
     recordNudgeShown('desk');
-    expect(getNudgePresentation('desk', 'Break').persistent).toBe(true);
+    // v4.96.1: level 3 is never persistent — 15s auto-hide max
+    const pres = getNudgePresentation('desk', 'Break');
+    expect(pres.persistent).toBe(false);
+    expect(pres.durationMs).toBe(15000);
     acknowledgeNudge('desk');
     expect(getNudgeLevel('desk')).toBe(0);
   });
