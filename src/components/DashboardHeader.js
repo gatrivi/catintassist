@@ -26,6 +26,7 @@ import {
   ZapIcon,
 } from './HeaderIcons';
 import { buildHeaderStripMetrics } from '../utils/headerMetrics';
+import { MicVerifyChip } from './MicVerifyChip';
 import { computeCatchUp, formatCatchUpLine, formatCatchUpVerdict } from '../utils/catchUpPlan';
 import {
   buildOffCallStatusLabel,
@@ -609,7 +610,10 @@ const SessionControlsSticky = React.memo(({
                   🍕 {Math.floor(minutesSinceLastBreak)}m
                 </span>
               )}
-              <span className="call-micro-bar-slot call-micro-bar-reserved" aria-hidden="true" />
+              <span className="call-micro-bar-slot call-micro-bar-reserved">
+                {/* v4.97.0: reserved slot carries the mic-verify chip in call */}
+                <MicVerifyChip title="Client mic + last MIC VERIFY verdict — run TEST from the idle pane before going avail" />
+              </span>
             </div>
             ) : (
             <div className="call-micro-bar-center call-micro-bar-center--compact" title="Call timer">
@@ -653,6 +657,8 @@ const SessionControlsSticky = React.memo(({
                     ? offCallStatusLabel
                     : null}
                 </span>
+                {/* v4.97.0: one-glance mic status off-call — the pre-avail gate */}
+                <MicVerifyChip title="Client mic + last MIC VERIFY verdict — full panel in the idle pane below" />
               </div>
               <div className="off-call-targets-row">
                 <DailyTargetsChip dailyMinutes={dailyMinutes} monthlyMinutes={monthlyMinutes} breakMinutes={breakMinutes} ratePerMinute={ratePerMinute} goalMinutes={goalMinutes} />

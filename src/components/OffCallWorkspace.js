@@ -13,6 +13,7 @@ import {
 } from '../utils/offCallIdleMessages';
 import { needsUserSuppliedDeepgramKey } from '../utils/deepgramRuntimeKey';
 import { StudyCueCards } from './StudyCueCards';
+import { MicVerifyPanel } from './MicVerifyPanel';
 import { COMPONENT_IDS } from '../utils/componentVisibility';
 
 /** Off-call main (~80%): guidance + future transcript workspace below dashboard-header. */
@@ -111,6 +112,8 @@ export const OffCallWorkspace = ({
                 ))}
               </ul>
             )}
+            {/* v4.97.0: mic verify lives here — the "will the client hear me" gate before avail */}
+            <MicVerifyPanel />
             {detail.showDiagnostics && (
               <div className="interpret-pane-diagnostics">
                 <ConnectionDiagnosticsBar

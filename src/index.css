@@ -7220,3 +7220,96 @@ body:has(.app-container[data-call-mode="true"]) .element-hint-panel {
 .dashboard-header--call-expanded .metric-cell-studio {
   display: none;
 }
+
+/* ---------- MIC VERIFY panel (v4.97.0) ---------- */
+.mic-verify-panel {
+  margin: 0.9rem auto 0;
+  max-width: 34rem;
+  width: 100%;
+  text-align: left;
+  font-size: 0.72rem;
+  border: 1px solid rgba(157, 255, 237, 0.18);
+  border-radius: 10px;
+  padding: 0.6rem 0.75rem;
+  background: rgba(15, 23, 42, 0.55);
+}
+.mic-verify-head strong { color: #9dffed; letter-spacing: 0.04em; }
+.mic-verify-sub { color: rgba(255, 255, 255, 0.55); margin-left: 0.35rem; }
+.mic-verify-controls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  align-items: flex-end;
+  margin-top: 0.5rem;
+}
+.mic-verify-field { display: flex; flex-direction: column; gap: 0.15rem; flex: 1 1 10rem; min-width: 0; }
+.mic-verify-field span { font-size: 0.62rem; color: rgba(255, 255, 255, 0.5); }
+.mic-verify-field select {
+  width: 100%;
+  max-width: 100%;
+  font-size: 0.7rem;
+  background: #0f172a;
+  color: #e2e8f0;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  border-radius: 6px;
+  padding: 0.2rem 0.3rem;
+}
+.mic-verify-test-btn {
+  flex: 0 0 auto;
+  font-weight: 900;
+  font-size: 0.72rem;
+  color: #0f172a;
+  background: #9dffed;
+  border: none;
+  border-radius: 6px;
+  padding: 0.35rem 0.8rem;
+  cursor: pointer;
+}
+.mic-verify-test-btn:disabled { opacity: 0.7; cursor: default; }
+.mic-verify-edge-default { margin-top: 0.45rem; font-size: 0.66rem; color: rgba(255, 255, 255, 0.55); }
+.mic-verify-edge-default.is-mismatch { color: #fbbf24; }
+.mic-verify-bars { list-style: none; margin: 0.5rem 0 0; padding: 0; }
+.mic-verify-bars li {
+  display: grid;
+  grid-template-columns: minmax(6rem, 1fr) 2fr auto;
+  gap: 0.5rem;
+  align-items: center;
+  margin-bottom: 0.2rem;
+  font-size: 0.66rem;
+}
+.mic-verify-bar-label {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: rgba(255, 255, 255, 0.65);
+}
+.mic-verify-bar-label.is-pinned { color: #9dffed; font-weight: 700; }
+.mic-verify-bar-track {
+  display: block;
+  height: 6px;
+  border-radius: 3px;
+  background: rgba(255, 255, 255, 0.08);
+  overflow: hidden;
+}
+.mic-verify-bar-fill { display: block; height: 100%; border-radius: 3px; transition: width 0.12s linear; }
+.mic-verify-bar-state { font-family: var(--font-mono, monospace); font-size: 0.62rem; white-space: nowrap; }
+.mic-verify-verdict {
+  margin-top: 0.5rem;
+  border: 1px solid;
+  border-radius: 8px;
+  padding: 0.4rem 0.55rem;
+}
+.mic-verify-verdict-head { font-weight: 800; font-size: 0.7rem; }
+.mic-verify-hint { font-size: 0.64rem; color: rgba(255, 255, 255, 0.6); margin-top: 0.2rem; }
+.mic-verify-loopback { margin-top: 0.45rem; display: flex; gap: 0.5rem; align-items: center; font-size: 0.64rem; color: rgba(255, 255, 255, 0.55); }
+.mic-verify-loopback button {
+  font-size: 0.66rem;
+  font-weight: 800;
+  color: #e2e8f0;
+  background: rgba(157, 255, 237, 0.12);
+  border: 1px solid rgba(157, 255, 237, 0.4);
+  border-radius: 6px;
+  padding: 0.25rem 0.6rem;
+  cursor: pointer;
+}
+.mic-verify-foot { margin-top: 0.5rem; font-size: 0.6rem; color: rgba(255, 255, 255, 0.4); display: flex; gap: 0.5rem; align-items: center; flex-wrap: wrap; }

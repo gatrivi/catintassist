@@ -25,6 +25,32 @@ import { APP_VERSION } from '../constants/version';
 /** Newest first. Only the entry matching APP_VERSION is shown on load. */
 export const RELEASE_NOTES_CATALOG = [
   {
+    version: '4.97.0',
+    id: 'mic-verify-v1',
+    highlightElementIds: ['interpret-root'],
+    es: {
+      title: 'MIC VERIFY — ¿te escuchará el cliente?',
+      intro: 'v4.97.0 — Panel nuevo en el panel inactivo: elige el micrófono del cliente (el que toma la plataforma), pulsa TEST, habla 5s y verás barras de señal por dispositivo + te escuchas a ti mismo por la salida elegida. Avisa si el micrófono por defecto de Edge no es el tuyo — ese es el que toma la plataforma.',
+      sections: [{ heading: 'Qué cambió', bullets: [
+        'Dropdowns de micrófono y salida DENTRO del panel (ya no buscar en la I/O strip)',
+        'TEST: 5s hablando → barras en vivo por cada mic + veredicto ✅/❌/⚠️',
+        'Te escuchas de vuelta (loopback) por el dispositivo de salida elegido',
+        'Chip 🎤 en la barra: mic fijado + último veredicto, antes de volver a avail',
+        'Aviso si Edge default ≠ tu mic, y si el dispositivo corre a 44.1k en vez de 48k',
+      ] }],
+    },
+    en: {
+      title: 'MIC VERIFY — will the client hear you?',
+      intro: 'v4.97.0 — New panel in the idle pane: pin the client mic (what the platform grabs), press TEST, speak for 5s → per-device signal bars + hear yourself back through the chosen output. Warns when Edge\u2019s default mic isn\u2019t yours — that\u2019s the one the platform tab grabs.',
+      sections: [{ heading: 'What changed', bullets: [
+        'Mic + playback dropdowns INSIDE the panel (no more I/O-strip hunt)',
+        'TEST: speak 5s → live bars per mic + verdict ✅/❌/⚠️',
+        'Loopback playback through your chosen output device',
+        '🎤 chip on the bar: pinned mic + last verdict, before returning to avail',
+        'Warns when Edge default ≠ your pick, and when a device runs 44.1k instead of 48k',
+      ] }],
+    },
+  },  {
     version: '4.96.5',
     id: 'hand-edit-sync-v1',
     highlightElementIds: ['heatmap-panel'],

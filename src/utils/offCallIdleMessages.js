@@ -57,18 +57,21 @@ const CHECKLIST_TAB = [
   'CONNECT tab (or 🎤 mic / VB Cable) · one press starts · STOP when done',
   'Deepgram key in Settings (gear) if STT fails',
   'VB-Cable Input routes greetings to the patient (desktop)',
+  '🎤 MIC VERIFY below — TEST before going avail (v4.97.0)',
 ];
 
 const CHECKLIST_VB = [
   'CONNECT VB-Cable · CABLE Output → STT · no tab picker',
   'Deepgram key in Settings (gear) if STT fails',
   'VB-Cable Input routes greetings to the patient',
+  '🎤 MIC VERIFY below — TEST before going avail (v4.97.0)',
 ];
 
 const CHECKLIST_MIC = [
   'CONNECT mic · local speakers for soundboard/TTS · STOP when done',
   'Deepgram key in Settings (gear) if STT fails',
   'Turn 🎤 off before desktop production (tab or VB)',
+  '🎤 MIC VERIFY below — TEST before going avail (v4.97.0)',
 ];
 
 /** @deprecated prefer tipsForMode — kept for callers that ignore mode */
