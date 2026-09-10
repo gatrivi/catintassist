@@ -46,6 +46,7 @@ import { AudioRouteStatusBar } from './AudioRouteStatusBar';
 import { HeaderMetricsStrip } from './HeaderMetricsStrip';
 import { playTestToneLocal, playTestToneSink } from '../utils/audioSelfTest';
 import { APP_VERSION_LABEL } from '../constants/version';
+import { AutopilotChip } from './AutopilotGuard';
 import { getAppStatus } from '../utils/appStatus';
 import { SlotMicroValue } from './SlotMicroValue';
 import { needsUserSuppliedDeepgramKey } from '../utils/deepgramRuntimeKey';
@@ -384,6 +385,9 @@ const SessionControlsSticky = React.memo(({
               />
             </button>
           </ElementHintTarget>
+
+          {/* v4.98.0: autopilot armed indicator */}
+          <AutopilotChip />
 
           {!isActive ? (
               <ConnectInterpretButton

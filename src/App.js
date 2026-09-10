@@ -9,6 +9,7 @@ import OnCallSoundboardStrip from "./components/OnCallSoundboardStrip";
 import { NotePad } from "./components/NotePad";
 import { DictionaryTool } from "./components/DictionaryTool";
 import { SilenceGuardian } from "./components/SilenceGuardian";
+import { AutopilotGuard } from "./components/AutopilotGuard";
 import { DeskExerciseWidget } from "./components/DeskExerciseWidget";
 import { RosaryWidget } from "./components/RosaryWidget";
 import { MealTrackerWidget } from "./components/MealTrackerWidget";
@@ -816,6 +817,9 @@ const Dashboard = () => {
       </div>
 
       <SilenceGuardian lastDataTime={lastDataTime} onStopAudio={stopRecording} />
+
+      {/* v4.98.0: autopilot 10s auto-end countdown banner */}
+      <AutopilotGuard onStopAudio={stopRecording} />
 
       <a href="#main-transcript" className="skip-to-main">
         Skip to transcript

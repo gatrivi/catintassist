@@ -16,6 +16,12 @@ import {
   shouldResetWorkTimer,
   MANUAL_BREAK_SUPPRESS_MS,
 } from '../utils/breakState';
+import {
+  canAutopilotStart,
+  canAutopilotEnd,
+  AUTOPILOT_START_COOLDOWN_MS,
+  AUTOPILOT_END_COUNTDOWN_MS,
+} from '../utils/callAutopilot';
 
 const PURGE_KEYS_PREFIX = 'trans_cache:';
 
@@ -92,6 +98,26 @@ export const SessionProvider = ({ children }) => {
       localStorage.setItem('catint_speech_auto_v1', speechAutoConnect ? '1' : '0');
     } catch (_) {}
   }, [speechAutoConnect]);
+
+  // ── CALL AUTOPILOT (v4.98.0): phrase-driven auto start/end ──
+  // When ON, speech alone no longer starts a call — only the platform's own
+  // ring/bridge phrase starts it and a disconnect phrase ends it (10s
+  // cancellable banner). Refs mirror state: socket closures read them live.
+  const [callAutopilot, setCallAutopilot] = useState(() => {
+    try {
+      // Default OFF for the first release — opt in from Settings → Behavior.
+      return localStorage.getItem('catint_autopilot_v1') === '1';
+    } catch {
+      return false;
+    }
+  });
+  const callAutopilotRef = useRef(callAutopilot);
+  useEffect(() => {
+    callAutopilotRef.current = callAutopilot;
+    try {
+      localStorage.setItem('catint_autopilot_v1', callAutopilot ? '1' : '0');
+    } catch (_) {}
+  }, [callAutopilot]);
 
   const [vaultStatus, setVaultStatus] = useState('idle');
   useEffect(() => {
@@ -707,10 +733,78 @@ export const SessionProvider = ({ children }) => {
 
   const trySpeechAutoStart = useCallback(() => {
     // v4.92.0: call-detect toggle OFF also disables speech auto-start.
+    // v4.98.0: autopilot ON takes over — only ring/bridge phrases start a call.
     if (!speechAutoConnectRef.current || !isCallDetectionEnabledRef.current || isActiveStateRef.current) return false;
+    if (callAutopilotRef.current) return false;
     startSessionRef.current(false);
     return true;
   }, []);
+
+  // ── CALL AUTOPILOT callbacks (v4.98.0) — placed after the refs they close
+  // over (startSessionRef, isActiveStateRef, isHoldAutoRef, isZombieAutoRef).
+
+  // When the current call started — end phrases inside the first minute are
+  // echo/overlap and are ignored (AUTOPILOT_MIN_CALL_SECS).
+  const callStartAtRef = useRef(0);
+  useEffect(() => {
+    if (isActive) callStartAtRef.current = Date.now();
+  }, [isActive]);
+
+  // 10s cancellable auto-end deadline (0 = none). AutopilotGuard renders the banner.
+  const [autopilotEndsAt, setAutopilotEndsAt] = useState(0);
+  const autopilotEndsAtRef = useRef(0);
+  const autopilotCooldownUntilRef = useRef(0);
+  const [autopilotEvent, setAutopilotEvent] = useState('');
+  const setAutopilotDeadline = useCallback((at) => {
+    autopilotEndsAtRef.current = at;
+    setAutopilotEndsAt(at);
+  }, []);
+
+  const tryAutopilotStart = useCallback(() => {
+    const ok = canAutopilotStart({
+      enabled: callAutopilotRef.current,
+      isActive: isActiveStateRef.current,
+      isZombie: isZombieAutoRef.current,
+      cooldownRemainsMs: autopilotCooldownUntilRef.current - Date.now(),
+    });
+    if (!ok) return false;
+    setAutopilotDeadline(0); // a fresh call cancels any dangling end countdown
+    startSessionRef.current(false);
+    setAutopilotEvent(`auto-START · ${new Date().toLocaleTimeString()}`);
+    return true;
+  }, [setAutopilotDeadline]);
+
+  /** End phrase heard → open the 10s cancellable countdown. */
+  const requestAutopilotEnd = useCallback(() => {
+    const ok = canAutopilotEnd({
+      enabled: callAutopilotRef.current,
+      isActive: isActiveStateRef.current,
+      isHold: isHoldAutoRef.current,
+      callAgeSecs: (Date.now() - callStartAtRef.current) / 1000,
+    });
+    if (!ok) return false;
+    if (autopilotEndsAtRef.current) return true; // already counting down
+    setAutopilotDeadline(Date.now() + AUTOPILOT_END_COUNTDOWN_MS);
+    setAutopilotEvent(`auto-END armed · ${new Date().toLocaleTimeString()}`);
+    return true;
+  }, [setAutopilotDeadline]);
+
+  /** "Keep call" button — cancel the countdown and ignore end phrases briefly. */
+  const cancelAutopilotEnd = useCallback(() => {
+    if (!autopilotEndsAtRef.current) return;
+    setAutopilotDeadline(0);
+    autopilotCooldownUntilRef.current = Date.now() + AUTOPILOT_START_COOLDOWN_MS;
+  }, [setAutopilotDeadline]);
+
+  /** Countdown expired — AutopilotGuard stops the call, then confirms here. */
+  const consumeAutopilotEnd = useCallback(() => {
+    if (!autopilotEndsAtRef.current) return false;
+    setAutopilotDeadline(0);
+    autopilotCooldownUntilRef.current = Date.now() + AUTOPILOT_START_COOLDOWN_MS;
+    setAutopilotEvent(`auto-END fired · ${new Date().toLocaleTimeString()}`);
+    return true;
+  }, [setAutopilotDeadline]);
+  // ────────────────────────────────────────────────────────────────────────
 
   // TERMINAR LLAMADA: Guardamos los minutos que trabajamos para no perderlos.
   const stopSession = (onCallEnded) => {
@@ -1064,6 +1158,15 @@ export const SessionProvider = ({ children }) => {
     speechAutoConnect,
     setSpeechAutoConnect,
     trySpeechAutoStart,
+    callAutopilot,
+    setCallAutopilot,
+    callAutopilotRef,
+    tryAutopilotStart,
+    requestAutopilotEnd,
+    cancelAutopilotEnd,
+    consumeAutopilotEnd,
+    autopilotEndsAt,
+    autopilotEvent,
     notifySpeechDuringCall,
     lastSilenceDeductionMins,
     vaultStatus,

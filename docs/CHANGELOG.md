@@ -2,6 +2,16 @@
 
 **Version source:** `src/constants/version.js` (must match `package.json` + top-right UI pill)
 
+## v4.98.0 - Call Autopilot (phrase-driven auto start/end)
+
+- **New (`callAutopilot.js` + `SessionContext` + `useDeepgram`):** 🤖 Call Autopilot (Settings → Behavior, default OFF). One CONNECT press arms it; after that the platform's own announcements run the session — a bridge phrase ("call is being bridged") STARTS the call, a disconnect phrase ("the caller has disconnected") opens a **10s cancellable banner** then ends it (same stop path as SilenceGuardian: audio pipeline + session).
+- **Strict start:** with autopilot ON, any-speech auto-start (v4.92.0) is suppressed — queue-wait announcements ("please continue to hold…") can no longer start billing. Speech auto-start behavior is unchanged when autopilot is OFF.
+- **Safety gates:** 25s cooldown after any auto-end/cancel (no bounce-start from trailing "thank you for using…"); end phrases ignored while on hold and during the first 60s of a call (echo window); end detection only on final transcripts.
+- **Editable phrases:** Settings → Behavior → "Phrase lists" — start/end lists are one-per-line textareas (defaults shipped, stored in `catint_autopilot_phrases_v1`).
+- **Ring/bell listener (experimental, LOG-ONLY):** while armed, `toneWatch.js` samples the preserved tab stream's FFT and records narrow-band bursts (`AutopilotSettings` panel shows tone frames + dominant Hz). Nothing acts on tones yet — data first, thresholds later.
+- **Header:** green `🤖 AUTO` chip next to the app logo while armed; hover shows the last autopilot action.
+- Tests: 18 new (`callAutopilot.test.js`, `toneWatch.test.js`).
+
 ## v4.95.1 - Meter-only HUD mode
 
 - **New:** 3rd HUD mode during calls — 📊 button (top-right, next to ⌃) toggles meter-only: sticky timers hidden, big workday timeline (ON/OFF/LEFT, larger font, static layout) + 💵⏱☕ targets strip. Persisted `catint_hud_meter_only_v1`.

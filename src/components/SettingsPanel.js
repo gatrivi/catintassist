@@ -3,6 +3,7 @@ import { useSession } from '../contexts/SessionContext';
 import DeepgramKeyVault from './DeepgramKeyVault';
 import { TranslationKeysForm } from './TranslationKeysForm';
 import { TranslationStatusBar } from './TranslationStatusBar';
+import { AutopilotSettings } from './AutopilotSettings';
 import { APP_VERSION_LABEL } from '../constants/version';
 import { isWellbeingDockEnabled, setWellbeingDockEnabled } from '../utils/wellbeingDock';
 import { useTTS } from '../hooks/useTTS';
@@ -362,6 +363,7 @@ export default function SettingsPanel({
             <p style={{ fontSize: 10, color: 'rgba(255,255,255,0.5)', marginTop: 6 }}>
               v4.92.0: between calls the app keeps its ears open (idle ear — Deepgram gets NO audio, only pings, so no usage) and starts the call by itself when speech appears. Requires audio attached (one CONNECT press per browser session).
             </p>
+            <AutopilotSettings />
             <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12, cursor: 'pointer', marginTop: 14 }}>
               <input
                 type="checkbox"

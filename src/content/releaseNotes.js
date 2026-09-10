@@ -25,6 +25,32 @@ import { APP_VERSION } from '../constants/version';
 /** Newest first. Only the entry matching APP_VERSION is shown on load. */
 export const RELEASE_NOTES_CATALOG = [
   {
+    version: '4.98.0',
+    id: 'call-autopilot-v1',
+    highlightElementIds: ['header-autopilot-chip'],
+    es: {
+      title: '🤖 CALL AUTOPILOT — la plataforma arranca y corta sola',
+      intro: 'v4.98.0 — Actívalo en Settings → Behavior. Con UN solo CONNECT por sesión: la frase "call is being bridged" INICIA la llamada y "the caller has disconnected" abre un aviso de 10s que puedes cancelar y luego corta. Los anuncios de cola ("please continue to hold") ya no inician facturación por error.',
+      sections: [{ heading: 'Qué cambió', bullets: [
+        'Auto-START solo con frase de puente o llamada entrante — hablar solo ya no inicia (antes sí)',
+        'Auto-END con frase de desconexión → banner de 10s con "Keep call" / "End now"',
+        'Chip verde 🤖 AUTO en la barra — apunta a qué hora actuó el autopiloto',
+        'Frases editables en Settings → Behavior (una por línea)',
+        'Experimental: escucha del ring/campana en Settings (solo registro — aún no actúa)',
+      ] }],
+    },
+    en: {
+      title: '🤖 CALL AUTOPILOT — the platform starts and ends calls for you',
+      intro: 'v4.98.0 — Enable it in Settings → Behavior. With ONE CONNECT per browser session: "call is being bridged" STARTS the call, "the caller has disconnected" opens a 10s banner you can cancel and then ends it. Queue announcements ("please continue to hold") no longer start billing by mistake.',
+      sections: [{ heading: 'What changed', bullets: [
+        'Auto-START only on a bridge phrase — speech alone no longer starts a call',
+        'Auto-END on a disconnect phrase → 10s banner with "Keep call" / "End now"',
+        'Green 🤖 AUTO header chip — hover shows the last autopilot action time',
+        'Phrase lists editable in Settings → Behavior (one per line)',
+        'Experimental ring/bell listener in Settings (log-only — acts on nothing yet)',
+      ] }],
+    },
+  },  {
     version: '4.97.0',
     id: 'mic-verify-v1',
     highlightElementIds: ['interpret-root'],

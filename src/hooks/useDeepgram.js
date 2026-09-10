@@ -50,6 +50,12 @@ import {
 import { writeMicTestMode } from "../utils/micMode";
 import { traceCaptionArrayDiff } from "../utils/vanishTrace";
 import { updateVadLoudFrames, shouldWakeFromVad } from "../utils/idleEar";
+import {
+  matchCallStartPhrase,
+  matchCallEndPhrase,
+  loadAutopilotPhrases,
+} from "../utils/callAutopilot";
+import { analyzeToneFrame, createToneTracker } from "../utils/toneWatch";
 
 const CAPTIONS_CLEARED_EVENT = "catint_captions_cleared";
 const STT_TRACE_LIMIT = 300;
@@ -114,6 +120,9 @@ export const useDeepgram = () => {
     hipaaGraceActiveRef,
     notifySpeechDuringCall,
     trySpeechAutoStart,
+    tryAutopilotStart,
+    requestAutopilotEnd,
+    callAutopilotRef,
     speechAutoConnect,
   } = useSession();
 
@@ -486,7 +495,53 @@ export const useDeepgram = () => {
     return () => window.removeEventListener("cat_deepgram_runtime_key_changed", onKeyChange);
   }, [patchKeyProgress]);
 
+  // ── TONE WATCH (v4.98.0) — EXPERIMENTAL, LOG-ONLY ──────────────────────
+  // While autopilot is armed, sample the preserved platform stream's FFT and
+  // record narrow-band bursts (ring / end-bell candidates). Nothing acts on
+  // this yet — Settings shows what it hears so thresholds can be tuned
+  // against the real sounds first. Declared before closeConnections (deps).
+
+  const toneMonitorRef = useRef(null);
+
+  const stopToneMonitor = useCallback(() => {
+    const m = toneMonitorRef.current;
+    if (!m) return;
+    toneMonitorRef.current = null;
+    clearInterval(m.interval);
+    try { m.ctx.close(); } catch (_) {}
+    try { delete window.__catintTone; } catch (_) {}
+  }, []);
+
+  const ensureToneMonitor = useCallback((stream) => {
+    if (!callAutopilotRef?.current) return;
+    if (!stream?.active || stream.getAudioTracks().length === 0) return;
+    if (toneMonitorRef.current) return;
+    try {
+      const Ctx = window.AudioContext || window.webkitAudioContext;
+      const ctx = new Ctx();
+      if (ctx.state === "suspended" && ctx.resume) ctx.resume();
+      const srcNode = ctx.createMediaStreamSource(new MediaStream(stream.getAudioTracks()));
+      const analyser = ctx.createAnalyser();
+      analyser.fftSize = 512;
+      srcNode.connect(analyser);
+      const freqBuf = new Uint8Array(analyser.frequencyBinCount);
+      const tracker = createToneTracker();
+      window.__catintTone = tracker; // inspect: __catintTone.summary()
+      const interval = setInterval(() => {
+        try {
+          analyser.getByteFrequencyData(freqBuf);
+          tracker.push(analyzeToneFrame(freqBuf, ctx.sampleRate), Date.now());
+        } catch (_) {}
+      }, 200);
+      toneMonitorRef.current = { ctx, interval };
+      critLog("info", "tone watch: listening (log-only)", {});
+    } catch (e) {
+      critLog("warn", "tone watch unavailable", { err: String(e) });
+    }
+  }, [callAutopilotRef, critLog]);
+
   const closeConnections = useCallback(() => {
+    stopToneMonitor();
     clearKeepalive();
     if (connectFailTimerRef.current) {
       clearTimeout(connectFailTimerRef.current);
@@ -535,7 +590,7 @@ export const useDeepgram = () => {
       failureCategory: null,
       lastError: null,
     });
-  }, [clearKeepalive]);
+  }, [clearKeepalive, stopToneMonitor]);
 
   const isLikelyApiKeyRejected = useCallback((text) => {
     const s = (text || "").toString().toLowerCase();
@@ -1031,6 +1086,21 @@ export const useDeepgram = () => {
             requestHoldIntent();
           }
 
+          // v4.98.0: call autopilot — the platform's own announcements drive
+          // the session. Runs BEFORE the capture gate so phrases land between
+          // calls too (idle ear wakes on the announcement's speech energy).
+          if (matchCallStartPhrase(lowTrans, loadAutopilotPhrases())) {
+            if (tryAutopilotStart()) {
+              shouldCaptureCaptionsRef.current = true;
+              notifySpeechDuringCall();
+            }
+          } else if (
+            (isFinal || speechFinal) &&
+            matchCallEndPhrase(lowTrans, loadAutopilotPhrases())
+          ) {
+            requestAutopilotEnd();
+          }
+
           const now = Date.now();
           const timeSinceLast = now - lastTranscriptTimeRef.current;
           lastTranscriptTimeRef.current = now;
@@ -1292,9 +1362,12 @@ export const useDeepgram = () => {
 
   /** Enter idle-ear from stopRecording. Returns false → full disconnect. */
   const enterIdleEar = useCallback(() => {
-    if (!speechAutoConnectRef.current) return false;
+    // v4.98.0: autopilot also needs the ear open between calls (it listens
+    // for the bridge/disconnect phrases, which arrive as transcripts).
+    if (!speechAutoConnectRef.current && !callAutopilotRef.current) return false;
     const stream = streamRef.current;
     if (!stream?.active || stream.getAudioTracks().length === 0) return false;
+    ensureToneMonitor(stream);
 
     // Stop ONLY the recorder — sockets stay open, no audio leaves the machine.
     try {
@@ -1362,7 +1435,7 @@ export const useDeepgram = () => {
       critLog("warn", "idle ear VAD unavailable", { err: String(e) });
     }
     return true;
-  }, [speechAutoConnectRef, stopIdleEar, syncConnectProgress, closeConnections, critLog]);
+  }, [speechAutoConnectRef, callAutopilotRef, ensureToneMonitor, stopIdleEar, syncConnectProgress, closeConnections, critLog]);
   // ────────────────────────────────────────────────────────────────────────
 
   const stopRecording = useCallback(() => {
@@ -1395,6 +1468,7 @@ export const useDeepgram = () => {
       if (streamRef.current !== stream) return;
       streamRef.current = null;
       streamSourceRef.current = null;
+      stopToneMonitor();
       stopRecordingRef.current();
     };
     if (source === "tab") {
@@ -1405,7 +1479,7 @@ export const useDeepgram = () => {
     stream.getAudioTracks().forEach((track) => {
       track.onended = onStreamEnded;
     });
-  }, []);
+  }, [stopToneMonitor]);
 
   const beginStream = useCallback(
     (stream, source) => {
@@ -1430,6 +1504,7 @@ export const useDeepgram = () => {
       }
       streamRef.current = stream;
       isActiveRef.current = true;
+      ensureToneMonitor(stream); // v4.98.0: log-only ring/bell listener (autopilot)
       setAttachedAudioSourceMode(source);
       bindStreamLifecycle(stream, source);
       syncConnectProgress({ audioStreamReady: true, phase: "connecting" });
@@ -1452,7 +1527,7 @@ export const useDeepgram = () => {
       setVirtualCableFailure(null);
       return true;
     },
-    [bindStreamLifecycle, startDeepgram, critLog],
+    [bindStreamLifecycle, startDeepgram, critLog, ensureToneMonitor],
   );
 
   const startRecording = useCallback(async () => {
