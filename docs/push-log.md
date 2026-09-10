@@ -26,3 +26,8 @@
 | 2026-09-10T16:05:48.812Z | e258a6f | v4.96.1 habit toasts never stick — 15s cap, click-dismiss, call-start clear |
 | 2026-09-10T16:34:24.587Z | dc2ad20 | v4.96.2 chip narrow-window fit: no more counter overlap on STT/EN-ES buttons |
 | 2026-09-10T17:28:51.544Z | 5f8546e | v4.96.3 in-call header card — numbers grid replaces empty game face |
+| 2026-09-10T17:41:13.091Z | 6cedbec | docs: field incident cable-silent checklist + push-log rows v4.96.1-v4.96.3 |
+| 2026-09-10T17:49:47.802Z | 5401767 | v4.96.4 preflight failure shows script inline |
+| 2026-09-10T18:28:14.648Z | 133f636 | v4.96.5 heatmap hand-edit syncs scoreboard + deficit |
+| 2026-09-10T20:24:29.025Z | 95d2e6a | v4.97.0: mic verify panel - dropdowns, live probe, loopback, edge-default mismatch guard |
+| 2026-09-10T22:06:25.160Z | 56c6a66 | v4.98.0 call autopilot — phrase auto start/end, 10s cancellable, editable phrases, log-only tone listener |

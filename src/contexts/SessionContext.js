@@ -10,6 +10,8 @@ import {
 } from '../utils/scoreboardLayout';
 import { mergeImportedDays } from '../utils/callLogImport';
 import { isDateInCurrentMonth, applyDayEditToStats } from '../utils/pastDayEdit';
+import { rollDaySnapshot } from '../utils/dayRoll';
+import { TIMETRACK_CHANGED_EVENT } from '../utils/timeTrackSync';
 import { shouldAutoHold, shouldAutoResume } from '../utils/holdState';
 import {
   shouldAutoBreak,
@@ -631,6 +633,16 @@ export const SessionProvider = ({ children }) => {
     });
   }, []);
 
+  // v4.99.0: bank live off-call/break seconds every minute so a crash or browser
+  // kill loses at most 60s. commitAvailTime is closure-stable (setters only).
+  useEffect(() => {
+    const banking = setInterval(() => {
+      commitAvailTime();
+      bankBreakSeconds();
+    }, 60000);
+    return () => clearInterval(banking);
+  }, [bankBreakSeconds]);
+
   // Timer for Hold
   useEffect(() => {
     let iv;
@@ -978,6 +990,51 @@ export const SessionProvider = ({ children }) => {
       });
     }, 30000);
     return () => clearInterval(monthGuard);
+  }, []);
+
+  // v4.99.0: live day rollover — a tab open across midnight archives yesterday
+  // exactly like the mount-time stats logic (timeline → history, minutes → log).
+  // Reads localStorage (the durability source) to avoid stale closures, same
+  // idiom as importCallLog.
+  useEffect(() => {
+    const dayGuard = setInterval(() => {
+      try {
+        const todayStr = new Date().toDateString();
+        const rolled = rollDaySnapshot({
+          stats: JSON.parse(localStorage.getItem('catintassist_stats') || '{}'),
+          dailyLog: JSON.parse(localStorage.getItem('catintassist_daily_log') || '{}'),
+          historyTimeline: JSON.parse(localStorage.getItem('catintassist_history_timeline') || '{}'),
+          timeline: JSON.parse(localStorage.getItem('catintassist_timeline') || '[]'),
+          todayStr,
+        });
+        if (!rolled) return;
+        safeLocalStorageSet('catintassist_daily_log', JSON.stringify(rolled.dailyLog));
+        safeLocalStorageSet('catintassist_history_timeline', JSON.stringify(rolled.historyTimeline));
+        safeLocalStorageSet('catintassist_stats', JSON.stringify(rolled.stats));
+        safeLocalStorageSet('catintassist_timeline', JSON.stringify([]));
+        setDailyLog(rolled.dailyLog);
+        setHistoryTimeline(rolled.historyTimeline);
+        setStats(rolled.stats);
+        setDailyTimeline([]);
+        setHoldSeconds(0);
+      } catch (e) {
+        console.warn('[Session] Day rollover failed:', e);
+      }
+    }, 30000);
+    return () => clearInterval(dayGuard);
+  }, []);
+
+  // v4.99.0: a cloud pull (sign-in) merged missing past days → re-hydrate the
+  // in-memory mirrors so the scoreboard/heatmap see them immediately.
+  useEffect(() => {
+    const onCloudMerge = () => {
+      try {
+        setDailyLog(JSON.parse(localStorage.getItem('catintassist_daily_log') || '{}'));
+        setHistoryTimeline(JSON.parse(localStorage.getItem('catintassist_history_timeline') || '{}'));
+      } catch (e) { /* non-fatal */ }
+    };
+    window.addEventListener(TIMETRACK_CHANGED_EVENT, onCloudMerge);
+    return () => window.removeEventListener(TIMETRACK_CHANGED_EVENT, onCloudMerge);
   }, []);
 
   const availTimerRef = useRef(null);

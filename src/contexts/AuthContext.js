@@ -14,6 +14,11 @@ import {
   pullSoundboardFromCloud,
   pushSoundboardToCloud,
 } from '../services/soundboardMetaService';
+import {
+  applyCloudTimeTrack,
+  pullTimeTrackFromCloud,
+  pushTimeTrackToCloud,
+} from '../services/timeTrackService';
 
 const AuthContext = createContext(null);
 const PUSH_INTERVAL_MS = 45000;
@@ -32,6 +37,7 @@ export const AuthProvider = ({ children }) => {
     try {
       await pushSettingsToCloud(uid, collectLocalSettings());
       await pushSoundboardToCloud(uid);
+      await pushTimeTrackToCloud(uid); // v4.99.0: day ledger mirror (dirty-checked)
       setSyncState('idle');
       setAuthError(null);
     } catch (err) {
@@ -48,6 +54,13 @@ export const AuthProvider = ({ children }) => {
     try {
       const cloudDoc = await pullSettingsFromCloud(uid);
       await pullSoundboardFromCloud(uid);
+      // v4.99.0: restore the on/off-call day ledger (missing past days only).
+      try {
+        const cloudTimeTrack = await pullTimeTrackFromCloud(uid);
+        if (cloudTimeTrack) applyCloudTimeTrack(cloudTimeTrack);
+      } catch (ttErr) {
+        console.warn('Time-track pull failed:', ttErr);
+      }
       if (shouldOfferImport(uid, cloudDoc)) {
         setImportPrompt({ uid, keyCount: Object.keys(collectLocalSettings()).length });
       } else {
@@ -96,6 +109,7 @@ export const AuthProvider = ({ children }) => {
     const onUnload = () => {
       pushSettingsToCloud(uid, collectLocalSettings()).catch(() => {});
       pushSoundboardToCloud(uid).catch(() => {});
+      pushTimeTrackToCloud(uid).catch(() => {});
     };
     window.addEventListener('beforeunload', onUnload);
 

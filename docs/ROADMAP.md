@@ -92,6 +92,15 @@ Follow [`handoff/06_auth_db.md`](handoff/06_auth_db.md):
 
 **Do not implement** until approved — localStorage/IndexedDB stays source of truth.
 
+### Multi-user access (workflow-safe) — the friend incident rule
+
+- [ ] **Add user access WITHOUT breaking workflow.** Last hardcode locked a friend out and he built his own app. Requirements:
+  - App is **never gated**: signed-out stays 100% functional; access control is additive, not a login wall.
+  - **No hardcoded emails/passwords in code.** Allow-list lives in Firestore (a doc or custom claims) so access can be granted/revoked without a redeploy.
+  - Failure mode = **allow, never lock out** (Firebase down/rules error → app still works).
+  - **Test with a second real account** (not the owner's) before shipping — owner-only testing is exactly how the last attempt failed.
+  - Existing base to build on: Google sign-in + per-user Firestore tree (`users/{uid}/**`) already sync settings/soundboard/time-track (v4.99.0).
+
 ---
 
 ## Phase 2 — Soundboard production (v4.75.0)

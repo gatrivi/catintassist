@@ -25,6 +25,32 @@ import { APP_VERSION } from '../constants/version';
 /** Newest first. Only the entry matching APP_VERSION is shown on load. */
 export const RELEASE_NOTES_CATALOG = [
   {
+    version: '4.99.0',
+    id: 'time-ledger-durable-v1',
+    highlightElementIds: ['interpret-root'],
+    es: {
+      title: '⏱ TIEMPO A PRUEBA DE TODO — registro on/off call duradero',
+      intro: 'v4.99.0 — Tu registro de tiempo ahora sobrevive a cualquier cosa: si el navegador muere pierdes máximo 1 minuto; si la pestaña queda abierta al cruzar medianoche, el día se archiva solo; y al iniciar sesión con Google, el historial de días se espeja a Firebase (y se restaura en otra máquina o tras borrar el navegador).',
+      sections: [{ heading: 'Qué cambió', bullets: [
+        'Segundos de DISPONIBLE/DESCANSO se consolidan cada minuto — un crash ya no se los come',
+        'Medianoche en vivo: el día se archiva solo aunque no cierres la pestaña',
+        'Espejo Firebase users/{uid}/timetrack — solo sube cuando hay cambios (cuida el free tier)',
+        'Al iniciar sesión: completa días faltantes desde la nube — JAMÁS sobrescribe lo local',
+        'Sin sesión: todo sigue igual, localStorage manda',
+      ] }],
+    },
+    en: {
+      title: '⏱ BULLETPROOF TIME LEDGER — durable on/off-call record',
+      intro: 'v4.99.0 — Your time record now survives anything: a browser kill loses at most 1 minute; a tab left open across midnight archives the day by itself; and signing in with Google mirrors the day history to Firebase (restoring it on another machine or after a browser wipe).',
+      sections: [{ heading: 'What changed', bullets: [
+        'AVAIL/BREAK seconds bank every minute — a crash no longer eats them',
+        'Live midnight rollover — the day archives itself even with the tab open',
+        'Firebase mirror users/{uid}/timetrack — pushes only on change (free-tier safe)',
+        'On sign-in: fills MISSING days from the cloud — NEVER overwrites local data',
+        'Signed out: everything as before, localStorage rules',
+      ] }],
+    },
+  },  {
     version: '4.98.0',
     id: 'call-autopilot-v1',
     highlightElementIds: ['header-autopilot-chip'],
