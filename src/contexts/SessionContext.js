@@ -9,6 +9,7 @@ import {
   getPresetConfig,
 } from '../utils/scoreboardLayout';
 import { mergeImportedDays } from '../utils/callLogImport';
+import { isDateInCurrentMonth, applyDayEditToStats } from '../utils/pastDayEdit';
 import { shouldAutoHold, shouldAutoResume } from '../utils/holdState';
 import {
   shouldAutoBreak,
@@ -490,6 +491,24 @@ export const SessionProvider = ({ children }) => {
   const commitDayToLog = useCallback((dateStr, minutes) => {
     setDailyLog(prev => ({ ...prev, [dateStr]: Math.round(minutes) }));
   }, []);
+
+  // v4.96.5: hand-edit a PAST day (heatmap pebble editor) — writes the log AND
+  // syncs stats so the deficit chip / catch-up plan see the correction.
+  const editPastDay = useCallback((dateStr, minutes) => {
+    const mins = Math.max(0, Math.round(Number(minutes) || 0));
+    const old = Math.round(dailyLog[dateStr] || 0);
+    if (old === mins) return;
+    const nextLog = { ...dailyLog, [dateStr]: mins };
+    setDailyLog(nextLog);
+    safeLocalStorageSet('catintassist_daily_log', JSON.stringify(nextLog));
+    if (!isDateInCurrentMonth(dateStr)) return;
+    setStats((prev) => {
+      const next = applyDayEditToStats(prev, { oldMinutes: old, newMinutes: mins, isCurrentMonth: true });
+      const newStats = { ...prev, monthlyMinutes: next.monthlyMinutes, weeklyMinutes: next.weeklyMinutes };
+      safeLocalStorageSet('catintassist_stats', JSON.stringify(newStats));
+      return newStats;
+    });
+  }, [dailyLog]);
 
   // Company call-log paste import (v4.87.0): company rows are source of truth.
   // Past days overwrite dailyLog + historyTimeline (monthly gets the delta only);
@@ -1036,6 +1055,7 @@ export const SessionProvider = ({ children }) => {
     updateEnglishActivity,
     dailyLog,
     commitDayToLog,
+    editPastDay,
     importCallLog,
     isZombieCall,
     clearZombieState,

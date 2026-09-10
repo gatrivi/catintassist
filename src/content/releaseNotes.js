@@ -25,6 +25,28 @@ import { APP_VERSION } from '../constants/version';
 /** Newest first. Only the entry matching APP_VERSION is shown on load. */
 export const RELEASE_NOTES_CATALOG = [
   {
+    version: '4.96.5',
+    id: 'hand-edit-sync-v1',
+    highlightElementIds: ['heatmap-panel'],
+    es: {
+      title: 'Editar un día a mano ya actualiza todo',
+      intro: 'v4.96.5 — Corregir los minutos de un día pasado en el heatmap ahora actualiza el mes y el chip de déficit (antes solo pintaba la piedrita y el marcador quedaba viejo). Los días de otros meses no tocan las stats.',
+      sections: [{ heading: 'Qué cambió', bullets: [
+        'Clic en un día del heatmap → escribir minutos → todo se sincroniza',
+        'Déficit, plan de recuperación y % del mes siguen la corrección',
+        'Hoy sigue siendo el único día con edición en vivo separada',
+      ] }],
+    },
+    en: {
+      title: 'Hand-editing a day now updates everything',
+      intro: 'v4.96.5 — Correcting a past day\u2019s minutes in the heatmap now updates the month total and the deficit chip (before it only repainted the pebble and the scoreboard stayed stale). Other-month days never touch stats.',
+      sections: [{ heading: 'What changed', bullets: [
+        'Click a heatmap day → type minutes → everything syncs',
+        'Deficit, catch-up plan and month % follow the correction',
+        'Today keeps its separate live-edit path',
+      ] }],
+    },
+  },  {
     version: '4.96.4',
     id: 'pf-fail-shows-script-v1',
     highlightElementIds: ['sb-preflight-check'],

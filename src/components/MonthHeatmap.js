@@ -17,7 +17,7 @@ const DOW = ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
 
 export const MonthHeatmap = () => {
   const {
-    stats, dailyLog, commitDayToLog, setIsHeatmapOpen,
+    stats, dailyLog, commitDayToLog, editPastDay, setIsHeatmapOpen,
     RATE_PER_MINUTE, arsRate,
   } = useSession();
 
@@ -83,13 +83,19 @@ export const MonthHeatmap = () => {
     return '1px solid rgba(239,68,68,0.4)';
   };
 
-  // Commit an inline edit
+  // Commit an inline edit — v4.96.5: past-day edits flow into stats too
+  // (deficit chip / catch-up plan follow), not just the pebble.
   const commitEdit = () => {
     if (editDay === null) return;
     const mins = parseFloat(editVal);
     if (!isNaN(mins) && mins >= 0) {
       const key = new Date(year, month, editDay).toDateString();
-      commitDayToLog(key, mins);
+      const todayStr = new Date().toDateString();
+      if (key === todayStr) {
+        commitDayToLog(key, mins); // today stays authoritative-only (adjustDailyMinutes owns its stats)
+      } else {
+        editPastDay(key, mins);
+      }
     }
     setEditDay(null);
     setEditVal('');
