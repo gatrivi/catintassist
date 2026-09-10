@@ -7174,3 +7174,44 @@ body:has(.app-container[data-call-mode="true"]) .element-hint-panel {
   }
 }
 
+
+/* ── v4.96.3: in-call condensed card — numbers face only ──
+   During a call the game face (DAY/MONTH + ON CALL + gear/grid buttons) is
+   dead weight: all of it duplicates the micro-bar, and the 168px flip
+   container left a huge empty void (card measured 242px = 41% of viewport).
+   In call we show the static numbers grid only. Same pattern as the
+   .scoreboard-workspace static-flip overrides above. */
+.dashboard-header--call-expanded .scoreboard-flip-container {
+  min-height: 0;
+  height: auto;
+}
+.dashboard-header--call-expanded .flip-card,
+.dashboard-header--call-expanded .flip-card.is-flipped {
+  transform: none;
+  height: auto;
+  transition: none;
+}
+.dashboard-header--call-expanded .flip-back {
+  position: relative;
+  transform: none;
+  backface-visibility: visible;
+  height: auto;
+}
+.dashboard-header--call-expanded .flip-front {
+  display: none;
+}
+.dashboard-header--call-expanded .metric-grid--scoreboard {
+  height: auto;
+  grid-template-rows: repeat(3, auto);
+  gap: 3px;
+}
+.dashboard-header--call-expanded .metric-cell {
+  min-height: 46px;
+  padding: 0.12rem 0.3rem;
+}
+/* Game-face switch + studio switch are dead in call — the front no longer
+   renders there. Hiding them keeps exactly 12 cells = 3 rows. */
+.dashboard-header--call-expanded #cell-switch-game,
+.dashboard-header--call-expanded .metric-cell-studio {
+  display: none;
+}

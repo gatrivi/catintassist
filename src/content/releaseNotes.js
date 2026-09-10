@@ -25,6 +25,29 @@ import { APP_VERSION } from '../constants/version';
 /** Newest first. Only the entry matching APP_VERSION is shown on load. */
 export const RELEASE_NOTES_CATALOG = [
   {
+    version: '4.96.3',
+    id: 'call-card-numbers-v1',
+    highlightElementIds: ['header-expand-btn'],
+    es: {
+      title: 'El header expandido en llamada ya es todo datos',
+      intro: 'v4.96.3 — Al expandir el header durante una llamada veías una tarjeta de 242px casi vacía: DAY/MONTH, "ON CALL" y botones muertos (todo eso ya vive en la micro-barra). Ahora esa tarjeta muestra directo la grilla de 12 métricas, sin cara de juego vacía.',
+      sections: [{ heading: 'Qué cambió', bullets: [
+        'En llamada: grilla de números siempre visible (ya no se esconde por "solo off-call")',
+        'Fuera: DAY/MONTH, ON CALL duplicado y píldora de meta semanal en llamada',
+        'Mismo lugar, mismos botones — 0px de vacío',
+      ] }],
+    },
+    en: {
+      title: 'In-call expanded header is now all data',
+      intro: 'v4.96.3 — Expanding the header during a call showed a ~242px nearly-empty card: DAY/MONTH, "ON CALL" and dead buttons (all of it already lives in the micro-bar). That card now shows the 12-metric numbers grid directly — no empty game face.',
+      sections: [{ heading: 'What changed', bullets: [
+        'In call: numbers grid always visible (no longer hidden as "off-call only")',
+        'Gone in call: DAY/MONTH, duplicated ON CALL, weekly-goal pill',
+        'Same spot, same buttons — 0px of void',
+      ] }],
+    },
+  },
+  {
     version: '4.96.2',
     id: 'chip-narrow-fit-v1',
     highlightElementIds: ['daily-targets-chip'],

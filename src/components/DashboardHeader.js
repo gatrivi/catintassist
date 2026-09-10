@@ -886,7 +886,10 @@ export const DashboardHeader = ({
   const languagePairLabel = formatPairShort(languagePair);
   const showProgressStack = shouldShowProgressStack(scoreboardPreset, visCtx);
   const showExpandedIncome = isComponentVisible('expanded_income_cards', visCtx) && !offCallScoreboardView;
-  const showNumericGrid = isComponentVisible('scoreboard_numeric_grid', visCtx);
+  // v4.96.3: in-call expanded card always shows the numbers grid — it is the
+  // only dense data face left there (game face hides in call), and hiding it
+  // made the card a 242px empty void. Off-call visibility setting still rules.
+  const showNumericGrid = isActive || isComponentVisible('scoreboard_numeric_grid', visCtx);
 
   const helpStyle = isScoreboardHelpVisible ? { outline: '1px dashed #ef4444', position: 'relative' } : {};
   const HelpLabel = ({ text }) => isScoreboardHelpVisible ? (
@@ -1878,7 +1881,8 @@ export const DashboardHeader = ({
       {(!isActive || callModeExpanded) && (isCollapsed || (offCallMetricsExpanded && !showExpandedIncome)) && (
         <div className="condensed-header-card">
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', padding: '0.15rem 0.35rem 0', flexWrap: 'wrap' }}>
-            {!offCallScoreboardView && (
+            {/* v4.96.3: goal pill is off-call chrome — never spend call-mode vertical space on it */}
+            {!offCallScoreboardView && !isActive && (
             <button
               type="button"
               className="goal-weekly-pill"
