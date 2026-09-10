@@ -25,6 +25,29 @@ import { APP_VERSION } from '../constants/version';
 /** Newest first. Only the entry matching APP_VERSION is shown on load. */
 export const RELEASE_NOTES_CATALOG = [
   {
+    version: '4.96.4',
+    id: 'pf-fail-shows-script-v1',
+    highlightElementIds: ['sb-preflight-check'],
+    es: {
+      title: 'El fallo de calidad ya muestra el guion',
+      intro: 'v4.96.4 — Cuando un clip sale UNACCEPTABLE por palabras equivocadas, el mensaje mandaba a buscar "el guion en Setup"… sin mostrarlo. Ahora el guion esperado aparece justo ahí, y el botón 🔧 Fix abre Setup en ese clip.',
+      sections: [{ heading: 'Qué cambió', bullets: [
+        'Paso 1 del preflight: muestra "Script:" con el texto esperado en el propio fallo',
+        'Sigue viendo "Robot heard:" para comparar qué escuchó Deepgram',
+        '🔧 Fix — re-record abre Setup directamente en ese clip',
+      ] }],
+    },
+    en: {
+      title: 'The quality failure now shows the script',
+      intro: 'v4.96.4 — When a clip scored UNACCEPTABLE for wrong words, the message pointed at "the Script shown in Setup"… without showing it. The expected script now appears right in the failure, and 🔧 Fix opens Setup at that clip.',
+      sections: [{ heading: 'What changed', bullets: [
+        'Preflight step 1: shows "Script:" with the expected text inline in the failure',
+        'Still shows "Robot heard:" so you can compare what Deepgram caught',
+        '🔧 Fix — re-record opens Setup directly at that clip',
+      ] }],
+    },
+  },
+  {
     version: '4.96.3',
     id: 'call-card-numbers-v1',
     highlightElementIds: ['header-expand-btn'],

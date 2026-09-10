@@ -187,7 +187,7 @@ export const explainHealth = ({ score, recall, confidence } = {}) => {
   if (r !== null && r < 0.5) {
     return {
       why: 'The words heard did not match the script — wrong script read, or speech too broken to recognize.',
-      fix: 'Re-record reading the ¶ Script shown in Setup, at a steady pace.',
+      fix: 'Re-record reading the script shown with this message, at a steady pace.',
     };
   }
   if (c !== null && c < 0.55) {

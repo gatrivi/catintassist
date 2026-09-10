@@ -96,6 +96,8 @@ describe('audioSelfTest', () => {
   test('explainHealth: wrong words point at the script', () => {
     const e = explainHealth({ score: 0.4, recall: 0.4, confidence: 0.9 });
     expect(e.why).toMatch(/did not match the script/i);
+    // v4.96.4: the script is shown inline with the failure — no Setup hunt.
+    expect(e.fix).not.toMatch(/setup/i);
   });
 
   test('explainHealth: clean words but muddy audio points at clarity', () => {

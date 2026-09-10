@@ -54,6 +54,10 @@ const CALL_ROUTE_MIN_SCORE = 0.5;
 const getActionClipKeys = (action) =>
   action.dynamic ? TIME_SLOTS.map((t) => `${action.id}_${t}`) : [action.id];
 
+/** Script text for a clip key — keys carry a slot suffix (greeting_en_morning). */
+const scriptForClipKey = (key) =>
+  getSoundboardItem(String(key).replace(/_(morning|afternoon|evening)$/, ''))?.text || '';
+
 /**
  * v4.95.3: a clip recorded at another time of day still plays. Resolve the
  * actual key to fire: prefer the current slot, else any saved variant.
@@ -479,10 +483,8 @@ export const GreetingsPanel = ({ onEditModeChange, onExitStudio, micTestMode = f
     if (!API_KEY) return;
 
     // v4.86.2 legibility: score Deepgram transcript vs the known script text,
-    // so a confident-but-wrong reading can't pass. Keys may carry a time
-    // suffix (greeting_en_morning) — strip it to find the script.
-    const baseId = String(key).replace(/_(morning|afternoon|evening)$/, '');
-    const script = getSoundboardItem(baseId)?.text || '';
+    // so a confident-but-wrong reading can't pass.
+    const script = scriptForClipKey(key);
 
     setIsAnalyzing(key);
     try {
@@ -937,8 +939,7 @@ export const GreetingsPanel = ({ onEditModeChange, onExitStudio, micTestMode = f
         {/* v4.95.1: teleprompter — the script is the scoring reference, show it
             while recording (always) and on demand otherwise. */}
         {(() => {
-          const baseId = String(key).replace(/_(morning|afternoon|evening)$/, '');
-          const script = getSoundboardItem(baseId)?.text || '';
+          const script = scriptForClipKey(key);
           if (!script) return null;
           if (recordingKey === key) {
             return <div className="sb-script sb-script--live">{script}</div>;
@@ -1189,6 +1190,7 @@ export const GreetingsPanel = ({ onEditModeChange, onExitStudio, micTestMode = f
   const preflightReady = isPreflightReady(preflight);
   const checkHealth = getHealthMeta(healthScores[checkKeyResolved]);
   const checkHeard = heardByRobot[checkKeyResolved];
+  const checkScript = scriptForClipKey(checkKeyResolved);
   const checkExplain = explainHealth({
     score: healthScores[checkKeyResolved],
     recall: checkHeard?.recall,
@@ -1333,12 +1335,14 @@ export const GreetingsPanel = ({ onEditModeChange, onExitStudio, micTestMode = f
                     ? (checkHealth?.label || 'Not checked — Deepgram scores legibility')
                     : 'Record this greeting in Setup first'}
                 </span>
-                {/* v4.95.3: unacceptable must say WHY and HOW to fix — never a dead end. */}
+                {/* v4.95.3: unacceptable must say WHY and HOW to fix — never a dead end.
+                    v4.96.4: the script itself is shown right here, no Setup hunt. */}
                 {preflight.quality === 'fail' && (
                   <span className="sb-pf-why">
                     <strong>Why:</strong> {checkExplain.why}<br />
                     <strong>Fix:</strong> {checkExplain.fix}
                     {checkHeard?.text && (<><br /><em>Robot heard: “{checkHeard.text}”</em></>)}
+                    {checkScript && (<><br /><strong>Script:</strong> <span className="sb-pf-script">“{checkScript}”</span></>)}
                   </span>
                 )}
               </div>

@@ -1896,6 +1896,11 @@ body {
 }
 .sb-pf-why strong { color: #fbbf24; }
 .sb-pf-why em { opacity: 0.85; }
+/* v4.96.4: the expected script, shown inline with the failure — no Setup hunt */
+.sb-pf-script {
+  color: var(--text-main, #e2e8f0);
+  font-style: italic;
+}
 
 /* v4.95.3: the Fix button — unmissable, warm not alarming */
 .sb-pf-btn--fix {
