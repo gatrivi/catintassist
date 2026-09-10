@@ -1,11 +1,11 @@
-# Agent Handoff Index (v4.94.1)
+# Agent Handoff Index (v4.96.2)
 
 **Read first:** [`00_global_rules.md`](00_global_rules.md)
 
 Outside agents: pick **one** spec below. Do not re-read the whole repo.
 
 ## Current app version
-Top-right must show **v4.94.1** (pushed to master, commit 62d049d). Status: [`13_cpu_freeze_blank_caption_2026-09-09.md`](13_cpu_freeze_blank_caption_2026-09-09.md) (CPU freeze fix — DONE) + [`12_tiny_translate_chunks_2026-09-09.md`](12_tiny_translate_chunks_2026-09-09.md) + [`11_cpu_sink_fix_2026-09-09.md`](11_cpu_sink_fix_2026-09-09.md). Tree was committed + pushed 2026-09-09; tests all green.
+Top-right must show **v4.96.2** (pushed to master, commit dc2ad20). Latest: [`15_catchup_chip_mls_import_2026-09-10.md`](15_catchup_chip_mls_import_2026-09-10.md) — catch-up plan + chip narrow-fit DONE; **pending user:** paste MLS Sep log (Settings → Data). Before: [`14_habit_tooltip_spread_2026-09-09.md`](14_habit_tooltip_spread_2026-09-09.md) (v4.96.1) + [`13_cpu_freeze_blank_caption_2026-09-09.md`](13_cpu_freeze_blank_caption_2026-09-09.md). Tests all green.
 
 ## Full tests are GREEN again
 `node scripts/test-in-batches.js` — 71 files pass. The earlier "blocked by dirty translation-engine work" note is obsolete.
@@ -48,6 +48,7 @@ Top-right must show **v4.94.1** (pushed to master, commit 62d049d). Status: [`13
 | 12 | Tiny translate chunks 2026-09-09 | [`12_tiny_translate_chunks_2026-09-09.md`](12_tiny_translate_chunks_2026-09-09.md) | `translationApplicator.js`, `useTranslate.js` — uncommitted, push scope pending |
 | 13 | CPU freeze blank caption 2026-09-09 | [`13_cpu_freeze_blank_caption_2026-09-09.md`](13_cpu_freeze_blank_caption_2026-09-09.md) | SHIPPED v4.94.1 — blank live draft dropped, blank vanish log once per id |
 | 14 | Habit tooltip spread 2026-09-09 | [`14_habit_tooltip_spread_2026-09-09.md`](14_habit_tooltip_spread_2026-09-09.md) | **SHIPPED v4.96.1** — fan-out CSS + toasts auto-hide 15s, pill click dismisses, call start clears |
+| 15 | Catch-up plan + chip fit + MLS import 2026-09-10 | [`15_catchup_chip_mls_import_2026-09-10.md`](15_catchup_chip_mls_import_2026-09-10.md) | **SHIPPED v4.96.0/4.96.2** — chip 📉 deficit + catch-up strip; chip hides ☕→💵 on narrow windows; `exports/mls-import-sep2026/` awaiting user paste |
 
 ## Also read
 - [`docs/cursor-agent/README.md`](../cursor-agent/README.md) — touch-only file table
