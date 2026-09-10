@@ -26,6 +26,7 @@ import {
   ZapIcon,
 } from './HeaderIcons';
 import { buildHeaderStripMetrics } from '../utils/headerMetrics';
+import { computeCatchUp, formatCatchUpLine, formatCatchUpVerdict } from '../utils/catchUpPlan';
 import {
   buildOffCallStatusLabel,
 } from '../utils/offCallIdleMessages';
@@ -264,6 +265,7 @@ const SessionControlsSticky = React.memo(({
   monthlyMinutes = 0,
   breakMinutes = 0,
   ratePerMinute = 0.13,
+  goalMinutes = 0, // v4.96.0: dial goal for the chip's deficit pair + catch-up target
   // Today timers (minutes) — shown next to Connect in the sticky row (v4.86.5)
   onCallMins = 0,
   offCallMins = 0,
@@ -622,7 +624,7 @@ const SessionControlsSticky = React.memo(({
               </span>
             </div>
             )}
-              <DailyTargetsChip dailyMinutes={dailyMinutes} monthlyMinutes={monthlyMinutes} breakMinutes={breakMinutes} ratePerMinute={ratePerMinute} />
+              <DailyTargetsChip dailyMinutes={dailyMinutes} monthlyMinutes={monthlyMinutes} breakMinutes={breakMinutes} ratePerMinute={ratePerMinute} goalMinutes={goalMinutes} />
             </div>
           ) : (
             <div className="off-call-status-column" style={{ display: 'flex', flexDirection: 'column', gap: '0.15rem' }}>
@@ -653,7 +655,7 @@ const SessionControlsSticky = React.memo(({
                 </span>
               </div>
               <div className="off-call-targets-row">
-                <DailyTargetsChip dailyMinutes={dailyMinutes} monthlyMinutes={monthlyMinutes} breakMinutes={breakMinutes} ratePerMinute={ratePerMinute} />
+                <DailyTargetsChip dailyMinutes={dailyMinutes} monthlyMinutes={monthlyMinutes} breakMinutes={breakMinutes} ratePerMinute={ratePerMinute} goalMinutes={goalMinutes} />
               </div>
             </div>
           )}
@@ -1618,6 +1620,20 @@ export const DashboardHeader = ({
   const expectedByToday = Math.round((stats.goalMinutes / daysInMonth) * currentDay);
   const monthlyDeficitMins = expectedByToday - stats.monthlyMinutes; // positive = behind
   const isInDeficit = monthlyDeficitMins > 30;
+
+  // ── CATCH-UP PLAN (v4.96.0): month-pace deficit → today's number → per-day split ──
+  const catchUpPlan = computeCatchUp({
+    goalMinutes: stats.goalMinutes,
+    monthlyMinutes: stats.monthlyMinutes,
+    dailyMinutes: Math.round(totalDailyMins),
+  });
+  const catchUpVerdictColor = catchUpPlan.verdict === 'fits-by-18' ? '#34d399'
+    : catchUpPlan.verdict === 'needs-ot' ? '#fbbf24'
+    : catchUpPlan.verdict === 'impossible' ? '#f87171'
+    : '#34d399';
+  const catchUpLineColor = catchUpPlan.deficitMins > 30 ? '#fca5a5'
+    : catchUpPlan.deficitMins < -30 ? '#6ee7b7'
+    : 'var(--text-muted)';
 
 
   // PACE ETA: predicts when you'll hit today's goal at current earned rate
@@ -2690,6 +2706,22 @@ ${isInDeficit ? `⚠️ DEFICIT: Behind pace by ${Math.round(monthlyDeficitMins)
           </div>
           </div>
 
+          {/* v4.96.0: Catch-up strip — behind? → today's number → rest-of-month split → verdict */}
+          <div
+            title={`CATCH-UP PLAN: expected ${Math.round(catchUpPlan.expectedByToday)}m banked by today · you have ${Math.round(stats.monthlyMinutes)}m.\nToday's target: ${catchUpPlan.requiredToday}m on call.\nRest of month: ${catchUpPlan.thenPerDay}m/day for ${catchUpPlan.daysAfter} more days.`}
+            style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: '0.5rem', fontSize: '0.62rem', fontWeight: 700, cursor: 'help' }}
+          >
+            <span style={{ color: catchUpLineColor, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+              {formatCatchUpLine(catchUpPlan)}
+            </span>
+            <span style={{ color: catchUpVerdictColor, whiteSpace: 'nowrap' }}>
+              {formatCatchUpVerdict(catchUpPlan)}
+              {catchUpPlan.verdict === 'impossible' && qualityScore?.goalUnreachable && (
+                <span style={{ opacity: 0.85 }}> → adapt to {qualityScore.suggestedGoal}m</span>
+              )}
+            </span>
+          </div>
+
           {/* Step Goal (Weekly Replenishing Bar) */}
           <div style={{ display: 'flex', flexDirection: 'column', gap: '0.15rem' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.6rem', color: 'var(--text-muted)', alignItems: 'center' }}>
@@ -3053,6 +3085,7 @@ ${isInDeficit ? `⚠️ DEFICIT: Behind pace by ${Math.round(monthlyDeficitMins)
         monthlyMinutes={stats.monthlyMinutes}
         breakMinutes={Math.round(liveBreakMins)}
         ratePerMinute={RATE_PER_MINUTE}
+        goalMinutes={stats.goalMinutes}
         callModeExpanded={callModeExpanded}
         setCallModeExpanded={setCallModeExpanded}
         isNotesOpen={isNotesOpen}
@@ -3106,7 +3139,7 @@ ${isInDeficit ? `⚠️ DEFICIT: Behind pace by ${Math.round(monthlyDeficitMins)
           </div>
           {/* v4.88.5: meter-only HUD carries the daily targets beside the timeline */}
           {meterOnlyMode && (
-            <DailyTargetsChip dailyMinutes={Math.round(totalDailyMins)} monthlyMinutes={stats.monthlyMinutes} breakMinutes={Math.round(liveBreakMins)} ratePerMinute={RATE_PER_MINUTE} />
+            <DailyTargetsChip dailyMinutes={Math.round(totalDailyMins)} monthlyMinutes={stats.monthlyMinutes} breakMinutes={Math.round(liveBreakMins)} ratePerMinute={RATE_PER_MINUTE} goalMinutes={stats.goalMinutes} />
           )}
         </div>
       )}

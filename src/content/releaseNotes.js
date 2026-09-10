@@ -25,6 +25,30 @@ import { APP_VERSION } from '../constants/version';
 /** Newest first. Only the entry matching APP_VERSION is shown on load. */
 export const RELEASE_NOTES_CATALOG = [
   {
+    version: '4.96.0',
+    id: 'catch-up-clarity-v1',
+    highlightElementIds: ['daily-targets-chip'],
+    es: {
+      title: 'Tu plan de recuperación, siempre a la vista',
+      intro: 'v4.96.0 — El chip del header ahora muestra cuánto vas tarde respecto al ritmo mensual (📉 −XhYm en rojo) sin hover. El panel expandido agrega el plan completo: cuánto hacer HOY, a qué hora terminás, cuánto por día el resto del mes y si alcanza antes de 18:00/23:00.',
+      sections: [{ heading: 'Qué cambió', bullets: [
+        'Chip: 📉 −6h12m (rojo) o 📈 +45m (verde) siempre visible',
+        'Panel expandido: 📉 BEHIND → hoy → resto del mes → veredicto',
+        'El objetivo del chip ahora usa TU meta del dial (no la estimación de $1200)',
+        'Tooltip: primera fila = déficit y plan de recuperación',
+      ] }],
+    },
+    en: {
+      title: 'Your catch-up plan, always visible',
+      intro: 'v4.96.0 — The header chip now shows how far behind month pace you are (📉 −XhYm in red) with no hover needed. The expanded panel adds the full plan: what to do TODAY, estimated clock-off, per-day load for the rest of the month, and whether it fits before 18:00/23:00.',
+      sections: [{ heading: 'What changed', bullets: [
+        'Chip: 📉 −6h12m (red) or 📈 +45m (green) always visible',
+        'Expanded panel: 📉 BEHIND → today → rest of month → verdict',
+        "Chip's daily target now uses YOUR dial goal (not the $1200 estimate)",
+        'Tooltip: first row = deficit + catch-up plan',
+      ] }],
+    },
+  },  {
     version: '4.95.4',
     id: 'live-counters-perf-v1',
     highlightElementIds: ['metric-m1', 'metric-m4'],

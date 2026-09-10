@@ -1,12 +1,11 @@
 import React, { useState } from 'react';
 import { APP_VERSION } from '../constants/version';
+import { computeCatchUp, fmtHm } from '../utils/catchUpPlan';
 
 // v4.88.0: daily targets always visible in the status bar.
 // Primary goal: $1200 USD/month. Fallback (rate floor): 5500 min/month.
 const GOAL_USD = 1200;
 const FALLBACK_MINUTES = 5500;
-
-const fmtHm = (m) => `${Math.floor(m / 60)}h${String(Math.round(m % 60)).padStart(2, '0')}`;
 
 /** Shared math: how many minutes do I still need today (and this month) for the $1200 goal? */
 export const computeGoalDay = ({ dailyMinutes = 0, monthlyMinutes = 0, ratePerMinute = 0.13 }) => {
@@ -69,8 +68,17 @@ export const DailyTargetsChip = ({
   monthlyMinutes = 0,
   breakMinutes = 0,
   ratePerMinute = 0.13,
+  goalMinutes = 0, // v4.96.0: real dial goal (stats.goalMinutes) — wins over the $1200 estimate
 }) => {
-  const { dailyMin, leftMin } = computeGoalDay({ dailyMinutes, monthlyMinutes, ratePerMinute });
+  const usdGoal = computeGoalDay({ dailyMinutes, monthlyMinutes, ratePerMinute });
+  // v4.96.0: today's target = month catch-up spread over remaining days
+  // (same math as the dashboard catch-up strip → chip and dashboard always agree).
+  const catchUp = goalMinutes > 0
+    ? computeCatchUp({ goalMinutes, monthlyMinutes, dailyMinutes })
+    : null;
+  const dailyMin = catchUp ? catchUp.requiredToday : usdGoal.dailyMin;
+  const leftMin = catchUp ? Math.max(0, goalMinutes - monthlyMinutes) : usdGoal.leftMin;
+  const monthGoalMin = catchUp ? goalMinutes : Math.round(GOAL_USD / ratePerMinute);
   const earnedUsd = dailyMinutes * ratePerMinute;
   const targetUsd = dailyMin * ratePerMinute;
   const plan = computeEndgamePlan({ doneMins: dailyMinutes, goalDayMin: dailyMin });
@@ -90,18 +98,27 @@ export const DailyTargetsChip = ({
   const [smartTip, setSmartTip] = useState(null); // {x,y} chip top-center
   const usd = (m) => `$${(m * ratePerMinute).toFixed(2)}`;
   const pctToday = targetUsd > 0 ? Math.round((earnedUsd / targetUsd) * 100) : 0;
+  // v4.96.0: month-pace deficit leads the tooltip — the "am I behind?" answer first
+  const deficitRow = catchUp
+    ? catchUp.deficitMins > 30
+      ? `📉 behind month pace ${fmtHm(catchUp.deficitMins)} → ${fmtHm(catchUp.requiredToday)}/day × ${catchUp.remainingDays}d`
+      : catchUp.deficitMins < -30
+        ? `📈 ahead of month pace ${fmtHm(-catchUp.deficitMins)}`
+        : `✅ on month pace · ${fmtHm(catchUp.requiredToday)}/day × ${catchUp.remainingDays}d`
+    : null;
   const tipRows = [
+    deficitRow,
     `💵 ${usd(dailyMinutes)} / $${targetUsd.toFixed(0)} today (${pctToday}%)`,
     plan.need <= 0
       ? '🏁 daily pace met — rest / bank buffer'
       : `⏱ ${fmtHm(dailyMinutes)} on call · ${fmtHm(plan.need)} to go ≈ ${usd(plan.need)}`,
     `☕ ${fmtHm(breakMinutes)} taken · ${fmtHm(breakTarget)} fits by 18:00 · each break min = -${usd(1)}`,
-    `📅 month ${usd(monthlyMinutes)} / $${GOAL_USD} · left ${fmtHm(leftMin)} ≈ ${usd(leftMin)}`,
+    `📅 month ${usd(monthlyMinutes)} / ${usd(monthGoalMin)} · left ${fmtHm(leftMin)} ≈ ${usd(leftMin)}`,
     `🛟 floor 5500m/mo · left ${fmtHm(fbRemaining)} ≈ ${fbDaily}m/mo`,
     plan.by18Possible
       ? `⏰ by 18:00 → ${fmtHm(plan.slack18)} off · by 23:00 → ${fmtHm(plan.slack23)} off`
       : `⚠️ pace by 18:00: NO · overtime to 23:00 → ${fmtHm(plan.slack23)} off`,
-  ];
+  ].filter(Boolean);
   const showSmartTip = (e) => {
     const r = e.currentTarget.getBoundingClientRect();
     setSmartTip({
@@ -148,6 +165,14 @@ export const DailyTargetsChip = ({
         <span style={valStyle}>{fmtHm(breakMinutes)}</span>
         <span style={tgtStyle}>/{fmtHm(breakTarget)}</span>
       </span>
+      {/* v4.96.0: month-pace deficit, always visible (hidden when within ±30m of pace) */}
+      {catchUp && Math.abs(catchUp.deficitMins) > 30 && (
+        <span style={pairStyle} title={`Month-pace deficit: expected ${catchUp.expectedByToday}m by today · banked ${Math.round(monthlyMinutes)}m`}>
+          <span style={{ ...valStyle, fontSize: '0.72rem', color: catchUp.deficitMins > 0 ? '#f87171' : '#34d399' }}>
+            {catchUp.deficitMins > 0 ? `📉 −${fmtHm(catchUp.deficitMins)}` : `📈 +${fmtHm(-catchUp.deficitMins)}`}
+          </span>
+        </span>
+      )}
       {smartTip && (
         <span
           style={{
