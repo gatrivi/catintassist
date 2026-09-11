@@ -1072,6 +1072,23 @@ body {
   min-width: 0;
 }
 
+/* v4.99.2: inline strip rides INSIDE the audio chips row — one physical line.
+   Right-aligned; the chips row scrolls horizontally when tight (900px min). */
+.header-metrics-strip-row.header-metrics-strip-row--inline {
+  display: flex;
+  flex-wrap: nowrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 0.25rem;
+  flex: 0 0 auto;
+  margin-left: auto;
+  max-width: 100%;
+}
+.dashboard-header--off-call-scoreboard .header-metrics-strip--bars {
+  flex-shrink: 0;
+  padding: 0.1rem 0.25rem 0.15rem;
+}
+
 .header-metrics-strip-row {
   display: flex;
   align-items: center;

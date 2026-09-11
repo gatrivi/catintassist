@@ -87,6 +87,9 @@ export const AudioRouteStatusBar = ({
   onOpenSoundboard,
   soundboardOpen = false,
   compact = false,
+  /** v4.99.2: optional node rendered at the right end of the chips row
+      (off-call scoreboard merges the metrics strip into this single line). */
+  trailing = null,
 }) => {
   const [isMoreOpen, setIsMoreOpen] = useState(false);
   const {
@@ -752,6 +755,8 @@ export const AudioRouteStatusBar = ({
           </button>
         )}
         </div>
+        {/* v4.99.2: right-aligned extra controls on the chips line (off-call scoreboard) */}
+        {trailing}
       </div>
 
       {isMoreOpen && (

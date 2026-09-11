@@ -25,6 +25,33 @@ import { APP_VERSION } from '../constants/version';
 /** Newest first. Only the entry matching APP_VERSION is shown on load. */
 export const RELEASE_NOTES_CATALOG = [
   {
+    version: '4.99.2',
+    id: 'scoreboard-ledger-fixes-v1',
+    highlightElementIds: ['interpret-root'],
+    es: {
+      title: '🧮 SCOREBOARD HONESTO — se acabaron los 893m OFF CALL y el mes de 156m',
+      intro: 'v4.99.2 — Tres fugas del ledger corregidas: los contadores vivos ya no arrastran cola del día anterior (el imposible "893m OFF CALL"); reattach tras STOP ya no factura la misma llamada dos veces; y una llamada sin voz de Deepgram (≥60s) ahora factura reloj — una caída de DG ya no borra tu día.',
+      sections: [{ heading: 'Qué cambió', bullets: [
+        'Contadores vivos (s_sec/a_sec/b_sec) se invalidan al cambiar el día — nada del ayer entra en hoy',
+        'STOP pone el cronómetro a cero tras consolidar — refresh+reattach ya no duplica minutos',
+        'Llamada sin STT ≥60s factura tiempo real (aviso "🎧 banked without STT" en el resumen)',
+        '$ MONTH incluye la llamada en curso — mismo criterio que MINS TODAY',
+        'Barra superior en UNA línea: chips + %mes + Less + iconos (scrolla si no cabe)',
+      ] }],
+    },
+    en: {
+      title: '🧮 HONEST SCOREBOARD — no more 893m OFF CALL or the 156m month',
+      intro: 'v4.99.2 — Three ledger leaks fixed: live counters no longer drag yesterday\'s tail into today (the impossible "893m OFF CALL"); re-attach after STOP can no longer bill the same call twice; and a call with no Deepgram speech (≥60s) now bills wall-clock — a DG outage no longer erases your day.',
+      sections: [{ heading: 'What changed', bullets: [
+        'Live counters (s_sec/a_sec/b_sec) invalidated on day change — nothing from yesterday lands in today',
+        'STOP zeroes the timer after banking — refresh + re-attach no longer double-counts minutes',
+        'No-STT call ≥60s bills wall-clock ("🎧 banked without STT" note in the call summary)',
+        '$ MONTH includes the live call — same convention as MINS TODAY',
+        'Top strip on ONE line: chips + month% + Less + icons (scrolls when tight)',
+      ] }],
+    },
+  },
+  {
     version: '4.99.1',
     id: 'mic-verify-crash-hotfix-v1',
     highlightElementIds: ['interpret-root'],

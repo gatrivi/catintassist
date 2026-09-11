@@ -1230,6 +1230,10 @@ export const TranscriptionBoard = ({
               {lastCallSummary.dollars.length > 0 && (
                 <span style={{ color: '#fcd34d' }}>💰 {lastCallSummary.dollars.join(', ')}</span>
               )}
+              {/* v4.99.0: minutes banked from wall-clock (STT saw no speech). */}
+              {lastCallSummary.noStt && (
+                <span style={{ color: '#fdba74' }} title="Deepgram reported no speech — minutes banked from wall clock. Correct via the heatmap day editor if needed.">🎧 banked without STT</span>
+              )}
               {lastCallSummary.numbers.length === 0 && lastCallSummary.dollars.length === 0 && (
                 <span style={{ opacity: 0.5 }}>No key data extracted</span>
               )}

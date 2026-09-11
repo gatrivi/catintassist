@@ -301,6 +301,9 @@ const SessionControlsSticky = React.memo(({
   // v4.88.5: 3rd HUD mode — meter-only (extra compact) during calls
   meterOnly = false,
   onToggleMeterHud,
+  /** v4.99.0: node rendered at the right end of the audio chips row
+      (off-call scoreboard merges its metrics strip into that single line). */
+  trailingSlot = null,
 }) => {
   const showConnecting = isActive && connectionState !== 'connected';
   const slackText = `SLACK ${formatTime(silenceCount)}`;
@@ -839,6 +842,7 @@ const SessionControlsSticky = React.memo(({
           onOpenSoundboard={!isActive ? onOpenSoundboard : undefined}
           soundboardOpen={soundboardOpen}
           compact
+          trailing={trailingSlot}
         />
       }
     </>
@@ -1345,7 +1349,9 @@ export const DashboardHeader = ({
   // Condensed View metrics
   const liveDailyArs = Math.round(totalDailyMins * RATE_PER_MINUTE * arsRate);
   const dailyTargetArs = Math.round(dailyGoal * RATE_PER_MINUTE * arsRate);
-  const monthlyArs = Math.round(stats.monthlyMinutes * RATE_PER_MINUTE * arsRate);
+  // v4.99.2: month money includes the live call's unbanked minutes — same
+  // convention as MINS TODAY, so the grid never contradicts itself mid-call.
+  const monthlyArs = Math.round((stats.monthlyMinutes + unbankedMins) * RATE_PER_MINUTE * arsRate);
   const monthlyTargetArs = Math.round(stats.goalMinutes * RATE_PER_MINUTE * arsRate);
   const currentBounty = Math.max(0, dailyTargetArs - liveDailyArs);
   const sessionArsLive = Math.round(sessionEarnings * arsRate);
@@ -1840,20 +1846,23 @@ export const DashboardHeader = ({
     return () => window.removeEventListener('cat_demo_scenario', handleScenario);
   }, [onAttachAudio, onStartCall, audioAttached, onStopAudio, handleStop, handleStartBreak, stopBreak, stopSession, audioEngine]);
 
+  // v4.99.2: one shared metrics payload for the strip in all three layouts.
+  const stripMetrics = buildHeaderStripMetrics({
+    stats,
+    totalDailyMins,
+    dailyGoal,
+    monthlyProgressRatio,
+    monthlyPendingRatio,
+    isMonthlyGoalMet,
+    isInDeficit,
+    currentIdx,
+    milestoneLabels,
+    liveDailyArs,
+  });
+
   const renderHeaderMetricsStrip = (expandedFlag, { showBars = true, showQuickRow = true } = {}) => (
     <HeaderMetricsStrip
-      {...buildHeaderStripMetrics({
-        stats,
-        totalDailyMins,
-        dailyGoal,
-        monthlyProgressRatio,
-        monthlyPendingRatio,
-        isMonthlyGoalMet,
-        isInDeficit,
-        currentIdx,
-        milestoneLabels,
-        liveDailyArs,
-      })}
+      {...stripMetrics}
       expanded={expandedFlag}
       onToggleExpand={toggleOffCallMetricsExpanded}
       onBarHover={showProgressBarTooltip}
@@ -1873,19 +1882,50 @@ export const DashboardHeader = ({
     />
   );
 
-  const renderOffCallCollapsedBody = () => renderHeaderMetricsStrip(false, {
-    showBars: false,
-    showQuickRow: false,
-  });
+  // v4.99.2: off-call scoreboard — summary + Less + quick icons live INSIDE the
+  // audio chips row (one physical line, scrolls when tight); the body keeps
+  // only the 3 thin bars.
+  const renderInlineMetricsStrip = (expandedFlag) => (
+    <HeaderMetricsStrip
+      {...stripMetrics}
+      layout="inline"
+      expanded={expandedFlag}
+      onToggleExpand={toggleOffCallMetricsExpanded}
+      scoreView={scoreView}
+      onScoreViewChange={expandedFlag ? handleQuickScoreView : undefined}
+      studioView={studioView}
+      onCycleWorkspace={expandedFlag ? onCycleWorkspace : undefined}
+      showStudioHint={showStudioHint}
+      showBars={false}
+      showQuickRow
+      showExpandToggle
+      detailShown={false}
+    />
+  );
+
+  const renderOffCallMetricsBars = () => (
+    <HeaderMetricsStrip
+      {...stripMetrics}
+      barsOnly
+      onBarHover={showProgressBarTooltip}
+      onBarLeave={hideMetricTooltip}
+    />
+  );
+
+  // v4.99.2: collapsed off-call body is empty — its summary/Less moved into the
+  // chips row via trailingSlot (renderInlineMetricsStrip).
+  const renderOffCallCollapsedBody = () => null;
 
   const renderWorkspaceBody = () => (
       <div className={`dashboard-header-fill${offCallScoreboardView ? ' scoreboard-workspace scoreboard-workspace--header' : ''}`} data-guide={offCallScoreboardView ? 'scoreboard' : undefined}>
       <>
-      {/* Expanded strip: portal keeps bars+quick row; non-portal dedupes (progress stack + outer controls row own those) */}
-      {offCallMetricsExpanded && renderHeaderMetricsStrip(true, {
-        showBars: offCallScoreboardView,
-        showQuickRow: offCallScoreboardView,
-      })}
+      {/* v4.99.2: off-call expanded — summary/Less/quick live in the chips row
+          (trailingSlot); the body only keeps the 3 thin bars. Other views unchanged. */}
+      {offCallMetricsExpanded && (
+        offCallScoreboardView
+          ? renderOffCallMetricsBars()
+          : renderHeaderMetricsStrip(true, { showBars: false, showQuickRow: false })
+      )}
       {/* COLLAPSED VIEW (hidden when in compact call mode).
           Card also opens via Metrics toggle, but never alongside the expanded income HUD (showExpandedIncome). */}
       {(!isActive || callModeExpanded) && (isCollapsed || (offCallMetricsExpanded && !showExpandedIncome)) && (
@@ -2108,14 +2148,14 @@ export const DashboardHeader = ({
                       <button
                         type="button"
                         onClick={(e) => { e.stopPropagation(); setIsTodayDialOpen(true); }}
-                        title={`Month: ${Math.round(stats.monthlyMinutes)}m of ${stats.goalMinutes}m target — click to edit target`}
+                        title={`Month: ${Math.round(stats.monthlyMinutes + unbankedMins)}m of ${stats.goalMinutes}m target — click to edit target`}
                         style={{
                           background: 'rgba(251,146,60,0.12)', border: '1px solid rgba(251,146,60,0.4)',
                           borderRadius: 4, color: '#fdba74', cursor: 'pointer',
                           fontSize: '0.6rem', fontWeight: 800, padding: '0.1rem 0.35rem',
                         }}
                       >
-                        {Math.round(stats.monthlyMinutes)} / {stats.goalMinutes}m ✎
+                        {Math.round(stats.monthlyMinutes + unbankedMins)} / {stats.goalMinutes}m ✎
                       </button>
                       <div className="metric-cell-label">$ MONTH</div>
                     </div>
@@ -3129,6 +3169,7 @@ ${isInDeficit ? `⚠️ DEFICIT: Behind pace by ${Math.round(monthlyDeficitMins)
         offCallStatusLabel={offCallStatusLabel}
         meterOnly={meterOnlyMode}
         onToggleMeterHud={toggleMeterHud}
+        trailingSlot={offCallScoreboardView ? renderInlineMetricsStrip(offCallMetricsExpanded) : null}
       />
 
       {headerCallCompact && (

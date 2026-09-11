@@ -11,6 +11,7 @@ import {
 import { mergeImportedDays } from '../utils/callLogImport';
 import { isDateInCurrentMonth, applyDayEditToStats } from '../utils/pastDayEdit';
 import { rollDaySnapshot } from '../utils/dayRoll';
+import { billableSecondsForCall } from '../utils/callBilling';
 import { TIMETRACK_CHANGED_EVENT } from '../utils/timeTrackSync';
 import { shouldAutoHold, shouldAutoResume } from '../utils/holdState';
 import {
@@ -135,6 +136,31 @@ export const SessionProvider = ({ children }) => {
 
   const callHadSpeechRef = useRef(false);
   const callLastSpeechAtRef = useRef(Date.now());
+
+  // ── v4.99.2: LIVE COUNTERS ARE SINGLE-DAY ─────────────────────────────────
+  // catint_s_sec / catint_a_sec / catint_b_sec used to restore stale values
+  // from the previous day, so yesterday's off-call tail banked into TODAY
+  // (the impossible "893m OFF CALL"). A day tag wipes them on the first load
+  // of a new day; startSession re-checks for the open-across-midnight case.
+  const LIVE_COUNTER_KEYS = ['catint_s_sec', 'catint_a_sec', 'catint_b_sec'];
+  const COUNTERS_DAY_KEY = 'catint_counters_day';
+  const wipeStaleLiveCounters = () => {
+    try {
+      const today = new Date().toDateString();
+      if (localStorage.getItem(COUNTERS_DAY_KEY) === today) return today;
+      LIVE_COUNTER_KEYS.forEach((k) => localStorage.removeItem(k));
+      localStorage.setItem(COUNTERS_DAY_KEY, today);
+      return today;
+    } catch (_) {
+      return new Date().toDateString();
+    }
+  };
+  const liveCountersDayRef = useRef(null);
+  if (liveCountersDayRef.current === null) {
+    liveCountersDayRef.current = wipeStaleLiveCounters();
+  }
+  // ──────────────────────────────────────────────────────────────────────────
+
   const [lastSilenceDeductionMins, setLastSilenceDeductionMins] = useState(0);
   const [sessionSeconds, setSessionSeconds] = useState(() => Number(localStorage.getItem('catint_s_sec')) || 0);
   const [isBreakActive, setIsBreakActive] = useState(() => JSON.parse(localStorage.getItem('catint_break')) || false);
@@ -673,7 +699,20 @@ export const SessionProvider = ({ children }) => {
     // v4.90.0: work resumed — clear the STOP BREAK suppression so post-call
     // idle counts as break again.
     manualBreakSuppressUntilRef.current = 0;
-    
+
+    // v4.99.2: open-across-midnight seal — never bank counters carried over
+    // from a previous day (the day tag only wipes them on reload).
+    const todayTag = new Date().toDateString();
+    if (liveCountersDayRef.current !== todayTag) {
+      liveCountersDayRef.current = todayTag;
+      try {
+        localStorage.setItem(COUNTERS_DAY_KEY, todayTag);
+        LIVE_COUNTER_KEYS.forEach((k) => localStorage.removeItem(k));
+      } catch (_) {}
+      setAvailSeconds(0);
+      setBreakSeconds(0);
+    }
+
     commitAvailTime();
     
     if (!isRecovery) {
@@ -824,8 +863,10 @@ export const SessionProvider = ({ children }) => {
     // Clear revenant/re-attach gate — STOP must not leave zombie banner/capture gate.
     clearZombieState();
     const summary = extractCallSummary(captionsRef.current);
+    // v4.99.2: flag calls that will bank wall-clock (no STT speech, ≥60s).
+    const bankedNoStt = !callHadSpeechRef.current && sessionSeconds >= 60;
     if (summary && (summary.numbers.length > 0 || summary.dollars.length > 0)) {
-      setLastCallSummary(summary);
+      setLastCallSummary({ ...summary, noStt: bankedNoStt });
     }
 
     // HIPAA/UX: wipe transcript log as soon as the call ends (summary already captured).
@@ -834,13 +875,18 @@ export const SessionProvider = ({ children }) => {
     purgeTranslationCache();
     requestHipaaDisconnectGrace();
 
-    let billableSecs = sessionSeconds;
     const trailingSilenceSecs = Math.max(0, (Date.now() - callLastSpeechAtRef.current) / 1000);
+    // v4.99.2: pure billing rule (unit-tested in callBilling.test.js) —
+    // no STT speech but a real call (≥60s) banks wall-clock; a Deepgram
+    // outage must not erase a worked day (the "156m month" bug).
+    const billableSecs = billableSecondsForCall({
+      hadSpeech: callHadSpeechRef.current,
+      sessionSeconds,
+      trailingSilenceSecs,
+    });
     if (!callHadSpeechRef.current) {
-      billableSecs = 0;
-      setLastSilenceDeductionMins(sessionSeconds / 60);
+      setLastSilenceDeductionMins(bankedNoStt ? 0 : sessionSeconds / 60);
     } else if (trailingSilenceSecs > 30) {
-      billableSecs = Math.max(0, sessionSeconds - trailingSilenceSecs);
       setLastSilenceDeductionMins(trailingSilenceSecs / 60);
     } else {
       setLastSilenceDeductionMins(0);
@@ -867,6 +913,11 @@ export const SessionProvider = ({ children }) => {
       if (onCallEnded) onCallEnded(minutesToAdd);
       playCoinStack(minutesToAdd);
     }
+    // v4.99.2: the call is banked — zero the live timer so a later zombie
+    // re-attach (startSession(true)) can never bank the same call twice.
+    setSessionSeconds(0);
+    accumulatorRef.current = 0;
+    safeLocalStorageSet('catint_s_sec', 0);
     setIsHold(false);
     // If we stop session, we default to 'avail' unless we immediately start a break
     recordTimelineEvent('avail');

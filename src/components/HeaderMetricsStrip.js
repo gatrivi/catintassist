@@ -70,141 +70,169 @@ export const HeaderMetricsStrip = ({
   showExpandToggle = true,
   /** True when the expanded income HUD is showing — summary already duplicated there. */
   detailShown = false,
+  /** v4.99.2: 'stacked' (default) | 'inline' — one line, lives in the chips row. */
+  layout = 'stacked',
+  /** v4.99.2: render only the 3 thin bars (body slot under the merged top line). */
+  barsOnly = false,
 }) => {
-  // v4.88.4: arsLabel removed — $ earnings live in the sticky row + status-bar strip.
-
   const hover = (payload) => (e) => onBarHover?.(e, payload);
   const leave = () => onBarLeave?.();
+
+  const barsBlock = (
+    <div className="header-metrics-bars">
+      <CompactBar
+        fill={monthlyFill}
+        pending={monthlyPending}
+        color={monthlyColor}
+        title={monthlyTooltip}
+        onMouseEnter={hover({ elementId: 'header-bar-monthly', icon: <CalendarIcon size={14} />, heading: 'MONTHLY', color: monthlyColor, body: monthlyTooltip })}
+        onMouseLeave={leave}
+      />
+      <CompactBar
+        fill={stepFill}
+        color={stepColor}
+        title={stepTooltip}
+        onMouseEnter={hover({ elementId: 'header-bar-weekly-step', icon: <LadderIcon size={14} />, heading: 'WEEKLY STEP', color: stepColor, body: stepTooltip })}
+        onMouseLeave={leave}
+      />
+      <CompactBar
+        fill={dailyFill}
+        color={dailyColor}
+        title={dailyTooltip}
+        onMouseEnter={hover({ elementId: 'header-bar-daily', icon: <SunIcon size={14} />, heading: 'DAILY', color: dailyColor, body: dailyTooltip })}
+        onMouseLeave={leave}
+      />
+    </div>
+  );
+
+  if (barsOnly) {
+    return <div className="header-metrics-strip header-metrics-strip--bars">{barsBlock}</div>;
+  }
+
+  // v4.88.4: mins/$/📞📡 moved out — they live in the sticky row and the
+  // status-bar targets strip. Only monthly % stays here (not shown elsewhere).
+  const summaryEl = (
+    <span className="header-metrics-summary">
+      {!detailShown && <span title={`Month: ${monthPct}% of 5500m pace`}>{monthPct}% mo</span>}
+    </span>
+  );
+
+  const expandEl = showExpandToggle && (
+    <ElementHintTarget
+      elementId="header-metrics-expand-btn"
+      guideKey="metrics-expand"
+      heading={expanded ? 'Collapse scoreboard' : 'Expand scoreboard'}
+      body={expanded ? 'Hide detailed scoreboard (game/numbers grid).' : 'Expand scoreboard — game view + 12-metric grid.'}
+      color="#a855f7"
+    >
+      <button
+        type="button"
+        className="header-metrics-expand-btn header-metrics-expand-btn--icon"
+        id="header-metrics-expand-btn"
+        data-guide="metrics-expand"
+        onClick={onToggleExpand}
+        title={expanded ? 'Hide detailed scoreboard (game/numbers grid)' : 'Expand scoreboard — game view + 12-metric grid'}
+      >
+        {expanded ? <ChevronUpIcon size={12} /> : <ChevronDownIcon size={12} />}
+        <span>{expanded ? 'Less' : 'Metrics'}</span>
+      </button>
+    </ElementHintTarget>
+  );
+
+  const quickEl = showQuickRow && (onScoreViewChange || onCycleWorkspace) && (
+    <div className="header-metrics-quick-row">
+      {onScoreViewChange && (
+        <>
+          <ElementHintTarget
+            elementId="header-score-view-game-btn"
+            heading="Game scoreboard"
+            body="Bounty HUD view with emoji progress rows."
+            color="#10b981"
+          >
+            <button
+              type="button"
+              id="header-score-view-game-btn"
+              className={`header-metrics-quick-btn${scoreView === 'game' ? ' is-active' : ''}`}
+              onClick={() => onScoreViewChange('game')}
+              title="Game scoreboard (bounty HUD)"
+              aria-pressed={scoreView === 'game'}
+            >
+              <GameIcon size={14} />
+            </button>
+          </ElementHintTarget>
+          <ElementHintTarget
+            elementId="header-score-view-grid-btn"
+            heading="Numbers grid"
+            body="12-metric terminal grid with percentages."
+            color="#3b82f6"
+          >
+            <button
+              type="button"
+              id="header-score-view-grid-btn"
+              className={`header-metrics-quick-btn${scoreView === 'numbers' ? ' is-active' : ''}`}
+              onClick={() => onScoreViewChange('numbers')}
+              title="Numbers grid (12 metrics)"
+              aria-pressed={scoreView === 'numbers'}
+            >
+              <GridIcon size={14} />
+            </button>
+          </ElementHintTarget>
+        </>
+      )}
+      {onCycleWorkspace && (
+        <WorkspaceViewSwitcher
+          view={studioView}
+          onCycle={onCycleWorkspace}
+          variant="inline"
+          showHint={showStudioHint}
+        />
+      )}
+      <ElementHintTarget
+        elementId="header-help-tour-btn"
+        guideKey="help"
+        heading="Help tour"
+        body="Open the EN/ES guided tour of app features."
+        color="#38bdf8"
+      >
+        <button
+          type="button"
+          id="header-help-tour-btn"
+          className="header-metrics-quick-btn header-metrics-quick-btn--help"
+          data-guide="help"
+          onClick={() => {
+            try {
+              window.dispatchEvent(new CustomEvent('cat_open_app_guide'));
+            } catch (_) {}
+          }}
+          title="Help tour (EN / ES)"
+          aria-label="Open help tour"
+        >
+          <HelpIcon size={14} />
+        </button>
+      </ElementHintTarget>
+    </div>
+  );
+
+  // v4.99.2: inline — summary + Less + quick icons on ONE line, inside the
+  // audio chips row (SessionControlsSticky passes it as the bar's trailing node).
+  if (layout === 'inline') {
+    return (
+      <div className="header-metrics-strip-row header-metrics-strip-row--inline" data-guide="scoreboard">
+        {summaryEl}
+        {expandEl}
+        {quickEl}
+      </div>
+    );
+  }
 
   return (
     <div className="header-metrics-strip" data-guide="scoreboard">
       <div className="header-metrics-strip-row">
-        {/* v4.88.4: mins/$/📞📡 moved out — they live in the sticky row and the
-            status-bar targets strip. Only monthly % stays here (not shown elsewhere). */}
-        <span className="header-metrics-summary">
-          {!detailShown && <span title={`Month: ${monthPct}% of 5500m pace`}>{monthPct}% mo</span>}
-        </span>
-        {showExpandToggle && (
-        <ElementHintTarget
-          elementId="header-metrics-expand-btn"
-          guideKey="metrics-expand"
-          heading={expanded ? 'Collapse scoreboard' : 'Expand scoreboard'}
-          body={expanded ? 'Hide detailed scoreboard (game/numbers grid).' : 'Expand scoreboard — game view + 12-metric grid.'}
-          color="#a855f7"
-        >
-        <button
-          type="button"
-          className="header-metrics-expand-btn header-metrics-expand-btn--icon"
-          id="header-metrics-expand-btn"
-          data-guide="metrics-expand"
-          onClick={onToggleExpand}
-          title={expanded ? 'Hide detailed scoreboard (game/numbers grid)' : 'Expand scoreboard — game view + 12-metric grid'}
-        >
-          {expanded ? <ChevronUpIcon size={12} /> : <ChevronDownIcon size={12} />}
-          <span>{expanded ? 'Less' : 'Metrics'}</span>
-        </button>
-        </ElementHintTarget>
-        )}
+        {summaryEl}
+        {expandEl}
       </div>
-      {showQuickRow && (onScoreViewChange || onCycleWorkspace) && (
-        <div className="header-metrics-quick-row">
-          {onScoreViewChange && (
-            <>
-              <ElementHintTarget
-                elementId="header-score-view-game-btn"
-                heading="Game scoreboard"
-                body="Bounty HUD view with emoji progress rows."
-                color="#10b981"
-              >
-              <button
-                type="button"
-                id="header-score-view-game-btn"
-                className={`header-metrics-quick-btn${scoreView === 'game' ? ' is-active' : ''}`}
-                onClick={() => onScoreViewChange('game')}
-                title="Game scoreboard (bounty HUD)"
-                aria-pressed={scoreView === 'game'}
-              >
-                <GameIcon size={14} />
-              </button>
-              </ElementHintTarget>
-              <ElementHintTarget
-                elementId="header-score-view-grid-btn"
-                heading="Numbers grid"
-                body="12-metric terminal grid with percentages."
-                color="#3b82f6"
-              >
-              <button
-                type="button"
-                id="header-score-view-grid-btn"
-                className={`header-metrics-quick-btn${scoreView === 'numbers' ? ' is-active' : ''}`}
-                onClick={() => onScoreViewChange('numbers')}
-                title="Numbers grid (12 metrics)"
-                aria-pressed={scoreView === 'numbers'}
-              >
-                <GridIcon size={14} />
-              </button>
-              </ElementHintTarget>
-            </>
-          )}
-          {onCycleWorkspace && (
-            <WorkspaceViewSwitcher
-              view={studioView}
-              onCycle={onCycleWorkspace}
-              variant="inline"
-              showHint={showStudioHint}
-            />
-          )}
-          <ElementHintTarget
-            elementId="header-help-tour-btn"
-            guideKey="help"
-            heading="Help tour"
-            body="Open the EN/ES guided tour of app features."
-            color="#38bdf8"
-          >
-          <button
-            type="button"
-            id="header-help-tour-btn"
-            className="header-metrics-quick-btn header-metrics-quick-btn--help"
-            data-guide="help"
-            onClick={() => {
-              try {
-                window.dispatchEvent(new CustomEvent('cat_open_app_guide'));
-              } catch (_) {}
-            }}
-            title="Help tour (EN / ES)"
-            aria-label="Open help tour"
-          >
-            <HelpIcon size={14} />
-          </button>
-          </ElementHintTarget>
-        </div>
-      )}
-      {showBars && (
-        <div className="header-metrics-bars">
-          <CompactBar
-            fill={monthlyFill}
-            pending={monthlyPending}
-            color={monthlyColor}
-            title={monthlyTooltip}
-            onMouseEnter={hover({ elementId: 'header-bar-monthly', icon: <CalendarIcon size={14} />, heading: 'MONTHLY', color: monthlyColor, body: monthlyTooltip })}
-            onMouseLeave={leave}
-          />
-          <CompactBar
-            fill={stepFill}
-            color={stepColor}
-            title={stepTooltip}
-            onMouseEnter={hover({ elementId: 'header-bar-weekly-step', icon: <LadderIcon size={14} />, heading: 'WEEKLY STEP', color: stepColor, body: stepTooltip })}
-            onMouseLeave={leave}
-          />
-          <CompactBar
-            fill={dailyFill}
-            color={dailyColor}
-            title={dailyTooltip}
-            onMouseEnter={hover({ elementId: 'header-bar-daily', icon: <SunIcon size={14} />, heading: 'DAILY', color: dailyColor, body: dailyTooltip })}
-            onMouseLeave={leave}
-          />
-        </div>
-      )}
+      {quickEl}
+      {showBars && barsBlock}
     </div>
   );
 };
