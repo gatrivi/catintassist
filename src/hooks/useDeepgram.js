@@ -1838,6 +1838,23 @@ export const useDeepgram = () => {
 
   reconnectStreamRef.current = reconnectStream;
 
+  // v4.100.2: auto-Zap — a silent Deepgram stall (connected, audio flowing,
+  // but no transcript data 65s+) used to leave the app dead until manual ZAP.
+  // Recover once per episode; the 2-min guard prevents a reconnect loop, and
+  // any arriving transcript simply makes the check pass again.
+  const lastAutoZapAtRef = useRef(0);
+  useEffect(() => {
+    if (!isActive || connectionState !== "connected") return undefined;
+    const t = setInterval(() => {
+      if (Date.now() - (lastDataTime || 0) < 65000) return;
+      if (Date.now() - lastAutoZapAtRef.current < 120000) return;
+      lastAutoZapAtRef.current = Date.now();
+      critLog("warn", "auto reconnectStream: no STT data for 65s+");
+      reconnectStream();
+    }, 5000);
+    return () => clearInterval(t);
+  }, [isActive, connectionState, lastDataTime, reconnectStream, critLog]);
+
   useEffect(() => {
     const onPairChange = (e) => {
       languagePairRef.current = e.detail || loadLanguagePair();

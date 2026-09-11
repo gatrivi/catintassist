@@ -25,6 +25,29 @@ import { APP_VERSION } from '../constants/version';
 /** Newest first. Only the entry matching APP_VERSION is shown on load. */
 export const RELEASE_NOTES_CATALOG = [
   {
+    version: '4.100.2',
+    id: 'honest-dg-chip-autozap-v1',
+    highlightElementIds: ['audio-route-zap-btn'],
+    es: {
+      title: '🩺 Chip DG honesto + reconexión automática',
+      intro: 'v4.100.2 — El chip ya no dice TEXT ✓ cuando Deepgram está colgado: 30s sin datos muestra DG QUIET ⚠ (ámbar), 60s DG STUCK ⚠ (rojo). Además, a los 65s sin datos el app se reconecta sola (auto-Zap) — ya no tienes que tocar ZAP.',
+      sections: [{ heading: 'Qué cambió', bullets: [
+        'TEXT ✓ solo mientras llegan datos; silencio = DG QUIET / DG STUCK',
+        'El punto pasa a ámbar (30s) y rojo (60s) en un estancamiento',
+        'Auto-Zap: reconexión sola a los 65s sin datos, máx 1 por 2 min',
+      ] }],
+    },
+    en: {
+      title: '🩺 Honest DG chip + auto-reconnect',
+      intro: 'v4.100.2 — The chip no longer says TEXT ✓ while Deepgram is silently stuck: 30s with no data shows DG QUIET ⚠ (amber), 60s DG STUCK ⚠ (red). Also, after 65s with no data the app auto-Zaps itself — no more manual ZAP.',
+      sections: [{ heading: 'What changed', bullets: [
+        'TEXT ✓ only while data flows; silence = DG QUIET / DG STUCK',
+        'Dot goes amber (30s) then red (60s) on a stall',
+        'Auto-Zap: self-reconnect at 65s without data, max 1 per 2 min',
+      ] }],
+    },
+  },
+  {
     version: '4.100.1',
     id: 'goal-defaults-1200-v1',
     highlightElementIds: ['daily-targets-chip'],

@@ -105,6 +105,14 @@ export const AudioRouteStatusBar = ({
     restoreLiveMic,
   } = useAudioSettings();
   const [micRestoreFlash, setMicRestoreFlash] = useState('');
+  // v4.100.2: re-render every 5s while active so stale/critical (Date.now()-based)
+  // re-evaluate even when no other state changes fire.
+  const [, setStaleTick] = useState(0);
+  useEffect(() => {
+    if (!isActive) return undefined;
+    const t = setInterval(() => setStaleTick((n) => n + 1), 5000);
+    return () => clearInterval(t);
+  }, [isActive]);
   const {
     selectedInputDeviceId: selectedCableInputId,
     refreshSelectedDeviceId: changeCableInputId,
@@ -241,8 +249,14 @@ export const AudioRouteStatusBar = ({
 
   const enOk = connectProgress?.socketEn === 'open';
   const esOk = connectProgress?.socketEs === 'open';
+  // v4.100.2: a silent stall (open sockets, no results) must NOT read ok/TEXT —
+  // stale/critical outrank the connected state.
   const sttState =
-    connectionState === 'connected' && enOk && esOk
+    critical
+      ? 'err'
+      : stale
+        ? 'warn'
+        : connectionState === 'connected' && enOk && esOk
       ? 'ok'
       : connectionState === 'connecting'
         ? 'warn'
@@ -305,6 +319,16 @@ export const AudioRouteStatusBar = ({
     return { state: 'ok', label: 'TAB ✓ · DG ✓ · SPEAK', title: 'Tab audio is reaching Deepgram. Waiting for speech text.' };
   })();
 
+  // v4.100.2: one honest label shared by compact + full chips. "TEXT ✓" only
+  // counts while data is still flowing; a 30s+ gap reads DG QUIET, 60s+ DG STUCK.
+  const dgChipLabel = critical
+    ? 'DG STUCK ⚠'
+    : stale
+      ? 'DG QUIET ⚠'
+      : connectProgress?.transcriptReceived
+        ? 'TEXT ✓'
+        : `DG ${enOk && esOk ? 'EN/ES' : connectionState}`;
+
   const btn = {
     background: 'rgba(255,255,255,0.06)',
     border: '1px solid rgba(255,255,255,0.12)',
@@ -348,7 +372,7 @@ export const AudioRouteStatusBar = ({
             </div>
             <span className="audio-route-compact-proof__dg" title={sttSummaryHintBody}>
               <Dot state={sttState === 'idle' ? 'idle' : sttState} />
-              {connectProgress?.transcriptReceived ? 'TEXT ✓' : `DG ${enOk && esOk ? 'EN/ES' : connectionState}`}
+              {dgChipLabel}
             </span>
             {!mobileMicMode && (
               <span
