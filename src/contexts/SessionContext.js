@@ -591,6 +591,40 @@ export const SessionProvider = ({ children }) => {
     return out.summary;
   }, []);
 
+  // v4.100.0: month-total truth check — re-sum the daily log so a drifted
+  // monthlyMinutes (the "-77h?!" scare) can be fixed in 2 clicks.
+  // Convention: monthly = Σ past days in dailyLog (current month, excl. today)
+  // + today's live stats.dailyMinutes (log may or may not mirror today yet).
+  const getMonthResyncPreview = useCallback(() => {
+    const now = new Date();
+    const todayStr = now.toDateString();
+    const currentMonthKey = `${now.getFullYear()}-${now.getMonth()}`;
+    let log = {};
+    try { log = JSON.parse(localStorage.getItem('catintassist_daily_log') || '{}'); } catch { log = {}; }
+    let pastSum = 0;
+    Object.entries(log).forEach(([dateStr, mins]) => {
+      if (dateStr === todayStr) return;
+      const d = new Date(dateStr);
+      if (Number.isNaN(d.getTime())) return;
+      if (`${d.getFullYear()}-${d.getMonth()}` !== currentMonthKey) return;
+      pastSum += Number(mins) || 0;
+    });
+    let statsNow = {};
+    try { statsNow = JSON.parse(localStorage.getItem('catintassist_stats') || '{}'); } catch { statsNow = {}; }
+    const sum = Math.round(pastSum + (Number(statsNow.dailyMinutes) || 0));
+    return { sum, pastSum: Math.round(pastSum), today: Math.round(Number(statsNow.dailyMinutes) || 0) };
+  }, []);
+
+  const reconcileMonthTotal = useCallback(() => {
+    const preview = getMonthResyncPreview();
+    setStats((prev) => {
+      const newStats = { ...prev, monthlyMinutes: preview.sum };
+      safeLocalStorageSet('catintassist_stats', JSON.stringify(newStats));
+      return newStats;
+    });
+    return { sum: preview.sum, applied: true };
+  }, [getMonthResyncPreview]);
+
 
   const [workSessionStartTime, setWorkSessionStartTime] = useState(() => stats.lastBreakEndTime || stats.dayStartTime || Date.now());
   const [workSessionMinutes, setWorkSessionMinutes] = useState(0);
@@ -1259,6 +1293,8 @@ export const SessionProvider = ({ children }) => {
     commitDayToLog,
     editPastDay,
     importCallLog,
+    getMonthResyncPreview,
+    reconcileMonthTotal,
     isZombieCall,
     clearZombieState,
     translationMood,

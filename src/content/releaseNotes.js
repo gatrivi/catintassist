@@ -25,6 +25,33 @@ import { APP_VERSION } from '../constants/version';
 /** Newest first. Only the entry matching APP_VERSION is shown on load. */
 export const RELEASE_NOTES_CATALOG = [
   {
+    version: '4.100.0',
+    id: 'goal-wheel-rehab-v1',
+    highlightElementIds: ['daily-targets-chip'],
+    es: {
+      title: '🎯 Rueda de meta rehabilitada — el HUD ahora es botón',
+      intro: 'v4.100.0 — El chip de metas del HUD (💵⏱☕📉) ahora es un botón: lo tocas y el HUD se reemplaza por la rueda de meta. La rueda trae vista previa de catch-up (cuánto hoy para volver al ritmo), opción 6.5 días/semana, entrada directa de minutos mensuales y corrección del total del mes en 2 clics (re-suma del registro). El logo 🐱 vuelve a la transcripción.',
+      sections: [{ heading: 'Qué cambió', bullets: [
+        'Chip de metas clicable — abre la rueda en línea, Cancel o 🐱 para volver',
+        'Rueda: snap inicial usa tus días reales; suma 6.5/Wk (28d); pasos ◀▶ + teclado',
+        'Vista previa: atraso, cuánto hoy, carga por día laboral y banco actual',
+        'Corrección del mes: edita el total o ↻ re-suma desde el registro diario',
+        '🐱 (logo) vuelve a la pantalla de transcripción',
+      ] }],
+    },
+    en: {
+      title: '🎯 Goal wheel rehab — the HUD is now a button',
+      intro: 'v4.100.0 — The HUD targets chip (💵⏱☕📉) is now a button: tap it and the HUD swaps for the goal wheel. The wheel gains a catch-up preview (how much today to get back on pace), a 6.5-day/week option, direct monthly-minutes input, and a 2-click month-total fix (re-sum from the daily log). The 🐱 logo goes back to transcription.',
+      sections: [{ heading: 'What changed', bullets: [
+        'Clickable targets chip — opens the wheel inline, Cancel or 🐱 to go back',
+        'Wheel: initial snap uses your real workdays; adds 6.5/Wk (28d); ◀▶ steps + keyboard',
+        'Preview: deficit, need-today, per-workday load, and banked total',
+        'Month fix: edit the total directly or ↻ re-sum from the daily log',
+        '🐱 (logo) returns to the transcription screen',
+      ] }],
+    },
+  },
+  {
     version: '4.99.3',
     id: 'soundboard-dedup-v1',
     highlightElementIds: ['interpret-root'],

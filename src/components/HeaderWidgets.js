@@ -32,6 +32,9 @@ export const GoalEditor = ({ statKey, valueMinutes, updateFn, ratePerMinute, dai
           ratePerMinute={ratePerMinute} 
           arsRate={arsRate} 
           setArsRate={setArsRate}
+          initialGoalMinutes={valueMinutes}
+          monthlyMinutes={monthlyMinutes}
+          dailyMinutes={dailyMinutes}
           onSave={handleSave} 
           onCancel={() => setIsEditing(false)} 
         />

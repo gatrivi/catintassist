@@ -34,3 +34,4 @@
 | 2026-09-10T23:39:58.156Z | f7f3455 | v4.99.0 durable time ledger — midnight rollover, 60s banking, firebase timetrack mirror; multi-user access TODO |
 | 2026-09-11T12:05:41.659Z | 61a8632 | v4.99.1 hotfix — MicVerifyPanel null-verdict crash on first render |
 | 2026-09-11T12:33:04.939Z | 7f613f5 | v4.99.2 honest scoreboard — single-day live counters, no re-attach double-bank, no-STT calls bank wall-clock, month incl live call, one-line header strip |
+| 2026-09-11T14:11:44.801Z | ea8abd2 | v4.99.3 soundboard dedup - one Opener-Client, carry-over |
