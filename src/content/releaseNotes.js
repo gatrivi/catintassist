@@ -25,6 +25,31 @@ import { APP_VERSION } from '../constants/version';
 /** Newest first. Only the entry matching APP_VERSION is shown on load. */
 export const RELEASE_NOTES_CATALOG = [
   {
+    version: '4.101.0',
+    id: 'soundboard-dedup-slotscripts-v1',
+    highlightElementIds: [],
+    es: {
+      title: '🎙 Soundboard: sin duplicados · guiones AM/PM/Eve · sin rojo',
+      intro: 'v4.101.0 — Dediuplicado: el LEP Open en inglés se jubiló (el saludo al LEP va en su idioma; tu grabación migró a Opener – LEP (ES) AM). Los guiones de los saludos ahora cambian con la hora: el de la tarde dice "Buenas tardes / Good afternoon". Tiles no grabados en gris, EN verde, ES azul — nada en rojo.',
+      sections: [{ heading: 'Qué cambió', bullets: [
+        'open_lep (LEP Open) jubilado; grabación migrada a Opener – LEP (ES) si no había ninguna',
+        'Guiones por franja: AM dice "Good morning", PM "Good afternoon", Eve "Good evening" (ES: buenos días/tardes/noches)',
+        'El guion se ve en el tile antes de grabar, y en la tarjeta al grabar',
+        'Colores: no grabado = gris, EN = verde, ES = azul; sin rojo en el soundboard',
+      ] }],
+    },
+    en: {
+      title: '🎙 Soundboard: deduped · AM/PM/Eve scripts · no red',
+      intro: 'v4.101.0 — Deduped: the English-reading LEP Open is retired (the LEP greeting is delivered in the LEP language; your recording migrated to Opener – LEP (ES) AM). Greeting scripts now follow the time of day: the afternoon one says "Good afternoon". Unrecorded tiles are gray, EN green, ES blue — no red.',
+      sections: [{ heading: 'What changed', bullets: [
+        'open_lep (LEP Open) retired; recording migrated to Opener – LEP (ES) if you had none',
+        'Slot scripts: AM says "Good morning", PM "Good afternoon", Eve "Good evening" (ES: buenos días/tardes/noches)',
+        'Script preview right on the tile before recording, and on the card while recording',
+        'Colors: unrecorded = gray, EN = green, ES = blue; no red in the soundboard',
+      ] }],
+    },
+  },
+  {
     version: '4.100.2',
     id: 'honest-dg-chip-autozap-v1',
     highlightElementIds: ['audio-route-zap-btn'],

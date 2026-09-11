@@ -319,13 +319,16 @@ export const AudioRouteStatusBar = ({
     return { state: 'ok', label: 'TAB ✓ · DG ✓ · SPEAK', title: 'Tab audio is reaching Deepgram. Waiting for speech text.' };
   })();
 
-  // v4.100.2: one honest label shared by compact + full chips. "TEXT ✓" only
-  // counts while data is still flowing; a 30s+ gap reads DG QUIET, 60s+ DG STUCK.
+  // v4.100.3: one honest label shared by compact + full chips. "TEXT ✓" means
+  // data arrived in the LAST 30s — not "ever" (the old sticky flag lied during
+  // warm-socket off-call stalls). In-call gaps read DG QUIET / DG STUCK.
+  const hasFreshText =
+    connectProgress?.transcriptReceived && timeSincePacket > 0 && timeSincePacket < 30000;
   const dgChipLabel = critical
     ? 'DG STUCK ⚠'
     : stale
       ? 'DG QUIET ⚠'
-      : connectProgress?.transcriptReceived
+      : hasFreshText
         ? 'TEXT ✓'
         : `DG ${enOk && esOk ? 'EN/ES' : connectionState}`;
 
@@ -399,7 +402,9 @@ export const AudioRouteStatusBar = ({
                 🎤 RESTORE{micRestoreFlash ? ` · ${micRestoreFlash}` : ''}
               </button>
             )}
-            {(stale || critical || (isActive && isDeepgramError)) && onReconnectStream && (
+            {/* v4.100.3: ZAP whenever DG is connected but data is stale (in-call
+                or warm off-call) or errored — the manual escape hatch stays up. */}
+            {(isDeepgramError || (connectionState === 'connected' && timeSincePacket > 30000)) && onReconnectStream && (
               <button
                 id="audio-route-zap-btn"
                 type="button"
