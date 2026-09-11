@@ -216,9 +216,9 @@ export const MicVerifyPanel = () => {
       </div>
 
       {edgeDefault?.label && (
-        <div className={`mic-verify-edge-default${verdict.edgeDefaultMismatch ? ' is-mismatch' : ''}`}>
+        <div className={`mic-verify-edge-default${verdict?.edgeDefaultMismatch ? ' is-mismatch' : ''}`}>
           Edge default mic: <strong>{edgeDefault.label}</strong>
-          {verdict.edgeDefaultMismatch && ' — ⚠ differs from your pick; a platform tab on default grabs THIS one'}
+          {verdict?.edgeDefaultMismatch && ' — ⚠ differs from your pick; a platform tab on default grabs THIS one'}
         </div>
       )}
 

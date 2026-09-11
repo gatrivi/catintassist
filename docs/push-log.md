@@ -31,3 +31,4 @@
 | 2026-09-10T18:28:14.648Z | 133f636 | v4.96.5 heatmap hand-edit syncs scoreboard + deficit |
 | 2026-09-10T20:24:29.025Z | 95d2e6a | v4.97.0: mic verify panel - dropdowns, live probe, loopback, edge-default mismatch guard |
 | 2026-09-10T22:06:25.160Z | 56c6a66 | v4.98.0 call autopilot — phrase auto start/end, 10s cancellable, editable phrases, log-only tone listener |
+| 2026-09-10T23:39:58.156Z | f7f3455 | v4.99.0 durable time ledger — midnight rollover, 60s banking, firebase timetrack mirror; multi-user access TODO |

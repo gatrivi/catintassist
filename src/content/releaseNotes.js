@@ -25,6 +25,25 @@ import { APP_VERSION } from '../constants/version';
 /** Newest first. Only the entry matching APP_VERSION is shown on load. */
 export const RELEASE_NOTES_CATALOG = [
   {
+    version: '4.99.1',
+    id: 'mic-verify-crash-hotfix-v1',
+    highlightElementIds: ['interpret-root'],
+    es: {
+      title: '🔥 HOTFIX — panel MIC VERIFY ya no tumba la app',
+      intro: 'v4.99.1 — El panel de verificación de micrófono chocaba al abrirse cuando existía un micrófono por defecto de Edge. Corregido: la app arranca normal.',
+      sections: [{ heading: 'Qué cambió', bullets: [
+        'MicVerifyPanel ya no crashea al primer render (verdict era null antes del primer TEST)',
+      ] }],
+    },
+    en: {
+      title: '🔥 HOTFIX — MIC VERIFY panel no longer crashes the app',
+      intro: 'v4.99.1 — The mic verification panel crashed on open whenever an Edge default mic existed. Fixed: the app boots normally.',
+      sections: [{ heading: 'What changed', bullets: [
+        'MicVerifyPanel no longer crashes on first render (verdict was null before the first TEST)',
+      ] }],
+    },
+  },
+  {
     version: '4.99.0',
     id: 'time-ledger-durable-v1',
     highlightElementIds: ['interpret-root'],
