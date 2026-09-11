@@ -1668,11 +1668,13 @@ export const DashboardHeader = ({
   const availableWindowMins = minsToHardCutoff;
 
   // ── v4.101.0 DRIFT-PROOF MONTH TOTAL ──────────────────────────────────
-  // stats.monthlyMinutes accumulates incrementally and can drift low vs the
-  // daily log (the "-77h?!" scare). Truth = Σ current-month dailyLog entries
-  // (excluding today) + today's live minutes. Used for all pace/deficit math;
-  // any drift >30m is auto-corrected back into stats.
-  const monthlyBanked = React.useMemo(() => {
+  // stats.monthlyMinutes accumulates live and can drift LOW (the "-77h?!"
+  // scare). The daily log only contains days closed via End Day / midnight —
+  // open or crashed days never land there, so log-sum is a LOWER bound only.
+  // Truth = max(accumulator, log-sum + today): the log can add missing days
+  // (recovered via call-log import), never subtract counted ones.
+  // Auto-correction is UPWARD-ONLY — writing down would destroy banked time.
+  const monthlyLogSum = React.useMemo(() => {
     const nowD = new Date();
     const todayStr = nowD.toDateString();
     const mKey = `${nowD.getFullYear()}-${nowD.getMonth()}`;
@@ -1685,9 +1687,10 @@ export const DashboardHeader = ({
     });
     return Math.round(past + (Number(stats.dailyMinutes) || 0));
   }, [dailyLog, stats.dailyMinutes]);
+  const monthlyBanked = Math.max(Number(stats.monthlyMinutes) || 0, monthlyLogSum);
 
   React.useEffect(() => {
-    if (Math.abs(monthlyBanked - (stats.monthlyMinutes || 0)) > 30) {
+    if ((Number(stats.monthlyMinutes) || 0) < monthlyBanked - 30) {
       updateStat('monthlyMinutes', monthlyBanked);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
