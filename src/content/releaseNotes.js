@@ -25,6 +25,26 @@ import { APP_VERSION } from '../constants/version';
 /** Newest first. Only the entry matching APP_VERSION is shown on load. */
 export const RELEASE_NOTES_CATALOG = [
   {
+    version: '4.100.1',
+    id: 'goal-defaults-1200-v1',
+    highlightElementIds: ['daily-targets-chip'],
+    es: {
+      title: '🎯 Meta por defecto: $1200 y 6.5 días/semana',
+      intro: 'v4.100.1 — La meta inicial ahora es 9231m ($1200 a $0.13/min) y la rueda abre en 6.5/Wk (28d). Si tu total difiere, corrígelo en la rueda (fila banked/mo o ↻ re-suma).',
+      sections: [{ heading: 'Qué cambió', bullets: [
+        'Meta inicial 9231m en lugar de 5500m',
+        'La rueda abre por defecto en 6.5/Wk',
+      ] }],
+    },
+    en: {
+      title: '🎯 Default goal: $1200 and 6.5 days/week',
+      intro: 'v4.100.1 — Fresh installs start at a 9231m goal ($1200 at $0.13/min) and the wheel opens on 6.5/Wk (28d). If your banked total differs, fix it in the wheel (banked/mo row or ↻ re-sum).',
+      sections: [{ heading: 'What changed', bullets: [
+        'Fresh-install goal 9231m instead of 5500m',
+        'Wheel defaults to 6.5/Wk',
+      ] }],
+    },
+  },  {
     version: '4.100.0',
     id: 'goal-wheel-rehab-v1',
     highlightElementIds: ['daily-targets-chip'],

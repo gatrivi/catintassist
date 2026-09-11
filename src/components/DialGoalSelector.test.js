@@ -60,7 +60,7 @@ describe('DialGoalSelector rehab (v4.100.0)', () => {
       />,
     );
     fireEvent.click(screen.getByRole('button', { name: /Bank Goal:/ }));
-    expect(onSave).toHaveBeenCalledWith(expect.any(Number), expect.objectContaining({ workDays: 22 }));
+    expect(onSave).toHaveBeenCalledWith(expect.any(Number), expect.objectContaining({ workDays: 28 }));
     fireEvent.change(screen.getByLabelText(/Banked month total/i), { target: { value: '1234' } });
     fireEvent.click(screen.getByRole('button', { name: /^Set$/ }));
     expect(onSaveMonth).toHaveBeenCalledWith(1234);

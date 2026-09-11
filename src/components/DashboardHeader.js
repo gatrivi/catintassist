@@ -998,11 +998,12 @@ export const DashboardHeader = ({
   const [celebration, setCelebration] = useState(null); // Keep celebration for sound logic
   const [isTodayDialOpen, setIsTodayDialOpen] = useState(false);
   // v4.100.0: remembered workdays basis for the goal wheel (5/6/6.5-day weeks).
+  // v4.100.1 default: 6.5/Wk (28d).
   const [goalWorkDays, setGoalWorkDays] = useState(() => {
     try {
       const v = Number(localStorage.getItem(GOAL_WORKDAYS_KEY));
-      return [17, 22, 26, 28, 30].includes(v) ? v : 22;
-    } catch { return 22; }
+      return [17, 22, 26, 28, 30].includes(v) ? v : 28;
+    } catch { return 28; }
   });
   const [displayBounty, setDisplayBounty] = useState(0);
   const [isBountyAnimating, setIsBountyAnimating] = useState(false);

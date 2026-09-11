@@ -190,7 +190,7 @@ export const SessionProvider = ({ children }) => {
       dailyAvailMinutes: 0,
       weeklyMinutes: 0,
       monthlyMinutes: 0,
-      goalMinutes: 5500,
+      goalMinutes: 9231, // v4.100.1: $1200 @ $0.13/min (was 5500 FLOOR)
       callsToday: 0,
       streak: 0,
       lastDate: today,

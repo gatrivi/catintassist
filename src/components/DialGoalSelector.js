@@ -20,7 +20,7 @@ export const daysPerWeekOf = (workDays) => {
 };
 
 export const DialGoalSelector = ({
-  ratePerMinute, arsRate, setArsRate, initialGoalMinutes, initialWorkDays = 22,
+  ratePerMinute, arsRate, setArsRate, initialGoalMinutes, initialWorkDays = 28,
   monthlyMinutes = 0, dailyMinutes = 0,
   bankedMonthOverride = null, // when set, shows "banked" editor row value
   onSaveMonth = null, // (mins) => void — 2-click month-total correction
@@ -36,17 +36,15 @@ export const DialGoalSelector = ({
   }, []);
 
   const [workDays, setWorkDays] = useState(() => (
-    WORK_DAY_OPTS.some((o) => o.val === initialWorkDays) ? initialWorkDays : 22
+    WORK_DAY_OPTS.some((o) => o.val === initialWorkDays) ? initialWorkDays : 28
   ));
   const daysPerWeek = daysPerWeekOf(workDays);
 
   const [activeIndex, setActiveIndex] = useState(() => {
     if (initialGoalMinutes && initialGoalMinutes > 0) {
       // v4.100.0: snap with the REAL workdays, not hardcoded 22d/5d.
-      const dpw = daysPerWeekOf(
-        WORK_DAY_OPTS.some((o) => o.val === initialWorkDays) ? initialWorkDays : 22,
-      );
-      const wd = WORK_DAY_OPTS.some((o) => o.val === initialWorkDays) ? initialWorkDays : 22;
+      const wd = WORK_DAY_OPTS.some((o) => o.val === initialWorkDays) ? initialWorkDays : 28;
+      const dpw = daysPerWeekOf(wd);
       const currentWeeklyHours = (initialGoalMinutes * dpw) / (60 * wd);
       let bestIdx = 0;
       let minDiff = Infinity;
