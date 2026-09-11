@@ -8,25 +8,34 @@
 
 export const fmtHm = (m) => `${Math.floor(m / 60)}h${String(Math.round(m % 60)).padStart(2, '0')}m`;
 
+// v4.101.0: optional `workDays` (days you actually work per month, e.g. 28 for
+// 6.5/Wk). When set, catch-up spreads over REMAINING WORKDAYS, not calendar
+// days — so "need today" matches what a 6.5-day week really demands.
+// expectedByToday stays an even calendar spread (identical to spreading
+// workdays evenly), so the deficit line itself is basis-neutral.
 export const computeCatchUp = ({
   goalMinutes = 5500,
   monthlyMinutes = 0, // includes today's dailyMinutes
   dailyMinutes = 0,
+  workDays = 0, // 0 = legacy calendar-day basis
   now = new Date(),
 }) => {
   const daysInMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
   const currentDay = now.getDate();
   const remainingDays = Math.max(1, daysInMonth - currentDay + 1);
+  const remainingWorkdays = workDays > 0
+    ? Math.max(1, Math.round((remainingDays * workDays) / daysInMonth))
+    : remainingDays;
 
   const expectedByToday = Math.round((goalMinutes / daysInMonth) * currentDay);
   const deficitMins = Math.round(expectedByToday - monthlyMinutes); // + = behind
 
   const remainingGoal = Math.max(0, goalMinutes - monthlyMinutes);
-  const requiredToday = Math.round(remainingGoal / remainingDays);
+  const requiredToday = Math.round(remainingGoal / remainingWorkdays);
   const needToday = Math.max(0, requiredToday - dailyMinutes);
 
-  // Per-day load for the days AFTER today, assuming today hits requiredToday
-  const daysAfter = remainingDays - 1;
+  // Per-workday load for the days AFTER today, assuming today hits requiredToday
+  const daysAfter = remainingWorkdays - 1;
   const thenPerDay = daysAfter >= 1
     ? Math.round(Math.max(0, remainingGoal - requiredToday) / daysAfter)
     : Math.max(0, remainingGoal - requiredToday);
@@ -52,6 +61,7 @@ export const computeCatchUp = ({
     expectedByToday,
     deficitMins,
     remainingDays,
+    remainingWorkdays, // v4.101.0
     requiredToday,
     needToday,
     thenPerDay,

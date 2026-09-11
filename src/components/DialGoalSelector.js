@@ -119,15 +119,15 @@ export const DialGoalSelector = ({
   const catchUp = useMemo(() => {
     if (!(effectiveMonthly > 0)) return null;
     try {
-      return computeCatchUp({ goalMinutes: effectiveMonthly, monthlyMinutes, dailyMinutes });
+      return computeCatchUp({ goalMinutes: effectiveMonthly, monthlyMinutes, dailyMinutes, workDays });
     } catch { return null; }
-  }, [effectiveMonthly, monthlyMinutes, dailyMinutes]);
+  }, [effectiveMonthly, monthlyMinutes, dailyMinutes, workDays]);
   const now = new Date();
   const daysInMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
   const remainingDays = Math.max(1, daysInMonth - now.getDate() + 1);
-  // Workday-basis load: remaining goal spread over remaining workdays.
+  // Workday-basis load: share the catch-up's remaining-workdays math (v4.101.0)
   const remainingGoal = Math.max(0, effectiveMonthly - (monthlyMinutes || 0));
-  const remainingWorkdays = Math.max(1, Math.round((remainingDays * workDays) / 30));
+  const remainingWorkdays = catchUp ? catchUp.remainingWorkdays : remainingDays;
   const perWorkday = Math.round(remainingGoal / remainingWorkdays);
 
   const ladderStep = Math.min(12, Math.max(1, Math.floor(effectiveMonthly / 1375) + (effectiveMonthly % 1375 > 1300 ? 1 : 0) || 1));

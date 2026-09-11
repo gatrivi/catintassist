@@ -69,13 +69,14 @@ export const DailyTargetsChip = ({
   breakMinutes = 0,
   ratePerMinute = 0.13,
   goalMinutes = 0, // v4.96.0: real dial goal (stats.goalMinutes) — wins over the $1200 estimate
+  workDays = 0, // v4.101.0: workday basis (e.g. 28 for 6.5/Wk) — catch-up spreads over workdays
   onOpenGoalDial = null, // v4.100.0: HUD goal pill acts as a button → inline dial
 }) => {
   const usdGoal = computeGoalDay({ dailyMinutes, monthlyMinutes, ratePerMinute });
   // v4.96.0: today's target = month catch-up spread over remaining days
   // (same math as the dashboard catch-up strip → chip and dashboard always agree).
   const catchUp = goalMinutes > 0
-    ? computeCatchUp({ goalMinutes, monthlyMinutes, dailyMinutes })
+    ? computeCatchUp({ goalMinutes, monthlyMinutes, dailyMinutes, workDays })
     : null;
   const dailyMin = catchUp ? catchUp.requiredToday : usdGoal.dailyMin;
   const leftMin = catchUp ? Math.max(0, goalMinutes - monthlyMinutes) : usdGoal.leftMin;
@@ -152,10 +153,10 @@ export const DailyTargetsChip = ({
   // v4.96.0: month-pace deficit leads the tooltip — the "am I behind?" answer first
   const deficitRow = catchUp
     ? catchUp.deficitMins > 30
-      ? `📉 behind month pace ${fmtHm(catchUp.deficitMins)} → ${fmtHm(catchUp.requiredToday)}/day × ${catchUp.remainingDays}d`
+      ? `📉 behind month pace ${fmtHm(catchUp.deficitMins)} → ${fmtHm(catchUp.requiredToday)}/day × ${catchUp.remainingWorkdays}d`
       : catchUp.deficitMins < -30
         ? `📈 ahead of month pace ${fmtHm(-catchUp.deficitMins)}`
-        : `✅ on month pace · ${fmtHm(catchUp.requiredToday)}/day × ${catchUp.remainingDays}d`
+        : `✅ on month pace · ${fmtHm(catchUp.requiredToday)}/day × ${catchUp.remainingWorkdays}d`
     : null;
   const tipRows = [
     deficitRow,

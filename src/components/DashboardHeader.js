@@ -31,7 +31,8 @@ import {
   buildOffCallStatusLabel,
 } from '../utils/offCallIdleMessages';
 import { dispatchOpenDeepgramSettings } from '../utils/deepgramSettingsPrompt';
-import { DialGoalSelector } from './DialGoalSelector';
+import { DialGoalSelector, daysPerWeekOf } from './DialGoalSelector';
+import { fmtHm } from '../utils/catchUpPlan';
 import { ElementHintTarget, useElementHint, buildHintPayload } from './ElementHint';
 import { useProgressiveAudio } from '../hooks/useProgressiveAudio';
 import { MonthHeatmap } from './MonthHeatmap';
@@ -265,6 +266,7 @@ const SessionControlsSticky = React.memo(({
   // v4.87.0: daily $1200-goal chip in status bar
   dailyMinutes = 0,
   monthlyMinutes = 0,
+  workDays = 0, // v4.101.0: workday basis (e.g. 28 for 6.5/Wk) for the deficit math
   breakMinutes = 0,
   ratePerMinute = 0.13,
   goalMinutes = 0, // v4.96.0: dial goal for the chip's deficit pair + catch-up target
@@ -656,7 +658,7 @@ const SessionControlsSticky = React.memo(({
               </span>
             </div>
             )}
-              <DailyTargetsChip dailyMinutes={dailyMinutes} monthlyMinutes={monthlyMinutes} breakMinutes={breakMinutes} ratePerMinute={ratePerMinute} goalMinutes={goalMinutes} onOpenGoalDial={onOpenGoalDial} />
+              <DailyTargetsChip dailyMinutes={dailyMinutes} monthlyMinutes={monthlyMinutes} workDays={workDays} breakMinutes={breakMinutes} ratePerMinute={ratePerMinute} goalMinutes={goalMinutes} onOpenGoalDial={onOpenGoalDial} />
             </div>
           ) : (
             <div className="off-call-status-column" style={{ display: 'flex', flexDirection: 'column', gap: '0.15rem' }}>
@@ -689,7 +691,7 @@ const SessionControlsSticky = React.memo(({
                 <MicVerifyChip title="Client mic + last MIC VERIFY verdict — full panel in the idle pane below" />
               </div>
               <div className="off-call-targets-row">
-                <DailyTargetsChip dailyMinutes={dailyMinutes} monthlyMinutes={monthlyMinutes} breakMinutes={breakMinutes} ratePerMinute={ratePerMinute} goalMinutes={goalMinutes} onOpenGoalDial={onOpenGoalDial} />
+                <DailyTargetsChip dailyMinutes={dailyMinutes} monthlyMinutes={monthlyMinutes} workDays={workDays} breakMinutes={breakMinutes} ratePerMinute={ratePerMinute} goalMinutes={goalMinutes} onOpenGoalDial={onOpenGoalDial} />
               </div>
             </div>
           )}
@@ -1010,6 +1012,7 @@ export const DashboardHeader = ({
   const [timeEditMode, setTimeEditMode] = useState(null); // 'call' | 'break' | null
   const [scoreView, setScoreView] = useState(() => getPresetConfig(scoreboardPreset).scoreView || 'game'); // 'game' | 'numbers'
   const [silenceCount, setSilenceCount] = useState(0);
+  const [rhythmOpen, setRhythmOpen] = useState(false); // v4.101.0: rhythm/schedule panel
 
   useEffect(() => {
     const cfg = getPresetConfig(scoreboardPreset);
@@ -1664,16 +1667,44 @@ export const DashboardHeader = ({
   })();
   const availableWindowMins = minsToHardCutoff;
 
+  // ── v4.101.0 DRIFT-PROOF MONTH TOTAL ──────────────────────────────────
+  // stats.monthlyMinutes accumulates incrementally and can drift low vs the
+  // daily log (the "-77h?!" scare). Truth = Σ current-month dailyLog entries
+  // (excluding today) + today's live minutes. Used for all pace/deficit math;
+  // any drift >30m is auto-corrected back into stats.
+  const monthlyBanked = React.useMemo(() => {
+    const nowD = new Date();
+    const todayStr = nowD.toDateString();
+    const mKey = `${nowD.getFullYear()}-${nowD.getMonth()}`;
+    let past = 0;
+    Object.entries(dailyLog || {}).forEach(([ds, mins]) => {
+      if (ds === todayStr) return;
+      const d = new Date(ds);
+      if (Number.isNaN(d.getTime()) || `${d.getFullYear()}-${d.getMonth()}` !== mKey) return;
+      past += Number(mins) || 0;
+    });
+    return Math.round(past + (Number(stats.dailyMinutes) || 0));
+  }, [dailyLog, stats.dailyMinutes]);
+
+  React.useEffect(() => {
+    if (Math.abs(monthlyBanked - (stats.monthlyMinutes || 0)) > 30) {
+      updateStat('monthlyMinutes', monthlyBanked);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [monthlyBanked]);
+
   // ── MONTHLY DEFICIT ───────────────────────────────────
   const expectedByToday = Math.round((stats.goalMinutes / daysInMonth) * currentDay);
-  const monthlyDeficitMins = expectedByToday - stats.monthlyMinutes; // positive = behind
+  const monthlyDeficitMins = expectedByToday - monthlyBanked; // positive = behind
   const isInDeficit = monthlyDeficitMins > 30;
 
   // ── CATCH-UP PLAN (v4.96.0): month-pace deficit → today's number → per-day split ──
+  // v4.101.0: catch-up spreads over WORKDAYS (6.5/Wk → 28d basis), not calendar days.
   const catchUpPlan = computeCatchUp({
     goalMinutes: stats.goalMinutes,
-    monthlyMinutes: stats.monthlyMinutes,
+    monthlyMinutes: monthlyBanked,
     dailyMinutes: Math.round(totalDailyMins),
+    workDays: goalWorkDays,
   });
   const catchUpVerdictColor = catchUpPlan.verdict === 'fits-by-18' ? '#34d399'
     : catchUpPlan.verdict === 'needs-ot' ? '#fbbf24'
@@ -1682,6 +1713,36 @@ export const DashboardHeader = ({
   const catchUpLineColor = catchUpPlan.deficitMins > 30 ? '#fca5a5'
     : catchUpPlan.deficitMins < -30 ? '#6ee7b7'
     : 'var(--text-muted)';
+
+  // ── RHYTHM VIEW DATA (v4.101.0) ────────────────────────────────────────
+  // "What rhythm do I need to make the goal?" — actual avg per worked day,
+  // projected finish date at that rhythm, and required per-workday load.
+  const rhythm = React.useMemo(() => {
+    const nowD = new Date();
+    const todayStr = nowD.toDateString();
+    const mKey = `${nowD.getFullYear()}-${nowD.getMonth()}`;
+    let worked = 0, sum = 0;
+    Object.entries(dailyLog || {}).forEach(([ds, mins]) => {
+      const d = new Date(ds);
+      if (Number.isNaN(d.getTime()) || `${d.getFullYear()}-${d.getMonth()}` !== mKey || ds === todayStr) return;
+      if ((Number(mins) || 0) > 0) { worked += 1; sum += Number(mins) || 0; }
+    });
+    if ((Number(stats.dailyMinutes) || 0) > 0) { worked += 1; sum += Number(stats.dailyMinutes) || 0; }
+    const avgPerWorked = worked > 0 ? Math.round(sum / worked) : 0;
+    const remainingGoal = Math.max(0, stats.goalMinutes - monthlyBanked);
+    const workdaysNeeded = avgPerWorked > 0 ? Math.ceil(remainingGoal / avgPerWorked) : null;
+    // workdays → calendar days via the 6.5/Wk spread (workDays per daysInMonth)
+    const calDaysNeeded = (workdaysNeeded != null && goalWorkDays > 0)
+      ? Math.ceil(workdaysNeeded * daysInMonth / goalWorkDays)
+      : null;
+    const finishDate = calDaysNeeded != null
+      ? new Date(nowD.getFullYear(), nowD.getMonth(), nowD.getDate() + calDaysNeeded)
+      : null;
+    const inMonth = finishDate
+      ? finishDate.getMonth() === nowD.getMonth() && finishDate.getFullYear() === nowD.getFullYear()
+      : false;
+    return { avgPerWorked, worked, workdaysNeeded, finishDate, inMonth };
+  }, [dailyLog, stats.dailyMinutes, stats.goalMinutes, monthlyBanked, goalWorkDays, daysInMonth]);
 
 
   // PACE ETA: predicts when you'll hit today's goal at current earned rate
@@ -2791,7 +2852,7 @@ ${isInDeficit ? `⚠️ DEFICIT: Behind pace by ${Math.round(monthlyDeficitMins)
 
           {/* v4.96.0: Catch-up strip — behind? → today's number → rest-of-month split → verdict */}
           <div
-            title={`CATCH-UP PLAN: expected ${Math.round(catchUpPlan.expectedByToday)}m banked by today · you have ${Math.round(stats.monthlyMinutes)}m.\nToday's target: ${catchUpPlan.requiredToday}m on call.\nRest of month: ${catchUpPlan.thenPerDay}m/day for ${catchUpPlan.daysAfter} more days.`}
+            title={`CATCH-UP PLAN: expected ${Math.round(catchUpPlan.expectedByToday)}m banked by today · you have ${Math.round(monthlyBanked)}m.\nToday's target: ${catchUpPlan.requiredToday}m on call (${catchUpPlan.remainingWorkdays} workdays left @ ${goalWorkDays}d/mo).\nRest of month: ${catchUpPlan.thenPerDay}m/workday for ${catchUpPlan.daysAfter} more workdays.`}
             style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: '0.5rem', fontSize: '0.62rem', fontWeight: 700, cursor: 'help' }}
           >
             <span style={{ color: catchUpLineColor, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
@@ -2803,7 +2864,48 @@ ${isInDeficit ? `⚠️ DEFICIT: Behind pace by ${Math.round(monthlyDeficitMins)
                 <span style={{ opacity: 0.85 }}> → adapt to {qualityScore.suggestedGoal}m</span>
               )}
             </span>
+            <button
+              type="button"
+              onClick={() => setRhythmOpen(o => !o)}
+              aria-expanded={rhythmOpen}
+              title="Rhythm & schedule: what pace per workday makes the goal"
+              style={{ background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.15)', color: '#e2e8f0', borderRadius: '4px', padding: '0 0.35rem', fontSize: '0.58rem', fontWeight: 800, cursor: 'pointer', lineHeight: 1.4 }}
+            >🎵{rhythmOpen ? '▾' : '▸'}</button>
           </div>
+
+          {/* v4.101.0: RHYTHM PANEL — required rhythm vs actual rhythm, projected finish */}
+          {rhythmOpen && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.2rem', padding: '0.4rem 0.5rem', borderRadius: '6px', background: 'rgba(0,0,0,0.35)', border: '1px solid rgba(255,255,255,0.08)', fontSize: '0.6rem', color: 'var(--text-muted)' }}>
+              <span>
+                🎯 <strong style={{ color: '#fff' }}>{fmtHm(catchUpPlan.requiredToday)}/workday</strong> needed
+                {' '}({catchUpPlan.remainingWorkdays} workdays left · {goalWorkDays}d/mo @ {daysPerWeekOf(goalWorkDays)}/wk · after today: {fmtHm(catchUpPlan.thenPerDay)})
+              </span>
+              <span>
+                📊 actual: <strong style={{ color: '#fff' }}>{rhythm.avgPerWorked > 0 ? `${fmtHm(rhythm.avgPerWorked)}/worked day` : '—'}</strong>
+                {' '}over {rhythm.worked} worked day{rhythm.worked === 1 ? '' : 's'} this month
+              </span>
+              <span style={{ color: rhythm.finishDate ? (rhythm.inMonth ? '#34d399' : '#f87171') : 'inherit' }}>
+                {rhythm.finishDate
+                  ? (rhythm.inMonth
+                    ? `🏁 at this rhythm you hit ${fmtHm(stats.goalMinutes)} around ${rhythm.finishDate.toLocaleDateString(undefined, { month: 'short', day: 'numeric' })} — inside the month ✅`
+                    : `⚠️ at this rhythm you'd only finish ${rhythm.finishDate.toLocaleDateString(undefined, { month: 'short', day: 'numeric' })} — raise to ${fmtHm(catchUpPlan.requiredToday)}/workday`)
+                  : '📊 work a day to project your finish date'}
+              </span>
+              <span style={{ display: 'flex', gap: '0.3rem', alignItems: 'center', opacity: 0.85 }}>
+                <span>🗓️ wk rhythm:</span>
+                {['M', 'T', 'W', 'T', 'F', 'S', 'S'].map((day, i) => (
+                  <span key={i} title={i < 6 ? 'full workday' : 'half day (6.5/Wk)'} style={{
+                    width: '1.1rem', height: '1.1rem', borderRadius: '3px', display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+                    fontWeight: 800, fontSize: '0.55rem',
+                    background: i < 6 ? 'rgba(56,189,248,0.25)' : 'rgba(251,191,36,0.18)',
+                    border: `1px solid ${i < 6 ? 'rgba(56,189,248,0.5)' : 'rgba(251,191,36,0.4)'}`,
+                    color: i < 6 ? '#7dd3fc' : '#fde68a',
+                  }}>{i < 6 ? day : `${day}½`}</span>
+                ))}
+                <span style={{ opacity: 0.7 }}>({fmtHm(Math.round((stats.goalMinutes / Math.max(1, goalWorkDays)) * 1))}/d target)</span>
+              </span>
+            </div>
+          )}
 
           {/* Step Goal (Weekly Replenishing Bar) */}
           <div style={{ display: 'flex', flexDirection: 'column', gap: '0.15rem' }}>
@@ -3165,7 +3267,8 @@ ${isInDeficit ? `⚠️ DEFICIT: Behind pace by ${Math.round(monthlyDeficitMins)
         totalOffCallSeconds={totalOffCallSeconds}
         totalOnCallSeconds={totalOnCallSeconds}
         dailyMinutes={Math.round(totalDailyMins)}
-        monthlyMinutes={stats.monthlyMinutes}
+        monthlyMinutes={monthlyBanked}
+        workDays={goalWorkDays}
         breakMinutes={Math.round(liveBreakMins)}
         ratePerMinute={RATE_PER_MINUTE}
         goalMinutes={stats.goalMinutes}
@@ -3188,7 +3291,7 @@ ${isInDeficit ? `⚠️ DEFICIT: Behind pace by ${Math.round(monthlyDeficitMins)
             setArsRate={setArsRate}
             initialGoalMinutes={stats.goalMinutes}
             initialWorkDays={goalWorkDays}
-            monthlyMinutes={stats.monthlyMinutes}
+            monthlyMinutes={monthlyBanked}
             dailyMinutes={Math.round(totalDailyMins)}
             onSaveMonth={(m) => updateStat('monthlyMinutes', m)}
             onResyncMonth={() => { try { reconcileMonthTotal?.(); } catch (_) {} }}
@@ -3247,7 +3350,7 @@ ${isInDeficit ? `⚠️ DEFICIT: Behind pace by ${Math.round(monthlyDeficitMins)
           </div>
           {/* v4.88.5: meter-only HUD carries the daily targets beside the timeline */}
           {meterOnlyMode && !isTodayDialOpen && (
-            <DailyTargetsChip dailyMinutes={Math.round(totalDailyMins)} monthlyMinutes={stats.monthlyMinutes} breakMinutes={Math.round(liveBreakMins)} ratePerMinute={RATE_PER_MINUTE} goalMinutes={stats.goalMinutes} onOpenGoalDial={() => setIsTodayDialOpen(true)} />
+            <DailyTargetsChip dailyMinutes={Math.round(totalDailyMins)} monthlyMinutes={monthlyBanked} workDays={goalWorkDays} breakMinutes={Math.round(liveBreakMins)} ratePerMinute={RATE_PER_MINUTE} goalMinutes={stats.goalMinutes} onOpenGoalDial={() => setIsTodayDialOpen(true)} />
           )}
         </div>
       )}

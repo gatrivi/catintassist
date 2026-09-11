@@ -80,4 +80,29 @@ describe('catchUpPlan', () => {
     expect(fmtHm(372)).toBe('6h12m');
     expect(fmtHm(60)).toBe('1h00m');
   });
+
+  // v4.101.0: workday basis — catch-up spreads over remaining WORKDAYS
+  it('workDays basis: spread over remaining workdays, not calendar days', () => {
+    // Sep 10 → 21 calendar days left; 28d/mo basis → round(21*28/30)=20 workdays
+    const p = computeCatchUp({ goalMinutes: 3000, monthlyMinutes: 628, dailyMinutes: 60, workDays: 28, now: NOON });
+    expect(p.remainingWorkdays).toBe(20);
+    expect(p.requiredToday).toBe(Math.round(2372 / 20)); // 119 not 113
+    expect(p.daysAfter).toBe(19);
+  });
+
+  it('workDays basis: no workDays → legacy calendar behavior unchanged', () => {
+    const p = computeCatchUp({ goalMinutes: 3000, monthlyMinutes: 628, dailyMinutes: 60, workDays: 0, now: NOON });
+    expect(p.remainingWorkdays).toBe(p.remainingDays);
+    expect(p.requiredToday).toBe(113);
+  });
+
+  it('workDays basis: user scenario — small real deficit, not a 77h scare', () => {
+    // 9231m goal ($1200 @ $0.13), day 11 of Sep, 1192m banked, 6.5/Wk (28d)
+    const p = computeCatchUp({ goalMinutes: 9231, monthlyMinutes: 1192, dailyMinutes: 0, workDays: 28, now: new Date('2026-09-11T12:00:00') });
+    // deficit vs even spread ≈ 9231*11/30 − 1192 ≈ 2193m; remaining 8039m over
+    // round(20*28/30)=19 workdays → 423m/workday (honest number, not a scare).
+    expect(p.deficitMins).toBeGreaterThan(0);
+    expect(p.requiredToday).toBe(423);
+    expect(p.remainingWorkdays).toBe(19);
+  });
 });
