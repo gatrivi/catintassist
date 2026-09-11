@@ -550,6 +550,7 @@ export default function SettingsPanel({
               Show build version badge (debug)
             </label>
             <label
+              className="hud-inspector-exempt"
               style={{
                 display: 'flex',
                 alignItems: 'center',
@@ -569,7 +570,7 @@ export default function SettingsPanel({
                 }}
                 style={{ margin: 0 }}
               />
-              HUD inspector ⌖ (debug hover selectors, Alt+I)
+              HUD inspector ⌖ (debug: hover + click = copy selector, Alt+I)
             </label>
             <p style={{ fontSize: 10, color: 'rgba(255,255,255,0.5)', margin: '0 0 10px' }}>
               Progress bars = monthly + daily timelines. Changes save instantly.

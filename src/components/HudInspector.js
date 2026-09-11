@@ -2,8 +2,12 @@
 // including plain container divs. Toggle ⌖ (bottom-right), hover shows the
 // element name + unique CSS selector, click the tooltip to copy it so you
 // can paste it back to report what's wrong.
+// v4.102.0: select mode — clicking the ELEMENT itself copies its id/selector
+// (click is swallowed, like DevTools' picker). Hover bridge css keeps the
+// tooltip alive while the mouse travels element ↔ tooltip.
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
+import './HudInspector.css';
 
 const STORE_KEY = 'hud-inspector-on-v2';
 export const INSPECTOR_CHANGED_EVENT = 'hud-inspector-changed';
@@ -155,10 +159,12 @@ export const HudInspectorHost = () => {
           setTimeout(() => setCopied(false), 1200);
         }
       }
+      // v4.102.0: Esc exits select mode (clicks are swallowed while ON).
+      if (e.key === 'Escape' && on) setOn(false);
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [tip]);
+  }, [tip, on]);
 
   useEffect(() => {
     if (!on) return undefined;
@@ -217,13 +223,41 @@ export const HudInspectorHost = () => {
         lastElRef.current = null;
       }
     };
+    // v4.102.0: select-mode click — clicking any app element copies its
+    // id/selector and swallows the click so nothing else fires. Exits: Esc,
+    // Alt+I or the ⌖ button; the tooltip + ⌖ + settings row stay clickable.
+    const onClick = (e) => {
+      const t = e.target;
+      if (!(t instanceof Element)) return;
+      if (t.closest('.hud-inspector-tip, .hud-inspector-toggle, .hud-inspector-exempt')) return;
+      if (!t.closest('.app-container')) return;
+      e.preventDefault();
+      e.stopPropagation();
+      const name = resolveHudName(t);
+      const sel = cachedSelector(t);
+      copyText(`${name} :: ${sel}`).then((ok) => {
+        if (!ok) return;
+        setCopied(true);
+        setTimeout(() => setCopied(false), 1200);
+        // Green flash on the copied element — visible even without the tooltip.
+        try {
+          t.style.outline = '1px solid #34d399';
+          setTimeout(() => {
+            if (lastElRef.current === t) t.style.outline = '1px dashed #38bdf8';
+            else t.style.outline = '';
+          }, 700);
+        } catch (_) { /* noop */ }
+      });
+    };
     document.addEventListener('mousemove', move, { passive: true });
     document.addEventListener('mouseleave', leave);
+    document.addEventListener('click', onClick, true);
     return () => {
       if (rafIdRef.current) cancelAnimationFrame(rafIdRef.current);
       rafIdRef.current = 0;
       document.removeEventListener('mousemove', move);
       document.removeEventListener('mouseleave', leave);
+      document.removeEventListener('click', onClick, true);
       leave();
     };
   }, [on]);
@@ -244,14 +278,14 @@ export const HudInspectorHost = () => {
         type="button"
         className={`hud-inspector-toggle${on ? ' is-on' : ''}`}
         onClick={() => setOn((v) => !v)}
-        title={on ? 'HUD inspector ON — hover anything, click tooltip to copy selector (Alt+I to hide)' : 'HUD inspector — hover any element to see its name + copy selector (Alt+I)'}
+        title={on ? 'HUD inspector ON — hover anything, CLICK IT to copy id+selector · Esc/Alt+I exits' : 'HUD inspector — hover any element to see its name, click it to copy the selector (Alt+I)'}
         aria-pressed={on}
       >
         ⌖
       </button>
       {on && tip && (
         <div
-          className="hud-inspector-tip"
+          className={`hud-inspector-tip${tip.below ? ' is-below' : ''}`}
           style={{
             left: tip.x,
             top: tip.y,
@@ -265,7 +299,7 @@ export const HudInspectorHost = () => {
         >
           <div className="hud-inspector-name">{tip.name}</div>
           <code className="hud-inspector-sel">{tip.selector}</code>
-          <span className="hud-inspector-copy">{copied ? '✓ copied' : '⎘ click to copy'}</span>
+          <span className="hud-inspector-copy">{copied ? '✓ copied' : '⎘ click to copy · Esc exits'}</span>
         </div>
       )}
     </>,

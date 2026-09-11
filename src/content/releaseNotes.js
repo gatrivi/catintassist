@@ -25,6 +25,31 @@ import { APP_VERSION } from '../constants/version';
 /** Newest first. Only the entry matching APP_VERSION is shown on load. */
 export const RELEASE_NOTES_CATALOG = [
   {
+    version: '4.102.0',
+    id: 'hud-inspector-click-copy-v1',
+    highlightElementIds: ['hud-inspector-toggle'],
+    es: {
+      title: '🎯 Inspector HUD: clic = copiar selector · tooltip estable',
+      intro: 'v4.102.0 — En modo inspector (⌖ o Alt+I), haz CLIC en cualquier elemento y se copia su id/selector; el clic no dispara nada más (como el picker de DevTools). El tooltip ya no desaparece cuando mueves el mouse hacia él: un puente invisible lo une al elemento. Esc sale del modo.',
+      sections: [{ heading: 'Qué cambió', bullets: [
+        'Clic en el elemento = copia "nombre :: #selector" (antes había que acertarle al tooltip)',
+        'El clic no activa el elemento mientras inspeccionas',
+        'Tooltip estable: puente invisible elemento↔tooltip; se congela al llegar',
+        'Esc también apaga el inspector (además de Alt+I y ⌖)',
+      ] }],
+    },
+    en: {
+      title: '🎯 HUD inspector: click = copy selector · stable tooltip',
+      intro: "v4.102.0 — In inspector mode (⌖ or Alt+I), CLICK any element and its id/selector is copied; the click does nothing else (like the DevTools picker). The tooltip no longer vanishes as you move the mouse toward it: an invisible bridge connects it to the element. Esc exits the mode.",
+      sections: [{ heading: 'What changed', bullets: [
+        'Clicking the element copies "name :: #selector" (before you had to hit the tooltip)',
+        'The click is swallowed while inspecting',
+        'Stable tooltip: invisible element↔tooltip bridge; freezes when you reach it',
+        'Esc now also exits the inspector (besides Alt+I and ⌖)',
+      ] }],
+    },
+  },
+  {
     version: '4.101.0',
     id: 'soundboard-dedup-slotscripts-v1',
     highlightElementIds: [],

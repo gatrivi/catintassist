@@ -1,0 +1,22 @@
+/* HudInspector (v4.102.0) — hover bridge.
+   The tooltip sits 8px off its element; without a bridge, the mouse crossing
+   that gap lands on neighbouring elements and the tooltip retargets/vanishes
+   before you can reach it. These invisible strips extend the tooltip's hit
+   area toward its element, so element ↔ tooltip travel keeps the tip frozen
+   (mousemove handler early-returns on .hud-inspector-tip targets). */
+.hud-inspector-tip::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 12px;
+  bottom: -12px; /* tooltip above the element: bridge hangs down to it */
+}
+.hud-inspector-tip.is-below::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 12px;
+  top: -12px; /* tooltip below the element: bridge rises up to it */
+}
