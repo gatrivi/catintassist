@@ -393,9 +393,9 @@ const SessionControlsSticky = React.memo(({
             <button
               id="header-app-logo-btn"
               type="button"
-              className={`btn-icon tiny-btn app-logo-btn app-logo-btn--${appStatus.tone}`}
-              aria-label={`CatIntAssist ${appStatus.label}. ${APP_VERSION_LABEL}. Back to transcription.`}
-              title={`${appStatus.title} ${APP_VERSION_LABEL} — click: back to transcription`}
+              className={`btn-icon tiny-btn app-logo-btn app-logo-btn--${appStatus.tone}${soundboardOpen ? ' app-logo-btn--back-to-work' : ''}`}
+              aria-label={`CatIntAssist ${appStatus.label}. ${APP_VERSION_LABEL}.${soundboardOpen ? ' Soundboard open — click the cat to go back to work.' : ' Back to transcription.'}`}
+              title={soundboardOpen ? `${appStatus.title} ${APP_VERSION_LABEL} — click: back to work view` : `${appStatus.title} ${APP_VERSION_LABEL} — click: back to transcription`}
               onClick={handleLogoBack}
             >
               <img
@@ -1339,12 +1339,23 @@ export const DashboardHeader = ({
   const unbankedMins = isActive ? (sessionSeconds / 60) : 0;
   const totalDailyMins = stats.dailyMinutes + unbankedMins;
   const liveBreakMins = (stats.dailyBreakMinutes || 0) + (breakSeconds / 60);
-  const totalOffCallMins = (stats.dailyAvailMinutes || 0) + (stats.dailyBreakMinutes || 0) + (availSeconds / 60) + (breakSeconds / 60);
-  const totalOffCallSeconds = Math.max(0, Math.floor(
+  const rawTotalOffCallMins = (stats.dailyAvailMinutes || 0) + (stats.dailyBreakMinutes || 0) + (availSeconds / 60) + (breakSeconds / 60);
+  // v4.101.2 sanity clamp: off-call can never exceed wall-clock since 09:00
+  // minus on-call — guards against any leftover-crossing-midnight inflation
+  // (the "632m off-call on a <8h shift" scare). Root fix is the live-rollover
+  // seal in SessionContext; this clamps anything already banked today.
+  const wallClockSince9Mins = (() => {
+    const nowD = new Date();
+    const nine = new Date(nowD.getFullYear(), nowD.getMonth(), nowD.getDate(), 9, 0, 0);
+    return Math.max(0, (nowD - nine) / 60000);
+  })();
+  const offCallCapMins = Math.max(0, wallClockSince9Mins - totalDailyMins);
+  const totalOffCallMins = Math.min(rawTotalOffCallMins, offCallCapMins);
+  const totalOffCallSeconds = Math.max(0, Math.min(Math.floor(
     ((stats.dailyAvailMinutes || 0) + (stats.dailyBreakMinutes || 0)) * 60
     + (availSeconds || 0)
     + (breakSeconds || 0)
-  ));
+  ), Math.floor(offCallCapMins * 60)));
   const totalOnCallSeconds = Math.max(0, Math.floor((stats.dailyMinutes || 0) * 60) + (isActive ? Math.floor(sessionSeconds || 0) : 0));
   const compactWorkdaySegments = dailyTimeline
     .map((evt, index) => {

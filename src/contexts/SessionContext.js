@@ -1102,6 +1102,18 @@ export const SessionProvider = ({ children }) => {
         setStats(rolled.stats);
         setDailyTimeline([]);
         setHoldSeconds(0);
+        // v4.101.2: seal LIVE counters on live rollover — the avail ticker pauses
+        // 00:00–09:00 (h>=9 gate) but keeps yesterday's leftover in availSeconds;
+        // at 9:00 the 60s banker poured it into TODAY's dailyAvailMinutes
+        // (the "632m off-call on a <8h shift" scare). Same seal as startSession.
+        liveCountersDayRef.current = todayStr;
+        try {
+          localStorage.setItem(COUNTERS_DAY_KEY, todayStr);
+          LIVE_COUNTER_KEYS.forEach((k) => localStorage.removeItem(k));
+        } catch (_) {}
+        setAvailSeconds(0);
+        setBreakSeconds(0);
+        setSessionSeconds(0);
       } catch (e) {
         console.warn('[Session] Day rollover failed:', e);
       }
