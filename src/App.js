@@ -673,10 +673,17 @@ const Dashboard = () => {
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, []);
 
-  const renderNotesPanel = () => {
+  const renderNotesPanel = (withSoundboardDock = false) => {
     if (!isNotesOpen) return null;
     return (
       <div className="tools-column notes-open">
+        {/* v4.101.0: greetings dock above session notes — fire greetings without
+            swapping to the soundboard studio. Notes only need ~half the column. */}
+        {withSoundboardDock && !(isActive || isZombieCall) && (
+          <div className="glass-panel tools-soundboard-dock" data-guide="soundboard-dock">
+            <OnCallSoundboardStrip micTestMode={micTestMode} collapsed={false} />
+          </div>
+        )}
         <div
           className="glass-panel tools-notes"
           style={{
@@ -889,7 +896,7 @@ const Dashboard = () => {
           isBreakActive={isBreakActive}
           settingsOpen={settingsOpen}
           notesOpen={isNotesOpen}
-          notesPanel={renderNotesPanel()}
+          notesPanel={renderNotesPanel(true)}
         />
       )}
 

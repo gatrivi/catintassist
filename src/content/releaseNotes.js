@@ -25,6 +25,29 @@ import { APP_VERSION } from '../constants/version';
 /** Newest first. Only the entry matching APP_VERSION is shown on load. */
 export const RELEASE_NOTES_CATALOG = [
   {
+    version: '4.103.1',
+    id: 'hud-meter-crop-hotfix-v1',
+    highlightElementIds: ['compact-call-goal-meter'],
+    es: {
+      title: '🔧 Hotfix HUD: el medidor ON/OFF/LEFT ya no se corta a mitad',
+      intro: 'v4.103.1 — En ventanas ≤900px el encabezado en llamada tenía un tope de 88px que cortaba la fila del medidor (ON/OFF/LEFT + $) por la mitad. Ahora esa fila entra completa. Incluye además los saludos por franja horaria (AM/PM/Eve) y el dedup open_lep del soundboard.',
+      sections: [{ heading: 'Qué cambió', bullets: [
+        'El medidor del día se ve completo en llamada, sin recorte vertical',
+        'Saludos del soundboard según la hora: buenos días/tardes/noches automáticos',
+        '"Opener – LEP" duplicado retirado (usa Opener – LEP (ES))',
+      ] }],
+    },
+    en: {
+      title: '🔧 HUD hotfix: ON/OFF/LEFT meter no longer half-cropped',
+      intro: 'v4.103.1 — On windows ≤900px the in-call header had an 88px cap that cut the goal-meter row (ON/OFF/LEFT + $) in half. The row now fits fully. Also ships soundboard time-of-day greetings (AM/PM/Eve) and the open_lep dedup.',
+      sections: [{ heading: 'What changed', bullets: [
+        'In-call goal meter is fully visible again — no vertical clipping',
+        'Soundboard greetings follow the time of day: good morning/afternoon/evening',
+        'Duplicate "Opener – LEP" retired (use Opener – LEP (ES))',
+      ] }],
+    },
+  },
+  {
     version: '4.102.0',
     id: 'hud-inspector-click-copy-v1',
     highlightElementIds: ['hud-inspector-toggle'],
@@ -51,26 +74,53 @@ export const RELEASE_NOTES_CATALOG = [
   },
   {
     version: '4.101.0',
+    id: 'fresh-text-zap-always-v1',
+    highlightElementIds: ['audio-route-zap-btn'],
+    es: {
+      title: '🔌 TEXT ✓ solo con datos frescos · ZAP siempre disponible',
+      intro: 'v4.101.0 — TEXT ✓ ahora significa que llegó texto en los últimos 30s; con sockets calientes pero sin datos ves DG EN/ES (idle), no un TEXT mentiroso. ZAP reaparece siempre que Deepgram esté conectado pero sin datos (en llamada o fuera), y en error.',
+      sections: [{ heading: 'Qué cambió', bullets: [
+        'TEXT ✓ = datos de los últimos 30s, no "alguna vez"',
+        'ZAP visible en cualquier estancamiento conectado, también fuera de llamada',
+      ] }],
+    },
+    en: {
+      title: '🔌 TEXT ✓ only with fresh data · ZAP always available',
+      intro: 'v4.101.0 — TEXT ✓ now means text arrived in the last 30s; warm sockets with no data show DG EN/ES (idle) instead of a lying TEXT. ZAP reappears whenever Deepgram is connected but stale — in-call or off-call — and on error.',
+      sections: [{ heading: 'What changed', bullets: [
+        'TEXT ✓ = data within the last 30s, not "at some point"',
+        'ZAP visible on any connected stall, off-call included',
+      ] }],
+    },
+  },
+  {
+    version: '4.103.0',
     id: 'soundboard-dedup-slotscripts-v1',
-    highlightElementIds: [],
+    highlightElementIds: ['workspace-soundboard-pane'],
     es: {
       title: '🎙 Soundboard: sin duplicados · guiones AM/PM/Eve · sin rojo',
-      intro: 'v4.101.0 — Dediuplicado: el LEP Open en inglés se jubiló (el saludo al LEP va en su idioma; tu grabación migró a Opener – LEP (ES) AM). Los guiones de los saludos ahora cambian con la hora: el de la tarde dice "Buenas tardes / Good afternoon". Tiles no grabados en gris, EN verde, ES azul — nada en rojo.',
+      intro: 'v4.103.0 — Dediuplicado: el LEP Open en inglés se jubiló (el saludo al LEP va en su idioma; tu grabación migró a Opener – LEP (ES) AM). Los guiones de los saludos ahora cambian con la hora: el de la tarde dice "Buenas tardes / Good afternoon". Tiles no grabados en gris, EN verde, ES azul — nada en rojo.',
       sections: [{ heading: 'Qué cambió', bullets: [
         'open_lep (LEP Open) jubilado; grabación migrada a Opener – LEP (ES) si no había ninguna',
         'Guiones por franja: AM dice "Good morning", PM "Good afternoon", Eve "Good evening" (ES: buenos días/tardes/noches)',
+        'Barra de saludos fija a la derecha (sobre las notas): dispara clips sin entrar al Studio; el gato pulsa en ámbar = clic para volver al trabajo',
+        'En llamada: la barra de saludos vive sobre la transcripción — nunca pierdes de vista el texto',
         'El guion se ve en el tile antes de grabar, y en la tarjeta al grabar',
         'Colores: no grabado = gris, EN = verde, ES = azul; sin rojo en el soundboard',
+        'Ajustes → Audio: 3 selectores de dispositivos — mic de transcripción, mic de grabación de saludos (propio, p.ej. Realtek), salida de reproducción',
       ] }],
     },
     en: {
       title: '🎙 Soundboard: deduped · AM/PM/Eve scripts · no red',
-      intro: 'v4.101.0 — Deduped: the English-reading LEP Open is retired (the LEP greeting is delivered in the LEP language; your recording migrated to Opener – LEP (ES) AM). Greeting scripts now follow the time of day: the afternoon one says "Good afternoon". Unrecorded tiles are gray, EN green, ES blue — no red.',
+      intro: 'v4.103.0 — Deduped: the English-reading LEP Open is retired (the LEP greeting is delivered in the LEP language; your recording migrated to Opener – LEP (ES) AM). Greeting scripts now follow the time of day: the afternoon one says "Good afternoon". Unrecorded tiles are gray, EN green, ES blue — no red.',
       sections: [{ heading: 'What changed', bullets: [
         'open_lep (LEP Open) retired; recording migrated to Opener – LEP (ES) if you had none',
         'Slot scripts: AM says "Good morning", PM "Good afternoon", Eve "Good evening" (ES: buenos días/tardes/noches)',
+        'Greetings dock fixed on the right (above notes): fire clips without entering the Studio; the cat pulses amber = click to get back to work',
+        'In-call: the greetings strip lives above the transcript — you never lose sight of the text',
         'Script preview right on the tile before recording, and on the card while recording',
         'Colors: unrecorded = gray, EN = green, ES = blue; no red in the soundboard',
+        'Settings → Audio: 3 device selectors — call transcription mic, greeting recording mic (own pick, e.g. Realtek), greeting playback output',
       ] }],
     },
   },

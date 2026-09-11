@@ -9,6 +9,7 @@ import {
 } from './settingsService';
 import {
   DEFAULT_SOUNDBOARD_ITEMS,
+  SOUNDBOARD_TEXT_SEED,
   mergeSoundboardItems,
   loadSoundboardMetaLocal,
   saveSoundboardMetaLocal,
@@ -66,7 +67,7 @@ describe('soundboardMetaService', () => {
 
   it('persists metadata locally', () => {
     // Post-seed profile: user edits after the handbook reseed must round-trip untouched.
-    localStorage.setItem('catint_soundboard_text_seed_v1', '3');
+    localStorage.setItem('catint_soundboard_text_seed_v1', String(SOUNDBOARD_TEXT_SEED));
     const items = mergeSoundboardItems([{ id: 'sign_off', label: 'Bye', text: 'Goodbye now', hotkey: '9', category: 'call-control', lang: 'en' }]);
     saveSoundboardMetaLocal(items);
     const loaded = loadSoundboardMetaLocal();

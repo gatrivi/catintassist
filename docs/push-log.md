@@ -35,3 +35,11 @@
 | 2026-09-11T12:05:41.659Z | 61a8632 | v4.99.1 hotfix — MicVerifyPanel null-verdict crash on first render |
 | 2026-09-11T12:33:04.939Z | 7f613f5 | v4.99.2 honest scoreboard — single-day live counters, no re-attach double-bank, no-STT calls bank wall-clock, month incl live call, one-line header strip |
 | 2026-09-11T14:11:44.801Z | ea8abd2 | v4.99.3 soundboard dedup - one Opener-Client, carry-over |
+| 2026-09-11T14:51:44.132Z | 9dbb6ad | v4.100.0 goal wheel rehab - HUD chip opens inline dial, 6.5/Wk, catch-up preview, 2-click month fix, cat logo back to transcription |
+| 2026-09-11T15:00:00.613Z | a05368a | v4.100.1 default goal 9231m (1200 USD at 0.13/min), wheel defaults to 6.5/Wk |
+| 2026-09-11T15:57:38.570Z | a073744 | v4.100.2 honest DG chip + auto-Zap |
+| 2026-09-11T16:02:42.989Z | 96dec62 | v4.101.0 goal truth hotfix - workday catch-up, drift-proof month total, rhythm panel |
+| 2026-09-11T16:11:07.387Z | 2f3707f | v4.101.0 fresh TEXT + always-available ZAP |
+| 2026-09-11T16:20:33.399Z | 1191f5e | v4.101.1 banked-month truth hotfix - max(accumulator, log), upward-only resync |
+| 2026-09-11T16:30:32.526Z | 7b2c3dc | v4.102.0 HUD inspector click-to-copy + stable tooltip |
+| 2026-09-11T20:28:42.107Z | f5320b6 | v4.101.2 off-call inflation hotfix - midnight live-counter seal + wallclock clamp |

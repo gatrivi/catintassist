@@ -1,7 +1,9 @@
 import {
   DEFAULT_SOUNDBOARD_ITEMS,
   SOUNDBOARD_META_STORAGE_KEY,
+  SOUNDBOARD_TEXT_SEED,
   ensureHandbookSeed,
+  getScriptForClip,
   getSoundboardItem,
   loadSoundboardMetaLocal,
   mergeSoundboardItems,
@@ -74,5 +76,33 @@ describe('soundboardMetaService handbook seed', () => {
   test('merge still caps at defaults length', () => {
     const merged = mergeSoundboardItems([{ id: 'nope', text: 'x' }]);
     expect(merged.length).toBe(DEFAULT_SOUNDBOARD_ITEMS.length);
+  });
+
+  test('v4.101.0: open_lep dupe retired with canonical greeting_es', () => {
+    localStorage.setItem(
+      SOUNDBOARD_META_STORAGE_KEY,
+      JSON.stringify({ items: [
+        { id: 'open_lep', label: 'LEP Open', text: 'old opener', hotkey: '', category: 'greeting', lang: 'en' },
+      ] }),
+    );
+    expect(ensureHandbookSeed()).toBe(true);
+    const items = loadSoundboardMetaLocal();
+    expect(getSoundboardItem('open_lep', items)).toBeNull();
+    const merged = mergeSoundboardItems([{ id: 'open_lep', label: 'LEP Open', text: 'x' }]);
+    expect(merged.find((i) => i.id === 'open_lep')).toBeUndefined();
+  });
+
+  test('v4.101.0: slot scripts — afternoon opener says "Good afternoon", base text stays', () => {
+    expect(SOUNDBOARD_TEXT_SEED).toBeGreaterThanOrEqual(4);
+    const items = loadSoundboardMetaLocal();
+    expect(getScriptForClip('greeting_en_afternoon', items)).toMatch(/^Good afternoon/);
+    expect(getScriptForClip('greeting_en_morning', items)).toMatch(/^Good morning/);
+    expect(getScriptForClip('greeting_en_evening', items)).toMatch(/^Good evening/);
+    expect(getScriptForClip('greeting_es_afternoon', items)).toMatch(/^Buenas tardes/);
+    expect(getScriptForClip('greeting_es_evening', items)).toMatch(/^Buenas noches/);
+    // Plain keys and non-dynamic items read the base text.
+    expect(getScriptForClip('greeting_en', items)).toMatch(/^Good morning/);
+    expect(getScriptForClip('direct_dial', items)).toMatch(/^Good morning/);
+    expect(getScriptForClip('ghost', items)).toMatch(/disengage/);
   });
 });

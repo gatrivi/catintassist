@@ -18,7 +18,7 @@ import {
   ROUTE_EVENT,
 } from '../utils/routeDiagnostics';
 import { analyzeClipLegibility, formatHealthDisplay, truncateDeviceLabel, isLocalOnlyPlayback, getPreflightSteps, isPreflightReady, playTestToneSink, explainHealth } from '../utils/audioSelfTest';
-import { getSoundboardItem } from '../services/soundboardMetaService';
+import { getScriptForClip } from '../services/soundboardMetaService';
 import {
   buildRouteFingerprint,
   isManualCallOk,
@@ -54,9 +54,8 @@ const CALL_ROUTE_MIN_SCORE = 0.5;
 const getActionClipKeys = (action) =>
   action.dynamic ? TIME_SLOTS.map((t) => `${action.id}_${t}`) : [action.id];
 
-/** Script text for a clip key — keys carry a slot suffix (greeting_en_morning). */
-const scriptForClipKey = (key) =>
-  getSoundboardItem(String(key).replace(/_(morning|afternoon|evening)$/, ''))?.text || '';
+/** Script text for a clip key — slot-aware (greeting_en_afternoon → "Good afternoon…"). */
+const scriptForClipKey = (key) => getScriptForClip(key);
 
 /**
  * v4.95.3: a clip recorded at another time of day still plays. Resolve the
@@ -157,7 +156,7 @@ export const ACTIONS = [
   { id: 'limit_40_en', label: '40 Word Limit', lang: 'en', dynamic: false },
   { id: 'limit_40_es', label: '40 Word Limit', lang: 'es', dynamic: false },
   // v4.99.3: open_client retired — byte-identical to greeting_en; carry-over below.
-  { id: 'open_lep', label: 'Opener – LEP', lang: 'en', dynamic: false },
+  // v4.101.0: open_lep retired — English-reading dupe of greeting_es; carry-over below.
   { id: 'direct_dial', label: 'Opener – Direct dial', lang: 'en', dynamic: false },
   { id: 'repeat', label: 'Repeat', lang: 'en', dynamic: false },
   { id: 'segments', label: 'Segments', lang: 'en', dynamic: false },
@@ -187,6 +186,7 @@ export const GreetingsPanel = ({ onEditModeChange, onExitStudio, micTestMode = f
   const {
     selectedSinkId,
     selectedMicId,
+    selectedRecMicId,
     outputDevices,
     inputDevices,
     localVolume,
@@ -345,6 +345,45 @@ export const GreetingsPanel = ({ onEditModeChange, onExitStudio, micTestMode = f
                 if (fp.startsWith('open_client|')) {
                   const target = fp.replace(/^open_client\|/, 'greeting_en_morning|');
                   if (!store[target]) { store[target] = { ...store[fp], clipKey: 'greeting_en_morning' }; touched = true; }
+                }
+              });
+              if (touched) localStorage.setItem('catint_manual_call_ok_v1', JSON.stringify(store));
+            }
+          } catch { /* ignore */ }
+        }
+      }
+    } catch { /* carry-over is best-effort, never blocks Studio */ }
+    // v4.101.0 dedup carry-over: retired `open_lep` (English-reading dupe of
+    // the LEP opener) → greeting_es_morning, only if all 3 ES opener slots are
+    // empty. Same pattern as the open_client → greeting_en migration above.
+    try {
+      const hasEsOpener = ['morning', 'afternoon', 'evening'].some((t) => state[`greeting_es_${t}`]);
+      if (!hasEsOpener) {
+        const retired = await loadFile('open_lep');
+        if (retired) {
+          await saveFile('greeting_es_morning', retired);
+          state.greeting_es_morning = retired;
+          state.url_greeting_es_morning = generateObjectUrl(retired);
+          const copyKey = (storeKey) => {
+            try {
+              const h = JSON.parse(localStorage.getItem(storeKey) || '{}');
+              if (h.open_lep !== undefined && h.greeting_es_morning === undefined) {
+                h.greeting_es_morning = h.open_lep;
+                localStorage.setItem(storeKey, JSON.stringify(h));
+              }
+            } catch { /* ignore */ }
+          };
+          copyKey('catint_audio_health');
+          copyKey('catint_audio_health_heard');
+          try {
+            const raw = localStorage.getItem('catint_manual_call_ok_v1');
+            if (raw) {
+              const store = JSON.parse(raw);
+              let touched = false;
+              Object.keys(store).forEach((fp) => {
+                if (fp.startsWith('open_lep|')) {
+                  const target = fp.replace(/^open_lep\|/, 'greeting_es_morning|');
+                  if (!store[target]) { store[target] = { ...store[fp], clipKey: 'greeting_es_morning' }; touched = true; }
                 }
               });
               if (touched) localStorage.setItem('catint_manual_call_ok_v1', JSON.stringify(store));
@@ -566,16 +605,26 @@ export const GreetingsPanel = ({ onEditModeChange, onExitStudio, micTestMode = f
     try {
       // v4.95.1: no browser DSP — echoCancellation/noiseSuppression chop speech
       // and tank legibility scores. Same raw-mic policy as the live passthrough.
-      const base = selectedMicId ? { deviceId: { exact: selectedMicId } } : true;
-      const constraints = {
+      // v4.103.0: dedicated greeting-recording mic (falls back to the call mic).
+      // v4.103.0: a stale mic id must never block recording — if the exact device
+      // fails (unplugged, selector glitch), retry once on the default mic.
+      const recMicId = selectedRecMicId || selectedMicId;
+      const rawConstraints = (id) => ({
         audio: {
-          ...(typeof base === 'object' ? base : {}),
+          ...(id ? { deviceId: { exact: id } } : {}),
           echoCancellation: false,
           noiseSuppression: false,
           autoGainControl: false,
         },
-      };
-      const stream = await navigator.mediaDevices.getUserMedia(constraints);
+      });
+      let stream;
+      try {
+        stream = await navigator.mediaDevices.getUserMedia(rawConstraints(recMicId));
+      } catch (deviceErr) {
+        if (!recMicId) throw deviceErr; // no id requested → real permission/absence error
+        console.warn('Greeting rec: mic id failed, retrying default —', deviceErr?.name);
+        stream = await navigator.mediaDevices.getUserMedia(rawConstraints(null));
+      }
       // Use higher bitrate and webm/opus for better reliability
       const options = { mimeType: 'audio/webm;codecs=opus', audioBitsPerSecond: 128000 };
       const mediaRecorder = new MediaRecorder(stream, MediaRecorder.isTypeSupported(options.mimeType) ? options : undefined);
@@ -619,7 +668,11 @@ export const GreetingsPanel = ({ onEditModeChange, onExitStudio, micTestMode = f
       setRecordingKey(key);
       updateLevel();
     } catch (e) {
-      alert("Microphone access denied. Please allow microphone permissions.");
+      // v4.103.0: name the real failure — permission vs device — so the fix is obvious.
+      const micErr = e?.name === 'NotAllowedError'
+        ? 'Microphone access denied. Allow mic permissions for this site.'
+        : `Could not open microphone (${e?.name || 'unknown error'}). Pick another mic in Settings → Audio.`;
+      alert(micErr);
     }
   };
 
@@ -1576,6 +1629,15 @@ export const GreetingsPanel = ({ onEditModeChange, onExitStudio, micTestMode = f
                 {action.lang && <span className={`sb-lang-badge sb-lang-badge--${action.lang}`}>{action.lang.toUpperCase()}</span>}
                 <span className="sb-slot-name">{action.label}</span>
                 <span className="sb-slot-empty-label">Not recorded yet</span>
+                {/* v4.101.0: script preview right on the tile — know what you'll read before opening Setup */}
+                {(() => {
+                  const script = scriptForClipKey(`${action.id}_${timeOfDay}`);
+                  return script ? (
+                    <span className="sb-slot-empty-script" title={script}>
+                      {script.length > 70 ? `${script.slice(0, 70)}…` : script}
+                    </span>
+                  ) : null;
+                })()}
                 <button type="button" className="sb-slot-setup-btn" onClick={() => openSettings(`${action.id}_${timeOfDay}`)}>
                   🎙 Record in Setup
                 </button>

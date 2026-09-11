@@ -23,6 +23,8 @@ export const AudioSettingsProvider = ({ children }) => {
   const [inputDevices, setInputDevices] = useState([]);
   const [selectedSinkId, setSelectedSinkId] = useState(() => localStorage.getItem('CATINTASSIST_SINK_ID') || '');
   const [selectedMicId, setSelectedMicId] = useState(() => localStorage.getItem('CATINTASSIST_MIC_ID') || '');
+  // v4.103.0: separate mic for recording soundboard greetings ('' = use the call mic).
+  const [selectedRecMicId, setSelectedRecMicId] = useState(() => localStorage.getItem('CATINTASSIST_REC_MIC_ID') || '');
   
   const [localVolume, setLocalVolume] = useState(() => parseFloat(localStorage.getItem('CATINTASSIST_LOCAL_VOL') || '1'));
   const [sinkVolume, setSinkVolume] = useState(() => parseFloat(localStorage.getItem('CATINTASSIST_SINK_VOL') || '1'));
@@ -440,14 +442,21 @@ export const AudioSettingsProvider = ({ children }) => {
     } catch (_) {}
   };
 
+  const changeRecMicId = (deviceId) => {
+    setSelectedRecMicId(deviceId);
+    try { localStorage.setItem('CATINTASSIST_REC_MIC_ID', deviceId); } catch (_) {}
+  };
+
   return (
     <AudioSettingsContext.Provider value={{
       outputDevices,
       inputDevices,
       selectedSinkId,
       selectedMicId,
+      selectedRecMicId,
       changeSinkId,
       changeMicId,
+      changeRecMicId,
       fetchDevices,
       localVolume,
       sinkVolume,

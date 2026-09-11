@@ -30,6 +30,7 @@ import { CorrectionsBackupPanel } from './CorrectionsBackupPanel';
 import { CallLogImportPanel } from './CallLogImportPanel';
 import { useAuth } from '../contexts/AuthContext';
 import { useAudioSource } from '../hooks/useAudioSource';
+import { useAudioSettings } from '../contexts/AudioSettingsContext';
 import { getDeepgramSettingsPrompt } from '../utils/deepgramSettingsPrompt';
 import {
   THEME_PALETTES,
@@ -92,6 +93,17 @@ export default function SettingsPanel({
     refreshInputDevices,
     refreshSelectedDeviceId,
   } = useAudioSource();
+  const {
+    inputDevices,
+    outputDevices,
+    selectedMicId,
+    selectedSinkId,
+    selectedRecMicId,
+    changeMicId,
+    changeSinkId,
+    changeRecMicId,
+    fetchDevices,
+  } = useAudioSettings();
 
   const [disableOnboardingAnimations, setDisableOnboardingAnimations] = useState(() => {
     try {
@@ -690,6 +702,74 @@ export default function SettingsPanel({
               </div>
             </div>
 
+            {/* v4.103.0: Sound settings — 3 device selectors (mic shown here were
+                previously only in the I/O strip, which stays compact/hidden). */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+              <div style={{ fontSize: 11, color: '#93c5fd', fontWeight: 700 }}>
+                Devices
+              </div>
+
+              <label style={{ fontSize: 11, color: '#6ee7b7' }}>
+                🎙️ Call transcription input (mic)
+                <select
+                  value={selectedMicId}
+                  onChange={(e) => changeMicId(e.target.value)}
+                  onFocus={() => fetchDevices({ requestMicPermissionForLabels: true })}
+                  style={devSelectStyle}
+                >
+                  <option value="">Default (let browser pick)</option>
+                  {inputDevices.map((d, i) => (
+                    <option key={d.deviceId} value={d.deviceId}>
+                      {d.label || `Mic ${i + 1}`}
+                    </option>
+                  ))}
+                </select>
+                <span style={{ ...devHintStyle }}>
+                  Used in mic mode + as the tab-share fallback. In Tab-share mode the interpreter tab audio is captured instead.
+                </span>
+              </label>
+
+              <label style={{ fontSize: 11, color: '#6ee7b7' }}>
+                🎙️ Greeting recording mic
+                <select
+                  value={selectedRecMicId}
+                  onChange={(e) => changeRecMicId(e.target.value)}
+                  onFocus={() => fetchDevices({ requestMicPermissionForLabels: true })}
+                  style={devSelectStyle}
+                >
+                  <option value="">Same as call mic</option>
+                  {inputDevices.map((d, i) => (
+                    <option key={d.deviceId} value={d.deviceId}>
+                      {d.label || `Mic ${i + 1}`}
+                    </option>
+                  ))}
+                </select>
+                <span style={{ ...devHintStyle }}>
+                  Mic used only to record soundboard greetings — pick a different one (e.g. Realtek) without touching the call input.
+                </span>
+              </label>
+
+              <label style={{ fontSize: 11, color: '#6ee7b7' }}>
+                🔊 Greeting playback output
+                <select
+                  value={selectedSinkId}
+                  onChange={(e) => changeSinkId(e.target.value)}
+                  onFocus={() => fetchDevices({ requestMicPermissionForLabels: false })}
+                  style={devSelectStyle}
+                >
+                  <option value="">Default (system speakers)</option>
+                  {outputDevices.map((d, i) => (
+                    <option key={d.deviceId} value={d.deviceId}>
+                      {d.label || `Output ${i + 1}`}
+                    </option>
+                  ))}
+                </select>
+                <span style={{ ...devHintStyle }}>
+                  Where greetings play — VB-Cable Input reaches the patient; speakers are for local testing.
+                </span>
+              </label>
+            </div>
+
             {currentSourceMode === 'virtualCable' && (
               <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                 <label style={{ fontSize: 11, color: '#6ee7b7' }}>
@@ -748,4 +828,26 @@ const tabBtn = {
   borderRadius: 6,
   color: '#fff',
   cursor: 'pointer',
+};
+
+// v4.103.0: shared styles for the Devices selectors in the Audio tab.
+const devSelectStyle = {
+  display: 'block',
+  width: '100%',
+  marginTop: 4,
+  padding: 6,
+  background: '#0f172a',
+  color: '#fff',
+  border: '1px solid rgba(255,255,255,0.15)',
+  borderRadius: 6,
+  maxHeight: 130,
+  overflowY: 'auto',
+};
+
+const devHintStyle = {
+  display: 'block',
+  fontSize: 10,
+  color: 'rgba(255,255,255,0.50)',
+  marginTop: 3,
+  lineHeight: 1.45,
 };
