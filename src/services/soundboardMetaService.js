@@ -11,23 +11,40 @@ export const SOUNDBOARD_DOC_VERSION = 1;
  * v4.87.0: verbatim handbook scripts (scripts.txt, "By the Book") — the text
  * the interpreter reads to record each greeting. Placeholders ([First name],
  * [ID], ______) are filled in by the user; edit freely in Studio afterwards.
+ * v4.99.3: dedup — `open_client` was byte-identical to `greeting_en`, so it
+ * is retired (canonical: `greeting_en`, which keeps the AM/PM/Eve variants).
+ * Near-dupes with different handbook tails are kept but relabeled so Studio
+ * reads in call order (Opener–… / Closing–… / Legacy–…).
  */
+export const RETIRED_SOUNDBOARD_IDS = ['open_client'];
+export const CANONICAL_SOUNDBOARD_ID = { open_client: 'greeting_en' };
+const PRE_DEDUP_LABELS = {
+  greeting_en: 'Greeting',
+  greeting_es: 'Greeting',
+  open_lep: 'LEP Open',
+  direct_dial: 'Direct Dial',
+  closing: 'Closing',
+  sign_off: 'Sign Off',
+  signoff_lep: 'LEP Bye',
+  anyone: 'Anyone?',
+  callout: 'Callout',
+  closer_louder: 'Louder',
+};
 export const DEFAULT_SOUNDBOARD_ITEMS = [
-  { id: 'greeting_en', label: 'Greeting', text: 'Good evening, my name is [First name], interpreter ID [ID], and I will be your [language] interpreter. Please speak in clear, short sentences so that I can interpret everything. Before we begin, I need to ask you a few questions.', hotkey: '', category: 'greeting', lang: 'en' },
-  { id: 'greeting_es', label: 'Greeting', text: 'Buenas noches, seré su intérprete de [idioma]. Todo lo que diga será confidencial. Por favor hable en oraciones claras y cortas para poder interpretar todo.', hotkey: '', category: 'greeting', lang: 'es' },
+  { id: 'greeting_en', label: 'Opener – Client', text: 'Good evening, my name is [First name], interpreter ID [ID], and I will be your [language] interpreter. Please speak in clear, short sentences so that I can interpret everything. Before we begin, I need to ask you a few questions.', hotkey: '', category: 'greeting', lang: 'en' },
+  { id: 'greeting_es', label: 'Opener – LEP (ES)', text: 'Buenas noches, seré su intérprete de [idioma]. Todo lo que diga será confidencial. Por favor hable en oraciones claras y cortas para poder interpretar todo.', hotkey: '', category: 'greeting', lang: 'es' },
   { id: 'intake', label: 'Intake Qs', text: 'May I have your full name and date of birth, please?', hotkey: '1', category: 'call-control', lang: 'en' },
   { id: 'hold_policy', label: 'Hold Policy', text: 'I will place you on a brief hold while I connect with the provider.', hotkey: '2', category: 'call-control', lang: 'en' },
   { id: 'hold_exc_en', label: 'Hold Exc', text: 'Thank you for holding. I appreciate your patience.', hotkey: '', category: 'call-control', lang: 'en' },
   { id: 'hold_exc_es', label: 'Hold Exc', text: 'Gracias por esperar. Aprecio su paciencia.', hotkey: '', category: 'call-control', lang: 'es' },
-  { id: 'sign_off', label: 'Sign Off', text: 'My name is ______, ID ______, thank you for using our services.', hotkey: '3', category: 'call-control', lang: 'en' },
-  { id: 'anyone', label: 'Anyone?', text: 'Is anyone else there who would like to speak?', hotkey: '4', category: 'call-control', lang: 'en' },
-  { id: 'callout', label: 'Callout', text: 'One moment, I need to clarify something with you.', hotkey: '5', category: 'call-control', lang: 'en' },
-  { id: 'closer_louder', label: 'Louder', text: 'Could you please speak a little louder?', hotkey: '6', category: 'call-control', lang: 'en' },
+  { id: 'sign_off', label: 'Closing – Sign off', text: 'My name is ______, ID ______, thank you for using our services.', hotkey: '3', category: 'call-control', lang: 'en' },
+  { id: 'anyone', label: 'Legacy – Anyone?', text: 'Is anyone else there who would like to speak?', hotkey: '4', category: 'call-control', lang: 'en' },
+  { id: 'callout', label: 'Legacy – Callout', text: 'One moment, I need to clarify something with you.', hotkey: '5', category: 'call-control', lang: 'en' },
+  { id: 'closer_louder', label: 'Legacy – Louder', text: 'Could you please speak a little louder?', hotkey: '6', category: 'call-control', lang: 'en' },
   { id: 'limit_40_en', label: '40 Word Limit', text: 'Please keep your answers to about forty words so I can interpret accurately.', hotkey: '', category: 'call-control', lang: 'en' },
   { id: 'limit_40_es', label: '40 Word Limit', text: 'Por favor responda en unas cuarenta palabras para poder interpretar con precisión.', hotkey: '', category: 'call-control', lang: 'es' },
-  { id: 'open_client', label: 'Client Open', text: 'Good evening, my name is [First name], interpreter ID [ID], and I will be your [language] interpreter. Please speak in clear, short sentences so that I can interpret everything. Before we begin, I need to ask you a few questions.', hotkey: '', category: 'greeting', lang: 'en' },
-  { id: 'open_lep', label: 'LEP Open', text: "Good evening, I will be your [language] interpreter. Everything you say will stay confidential. Please speak in clear, short sentences so that I can interpret everything.", hotkey: '', category: 'greeting', lang: 'en' },
-  { id: 'direct_dial', label: 'Direct Dial', text: 'Good morning, I will be your [language] interpreter. Everything you say will stay confidential. Please speak in clear, short sentences so that I can interpret everything. What is the phone number you are trying to reach?', hotkey: '', category: 'greeting', lang: 'en' },
+  { id: 'open_lep', label: 'Opener – LEP', text: "Good evening, I will be your [language] interpreter. Everything you say will stay confidential. Please speak in clear, short sentences so that I can interpret everything.", hotkey: '', category: 'greeting', lang: 'en' },
+  { id: 'direct_dial', label: 'Opener – Direct dial', text: 'Good morning, I will be your [language] interpreter. Everything you say will stay confidential. Please speak in clear, short sentences so that I can interpret everything. What is the phone number you are trying to reach?', hotkey: '', category: 'greeting', lang: 'en' },
   { id: 'repeat', label: 'Repeat', text: 'Ma\'am, this is the interpreter, could you repeat what you said please?', hotkey: '', category: 'call-control', lang: 'en' },
   { id: 'segments', label: 'Segments', text: 'This is the interpreter speaking, I do apologize for interrupting, but for the sake of accuracy, would you mind providing me with shorter segments please?', hotkey: '', category: 'call-control', lang: 'en' },
   { id: 'interrupt', label: 'Interrupt', text: "I do apologize for interrupting, please go ahead.", hotkey: '', category: 'call-control', lang: 'en' },
@@ -37,8 +54,8 @@ export const DEFAULT_SOUNDBOARD_ITEMS = [
   { id: 'blocked_intake', label: 'Blocked', text: 'I do apologize for the inconvenience, but the system will not let me proceed without the information needed. Please call us back when you have the information and we will be happy to assist. Once again, I do apologize for the inconvenience.', hotkey: '', category: 'call-control', lang: 'en' },
   { id: 'voicemail', label: 'Voicemail', text: 'Good morning, this is an interpreter in Dr. Michael\'s representation, this message is for Mrs. Maria Espinoza, her appointment will be in the Kaiser Permanent Hospital at 8:30 in the morning. If you cannot attend, please reach out to us at your earliest convenience at this phone number 333.333.3333. Have a good day.', hotkey: '', category: 'call-control', lang: 'en' },
   { id: 'operator_12241', label: 'Operator', text: 'Hello. This is the interpreter speaking. One moment please, while I introduce myself to the LEP/patient.', hotkey: '', category: 'call-control', lang: 'en' },
-  { id: 'closing', label: 'Closing', text: 'Is there anything else I can do to assist you?', hotkey: '', category: 'call-control', lang: 'en' },
-  { id: 'signoff_lep', label: 'LEP Bye', text: "Thank you for using our services, have a nice day. Goodbye Sir/Ma'am.", hotkey: '', category: 'call-control', lang: 'en' },
+  { id: 'closing', label: 'Closing – More help?', text: 'Is there anything else I can do to assist you?', hotkey: '', category: 'call-control', lang: 'en' },
+  { id: 'signoff_lep', label: 'Closing – LEP bye', text: "Thank you for using our services, have a nice day. Goodbye Sir/Ma'am.", hotkey: '', category: 'call-control', lang: 'en' },
 ];
 
 const sanitizeItem = (item) => {
@@ -57,8 +74,9 @@ const sanitizeItem = (item) => {
 export const mergeSoundboardItems = (remoteItems = []) => {
   const byId = Object.fromEntries(DEFAULT_SOUNDBOARD_ITEMS.map((d) => [d.id, { ...d }]));
   remoteItems.forEach((item) => {
+    if (RETIRED_SOUNDBOARD_IDS.includes(item?.id)) return; // v4.99.3: retired dupe drops out of Studio
     const clean = sanitizeItem(item);
-    if (clean) byId[clean.id] = clean;
+    if (clean && byId[clean.id]) byId[clean.id] = clean;
   });
   return DEFAULT_SOUNDBOARD_ITEMS.map((d) => byId[d.id]);
 };
@@ -69,8 +87,11 @@ export const mergeSoundboardItems = (remoteItems = []) => {
  * existing profiles would never see the handbook. Overwrites TEXTS ONLY
  * (recorded audio blobs live in separate file storage and are untouched).
  * Clears legibility health for reseeded keys (old recordings vs new script).
+ * v4.99.3 (seed 3): drops the retired `open_client` dupe from stored meta
+ * and relabels untouched tiles to the dedup names (custom user labels kept).
+ * Audio/health/CALL OK carry-over for the retired clip runs in GreetingsPanel.
  */
-export const SOUNDBOARD_TEXT_SEED = 2;
+export const SOUNDBOARD_TEXT_SEED = 3;
 const TEXT_SEED_KEY = 'catint_soundboard_text_seed_v1';
 const HEALTH_KEY = 'catint_audio_health';
 
@@ -83,12 +104,22 @@ export const ensureHandbookSeed = () => {
     const items = Array.isArray(parsed?.items) ? parsed.items : [];
     const seen = new Set();
     const changed = [];
-    const next = items.map((it) => {
-      if (!it?.id || !defaults[it.id]) return it;
+    // v4.99.3: retired dupe never carries forward in stored meta.
+    const next = items.flatMap((it) => {
+      if (!it?.id) return [];
+      if (RETIRED_SOUNDBOARD_IDS.includes(it.id)) return [];
+      if (!defaults[it.id]) return [it];
       seen.add(it.id);
-      if (it.text === defaults[it.id].text) return it;
-      changed.push(it.id);
-      return { ...it, text: defaults[it.id].text };
+      let out = it;
+      if (it.text !== defaults[it.id].text) {
+        changed.push(it.id);
+        out = { ...out, text: defaults[it.id].text };
+      }
+      // Relabel only tiles the user never renamed (stored label == pre-dedup label).
+      if (PRE_DEDUP_LABELS[it.id] && it.label === PRE_DEDUP_LABELS[it.id] && out.label !== defaults[it.id].label) {
+        out = { ...out, label: defaults[it.id].label };
+      }
+      return [out];
     });
     DEFAULT_SOUNDBOARD_ITEMS.forEach((d) => {
       // New ids have no old recordings — no health to clear.

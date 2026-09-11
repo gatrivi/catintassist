@@ -2,6 +2,14 @@
 
 **Version source:** `src/constants/version.js` (must match `package.json` + top-right UI pill)
 
+## v4.99.3 - Soundboard dedup (one Opener–Client)
+
+- **Retired:** `open_client` ("Client Open") — byte-identical script to `greeting_en`. Canonical survivor is `greeting_en` ("Opener – Client"), which keeps the AM/PM/Eve recording variants. Tile count 26 → 25.
+- **Relabeled (no deletions):** openers in call order (Opener–Client / Opener–LEP / Opener–LEP (ES) / Opener–Direct dial); closers grouped (Closing–More help? / Closing–Sign off / Closing–LEP bye); old generics tagged Legacy (Anyone? / Callout / Louder).
+- **Carry-over, never delete:** on Studio load, if all 3 Opener–Client slots are empty and an `open_client` clip exists, it copies to `greeting_en_morning` (+ legibility health + CALL OK fingerprint). Old blob stays in IndexedDB as a recoverable orphan (Storage panel → Export backup).
+- **Meta migration (seed 2→3):** stored `open_client` entries drop out; untouched tiles relabel automatically; user-renamed labels preserved.
+- On-call strip unchanged (7 tiles). Tests: soundboardMeta + cloudSync + releaseNotes green, build clean.
+
 ## v4.98.0 - Call Autopilot (phrase-driven auto start/end)
 
 - **New (`callAutopilot.js` + `SessionContext` + `useDeepgram`):** 🤖 Call Autopilot (Settings → Behavior, default OFF). One CONNECT press arms it; after that the platform's own announcements run the session — a bridge phrase ("call is being bridged") STARTS the call, a disconnect phrase ("the caller has disconnected") opens a **10s cancellable banner** then ends it (same stop path as SilenceGuardian: audio pipeline + session).

@@ -144,21 +144,21 @@ const ClipWaveform = ({ peaks, progress = 0, height = 28 }) => {
 };
 
 export const ACTIONS = [
-  { id: 'greeting_en', label: 'Greeting', lang: 'en', dynamic: true },
-  { id: 'greeting_es', label: 'Greeting', lang: 'es', dynamic: true },
+  { id: 'greeting_en', label: 'Opener – Client', lang: 'en', dynamic: true },
+  { id: 'greeting_es', label: 'Opener – LEP (ES)', lang: 'es', dynamic: true },
   { id: 'intake', label: 'Intake Qs', dynamic: false },
   { id: 'hold_policy', label: 'Hold Policy', dynamic: false },
   { id: 'hold_exc_en', label: 'Hold Exc', lang: 'en', dynamic: false },
   { id: 'hold_exc_es', label: 'Hold Exc', lang: 'es', dynamic: false },
-  { id: 'sign_off', label: 'Sign Off', dynamic: false },
-  { id: 'anyone', label: 'Anyone?', dynamic: false },
-  { id: 'callout', label: 'Callout', dynamic: false },
-  { id: 'closer_louder', label: 'Louder', dynamic: false },
+  { id: 'sign_off', label: 'Closing – Sign off', dynamic: false },
+  { id: 'anyone', label: 'Legacy – Anyone?', dynamic: false },
+  { id: 'callout', label: 'Legacy – Callout', dynamic: false },
+  { id: 'closer_louder', label: 'Legacy – Louder', dynamic: false },
   { id: 'limit_40_en', label: '40 Word Limit', lang: 'en', dynamic: false },
   { id: 'limit_40_es', label: '40 Word Limit', lang: 'es', dynamic: false },
-  { id: 'open_client', label: 'Client Open', lang: 'en', dynamic: false },
-  { id: 'open_lep', label: 'LEP Open', lang: 'en', dynamic: false },
-  { id: 'direct_dial', label: 'Direct Dial', lang: 'en', dynamic: false },
+  // v4.99.3: open_client retired — byte-identical to greeting_en; carry-over below.
+  { id: 'open_lep', label: 'Opener – LEP', lang: 'en', dynamic: false },
+  { id: 'direct_dial', label: 'Opener – Direct dial', lang: 'en', dynamic: false },
   { id: 'repeat', label: 'Repeat', lang: 'en', dynamic: false },
   { id: 'segments', label: 'Segments', lang: 'en', dynamic: false },
   { id: 'interrupt', label: 'Interrupt', lang: 'en', dynamic: false },
@@ -168,8 +168,8 @@ export const ACTIONS = [
   { id: 'blocked_intake', label: 'Blocked', lang: 'en', dynamic: false },
   { id: 'voicemail', label: 'Voicemail', lang: 'en', dynamic: false },
   { id: 'operator_12241', label: 'Operator', lang: 'en', dynamic: false },
-  { id: 'closing', label: 'Closing', lang: 'en', dynamic: false },
-  { id: 'signoff_lep', label: 'LEP Bye', lang: 'en', dynamic: false },
+  { id: 'closing', label: 'Closing – More help?', lang: 'en', dynamic: false },
+  { id: 'signoff_lep', label: 'Closing – LEP bye', lang: 'en', dynamic: false },
 ];
 
 const getSetupStats = (blobs) => {
@@ -314,6 +314,45 @@ export const GreetingsPanel = ({ onEditModeChange, onExitStudio, micTestMode = f
     if (bgApp) {
         state.bg_app = bgApp;
     }
+    // v4.99.3 dedup carry-over: retired `open_client` (identical script to
+    // greeting_en) → greeting_en_morning, only if all 3 EN opener slots are
+    // empty. Never deletes the old blob — it stays listed as an orphan.
+    try {
+      const hasEnOpener = ['morning', 'afternoon', 'evening'].some((t) => state[`greeting_en_${t}`]);
+      if (!hasEnOpener) {
+        const retired = await loadFile('open_client');
+        if (retired) {
+          await saveFile('greeting_en_morning', retired);
+          state.greeting_en_morning = retired;
+          state.url_greeting_en_morning = generateObjectUrl(retired);
+          const copyKey = (storeKey) => {
+            try {
+              const h = JSON.parse(localStorage.getItem(storeKey) || '{}');
+              if (h.open_client !== undefined && h.greeting_en_morning === undefined) {
+                h.greeting_en_morning = h.open_client;
+                localStorage.setItem(storeKey, JSON.stringify(h));
+              }
+            } catch { /* ignore */ }
+          };
+          copyKey('catint_audio_health');
+          copyKey('catint_audio_health_heard');
+          try {
+            const raw = localStorage.getItem('catint_manual_call_ok_v1');
+            if (raw) {
+              const store = JSON.parse(raw);
+              let touched = false;
+              Object.keys(store).forEach((fp) => {
+                if (fp.startsWith('open_client|')) {
+                  const target = fp.replace(/^open_client\|/, 'greeting_en_morning|');
+                  if (!store[target]) { store[target] = { ...store[fp], clipKey: 'greeting_en_morning' }; touched = true; }
+                }
+              });
+              if (touched) localStorage.setItem('catint_manual_call_ok_v1', JSON.stringify(store));
+            }
+          } catch { /* ignore */ }
+        }
+      }
+    } catch { /* carry-over is best-effort, never blocks Studio */ }
     setBlobs(state);
     refreshStorageSummary();
   };

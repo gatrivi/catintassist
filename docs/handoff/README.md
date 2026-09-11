@@ -1,11 +1,11 @@
-# Agent Handoff Index (v4.96.2)
+# Agent Handoff Index (v4.99.3)
 
 **Read first:** [`00_global_rules.md`](00_global_rules.md)
 
 Outside agents: pick **one** spec below. Do not re-read the whole repo.
 
 ## Current app version
-Top-right must show **v4.96.2** (pushed to master, commit dc2ad20). Latest: [`15_catchup_chip_mls_import_2026-09-10.md`](15_catchup_chip_mls_import_2026-09-10.md) — catch-up plan + chip narrow-fit DONE; **pending user:** paste MLS Sep log (Settings → Data). Before: [`14_habit_tooltip_spread_2026-09-09.md`](14_habit_tooltip_spread_2026-09-09.md) (v4.96.1) + [`13_cpu_freeze_blank_caption_2026-09-09.md`](13_cpu_freeze_blank_caption_2026-09-09.md). Tests all green.
+Top-right must show **v4.99.3**. Latest: [`16_soundboard_dedup_2026-09-11.md`](16_soundboard_dedup_2026-09-11.md) — soundboard dedup DONE (Client Open retired, carry-over, relabels). Before: [`15_catchup_chip_mls_import_2026-09-10.md`](15_catchup_chip_mls_import_2026-09-10.md). Tests all green.
 
 ## Full tests are GREEN again
 `node scripts/test-in-batches.js` — 71 files pass. The earlier "blocked by dirty translation-engine work" note is obsolete.

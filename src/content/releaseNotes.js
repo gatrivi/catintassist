@@ -25,6 +25,31 @@ import { APP_VERSION } from '../constants/version';
 /** Newest first. Only the entry matching APP_VERSION is shown on load. */
 export const RELEASE_NOTES_CATALOG = [
   {
+    version: '4.99.3',
+    id: 'soundboard-dedup-v1',
+    highlightElementIds: ['interpret-root'],
+    es: {
+      title: '🧹 Soundboard sin duplicados — un solo Opener–Client',
+      intro: 'v4.99.3 — "Greeting" y "Client Open" eran el mismo texto: queda uno solo (Opener–Client, con versiones mañana/tarde/noche). Si habías grabado el duplicado, tu audio se muda solo al que queda. El resto se reordenó: Opener–… / Closing–… / Legacy–….',
+      sections: [{ heading: 'Qué cambió', bullets: [
+        'Opener–Client único — adiós al tile repetido "Client Open"',
+        'Openers y cierres renombrados en orden de llamada; Callout/Louder/Anyone marcados Legacy',
+        'Tu grabación del duplicado se copia sola si el que queda está vacío (nunca se borra audio)',
+        'El viejo clip queda como huérfano recuperable en Export backup',
+      ] }],
+    },
+    en: {
+      title: '🧹 Soundboard dedup — one Opener–Client',
+      intro: 'v4.99.3 — "Greeting" and "Client Open" were the same script: one tile remains (Opener–Client, with morning/afternoon/evening variants). If you had recorded the dupe, its audio carries over automatically. The rest is relabeled: Opener–… / Closing–… / Legacy–….',
+      sections: [{ heading: 'What changed', bullets: [
+        'Single Opener–Client — the repeated "Client Open" tile is gone',
+        'Openers and closers renamed in call order; Callout/Louder/Anyone tagged Legacy',
+        'Your dupe recording auto-copies when the survivor slot is empty (audio never deleted)',
+        'The old clip stays as a recoverable orphan in Export backup',
+      ] }],
+    },
+  },
+  {
     version: '4.99.2',
     id: 'scoreboard-ledger-fixes-v1',
     highlightElementIds: ['interpret-root'],
