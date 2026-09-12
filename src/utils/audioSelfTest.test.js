@@ -10,6 +10,9 @@ import {
   scoreTranscriptRecall,
   analyzeClipLegibility,
   explainHealth,
+  capSinkTestVolume,
+  SINK_TEST_TONE_VOL,
+  SINK_TEST_CLIP_CAP,
 } from './audioSelfTest';
 
 describe('audioSelfTest', () => {
@@ -113,5 +116,17 @@ describe('audioSelfTest', () => {
   test('explainHealth: unchecked clip tells you to check or record', () => {
     const e = explainHealth({});
     expect(e.why).toMatch(/not checked/i);
+  });
+
+  // v4.106.0: sink test never deafens — soft fixed beep, clip capped low.
+  test('capSinkTestVolume clamps into safe range', () => {
+    expect(SINK_TEST_TONE_VOL).toBeLessThanOrEqual(0.2);
+    expect(SINK_TEST_CLIP_CAP).toBeLessThanOrEqual(0.4);
+    expect(capSinkTestVolume(1)).toBe(SINK_TEST_CLIP_CAP);
+    expect(capSinkTestVolume(0.1)).toBeCloseTo(0.1);
+    expect(capSinkTestVolume(0)).toBe(0);
+    expect(capSinkTestVolume(-3)).toBe(0);
+    expect(capSinkTestVolume(undefined)).toBe(SINK_TEST_CLIP_CAP);
+    expect(capSinkTestVolume('loud')).toBe(SINK_TEST_CLIP_CAP);
   });
 });

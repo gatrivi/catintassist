@@ -2,6 +2,13 @@
 
 **Version source:** `src/constants/version.js` (must match `package.json` + top-right UI pill)
 
+## v4.106.0 - Quiet sink test (no more "no needle" mystery)
+
+- **Studio sink test, quiet by design:** clip-card 📡 Caller + Check-panel 📡 Send now play the real recorded clip into VB out capped at 0.4 (ignores a 100% slider); footer beep is a soft fixed-0.2 tone, sink-only — never your speakers. Judge voice quality safely by watching the VAIO strip meter.
+- **Quality gate no longer blocks testing:** 📡 Send enables with clip + sink picked (was disabled on quality fail) — the gate still guards on-call tiles; Studio is for diagnosis.
+- **Visible failures:** sink bind/play errors now name the sink in a persistent notice (`Sink play failed into X — re-pick 🔊 in header`) instead of console-only.
+- Tests: `capSinkTestVolume` clamp tests in `audioSelfTest.test.js`.
+
 ## v4.99.3 - Soundboard dedup (one Opener–Client)
 
 - **Retired:** `open_client` ("Client Open") — byte-identical script to `greeting_en`. Canonical survivor is `greeting_en` ("Opener – Client"), which keeps the AM/PM/Eve recording variants. Tile count 26 → 25.

@@ -3,6 +3,22 @@
 export const TEST_TONE_MS = 900;
 export const TEST_TONE_HZ = 440;
 
+/**
+ * v4.106.0: quiet-by-design sink test levels. The sink test fires into a
+ * virtual patient-path device (CABLE/Voicemeeter Input) — never the user's
+ * speakers — and stays far from deafening: a soft fixed beep, then the real
+ * recorded clip capped low so voice quality can be judged safely.
+ */
+export const SINK_TEST_TONE_VOL = 0.2;
+export const SINK_TEST_CLIP_CAP = 0.4;
+
+/** Clamp a sink-test clip volume into [0, SINK_TEST_CLIP_CAP]. Number-safe. */
+export const capSinkTestVolume = (v) => {
+  const n = Number(v);
+  if (!Number.isFinite(n)) return SINK_TEST_CLIP_CAP;
+  return Math.min(SINK_TEST_CLIP_CAP, Math.max(0, n));
+};
+
 /** Build a short sine tone as WAV blob URL. */
 export const createTestToneUrl = (durationMs = TEST_TONE_MS, frequencyHz = TEST_TONE_HZ) => {
   const sampleRate = 44100;

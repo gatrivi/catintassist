@@ -20,7 +20,7 @@ import {
   formatRouteDiagLine,
   ROUTE_EVENT,
 } from '../utils/routeDiagnostics';
-import { analyzeClipLegibility, formatHealthDisplay, truncateDeviceLabel, isLocalOnlyPlayback, getPreflightSteps, isPreflightReady, playTestToneSink, explainHealth } from '../utils/audioSelfTest';
+import { analyzeClipLegibility, formatHealthDisplay, truncateDeviceLabel, isLocalOnlyPlayback, getPreflightSteps, isPreflightReady, playTestToneSink, explainHealth, capSinkTestVolume, SINK_TEST_TONE_VOL } from '../utils/audioSelfTest';
 import { getScriptForClip } from '../services/soundboardMetaService';
 import {
   buildRouteFingerprint,
@@ -828,7 +828,10 @@ export const GreetingsPanel = ({ onEditModeChange, onExitStudio, micTestMode = f
   };
 
   const playAudioBlock = async (key, routeToVirtualMic, opts = {}) => {
-    const { bypassGate = false, callerOnly = false } = opts;
+    const { bypassGate = false, callerOnly = false, testCap = false } = opts;
+    // v4.106.0: Studio sink tests are quiet by design — cap the patient-path
+    // volume so judging voice quality never deafens. On-call tiles don't pass
+    // testCap, so live patient audio is unaffected.
 
     if (playingKey === key) {
       audioRefSink.current.pause();
@@ -949,8 +952,9 @@ export const GreetingsPanel = ({ onEditModeChange, onExitStudio, micTestMode = f
       if (playLocal) plays.push(audioRefLocal.current.play());
 
       if (playSink && usePassthrough) {
+        const effSinkVol = testCap ? capSinkTestVolume(sinkVolume) : sinkVolume;
         plays.push(
-          playClipToSink(blob, sinkVolume, {
+          playClipToSink(blob, effSinkVol, {
             clipKey: key,
             onProgress: (p) => {
               if (!playLocal) setPlaybackProgress(p);
@@ -965,9 +969,9 @@ export const GreetingsPanel = ({ onEditModeChange, onExitStudio, micTestMode = f
                 setSinkPlaybackActive(true);
                 await audioRefSink.current.play();
                 if (rampCancelRef.current) rampCancelRef.current();
-                rampCancelRef.current = rampVolume(null, audioRefSink.current, 0, sinkVolume);
+                rampCancelRef.current = rampVolume(null, audioRefSink.current, 0, effSinkVol);
               } else {
-                setSafetyNotice('⚠️ Passthrough + dual route failed — LOCAL ONLY');
+                setSafetyNotice(`⚠️ Sink play failed into ${sinkLabel || 'VB out'} — re-pick 🔊 in header, then test again`);
               }
             } else if (!playLocal) {
               onEnd();
@@ -983,11 +987,12 @@ export const GreetingsPanel = ({ onEditModeChange, onExitStudio, micTestMode = f
 
       if (playSink && !usePassthrough) {
         if (rampCancelRef.current) rampCancelRef.current();
+        const effSinkVol = testCap ? capSinkTestVolume(sinkVolume) : sinkVolume;
         rampCancelRef.current = rampVolume(
           playLocal ? audioRefLocal.current : null,
           playSink ? audioRefSink.current : null,
           playLocal ? localVolume : 0,
-          playSink ? sinkVolume : 0,
+          playSink ? effSinkVol : 0,
         );
       } else if (playLocal) {
         if (rampCancelRef.current) rampCancelRef.current();
@@ -998,6 +1003,11 @@ export const GreetingsPanel = ({ onEditModeChange, onExitStudio, micTestMode = f
       logRouteEvent(ROUTE_EVENT.PLAY_FAIL, { clipKey: key, reason: e?.message });
       if (wasCallTest) {
         setLastRouteTest({ clipKey: key, result: 'fail', at: Date.now() });
+      }
+      // v4.106.0: a silent console error is why "no needle" mysteries persist —
+      // sink-only test fires must say what failed, naming the sink.
+      if (callerOnly) {
+        setSafetyNotice(`⚠️ Sink play failed into ${sinkLabel || 'VB out'} (${e?.message || 'unknown error'}) — re-pick 🔊 in header, then test again`);
       }
       clearPlaybackState();
     }
@@ -1066,9 +1076,9 @@ export const GreetingsPanel = ({ onEditModeChange, onExitStudio, micTestMode = f
               <button
                 type="button"
                 className="sb-btn sb-btn--call"
-                onClick={() => playAudioBlock(key, true, { bypassGate: true, callerOnly: true })}
+                onClick={() => playAudioBlock(key, true, { bypassGate: true, callerOnly: true, testCap: true })}
                 disabled={!selectedSinkId}
-                title={selectedSinkId ? 'Send through VB-Cable — confirm CALL OK on remote side' : 'Pick VB-Cable in header Speaker first'}
+                title={selectedSinkId ? 'Quiet sink test of this clip (capped low) — watch the VAIO strip meter' : 'Pick VB-Cable in header Speaker first'}
               >
                 📡 Caller
               </button>
@@ -1572,9 +1582,9 @@ export const GreetingsPanel = ({ onEditModeChange, onExitStudio, micTestMode = f
                 <button
                   type="button"
                   className="sb-pf-btn sb-pf-btn--caller"
-                  disabled={!checkHasClip || !selectedSinkId || preflight.quality === 'fail'}
-                  onClick={() => playAudioBlock(checkKeyResolved, true, { bypassGate: true, callerOnly: true })}
-                  title={selectedSinkId ? 'Same path as on-call greetings' : 'Pick CABLE Input in header 🔊'}
+                  disabled={!checkHasClip || !selectedSinkId}
+                  onClick={() => playAudioBlock(checkKeyResolved, true, { bypassGate: true, callerOnly: true, testCap: true })}
+                  title={selectedSinkId ? 'Quiet sink test — same path as on-call greetings, capped low, quality gate bypassed' : 'Pick CABLE Input in header 🔊'}
                 >
                   {playingKey === checkKeyResolved && routeLive ? '⏹ Stop' : '📡 Send'}
                 </button>
@@ -1607,13 +1617,13 @@ export const GreetingsPanel = ({ onEditModeChange, onExitStudio, micTestMode = f
               type="button"
               className="sb-pf-btn sb-pf-btn--ghost"
               disabled={!selectedSinkId}
-              onClick={() => playTestToneSink(selectedSinkId, sinkVolume).catch(() => {
-                setSafetyNotice('⚠️ VB beep failed — check 🔊 in header');
-                window.setTimeout(() => setSafetyNotice(''), 4500);
+              onClick={() => playTestToneSink(selectedSinkId, SINK_TEST_TONE_VOL).catch(() => {
+                setSafetyNotice(`⚠️ Sink beep failed into ${sinkLabel || 'VB out'} — re-pick 🔊 in header, then test again`);
+                window.setTimeout(() => setSafetyNotice(''), 8000);
               })}
-              title="Short beep through VB-Cable (no clip needed)"
+              title="Soft beep into VB out at fixed low volume — watch the VAIO strip meter in Voicemeeter"
             >
-              Beep cable
+              Beep sink (quiet)
             </button>
             <button type="button" className="sb-pf-btn sb-pf-btn--ghost" onClick={() => setAdvancedOpen((v) => !v)}>
               {advancedOpen ? 'Less ▴' : 'More ▾'}
