@@ -34,6 +34,7 @@ import { diagnoseVbCableRoute } from '../utils/audioSourceManager';
 import { displayDeviceName, readKnownDeviceLabels } from '../utils/audioDeviceLabels';
 import AudioEditorPanel from './AudioEditorPanel';
 import { getEffectiveDeepgramKey } from '../utils/deepgramRuntimeKey';
+import { classifyLoudness, measureChannelLoudness } from '../utils/loudness';
 import { ElementHintTarget } from './ElementHint';
 
 const TIME_SLOTS = ['morning', 'afternoon', 'evening'];
@@ -102,6 +103,9 @@ const buildWaveformPeaks = async (blob, bars = 56) => {
   try {
     const audioBuffer = await ctx.decodeAudioData(arrayBuffer.slice(0));
     const channel = audioBuffer.getChannelData(0);
+    // v4.109.0: the same decode yields the loudness verdict — no second pass.
+    const level = measureChannelLoudness(channel);
+    const loudness = classifyLoudness(level.rmsDb, level.peakDb);
     const blockSize = Math.max(1, Math.floor(channel.length / bars));
     const peaks = [];
     for (let i = 0; i < bars; i += 1) {
@@ -112,7 +116,10 @@ const buildWaveformPeaks = async (blob, bars = 56) => {
       peaks.push(sum / (end - start || 1));
     }
     const max = Math.max(...peaks, 0.001);
-    return peaks.map((p) => p / max);
+    return {
+      peaks: peaks.map((p) => p / max),
+      loudness,
+    };
   } finally {
     ctx.close().catch(() => {});
   }
@@ -211,6 +218,10 @@ export const GreetingsPanel = ({ onEditModeChange, onExitStudio, micTestMode = f
   const [healthScores, setHealthScores] = useState(() => { try { return JSON.parse(localStorage.getItem('catint_audio_health')) || {}; } catch { return {}; } });
   const [heardByRobot, setHeardByRobot] = useState(() => {
     try { return JSON.parse(localStorage.getItem('catint_audio_health_heard')) || {}; } catch { return {}; }
+  });
+  // v4.109.0: local loudness verdict per clip key — {rmsDb, peakDb, label, color, width}
+  const [loudness, setLoudness] = useState(() => {
+    try { return JSON.parse(localStorage.getItem('catint_loudness')) || {}; } catch { return {}; }
   });
   const [manualCallOk, setManualCallOkStore] = useState(() => loadManualCallOk());
   const [pendingRouteConfirm, setPendingRouteConfirm] = useState(null);
@@ -588,15 +599,27 @@ export const GreetingsPanel = ({ onEditModeChange, onExitStudio, micTestMode = f
 
     (async () => {
       const next = {};
+      const nextLoud = {};
       for (const key of keys) {
         if (cancelled) return;
         try {
-          next[key] = await buildWaveformPeaks(blobs[key]);
+          const res = await buildWaveformPeaks(blobs[key]);
+          next[key] = res.peaks;
+          if (res.loudness) nextLoud[key] = res.loudness;
         } catch (e) {
           console.warn('Waveform decode failed:', key, e);
         }
       }
-      if (!cancelled) setWaveforms(next);
+      if (cancelled) return;
+      setWaveforms(next);
+      // v4.109.0: loudness rode the same decode loop — persist so reload is instant.
+      if (Object.keys(nextLoud).length) {
+        setLoudness((prev) => {
+          const merged = { ...prev, ...nextLoud };
+          try { localStorage.setItem('catint_loudness', JSON.stringify(merged)); } catch (_) {}
+          return merged;
+        });
+      }
     })();
 
     return () => { cancelled = true; };
@@ -667,6 +690,12 @@ export const GreetingsPanel = ({ onEditModeChange, onExitStudio, micTestMode = f
     setWaveforms((prev) => {
       const next = { ...prev };
       delete next[key];
+      return next;
+    });
+    setLoudness((prev) => {
+      const next = { ...prev };
+      delete next[key];
+      try { localStorage.setItem('catint_loudness', JSON.stringify(next)); } catch (_) {}
       return next;
     });
     reloadData();
@@ -1070,6 +1099,18 @@ export const GreetingsPanel = ({ onEditModeChange, onExitStudio, micTestMode = f
                 </div>
               </div>
             ) : null}
+            {/* v4.109.0: loudness pill — is the recording loud enough to be heard clearly? */}
+            {hasBlob && loudness[key] && (
+              <div
+                className="sb-health-pill"
+                title={`Loudness ${loudness[key].rmsDb} dBFS RMS · peak ${loudness[key].peakDb} dBFS. Playback auto-boosts quiet clips, but the noise floor rises with it — re-record closer to the mic when SOFT or TOO QUIET.`}
+              >
+                <span style={{ color: loudness[key].color }}>{loudness[key].label} {loudness[key].rmsDb} dB</span>
+                <div className="sb-health-pill-bar">
+                  <div className="sb-health-pill-fill" style={{ width: loudness[key].width, backgroundColor: loudness[key].color }} />
+                </div>
+              </div>
+            )}
             <span className={`sb-clip-status ${hasBlob ? 'sb-clip-status--saved' : 'sb-clip-status--missing'}`}>
               {hasBlob ? 'SAVED' : 'not recorded'}
             </span>
@@ -1082,7 +1123,7 @@ export const GreetingsPanel = ({ onEditModeChange, onExitStudio, micTestMode = f
         </div>
 
         {hasBlob && (
-          <ClipWaveform peaks={waveforms[key]} progress={playingKey === key ? playbackProgress : 0} height={compact ? 22 : 28} />
+          <ClipWaveform peaks={waveforms[key]?.peaks} progress={playingKey === key ? playbackProgress : 0} height={compact ? 22 : 28} />
         )}
 
         <div className="sb-clip-actions">
@@ -1727,6 +1768,8 @@ export const GreetingsPanel = ({ onEditModeChange, onExitStudio, micTestMode = f
           const shownHealth = hasAudio
             ? (healthScores[activeKey] ?? healthScores[healthKey])
             : healthScores[healthKey];
+          // v4.109.0: local loudness dot — green = clearly audible, amber/orange = re-record.
+          const shownLoud = hasAudio ? (loudness[activeKey] ?? loudness[healthKey]) : loudness[healthKey];
           // v4.103.0: health no longer blocks arming — script mismatch warns on
           // fire (user agency); only a proven route (CALL OK) arms the tile.
           const callReady = !micTestMode
@@ -1791,6 +1834,15 @@ export const GreetingsPanel = ({ onEditModeChange, onExitStudio, micTestMode = f
                   {shownHealth !== undefined && (
                     <span className="sb-slot-health" style={{ color: getHealthMeta(shownHealth)?.color }}>
                       {getHealthMeta(shownHealth)?.label}
+                    </span>
+                  )}
+                  {shownLoud && (
+                    <span
+                      className="sb-slot-loud"
+                      style={{ color: shownLoud.color }}
+                      title={`Loudness ${shownLoud.rmsDb} dBFS — ${shownLoud.label}${shownLoud.width === '25%' ? ' — re-record closer to the mic' : ''}`}
+                    >
+                      ●
                     </span>
                   )}
                 </span>

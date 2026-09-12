@@ -3084,6 +3084,13 @@ body {
   font-weight: 900;
 }
 
+/* v4.109.0: loudness dot on gallery tiles — color = loudness tier */
+.sb-slot-loud {
+  font-size: 0.5rem;
+  margin-left: 3px;
+  line-height: 1;
+}
+
 /* Header/Dashboard */
 .dashboard-header {
   display: flex;

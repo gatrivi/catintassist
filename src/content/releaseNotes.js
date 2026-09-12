@@ -25,6 +25,29 @@ import { APP_VERSION } from '../constants/version';
 /** Newest first. Only the entry matching APP_VERSION is shown on load. */
 export const RELEASE_NOTES_CATALOG = [
   {
+    version: '4.109.0',
+    id: 'loudness-verdict',
+    highlightElementIds: ['sb-preflight-check'],
+    es: {
+      title: '🔊 Medidor de volumen de los saludos',
+      intro: 'Cada grabación del soundboard ahora se evalúa localmente: ¿es suficientemente fuerte para escucharse claro?',
+      sections: [{ heading: 'Qué cambió', bullets: [
+        'Píldora PEACHES/GOOD/SOFT/TOO QUIET con dB junto al chequeo de legibilidad en Setup.',
+        'Punto de color en cada tarjeta del soundboard — verde audible, ámbar/naranja regrabar.',
+        'Sin API ni clave: se mide el nivel real (RMS) al decodificar el audio.',
+      ] }],
+    },
+    en: {
+      title: '🔊 Greeting loudness meter',
+      intro: 'Every soundboard recording is now evaluated locally: is it loud enough to be heard clearly?',
+      sections: [{ heading: 'What changed', bullets: [
+        'PEACHES/GOOD/SOFT/TOO QUIET pill with dB next to the legibility check in Setup.',
+        'Color dot on every soundboard tile — green audible, amber/orange re-record.',
+        'No API or key: real level (RMS) is measured while decoding the audio.',
+      ] }],
+    },
+  },
+  {
     version: '4.108.3',
     id: 'voicemeeter-input-not-in1',
     highlightElementIds: ['audio-route-sink-select'],

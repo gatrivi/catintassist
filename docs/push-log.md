@@ -45,3 +45,9 @@
 | 2026-09-11T20:28:42.107Z | f5320b6 | v4.101.2 off-call inflation hotfix - midnight live-counter seal + wallclock clamp |
 | 2026-09-11T20:32:25.733Z | c156673 | v4.103.1 HUD crop hotfix - in-call goal meter no longer half-clipped on <=900px windows; incl. soundboard slot greetings + open_lep dedup |
 | 2026-09-12T00:13:19.198Z | fd343c4 | v4.105.0 recordings disk backup - Download/Upload recordings buttons in Studio; filename IS the storage key (greeting_en_morning.webm), same files restore on localhost or live; ships v4.104.0 direct-sink caller route + v4.103.2 retry classifier |
+| 2026-09-12T14:57:41.222Z | 320ca86 | v4.105.1 voicemeeter naming + CALL OK slot-family - In 1 recognized as VAIO, STT accepts Out B1/B2, CALL OK survives slot rollover, persistent LOCAL ONLY |
+| 2026-09-12T16:33:38.591Z | 8529bab | v4.106.0 quiet sink test - capped Studio patient-path test, visible sink errors |
+| 2026-09-12T17:02:30.540Z | e2afb2c | v4.107.0 twin-endpoint disambiguation - ghost Voicemeeter Input id tails |
+| 2026-09-12T17:10:08.512Z | 9cf66b9 | v4.108.0 quieter vault lock, hidden local servers rule |
+| 2026-09-12T21:33:21.657Z | 07adf32 | v4.108.2 soundboard selected-output binding, terminal cancellation, corrected VoiceMeeter inspection |
+| 2026-09-12T21:59:09.536Z | 699c97c | v4.108.3 correct VoiceMeeter Input vs In 1 and explicit Caller tests |
