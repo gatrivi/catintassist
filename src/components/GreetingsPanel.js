@@ -236,15 +236,14 @@ export const GreetingsPanel = ({ onEditModeChange, onExitStudio, micTestMode = f
   const localOnlyPlayback = isLocalOnlyPlayback(micTestMode);
   const sinkRawLabel = (outputDevices.find((d) => d.deviceId === selectedSinkId)?.label || '').trim();
   const sinkRouteDiag = diagnoseVbCableRoute({
-    cableMode: !micTestMode,
+    cableMode: true, // Explicit Caller tests use this output in either STT mode.
     sttInputLabel: '',
     sinkLabel: sinkRawLabel,
     sinkId: selectedSinkId,
   });
   // ponytail: studio tip only cares about sink; STT in is handled by I/O strip
   const showSinkRouteTip =
-    !micTestMode &&
-    !localOnlyPlayback &&
+    !!selectedSinkId &&
     (!sinkRouteDiag.ok && sinkRouteDiag.code?.startsWith('sink_'));
   const [safetyNotice, setSafetyNotice] = useState('');
   const [waveforms, setWaveforms] = useState({});
@@ -860,7 +859,10 @@ export const GreetingsPanel = ({ onEditModeChange, onExitStudio, micTestMode = f
 
     setSafetyNotice(''); // v4.104.0: fresh attempt clears the previous route notice
     const attempt = ++playbackAttemptRef.current;
-    let sendToCaller = routeToVirtualMic && !localOnlyPlayback;
+    // An explicit Caller test checks the chosen output, independent of STT mode.
+    // Ordinary tiles and You previews keep Mic mode's local-only behavior.
+    const explicitCallerTest = callerOnly && bypassGate;
+    let sendToCaller = routeToVirtualMic && (explicitCallerTest || !localOnlyPlayback);
     if (sendToCaller && !bypassGate) {
       const score = healthScores[key];
       const callOk = isCallPathReady(manualCallOk, key, selectedSinkId, selectedMicId);
@@ -1099,7 +1101,7 @@ export const GreetingsPanel = ({ onEditModeChange, onExitStudio, micTestMode = f
                 className="sb-btn sb-btn--call"
                 onClick={() => playAudioBlock(key, true, { bypassGate: true, callerOnly: true, testCap: true })}
                 disabled={!selectedSinkId}
-                title={selectedSinkId ? 'Quiet sink test of this clip (capped low) — watch the VAIO strip meter' : 'Pick VB-Cable in header Speaker first'}
+                title={selectedSinkId ? `Send a quiet test to ${sinkLabel}, including in Mic mode — watch its mixer meter` : 'Pick a greeting playback output first'}
               >
                 📡 Caller
               </button>
@@ -1448,7 +1450,7 @@ export const GreetingsPanel = ({ onEditModeChange, onExitStudio, micTestMode = f
           </span>
           {micTestMode && (
             <span style={{ fontSize: '0.62rem', color: '#fbbf24', fontWeight: 700 }}>
-              🎤 Mic mode — speakers only (quality check)
+              🎤 Mic mode — tiles play locally; 📡 Caller tests the selected output
             </span>
           )}
           {!micTestMode && (

@@ -175,6 +175,8 @@ describe("audioSourceManager", () => {
 
   test("explicit user sink pick is never auto-fixed", () => {
     expect(shouldAutoFixSink({ explicit: true, sinkId: "vm", sinkLabel: "Voicemeeter Input (VB-Audio)" })).toBe(false);
+    expect(shouldAutoFixSink({ explicit: true, sinkId: "vm-in1", sinkLabel: "Voicemeeter In 1 (VB-Audio Voicemeeter VAIO)" })).toBe(false);
+    expect(shouldAutoFixSink({ explicit: false, sinkId: "vm-in1", sinkLabel: "Voicemeeter In 1 (VB-Audio Voicemeeter VAIO)" })).toBe(true);
     expect(shouldAutoFixSink({ explicit: true, sinkId: "", sinkLabel: "" })).toBe(true);
     expect(shouldAutoFixSink({ explicit: false, sinkId: "", sinkLabel: "" })).toBe(true);
     expect(shouldAutoFixSink({ explicit: false, sinkId: "in", sinkLabel: "CABLE Input (VB-Audio)" })).toBe(false);
@@ -191,8 +193,7 @@ describe("audioSourceManager", () => {
   test("Voicemeeter sink accepts Standard input only", () => {
     expect(isVbCableSinkLabel("Voicemeeter Input (VB-Audio Voicemeeter VAIO)")).toBe(true);
     expect(isVbCableSinkLabel("Voicemeeter Input")).toBe(true);
-    // v4.104.0: "Voicemeeter In 1" = same VAIO endpoint under newer driver naming.
-    expect(isVbCableSinkLabel("Voicemeeter In 1 (VB-Audio Voicemeeter VAIO)")).toBe(true);
+    expect(isVbCableSinkLabel("Voicemeeter In 1 (VB-Audio Voicemeeter VAIO)")).toBe(false);
     expect(isVbCableSinkLabel("Voicemeeter Aux Input (VB-Audio Voicemeeter AUX VAIO)")).toBe(false);
     expect(isVbCableSinkLabel("Voicemeeter In 2 (VB-Audio Voicemeeter AUX VAIO)")).toBe(false);
     expect(isVbCableSinkLabel("Voicemeeter Input 1 (Potato)")).toBe(false);
@@ -219,12 +220,44 @@ describe("audioSourceManager", () => {
     expect(pickVbCableSinkDevice(outputs)).toBe("vm-in");
   });
 
-  test("pickVbCableSinkDevice recognizes 'Voicemeeter In 1' naming", () => {
+  test("pickVbCableSinkDevice skips In 1 extension for CABLE Input", () => {
     const outputs = [
       { deviceId: "cable-in", label: "CABLE Input (VB-Audio Virtual Cable)", kind: "audiooutput" },
       { deviceId: "vm-in1", label: "Voicemeeter In 1 (VB-Audio Voicemeeter VAIO)", kind: "audiooutput" },
     ];
-    expect(pickVbCableSinkDevice(outputs)).toBe("vm-in1");
+    expect(pickVbCableSinkDevice(outputs)).toBe("cable-in");
+  });
+
+  test("pickVbCableSinkDevice selects real Input after an earlier In 1 extension", () => {
+    const outputs = [
+      { deviceId: "vm-in1", label: "Voicemeeter In 1 (VB-Audio Voicemeeter VAIO)", kind: "audiooutput" },
+      { deviceId: "cable-in", label: "CABLE Input (VB-Audio Virtual Cable)", kind: "audiooutput" },
+      { deviceId: "vm-in", label: "Voicemeeter Input (VB-Audio Voicemeeter VAIO)", kind: "audiooutput" },
+    ];
+    expect(pickVbCableSinkDevice(outputs)).toBe("vm-in");
+  });
+
+  test("pickVbCableSinkDevice never auto-picks numbered extensions", () => {
+    const outputs = [1, 2, 3, 4, 5].map((number) => ({
+      deviceId: `vm-in${number}`,
+      label: `Voicemeeter In ${number} (VB-Audio Voicemeeter VAIO)`,
+      kind: "audiooutput",
+    }));
+    expect(pickVbCableSinkDevice(outputs)).toBe("");
+  });
+
+  test.each([1, 2, 3, 4, 5])("diagnoseVbCableRoute explains optional In %i extension", (number) => {
+    const d = diagnoseVbCableRoute({
+      cableMode: true,
+      sttInputLabel: "CABLE Output (VB-Audio Virtual Cable)",
+      sinkLabel: `Voicemeeter In ${number} (VB-Audio Voicemeeter VAIO)`,
+      sinkId: `vm-in${number}`,
+    });
+    expect(d.ok).toBe(false);
+    expect(d.code).toBe("sink_voicemeeter_extension");
+    expect(d.level).toBe("warn");
+    expect(d.tip).toMatch(/Voicemeeter Input \(no number\)/);
+    expect(d.tip).toMatch(/license\/activation/);
   });
 
   test("pickVbCableSinkDevice never auto-picks AUX/VAIO3 side buses", () => {

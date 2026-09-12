@@ -83,11 +83,9 @@ export const isVbCableSinkLabel = (label) => {
   if (l.includes("cable input")) return true;
   if (/\bcable in\b/.test(l)) return true;
   if (/^voicemeeter\b/.test(l) && /\bin(put)?\b/.test(l)) {
-    // Standard VAIO endpoint only: "Voicemeeter Input" or "Voicemeeter In 1"
-    // (newer driver naming, vendor suffix "(VB-Audio Voicemeeter VAIO)").
-    // AUX / VAIO3 / numbered ("In 2+", "Input 1") sit on other buses
-    // (docs/handoff/09_voicemeeter_safeguards.md) — recognized, but warn-tier.
-    return /^voicemeeter (input|in 1)(\s*\(.*\))?$/.test(l);
+    // Only the standard VAIO endpoint. "In 1" through "In 5" are optional,
+    // licensed hardware-input extensions, not aliases for "Input".
+    return /^voicemeeter input(\s*\(.*\))?$/.test(l);
   }
   return false;
 };
@@ -141,12 +139,12 @@ export const pickVbCableSttInputDevice = (inputDevices = []) => {
 export const pickVbCableSinkDevice = (outputDevices = []) => {
   // v4.104.0: standard "Voicemeeter Input" first (greetings target bus per
   // docs/soundboard/voicemeeter-mic-plan.md), then plain CABLE Input. AUX/VAIO3
-  // are never auto-picked (side buses — may not reach the call).
+  // and numbered extensions are never auto-picked (may not reach the call).
   const lc = (d) => (d.label || "").toLowerCase();
   const not16 = (d) => !/16\s*ch/i.test(d.label || "");
   const find = (re) => outputDevices.find((d) => re.test(lc(d)) && not16(d));
   const match =
-    find(/^voicemeeter (input|in 1)(\s*\(.*\))?$/) ||
+    find(/^voicemeeter input(\s*\(.*\))?$/) ||
     find(/\bcable input\b/) ||
     find(/\bcable in\b/);
   return match?.deviceId || "";
@@ -216,7 +214,16 @@ export const diagnoseVbCableRoute = ({
   }
 
   if (!sinkOk) {
-    // v4.104.0: Voicemeeter side-bus endpoints (AUX/VAIO3/numbered) are real
+    if (/^voicemeeter in [1-5]\b/i.test(sinkLabel || "")) {
+      return {
+        ok: false,
+        code: "sink_voicemeeter_extension",
+        level: "warn",
+        short: "Optional Voicemeeter input",
+        tip: "Pick Voicemeeter Input (no number) for greetings. Voicemeeter In 1–5 are optional hardware-input extensions that require license/activation; they are not the standard VAIO input.",
+      };
+    }
+    // v4.104.0: Voicemeeter side-bus endpoints (AUX/VAIO3) are real
     // Voicemeeter inputs — warn, don't claim "speakers"; they may not reach B1.
     if (isVoicemeeterInputLabel(sinkLabel)) {
       return {

@@ -766,7 +766,7 @@ export default function SettingsPanel({
                   ))}
                 </select>
                 <span style={{ ...devHintStyle }}>
-                  Where greetings play — VB-Cable Input reaches the patient; speakers are for local testing.
+                  For Voicemeeter, choose Voicemeeter Input (no number). In 1–5 are optional extension inputs. The call site's microphone must use Voicemeeter Output / Out B1. Speakers are for local testing.
                 </span>
               </label>
             </div>
@@ -801,8 +801,7 @@ export default function SettingsPanel({
                   </select>
                 </label>
                 <p style={{ fontSize: 10, color: 'rgba(255,255,255,0.50)', margin: 0, lineHeight: 1.45 }}>
-                  Choose <strong>CABLE Output</strong> / <strong>Voicemeeter Output</strong>, not <strong>CABLE Input</strong>.
-                  (It acts like a microphone, but it should carry your interpreter-tab audio.)
+                  Choose the recording device carrying incoming call audio. With greetings on Voicemeeter and call audio on VB-Cable, use <strong>CABLE Output</strong>. Out B1 carries your outgoing mic/greetings on that route.
                   If device labels are blank, CatIntAssist will request temporary audio permission.
                 </p>
                 <button

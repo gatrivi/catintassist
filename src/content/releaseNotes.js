@@ -25,6 +25,27 @@ import { APP_VERSION } from '../constants/version';
 /** Newest first. Only the entry matching APP_VERSION is shown on load. */
 export const RELEASE_NOTES_CATALOG = [
   {
+    version: '4.108.3',
+    id: 'voicemeeter-input-not-in1',
+    highlightElementIds: ['audio-route-sink-select'],
+    es: {
+      title: '🔊 Elegí Voicemeeter Input, sin número',
+      intro: 'Para saludos por VAIO, elegí Voicemeeter Input (sin número). In 1–5 son entradas de extensión opcionales; la app las identificaba incorrectamente.',
+      sections: [{ heading: 'Qué cambió', bullets: [
+        'La selección automática evita In 1–5 y muestra una advertencia si elegís una extensión.',
+        '📡 Caller prueba la salida elegida también en modo Mic; los botones normales siguen reproduciendo localmente.',
+      ] }],
+    },
+    en: {
+      title: '🔊 Voicemeeter Input ≠ In 1',
+      intro: 'For greetings through VAIO, choose Voicemeeter Input (no number). In 1–5 are optional extension inputs; the app previously misidentified them.',
+      sections: [{ heading: 'What changed', bullets: [
+        'Automatic selection skips In 1–5 and warns when an extension is selected.',
+        '📡 Caller tests the selected output even in Mic mode; ordinary Mic-mode playback remains local.',
+      ] }],
+    },
+  },
+  {
     version: '4.108.2',
     id: 'direct-sink-voicemeeter-fix-v1',
     highlightElementIds: ['audio-route-sink-select'],

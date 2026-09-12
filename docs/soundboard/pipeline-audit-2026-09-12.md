@@ -7,6 +7,12 @@ Verified against working tree at v4.108.1 (see §0.1 for dirty-tree caveat).
 
 ## 0. TLDR + how to use this doc
 
+### Endpoint correction after user's no-meter repro (v4.108.3)
+
+**Voicemeeter In 1 is NOT Voicemeeter Input.** In 1–5 are optional licensed VAIO extension inputs mapped to hardware strips. Normal **Voicemeeter Input** feeds the VAIO strip. The user had selected In 1; the app incorrectly accepted and auto-picked it as equivalent. Matcher, picker and warning corrected. [Official naming guide](https://voicemeeter.com/quick-tips-voicemeeter-virtual-inputs-and-outputs-windows-10-and-up/).
+
+The older sections below claiming In 1 is the new name for VAIO are superseded. No-meter behavior can result from an inactive extension; duplicate labels do not establish the cause. A separate confirmed code defect made 📡 Caller silent in Mic mode (both playback outputs false); the explicit test now uses the selected sink while ordinary Mic-mode playback remains local. User's Mic-mode state and successful hardware delivery remain unverified.
+
 ### Follow-up corrections (v4.108.2)
 
 - **App defect confirmed:** the direct context needed `resume()` and `setSinkId()` before playback. The pending v4.108.1 sink-change guard still fell through to the old output; v4.108.2 cancels across all fallback callers, including Stop/Restore during decoding. Provider regression tests added.

@@ -2,6 +2,12 @@
 
 **Version source:** `src/constants/version.js` (must match `package.json` + top-right UI pill)
 
+## v4.108.3 - Voicemeeter Input is not In 1
+
+- Fixed incorrect endpoint matching: In 1–5 are optional VAIO extensions, not the normal VAIO input. Auto-pick skips them; existing explicit picks stay put with a routing warning.
+- Explicit Studio 📡 Caller tests now send to the selected greeting output even in Mic mode; previously neither output played. Ordinary Mic-mode playback stays local.
+- Settings now explain the separate greeting, transcription and call-site microphone routes.
+
 ## v4.108.2 - Greeting output binding and cancellation
 
 - Direct greeting playback now resumes and binds the selected output before rendering (includes the unshipped v4.108.1 fix).
