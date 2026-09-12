@@ -191,7 +191,7 @@ export const MicVerifyPanel = () => {
             {pinnedMissing && <option value="__missing__">⚠ {pinnedLabel} (missing)</option>}
             {micChoices.map((d, i) => (
               <option key={d.deviceId} value={d.label || d.deviceId}>
-                {displayDeviceName(d, i, 'mic')}
+                {displayDeviceName(d, i, 'mic', null, micChoices)}
               </option>
             ))}
           </select>
@@ -201,7 +201,7 @@ export const MicVerifyPanel = () => {
           <select value={selectedSinkId} onChange={(e) => changeSinkId(e.target.value)}>
             <option value="">System default</option>
             {outputDevices.map((d, i) => (
-              <option key={d.deviceId} value={d.deviceId}>{displayDeviceName(d, i, 'out')}</option>
+              <option key={d.deviceId} value={d.deviceId}>{displayDeviceName(d, i, 'out', null, outputDevices)}</option>
             ))}
           </select>
         </label>

@@ -28,6 +28,7 @@ import { Phase0SmokeDashboard, isPhase0SmokeEnabled } from './Phase0SmokeDashboa
 import { AuthPanel } from './AuthPanel';
 import { CorrectionsBackupPanel } from './CorrectionsBackupPanel';
 import { CallLogImportPanel } from './CallLogImportPanel';
+import { displayDeviceName } from '../utils/audioDeviceLabels';
 import { useAuth } from '../contexts/AuthContext';
 import { useAudioSource } from '../hooks/useAudioSource';
 import { useAudioSettings } from '../contexts/AudioSettingsContext';
@@ -760,7 +761,7 @@ export default function SettingsPanel({
                   <option value="">Default (system speakers)</option>
                   {outputDevices.map((d, i) => (
                     <option key={d.deviceId} value={d.deviceId}>
-                      {d.label || `Output ${i + 1}`}
+                      {displayDeviceName(d, i, 'out', null, outputDevices)}
                     </option>
                   ))}
                 </select>

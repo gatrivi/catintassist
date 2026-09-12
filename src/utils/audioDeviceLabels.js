@@ -55,8 +55,29 @@ export const rememberDeviceLabels = (
 /**
  * Display name for a picker option.
  * Live label > remembered label > stable "Output N" slot (never a raw deviceId hash).
+ *
+ * v4.107.0: twin endpoints — Voicemeeter Standard + Potato leftovers register
+ * identical labels ("Voicemeeter Input (VB-Audio Voicemeeter VAIO)" twice).
+ * Picking the ghost twin plays into nothing: no error, no needle. When
+ * `siblings` (the full device list) is passed and 2+ entries share the base
+ * name, append an id tail (`· #a1b2`) so the live twin can be told apart.
  */
-export const displayDeviceName = (device, index = 0, kind = "out", known = null) => {
+export const displayDeviceName = (device, index = 0, kind = "out", known = null, siblings = null) => {
+  const base = baseDeviceName(device, index, kind, known);
+  if (!siblings || !device?.deviceId) return base;
+  const memo = known || readKnownDeviceLabels();
+  const hasTwin = siblings.some(
+    (s, i) =>
+      s?.deviceId &&
+      s.deviceId !== device.deviceId &&
+      baseDeviceName(s, i, kind, memo) === base,
+  );
+  if (!hasTwin) return base;
+  const tail = String(device.deviceId).replace(/[^a-z0-9]/gi, "").slice(-4) || "?";
+  return `${base} · #${tail}`;
+};
+
+const baseDeviceName = (device, index = 0, kind = "out", known = null) => {
   const live = (device?.label || "").trim();
   if (live) return live.length > 26 ? `${live.slice(0, 26)}…` : live;
   const memo = known || readKnownDeviceLabels();

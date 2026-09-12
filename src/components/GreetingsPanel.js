@@ -526,21 +526,23 @@ export const GreetingsPanel = ({ onEditModeChange, onExitStudio, micTestMode = f
   const knownGreetLabels = readKnownDeviceLabels();
   const sinkDev = outputDevices.find((d) => d.deviceId === selectedSinkId);
   const micDev = inputDevices.find((d) => d.deviceId === selectedMicId);
+  // v4.107.0: siblings passed so twin endpoints (Standard + Potato ghosts
+  // sharing one label) show an id tail — picking the ghost = silent no-needle.
   const sinkLabel = truncateDeviceLabel(
     !selectedSinkId
       ? 'Default out'
       : sinkDev
-        ? displayDeviceName(sinkDev, outputDevices.indexOf(sinkDev), 'out', knownGreetLabels)
+        ? displayDeviceName(sinkDev, outputDevices.indexOf(sinkDev), 'out', knownGreetLabels, outputDevices)
         : (knownGreetLabels[selectedSinkId] || 'Output gone — re-pick'),
-    26,
+    36,
   );
   const micLabel = truncateDeviceLabel(
     !selectedMicId
       ? 'Default mic'
       : micDev
-        ? displayDeviceName(micDev, inputDevices.indexOf(micDev), 'mic', knownGreetLabels)
+        ? displayDeviceName(micDev, inputDevices.indexOf(micDev), 'mic', knownGreetLabels, inputDevices)
         : (knownGreetLabels[selectedMicId] || 'Mic gone — re-pick'),
-    26,
+    36,
   );
 
   const getRouteBadge = (clipKey) => {
@@ -936,6 +938,11 @@ export const GreetingsPanel = ({ onEditModeChange, onExitStudio, micTestMode = f
         const fingerprint = buildRouteFingerprint(key, selectedSinkId, selectedMicId);
         setPendingRouteConfirm({ clipKey: key, fingerprint, playedAt: Date.now() });
         setLastRouteTest({ clipKey: key, result: 'sink_played', at: Date.now() });
+        // v4.107.0: success proof — the browser rendered into the sink without
+        // error. If no VAIO needle moved, the picked twin is a ghost endpoint:
+        // re-pick the other same-named entry in 🔊.
+        setSafetyNotice(`📡 Into ${sinkLabel} ✓ — if no needle moved, re-pick the other same-named entry in 🔊`);
+        window.setTimeout(() => setSafetyNotice(''), 10000);
       }
     };
     audioRefLocal.current.onended = onEnd;

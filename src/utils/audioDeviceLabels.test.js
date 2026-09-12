@@ -41,4 +41,19 @@ describe("audioDeviceLabels", () => {
     expect(readKnownDeviceLabels()).toEqual({});
     expect(displayDeviceName({ deviceId: "a", label: "" }, 0, "out")).toBe("Output 1 · names hidden");
   });
+
+  // v4.107.0: identical labels (Voicemeeter Standard + Potato ghosts) get an id tail.
+  test("twin endpoints with identical labels are told apart", () => {
+    const twins = [
+      { deviceId: "live-device-1111", label: "Voicemeeter Input (VB-Audio Voicemeeter VAIO)" },
+      { deviceId: "ghost-device-2222", label: "Voicemeeter Input (VB-Audio Voicemeeter VAIO)" },
+    ];
+    expect(displayDeviceName(twins[0], 0, "out", null, twins)).toMatch(/#1111$/);
+    expect(displayDeviceName(twins[1], 1, "out", null, twins)).toMatch(/#2222$/);
+    // No siblings → no suffix (backwards compatible).
+    expect(displayDeviceName(twins[0], 0, "out")).toBe("Voicemeeter Input (VB-Audi…");
+    // Unique labels → no suffix even with siblings passed.
+    const mixed = [...twins, { deviceId: "c expressed", label: "CABLE Input (VB-Audio Virtual Cable)" }];
+    expect(displayDeviceName(mixed[2], 2, "out", null, mixed)).toBe("CABLE Input (VB-Audio Virt…");
+  });
 });

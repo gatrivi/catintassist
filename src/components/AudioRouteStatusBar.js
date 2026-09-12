@@ -156,8 +156,12 @@ export const AudioRouteStatusBar = ({
     [inputDevices, outputDevices],
   );
   const outNamesHidden = hasHiddenLabels(outputDevices);
+  // v4.107.0: width 36 keeps a twin suffix ("· #a1b2") readable.
   const formatDeviceOption = (device, kind, index = 0) =>
-    truncateDeviceLabel(displayDeviceName(device, index, kind, knownLabels), 26);
+    truncateDeviceLabel(
+      displayDeviceName(device, index, kind, knownLabels, kind === 'mic' ? inputDevices : outputDevices),
+      36,
+    );
 
   const micDeviceLabel = useMemo(() => {
     const dev = inputDevices.find((d) => d.deviceId === selectedMicId);

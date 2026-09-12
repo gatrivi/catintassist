@@ -45,6 +45,7 @@ import { ConnectInterpretButton } from './ConnectInterpretButton';
 import { AudioRouteStatusBar } from './AudioRouteStatusBar';
 import { HeaderMetricsStrip } from './HeaderMetricsStrip';
 import { playTestToneLocal, playTestToneSink } from '../utils/audioSelfTest';
+import { displayDeviceName } from '../utils/audioDeviceLabels';
 import { APP_VERSION_LABEL } from '../constants/version';
 import { AutopilotChip } from './AutopilotGuard';
 import { getAppStatus } from '../utils/appStatus';
@@ -2707,7 +2708,7 @@ export const DashboardHeader = ({
                 onFocus={() => fetchDevices({ requestMicPermissionForLabels: false })}
               >
                 <option value="">🔊 Spk</option>
-                {outputDevices.map(d => <option key={d.deviceId} value={d.deviceId}>{d.label || `Spk ${d.deviceId.slice(0,5)}`}</option>)}
+                {outputDevices.map((d, i) => <option key={d.deviceId} value={d.deviceId} title={d.label || undefined}>{displayDeviceName(d, i, 'out', null, outputDevices)}</option>)}
               </select>
             </div>
             )}

@@ -2,6 +2,12 @@
 
 **Version source:** `src/constants/version.js` (must match `package.json` + top-right UI pill)
 
+## v4.107.0 - Twin-endpoint disambiguation (ghost Voicemeeter Input)
+
+- **Root cause of silent no-needle:** Voicemeeter Standard + Potato leftovers register identically-labeled outputs. Picking the ghost twin plays into nothing — no error, no needle. Every VB-out picker (Settings, I/O strip, header, Mic Verify) now appends an id tail (`· #a1b2`) when 2+ entries share a label, so the live twin can be told apart.
+- **Success proof:** sink test fires now confirm `📡 Into X ✓ — if no needle moved, re-pick the other same-named entry`.
+- Tests: twin-suffix cases in `audioDeviceLabels.test.js`.
+
 ## v4.106.0 - Quiet sink test (no more "no needle" mystery)
 
 - **Studio sink test, quiet by design:** clip-card 📡 Caller + Check-panel 📡 Send now play the real recorded clip into VB out capped at 0.4 (ignores a 100% slider); footer beep is a soft fixed-0.2 tone, sink-only — never your speakers. Judge voice quality safely by watching the VAIO strip meter.
