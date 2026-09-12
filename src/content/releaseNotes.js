@@ -25,6 +25,29 @@ import { APP_VERSION } from '../constants/version';
 /** Newest first. Only the entry matching APP_VERSION is shown on load. */
 export const RELEASE_NOTES_CATALOG = [
   {
+    version: '4.108.2',
+    id: 'direct-sink-voicemeeter-fix-v1',
+    highlightElementIds: ['audio-route-sink-select'],
+    es: {
+      title: '🔊 Saludos: salida elegida y cancelación segura',
+      intro: 'v4.108.2 — La ruta directa ahora aplica el VB out elegido antes de reproducir. Detener o cambiar la salida cancela los saludos pendientes, también en las rutas de respaldo. Falta comprobar la llegada al interlocutor en tu equipo.',
+      sections: [{ heading: 'Qué cambió', bullets: [
+        'Cada saludo hace resume + setSinkId al VB out (Voicemeeter Input / CABLE Input)',
+        'El navegador puede aceptar una salida inactiva: comprobá el medidor VAIO y la grabación de B1',
+        'Detener, restaurar micrófono o cambiar salida cancela el disparo pendiente sin fallback',
+      ] }],
+    },
+    en: {
+      title: '🔊 Greetings: selected output and safe cancellation',
+      intro: 'v4.108.2 — Direct playback now binds the selected VB out before playing. Stop or an output change cancels pending greetings, including fallback playback. Caller delivery still needs verification on your equipment.',
+      sections: [{ heading: 'What changed', bullets: [
+        'Every greeting resumes + setSinkId to VB out (Voicemeeter Input / CABLE Input)',
+        'A browser can accept an inactive output: check the VAIO meter and a B1 recording',
+        'Stop, Restore Mic, or an output change cancels pending playback without fallback',
+      ] }],
+    },
+  },
+  {
     version: '4.105.1',
     id: 'voicemeeter-naming-call-ok-v1',
     highlightElementIds: ['audio-route-sink-select'],

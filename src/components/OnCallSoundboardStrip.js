@@ -85,6 +85,7 @@ export function OnCallSoundboardStrip({ micTestMode = false, collapsed: collapse
 
   const audioRefLocal = useRef(new Audio());
   const audioRefSink = useRef(new Audio());
+  const playbackAttemptRef = useRef(0);
   const rampCancelRef = useRef(null);
   const progressRafRef = useRef(null);
   const thumbUrlsRef = useRef([]);
@@ -165,10 +166,11 @@ export function OnCallSoundboardStrip({ micTestMode = false, collapsed: collapse
     progressRafRef.current = requestAnimationFrame(trackProgress);
   }, []);
 
-  const clearPlay = useCallback(() => {
+  const clearPlay = useCallback((stopSink = true) => {
+    playbackAttemptRef.current += 1;
     setPlayingKey(null);
     stopProgress();
-    stopClipToSink();
+    if (stopSink) stopClipToSink();
     audioRefLocal.current.pause();
     audioRefSink.current.pause();
     window.__CAT_AUDIO_VOL = 0;
@@ -190,6 +192,7 @@ export function OnCallSoundboardStrip({ micTestMode = false, collapsed: collapse
     }
     clearPlay();
 
+    const attempt = ++playbackAttemptRef.current;
     if (micTestMode) {
       const url = URL.createObjectURL(blob);
       logRouteEvent(ROUTE_EVENT.PLAY_START, { clipKey: key, routeMode: 'local_speakers', onCall: true, micTestMode: true });
@@ -260,6 +263,14 @@ export function OnCallSoundboardStrip({ micTestMode = false, collapsed: collapse
 
       if (usePassthrough) {
         const pt = await playClipToSink(blob, sinkVolume, { clipKey: key });
+        if (pt.cancelled) {
+          if (attempt !== playbackAttemptRef.current) return;
+          clearPlay(false); // Cancellation must not stop the shared sink's replacement clip.
+          if (pt.reason === 'sink_changed') {
+            flashNotice('Output changed — play again on the new route.');
+          }
+          return;
+        }
         if (!pt.ok) {
           logRouteEvent(ROUTE_EVENT.FALLBACK_DUAL, { clipKey: key, reason: pt.reason });
           const bound = await bindAudioToSink(audioRefSink.current, selectedSinkId);

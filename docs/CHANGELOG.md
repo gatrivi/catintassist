@@ -2,6 +2,13 @@
 
 **Version source:** `src/constants/version.js` (must match `package.json` + top-right UI pill)
 
+## v4.108.2 - Greeting output binding and cancellation
+
+- Direct greeting playback now resumes and binds the selected output before rendering (includes the unshipped v4.108.1 fix).
+- Stop, Restore Mic, output changes and replacement clips cancel pending playback; cancelled requests cannot restart through fallback or clear a newer clip.
+- Mixer inspection: Standard B1 is `Bus[1]`, not `Bus[2]`; corrected Potato strip indexes. No automatic live mixer changes.
+- Hardware delivery remains unverified; browser playback success cannot prove an endpoint reaches the caller.
+
 ## v4.108.0 - Quieter vault lock + hidden local servers
 
 - **Deepgram vault:** "Lock (Clear Session)" red alarm button → quiet underlined text link; key copy stays, menace gone.

@@ -255,6 +255,7 @@ export const GreetingsPanel = ({ onEditModeChange, onExitStudio, micTestMode = f
   const [editingKey, setEditingKey] = useState(null);
 
   const audioRefSink = useRef(new Audio());
+  const playbackAttemptRef = useRef(0);
   const audioRefLocal = useRef(new Audio());
   const rampCancelRef = useRef(null);
   const mediaRecorderRef = useRef(null);
@@ -772,13 +773,16 @@ export const GreetingsPanel = ({ onEditModeChange, onExitStudio, micTestMode = f
     animationRef.current = requestAnimationFrame(trackProgress);
   };
 
-  const clearPlaybackState = () => {
+  const clearPlaybackState = (stopSink = true) => {
+    playbackAttemptRef.current += 1;
     setPlayingKey(null);
     setPlaybackProgress(0);
     setRouteLive(false);
     window.__CAT_AUDIO_VOL = 0;
-    stopClipToSink();
-    setSinkPlaybackActive(false);
+    if (stopSink) {
+      stopClipToSink();
+      setSinkPlaybackActive(false);
+    }
     audioRefSink.current.pause();
     audioRefLocal.current.pause();
     if (rampCancelRef.current) rampCancelRef.current();
@@ -855,6 +859,7 @@ export const GreetingsPanel = ({ onEditModeChange, onExitStudio, micTestMode = f
     }
 
     setSafetyNotice(''); // v4.104.0: fresh attempt clears the previous route notice
+    const attempt = ++playbackAttemptRef.current;
     let sendToCaller = routeToVirtualMic && !localOnlyPlayback;
     if (sendToCaller && !bypassGate) {
       const score = healthScores[key];
@@ -967,6 +972,15 @@ export const GreetingsPanel = ({ onEditModeChange, onExitStudio, micTestMode = f
               if (!playLocal) setPlaybackProgress(p);
             },
           }).then(async (pt) => {
+            if (pt.cancelled) {
+              ended = true; // A stopped test must never earn SINK PLAYED / CALL OK.
+              if (attempt !== playbackAttemptRef.current) return;
+              clearPlaybackState(false); // The shared sink may already be playing another clip.
+              if (pt.reason === 'sink_changed') {
+                setSafetyNotice('Output changed — send the greeting again to test the new route.');
+              }
+              return;
+            }
             if (!pt.ok) {
               logRouteEvent(ROUTE_EVENT.FALLBACK_DUAL, { clipKey: key, reason: pt.reason });
               const bound = await bindAudioToSink(audioRefSink.current, selectedSinkId);

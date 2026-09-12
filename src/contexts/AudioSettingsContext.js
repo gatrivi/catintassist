@@ -46,6 +46,9 @@ export const AudioSettingsProvider = ({ children }) => {
   const passthroughAudioRef = useRef(new Audio());
   const micStreamRef = useRef(null);
   const clipPlaybackStopRef = useRef(null);
+  const clipGenerationRef = useRef(0);
+  const currentSinkRef = useRef(selectedSinkId);
+  currentSinkRef.current = selectedSinkId;
   const sinkPlaybackActiveRef = useRef(false);
   const [sinkPlaybackActive, setSinkPlaybackActiveState] = useState(false);
   const [micLevel, setMicLevel] = useState(0);
@@ -86,6 +89,7 @@ export const AudioSettingsProvider = ({ children }) => {
       let nextSinkId = selectedSinkId;
       if (nextSinkId && !outputs.some((d) => d.deviceId === nextSinkId)) {
         nextSinkId = '';
+        currentSinkRef.current = '';
         setSelectedSinkId('');
         persistSinkExplicit(false); // device gone — explicit pick no longer applies
       }
@@ -99,6 +103,7 @@ export const AudioSettingsProvider = ({ children }) => {
           shouldAutoFixSink({ explicit: readSinkExplicit(), sinkId: nextSinkId, sinkLabel })
         ) {
           nextSinkId = pickedSink;
+          currentSinkRef.current = pickedSink;
           setSelectedSinkId(pickedSink);
           try {
             localStorage.setItem('CATINTASSIST_SINK_ID', pickedSink);
@@ -276,6 +281,7 @@ export const AudioSettingsProvider = ({ children }) => {
    * one-tap "Restore Mic" failsafe for crash/mid-clip emergencies.
    */
   const restoreLiveMic = useCallback((reason = 'manual') => {
+    clipGenerationRef.current += 1;
     try { clipPlaybackStopRef.current?.(); } catch (_) {}
     clipPlaybackStopRef.current = null;
     sinkPlaybackActiveRef.current = false;
@@ -320,6 +326,7 @@ export const AudioSettingsProvider = ({ children }) => {
 
   /** Stop passthrough clip playback and restore live mic stream. */
   const stopClipToSink = useCallback(() => {
+    clipGenerationRef.current += 1;
     if (clipPlaybackStopRef.current) {
       clipPlaybackStopRef.current();
       clipPlaybackStopRef.current = null;
@@ -337,6 +344,8 @@ export const AudioSettingsProvider = ({ children }) => {
     logRouteEvent(ROUTE_EVENT.PASSTHROUGH_RESTORE, { routeMode: ROUTE_MODE.PASSTHROUGH });
   }, []);
 
+  useEffect(() => stopClipToSink, [selectedSinkId, stopClipToSink]);
+
   /**
    * Route clip through passthrough element (same VB-Cable path as live mic).
    * @returns {Promise<{ ok: boolean, mode?: string, reason?: string }>}
@@ -346,6 +355,15 @@ export const AudioSettingsProvider = ({ children }) => {
       return { ok: false, reason: 'no_sink_or_blob' };
     }
     stopClipToSink();
+    const generation = clipGenerationRef.current;
+    const entrySink = selectedSinkId;
+    // Cancellation is terminal: neither fallback engine may revive an old fire.
+    const cancellation = () => {
+      if (currentSinkRef.current !== entrySink) return 'sink_changed';
+      if (clipGenerationRef.current !== generation) return 'play_cancelled';
+      return null;
+    };
+    const cancelledResult = () => ({ ok: false, cancelled: true, reason: cancellation() });
 
     const el = passthroughAudioRef.current;
     const savedMic = micStreamRef.current;
@@ -353,9 +371,16 @@ export const AudioSettingsProvider = ({ children }) => {
     // v4.104.0: direct ctx.setSinkId render first — buffered output on the sink's
     // own clock (no live MediaStream, no srcObject swap). The "can of tuna" chop
     // came from the old element-swap path below, which stays as fallback.
+    // v4.108.1: resume + setSinkId on EVERY fire — without this the persistent
+    // ctx renders to the default output (speakers), never Voicemeeter Input.
     try {
-      const ctx = getDirectSinkContext(selectedSinkId);
+      const ctx = getDirectSinkContext(entrySink);
+      await ctx.resume();
+      if (cancellation()) return cancelledResult();
+      await ctx.setSinkId(entrySink);
+      if (cancellation()) return cancelledResult();
       const buffer = await decodeBlobOnContext(ctx, blob);
+      if (cancellation()) return cancelledResult();
       sinkPlaybackActiveRef.current = true;
       setSinkPlaybackActiveState(true);
       setSinkPlaybackActive(true); // duck live mic during clip (same as before, minus swap)
@@ -365,6 +390,7 @@ export const AudioSettingsProvider = ({ children }) => {
       logRouteEvent(ROUTE_EVENT.DIRECT_INJECT, { clipKey, sinkId: selectedSinkId });
 
       await session.promise;
+      if (cancellation()) return cancelledResult();
 
       clipPlaybackStopRef.current = null;
       sinkPlaybackActiveRef.current = false;
@@ -372,6 +398,7 @@ export const AudioSettingsProvider = ({ children }) => {
       logRouteEvent(ROUTE_EVENT.PLAY_END, { clipKey, routeMode: ROUTE_MODE.DIRECT_SINK });
       return { ok: true, mode: ROUTE_MODE.DIRECT_SINK };
     } catch (directErr) {
+      if (cancellation()) return cancelledResult();
       // Unsupported browser, autoplay/resume rejected, or bad sinkId → fall back.
       if (directErr?.message !== 'direct_sink_unsupported') {
         logRouteEvent(ROUTE_EVENT.PLAY_FAIL, {
@@ -387,6 +414,10 @@ export const AudioSettingsProvider = ({ children }) => {
 
     try {
       const { ctx, buffer } = await decodeBlobToBuffer(blob);
+      if (cancellation()) {
+        ctx.close().catch(() => {});
+        return cancelledResult();
+      }
       sinkPlaybackActiveRef.current = true;
       setSinkPlaybackActiveState(true);
 
@@ -405,6 +436,7 @@ export const AudioSettingsProvider = ({ children }) => {
       });
 
       await session.promise;
+      if (cancellation()) return cancelledResult();
 
       clipPlaybackStopRef.current = null;
       sinkPlaybackActiveRef.current = false;
@@ -418,6 +450,7 @@ export const AudioSettingsProvider = ({ children }) => {
       logRouteEvent(ROUTE_EVENT.PLAY_END, { clipKey, routeMode: ROUTE_MODE.PASSTHROUGH });
       return { ok: true, mode: ROUTE_MODE.PASSTHROUGH };
     } catch (err) {
+      if (cancellation()) return cancelledResult();
       console.error('playClipToSink failed:', err);
       clipPlaybackStopRef.current = null;
       sinkPlaybackActiveRef.current = false;
@@ -433,7 +466,7 @@ export const AudioSettingsProvider = ({ children }) => {
       });
       return { ok: false, reason: err?.message || 'play_failed', mode: ROUTE_MODE.PASSTHROUGH };
     }
-  }, [selectedSinkId, stopClipToSink]);
+  }, [selectedSinkId, stopClipToSink, setSinkPlaybackActive]);
 
   // Mic Monitor: hear your own voice through local speakers
   useEffect(() => {
@@ -467,6 +500,8 @@ export const AudioSettingsProvider = ({ children }) => {
   }, [monitorVolume]);
 
   const changeSinkId = (deviceId) => {
+    currentSinkRef.current = deviceId;
+    stopClipToSink();
     setSelectedSinkId(deviceId);
     localStorage.setItem('CATINTASSIST_SINK_ID', deviceId);
     persistSinkExplicit(!!deviceId); // hand-picked — auto-fix keeps hands off
