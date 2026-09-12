@@ -2981,13 +2981,19 @@ body {
   text-shadow: 0 2px 4px rgba(0, 0, 0, 1);
 }
 
+/* v4.110.0: thumb tiles keep their title — bottom gradient scrim, image clean
+   above; bare tiles stay centered with hover reveal. */
+.sb-slot--ready.has-thumb {
+  align-items: flex-end;
+}
+
 .sb-slot--ready.has-thumb .sb-slot-overlay {
-  background: rgba(0, 0, 0, 0.22);
+  background: linear-gradient(to top, rgba(0, 0, 0, 0.82), rgba(0, 0, 0, 0.12) 48%, rgba(0, 0, 0, 0.05));
 }
 
 .sb-slot--ready.has-thumb:hover .sb-slot-overlay,
-.sb-slot--ready.is-playing .sb-slot-overlay {
-  background: rgba(0, 0, 0, 0.45);
+.sb-slot--ready.has-thumb.is-playing .sb-slot-overlay {
+  background: linear-gradient(to top, rgba(0, 0, 0, 0.88), rgba(0, 0, 0, 0.22) 48%, rgba(0, 0, 0, 0.08));
 }
 
 /* Labels/health: hover-only unless .sb-show-chrome */
@@ -2997,6 +3003,10 @@ body {
   opacity: 0;
   transition: opacity 0.15s ease;
   pointer-events: none;
+}
+
+.sb-slot--ready.has-thumb .sb-slot-chrome {
+  opacity: 1;
 }
 
 .sb-slot--ready:hover .sb-slot-chrome,
@@ -4081,7 +4091,9 @@ body:has(.app-container[data-call-mode="true"]) .element-hint-panel {
     overflow: hidden;
   }
 
-  .app-container[data-call-mode="true"] .on-call-soundboard-strip {
+  /* v4.110.0: only the direct-child strip floats — the notes-rail dock keeps
+     its own dock styling during calls. */
+  .app-container[data-call-mode="true"] #main-transcript > .on-call-soundboard-strip {
     position: fixed;
     right: 6px;
     bottom: 6px;
@@ -4095,7 +4107,7 @@ body:has(.app-container[data-call-mode="true"]) .element-hint-panel {
     box-shadow: 0 6px 20px rgba(0, 0, 0, 0.42);
   }
 
-  .app-container[data-call-mode="true"] .on-call-soundboard-strip.is-expanded {
+  .app-container[data-call-mode="true"] #main-transcript > .on-call-soundboard-strip.is-expanded {
     width: min(330px, calc(100vw - 12px));
     max-height: 45vh;
     overflow-y: auto;
@@ -7099,33 +7111,31 @@ body:has(.app-container[data-call-mode="true"]) .element-hint-panel {
   box-sizing: border-box;
 }
 
-.on-call-sb-tile.has-thumb .on-call-sb-tile-chrome {
-  opacity: 0;
-}
-
-.on-call-sb-tile:hover .on-call-sb-tile-chrome,
-.on-call-sb-tile:focus-visible .on-call-sb-tile-chrome,
-.on-call-sb-tile.is-playing .on-call-sb-tile-chrome,
-.on-call-sb-tile:not(.has-thumb) .on-call-sb-tile-chrome {
-  opacity: 1;
-}
-
+/* v4.110.0: title always visible — bottom gradient over thumbs, centered
+   label on bare tiles. Image top stays clean. */
 .on-call-sb-tile-chrome {
   position: absolute;
-  inset: 0;
+  inset: auto 0 0 0;
   display: flex;
-  flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 0.05rem;
-  background: rgba(0, 0, 0, 0.55);
-  font-size: 0.48rem;
+  background: linear-gradient(to top, rgba(0, 0, 0, 0.85), rgba(0, 0, 0, 0));
+  font-size: 0.5rem;
   font-weight: 700;
   line-height: 1.1;
   text-align: center;
-  padding: 0.1rem;
-  transition: opacity 0.12s ease;
+  padding: 7px 2px 1px;
   z-index: 1;
+}
+
+.on-call-sb-tile:not(.has-thumb) .on-call-sb-tile-chrome {
+  inset: 0;
+  padding: 0.1rem;
+  background: rgba(0, 0, 0, 0.55);
+}
+
+.on-call-sb-tile.has-thumb:hover {
+  filter: brightness(1.18);
 }
 
 .on-call-sb-tile-label {
@@ -7141,7 +7151,7 @@ body:has(.app-container[data-call-mode="true"]) .element-hint-panel {
   bottom: 0;
   top: 0;
   background: rgba(16, 185, 129, 0.45);
-  z-index: 0;
+  z-index: 2;
   pointer-events: none;
   transition: width 0.1s linear;
 }
@@ -7161,9 +7171,37 @@ body:has(.app-container[data-call-mode="true"]) .element-hint-panel {
   border-color: var(--btn-test-border);
 }
 
+/* v4.110.0: corner lang badge — color-coded, survives tiny tiles */
 .on-call-sb-lang {
-  font-size: 0.45rem;
-  opacity: 0.75;
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  z-index: 2;
+  font-size: 0.42rem;
+  font-weight: 900;
+  letter-spacing: 0.03em;
+  padding: 0 3px;
+  border-radius: 3px;
+}
+
+.on-call-sb-tile .on-call-sb-lang.lang-en {
+  background: rgba(16, 185, 129, 0.9);
+  color: #042f2e;
+}
+
+.on-call-sb-tile .on-call-sb-lang.lang-es {
+  background: rgba(56, 189, 248, 0.9);
+  color: #082f49;
+}
+
+.on-call-sb-variant {
+  position: absolute;
+  top: 2px;
+  right: 2px;
+  z-index: 2;
+  font-size: 0.5rem;
+  line-height: 1.1;
+  filter: drop-shadow(0 1px 1px rgba(0, 0, 0, 0.9));
 }
 
 .on-call-sb-notice {

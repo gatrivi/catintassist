@@ -47,6 +47,9 @@ const resolveFireKey = (slot, timeOfDay, blobs) => {
   return ['morning', 'afternoon', 'evening'].map((t) => `${slot.actionId}_${t}`).find((k) => blobs[k]) || preferred;
 };
 
+/** v4.110.0: icon shown when a non-preferred time-of-day recording fires. */
+const VARIANT_ICON = { morning: '☀', afternoon: '🌤', evening: '🌙' };
+
 const readThumbSize = () => {
   try {
     const n = parseInt(localStorage.getItem(SIZE_KEY), 10);
@@ -358,6 +361,10 @@ export function OnCallSoundboardStrip({ micTestMode = false, collapsed: collapse
               const lang = action?.lang;
               const thumbUrl = thumbs[slot.actionId];
               const isPlaying = playingKey === key;
+              // v4.110.0: cue when a fallback time-of-day recording is used
+              const variantUsed = slot.dynamic && key !== resolveClipKey(slot, timeOfDay)
+                ? key.slice(slot.actionId.length + 1)
+                : null;
               const blocked = has && !micTestMode && (
                 healthScores[key] === undefined ||
                 healthScores[key] < CALL_ROUTE_MIN_SCORE ||
@@ -384,8 +391,13 @@ export function OnCallSoundboardStrip({ micTestMode = false, collapsed: collapse
                   {isPlaying && (
                     <span className="on-call-sb-tile-progress" style={{ width: `${playbackProgress * 100}%` }} />
                   )}
+                  {lang && <span className={`on-call-sb-lang lang-${lang}`}>{lang.toUpperCase()}</span>}
+                  {variantUsed && (
+                    <span className="on-call-sb-variant" title={`Using the ${variantUsed} recording`}>
+                      {VARIANT_ICON[variantUsed]}
+                    </span>
+                  )}
                   <span className="on-call-sb-tile-chrome">
-                    {lang && <span className="on-call-sb-lang">{lang.toUpperCase()}</span>}
                     <span className="on-call-sb-tile-label">{isPlaying ? '⏹' : label}</span>
                   </span>
                 </button>

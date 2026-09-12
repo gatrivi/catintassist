@@ -25,6 +25,29 @@ import { APP_VERSION } from '../constants/version';
 /** Newest first. Only the entry matching APP_VERSION is shown on load. */
 export const RELEASE_NOTES_CATALOG = [
   {
+    version: '4.111.0',
+    id: 'greetings-in-notes-rail',
+    highlightElementIds: ['soundboard-dock'],
+    es: {
+      title: '🎚️ Saludos en el carril de notas, también en llamada',
+      intro: 'Los saludos ahora viven en la mitad superior de las notas de sesión durante la llamada — y las miniaturas nunca esconden su título.',
+      sections: [{ heading: 'Qué cambió', bullets: [
+        'Con notas abiertas en llamada: saludos arriba, notas abajo — cero espacio robado a la transcripción.',
+        'Los títulos de las miniaturas siempre visibles sobre un degradado sutil; la imagen queda limpia.',
+        'EN/ES ahora con insignia de color (verde/azul) + ícono ☀/🌤/🌙 si suena la variante de otra franja horaria.',
+      ] }],
+    },
+    en: {
+      title: '🎚️ Greetings in the notes rail, in-call too',
+      intro: 'Greetings now live in the top half of session notes during calls — and thumbnails never hide their title.',
+      sections: [{ heading: 'What changed', bullets: [
+        'Notes open during a call: greetings on top, notes below — zero space stolen from transcription.',
+        'Thumbnail titles always visible on a subtle gradient; the image stays clean.',
+        'EN/ES now color-coded badges (green/blue) + ☀/🌤/🌙 icon when a different time-of-day recording fires.',
+      ] }],
+    },
+  },
+  {
     version: '4.110.0',
     id: 'choppiness-verdict',
     highlightElementIds: ['sb-preflight-check'],
