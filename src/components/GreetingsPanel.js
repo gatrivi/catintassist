@@ -849,6 +849,7 @@ export const GreetingsPanel = ({ onEditModeChange, onExitStudio, micTestMode = f
       return;
     }
 
+    setSafetyNotice(''); // v4.104.0: fresh attempt clears the previous route notice
     let sendToCaller = routeToVirtualMic && !localOnlyPlayback;
     if (sendToCaller && !bypassGate) {
       const score = healthScores[key];
@@ -857,8 +858,9 @@ export const GreetingsPanel = ({ onEditModeChange, onExitStudio, micTestMode = f
       // the interpreter decides (e.g. afternoon take scored against the wrong script).
       // CALL OK (route proven to the patient path) stays a hard gate.
       if (!callOk) {
-        setSafetyNotice('📡 Run Call Test and confirm CALL OK before firing to patient path');
-        window.setTimeout(() => setSafetyNotice(''), 4500);
+        // v4.104.0: no auto-clear — a local-only fallback must never look like a
+        // caller fire. Persists until the next play attempt.
+        setSafetyNotice('📡 LOCAL ONLY — run Call Test + CALL OK to arm the patient path');
         sendToCaller = false;
       } else if (!isCallerReady(score)) {
         setSafetyNotice(
@@ -903,15 +905,13 @@ export const GreetingsPanel = ({ onEditModeChange, onExitStudio, micTestMode = f
       if (!bound) {
         if (callerOnly) {
           setLastRouteTest({ clipKey: key, result: 'fail', at: Date.now() });
-          setSafetyNotice('⚠️ Virtual mic route failed — pick VB out (CABLE Input / Voicemeeter Input) in header Speaker');
-          window.setTimeout(() => setSafetyNotice(''), 4500);
+          setSafetyNotice('⚠️ Sink bind failed — pick VB out (CABLE Input / Voicemeeter Input) in header Speaker');
           return;
         }
         playSink = false;
         callerRouteRef.current = false;
         setRouteLive(false);
-        setSafetyNotice('⚠️ Virtual mic route failed — local only');
-        window.setTimeout(() => setSafetyNotice(''), 4500);
+        setSafetyNotice('⚠️ Virtual mic route failed — LOCAL ONLY');
       }
     }
 
@@ -967,8 +967,7 @@ export const GreetingsPanel = ({ onEditModeChange, onExitStudio, micTestMode = f
                 if (rampCancelRef.current) rampCancelRef.current();
                 rampCancelRef.current = rampVolume(null, audioRefSink.current, 0, sinkVolume);
               } else {
-                setSafetyNotice('⚠️ Passthrough + dual route failed — local only');
-                window.setTimeout(() => setSafetyNotice(''), 4500);
+                setSafetyNotice('⚠️ Passthrough + dual route failed — LOCAL ONLY');
               }
             } else if (!playLocal) {
               onEnd();

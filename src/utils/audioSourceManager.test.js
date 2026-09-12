@@ -191,7 +191,10 @@ describe("audioSourceManager", () => {
   test("Voicemeeter sink accepts Standard input only", () => {
     expect(isVbCableSinkLabel("Voicemeeter Input (VB-Audio Voicemeeter VAIO)")).toBe(true);
     expect(isVbCableSinkLabel("Voicemeeter Input")).toBe(true);
+    // v4.104.0: "Voicemeeter In 1" = same VAIO endpoint under newer driver naming.
+    expect(isVbCableSinkLabel("Voicemeeter In 1 (VB-Audio Voicemeeter VAIO)")).toBe(true);
     expect(isVbCableSinkLabel("Voicemeeter Aux Input (VB-Audio Voicemeeter AUX VAIO)")).toBe(false);
+    expect(isVbCableSinkLabel("Voicemeeter In 2 (VB-Audio Voicemeeter AUX VAIO)")).toBe(false);
     expect(isVbCableSinkLabel("Voicemeeter Input 1 (Potato)")).toBe(false);
     expect(isVbCableSinkLabel("Speakers (HS-220U)")).toBe(false);
   });
@@ -199,6 +202,8 @@ describe("audioSourceManager", () => {
   // v4.104.0 — Voicemeeter awareness: pick order + side-bus warn tier.
   test("isVoicemeeterInputLabel recognizes every Voicemeeter input endpoint", () => {
     expect(isVoicemeeterInputLabel("Voicemeeter Input (VB-Audio Voicemeeter VAIO)")).toBe(true);
+    expect(isVoicemeeterInputLabel("Voicemeeter In 1 (VB-Audio Voicemeeter VAIO)")).toBe(true);
+    expect(isVoicemeeterInputLabel("Voicemeeter In 2 (VB-Audio Voicemeeter AUX VAIO)")).toBe(true);
     expect(isVoicemeeterInputLabel("Voicemeeter AUX Input (VB-Audio Voicemeeter AUX VAIO)")).toBe(true);
     expect(isVoicemeeterInputLabel("Voicemeeter VAIO3 Input (VB-Audio Voicemeeter VAIO3)")).toBe(true);
     expect(isVoicemeeterInputLabel("Voicemeeter Output (VB-Audio Voicemeeter VAIO)")).toBe(false);
@@ -212,6 +217,14 @@ describe("audioSourceManager", () => {
       { deviceId: "vm-aux", label: "Voicemeeter AUX Input (VB-Audio Voicemeeter AUX VAIO)", kind: "audiooutput" },
     ];
     expect(pickVbCableSinkDevice(outputs)).toBe("vm-in");
+  });
+
+  test("pickVbCableSinkDevice recognizes 'Voicemeeter In 1' naming", () => {
+    const outputs = [
+      { deviceId: "cable-in", label: "CABLE Input (VB-Audio Virtual Cable)", kind: "audiooutput" },
+      { deviceId: "vm-in1", label: "Voicemeeter In 1 (VB-Audio Voicemeeter VAIO)", kind: "audiooutput" },
+    ];
+    expect(pickVbCableSinkDevice(outputs)).toBe("vm-in1");
   });
 
   test("pickVbCableSinkDevice never auto-picks AUX/VAIO3 side buses", () => {

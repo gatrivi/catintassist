@@ -3,8 +3,15 @@
 export const MANUAL_CALL_OK_STORAGE = 'catint_manual_call_ok_v1';
 export const LEGACY_CALL_PATH_STORAGE = 'catint_call_path_verified';
 
+// v4.104.0: time-of-day variants (v4.103.0 `_morning/_afternoon/_evening`) share
+// ONE route proof — a slot rollover must not silently un-verify CALL OK and drop
+// tile fires back to local speakers.
+const SLOT_VARIANT_RE = /_(morning|afternoon|evening)$/;
+
+export const routeFamilyKey = (clipKey) => (clipKey || '').replace(SLOT_VARIANT_RE, '');
+
 export const buildRouteFingerprint = (clipKey, sinkId, micId) =>
-  `${clipKey}|${sinkId || ''}|${micId || ''}`;
+  `${routeFamilyKey(clipKey)}|${sinkId || ''}|${micId || ''}`;
 
 export const loadManualCallOk = () => {
   try {

@@ -44,3 +44,4 @@
 | 2026-09-11T16:30:32.526Z | 7b2c3dc | v4.102.0 HUD inspector click-to-copy + stable tooltip |
 | 2026-09-11T20:28:42.107Z | f5320b6 | v4.101.2 off-call inflation hotfix - midnight live-counter seal + wallclock clamp |
 | 2026-09-11T20:32:25.733Z | c156673 | v4.103.1 HUD crop hotfix - in-call goal meter no longer half-clipped on <=900px windows; incl. soundboard slot greetings + open_lep dedup |
+| 2026-09-12T00:13:19.198Z | fd343c4 | v4.105.0 recordings disk backup - Download/Upload recordings buttons in Studio; filename IS the storage key (greeting_en_morning.webm), same files restore on localhost or live; ships v4.104.0 direct-sink caller route + v4.103.2 retry classifier |

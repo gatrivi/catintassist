@@ -70,7 +70,9 @@ export const isVbCableSttInputLabel = (label) => {
   if (l.includes("cable input")) return false;
   if (l.includes("cable output")) return true;
   if (l.includes("voicemeeter output")) return true;
-  return false;
+  // v4.104.0: newer Voicemeeter naming — output buses are captured as "Out B1/B2"
+  // (virtual call-audio buses). A1-A5 are hardware loopback, not STT sources.
+  return /voicemeeter out b[12]\b/.test(l);
 };
 
 /** Greetings/mic passthrough go to CABLE Input / Voicemeeter Input (audiooutput). */
@@ -80,20 +82,21 @@ export const isVbCableSinkLabel = (label) => {
   if (l.includes("cable output")) return false;
   if (l.includes("cable input")) return true;
   if (/\bcable in\b/.test(l)) return true;
-  if (l.includes("voicemeeter input")) {
-    // Voicemeeter Standard only: plain "Voicemeeter Input" (+ optional vendor
-    // suffix). AUX / VAIO3 / numbered Potato endpoints sit on other buses
+  if (/^voicemeeter\b/.test(l) && /\bin(put)?\b/.test(l)) {
+    // Standard VAIO endpoint only: "Voicemeeter Input" or "Voicemeeter In 1"
+    // (newer driver naming, vendor suffix "(VB-Audio Voicemeeter VAIO)").
+    // AUX / VAIO3 / numbered ("In 2+", "Input 1") sit on other buses
     // (docs/handoff/09_voicemeeter_safeguards.md) — recognized, but warn-tier.
-    return /^voicemeeter input(\s*\(.*\))?$/.test(l);
+    return /^voicemeeter (input|in 1)(\s*\(.*\))?$/.test(l);
   }
   return false;
 };
 
-/** v4.104.0: any Voicemeeter playback endpoint — standard, AUX, VAIO3, numbered.
- *  Used for wording only; full-OK stays Standard/CABLE (isVbCableSinkLabel). */
+/** v4.104.0: any Voicemeeter playback endpoint — Input, In 1/2+, AUX, VAIO3.
+ *  Used for wording + warn tier; full-OK stays Standard/CABLE (isVbCableSinkLabel). */
 export const isVoicemeeterInputLabel = (label) => {
   const l = (label || "").toLowerCase();
-  return /^voicemeeter\b/.test(l) && l.includes("input");
+  return l.startsWith("voicemeeter") && !l.includes("output") && /\bin(put)?\b/.test(l);
 };
 
 /**
@@ -143,7 +146,7 @@ export const pickVbCableSinkDevice = (outputDevices = []) => {
   const not16 = (d) => !/16\s*ch/i.test(d.label || "");
   const find = (re) => outputDevices.find((d) => re.test(lc(d)) && not16(d));
   const match =
-    find(/^voicemeeter input(\s*\(.*\))?$/) ||
+    find(/^voicemeeter (input|in 1)(\s*\(.*\))?$/) ||
     find(/\bcable input\b/) ||
     find(/\bcable in\b/);
   return match?.deviceId || "";

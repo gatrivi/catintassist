@@ -25,6 +25,31 @@ import { APP_VERSION } from '../constants/version';
 /** Newest first. Only the entry matching APP_VERSION is shown on load. */
 export const RELEASE_NOTES_CATALOG = [
   {
+    version: '4.105.1',
+    id: 'voicemeeter-naming-call-ok-v1',
+    highlightElementIds: ['audio-route-sink-select'],
+    es: {
+      title: '🎙️ Nombres Voicemeeter nuevos + CALL OK que no caduca con la franja horaria',
+      intro: "v4.105.1 — Tu Voicemeeter nombra los dispositivos 'Voicemeeter In 1/2' y captura los buses como 'Out B1/B2': la app ahora los reconoce (In 1 = VAIO estándar; Out B1/B2 válidos para STT). Y el CALL OK ya no se invalida solo porque cambió la franja horaria del saludo — morning/afternoon/evening comparten la misma prueba. Si un disparo no llega al sink, avisa LOCAL ONLY persistente.",
+      sections: [{ heading: 'Qué cambió', bullets: [
+        "Se reconoce 'Voicemeeter In 1' como el endpoint VAIO estándar (antes: solo 'Voicemeeter Input')",
+        "STT admite 'Voicemeeter Out B1/B2' (los buses virtuales; A1-A5 siguen sin ser STT)",
+        'CALL OK sobrevive el rotado de franja (morning/afternoon/evening comparten prueba)',
+        'Disparo bloqueado = aviso LOCAL ONLY persistente, nunca parece que llegó al paciente',
+      ] }],
+    },
+    en: {
+      title: '🎙️ New Voicemeeter naming + CALL OK that survives slot rollover',
+      intro: "v4.105.1 — Your Voicemeeter names devices 'Voicemeeter In 1/2' and captures buses as 'Out B1/B2': the app now recognizes them (In 1 = standard VAIO; Out B1/B2 valid for STT). And CALL OK no longer voids just because the greeting's time-of-day slot changed — morning/afternoon/evening share one proof. A fire that never reaches the sink shows a persistent LOCAL ONLY notice.",
+      sections: [{ heading: 'What changed', bullets: [
+        "'Voicemeeter In 1' recognized as the standard VAIO endpoint (before: only 'Voicemeeter Input')",
+        "STT accepts 'Voicemeeter Out B1/B2' (virtual buses; A1-A5 still not STT)",
+        'CALL OK survives slot rollover (morning/afternoon/evening share one proof)',
+        'Denied fire = persistent LOCAL ONLY notice, never looks patient-delivered',
+      ] }],
+    },
+  },
+  {
     version: '4.105.0',
     id: 'recording-disk-backup-v1',
     highlightElementIds: ['sb-download-recordings', 'sb-upload-recordings'],

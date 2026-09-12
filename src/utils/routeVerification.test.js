@@ -12,9 +12,21 @@ describe('routeVerification', () => {
   });
 
   test('buildRouteFingerprint combines clip sink mic', () => {
-    expect(buildRouteFingerprint('greeting_en_morning', 'sink-a', 'mic-b')).toBe(
-      'greeting_en_morning|sink-a|mic-b',
+    expect(buildRouteFingerprint('greeting_en', 'sink-a', 'mic-b')).toBe(
+      'greeting_en|sink-a|mic-b',
     );
+  });
+
+  test('time-of-day variants share one route proof (v4.104.0)', () => {
+    expect(buildRouteFingerprint('opener_morning', 's', 'm')).toBe('opener|s|m');
+    expect(buildRouteFingerprint('opener_afternoon', 's', 'm')).toBe('opener|s|m');
+    expect(buildRouteFingerprint('opener_evening', 's', 'm')).toBe('opener|s|m');
+    let store = loadManualCallOk();
+    store = setManualCallOk(store, 'opener_morning', 'sink1', 'mic1');
+    // proof survives the slot rollover…
+    expect(isManualCallOk(store, 'opener_afternoon', 'sink1', 'mic1')).toBe(true);
+    // …but a different clip family still needs its own proof.
+    expect(isManualCallOk(store, 'closer_afternoon', 'sink1', 'mic1')).toBe(false);
   });
 
   test('isManualCallOk false until set', () => {
