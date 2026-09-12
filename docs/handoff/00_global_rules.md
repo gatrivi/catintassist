@@ -33,6 +33,7 @@ Each handoff spec lists allowed files. Do not refactor unrelated code.
 - **Answer tiers:** 60% <40w · 30% <80w · 10% <120w (summaries + replies; see `AGENTS.md`)
 - Laconic replies; user is often on call
 - Mention version number in feature messages
+- **No visible windows when lifting local:** `npm start` / servers must run hidden (background, minimized, or `start /min`) — never a normal or huge cmd window. The user reads live transcriptions with patients on the line; screen space is sacred.
 
 ## Token budget
 - Cheapest tool first; batch features per session; one judge/visual pass max — see [`../development/agent-token-budget.md`](../development/agent-token-budget.md)

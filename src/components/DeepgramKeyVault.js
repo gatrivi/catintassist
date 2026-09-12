@@ -302,13 +302,15 @@ export default function DeepgramKeyVault({ embedded = false }) {
           >
             <h4 style={{ margin: 0, fontSize: 13, color: "#22c55e" }}>✓ Unlocked</h4>
             <p style={{ marginTop: 8, color: "rgba(255,255,255,0.72)", fontSize: 12 }}>
-              Key unlocked for 30 days on this device. Press Lock to clear.
+              Key unlocked for 30 days on this device.
             </p>
+            {/* v4.108.0: de-emphasized — a quiet text link, not a red alarm button. */}
             <button
               onClick={handleLock}
-              style={{ marginTop: 10, padding: "8px 12px", background: "#ef4444", color: "#fff", border: "none", cursor: "pointer", borderRadius: 8, fontWeight: 800 }}
+              title="Clears the key from this session only (the saved vault copy stays)"
+              style={{ marginTop: 2, padding: "2px 0", background: "transparent", color: "rgba(255,255,255,0.38)", border: "none", cursor: "pointer", borderRadius: 4, fontWeight: 400, fontSize: 11, textDecoration: "underline" }}
             >
-              Lock (Clear Session)
+              lock (clears this session)
             </button>
           </div>
         )}

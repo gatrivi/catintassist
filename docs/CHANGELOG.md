@@ -2,6 +2,11 @@
 
 **Version source:** `src/constants/version.js` (must match `package.json` + top-right UI pill)
 
+## v4.108.0 - Quieter vault lock + hidden local servers
+
+- **Deepgram vault:** "Lock (Clear Session)" red alarm button → quiet underlined text link; key copy stays, menace gone.
+- **Agent rule:** lifting local (`npm start`, servers) must run hidden — never a visible cmd window while the user reads live transcriptions on calls (`docs/handoff/00_global_rules.md`).
+
 ## v4.107.0 - Twin-endpoint disambiguation (ghost Voicemeeter Input)
 
 - **Root cause of silent no-needle:** Voicemeeter Standard + Potato leftovers register identically-labeled outputs. Picking the ghost twin plays into nothing — no error, no needle. Every VB-out picker (Settings, I/O strip, header, Mic Verify) now appends an id tail (`· #a1b2`) when 2+ entries share a label, so the live twin can be told apart.
