@@ -121,6 +121,22 @@ export const isLikelyAuthClose = (code, reason = '') => {
 };
 
 /**
+ * v4.103.2: should a connecting-phase socket close be auto-retried?
+ * Terminal failures (auth by reason text, quota/billing) must NOT retry —
+ * that only burns seconds. Ambiguous closes (1006 handshake drop, network
+ * blips) are exactly what a manual ZAP used to fix, so retry those fast.
+ * Note: 1006 classifies as AUTH above (key OR firewall/VPN) but is the
+ * classic transient drop — it stays retryable.
+ */
+export const shouldRetryConnectClose = (code, reason = '') => {
+  if (Number(code) === 1000) return false;
+  const r = (reason || '').toString().toLowerCase();
+  if (/(unauthorized|forbidden|permission|invalid token|invalid api key|401|403)/.test(r)) return false;
+  if (/(quota|balance|credits)/.test(r)) return false;
+  return true;
+};
+
+/**
  * Classify offline DG health probe results (scripts/dg-health-probe.js).
  * Pure — no network. Use when status page is green but app still "down".
  */

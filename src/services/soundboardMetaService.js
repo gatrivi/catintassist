@@ -110,13 +110,14 @@ export const mergeSoundboardItems = (remoteItems = []) => {
  * existing profiles would never see the handbook. Overwrites TEXTS ONLY
  * (recorded audio blobs live in separate file storage and are untouched).
  * Clears legibility health for reseeded keys (old recordings vs new script).
- * v4.101.0 (seed 4): retires the `open_lep` dupe and reseeds the dynamic
- * openers with slot-aware scripts (morning/afternoon/evening greeting word).
+ * v4.103.0 (seed 5): rewrites the whole default item (text + slotText) for
+ * known ids — stale pre-slot texts (e.g. an opener stuck on "Good evening")
+ * can never survive a reseed. User labels and hotkeys are preserved.
  * v4.99.3 (seed 3): dropped the retired `open_client` dupe from stored meta
  * and relabels untouched tiles to the dedup names (custom user labels kept).
  * Audio/health/CALL OK carry-over for the retired clip runs in GreetingsPanel.
  */
-export const SOUNDBOARD_TEXT_SEED = 4;
+export const SOUNDBOARD_TEXT_SEED = 5;
 const TEXT_SEED_KEY = 'catint_soundboard_text_seed_v1';
 const HEALTH_KEY = 'catint_audio_health';
 
@@ -135,16 +136,18 @@ export const ensureHandbookSeed = () => {
       if (RETIRED_SOUNDBOARD_IDS.includes(it.id)) return [];
       if (!defaults[it.id]) return [it];
       seen.add(it.id);
-      let out = it;
-      if (it.text !== defaults[it.id].text) {
+      const d = defaults[it.id];
+      // v4.103.0 (seed 5): full rewrite for known ids — text AND slotText.
+      // Only the label/hotkey survive (custom names kept, pre-dedup names updated).
+      if (it.text !== d.text || !it.slotText) {
         changed.push(it.id);
-        out = { ...out, text: defaults[it.id].text };
+        return [{
+          ...d,
+          label: it.label === PRE_DEDUP_LABELS[it.id] ? d.label : it.label,
+          hotkey: it.hotkey ?? d.hotkey,
+        }];
       }
-      // Relabel only tiles the user never renamed (stored label == pre-dedup label).
-      if (PRE_DEDUP_LABELS[it.id] && it.label === PRE_DEDUP_LABELS[it.id] && out.label !== defaults[it.id].label) {
-        out = { ...out, label: defaults[it.id].label };
-      }
-      return [out];
+      return [it];
     });
     DEFAULT_SOUNDBOARD_ITEMS.forEach((d) => {
       // New ids have no old recordings — no health to clear.

@@ -7,6 +7,11 @@ import {
 } from '../utils/audioRoutePassthrough';
 import { logRouteEvent, ROUTE_EVENT } from '../utils/routeDiagnostics';
 import {
+  decodeBlobOnContext,
+  getDirectSinkContext,
+  playBufferDirect,
+} from '../utils/audioRouteDirect';
+import {
   AUDIO_SOURCE_MODE_VIRTUAL_CABLE,
   pickVbCableSinkDevice,
   readAudioSourceMode,
@@ -344,6 +349,41 @@ export const AudioSettingsProvider = ({ children }) => {
 
     const el = passthroughAudioRef.current;
     const savedMic = micStreamRef.current;
+
+    // v4.104.0: direct ctx.setSinkId render first — buffered output on the sink's
+    // own clock (no live MediaStream, no srcObject swap). The "can of tuna" chop
+    // came from the old element-swap path below, which stays as fallback.
+    try {
+      const ctx = getDirectSinkContext(selectedSinkId);
+      const buffer = await decodeBlobOnContext(ctx, blob);
+      sinkPlaybackActiveRef.current = true;
+      setSinkPlaybackActiveState(true);
+      setSinkPlaybackActive(true); // duck live mic during clip (same as before, minus swap)
+      const session = playBufferDirect(ctx, buffer, { volume, onProgress });
+      clipPlaybackStopRef.current = session.stop;
+
+      logRouteEvent(ROUTE_EVENT.DIRECT_INJECT, { clipKey, sinkId: selectedSinkId });
+
+      await session.promise;
+
+      clipPlaybackStopRef.current = null;
+      sinkPlaybackActiveRef.current = false;
+      setSinkPlaybackActive(false);
+      logRouteEvent(ROUTE_EVENT.PLAY_END, { clipKey, routeMode: ROUTE_MODE.DIRECT_SINK });
+      return { ok: true, mode: ROUTE_MODE.DIRECT_SINK };
+    } catch (directErr) {
+      // Unsupported browser, autoplay/resume rejected, or bad sinkId → fall back.
+      if (directErr?.message !== 'direct_sink_unsupported') {
+        logRouteEvent(ROUTE_EVENT.PLAY_FAIL, {
+          clipKey,
+          routeMode: ROUTE_MODE.DIRECT_SINK,
+          reason: directErr?.message || 'direct_failed',
+        });
+      }
+      clipPlaybackStopRef.current = null;
+      sinkPlaybackActiveRef.current = false;
+      setSinkPlaybackActive(false);
+    }
 
     try {
       const { ctx, buffer } = await decodeBlobToBuffer(blob);

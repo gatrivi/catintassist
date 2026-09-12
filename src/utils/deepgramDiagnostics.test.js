@@ -2,6 +2,7 @@ import {
   classifyDeepgramClose,
   buildFailureMessage,
   isLikelyAuthClose,
+  shouldRetryConnectClose,
   classifyDeepgramHealthProbe,
   FAILURE,
 } from './deepgramDiagnostics';
@@ -32,6 +33,20 @@ describe('deepgramDiagnostics', () => {
 
   test('isLikelyAuthClose for 1006', () => {
     expect(isLikelyAuthClose(1006, '')).toBe(true);
+  });
+
+  test('shouldRetryConnectClose: transient closes retry, auth/quota do not (v4.103.2)', () => {
+    // Transient handshake/network drops — the manual-ZAP cases.
+    expect(shouldRetryConnectClose(1006, '')).toBe(true);
+    expect(shouldRetryConnectClose(1015, '')).toBe(true);
+    expect(shouldRetryConnectClose(1000, 'normal')).toBe(false);
+    // Auth by reason text is terminal.
+    expect(shouldRetryConnectClose(4004, 'Unauthorized')).toBe(false);
+    expect(shouldRetryConnectClose(1006, 'Invalid token')).toBe(false);
+    expect(shouldRetryConnectClose(3000, 'HTTP 403')).toBe(false);
+    // Quota/billing is terminal.
+    expect(shouldRetryConnectClose(4000, 'quota exceeded')).toBe(false);
+    expect(shouldRetryConnectClose(4000, 'Insufficient balance')).toBe(false);
   });
 
   test('health probe: missing key', () => {

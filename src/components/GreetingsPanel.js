@@ -7,7 +7,10 @@ import {
   getStorageSummary,
   exportStorageBackup,
   importStorageBackup,
+  getAllFileEntries,
+  listStorageKeys,
 } from '../utils/storage';
+import { fileNameForBlob, keyFromFileName, extToMime } from '../utils/recordingFileNaming';
 import { bindAudioToSink, primePlaybackElements, rampVolume } from '../utils/audioRoute';
 import { readRouteModePreference, ROUTE_MODE } from '../utils/audioRoutePassthrough';
 import {
@@ -441,6 +444,72 @@ export const GreetingsPanel = ({ onEditModeChange, onExitStudio, micTestMode = f
     }
   };
 
+  // v4.105.0 — disk backup as real files: one file per clip, filename = key.
+  // `greeting_en_morning.webm` downloads, and uploading it assigns itself back
+  // to the morning EN opener. Same file set restores on localhost or live site.
+  const handleDownloadRecordings = async () => {
+    setStorageBusy(true);
+    try {
+      const all = await getAllFileEntries();
+      if (!all.length) {
+        alert('No recordings stored yet — nothing to download.');
+        return;
+      }
+      for (const [key, blob] of all) {
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = fileNameForBlob(key, blob);
+        a.click();
+        setTimeout(() => URL.revokeObjectURL(url), 4000);
+        await new Promise((r) => setTimeout(r, 300)); // browser queues one download at a time
+      }
+      alert(`Downloaded ${all.length} file(s). Keep the filenames — upload uses them to re-assign each clip.`);
+    } catch (e) {
+      alert('Download failed — see console');
+      console.error(e);
+    } finally {
+      setStorageBusy(false);
+    }
+  };
+
+  const handleUploadRecordings = async (fileList) => {
+    const files = Array.from(fileList || []);
+    if (!files.length) return;
+    setStorageBusy(true);
+    try {
+      const expected = getExpectedStorageKeys();
+      const existing = new Set((await listStorageKeys()).map(String));
+      let saved = 0;
+      const skipped = [];
+      for (const f of files) {
+        const key = keyFromFileName(f.name);
+        // Assign only to a known clip slot, or over a key already in the DB
+        // (legacy/orphan restores stay possible; junk names never land).
+        if (!key || (!expected.has(key) && !existing.has(key))) {
+          skipped.push(f.name);
+          continue;
+        }
+        const type = f.type || extToMime(f.name);
+        const blob = type && f.type !== type ? new Blob([f], { type }) : f;
+        await saveFile(key, blob);
+        saved += 1;
+      }
+      await reloadData();
+      alert(
+        `Restored ${saved} recording(s).` +
+          (skipped.length
+            ? ` Skipped (unknown clip names): ${skipped.slice(0, 5).join(', ')}${skipped.length > 5 ? '…' : ''}`
+            : ''),
+      );
+    } catch (e) {
+      alert('Upload failed — see console');
+      console.error(e);
+    } finally {
+      setStorageBusy(false);
+    }
+  };
+
   useEffect(() => {
     reloadData();
     warnLegacyCallPathStorage();
@@ -783,18 +852,22 @@ export const GreetingsPanel = ({ onEditModeChange, onExitStudio, micTestMode = f
     let sendToCaller = routeToVirtualMic && !localOnlyPlayback;
     if (sendToCaller && !bypassGate) {
       const score = healthScores[key];
-      const healthOk = isCallerReady(score);
       const callOk = isCallPathReady(manualCallOk, key, selectedSinkId, selectedMicId);
-      if (!healthOk || !callOk) {
-        setSafetyNotice(
-          !healthOk
-            ? (score === undefined
-              ? '⛔ Untested clip — health check in Setup first'
-              : '⛔ Health gate — virtual mic blocked; local preview only')
-            : '📡 Run Call Test and confirm CALL OK before firing to patient path'
-        );
+      // v4.103.0 user agency: a weak/failed legibility score warns but never blocks —
+      // the interpreter decides (e.g. afternoon take scored against the wrong script).
+      // CALL OK (route proven to the patient path) stays a hard gate.
+      if (!callOk) {
+        setSafetyNotice('📡 Run Call Test and confirm CALL OK before firing to patient path');
         window.setTimeout(() => setSafetyNotice(''), 4500);
         sendToCaller = false;
+      } else if (!isCallerReady(score)) {
+        setSafetyNotice(
+          score === undefined
+            ? '⚠ Untested clip — firing to caller anyway (health check pending)'
+            : `⚠ Legibility ${Math.round((score || 0) * 100)}% — firing anyway, your call`
+        );
+        window.setTimeout(() => setSafetyNotice(''), 4500);
+        logRouteEvent(ROUTE_EVENT.PLAY_START, { clipKey: key, healthBypass: true, score });
       }
     }
 
@@ -830,7 +903,7 @@ export const GreetingsPanel = ({ onEditModeChange, onExitStudio, micTestMode = f
       if (!bound) {
         if (callerOnly) {
           setLastRouteTest({ clipKey: key, result: 'fail', at: Date.now() });
-          setSafetyNotice('⚠️ Virtual mic route failed — pick VB-Cable in header Speaker');
+          setSafetyNotice('⚠️ Virtual mic route failed — pick VB out (CABLE Input / Voicemeeter Input) in header Speaker');
           window.setTimeout(() => setSafetyNotice(''), 4500);
           return;
         }
@@ -1256,8 +1329,18 @@ export const GreetingsPanel = ({ onEditModeChange, onExitStudio, micTestMode = f
               Import backup
               <input type="file" accept="application/json,.json" hidden disabled={storageBusy} onChange={(e) => { handleImportBackup(e.target.files[0]); e.target.value = ''; }} />
             </label>
+            <button type="button" id="sb-download-recordings" className="sb-audio-btn" disabled={storageBusy} onClick={handleDownloadRecordings}>Download recordings</button>
+            <label className="sb-audio-btn" id="sb-upload-recordings">
+              Upload recordings
+              <input type="file" multiple hidden disabled={storageBusy} onChange={(e) => { handleUploadRecordings(e.target.files); e.target.value = ''; }} />
+            </label>
             <button type="button" className="sb-filter-chip" disabled={storageBusy} onClick={refreshStorageSummary}>Refresh scan</button>
           </div>
+          <p className="sb-zone-hint">
+            v4.105.0 disk backup: <code>Download recordings</code> saves every clip as a real file named by its slot
+            (e.g. <code>greeting_en_morning.webm</code>, <code>thumb_intake.png</code>).{' '}
+            <code>Upload recordings</code> re-assigns by filename — same files work on localhost and the live site.
+          </p>
         </div>
       </div>
     );
@@ -1612,8 +1695,9 @@ export const GreetingsPanel = ({ onEditModeChange, onExitStudio, micTestMode = f
           const shownHealth = hasAudio
             ? (healthScores[activeKey] ?? healthScores[healthKey])
             : healthScores[healthKey];
+          // v4.103.0: health no longer blocks arming — script mismatch warns on
+          // fire (user agency); only a proven route (CALL OK) arms the tile.
           const callReady = !micTestMode
-            && isCallerReady(shownHealth)
             && isCallPathReady(manualCallOk, activeKey, selectedSinkId, selectedMicId);
           const callerBlocked = hasAudio && !callReady && !micTestMode;
           const hasThumb = !!blobs[`url_thumb_${action.id}`];
@@ -1650,7 +1734,7 @@ export const GreetingsPanel = ({ onEditModeChange, onExitStudio, micTestMode = f
               key={action.id}
               type="button"
               className={`sb-slot sb-slot--ready${hasThumb ? ' has-thumb' : ''}${isItPlaying ? ' is-playing' : ''}${callerBlocked ? ' is-blocked' : ''}${action.lang ? ` sb-slot--${action.lang}` : ''}`}
-              onClick={() => playAudioBlock(activeKey, callReady, { bypassGate: false })}
+              onClick={() => playAudioBlock(activeKey, !micTestMode, { bypassGate: false })}
               style={bgImage ? { backgroundImage: bgImage } : undefined}
               title={
                 micTestMode

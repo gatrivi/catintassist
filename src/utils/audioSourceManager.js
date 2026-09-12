@@ -82,10 +82,18 @@ export const isVbCableSinkLabel = (label) => {
   if (/\bcable in\b/.test(l)) return true;
   if (l.includes("voicemeeter input")) {
     // Voicemeeter Standard only: plain "Voicemeeter Input" (+ optional vendor
-    // suffix). AUX / VAIO3 / numbered Potato endpoints sit on other buses.
+    // suffix). AUX / VAIO3 / numbered Potato endpoints sit on other buses
+    // (docs/handoff/09_voicemeeter_safeguards.md) — recognized, but warn-tier.
     return /^voicemeeter input(\s*\(.*\))?$/.test(l);
   }
   return false;
+};
+
+/** v4.104.0: any Voicemeeter playback endpoint — standard, AUX, VAIO3, numbered.
+ *  Used for wording only; full-OK stays Standard/CABLE (isVbCableSinkLabel). */
+export const isVoicemeeterInputLabel = (label) => {
+  const l = (label || "").toLowerCase();
+  return /^voicemeeter\b/.test(l) && l.includes("input");
 };
 
 /**
@@ -128,10 +136,17 @@ export const pickVbCableSttInputDevice = (inputDevices = []) => {
 };
 
 export const pickVbCableSinkDevice = (outputDevices = []) => {
-  const matches = outputDevices.filter((d) => isVbCableSinkLabel(d.label));
-  // ponytail: plain CABLE Input beats 16ch variant — fewer silent-route reports.
-  const plain = matches.find((d) => !/16\s*ch/i.test(d.label || ""));
-  return (plain || matches[0])?.deviceId || "";
+  // v4.104.0: standard "Voicemeeter Input" first (greetings target bus per
+  // docs/soundboard/voicemeeter-mic-plan.md), then plain CABLE Input. AUX/VAIO3
+  // are never auto-picked (side buses — may not reach the call).
+  const lc = (d) => (d.label || "").toLowerCase();
+  const not16 = (d) => !/16\s*ch/i.test(d.label || "");
+  const find = (re) => outputDevices.find((d) => re.test(lc(d)) && not16(d));
+  const match =
+    find(/^voicemeeter input(\s*\(.*\))?$/) ||
+    find(/\bcable input\b/) ||
+    find(/\bcable in\b/);
+  return match?.deviceId || "";
 };
 
 /** Cable mode: replace missing/wrong VB out (speakers, swapped sides, etc.). */
@@ -183,7 +198,7 @@ export const diagnoseVbCableRoute = ({
       code: "sink_missing",
       level: "err",
       short: "VB out empty",
-      tip: "🔊 VB out must be CABLE Input — greetings + mic go into the cable the call app uses as mic.",
+      tip: "🔊 VB out must be CABLE Input or Voicemeeter Input — greetings + mic go into the call's virtual mic.",
     };
   }
 
@@ -198,13 +213,25 @@ export const diagnoseVbCableRoute = ({
   }
 
   if (!sinkOk) {
+    // v4.104.0: Voicemeeter side-bus endpoints (AUX/VAIO3/numbered) are real
+    // Voicemeeter inputs — warn, don't claim "speakers"; they may not reach B1.
+    if (isVoicemeeterInputLabel(sinkLabel)) {
+      return {
+        ok: false,
+        code: "sink_other_bus",
+        level: "warn",
+        short: "VB out on side bus",
+        tip:
+          "That Voicemeeter input is a side bus (AUX/VAIO3). Standard Voicemeeter Input (VAIO) is the one wired to B1 — or keep CABLE Input.",
+      };
+    }
     return {
       ok: false,
       code: sinkLooksLikeSpeakers ? "sink_is_speakers" : "sink_not_cable",
       level: "err",
       short: sinkLooksLikeSpeakers ? "VB out = speakers" : "VB out wrong",
       tip:
-        "VB out → CABLE Input (not speakers). Windows “Listen to this device” only hears greetings if they enter the cable. Use 🧪 Test + 🔊 You (Local) to preview on speakers.",
+        "VB out → CABLE Input / Voicemeeter Input (not speakers). Windows “Listen to this device” only hears greetings if they enter the call's virtual mic. Use 🧪 Test + 🔊 You (Local) to preview on speakers.",
     };
   }
 
@@ -235,8 +262,10 @@ export const diagnoseVbCableRoute = ({
     ok: true,
     code: "ok",
     level: "ok",
-    short: "Cable OK",
-    tip: "Recipe: 📥 CABLE Output · 🎤 real mic · 🔊 CABLE Input. Hear yourself: 🧪 Test, or Windows Listen on CABLE Output → headphones.",
+    short: "Route OK",
+    tip: isVoicemeeterInputLabel(sinkLabel)
+      ? "Recipe: 📥 CABLE Output · 🎤 real mic · 🔊 Voicemeeter Input. Greetings enter Voicemeeter — confirm that strip routes to B1 (the call mic)."
+      : "Recipe: 📥 CABLE Output · 🎤 real mic · 🔊 CABLE Input. Hear yourself: 🧪 Test, or Windows Listen on CABLE Output → headphones.",
   };
 };
 

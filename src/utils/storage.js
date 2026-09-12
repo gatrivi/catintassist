@@ -54,6 +54,22 @@ export const listStorageKeys = async () => {
   }
 };
 
+/** v4.105.0: all blob entries as [key, Blob] — feeds the per-file disk backup. */
+export const getAllFileEntries = async () => {
+  try {
+    const pairs = await entries();
+    const out = [];
+    for (const [key, value] of pairs) {
+      const blob = normalizeStoredBlob(value);
+      if (blob) out.push([String(key), blob]);
+    }
+    return out;
+  } catch (err) {
+    console.error('Failed to read IndexedDB entries:', err);
+    return [];
+  }
+};
+
 export const getStorageSummary = async () => {
   const allKeys = await listStorageKeys();
   const pairs = await entries();

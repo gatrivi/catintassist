@@ -25,6 +25,62 @@ import { APP_VERSION } from '../constants/version';
 /** Newest first. Only the entry matching APP_VERSION is shown on load. */
 export const RELEASE_NOTES_CATALOG = [
   {
+    version: '4.105.0',
+    id: 'recording-disk-backup-v1',
+    highlightElementIds: ['sb-download-recordings', 'sb-upload-recordings'],
+    es: {
+      title: '💾 Respaldo de grabaciones a disco — archivos nombrados por ranura',
+      intro: "v4.105.0 — Las grabaciones vivían solo dentro del navegador (IndexedDB): un borrado de datos del sitio o cambiar entre localhost y el sitio en vivo las perdía. Ahora Studio tiene 'Download recordings': guarda cada clip como archivo real con el nombre de su ranura (greeting_en_morning.webm), y 'Upload recordings' los re-asigna leyendo ese nombre — sin diálogos ni adivinanzas. El mismo paquete de archivos restaura en localhost o en el sitio en vivo.",
+      sections: [{ heading: 'Qué cambió', bullets: [
+        "Botón 'Download recordings' en Studio: un archivo por clip (greeting_en_morning.webm, thumb_intake.png, bg_app.jpg)",
+        "Botón 'Upload recordings': selecciona varios archivos y cada uno aterriza en su ranura por nombre de archivo",
+        'Nombres desconocidos se saltan con aviso — basura nunca aterriza en una ranura',
+        'Funciona igual en localhost y en el sitio en vivo (mismo nombre = misma ranura)',
+        'El respaldo JSON (Export/Import backup) sigue disponible como alternativa de un solo archivo',
+      ] }],
+    },
+    en: {
+      title: '💾 Disk backup for recordings — files named by slot',
+      intro: "v4.105.0 — Recordings lived only inside the browser (IndexedDB): clearing site data or switching between localhost and the live site lost them. Studio now has 'Download recordings': saves each clip as a real file named by its slot (greeting_en_morning.webm), and 'Upload recordings' re-assigns them by reading that name — no dialogs, no guessing. The same file set restores on localhost or the live site.",
+      sections: [{ heading: 'What changed', bullets: [
+        "'Download recordings' button in Studio: one file per clip (greeting_en_morning.webm, thumb_intake.png, bg_app.jpg)",
+        "'Upload recordings' button: pick multiple files, each lands in its slot by filename",
+        'Unknown filenames are skipped with a notice — junk never lands in a slot',
+        'Works identically on localhost and the live site (same name = same slot)',
+        'The JSON backup (Export/Import backup) stays available as a one-file alternative',
+      ] }],
+    },
+  },
+  {
+    version: '4.104.0',
+    id: 'caller-route-quality-v1',
+    highlightElementIds: ['audio-route-sink-select'],
+    es: {
+      title: '🔊 Ruta caller en calidad profesional — audio directo al sink (Voicemeeter listo)',
+      intro: 'v4.104.0 — El botón 📡 Caller sonaba "en lata": el clip se reproducía como stream EN VIVO sobre el elemento compartido del mic (sin buffer, se cortaba). Ahora el clip se renderiza directo al dispositivo de salida vía AudioContext.setSinkId: con buffer, a 48 kHz, sin swaps. También: VB out acepta Voicemeeter Input (auto-pick lo prefiere sobre CABLE Input) y los avisos ya no dicen solo "VB-Cable".',
+      sections: [{ heading: 'Qué cambió', bullets: [
+        'Caller/Call Test: render directo al sink (con buffer) — se acabó el choppy "lata de atún"',
+        'Un solo AudioContext persistente a 48 kHz por dispositivo — sin apertura/cierre por clip',
+        'El mic se silencia durante el clip igual que antes, pero sin intercambio de stream (sin clics)',
+        'VB out ahora admite Voicemeeter Input / AUX / VAIO3; auto-pick prefiere Voicemeeter Input > CABLE Input',
+        'Fallback intacto: si el navegador no soporta setSinkId, se usa la ruta anterior',
+        'Una vez: corre Call Test de nuevo tras cambiar el sink (CALL OK se liga al dispositivo)',
+      ] }],
+    },
+    en: {
+      title: '🔊 Caller route at professional quality — direct-to-sink audio (Voicemeeter ready)',
+      intro: "v4.104.0 — The 📡 Caller button sounded 'in a can': the clip played as a LIVE stream over the shared mic element (no buffer, chopy). The clip now renders straight to the output device via AudioContext.setSinkId: buffered, 48 kHz, no swaps. Also: VB out accepts Voicemeeter Input (auto-pick prefers it over CABLE Input) and notices no longer say only 'VB-Cable'.",
+      sections: [{ heading: 'What changed', bullets: [
+        'Caller/Call Test: buffered direct-to-sink render — the choppy "can of tuna" is gone',
+        'One persistent 48 kHz AudioContext per device — no per-clip open/close churn',
+        'Mic still ducks during the clip, but without stream swaps (no clicks)',
+        'VB out now accepts Voicemeeter Input / AUX / VAIO3; auto-pick prefers Voicemeeter Input > CABLE Input',
+        'Fallback intact: without setSinkId support the previous path is used',
+        'One-time: re-run Call Test after changing the sink (CALL OK is bound to the device)',
+      ] }],
+    },
+  },
+  {
     version: '4.103.1',
     id: 'hud-meter-crop-hotfix-v1',
     highlightElementIds: ['compact-call-goal-meter'],
@@ -35,6 +91,8 @@ export const RELEASE_NOTES_CATALOG = [
         'El medidor del día se ve completo en llamada, sin recorte vertical',
         'Saludos del soundboard según la hora: buenos días/tardes/noches automáticos',
         '"Opener – LEP" duplicado retirado (usa Opener – LEP (ES))',
+        'Grabación con legibilidad baja: avisa pero NO bloquea — disparar el saludo es tu decisión',
+        'Botón Soundboard siempre visible fuera de llamada, en la línea de chips del I/O',
       ] }],
     },
     en: {
@@ -44,6 +102,8 @@ export const RELEASE_NOTES_CATALOG = [
         'In-call goal meter is fully visible again — no vertical clipping',
         'Soundboard greetings follow the time of day: good morning/afternoon/evening',
         'Duplicate "Opener – LEP" retired (use Opener – LEP (ES))',
+        'Weak/failed legibility now warns but never blocks firing — your call',
+        'Soundboard button always visible off-call on the I/O chips line',
       ] }],
     },
   },

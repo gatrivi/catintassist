@@ -3,6 +3,8 @@
 export const ROUTE_MODE = {
   PASSTHROUGH: 'passthrough',
   DUAL_ELEMENT: 'dual_element',
+  // v4.104.0: direct AudioContext.setSinkId render — default engine when supported.
+  DIRECT_SINK: 'direct_sink',
 };
 
 const RAMP_MS = 50;

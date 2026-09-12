@@ -217,13 +217,22 @@ export function OnCallSoundboardStrip({ micTestMode = false, collapsed: collapse
     const score = healthScores[key];
     const healthOk = score !== undefined && score >= CALL_ROUTE_MIN_SCORE;
     const callOk = isManualCallOk(manualCallOk, key, selectedSinkId, selectedMicId);
-    if (!healthOk || !callOk) {
-      flashNotice(!healthOk ? '⛔ Health gate — record in Studio' : '📡 CALL OK required — test off-call first');
+    // v4.103.0 user agency: weak legibility warns but never blocks — the
+    // interpreter decides. CALL OK (proven route) stays a hard gate.
+    if (!callOk) {
+      flashNotice('📡 CALL OK required — test off-call first');
       return;
+    }
+    if (!healthOk) {
+      flashNotice(
+        score === undefined
+          ? '⚠ Untested clip — firing anyway (health check pending)'
+          : `⚠ Legibility ${Math.round((score || 0) * 100)}% — firing anyway, your call`
+      );
     }
 
     if (!selectedSinkId) {
-      flashNotice('⚠️ Pick VB-Cable in header Speaker');
+      flashNotice('⚠️ Pick VB out (CABLE Input / Voicemeeter Input) in header Speaker');
       return;
     }
 

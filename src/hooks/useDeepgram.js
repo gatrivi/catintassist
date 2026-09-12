@@ -8,6 +8,7 @@ import { notifyDeepgramKeyNeeded } from "../utils/deepgramSettingsPrompt";
 import {
   classifyDeepgramClose,
   buildFailureMessage,
+  shouldRetryConnectClose,
   FAILURE,
 } from "../utils/deepgramDiagnostics";
 import {

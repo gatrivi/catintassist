@@ -380,7 +380,7 @@ export const AudioRouteStatusBar = ({
             {!mobileMicMode && (
               <span
                 className="audio-route-compact-proof__dg"
-                title={`Greetings go out here. Must be CABLE Input. Full picker is in the I/O strip off-call.${selectedSinkId ? '' : ' NOTHING PICKED — greetings will be blocked.'}`}
+                title={`Greetings go out here. CABLE Input or Voicemeeter Input. Full picker is in the I/O strip off-call.${selectedSinkId ? '' : ' NOTHING PICKED — greetings will be blocked.'}`}
                 style={selectedSinkId ? undefined : { color: '#f59e0b' }}
               >
                 🔊 {outLabel}
@@ -414,6 +414,27 @@ export const AudioRouteStatusBar = ({
               >
                 ZAP
               </button>
+            )}
+            {/* v4.103.0: Soundboard entry lives on the always-visible chips line.
+                It used to sit inside the hidden full strip — unreachable off-call. */}
+            {onOpenSoundboard && !isActive && (
+              <ElementHintTarget
+                elementId="audio-route-soundboard-btn"
+                heading="Soundboard Studio"
+                body={soundboardOpen ? 'Hide Soundboard Studio panel.' : 'Off-call: 3-step greeting checklist (quality → hear → caller path).'}
+                color="#a855f7"
+              >
+                <button
+                  id="audio-route-soundboard-btn"
+                  type="button"
+                  className={`audio-route-soundboard-btn${soundboardOpen ? ' is-open' : ''}`}
+                  onClick={onOpenSoundboard}
+                  aria-pressed={soundboardOpen}
+                  title={soundboardOpen ? 'Hide Soundboard Studio' : 'Soundboard Studio - record greetings, health check, route test'}
+                >
+                  {soundboardOpen ? 'Soundboard ✓' : 'Soundboard'}
+                </button>
+              </ElementHintTarget>
             )}
           </div>
         )}
@@ -528,10 +549,10 @@ export const AudioRouteStatusBar = ({
         <ElementHintTarget
           elementId="audio-route-sink-select"
           icon="🔊"
-          heading="VB out = CABLE Input"
+          heading="VB out = CABLE In / VM In"
           body={
             cableRouteDiag.ok
-              ? 'Playback side of VB-Cable. Greetings + mic land here so the call app (mic = CABLE Output) hears you. Speakers here = you hear it, patient does not.'
+              ? 'Playback side of VB-Cable or Voicemeeter. Greetings + mic land here so the call app hears you. Speakers here = you hear it, patient does not.'
               : cableRouteDiag.tip
           }
           color={cableRouteDiag.ok ? '#34d399' : '#ef4444'}
@@ -597,9 +618,9 @@ export const AudioRouteStatusBar = ({
                 whiteSpace: 'nowrap',
               }}
               onClick={fixCableSink}
-              title="Set VB out to detected CABLE Input"
+              title="Set VB out to detected CABLE Input / Voicemeeter Input"
             >
-              Fix → CABLE In
+              Fix → VB out
             </button>
           )}
 
@@ -674,26 +695,6 @@ export const AudioRouteStatusBar = ({
           >
             TODAY <b>ON {formatDailyDuration(totalOnCallSeconds)}</b> <span>OFF {formatDailyDuration(totalOffCallSeconds)}</span>
           </span>
-        )}
-
-        {onOpenSoundboard && !isActive && (
-          <ElementHintTarget
-            elementId="audio-route-soundboard-btn"
-            heading="Soundboard Studio"
-            body={mobileMicMode ? 'Mic mode: greetings play on your speakers/headphones.' : soundboardOpen ? 'Hide Soundboard Studio panel.' : 'Off-call: 3-step greeting checklist (quality → hear → caller path).'}
-            color="#a855f7"
-          >
-          <button
-            id="audio-route-soundboard-btn"
-            type="button"
-            className={`audio-route-soundboard-btn${soundboardOpen ? ' is-open' : ''}`}
-            onClick={onOpenSoundboard}
-            aria-pressed={soundboardOpen}
-            title={mobileMicMode ? 'Soundboard Studio — local speakers in mic mode (quality check)' : soundboardOpen ? 'Hide Soundboard Studio' : 'Soundboard Studio - record greetings, health check, route test'}
-          >
-            {soundboardOpen ? 'Soundboard ✓' : 'Soundboard'}
-          </button>
-          </ElementHintTarget>
         )}
 
         {virtualCableFailure && (

@@ -11,6 +11,7 @@ import {
   buildVirtualCableFailureUiState,
   getAudioSourceModeAfterVirtualCableFailure,
   isVbCableSinkLabel,
+  isVoicemeeterInputLabel,
   readSinkExplicit,
   persistSinkExplicit,
   shouldAutoFixSink,
@@ -193,6 +194,56 @@ describe("audioSourceManager", () => {
     expect(isVbCableSinkLabel("Voicemeeter Aux Input (VB-Audio Voicemeeter AUX VAIO)")).toBe(false);
     expect(isVbCableSinkLabel("Voicemeeter Input 1 (Potato)")).toBe(false);
     expect(isVbCableSinkLabel("Speakers (HS-220U)")).toBe(false);
+  });
+
+  // v4.104.0 — Voicemeeter awareness: pick order + side-bus warn tier.
+  test("isVoicemeeterInputLabel recognizes every Voicemeeter input endpoint", () => {
+    expect(isVoicemeeterInputLabel("Voicemeeter Input (VB-Audio Voicemeeter VAIO)")).toBe(true);
+    expect(isVoicemeeterInputLabel("Voicemeeter AUX Input (VB-Audio Voicemeeter AUX VAIO)")).toBe(true);
+    expect(isVoicemeeterInputLabel("Voicemeeter VAIO3 Input (VB-Audio Voicemeeter VAIO3)")).toBe(true);
+    expect(isVoicemeeterInputLabel("Voicemeeter Output (VB-Audio Voicemeeter VAIO)")).toBe(false);
+    expect(isVoicemeeterInputLabel("CABLE Input (VB-Audio Virtual Cable)")).toBe(false);
+  });
+
+  test("pickVbCableSinkDevice prefers Voicemeeter Input over CABLE Input", () => {
+    const outputs = [
+      { deviceId: "cable-in", label: "CABLE Input (VB-Audio Virtual Cable)", kind: "audiooutput" },
+      { deviceId: "vm-in", label: "Voicemeeter Input (VB-Audio Voicemeeter VAIO)", kind: "audiooutput" },
+      { deviceId: "vm-aux", label: "Voicemeeter AUX Input (VB-Audio Voicemeeter AUX VAIO)", kind: "audiooutput" },
+    ];
+    expect(pickVbCableSinkDevice(outputs)).toBe("vm-in");
+  });
+
+  test("pickVbCableSinkDevice never auto-picks AUX/VAIO3 side buses", () => {
+    const outputs = [
+      { deviceId: "vm-aux", label: "Voicemeeter AUX Input (VB-Audio Voicemeeter AUX VAIO)", kind: "audiooutput" },
+      { deviceId: "vm-vaio3", label: "Voicemeeter VAIO3 Input (VB-Audio Voicemeeter VAIO3)", kind: "audiooutput" },
+    ];
+    expect(pickVbCableSinkDevice(outputs)).toBe("");
+  });
+
+  test("diagnoseVbCableRoute treats Voicemeeter Input as fully OK", () => {
+    const d = diagnoseVbCableRoute({
+      cableMode: true,
+      sttInputLabel: "CABLE Output (VB-Audio Virtual Cable)",
+      sinkLabel: "Voicemeeter Input (VB-Audio Voicemeeter VAIO)",
+      sinkId: "vm-in",
+    });
+    expect(d.ok).toBe(true);
+    expect(d.tip).toMatch(/Voicemeeter Input/);
+  });
+
+  test("diagnoseVbCableRoute warns (not speakers-error) on Voicemeeter side bus", () => {
+    const d = diagnoseVbCableRoute({
+      cableMode: true,
+      sttInputLabel: "CABLE Output (VB-Audio Virtual Cable)",
+      sinkLabel: "Voicemeeter AUX Input (VB-Audio Voicemeeter AUX VAIO)",
+      sinkId: "vm-aux",
+    });
+    expect(d.ok).toBe(false);
+    expect(d.code).toBe("sink_other_bus");
+    expect(d.level).toBe("warn");
+    expect(d.tip).toMatch(/Voicemeeter/);
   });
 
   test("tab share cancel is detected", () => {

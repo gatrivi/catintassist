@@ -37,6 +37,21 @@ App-side afterwards (separate, later change): greetings sink = "Voicemeeter Inpu
 - The existing script hardcodes mic name `Microphone (HS-220U)` — confirm your actual mic name in inspect step before `-Apply`.
 - Do this **off-call / between shifts**, never mid-call.
 
+## 48 kHz quality checklist (2026-09-11, verified in code)
+
+The app plays at 48 kHz end-to-end — no code change needed:
+
+- Playback: persistent `AudioContext({ sampleRate: 48000 })` per sink (`src/utils/audioRouteDirect.js:39`, v4.104.0 direct-sink engine); clips decode onto it and render into "Voicemeeter Input" via `setSinkId`.
+- Recording: webm/opus 128 kbps, raw mic, browser DSP off (`src/components/GreetingsPanel.js:612-630`).
+- Gain: clips peak-normalize to −1 dBFS then gain ×1 default → keep sink/local volume sliders ≤ 100% or clips hard-clip at the device.
+- Cacophony diagnosis (2026-09-11): was Voicemeeter gain > 0 closing a feedback loop — faders reset to 0 dB fixed it.
+
+If audio still sounds garbled/robotic, it's the virtual device formats, not the app:
+
+1. mmsys.cpl → *Voicemeeter Input*, *Voicemeeter Aux Input*, *CABLE Input* → Properties → Advanced → **24-bit, 48000 Hz** each (44.1k device = Windows resampler = the classic Voicemeeter garble).
+2. Voicemeeter Menu → System Settings → main sample rate **48000 Hz**.
+3. Test recorder (e.g. Edge voice-recorder tab): pin the site mic explicitly to *Voicemeeter Output*, not "Default" (fixes intermittent "no registered sound"); monitor playback on headphones, never back into a VB device (loop).
+
 ## What I can do vs you
 
 - I can: run inspect + `-Apply` via the script, extend the script, verify with recordings.

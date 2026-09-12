@@ -10,6 +10,7 @@ export const ROUTE_EVENT = {
   SINK_BIND: 'sink_bind',
   PASSTHROUGH_INJECT: 'passthrough_inject',
   PASSTHROUGH_RESTORE: 'passthrough_restore',
+  DIRECT_INJECT: 'direct_inject',
   STT_LOAD_WARN: 'stt_load_warn',
   FALLBACK_DUAL: 'fallback_dual',
 };
