@@ -51,3 +51,4 @@
 | 2026-09-12T17:10:08.512Z | 9cf66b9 | v4.108.0 quieter vault lock, hidden local servers rule |
 | 2026-09-12T21:33:21.657Z | 07adf32 | v4.108.2 soundboard selected-output binding, terminal cancellation, corrected VoiceMeeter inspection |
 | 2026-09-12T21:59:09.536Z | 699c97c | v4.108.3 correct VoiceMeeter Input vs In 1 and explicit Caller tests |
+| 2026-09-12T23:26:33.710Z | ebddcbd | v4.109.0 soundboard loudness verdict - pill + tile dots |

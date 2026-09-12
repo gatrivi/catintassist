@@ -57,3 +57,73 @@ export const analyzeBlobLoudness = async (blob) => {
     ctx.close().catch(() => {});
   }
 };
+
+// ── Choppiness (v4.110.0) ────────────────────────────────────────────────
+// "Broken up" garble signature: speech alternating in SHORT bursts and
+// SHORT gaps (staccato). Normal word gaps are longer than CHOP_GAP_MAX_S,
+// and stop consonants (t/p/k) make short gaps but sit inside LONG bursts —
+// both are skipped, so normal speech stays SMOOTH.
+const CHOP_FRAME_S = 0.03;      // 30ms analysis frames
+const CHOP_BURST_MAX_S = 0.15;  // burst must be ≤ this to count as a fragment
+const CHOP_GAP_MAX_S = 0.12;    // gap must be ≤ this to count as a dropout
+const CHOP_CHOPPY_AT = 8;       // events per 10s of speech region
+const CHOP_SLIGHT_AT = 3;
+
+/** Pure tier mapping — same {label,color,width} shape as classifyLoudness. */
+export const classifyChoppiness = (per10s) => {
+  if (per10s === undefined || per10s === null || Number.isNaN(per10s)) {
+    return { label: 'UNTESTED', color: '#94a3b8', width: '0%', per10s: null };
+  }
+  if (per10s >= CHOP_CHOPPY_AT) return { label: 'CHOPPY', color: '#fb923c', width: '25%', per10s };
+  if (per10s >= CHOP_SLIGHT_AT) return { label: 'SLIGHT CHOP', color: '#fbbf24', width: '50%', per10s };
+  return { label: 'SMOOTH', color: '#10b981', width: '100%', per10s };
+};
+
+/**
+ * Pure: count stutter events (short burst followed by short gap) in the
+ * clip's speech region, normalized per 10s. Thresholds are relative to the
+ * clip's own peak so quiet clips are judged fairly.
+ * @returns {{dropouts:number, per10s:number, activeSecs:number}}
+ */
+export const measureChoppiness = (channel, sampleRate = 48000) => {
+  if (!channel || !channel.length) return { dropouts: 0, per10s: 0, activeSecs: 0 };
+  const frameLen = Math.max(1, Math.round(sampleRate * CHOP_FRAME_S));
+  let peak = 0;
+  for (let i = 0; i < channel.length; i += 1) {
+    const a = Math.abs(channel[i]);
+    if (a > peak) peak = a;
+  }
+  if (peak < 0.004) return { dropouts: 0, per10s: 0, activeSecs: 0 }; // silent — loudness covers it
+  const threshold = peak * 0.05;
+  const frames = [];
+  for (let s = 0; s < channel.length; s += frameLen) {
+    const end = Math.min(s + frameLen, channel.length);
+    let sum = 0;
+    for (let j = s; j < end; j += 1) sum += channel[j] * channel[j];
+    frames.push(Math.sqrt(sum / (end - s)) > threshold);
+  }
+  const first = frames.indexOf(true);
+  const last = frames.lastIndexOf(true);
+  if (first < 0) return { dropouts: 0, per10s: 0, activeSecs: 0 };
+  const maxBurst = Math.max(1, Math.round(CHOP_BURST_MAX_S / CHOP_FRAME_S));
+  const maxGap = Math.max(1, Math.round(CHOP_GAP_MAX_S / CHOP_FRAME_S));
+  let events = 0;
+  let i = first;
+  while (i <= last) {
+    if (frames[i]) {
+      let j = i;
+      while (j <= last && frames[j]) j += 1;
+      const burstLen = j - i;
+      let k = j;
+      while (k <= last && !frames[k]) k += 1;
+      const gapLen = k - j;
+      if (burstLen <= maxBurst && gapLen > 0 && gapLen <= maxGap) events += 1;
+      i = j;
+    } else {
+      i += 1;
+    }
+  }
+  const activeSecs = ((last - first + 1) * CHOP_FRAME_S);
+  const per10s = activeSecs > 0 ? Math.round(((events / activeSecs) * 10) * 10) / 10 : 0;
+  return { dropouts: events, per10s, activeSecs: Math.round(activeSecs * 10) / 10 };
+};

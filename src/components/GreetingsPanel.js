@@ -34,7 +34,7 @@ import { diagnoseVbCableRoute } from '../utils/audioSourceManager';
 import { displayDeviceName, readKnownDeviceLabels } from '../utils/audioDeviceLabels';
 import AudioEditorPanel from './AudioEditorPanel';
 import { getEffectiveDeepgramKey } from '../utils/deepgramRuntimeKey';
-import { classifyLoudness, measureChannelLoudness } from '../utils/loudness';
+import { classifyLoudness, measureChannelLoudness, measureChoppiness, classifyChoppiness } from '../utils/loudness';
 import { ElementHintTarget } from './ElementHint';
 
 const TIME_SLOTS = ['morning', 'afternoon', 'evening'];
@@ -103,9 +103,11 @@ const buildWaveformPeaks = async (blob, bars = 56) => {
   try {
     const audioBuffer = await ctx.decodeAudioData(arrayBuffer.slice(0));
     const channel = audioBuffer.getChannelData(0);
-    // v4.109.0: the same decode yields the loudness verdict — no second pass.
+    // v4.109.0/v4.110.0: the same decode yields loudness + choppiness — no second pass.
     const level = measureChannelLoudness(channel);
     const loudness = classifyLoudness(level.rmsDb, level.peakDb);
+    const chopMeasure = measureChoppiness(channel, audioBuffer.sampleRate);
+    const chop = { ...classifyChoppiness(chopMeasure.per10s), dropouts: chopMeasure.dropouts, activeSecs: chopMeasure.activeSecs };
     const blockSize = Math.max(1, Math.floor(channel.length / bars));
     const peaks = [];
     for (let i = 0; i < bars; i += 1) {
@@ -119,6 +121,7 @@ const buildWaveformPeaks = async (blob, bars = 56) => {
     return {
       peaks: peaks.map((p) => p / max),
       loudness,
+      chop,
     };
   } finally {
     ctx.close().catch(() => {});
@@ -222,6 +225,10 @@ export const GreetingsPanel = ({ onEditModeChange, onExitStudio, micTestMode = f
   // v4.109.0: local loudness verdict per clip key — {rmsDb, peakDb, label, color, width}
   const [loudness, setLoudness] = useState(() => {
     try { return JSON.parse(localStorage.getItem('catint_loudness')) || {}; } catch { return {}; }
+  });
+  // v4.110.0: choppiness verdict per clip key — {label, color, width, per10s, dropouts, activeSecs}
+  const [chop, setChop] = useState(() => {
+    try { return JSON.parse(localStorage.getItem('catint_sb_chop')) || {}; } catch { return {}; }
   });
   const [manualCallOk, setManualCallOkStore] = useState(() => loadManualCallOk());
   const [pendingRouteConfirm, setPendingRouteConfirm] = useState(null);
@@ -600,23 +607,32 @@ export const GreetingsPanel = ({ onEditModeChange, onExitStudio, micTestMode = f
     (async () => {
       const next = {};
       const nextLoud = {};
+      const nextChop = {};
       for (const key of keys) {
         if (cancelled) return;
         try {
           const res = await buildWaveformPeaks(blobs[key]);
           next[key] = res.peaks;
           if (res.loudness) nextLoud[key] = res.loudness;
+          if (res.chop) nextChop[key] = res.chop;
         } catch (e) {
           console.warn('Waveform decode failed:', key, e);
         }
       }
       if (cancelled) return;
       setWaveforms(next);
-      // v4.109.0: loudness rode the same decode loop — persist so reload is instant.
+      // v4.109.0/v4.110.0: verdicts rode the same decode loop — persist for instant reload.
       if (Object.keys(nextLoud).length) {
         setLoudness((prev) => {
           const merged = { ...prev, ...nextLoud };
           try { localStorage.setItem('catint_loudness', JSON.stringify(merged)); } catch (_) {}
+          return merged;
+        });
+      }
+      if (Object.keys(nextChop).length) {
+        setChop((prev) => {
+          const merged = { ...prev, ...nextChop };
+          try { localStorage.setItem('catint_sb_chop', JSON.stringify(merged)); } catch (_) {}
           return merged;
         });
       }
@@ -696,6 +712,12 @@ export const GreetingsPanel = ({ onEditModeChange, onExitStudio, micTestMode = f
       const next = { ...prev };
       delete next[key];
       try { localStorage.setItem('catint_loudness', JSON.stringify(next)); } catch (_) {}
+      return next;
+    });
+    setChop((prev) => {
+      const next = { ...prev };
+      delete next[key];
+      try { localStorage.setItem('catint_sb_chop', JSON.stringify(next)); } catch (_) {}
       return next;
     });
     reloadData();
@@ -1105,9 +1127,21 @@ export const GreetingsPanel = ({ onEditModeChange, onExitStudio, micTestMode = f
                 className="sb-health-pill"
                 title={`Loudness ${loudness[key].rmsDb} dBFS RMS · peak ${loudness[key].peakDb} dBFS. Playback auto-boosts quiet clips, but the noise floor rises with it — re-record closer to the mic when SOFT or TOO QUIET.`}
               >
-                <span style={{ color: loudness[key].color }}>{loudness[key].label} {loudness[key].rmsDb} dB</span>
+                <span style={{ color: loudness[key].color }}>🔊 {loudness[key].label} {loudness[key].rmsDb} dB</span>
                 <div className="sb-health-pill-bar">
                   <div className="sb-health-pill-fill" style={{ width: loudness[key].width, backgroundColor: loudness[key].color }} />
+                </div>
+              </div>
+            )}
+            {/* v4.110.0: choppiness pill — is the recording broken up / stuttery? (〰️ = not loudness) */}
+            {hasBlob && chop[key] && chop[key].label !== 'UNTESTED' && (
+              <div
+                className="sb-health-pill"
+                title={`Choppiness: ${chop[key].dropouts} stutter events in ${chop[key].activeSecs}s of speech (${chop[key].per10s} per 10s). Catches hidden-tab / recording garble. Note: garble added by the playback route (VoiceMeeter) won't show here.`}
+              >
+                <span style={{ color: chop[key].color }}>〰️ {chop[key].label}</span>
+                <div className="sb-health-pill-bar">
+                  <div className="sb-health-pill-fill" style={{ width: chop[key].width, backgroundColor: chop[key].color }} />
                 </div>
               </div>
             )}
@@ -1770,6 +1804,8 @@ export const GreetingsPanel = ({ onEditModeChange, onExitStudio, micTestMode = f
             : healthScores[healthKey];
           // v4.109.0: local loudness dot — green = clearly audible, amber/orange = re-record.
           const shownLoud = hasAudio ? (loudness[activeKey] ?? loudness[healthKey]) : loudness[healthKey];
+          // v4.110.0: choppiness diamond (◆ vs the round loudness ●) — green smooth, amber/orange stuttery.
+          const shownChop = hasAudio ? (chop[activeKey] ?? chop[healthKey]) : chop[healthKey];
           // v4.103.0: health no longer blocks arming — script mismatch warns on
           // fire (user agency); only a proven route (CALL OK) arms the tile.
           const callReady = !micTestMode
@@ -1843,6 +1879,15 @@ export const GreetingsPanel = ({ onEditModeChange, onExitStudio, micTestMode = f
                       title={`Loudness ${shownLoud.rmsDb} dBFS — ${shownLoud.label}${shownLoud.width === '25%' ? ' — re-record closer to the mic' : ''}`}
                     >
                       ●
+                    </span>
+                  )}
+                  {shownChop && shownChop.label !== 'UNTESTED' && (
+                    <span
+                      className="sb-slot-loud"
+                      style={{ color: shownChop.color }}
+                      title={`Choppiness ${shownChop.per10s} per 10s — ${shownChop.label}${shownChop.width === '25%' ? ' — re-record without switching tabs' : ''}`}
+                    >
+                      ◆
                     </span>
                   )}
                 </span>

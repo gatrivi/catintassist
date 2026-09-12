@@ -25,6 +25,29 @@ import { APP_VERSION } from '../constants/version';
 /** Newest first. Only the entry matching APP_VERSION is shown on load. */
 export const RELEASE_NOTES_CATALOG = [
   {
+    version: '4.110.0',
+    id: 'choppiness-verdict',
+    highlightElementIds: ['sb-preflight-check'],
+    es: {
+      title: '〰️ Detector de audio entrecortado',
+      intro: 'Ahora cada grabación también se evalúa por entrecortado (stutter), además del volumen.',
+      sections: [{ heading: 'Qué cambió', bullets: [
+        'Píldora 〰️ SMOOTH / SLIGHT CHOP / CHOPPY en Setup, al lado del volumen 🔊.',
+        'En las tarjetas: rombo ◆ = entrecortado, círculo ● = volumen — imposible confundirlos.',
+        'Detecta el patrón staccato de grabaciones entrecortadas; se aplica también a grabaciones viejas.',
+      ] }],
+    },
+    en: {
+      title: '〰️ Choppiness detector',
+      intro: 'Every recording is now also checked for choppiness (stutter), on top of loudness.',
+      sections: [{ heading: 'What changed', bullets: [
+        '〰️ SMOOTH / SLIGHT CHOP / CHOPPY pill in Setup, next to the 🔊 loudness pill.',
+        'On tiles: diamond ◆ = choppiness, circle ● = loudness — impossible to confuse.',
+        'Detects the staccato pattern of garbled recordings; also applies to already-recorded clips.',
+      ] }],
+    },
+  },
+  {
     version: '4.109.0',
     id: 'loudness-verdict',
     highlightElementIds: ['sb-preflight-check'],
