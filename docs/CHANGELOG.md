@@ -2,6 +2,13 @@
 
 **Version source:** `src/constants/version.js` (must match `package.json` + top-right UI pill)
 
+## v4.112.0 - One-tab local translator watch (no more 5-min popup)
+
+- **Retired:** `\CatTS-API-Watchdog` scheduled task (console flash every 5 min; `-WindowStyle Hidden` still flashes on interactive logon) — disabled. Re-enable: `schtasks /change /tn "CatTS-API-Watchdog" /enable`.
+- **New:** `scripts/watch-local.ps1` + `npm run local` — one persistent tab checks `127.0.0.1:59200/health` every 30s and lifts hidden uvicorn inline if down. Zero new windows, ever.
+- **Gotcha fixed while here:** PS 5.1 fails to parse BOM-less `.ps1` with non-ASCII chars (spurious "string missing terminator") — script is pure ASCII now.
+- **Next:** app lifts its own backend — options in `docs/development/local-translate-watch.md`.
+
 ## v4.108.3 - Voicemeeter Input is not In 1
 
 - Fixed incorrect endpoint matching: In 1–5 are optional VAIO extensions, not the normal VAIO input. Auto-pick skips them; existing explicit picks stay put with a routing warning.

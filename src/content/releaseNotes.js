@@ -25,6 +25,29 @@ import { APP_VERSION } from '../constants/version';
 /** Newest first. Only the entry matching APP_VERSION is shown on load. */
 export const RELEASE_NOTES_CATALOG = [
   {
+    version: '4.112.0',
+    id: 'local-watch-single-tab',
+    highlightElementIds: ['main-transcript'],
+    es: {
+      title: 'Sin más popup cada 5 minutos',
+      intro: 'Una sola pestaña (`npm run local`) vigila el traductor local. Cero ventanas nuevas.',
+      sections: [{ heading: 'Qué cambió', bullets: [
+        'Apagada la tarea CatTS-API-Watchdog (flash de consola cada 5 min).',
+        '`npm run local`: revisa :59200 cada 30s y lo levanta oculto si se cae.',
+        'Tu traducción sigue igual; solo desaparece la interrupción.',
+      ] }],
+    },
+    en: {
+      title: 'No more 5-minute popup',
+      intro: 'One tab (`npm run local`) watches the local translator. Zero new windows.',
+      sections: [{ heading: 'What changed', bullets: [
+        'CatTS-API-Watchdog task (console flash every 5 min) switched off.',
+        '`npm run local`: checks :59200 every 30s, lifts it hidden if down.',
+        'Translation itself unchanged; only the interruption is gone.',
+      ] }],
+    },
+  },
+  {
     version: '4.111.0',
     id: 'greetings-in-notes-rail',
     highlightElementIds: ['soundboard-dock'],
