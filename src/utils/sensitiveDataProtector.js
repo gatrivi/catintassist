@@ -71,6 +71,18 @@ export const convertEnglishNumberWords = (text, lang = 'en') => {
   });
 };
 
+/**
+ * Single Deepgram word → digits (v4.121.0, for confidence alignment).
+ * Digits pass through; lane number-words convert; anything else → null.
+ */
+export const dgWordToDigits = (word, lang = 'en') => {
+  const w = (word || '').toString().toLowerCase().replace(/[^\p{L}\p{N}]+/gu, '');
+  if (!w) return null;
+  if (/^\d+$/.test(w)) return w;
+  const map = lang === 'es' ? ES_NUMBER_MAP : EN_NUMBER_MAP;
+  return map[normalizeAccents(w)] ?? null;
+};
+
 // ---------------------------------------------------------------------------
 // DICTATION WORDS (v4.120.0) — runs BEFORE word conversion, on words.
 // ---------------------------------------------------------------------------
@@ -536,7 +548,9 @@ export const findAddressUnits = (text) => {
     push(m.index + m[0].indexOf(num), m.index + m[0].indexOf(num) + num.length, num, copyableDigits(num));
   }
 
-  const unitRe = /\b(?:unit|apt|apartment|suite|ste|#)\s*,?\s*#?\s*(\d{1,6}[A-Za-z]?)\b/gi;
+  // v4.121.0: rooms/beds/PO boxes/extensions ("Room 402", "Bed 12",
+  // "PO Box 1234", "ext 123"). Digit-gated so "double room" never matches.
+  const unitRe = /\b(?:unit|apt|apartment|suite|ste|#|room|bed|po box|ext\.?|extension|x)\s*,?\s*#?\s*(\d{1,6}[A-Za-z]?)\b/gi;
   while ((m = unitRe.exec(text))) {
     const raw = m[0];
     // v4.118.0: keep letter suffixes — "apt 4B" copies "4B", not "4".
@@ -855,6 +869,9 @@ export const findScheduleUnits = (text) => {
   };
   pushRe(/\b((?:[01]?\d|2[0-3]):[0-5]\d\s*(?:a\.?m\.?|p\.?m\.?|am|pm)?)\b/gi);
   pushRe(/\b((?:[1-9]|1[0-2])\s*(?:a\.?m\.?|p\.?m\.?|am|pm))\b/gi);
+  // v4.121.0: ranges — "1 to 3", "2-4", "entre las 2 y las 4".
+  pushRe(/\b(([1-9]|1[0-2])(?::[0-5]\d)?\s*(?:to|–|-)\s*(?:[1-9]|1[0-2])(?::[0-5]\d)?)\b/gi);
+  pushRe(/\b(entre las (?:[1-9]|1[0-2]) y las (?:[1-9]|1[0-2]))\b/gi);
   return units.sort((a, b) => a.start - b.start);
 };
 
@@ -872,6 +889,24 @@ export const expandWordTimes = (text) => {
   if (!text) return text;
   let out = text;
   out = out.replace(/\bhalf past (\d{1,2})\b/gi, '$1:30');
+  // v4.121.0: quarter past/to, o'clock, en punto.
+  out = out.replace(/\bquarter past (\d{1,2})\b/gi, (m, h) => {
+    const n = parseInt(h, 10);
+    return n >= 1 && n <= 12 ? `${n}:15` : m;
+  });
+  out = out.replace(/\bquarter to (\d{1,2})\b/gi, (m, h) => {
+    const n = parseInt(h, 10);
+    if (n < 1 || n > 12) return m;
+    return `${n === 1 ? 12 : n - 1}:45`;
+  });
+  out = out.replace(/\b(\d{1,2})\s*o['’\-]?clock\b/gi, (m, h) => {
+    const n = parseInt(h, 10);
+    return n >= 1 && n <= 12 ? `${n}:00` : m;
+  });
+  out = out.replace(/\b(?:a\s+)?las\s+(\d{1,2})\s+en\s+punto\b/gi, (m, h) => {
+    const n = parseInt(h, 10);
+    return n >= 1 && n <= 12 ? `${n}:00` : m;
+  });
   out = out.replace(/\b(\d{1,2})\s+y\s+media\b/gi, '$1:30');
   out = out.replace(/\b(\d{1,2})\s+y\s+cuarto\b/gi, '$1:15');
   out = out.replace(
@@ -879,6 +914,18 @@ export const expandWordTimes = (text) => {
     '$1$2:$3',
   );
   return out;
+};
+
+// ---------------------------------------------------------------------------
+// BARE TIMES (v4.121.0) — runs AFTER date masking, on masked text.
+// ---------------------------------------------------------------------------
+// Cueless "3 30" → "3:30" (H 1–12, MM 00–59). Masked dates are already out,
+// and the negative lookahead skips triples ("05 12 1980", "12 34 56" stay).
+// ---------------------------------------------------------------------------
+
+export const expandBareTimes = (text) => {
+  if (!text) return text;
+  return text.replace(/\b([1-9]|1[0-2])\s+([0-5]\d)\b(?!\s*\d)/g, '$1:$2');
 };
 
 // ---------------------------------------------------------------------------
@@ -1036,7 +1083,8 @@ export const applyDisplayProtections = (text, lang = 'en', { applyNumberWords = 
   };
 
   const { text: masked, restore } = maskDateUnits(out);
-  out = masked;
+  // v4.121.0: cueless "3 30" → "3:30" on masked text (dates already safe).
+  out = expandBareTimes(masked);
 
   if (!skipStitch) {
     const afterWords = out;
@@ -1207,12 +1255,15 @@ const EN_SENTINELS = {
     /can i have your (ssn|social|security)/i,
     /what is your (ssn|social)/i,
     // Phase G: insurance IDs (member/affiliate/Medicaid) — same digit unit as SSN.
+    // v4.121.0: case/claim/reference IDs join the lane (ID noun required —
+    // bare "in case you" must not arm).
     /\bmedicaid\b/i,
     /\baffiliate[sd]?\b/i,
     /\bmember (id|number)\b/i,
     /\b(id|identification) number\b/i,
     /\bpolicy number\b/i,
     /\binsurance id\b/i,
+    /\b(?:case|claim|group|reference|confirmation|authorization|auth)\s*(?:id|number|#)/i,
   ],
   phone: [
     /\bphone\b/i,
@@ -1221,7 +1272,10 @@ const EN_SENTINELS = {
     // v4.117.0: request phrasings — "can I have your phone number?"
     /can i have your (phone|cell|mobile|contact|number)/i,
     /what is your (phone|cell|mobile|contact)/i,
-    /\bnumber is\b/i,
+    // v4.121.0: narrowed — bare "number is" fired on room/case/MRN numbers
+    // and dashed them as phones. Needs a phone-ish noun or a digit ahead.
+    /(?:phone|cell|mobile|contact|member)\s+number\s+is\b/i,
+    /\bnumber\s+is\s+\d/i,
     /\bcall me at\b/i,
     /\bcontact number\b/i,
     /\bcall back\b/i,

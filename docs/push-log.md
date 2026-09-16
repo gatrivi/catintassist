@@ -62,3 +62,4 @@
 | 2026-09-16T19:16:41.354Z | 6f59f40 | v4.117.0 request memory - asked phone/SSN formats later bubbles |
 | 2026-09-16T19:49:23.810Z | 2fc95dc | v4.118.0-greeting-editor-view |
 | 2026-09-16T20:08:54.713Z | bb55e3e | v4.119.0 addresses survive - split-ZIP join, directional slot, whole-span chips |
+| 2026-09-16T20:33:01.979Z | af517e4 | v4.120.0 dictation words, magnitudes, NPI verbatim, vitals chips |

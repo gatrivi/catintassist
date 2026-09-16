@@ -39,6 +39,8 @@ const REQUEST_PATTERNS = [
       /\bchart\b/i,
       /record number/i,
       /\bfolio\b/i,
+      // v4.121.0: case/claim/reference IDs arm the ID lane too.
+      /\b(?:case|claim|group|reference|confirmation|authorization|auth)\s*(?:id|number|#)/i,
       /(p[oó]liza|expediente|miembro|n[uú]mero de (miembro|identificaci[oó]n|afiliado))/i,
       /(me puede dar|d[ií]game|cu[aá]l es|necesito).{0,25}(afiliado|miembro|medicaid|expediente|seguro)/i,
     ],

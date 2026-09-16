@@ -16,7 +16,7 @@ const DOSAGE_RE =
 // v4.93.0: street suffix is REQUIRED — "7 minutes" / "1 of" / "5 to" are not addresses.
 const ADDRESS_RE =
   /\b\d{1,6}\s+(?:[A-Za-zÁÉÍÓÚÑáéíóúñ][A-Za-zÁÉÍÓÚÑáéíóúñ0-9.'-]*\s+){0,3}?(?:St|Street|Ave|Avenue|Rd|Road|Blvd|Dr|Drive|Ln|Lane|Ct|Court|Way|Calle|Avenida|Carrera)\.?\b/gi;
-const ID_RE = /\b(?:SSN|ID|MRN|NPI|DEA|member\s*#?)\s*[:#]?\s*[\dA-Za-z-]{4,}\b|\b\d{3}-\d{2}-\d{4}\b|\b\d{9}\b|\b(?:mrn|chart)[\s:#]*[\dA-Za-z-]{4,}\b/gi;
+const ID_RE = /\b(?:SSN|ID|MRN|NPI|DEA|member\s*#?)\s*[:#]?\s*[\dA-Za-z-]{4,}\b|\b\d{3}-\d{2}-\d{4}\b|\b\d{9}\b|\b(?:mrn|chart)[\s:#]*[\dA-Za-z-]{4,}\b|\b(?:case|claim|group|reference|confirmation|authorization|auth)\s*(?:id|number|#)?\s*[:#]?\s*[\dA-Za-z-]{4,}\b/gi;
 // v4.114.0: clerk slot times — "1:00, 1:30" must survive translation (digit-loss safety).
 // v4.115.0: 24h "14:30" + bare "3pm".
 const TIMES_RE = /\b(?:[01]?\d|2[0-3]):[0-5]\d\b|\b(?:[1-9]|1[0-2])\s*(?:am|pm|a\.m\.|p\.m\.)/gi;

@@ -36,8 +36,9 @@ import {
   foldMagnitudes,
   normalizeVitals,
   findVitalsUnits,
+  expandBareTimes,
 } from './sensitiveDataProtector';
-import { armExpectedData, clearExpectedData } from './expectedDataContext';
+import { armExpectedData, clearExpectedData, getArmedExpectedType } from './expectedDataContext';
 
 // ---------------------------------------------------------------------------
 // convertEnglishNumberWords — lane-guard
@@ -904,6 +905,62 @@ describe('dictation + magnitudes + vitals (v4.120.0)', () => {
 
   test('vitals count as critical data', () => {
     expect(containsCriticalData('blood pressure 120 over 80')).toBe(true);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// v4.121.0: rooms/IDs, narrowed number-is, ranges/quarter
+// ---------------------------------------------------------------------------
+describe('rooms, IDs, ranges (v4.121.0)', () => {
+  test('room/bed/po box/ext chip as address units', () => {
+    expect(findAddressUnits('Room 402 please')[0]?.text).toBe('Room 402');
+    expect(findAddressUnits('Bed 12')[0]?.text).toBe('Bed 12');
+    expect(findAddressUnits('PO Box 1234')[0]?.text).toBe('PO Box 1234');
+    expect(findAddressUnits('call ext 123')[0]?.text).toBe('ext 123');
+  });
+
+  test('double room never matches', () => {
+    expect(findAddressUnits('double room please')).toHaveLength(0);
+    expect(applyDisplayProtections('double room please', 'en')).toBe('double room please');
+  });
+
+  test('case numbers arm the ID lane, not phones', () => {
+    expect(detectSentinelContext('your case number is 12345678', 'en').mode).toBe('ssn');
+    expect(detectSentinelContext('case number 12345678', 'en').mode).toBe('ssn');
+    expect(detectSentinelContext('just in case you need it', 'en').mode).toBeNull();
+    armExpectedData('what is your case number', {});
+    expect(getArmedExpectedType()).toBe('member');
+    clearExpectedData();
+  });
+
+  test('bare room/case numbers group as IDs, never as phones', () => {
+    const out = applyDisplayProtections('case number is 12345678', 'en');
+    expect(out).toMatch(/123-456-78/);
+    expect(out).not.toMatch(/\+1|555/);
+    expect(detectSentinelContext('case number is 12345678', 'en').mode).toBe('ssn');
+  });
+
+  test('real phone request still formats', () => {
+    expect(detectSentinelContext('my phone number is 5551234567', 'en').mode).toBe('phone');
+    expect(applyDisplayProtections('my phone number is 5551234567', 'en')).toMatch(/555-123-4567/);
+  });
+
+  test('quarter past/to and o-clock expand', () => {
+    expect(applyDisplayProtections('quarter past two', 'en')).toContain('2:15');
+    expect(applyDisplayProtections('quarter to three', 'en')).toContain('2:45');
+    expect(applyDisplayProtections('at 5 o-clock', 'en')).toContain('5:00');
+    expect(applyDisplayProtections('a las 3 en punto', 'es')).toContain('3:00');
+  });
+
+  test('cueless H MM becomes clock time, triples do not', () => {
+    expect(expandBareTimes('see you at 11 30 sharp')).toBe('see you at 11:30 sharp');
+    expect(expandBareTimes('my DOB is 05 12 1980')).toBe('my DOB is 05 12 1980');
+    expect(applyDisplayProtections('my DOB is 05 12 1980', 'en')).toContain('05 12 1980');
+  });
+
+  test('ranges highlight as schedule units', () => {
+    expect(findScheduleUnits('open 1 to 3')[0]?.text).toBe('1 to 3');
+    expect(findScheduleUnits('entre las 2 y las 4')[0]?.text).toBe('entre las 2 y las 4');
   });
 });
 

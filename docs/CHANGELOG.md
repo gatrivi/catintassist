@@ -2,6 +2,12 @@
 
 **Version source:** `src/constants/version.js` (must match `package.json` + top-right UI pill)
 
+## v4.121.0 - Rooms, ranges, honest yellow
+
+- Rooms/IDs: unitRe += room/bed/po box/ext ("double room" still safe); case/claim/reference arm the ID lane; bare "number is" narrowed (room/case/MRN no longer phone-dash).
+- Times: quarter past/to, o'clock/en punto, cueless H MM post-date-mask ("11 30"→"11:30", "05 12 1980" safe); "1 to 3" + "entre las 2 y las 4" schedule units.
+- Yellow fix: aligner digit-run consumption (min confidence) + positional fallback removed — unmatched words stay white; lane-aware via TranscriptionBoard lang.
+
 ## v4.120.0 - Dictation words, magnitudes, NPI, vitals
 
 - expandDictationWords: "8 oh 5"→805 (digit-gated, "oh no" safe), "double/triple five"→stitchable.

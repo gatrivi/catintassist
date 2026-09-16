@@ -25,6 +25,29 @@ import { APP_VERSION } from '../constants/version';
 /** Newest first. Only the entry matching APP_VERSION is shown on load. */
 export const RELEASE_NOTES_CATALOG = [
   {
+    version: '4.121.0',
+    id: 'rooms-ranges-honest-yellow',
+    highlightElementIds: ['main-transcript'],
+    es: {
+      title: '📍 Rooms, horarios y amarillos honestos',
+      intro: '"Room 402", "quarter to 3" y resaltado que solo marca duda real.',
+      sections: [{ heading: 'Qué cambió', bullets: [
+        '"Room 402, Bed 12, PO Box, ext" resaltan. "Case number" agrupa como ID.',
+        '"quarter to 3" → 2:45, "3 en punto" → 3:00, "1 to 3" resalta.',
+        'Amarillo solo donde Deepgram dudó de verdad; números llevan su peor dígito.',
+      ] }],
+    },
+    en: {
+      title: '📍 Rooms, ranges, honest yellow',
+      intro: '"Room 402", "quarter to 3", and highlighting that only marks real doubt.',
+      sections: [{ heading: 'What changed', bullets: [
+        '"Room 402, Bed 12, PO Box, ext" highlight. "Case number" groups as ID.',
+        '"quarter to 3" → 2:45, "3 o\'clock" → 3:00, "1 to 3" highlights.',
+        'Yellow only where Deepgram truly doubted; numbers carry weakest digit.',
+      ] }],
+    },
+  },
+  {
     version: '4.120.0',
     id: 'dictation-magnitudes-vitals',
     highlightElementIds: ['main-transcript'],

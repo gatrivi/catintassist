@@ -163,8 +163,9 @@ const InteractiveText = ({
     [text, lang, applyNumberWords, protectionsActive],
   );
   const alignedWords = useMemo(
-    () => alignWordConfidence(repairedText, wordConfidence),
-    [repairedText, wordConfidence],
+    // v4.121.0: lane-aware digit alignment (spoken number-words map per lane).
+    () => alignWordConfidence(repairedText, wordConfidence, lang),
+    [repairedText, wordConfidence, lang],
   );
   const tailSlice = useMemo(
     () => (text ? resolveTailHighlight(repairedText, text, tailPreviewText, lang, applyNumberWords, protectionsActive) : null),
