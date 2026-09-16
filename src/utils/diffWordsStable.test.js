@@ -43,4 +43,11 @@ describe('diffWordsStable', () => {
     expect(isProtectedToken('May 8 1990')).toBe(true);
     expect(isProtectedToken('hello')).toBe(false);
   });
+
+  test('v4.116.0: any digit + currency never blanks', () => {
+    expect(isProtectedToken('5')).toBe(true);
+    expect(isProtectedToken('1:30')).toBe(true);
+    expect(isProtectedToken('$')).toBe(true);
+    expect(isProtectedToken('hello')).toBe(false);
+  });
 });

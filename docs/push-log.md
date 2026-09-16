@@ -57,3 +57,4 @@
 | 2026-09-13T20:43:34.824Z | 8b7e3a6 | v4.112.0 one-tab local translator watch, retire 5-min popup task |
 | 2026-09-16T13:22:12.188Z | 0da01f3 | feat(goals): goal tracking view v4.113.0 |
 | 2026-09-16T17:56:38.306Z | 2ae5263 | v4.114.0 clerk slot times survive (1 1 30 = 1:00 + 1:30) + schedule highlight |
+| 2026-09-16T18:37:43.364Z | aae5b5c | v4.115.0 sensitive data round 2 - DOB/dose/money/email/word-times survive |

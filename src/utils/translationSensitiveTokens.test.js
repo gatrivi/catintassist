@@ -58,4 +58,11 @@ describe('translationSensitiveTokens', () => {
   test('dropped time is reported missing', () => {
     expect(diffSensitiveTokens('slots 1:00, 1:30', 'ranuras')).toEqual(['1:00', '1:30']);
   });
+
+  // v4.116.0: pure-digit tokens compare exact at any length.
+  test('short digit typo is missing, identical is fine', () => {
+    expect(diffSensitiveTokens('zip 10027', 'zip 10072')).toEqual(['10027']);
+    expect(diffSensitiveTokens('zip 10027', 'zip 10027')).toEqual([]);
+    expect(normalizeTokenForCompare('5')).toBe('d:5');
+  });
 });

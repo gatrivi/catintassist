@@ -25,6 +25,29 @@ import { APP_VERSION } from '../constants/version';
 /** Newest first. Only the entry matching APP_VERSION is shown on load. */
 export const RELEASE_NOTES_CATALOG = [
   {
+    version: '4.116.0',
+    id: 'never-destroy-numbers',
+    highlightElementIds: ['main-transcript'],
+    es: {
+      title: '🛡️ Duda = mostrar ambas, números nunca se borran',
+      intro: 'Nueva regla: ante la duda se muestran ambas opciones y ningún número renderizado se destruye.',
+      sections: [{ heading: 'Qué cambió', bullets: [
+        'Fechas ambiguas copian ambas lecturas: "05/12/1980" → 1980-05-12 / 1980-12-05.',
+        'Números raros (8, 12 dígitos) quedan como dictados salvo "phone/SSN" explícito.',
+        'Solapes con dígitos no recortan; "5", "$" y "1:30" nunca se borran en vivo.',
+      ] }],
+    },
+    en: {
+      title: '🛡️ Doubt = show both, numbers never destroyed',
+      intro: 'New rule: when in doubt both options show, and no rendered number is ever destroyed.',
+      sections: [{ heading: 'What changed', bullets: [
+        'Ambiguous dates copy both readings: "05/12/1980" → 1980-05-12 / 1980-12-05.',
+        'Odd lengths (8, 12 digits) stay as dictated unless explicit phone/SSN cue.',
+        'Digit overlaps never strip; "5", "$", "1:30" never blank live.',
+      ] }],
+    },
+  },
+  {
     version: '4.115.0',
     id: 'sensitive-data-round-2',
     highlightElementIds: ['main-transcript'],

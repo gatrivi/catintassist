@@ -2,6 +2,13 @@
 
 **Version source:** `src/constants/version.js` (must match `package.json` + top-right UI pill)
 
+## v4.116.0 - Doubt shows both, numbers never destroyed
+
+- Ambiguous all-digit dates copy both ISOs ("05/12/1980" → 1980-05-12 / 1980-12-05); display verbatim.
+- Phone fallback dashes only 9/10/11; other lengths stay as dictated unless explicit phone/SSN sentinel.
+- Overlap near digits requires exact raw-word repeat ("1234" vs "12 34" no longer strips).
+- Morph protects any digit token + currency; translation pure-digit compare exact + new ZIP class.
+
 ## v4.115.0 - Sensitive data round 2: DOB/dose/money/email survive
 
 - Spaced DOB "05 12 1980" masks as one date unit (ISO copy); dotted "05.12.1980" too; "v1.2" untouched.

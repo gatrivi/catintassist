@@ -100,7 +100,11 @@ export function diffWordsStable(prevText = '', nextText = '') {
 export function isProtectedToken(text = '') {
   const t = (text || '').trim();
   if (!t) return false;
-  if (/\d/.test(t) && t.replace(/\D/g, '').length >= 2) return true;
+  // v4.116.0 "never destroy rendered numbers": ANY digit counts — dictated
+  // "5 5 5" interim tokens and "$" stand-alones stay on screen (struck-through
+  // cue at worst, never a blank frame).
+  if (/\d/.test(t)) return true;
+  if (/[$€£]/.test(t)) return true;
   if (/^\d+\/\d+/.test(t)) return true;
   // v4.115.0: full pill/drop/puff units — "2 pills" must not blank mid-morph.
   if (/mg|mcg|ml|units?|pills?|tablets?|pastillas?|tabletas?|capsules?|drops?|gotas?|puffs?|sprays?|tsp|tbsp/i.test(t) && /\d/.test(t)) return true;

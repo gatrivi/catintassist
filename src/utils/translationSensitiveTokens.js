@@ -22,6 +22,8 @@ const ID_RE = /\b(?:SSN|ID|MRN|member\s*#?)\s*[:#]?\s*[\dA-Za-z-]{4,}\b|\b\d{3}-
 const TIMES_RE = /\b(?:[01]?\d|2[0-3]):[0-5]\d\b|\b(?:[1-9]|1[0-2])\s*(?:am|pm|a\.m\.|p\.m\.)/gi;
 // v4.115.0: money amounts must survive translation too.
 const MONEY_TR_RE = /(?:[$€£]\s*\d+(?:[.,]\d{3})*(?:[.,]\d{2})?|\b\d+(?:(?:[.,]\d{3})+)?(?:[.,]\d{2})?\s*(?:dollars?|pesos?|usd|ars|copay|co-pay|copago|coaseguro)\b)/gi;
+// v4.116.0: ZIPs were never extracted — short digit typos were invisible.
+const ZIP_TR_RE = /\b\d{5}(?:-\d{4})?\b/g;
 
 const uniq = (arr) => [...new Set(arr.filter(Boolean))];
 
@@ -34,7 +36,7 @@ const collect = (text, re) => {
   return uniq(out);
 };
 
-/** @returns {{ phones: string[], dobs: string[], dosages: string[], addresses: string[], ids: string[], times: string[], money: string[] }} */
+/** @returns {{ phones: string[], dobs: string[], dosages: string[], addresses: string[], ids: string[], times: string[], money: string[], zips: string[] }} */
 export function extractSensitiveTokens(text) {
   const src = String(text || '');
   return {
@@ -45,12 +47,16 @@ export function extractSensitiveTokens(text) {
     ids: collect(src, ID_RE),
     times: collect(src, TIMES_RE),
     money: collect(src, MONEY_TR_RE),
+    zips: collect(src, ZIP_TR_RE),
   };
 }
 
 /** Normalize for equality — digits-only when both have digits; else lower trim. */
 export function normalizeTokenForCompare(token) {
   const raw = String(token || '').trim();
+  // v4.116.0: pure-digit tokens compare EXACT at any length — "10027" vs
+  // "10072" is a typo (missing), "5" vs "5" is fine. Never fuzzy on numbers.
+  if (/^\d+$/.test(raw)) return `d:${raw}`;
   const digits = copyableDigits(raw);
   if (digits && /\d/.test(raw) && digits.length >= 7) return `d:${digits}`;
   // dosages: collapse spaces + lower unit (v4.115.0: same extended unit list)
@@ -71,6 +77,7 @@ const flattenTokens = (bag) => {
     ...(bag.ids || []),
     ...(bag.times || []),
     ...(bag.money || []),
+    ...(bag.zips || []),
   ];
 };
 

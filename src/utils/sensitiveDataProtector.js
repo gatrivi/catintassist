@@ -98,7 +98,7 @@ export const combineCompoundNumbers = (text, lang = 'en') => {
 //      Other lengths → digit groups of 3 with dashes (unchanged).
 // ---------------------------------------------------------------------------
 
-export const formatPhoneAndSSNDigits = (text, { ignoreAddressGuard = false, ignoreDateGuard = false } = {}) => {
+export const formatPhoneAndSSNDigits = (text, { ignoreAddressGuard = false, ignoreDateGuard = false, allowNonStandardDash = false } = {}) => {
   if (!text) return text;
   return text.replace(/\b(?:\d[\s.,-:]*){7,15}\d\b/g, (m, offset, full) => {
     // v4.114.0: clock times are NEVER phones — "1:00, 1:30, 2:00, 2:30"
@@ -136,6 +136,10 @@ export const formatPhoneAndSSNDigits = (text, { ignoreAddressGuard = false, igno
       // US phone with country code
       return `+1 ${digitsOnly.slice(1, 4)}-${digitsOnly.slice(4, 7)}-${digitsOnly.slice(7)}`;
     }
+    // v4.116.0 "when in doubt show both": non-US lengths (8, 12-16 digits)
+    // stay EXACTLY as dictated unless an explicit phone/ssn sentinel asked
+    // for grouping — a guessed dash pattern is worse than spaced digits.
+    if (!allowNonStandardDash) return m;
     return digitsOnly.replace(/(\d{3})(?=\d)/g, '$1-');
   });
 };
@@ -210,6 +214,14 @@ const isoFromParts = (year, month, day) => {
   return `${year}-${pad2(month)}-${pad2(day)}`;
 };
 
+// v4.116.0 "when in doubt show both": ambiguous all-digit dates copy BOTH
+// readings — "05/12/1980" → "1980-05-12 / 1980-12-05". Display untouched.
+const ambiguousCopy = (year, a, b, primary) => {
+  if (!primary || a === b || a < 1 || a > 12 || b < 1 || b > 31) return primary;
+  const alt = isoFromParts(year, b, a);
+  return alt && alt !== primary ? `${primary} / ${alt}` : primary;
+};
+
 /**
  * Find date spans that must highlight/copy as one unit (Phase B).
  * Does not rewrite display text — only reports spans + preferred copy value.
@@ -240,6 +252,7 @@ export const findDateUnits = (text) => {
     let iso = null;
     if (year && a >= 1 && a <= 12 && b >= 1 && b <= 31) {
       iso = isoFromParts(year, a, b); // prefer MDY when first ≤12
+      iso = ambiguousCopy(year, a, b, iso);
     } else if (year && b >= 1 && b <= 12 && a >= 1 && a <= 31 && a > 12) {
       iso = isoFromParts(year, b, a); // DMY when day>12
     }
@@ -254,7 +267,7 @@ export const findDateUnits = (text) => {
     const b = parseInt(m[2], 10);
     const year = normalizeYear(m[3]);
     let iso = null;
-    if (a >= 1 && a <= 12 && b >= 1 && b <= 31) iso = isoFromParts(year, a, b);
+    if (a >= 1 && a <= 12 && b >= 1 && b <= 31) iso = ambiguousCopy(year, a, b, isoFromParts(year, a, b));
     else if (b >= 1 && b <= 12 && a >= 1 && a <= 31) iso = isoFromParts(year, b, a);
     if (!iso) continue;
     push(m.index, m.index + m[0].length, m[0], iso);
@@ -269,7 +282,7 @@ export const findDateUnits = (text) => {
     const b = parseInt(m[2], 10);
     const year = normalizeYear(m[3]);
     let iso = null;
-    if (a >= 1 && a <= 12 && b >= 1 && b <= 31) iso = isoFromParts(year, a, b);
+    if (a >= 1 && a <= 12 && b >= 1 && b <= 31) iso = ambiguousCopy(year, a, b, isoFromParts(year, a, b));
     else if (b >= 1 && b <= 12 && a >= 1 && a <= 31) iso = isoFromParts(year, b, a);
     if (!iso) continue;
     // Span starts at the digit triple (tail), not at the cue word.
@@ -738,6 +751,9 @@ export const applyDisplayProtections = (text, lang = 'en', { applyNumberWords = 
   const stitchOpts = {
     ignoreAddressGuard: sentinel.mode === 'address' || fullTransform,
     ignoreDateGuard: fullTransform,
+    // v4.116.0: explicit phone/ssn cue ("my phone is ...") still groups odd
+    // lengths; everything else leaves non-US lengths verbatim.
+    allowNonStandardDash: fullTransform,
   };
 
   const { text: masked, restore } = maskDateUnits(out);
@@ -1232,12 +1248,27 @@ export const removeOverlapPreservingDigitSequences = (base, addition) => {
   const aWords = addition.trim().split(/\s+/).map(normalize);
   const aWordsRaw = addition.trim().split(/\s+/);
 
+  // v4.116.0 "never destroy rendered numbers": the normalized join('')
+  // treats "12 34" ≡ "1234" ≡ "1 2 3 4". When digits sit near the boundary,
+  // only an EXACT raw-word repeat counts as overlap — when in doubt both
+  // copies stay on screen and downstream guards sort it out.
+  const boundaryHasDigits = /\d/.test(
+    `${base.trim().split(/\s+/).slice(-10).join(' ')} ${aWordsRaw.slice(0, 10).join(' ')}`,
+  );
+  const bCmp = boundaryHasDigits
+    ? base.trim().split(/\s+/).map((w) => w.toLowerCase())
+    : bWords;
+  const aCmp = boundaryHasDigits
+    ? aWordsRaw.map((w) => w.toLowerCase())
+    : aWords;
+  const joiner = boundaryHasDigits ? ' ' : '';
+
   let bestOverlap = 0;
   const maxCheck = Math.min(aWords.length, bWords.length, 50);
 
   for (let i = 1; i <= maxCheck; i++) {
-    const aPrefix = aWords.slice(0, i).join('');
-    const bSuffix = bWords.slice(-i).join('');
+    const aPrefix = aCmp.slice(0, i).join(joiner);
+    const bSuffix = bCmp.slice(-i).join(joiner);
     if (aPrefix === bSuffix) {
       bestOverlap = i;
     }

@@ -624,11 +624,11 @@ describe('sensitive data round 2 (v4.115.0)', () => {
     expect(out).not.toMatch(/123-456-78/);
   });
 
-  test('spaced DOB masks as one date unit with ISO copy', () => {
+  test('spaced DOB masks as one date unit with BOTH ISO readings', () => {
     const units = findDateUnits('my DOB is 05 12 1980');
     expect(units).toHaveLength(1);
     expect(units[0].text).toBe('05 12 1980');
-    expect(units[0].copyValue).toBe('1980-05-12');
+    expect(units[0].copyValue).toBe('1980-05-12 / 1980-12-05');
   });
 
   test('spaced DOB survives the full pipeline', () => {
@@ -711,6 +711,28 @@ describe('sensitive data round 2 (v4.115.0)', () => {
 
   test('slash dictation stitches', () => {
     expect(stitchSingleDigitSequences('5/5/5/1/2/3/4')).toBe('5551234');
+  });
+
+  test('ambiguous slash date copies both readings, display verbatim', () => {
+    const units = findDateUnits('date 05/12/1980');
+    expect(units[0]?.text).toBe('05/12/1980');
+    expect(units[0]?.copyValue).toBe('1980-05-12 / 1980-12-05');
+    expect(applyDisplayProtections('date 05/12/1980', 'en')).toContain('05/12/1980');
+  });
+
+  test('non-US digit lengths stay verbatim without phone cue', () => {
+    expect(applyDisplayProtections('code 12345678 ok', 'en')).toContain('12345678');
+    expect(applyDisplayProtections('code 12345678 ok', 'en')).not.toMatch(/123-456-78/);
+  });
+
+  test('explicit phone cue still groups odd lengths', () => {
+    expect(applyDisplayProtections('my phone number is 1 2 3 4 5 6 7 8', 'en')).toMatch(/123-456-78/);
+  });
+
+  test('overlap keeps both copies when digits differ in spacing', () => {
+    expect(removeOverlapPreservingDigitSequences('call 12 34', '12 34 now')).toBe('12 34 now');
+    expect(removeOverlapPreservingDigitSequences('call 1234', '12 34 now')).toBe('12 34 now');
+    expect(removeOverlapPreservingDigitSequences('the patient is thirty', 'thirty years old')).toBe('thirty years old');
   });
 });
 
