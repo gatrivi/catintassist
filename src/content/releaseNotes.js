@@ -25,6 +25,29 @@ import { APP_VERSION } from '../constants/version';
 /** Newest first. Only the entry matching APP_VERSION is shown on load. */
 export const RELEASE_NOTES_CATALOG = [
   {
+    version: '4.119.0',
+    id: 'address-repairs',
+    highlightElementIds: ['main-transcript'],
+    es: {
+      title: '📍 Direcciones que sobreviven: ZIP, E, suite',
+      intro: '"3247 e Avenida, s 1, ... 93, 550" ahora sale "3247 E Avenida" + ZIP 93550 en un chip.',
+      sections: [{ heading: 'Qué cambió', bullets: [
+        '"California, 93, 550" → 93550 (solo junto a estado/ZIP/calle).',
+        '"3247 e/and Avenida" → "3247 E Avenida". "s 1" y "apt 4B" copian bien.',
+        'La dirección resalta en un chip: clic copia la línea completa.',
+      ] }],
+    },
+    en: {
+      title: '📍 Addresses that survive: ZIP, E, suite',
+      intro: '"3247 e Avenida, s 1, ... 93, 550" now renders "3247 E Avenida" + ZIP 93550 in one chip.',
+      sections: [{ heading: 'What changed', bullets: [
+        '"California, 93, 550" → 93550 (only near state/ZIP/street cues).',
+        '"3247 e/and Avenue" → "3247 E Avenue". "s 1" and "apt 4B" copy right.',
+        'The street line highlights as one chip: click copies the full line.',
+      ] }],
+    },
+  },
+  {
     version: '4.117.0',
     id: 'request-memory-formatting',
     highlightElementIds: ['main-transcript'],

@@ -30,6 +30,8 @@ import {
   expandWordTimes,
   findSpokenEmailUnits,
   collapseAdjacentDigitRepeats,
+  repairSplitZips,
+  normalizeAddressDirectionals,
 } from './sensitiveDataProtector';
 import { armExpectedData, clearExpectedData } from './expectedDataContext';
 
@@ -301,8 +303,9 @@ describe('findAddressUnits / findEmailUnits (Phase F)', () => {
   test('groups street number, unit, and zip after state', () => {
     const text = 'number 1935, Madison Avenue, Unit, 111, Chula Vista, California, 91913';
     const addr = findAddressUnits(text);
-    expect(addr.some((u) => u.text === '1935' && u.copyValue === '1935')).toBe(true);
-    expect(addr.some((u) => u.text === '111')).toBe(true);
+    // v4.118.0: street span is one unit ("1935, Madison Avenue").
+    expect(addr.some((u) => u.text === '1935, Madison Avenue' && u.copyValue === '1935, Madison Avenue')).toBe(true);
+    expect(addr.some((u) => u.text === 'Unit, 111')).toBe(true);
     expect(addr.some((u) => u.text === '91913')).toBe(true);
   });
 
@@ -793,6 +796,60 @@ describe('armed expectation (v4.117.0)', () => {
     expect(detectSentinelContext('can I have your social', 'en').mode).toBe('ssn');
     expect(detectSentinelContext('how old are you', 'en').mode).toBe('date');
     expect(detectSentinelContext('me puede dar su número de teléfono', 'es').mode).toBe('phone');
+  });
+});
+
+// ---------------------------------------------------------------------------
+// v4.118.0: addresses — split ZIPs, directional slot, whole-span chips
+// ---------------------------------------------------------------------------
+describe('addresses round 2 (v4.118.0)', () => {
+  test('split ZIP joins near a state cue', () => {
+    expect(repairSplitZips('Pumble, California, 93, 550.')).toBe('Pumble, California, 93550.');
+    expect(repairSplitZips('zip 93, 550 please')).toBe('zip 93550 please');
+  });
+
+  test('counts without a cue never join', () => {
+    expect(repairSplitZips('take 2, 500 pills')).toBe('take 2, 500 pills');
+  });
+
+  test('directional slot normalizes to compass letter', () => {
+    expect(normalizeAddressDirectionals('Es 3247 e Avenida')).toBe('Es 3247 E Avenida');
+    expect(normalizeAddressDirectionals("It's 3247 and Avenue")).toBe("It's 3247 E Avenue");
+    expect(normalizeAddressDirectionals('vive en 12 oeste Calle')).toBe('vive en 12 W Calle');
+  });
+
+  test('ordinary "and" phrases untouched', () => {
+    expect(normalizeAddressDirectionals('fish and chips')).toBe('fish and chips');
+    expect(normalizeAddressDirectionals('bread and butter 12')).toBe('bread and butter 12');
+  });
+
+  test('full ES example survives the pipeline', () => {
+    const out = applyDisplayProtections('Es 3247 e Avenida, s 1, Pumble, California, 93, 550.', 'es');
+    expect(out).toContain('3247 E Avenida');
+    expect(out).toContain('93550');
+    expect(out).not.toMatch(/93, 550/);
+  });
+
+  test('street span is one address chip', () => {
+    const units = findAddressUnits('123 Main Street');
+    expect(units.some((u) => u.text === '123 Main Street')).toBe(true);
+    const es = findAddressUnits('3247 E Avenida');
+    expect(es.some((u) => u.text.includes('3247') && u.text.includes('Avenida'))).toBe(true);
+  });
+
+  test('suite shorthand chips only with address context', () => {
+    expect(findSpokenEmailUnits('s 1').length).toBe(0);
+    const units = findAddressUnits('3247 E Ave, s 1, California');
+    expect(units.some((u) => u.text === 's 1')).toBe(true);
+    expect(findAddressUnits('take vitamin s 1 daily')).toHaveLength(0);
+  });
+
+  test('apt letters survive in copy', () => {
+    expect(findAddressUnits('apt 4B')[0]?.copyValue).toBe('4B');
+  });
+
+  test('address question still arms address mode', () => {
+    expect(detectSentinelContext('Cuál es la nueva dirección', 'es').mode).toBe('address');
   });
 });
 

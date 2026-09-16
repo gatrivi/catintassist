@@ -2,6 +2,13 @@
 
 **Version source:** `src/constants/version.js` (must match `package.json` + top-right UI pill)
 
+## v4.119.0 - Addresses survive: split ZIPs, directional slot, whole-span chips
+
+- repairSplitZips: "California, 93, 550" → "93550" (cue-gated; counts untouched).
+- Directional slot: "3247 e/and/y + street-type" → compass letter ("3247 E Avenida").
+- Street span is one address chip (click copies full line); unitRe takes "#" + letter suffixes ("apt 4B" copies "4B"); shorthand suites ("s 1") gated on address context.
+- STREET_TYPE_WORD += avenida/calle/carrera/bulevar; ES street-first + EN number-first both chip.
+
 ## v4.118.0 - Greeting Editor view (one greeting at a time)
 
 - New off-call **Greeting Editor view**: master/detail workspace for a single soundboard clip — script, inline waveform editor, record/upload, legibility + loudness + choppiness, and a caller test.

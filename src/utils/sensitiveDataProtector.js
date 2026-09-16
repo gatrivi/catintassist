@@ -412,7 +412,7 @@ export const findMoneyUnits = (text) => {
 };
 
 const STREET_TYPE_WORD =
-  '(?:street|st|avenue|ave|boulevard|blvd|drive|dr|road|rd|lane|ln|court|ct|place|pl|way|circle|cir|highway|hwy|parkway|pkwy|terrace|ter)';
+  '(?:street|st|avenue|ave|boulevard|blvd|drive|dr|road|rd|lane|ln|court|ct|place|pl|way|circle|cir|highway|hwy|parkway|pkwy|terrace|ter|calle|avenida|av|carrera|cra|bulevar)';
 
 const US_STATE_NAMES =
   'Alabama|Alaska|Arizona|Arkansas|California|Colorado|Connecticut|Delaware|Florida|Georgia|Hawaii|Idaho|Illinois|Indiana|Iowa|Kansas|Kentucky|Louisiana|Maine|Maryland|Massachusetts|Michigan|Minnesota|Mississippi|Missouri|Montana|Nebraska|Nevada|New Hampshire|New Jersey|New Mexico|New York|North Carolina|North Dakota|Ohio|Oklahoma|Oregon|Pennsylvania|Rhode Island|South Carolina|South Dakota|Tennessee|Texas|Utah|Vermont|Virginia|Washington|West Virginia|Wisconsin|Wyoming';
@@ -435,13 +435,15 @@ export const findAddressUnits = (text) => {
   };
 
   const streetBeforeType = new RegExp(
-    `\\b(\\d{1,6})\\s*,?\\s*(?:[A-Za-z][\\w.'-]+\\s+){0,2}${STREET_TYPE_WORD}\\b`,
+    `\\b(\\d{1,6})\\s*,?\\s*((?:[A-Za-zÁÉÍÓÚÑáéíóúñ][\\w.'-]*\\s+){0,2}${STREET_TYPE_WORD})\\b`,
     'gi',
   );
   let m;
   while ((m = streetBeforeType.exec(text))) {
-    const num = m[1];
-    push(m.index, m.index + num.length, num, copyableDigits(num));
+    // v4.118.0: whole span is ONE address unit ("123 Main Street",
+    // "3247 E Avenida") — click copies the full street line.
+    const raw = m[0];
+    push(m.index, m.index + raw.length, raw, raw.trim());
   }
 
   const numberCue = /\b(?:number|no\.?|#)\s+(\d{1,6})\b/gi;
@@ -450,10 +452,26 @@ export const findAddressUnits = (text) => {
     push(m.index + m[0].indexOf(num), m.index + m[0].indexOf(num) + num.length, num, copyableDigits(num));
   }
 
-  const unitRe = /\b(?:unit|apt|apartment|suite|ste)\s*,?\s*#?\s*(\d{1,6})\b/gi;
+  const unitRe = /\b(?:unit|apt|apartment|suite|ste|#)\s*,?\s*#?\s*(\d{1,6}[A-Za-z]?)\b/gi;
   while ((m = unitRe.exec(text))) {
-    const num = m[1];
-    push(m.index + m[0].indexOf(num), m.index + m[0].indexOf(num) + num.length, num, copyableDigits(num));
+    const raw = m[0];
+    // v4.118.0: keep letter suffixes — "apt 4B" copies "4B", not "4".
+    push(m.index, m.index + raw.length, raw, m[1]);
+  }
+
+  // v4.118.0: shorthand suites ("s 1", "u 4B") — gated on address context
+  // in the same bubble (state, street word, or an existing address unit)
+  // so "vitamin s 1" never matches.
+  const hasAddressContext =
+    new RegExp(`\\b(?:${US_STATE_NAMES})\\b`, 'i').test(text) ||
+    STREET_TYPE_RE.test(text) ||
+    units.length > 0;
+  if (hasAddressContext) {
+    const shortUnitRe = /\b([sua])\s*,?\s*#?\s*(\d{1,6}[A-Za-z]?)\b/gi;
+    while ((m = shortUnitRe.exec(text))) {
+      const raw = m[0];
+      push(m.index, m.index + raw.length, raw, raw.trim());
+    }
   }
 
   const stateZip = new RegExp(`\\b(?:${US_STATE_NAMES})\\s*,?\\s*(\\d{5})(?:-(\\d{4}))?\\b`, 'gi');
@@ -780,6 +798,65 @@ export const collapseAdjacentDigitRepeats = (text) => {
   return collapsed ? parts.join('') : text;
 };
 
+// ---------------------------------------------------------------------------
+// SPLIT-ZIP JOIN + DIRECTIONAL SLOT (v4.118.0)
+// ---------------------------------------------------------------------------
+// STT splits ZIPs ("California, 93, 550") and detaches compass letters
+// ("3247 e Avenida", "3247 and Avenue" for 3247 E Avenue, "s 1" suite is a
+// finder-level chip, not a rewrite). Both run pre-sentinel, both logged.
+// ---------------------------------------------------------------------------
+
+/** "California, 93, 550." → "California, 93550." — cue-gated, never blind. */
+export const repairSplitZips = (text) => {
+  if (!text) return text;
+  const stateRe = new RegExp(`\\b(?:${US_STATE_NAMES})\\b`, 'i');
+  const gateRe =
+    /\b(?:zip(?:\s*code)?|postal(?:\s*code)?|c[oó]digo postal|calle|avenida|carrera|direcci[oó]n|domicilio|apartment|apt|suite|unit)\b/i;
+  return text.replace(/\b(\d{2,3})\s*,\s*(\d{3})\b/g, (m, a, b, offset, full) => {
+    const before = full.slice(Math.max(0, offset - 40), offset);
+    if (!stateRe.test(before) && !gateRe.test(before)) return m;
+    const joined = `${a}${b}`;
+    flagVanish('display_zip_fragment_join', {
+      before: m,
+      after: joined,
+      stage: 'repairSplitZips',
+      force: true,
+    });
+    return joined;
+  });
+};
+
+const COMPASS_LETTER = {
+  e: 'E', east: 'E', este: 'E', y: 'E', and: 'E',
+  w: 'W', west: 'W', oeste: 'W',
+  n: 'N', north: 'N', norte: 'N',
+  s: 'S', south: 'S', sur: 'S',
+};
+
+/**
+ * Detached directional between house number and street type:
+ * "3247 e Avenida" / "3247 and Avenue" → "3247 E Avenida" / "3247 E Avenue".
+ * The street-type anchor keeps "fish and chips" and "bread and butter" away.
+ */
+export const normalizeAddressDirectionals = (text) => {
+  if (!text) return text;
+  const re = new RegExp(
+    `\\b(\\d{1,6})\\s+(e|w|n|s|y|and|east|west|north|south|este|oeste|norte|sur)\\s+((?:[A-Za-zÁÉÍÓÚÑáéíóúñ][\\w.'-]*\\s+){0,2}${STREET_TYPE_WORD})\\b`,
+    'gi',
+  );
+  return text.replace(re, (m, num, dir, rest) => {
+    const letter = COMPASS_LETTER[dir.toLowerCase()] || dir;
+    if (letter === dir) return m;
+    flagVanish('display_directional_normalize', {
+      before: m,
+      after: `${num} ${letter} ${rest}`,
+      stage: 'normalizeAddressDirectionals',
+      force: true,
+    });
+    return `${num} ${letter} ${rest}`;
+  });
+};
+
 /** Display pipeline order (transcript + translation panes). */
 export const applyDisplayProtections = (text, lang = 'en', { applyNumberWords = true, expectedType = getArmedExpectedType() } = {}) => {
   if (!text) return text;
@@ -794,6 +871,10 @@ export const applyDisplayProtections = (text, lang = 'en', { applyNumberWords = 
   out = expandWordTimes(out);
   // v4.117.0: straddle dupes ("555 123 123 4567") collapse before sentinels.
   out = collapseAdjacentDigitRepeats(out);
+  // v4.118.0: address repairs — "93, 550" → "93550", "3247 e Avenida" →
+  // "3247 E Avenida". Pre-sentinel so brakes see the joined form.
+  out = repairSplitZips(out);
+  out = normalizeAddressDirectionals(out);
 
   // Phase C: sentinels gate stitch/phone — display brake only (overlap unchanged).
   // ssn/phone sentinels win over address/date guards (Phase G tests): a dictated
