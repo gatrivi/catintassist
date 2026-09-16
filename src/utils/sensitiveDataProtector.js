@@ -49,11 +49,15 @@ const ES_NUMBER_MAP = {
   cinco: '5', seis: '6', siete: '7', ocho: '8', nueve: '9',
   diez: '10', once: '11', doce: '12', trece: '13', catorce: '14',
   quince: '15', dieciseis: '16', diecisiete: '17', dieciocho: '18', diecinueve: '19',
+  // v4.120.0: accented STT forms (regex matches raw text, so list them).
+  'dieciséis': '16', 'veintidós': '22', 'veintitrés': '23', 'veintiséis': '26',
   veinte: '20', veintiuno: '21', veintidos: '22', veintitres: '23',
   veinticuatro: '24', veinticinco: '25', veintiseis: '26', veintisiete: '27',
   veintiocho: '28', veintinueve: '29',
   treinta: '30', cuarenta: '40', cincuenta: '50', sesenta: '60',
   setenta: '70', ochenta: '80', noventa: '90',
+  // v4.120.0: magnitude words convert so folds below see digits.
+  cien: '100', ciento: '100', mil: '1000',
 };
 
 export const convertEnglishNumberWords = (text, lang = 'en') => {
@@ -65,6 +69,83 @@ export const convertEnglishNumberWords = (text, lang = 'en') => {
     const digit = map[normalizeAccents(matched)];
     return digit !== undefined ? digit + punct : matched + punct;
   });
+};
+
+// ---------------------------------------------------------------------------
+// DICTATION WORDS (v4.120.0) — runs BEFORE word conversion, on words.
+// ---------------------------------------------------------------------------
+// "8 oh 5" → "8 0 5" · "double five" → "five five" · "triple 5" → "5 5 5".
+// "oh" converts ONLY next to a real digit ("oh no, my leg" is untouched);
+// double/triple need a digit or number-word right after ("double room" safe).
+// ---------------------------------------------------------------------------
+
+const numWordAltFor = (lang) =>
+  Object.keys(lang === 'es' ? ES_NUMBER_MAP : EN_NUMBER_MAP).join('|');
+
+export const expandDictationWords = (text, lang = 'en') => {
+  let out = text || '';
+  if (lang === 'es') {
+    out = out.replace(
+      new RegExp(`\\bdoble\\s+(${numWordAltFor('es')}|\\d)\\b`, 'gi'), '$1 $1',
+    );
+    out = out.replace(
+      new RegExp(`\\btriple\\s+(${numWordAltFor('es')}|\\d)\\b`, 'gi'), '$1 $1 $1',
+    );
+  } else {
+    const dbl = numWordAltFor('en');
+    out = out.replace(new RegExp(`\\bdouble\\s+(${dbl}|\\d)\\b`, 'gi'), '$1 $1');
+    out = out.replace(new RegExp(`\\btriple\\s+(${dbl}|\\d)\\b`, 'gi'), '$1 $1 $1');
+    // "oh" → 0 only beside a digit: "8 oh 5" ✓, "oh no" ✗.
+    out = out.replace(/\boh\b/gi, (m, offset, full) => {
+      const ctx = `${full.slice(Math.max(0, offset - 6), offset)} ${full.slice(offset + m.length, offset + m.length + 6)}`;
+      return /\d/.test(ctx) ? '0' : m;
+    });
+  }
+  return out;
+};
+
+// ---------------------------------------------------------------------------
+// MAGNITUDE FOLDING (v4.120.0) — runs AFTER word conversion, on digits.
+// ---------------------------------------------------------------------------
+// "one hundred twenty three" → "1 hundred 23" → "123".
+// "dos mil veintiséis" → "2 1000 26" → "2026".
+// Year fold is cue-gated ("born 20 26" → "born 2026"; bare "20 26" untouched).
+// ---------------------------------------------------------------------------
+
+export const foldMagnitudes = (text) => {
+  let out = text || '';
+  out = out.replace(/\b(\d{1,3})\s+hundred(?:\s+and)?\s+(\d{1,3})\b/gi,
+    (_, h, r) => `${parseInt(h, 10) * 100 + parseInt(r, 10)}`);
+  out = out.replace(/\b(\d{1,3})\s+hundred\b/gi,
+    (_, h) => `${parseInt(h, 10) * 100}`);
+  out = out.replace(/\b(\d{1,3})\s+thousand(?:\s+and)?\s+(\d{1,3})\b/gi,
+    (_, h, r) => `${parseInt(h, 10) * 1000 + parseInt(r, 10)}`);
+  out = out.replace(/\b(\d{1,3})\s+thousand\b/gi,
+    (_, h) => `${parseInt(h, 10) * 1000}`);
+  out = out.replace(/\b(\d{1,3})\s+mil\s+(\d{1,3})\b/gi,
+    (_, h, r) => `${parseInt(h, 10) * 1000 + parseInt(r, 10)}`);
+  out = out.replace(/\b(\d{1,3})\s+mil\b/gi,
+    (_, h) => `${parseInt(h, 10) * 1000}`);
+  out = out.replace(/\b(\d{1,3})\s+cientos?\s+(\d{1,3})\b/gi,
+    (_, h, r) => `${parseInt(h, 10) * 100 + parseInt(r, 10)}`);
+  out = out.replace(/\b(\d{1,3})\s+cientos?\b/gi,
+    (_, h) => `${parseInt(h, 10) * 100}`);
+  out = out.replace(/\b(\d)\s+1000\s+(\d{1,3})\b/g,
+    (_, h, r) => `${parseInt(h, 10) * 1000 + parseInt(r, 10)}`);
+  // "dos mil" → "2 1000" (mil converts first) → "2000".
+  out = out.replace(/\b(\d{1,3})\s+1000\b/g,
+    (_, h) => `${parseInt(h, 10) * 1000}`);
+  // "100 20" (ciento veinte) adds; "1 100 23" would multiply — both safe here.
+  out = out.replace(/\b([1-9]00)\s+(\d{1,2})\b/g, (_, h, r) => `${parseInt(h, 10) + parseInt(r, 10)}`);
+  out = out.replace(/\b(\d{1,3})\s+100\s+(\d{1,2})\b/g, (_, h, r) => {
+    const base = parseInt(h, 10);
+    return `${base % 100 === 0 ? base + parseInt(r, 10) : base * 100 + parseInt(r, 10)}`;
+  });
+  // cue-gated years: "born 20 26" → "born 2026".
+  out = out.replace(
+    /\b(year|born|nacido|a[ñn]o)\s+(\d{2})\s+(\d{2})\b/gi, '$1$2$3',
+  );
+  return out;
 };
 
 // ---------------------------------------------------------------------------
@@ -117,6 +198,9 @@ export const formatPhoneAndSSNDigits = (text, { ignoreAddressGuard = false, igno
     if (/\d\.\d/.test(m) && (m.match(/\./g) || []).length >= 2) return m;
     const before = full.slice(Math.max(0, offset - 40), offset);
     const after = full.slice(offset + m.length, offset + m.length + 40);
+    // v4.120.0: provider IDs are NEVER phones — "NPI 1234567890" stays
+    // verbatim even when armed (an NPI is not a phone number, full stop).
+    if (/\b(?:npi|dea|ncpdp)\b/i.test(`${before} ${after}`)) return m;
     if (!ignoreAddressGuard && looksLikeAddressFragment(before, after)) return m;
     if (!ignoreDateGuard && looksLikeDateFragment(before, after)) return m;
 
@@ -557,6 +641,7 @@ export const splitHighlightSegments = (text) => {
     { type: 'date', units: findDateUnits(text) },
     { type: 'schedule', units: findScheduleUnits(text) },
     { type: 'dosage', units: findDosageUnits(text) },
+    { type: 'vitals', units: findVitalsUnits(text) },
     { type: 'money', units: findMoneyUnits(text) },
     { type: 'address', units: findAddressUnits(text) },
     { type: 'email', units: findEmailUnits(text) },
@@ -601,6 +686,11 @@ export const copyableSensitiveValue = (value, type = 'number') => {
   }
   if (type === 'dosage') {
     const units = findDosageUnits(String(value));
+    if (units[0]?.copyValue) return units[0].copyValue;
+    return String(value || '').replace(/\s+/g, ' ').trim();
+  }
+  if (type === 'vitals') {
+    const units = findVitalsUnits(String(value));
     if (units[0]?.copyValue) return units[0].copyValue;
     return String(value || '').replace(/\s+/g, ' ').trim();
   }
@@ -678,6 +768,43 @@ export const shouldSkipPhoneFormat = (mode) =>
 /** @deprecated use shouldSkipPhoneFormat — kept for older call sites */
 export const shouldSkipPhoneDigitTransforms = (mode) => shouldSkipPhoneFormat(mode);
 
+// ---------------------------------------------------------------------------
+// VITALS (v4.120.0)
+// ---------------------------------------------------------------------------
+// "120 over 80" → "120/80" (BP, standard form — like clerk times).
+// Weight/height/temp highlight + copy as one unit (display never rewrites
+// these; the finder below only reports spans).
+// ---------------------------------------------------------------------------
+
+export const normalizeVitals = (text) => {
+  if (!text) return text;
+  return text.replace(/\b(\d{2,3})\s+(?:over|sobre)\s+(\d{2,3})\b/gi, '$1/$2');
+};
+
+const VITALS_UNITS_ALT =
+  'lb|lbs|pounds?|kilos?|kg|libras?|ft|foot|feet|inch|inches|cm|pies|pulgadas?|cent[ií]metros?|degrees?|grados?|fahrenheit|celsius|centigrados?';
+
+export const VITALS_RE = new RegExp(
+  `\\b\\d+\\s*(?:ft|foot|feet)\\s*\\d+\\b|\\b\\d+(?:[.,]\\d+)?\\s*(?:${VITALS_UNITS_ALT}|°\\s*[FC])\\b|\\b\\d{2,3}(?:\\.\\d+)?\\s*(?:°\\s*)?[FC]\\b|\\b\\d{2,3}\\s*(?:/|\\s+(?:over|sobre)\\s+)\\s*\\d{2,3}\\b`,
+  'i',
+);
+
+export const findVitalsUnits = (text) => {
+  if (!text) return [];
+  const units = [];
+  const re = new RegExp(VITALS_RE.source, 'gi');
+  let m;
+  while ((m = re.exec(text))) {
+    const raw = m[0];
+    units.push({
+      start: m.index,
+      end: m.index + raw.length,
+      text: raw,
+      copyValue: raw.replace(/\s+/g, ' ').trim(),
+    });
+  }
+  return units.sort((a, b) => a.start - b.start);
+};
 // ---------------------------------------------------------------------------
 // CLERK TIME SHORTHAND (v4.114.0)
 // ---------------------------------------------------------------------------
@@ -861,9 +988,15 @@ export const normalizeAddressDirectionals = (text) => {
 export const applyDisplayProtections = (text, lang = 'en', { applyNumberWords = true, expectedType = getArmedExpectedType() } = {}) => {
   if (!text) return text;
   let out = text;
+  // v4.120.0: "double five" → "five five", "8 oh 5" → "8 0 5" first.
+  if (applyNumberWords) out = expandDictationWords(out, lang);
   if (applyNumberWords) out = convertEnglishNumberWords(out, lang);
   // v4.115.0: "eighty two" → "82", "dos punto cinco" → "2.5" before stitch.
   if (applyNumberWords) out = combineCompoundNumbers(out, lang);
+  // v4.120.0: "1 hundred 23" → "123", "2 mil 26" → "2026".
+  if (applyNumberWords) out = foldMagnitudes(out);
+  // v4.120.0: "120 over 80" → "120/80" before sentinels (standard vitals form).
+  out = normalizeVitals(out);
   // v4.114.0: clerk "1 1 30" → "1:00, 1:30" BEFORE sentinels see the text,
   // so bare-time + schedule cues below can trigger the date display brake.
   out = expandClerkTimeShorthand(out);
@@ -990,7 +1123,7 @@ const CLOCK_TIME_RE =
   /\b\d{1,2}(?::\d{2})?\s*(?:a\.?m\.?|p\.?m\.?|am|pm)\b/i;
 
 const MED_CUE_RE =
-  /\b(medication|medicine|med|dose|dosage|prescription|prescribed|pharmacy|pill|tablet|capsule|insulin|medicamento|medicina|dosis|receta|recetad[oa]|farmacia|pastilla|comprimido|c[aá]psula|insulina|gotas?|puffs?)\b/i;
+  /\b(medication|medicine|med|dose|dosage|prescription|prescribed|pharmacy|pill|tablet|capsule|insulin|medicamento|medicina|dosis|receta|recetad[oa]|farmacia|pastilla|comprimido|c[aá]psula|insulina|gotas?|puffs?|blood pressure|weight|height|fever|temperatura|fiebre|presi[oó]n|peso|talla|estatura)\b/i;
 
 const DOSAGE_RE = new RegExp(`\\b\\d+(?:[.,]\\d+)?\\s*(?:${DOSAGE_UNITS_ALT})\\b`, 'i');
 
@@ -1027,6 +1160,7 @@ export const containsCriticalData = (text) => {
     WEEKDAY_RE.test(text) ||
     ORDINAL_RE.test(text) ||
     DOSAGE_RE.test(text) ||
+    VITALS_RE.test(text) ||
     MONEY_RE.test(text) ||
     (MED_CUE_RE.test(text) && FREQUENCY_RE.test(text)) ||
     (PRICE_CUE_RE.test(text) && /\d/.test(text))

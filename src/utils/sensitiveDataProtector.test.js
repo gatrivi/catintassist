@@ -32,6 +32,10 @@ import {
   collapseAdjacentDigitRepeats,
   repairSplitZips,
   normalizeAddressDirectionals,
+  expandDictationWords,
+  foldMagnitudes,
+  normalizeVitals,
+  findVitalsUnits,
 } from './sensitiveDataProtector';
 import { armExpectedData, clearExpectedData } from './expectedDataContext';
 
@@ -850,6 +854,56 @@ describe('addresses round 2 (v4.118.0)', () => {
 
   test('address question still arms address mode', () => {
     expect(detectSentinelContext('Cuál es la nueva dirección', 'es').mode).toBe('address');
+  });
+});
+
+// ---------------------------------------------------------------------------
+// v4.120.0: dictation words, magnitudes, NPI, vitals
+// ---------------------------------------------------------------------------
+describe('dictation + magnitudes + vitals (v4.120.0)', () => {
+  test('oh becomes 0 only beside digits', () => {
+    expect(applyDisplayProtections('8 oh 5', 'en')).toContain('805');
+    expect(applyDisplayProtections('oh no, my leg hurts', 'en')).toContain('oh no');
+  });
+
+  test('double/triple expand into stitched digits', () => {
+    expect(applyDisplayProtections('double five', 'en')).toBe('55');
+    expect(applyDisplayProtections('triple 5', 'en')).toBe('555');
+    expect(applyDisplayProtections('double room please', 'en')).toBe('double room please');
+  });
+
+  test('hundreds and thousands fold', () => {
+    expect(applyDisplayProtections('one hundred twenty three', 'en')).toBe('123');
+    expect(applyDisplayProtections('two thousand twenty', 'en')).toBe('2020');
+    expect(applyDisplayProtections('dos mil veintiséis', 'es')).toBe('2026');
+    expect(applyDisplayProtections('ciento veinte', 'es')).toBe('120');
+  });
+
+  test('cue-gated years fold, bare pairs do not', () => {
+    expect(applyDisplayProtections('born twenty twenty six', 'en')).toContain('2026');
+    expect(applyDisplayProtections('room 20 26 please', 'en')).not.toContain('2026');
+  });
+
+  test('NPI stays verbatim', () => {
+    expect(applyDisplayProtections('NPI 1234567890 please', 'en')).toContain('1234567890');
+    expect(applyDisplayProtections('NPI 1234567890 please', 'en')).not.toMatch(/123-456-7890/);
+  });
+
+  test('BP normalizes to slash form + chips', () => {
+    expect(applyDisplayProtections('pressure 120 over 80 today', 'en')).toContain('120/80');
+    expect(findVitalsUnits('120/80')[0]?.text).toBe('120/80');
+  });
+
+  test('weight/height/temp chip as vitals', () => {
+    expect(findVitalsUnits('weighs 150 pounds')[0]?.text).toBe('150 pounds');
+    expect(findVitalsUnits('5 foot 6')[0]?.text).toBe('5 foot 6');
+    expect(findVitalsUnits('tiene 37 grados')[0]?.text).toBe('37 grados');
+    const segs = splitHighlightSegments('temp 98.6 F today');
+    expect(segs.some((s) => s.type === 'vitals')).toBe(true);
+  });
+
+  test('vitals count as critical data', () => {
+    expect(containsCriticalData('blood pressure 120 over 80')).toBe(true);
   });
 });
 

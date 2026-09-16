@@ -65,4 +65,12 @@ describe('translationSensitiveTokens', () => {
     expect(diffSensitiveTokens('zip 10027', 'zip 10027')).toEqual([]);
     expect(normalizeTokenForCompare('5')).toBe('d:5');
   });
+
+  // v4.120.0: vitals survive translation when digits match, any unit language.
+  test('vitals with same digits are not missing', () => {
+    expect(diffSensitiveTokens('takes 150 pounds', 'toma 150 libras')).toEqual([]);
+    expect(diffSensitiveTokens('BP 120/80', 'PA 120/80')).toEqual([]);
+    expect(diffSensitiveTokens('BP 120/80', 'PA 120/90')).toEqual(['120/80']);
+    expect(extractSensitiveTokens('NPI 1234567890 please').ids.length).toBeGreaterThan(0);
+  });
 });

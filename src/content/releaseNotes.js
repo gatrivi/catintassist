@@ -25,6 +25,29 @@ import { APP_VERSION } from '../constants/version';
 /** Newest first. Only the entry matching APP_VERSION is shown on load. */
 export const RELEASE_NOTES_CATALOG = [
   {
+    version: '4.120.0',
+    id: 'dictation-magnitudes-vitals',
+    highlightElementIds: ['main-transcript'],
+    es: {
+      title: '🗣️ Dictados y vitales: oh/doble, cientos, NPI, presión',
+      intro: '"8 oh 5", "dos mil", "NPI" y "120 over 80" ahora salen bien.',
+      sections: [{ heading: 'Qué cambió', bullets: [
+        '"8 oh 5" → 805, "double five" → 55. "One hundred 23" → 123, "dos mil 26" → 2026.',
+        '"NPI 1234567890" no se deforma. "120 over 80" → 120/80.',
+        'Peso, talla y temperatura resaltan y copian ("150 pounds", "37 grados").',
+      ] }],
+    },
+    en: {
+      title: '🗣️ Dictation & vitals: oh/double, hundreds, NPI, BP',
+      intro: '"8 oh 5", "one hundred", "NPI" and "120 over 80" now come out right.',
+      sections: [{ heading: 'What changed', bullets: [
+        '"8 oh 5" → 805, "double five" → 55. "One hundred 23" → 123, "dos mil 26" → 2026.',
+        '"NPI 1234567890" stays verbatim. "120 over 80" → 120/80.',
+        'Weight, height and temp highlight + copy ("150 pounds", "37 grados").',
+      ] }],
+    },
+  },
+  {
     version: '4.119.0',
     id: 'address-repairs',
     highlightElementIds: ['main-transcript'],

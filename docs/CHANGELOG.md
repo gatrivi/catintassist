@@ -2,6 +2,13 @@
 
 **Version source:** `src/constants/version.js` (must match `package.json` + top-right UI pill)
 
+## v4.120.0 - Dictation words, magnitudes, NPI, vitals
+
+- expandDictationWords: "8 oh 5"→805 (digit-gated, "oh no" safe), "double/triple five"→stitchable.
+- foldMagnitudes: hundred/thousand/mil/ciento incl. "2 1000 26"→2026, "100 20"→120, cue-gated years; ES map gains cien/ciento/mil + accented numerals (veintiséis).
+- NPI/DEA/NCPDP runs stay verbatim even when armed; translation ID_RE covers NPI/DEA.
+- Vitals: "120 over 80"→"120/80", new vitals chip (lb/kg/ft/cm/grados/F/C/BP), critical-data + translation safety; stitch decimal/IP guards held.
+
 ## v4.119.0 - Addresses survive: split ZIPs, directional slot, whole-span chips
 
 - repairSplitZips: "California, 93, 550" → "93550" (cue-gated; counts untouched).

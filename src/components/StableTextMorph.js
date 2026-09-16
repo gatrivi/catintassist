@@ -22,7 +22,7 @@ const processDisplayText = (raw, lang, applyNumberWords, protectionsActive) => {
   return applyDisplayProtections(spelled, lang, { applyNumberWords });
 };
 
-const SENSITIVE_TYPES = new Set(['date', 'schedule', 'number', 'dosage', 'money', 'address', 'email']);
+const SENSITIVE_TYPES = new Set(['date', 'schedule', 'number', 'dosage', 'vitals', 'money', 'address', 'email']);
 
 const SensitiveSpan = ({ value, type = 'number' }) => {
   const copyVal = SENSITIVE_TYPES.has(type)

@@ -16,7 +16,7 @@ const DOSAGE_RE =
 // v4.93.0: street suffix is REQUIRED — "7 minutes" / "1 of" / "5 to" are not addresses.
 const ADDRESS_RE =
   /\b\d{1,6}\s+(?:[A-Za-zÁÉÍÓÚÑáéíóúñ][A-Za-zÁÉÍÓÚÑáéíóúñ0-9.'-]*\s+){0,3}?(?:St|Street|Ave|Avenue|Rd|Road|Blvd|Dr|Drive|Ln|Lane|Ct|Court|Way|Calle|Avenida|Carrera)\.?\b/gi;
-const ID_RE = /\b(?:SSN|ID|MRN|member\s*#?)\s*[:#]?\s*[\dA-Za-z-]{4,}\b|\b\d{3}-\d{2}-\d{4}\b|\b\d{9}\b|\b(?:mrn|chart)[\s:#]*[\dA-Za-z-]{4,}\b/gi;
+const ID_RE = /\b(?:SSN|ID|MRN|NPI|DEA|member\s*#?)\s*[:#]?\s*[\dA-Za-z-]{4,}\b|\b\d{3}-\d{2}-\d{4}\b|\b\d{9}\b|\b(?:mrn|chart)[\s:#]*[\dA-Za-z-]{4,}\b/gi;
 // v4.114.0: clerk slot times — "1:00, 1:30" must survive translation (digit-loss safety).
 // v4.115.0: 24h "14:30" + bare "3pm".
 const TIMES_RE = /\b(?:[01]?\d|2[0-3]):[0-5]\d\b|\b(?:[1-9]|1[0-2])\s*(?:am|pm|a\.m\.|p\.m\.)/gi;
@@ -24,6 +24,9 @@ const TIMES_RE = /\b(?:[01]?\d|2[0-3]):[0-5]\d\b|\b(?:[1-9]|1[0-2])\s*(?:am|pm|a
 const MONEY_TR_RE = /(?:[$€£]\s*\d+(?:[.,]\d{3})*(?:[.,]\d{2})?|\b\d+(?:(?:[.,]\d{3})+)?(?:[.,]\d{2})?\s*(?:dollars?|pesos?|usd|ars|copay|co-pay|copago|coaseguro)\b)/gi;
 // v4.116.0: ZIPs were never extracted — short digit typos were invisible.
 const ZIP_TR_RE = /\b\d{5}(?:-\d{4})?\b/g;
+// v4.120.0: vitals (BP, weight, height, temp) must survive translation.
+const VITALS_TR_RE =
+  /\b\d+\s*(?:ft|foot|feet)\s*\d+\b|\b\d+(?:[.,]\d+)?\s*(?:lb|lbs|pounds?|kilos?|kg|libras?|ft|foot|feet|inch|inches|cm|pies|pulgadas?|cent[ií]metros?|degrees?|grados?|fahrenheit|celsius)\b|\b\d{2,3}(?:\.\d+)?\s*(?:°\s*)?[FC]\b|\b\d{2,3}\s*(?:\/|\s+(?:over|sobre)\s+)\s*\d{2,3}\b/gi;
 
 const uniq = (arr) => [...new Set(arr.filter(Boolean))];
 
@@ -36,7 +39,7 @@ const collect = (text, re) => {
   return uniq(out);
 };
 
-/** @returns {{ phones: string[], dobs: string[], dosages: string[], addresses: string[], ids: string[], times: string[], money: string[], zips: string[] }} */
+/** @returns {{ phones: string[], dobs: string[], dosages: string[], addresses: string[], ids: string[], times: string[], money: string[], zips: string[], vitals: string[] }} */
 export function extractSensitiveTokens(text) {
   const src = String(text || '');
   return {
@@ -48,6 +51,7 @@ export function extractSensitiveTokens(text) {
     times: collect(src, TIMES_RE),
     money: collect(src, MONEY_TR_RE),
     zips: collect(src, ZIP_TR_RE),
+    vitals: collect(src, VITALS_TR_RE),
   };
 }
 
@@ -59,6 +63,14 @@ export function normalizeTokenForCompare(token) {
   if (/^\d+$/.test(raw)) return `d:${raw}`;
   const digits = copyableDigits(raw);
   if (digits && /\d/.test(raw) && digits.length >= 7) return `d:${digits}`;
+  // v4.120.0 vitals: same digits + any unit on both sides = fine
+  // ("150 pounds" → "150 libras" is a GOOD translation, not a loss).
+  const vitals = raw.match(
+    /^(\d+(?:[.,]\d+)?)\s*(lb|lbs|pounds?|kilos?|kg|libras?|ft|foot|feet|inch|inches|cm|pies|pulgadas?|cent[ií]metros?|degrees?|grados?|fahrenheit|celsius)$/i,
+  );
+  if (vitals) return `v:${vitals[1].replace(',', '.')}`;
+  const bp = raw.match(/^(\d{2,3})\s*\/\s*(\d{2,3})$/);
+  if (bp) return `v:${bp[1]}/${bp[2]}`;
   // dosages: collapse spaces + lower unit (v4.115.0: same extended unit list)
   const dosage = raw.match(
     /^(\d+(?:[.,]\d+)?)\s*(mg|mcg|g|ml|cc|iu|units?|meq|milligrams?|micrograms?|grams?|milliliters?|miligramos?|microgramos?|gramos?|mililitros?|unidades?|tablets?|tabletas?|pills?|pastillas?|capsules?|c[aá]psulas?|drops?|gotas?|puffs?|sprays?|tsp|tbsp|oz|%)$/i,
@@ -78,6 +90,7 @@ const flattenTokens = (bag) => {
     ...(bag.times || []),
     ...(bag.money || []),
     ...(bag.zips || []),
+    ...(bag.vitals || []),
   ];
 };
 
