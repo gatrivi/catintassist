@@ -25,6 +25,27 @@ import { APP_VERSION } from '../constants/version';
 /** Newest first. Only the entry matching APP_VERSION is shown on load. */
 export const RELEASE_NOTES_CATALOG = [
   {
+    version: '4.122.0',
+    id: 'fractions-percent-selfpay',
+    highlightElementIds: ['main-transcript'],
+    es: {
+      title: '½ Fracciones, porcentajes y sin seguro',
+      intro: '"la mitad", "50 por ciento" y visitas self-pay protegidos.',
+      sections: [{ heading: 'Qué cambió', bullets: [
+        '"one half" → 1/2, "la mitad" → 1/2. "50 percent" → 50%.',
+        '"self-pay, sin seguro, deductible" activan protección de precios.',
+      ] }],
+    },
+    en: {
+      title: '½ Fractions, percents & self-pay',
+      intro: '"one half", "50 percent" and self-pay visits protected.',
+      sections: [{ heading: 'What changed', bullets: [
+        '"one half" → 1/2, "la mitad" → 1/2. "50 percent" → 50%.',
+        '"self-pay, sin seguro, deductible" trigger price protection.',
+      ] }],
+    },
+  },
+  {
     version: '4.121.0',
     id: 'rooms-ranges-honest-yellow',
     highlightElementIds: ['main-transcript'],

@@ -63,3 +63,4 @@
 | 2026-09-16T19:49:23.810Z | 2fc95dc | v4.118.0-greeting-editor-view |
 | 2026-09-16T20:08:54.713Z | bb55e3e | v4.119.0 addresses survive - split-ZIP join, directional slot, whole-span chips |
 | 2026-09-16T20:33:01.979Z | af517e4 | v4.120.0 dictation words, magnitudes, NPI verbatim, vitals chips |
+| 2026-09-16T20:56:37.566Z | 3a2e4b2 | v4.121.0 rooms, ranges, honest yellow - no more positional guessing |

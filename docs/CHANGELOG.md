@@ -2,6 +2,11 @@
 
 **Version source:** `src/constants/version.js` (must match `package.json` + top-right UI pill)
 
+## v4.122.0 - Fractions, percent, self-pay
+
+- foldFractions/foldPercents run FIRST on words ("one half"→1/2, "50 por ciento"→50%); stitch skips 2-part slash runs ("1/2" safe, "5/5/5/1/2/3/4" still stitches); PERCENT_RE joins critical data.
+- PRICE_CUE_RE += self-pay/uninsured/deductible/deducible/sin seguro/out-of-pocket/pago privado.
+
 ## v4.121.0 - Rooms, ranges, honest yellow
 
 - Rooms/IDs: unitRe += room/bed/po box/ext ("double room" still safe); case/claim/reference arm the ID lane; bare "number is" narrowed (room/case/MRN no longer phone-dash).

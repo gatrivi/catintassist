@@ -37,6 +37,8 @@ import {
   normalizeVitals,
   findVitalsUnits,
   expandBareTimes,
+  foldFractions,
+  foldPercents,
 } from './sensitiveDataProtector';
 import { armExpectedData, clearExpectedData, getArmedExpectedType } from './expectedDataContext';
 
@@ -961,6 +963,41 @@ describe('rooms, IDs, ranges (v4.121.0)', () => {
   test('ranges highlight as schedule units', () => {
     expect(findScheduleUnits('open 1 to 3')[0]?.text).toBe('1 to 3');
     expect(findScheduleUnits('entre las 2 y las 4')[0]?.text).toBe('entre las 2 y las 4');
+  });
+});
+
+// ---------------------------------------------------------------------------
+// v4.122.0: fractions, percent, self-pay
+// ---------------------------------------------------------------------------
+describe('fractions + percent + self-pay (v4.122.0)', () => {
+  test('fractions fold to slash form', () => {
+    expect(applyDisplayProtections('take one half daily', 'en')).toContain('1/2');
+    expect(applyDisplayProtections('three quarters coverage', 'en')).toContain('3/4');
+    expect(applyDisplayProtections('tome la mitad', 'es')).toContain('1/2');
+    expect(applyDisplayProtections('un cuarto de pastilla', 'es')).toContain('1/4 de');
+  });
+
+  test('time words win over fractions, rooms stay rooms', () => {
+    expect(applyDisplayProtections('come at half past two', 'en')).toContain('2:30');
+    expect(applyDisplayProtections('doble habitación 5', 'es')).not.toContain('1/2');
+  });
+
+  test('folded fractions survive stitch', () => {
+    expect(applyDisplayProtections('take 1/2 pill', 'en')).toContain('1/2');
+    expect(stitchSingleDigitSequences('dose 1/2')).toBe('dose 1/2');
+    expect(stitchSingleDigitSequences('5/5/5/1/2/3/4')).toBe('5551234');
+  });
+
+  test('percents rewrite to %', () => {
+    expect(applyDisplayProtections('50 percent coverage', 'en')).toContain('50%');
+    expect(applyDisplayProtections('el 10 por ciento', 'es')).toContain('10%');
+    expect(foldPercents('coverage 100%')).toBe('coverage 100%');
+  });
+
+  test('self-pay cues arm the price brake', () => {
+    expect(detectSentinelContext('self-pay visit costs 200', 'en').mode).toBe('price');
+    expect(detectSentinelContext('sin seguro, pago privado', 'es').mode).toBe('price');
+    expect(containsCriticalData('deductible is 500 dollars')).toBe(true);
   });
 });
 

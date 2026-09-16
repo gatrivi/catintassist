@@ -734,6 +734,9 @@ export const stitchSingleDigitSequences = (text, { minDigits = 2, ignoreAddressG
     // v4.115.0: decimals are NEVER stitchable — "2.5 mg" must not become
     // "25 mg". A dot directly between digits means decimal/version, not dictation.
     if (/\d\.\d/.test(match)) return match;
+    // v4.122.0: two-part slash runs are fractions/BP ("1/2", "3/4") — never
+    // stitch. Longer slash runs ("5/5/5/1/2/3/4") are dictation — stitch.
+    if (match.includes('/') && match.split(/[\s,./-]+/).filter(Boolean).length <= 2) return match;
     const parts = match.split(/[\s,./-]+/).filter(Boolean);
     if (parts.length < minDigits || !parts.every((p) => /^\d$/.test(p))) return match;
 
@@ -1031,10 +1034,51 @@ export const normalizeAddressDirectionals = (text) => {
   });
 };
 
+// ---------------------------------------------------------------------------
+// FRACTIONS + PERCENT (v4.122.0) — runs AFTER expandWordTimes so
+// "half past two" is already "2:30" and never folds.
+// ---------------------------------------------------------------------------
+// "one half" → "1/2" · "three quarters" → "3/4" · "la mitad" → "1/2".
+// Bare "half" folds ONLY for doses ("take half" → "take 1/2"); room
+// "cuarto" folds ONLY as "un cuarto de" (else it is a bedroom).
+// "50 percent" / "50 por ciento" → "50%".
+// ---------------------------------------------------------------------------
+
+export const foldFractions = (text) => {
+  if (!text) return text;
+  let out = text;
+  out = out.replace(/\bone half\b|\ba half\b/gi, '1/2');
+  out = out.replace(/\bthree quarters\b/gi, '3/4');
+  out = out.replace(/\bone quarter\b/gi, '1/4');
+  out = out.replace(/\ba quarter of\b/gi, '1/4 of');
+  out = out.replace(/\bone third\b/gi, '1/3');
+  out = out.replace(/\btwo thirds\b/gi, '2/3');
+  out = out.replace(/\btake\s+half\b/gi, 'take 1/2');
+  out = out.replace(/\bla mitad\b/gi, '1/2');
+  out = out.replace(/\bmedia pastilla\b/gi, '1/2 pastilla');
+  out = out.replace(/\bun tercio\b/gi, '1/3');
+  out = out.replace(/\bdos tercios\b/gi, '2/3');
+  out = out.replace(/\btres cuartos\b/gi, '3/4');
+  out = out.replace(/\bun cuarto de\b/gi, '1/4 de');
+  return out;
+};
+
+export const foldPercents = (text) => {
+  if (!text) return text;
+  let out = text;
+  out = out.replace(/\b(\d+(?:[.,]\d+)?)\s*(?:percent|percentage)\b/gi, '$1%');
+  out = out.replace(/\b(\d+(?:[.,]\d+)?)\s*por\s*ciento\b/gi, '$1%');
+  return out;
+};
+
 /** Display pipeline order (transcript + translation panes). */
 export const applyDisplayProtections = (text, lang = 'en', { applyNumberWords = true, expectedType = getArmedExpectedType() } = {}) => {
   if (!text) return text;
   let out = text;
+  // v4.122.0: fractions/percent FIRST on words ("one half" → "1/2",
+  // "50 por ciento" → "50%") — conversion would eat "one"/"ciento" first.
+  out = foldFractions(out);
+  out = foldPercents(out);
   // v4.120.0: "double five" → "five five", "8 oh 5" → "8 0 5" first.
   if (applyNumberWords) out = expandDictationWords(out, lang);
   if (applyNumberWords) out = convertEnglishNumberWords(out, lang);
@@ -1048,6 +1092,7 @@ export const applyDisplayProtections = (text, lang = 'en', { applyNumberWords = 
   // so bare-time + schedule cues below can trigger the date display brake.
   out = expandClerkTimeShorthand(out);
   // v4.115.0: "half past 2" → "2:30", "at 3 30" → "at 3:30" before sentinels.
+  // (fractions already folded above; "half past" contains no fold pattern.)
   out = expandWordTimes(out);
   // v4.117.0: straddle dupes ("555 123 123 4567") collapse before sentinels.
   out = collapseAdjacentDigitRepeats(out);
@@ -1179,10 +1224,13 @@ const FREQUENCY_RE =
   /\b(once|twice|daily|nightly|every|per day|a day|bid|tid|qid|prn|una vez|dos veces|diari[oa]|cada|por d[ií]a|por noche)\b/i;
 
 const PRICE_CUE_RE =
-  /\b(price|cost|costs|charge|fee|pay|paid|payment|copay|co-pay|consultation|procedure|medication|medicine|cuesta|costo|precio|pagar|pag[oó]|cobran|consulta|procedimiento|medicamento|medicina|copago|coaseguro)\b/i;
+  /\b(price|cost|costs|charge|fee|pay|paid|payment|copay|co-pay|consultation|procedure|medication|medicine|cuesta|costo|precio|pagar|pag[oó]|cobran|consulta|procedimiento|medicamento|medicina|copago|coaseguro|self.?pay|uninsured|underinsured|deductible|deducible|sin seguro|pago privado)\b|out[- ]of[- ]pocket/i;
 
 const MONEY_RE =
   /(?:[$€£]\s*\d+(?:[.,]\d{3})*(?:[.,]\d{2})?|\b\d+(?:(?:[.,]\d{3})+)?(?:[.,]\d{2})?\s*(?:dollars?|pesos?|usd|ars|copay|co-pay|copago|coaseguro)\b)/i;
+
+// v4.122.0: percentages read as data, not filler.
+const PERCENT_RE = /\b\d+(?:[.,]\d+)?\s*(?:%|percent|percentage|por ciento)\b/i;
 
 export const hasCriticalDataCue = (text) => {
   if (!text) return false;
@@ -1209,6 +1257,7 @@ export const containsCriticalData = (text) => {
     ORDINAL_RE.test(text) ||
     DOSAGE_RE.test(text) ||
     VITALS_RE.test(text) ||
+    PERCENT_RE.test(text) ||
     MONEY_RE.test(text) ||
     (MED_CUE_RE.test(text) && FREQUENCY_RE.test(text)) ||
     (PRICE_CUE_RE.test(text) && /\d/.test(text))
