@@ -31,11 +31,10 @@ import {
   buildOffCallStatusLabel,
 } from '../utils/offCallIdleMessages';
 import { dispatchOpenDeepgramSettings } from '../utils/deepgramSettingsPrompt';
-import { DialGoalSelector, daysPerWeekOf } from './DialGoalSelector';
+import { daysPerWeekOf } from './DialGoalSelector';
 import { fmtHm } from '../utils/catchUpPlan';
 import { ElementHintTarget, useElementHint, buildHintPayload } from './ElementHint';
 import { useProgressiveAudio } from '../hooks/useProgressiveAudio';
-import { MonthHeatmap } from './MonthHeatmap';
 import { TimeEditModal } from './TimeEditModal';
 import { GameScoreboard } from './GameScoreboard';
 import { AppGuideButton } from './AppGuide';
@@ -75,7 +74,6 @@ import { DailyTargetsChip, computeGoalDay } from './DailyTargetsChip';
 
 const OFF_CALL_METRICS_EXPANDED_KEY = 'catint_off_call_metrics_expanded_v1';
 const SCOREBOARD_MAX_VH_KEY = 'catint_scoreboard_max_vh';
-const GOAL_WORKDAYS_KEY = 'catint_goal_workdays_v1';
 const CelebrationParticles = ({ type, label, coins, onDismiss }) => {
   const [isClosing, setIsClosing] = useState(false);
   const emojis = ['🪙', '🪙', '💸', '💵', '💰', '💎'];
@@ -286,11 +284,9 @@ const SessionControlsSticky = React.memo(({
   lastDataTime = 0,
   onOpenSoundboard,
   soundboardOpen = false,
-  onOpenGoalDial,
-  // v4.100.0: HUD goal pill opens the dial INLINE (replaces the center strip);
-  // the dial node is built by DashboardHeader (owns stats) and passed down.
-  isDialOpen = false,
-  goalDialNode = null,
+  // v4.113.0: HUD goal button opens the Goal Tracking VIEW (dial + calendar)
+  onOpenGoalsView,
+  goalsOpen = false,
 
   // Audio route UX props (passed into AudioRouteStatusBar)
   configuredAudioSourceMode = "tab",
@@ -366,10 +362,14 @@ const SessionControlsSticky = React.memo(({
   };
 
   // v4.100.0: cat logo = "take me back to transcription".
+  // v4.113.0: also exits the Goal Tracking view.
   // Exits Soundboard Studio if open, then scrolls the transcript into view.
   const handleLogoBack = () => {
     try {
       if (soundboardOpen && onOpenSoundboard) onOpenSoundboard();
+    } catch (_) {}
+    try {
+      if (goalsOpen && onOpenGoalsView) onOpenGoalsView(); // toggle back to work view
     } catch (_) {}
     try {
       const el = document.getElementById('main-transcript') || document.querySelector('.transcription-pane');
@@ -394,9 +394,9 @@ const SessionControlsSticky = React.memo(({
             <button
               id="header-app-logo-btn"
               type="button"
-              className={`btn-icon tiny-btn app-logo-btn app-logo-btn--${appStatus.tone}${soundboardOpen ? ' app-logo-btn--back-to-work' : ''}`}
-              aria-label={`CatIntAssist ${appStatus.label}. ${APP_VERSION_LABEL}.${soundboardOpen ? ' Soundboard open — click the cat to go back to work.' : ' Back to transcription.'}`}
-              title={soundboardOpen ? `${appStatus.title} ${APP_VERSION_LABEL} — click: back to work view` : `${appStatus.title} ${APP_VERSION_LABEL} — click: back to transcription`}
+              className={`btn-icon tiny-btn app-logo-btn app-logo-btn--${appStatus.tone}${(soundboardOpen || goalsOpen) ? ' app-logo-btn--back-to-work' : ''}`}
+              aria-label={`CatIntAssist ${appStatus.label}. ${APP_VERSION_LABEL}.${(soundboardOpen || goalsOpen) ? ' Alternate view open — click the cat to go back to work.' : ' Back to transcription.'}`}
+              title={(soundboardOpen || goalsOpen) ? `${appStatus.title} ${APP_VERSION_LABEL} — click: back to work view` : `${appStatus.title} ${APP_VERSION_LABEL} — click: back to transcription`}
               onClick={handleLogoBack}
             >
               <img
@@ -502,21 +502,21 @@ const SessionControlsSticky = React.memo(({
             </button>
           </ElementHintTarget>
 
-          {!isActive && onOpenGoalDial && (
+          {!isActive && onOpenGoalsView && (
             <ElementHintTarget
               elementId="header-goal-btn"
               guideKey="goal-wheel"
-              heading="Weekly goal wheel"
-              body="Weekly hours commitment — tap to open goal picker wheel."
+              heading="Goal Tracking view"
+              body="Goal dial + month calendar. Tap to open the Goal Tracking view."
               color="#94a3b8"
             >
               <button
                 id="header-goal-btn"
                 data-guide="goal-wheel"
                 type="button"
-                className="header-chrome-btn"
-                onClick={onOpenGoalDial}
-                title="Weekly hours commitment — tap to open goal picker wheel"
+                className={`header-chrome-btn${goalsOpen ? ' is-on' : ''}`}
+                onClick={onOpenGoalsView}
+                title="Goal Tracking — dial + month calendar (off-call)"
               >
                 <TargetIcon size={14} />
               </button>
@@ -581,11 +581,7 @@ const SessionControlsSticky = React.memo(({
         </div>
 
         <div className="session-controls-center">
-          {isDialOpen && goalDialNode ? (
-            <div className="goal-dial-inline" style={{ width: '100%', maxHeight: '70vh', overflowY: 'auto' }}>
-              {goalDialNode}
-            </div>
-          ) : isActive ? (
+          {isActive ? (
             <div className="call-micro-bar-row">
             {callModeExpanded ? (
             <div className="call-micro-bar-center">
@@ -659,7 +655,7 @@ const SessionControlsSticky = React.memo(({
               </span>
             </div>
             )}
-              <DailyTargetsChip dailyMinutes={dailyMinutes} monthlyMinutes={monthlyMinutes} workDays={workDays} breakMinutes={breakMinutes} ratePerMinute={ratePerMinute} goalMinutes={goalMinutes} onOpenGoalDial={onOpenGoalDial} />
+              <DailyTargetsChip dailyMinutes={dailyMinutes} monthlyMinutes={monthlyMinutes} workDays={workDays} breakMinutes={breakMinutes} ratePerMinute={ratePerMinute} goalMinutes={goalMinutes} onOpenGoalsView={onOpenGoalsView} />
             </div>
           ) : (
             <div className="off-call-status-column" style={{ display: 'flex', flexDirection: 'column', gap: '0.15rem' }}>
@@ -692,7 +688,7 @@ const SessionControlsSticky = React.memo(({
                 <MicVerifyChip title="Client mic + last MIC VERIFY verdict — full panel in the idle pane below" />
               </div>
               <div className="off-call-targets-row">
-                <DailyTargetsChip dailyMinutes={dailyMinutes} monthlyMinutes={monthlyMinutes} workDays={workDays} breakMinutes={breakMinutes} ratePerMinute={ratePerMinute} goalMinutes={goalMinutes} onOpenGoalDial={onOpenGoalDial} />
+                <DailyTargetsChip dailyMinutes={dailyMinutes} monthlyMinutes={monthlyMinutes} workDays={workDays} breakMinutes={breakMinutes} ratePerMinute={ratePerMinute} goalMinutes={goalMinutes} onOpenGoalsView={onOpenGoalsView} />
               </div>
             </div>
           )}
@@ -903,13 +899,15 @@ export const DashboardHeader = ({
   settingsOpen = false,
   onOpenSoundboard,
   soundboardOpen = false,
+  onOpenGoalsView,
+  goalsOpen = false,
   onReconnectAudioSource,
   onSwitchToTabShare,
   onSwitchToVirtualCable,
 }) => {
-  const { isActive, sessionSeconds, sessionEarnings, stats, updateStat, stopSession, endDay, RATE_PER_MINUTE, arsRate, setArsRate, isBreakActive, breakSeconds, startBreak, stopBreak, availSeconds, isEditingScoreboard, setIsEditingScoreboard, visibleCards, toggleCard, visibleMetrics, toggleMetric, scoreboardPreset, applyScoreboardPreset, isNotesOpen, setIsNotesOpen, isToolbarVisible, setIsToolbarVisible, isHeatmapOpen, setIsHeatmapOpen, isZombieCall, isScoreboardHelpVisible, setIsScoreboardHelpVisible, isHold, setIsHold, dailyTimeline, historyTimeline, dailyLog, lastActivityTime, lastEnglishActivityTime, isCallDetectionEnabled, setIsCallDetectionEnabled, callFocusMode, setCallFocusMode, minutesSinceLastBreak, vaultStatus, getMonthResyncPreview, reconcileMonthTotal } = useSession();
+  const { isActive, sessionSeconds, sessionEarnings, stats, updateStat, stopSession, endDay, RATE_PER_MINUTE, arsRate, setArsRate, isBreakActive, breakSeconds, startBreak, stopBreak, availSeconds, isEditingScoreboard, setIsEditingScoreboard, visibleCards, toggleCard, visibleMetrics, toggleMetric, scoreboardPreset, applyScoreboardPreset, isNotesOpen, setIsNotesOpen, isToolbarVisible, setIsToolbarVisible, goalWorkDays, isZombieCall, isScoreboardHelpVisible, setIsScoreboardHelpVisible, isHold, setIsHold, dailyTimeline, historyTimeline, dailyLog, lastActivityTime, lastEnglishActivityTime, isCallDetectionEnabled, setIsCallDetectionEnabled, callFocusMode, setCallFocusMode, minutesSinceLastBreak, vaultStatus, getMonthResyncPreview, reconcileMonthTotal } = useSession();
 
-  const headerMinimal = !isActive && offCallWorkspace === 'soundboard';
+  const headerMinimal = !isActive && (offCallWorkspace === 'soundboard' || offCallWorkspace === 'goals');
   const offCallScoreboardView = !isActive && offCallWorkspace === 'scoreboard';
   const studioView = offCallWorkspace === 'soundboard' ? 'soundboard' : 'scoreboard';
 
@@ -999,15 +997,9 @@ export const DashboardHeader = ({
 
   const [isCollapsed, setIsCollapsed] = useState(true);
   const [celebration, setCelebration] = useState(null); // Keep celebration for sound logic
-  const [isTodayDialOpen, setIsTodayDialOpen] = useState(false);
-  // v4.100.0: remembered workdays basis for the goal wheel (5/6/6.5-day weeks).
-  // v4.100.1 default: 6.5/Wk (28d).
-  const [goalWorkDays, setGoalWorkDays] = useState(() => {
-    try {
-      const v = Number(localStorage.getItem(GOAL_WORKDAYS_KEY));
-      return [17, 22, 26, 28, 30].includes(v) ? v : 28;
-    } catch { return 28; }
-  });
+  // v4.113.0: goalWorkDays + goal dial moved to the Goal Tracking view;
+  // the workdays basis now lives in SessionContext (goalWorkDays) so it stays
+  // fresh when the view saves while this header stays mounted.
   const [displayBounty, setDisplayBounty] = useState(0);
   const [isBountyAnimating, setIsBountyAnimating] = useState(false);
   const [timeEditMode, setTimeEditMode] = useState(null); // 'call' | 'break' | null
@@ -2041,8 +2033,8 @@ export const DashboardHeader = ({
             <button
               type="button"
               className="goal-weekly-pill"
-              onClick={() => setIsTodayDialOpen(true)}
-              title="Weekly commitment — open goal picker wheel"
+              onClick={onOpenGoalsView}
+              title="Weekly commitment — open Goal Tracking view"
               style={{
                 background: 'rgba(139, 92, 246, 0.15)',
                 border: '1px solid rgba(167, 139, 250, 0.35)',
@@ -2252,8 +2244,8 @@ export const DashboardHeader = ({
                       {/* v4.87.0: monthly minutes visible + one-click editable target */}
                       <button
                         type="button"
-                        onClick={(e) => { e.stopPropagation(); setIsTodayDialOpen(true); }}
-                        title={`Month: ${Math.round(stats.monthlyMinutes + unbankedMins)}m of ${stats.goalMinutes}m target — click to edit target`}
+                        onClick={(e) => { e.stopPropagation(); onOpenGoalsView(); }}
+                        title={`Month: ${Math.round(stats.monthlyMinutes + unbankedMins)}m of ${stats.goalMinutes}m target — click to open Goal Tracking`}
                         style={{
                           background: 'rgba(251,146,60,0.12)', border: '1px solid rgba(251,146,60,0.4)',
                           borderRadius: 4, color: '#fdba74', cursor: 'pointer',
@@ -2559,7 +2551,7 @@ export const DashboardHeader = ({
 
             {/* Today's Shift Progress */}
             {(isEditingScoreboard || visibleCards.today) && (
-              <div className="income-card income-tier-2" style={{ flex: '1 1 0', minWidth: 0, cursor: 'pointer', position: 'relative', ...helpStyle }} onClick={() => !isEditingScoreboard && setIsTodayDialOpen(true)} title="DAILY PROGRESS: Minutes banked today out of your total daily target minutes required based on your monthly pacing.">
+              <div className="income-card income-tier-2" style={{ flex: '1 1 0', minWidth: 0, cursor: 'pointer', position: 'relative', ...helpStyle }} onClick={() => !isEditingScoreboard && onOpenGoalsView()} title="DAILY PROGRESS: Minutes banked today out of your total daily target minutes required based on your monthly pacing. Click → Goal Tracking view.">
                 <CardVisibilityToggle cardKey="today" />
                 <HelpLabel text="Daily Mins" />
                 <span className="income-label">{activeDayEmoji} DAILY</span>
@@ -2668,7 +2660,7 @@ export const DashboardHeader = ({
                 <button className={`btn-icon-tiny ${isToolbarVisible ? 'active' : ''}`} onClick={toggleToolbar} title="Show tools (notes + background)">🛠️</button>
                 <button className={`btn-icon-tiny ${isEditingScoreboard ? 'active' : ''}`} onClick={() => setIsEditingScoreboard(!isEditingScoreboard)} title="Edit Grid">{isEditingScoreboard ? '💾' : '✏️'}</button>
                 <button className={`btn-icon-tiny ${isScoreboardHelpVisible ? 'active' : ''}`} onClick={() => setIsScoreboardHelpVisible(!isScoreboardHelpVisible)} title="Help">❓</button>
-                <button className="btn-icon-tiny" onClick={() => setIsHeatmapOpen(true)} title="Heatmap">📅</button>
+                <button className="btn-icon-tiny" onClick={onOpenGoalsView} title="Goal Tracking — month calendar">📅</button>
                 <button className="btn-icon-tiny danger" onClick={() => setIsCollapsed(true)} title="Collapse">▲</button>
               </div>
             </div>
@@ -3297,31 +3289,8 @@ ${isInDeficit ? `⚠️ DEFICIT: Behind pace by ${Math.round(monthlyDeficitMins)
         lastDataTime={lastDataTime}
         onOpenSoundboard={onOpenSoundboard}
         soundboardOpen={soundboardOpen}
-        onOpenGoalDial={() => setIsTodayDialOpen(true)}
-        isDialOpen={isTodayDialOpen}
-        goalDialNode={isTodayDialOpen ? (
-          <DialGoalSelector
-            ratePerMinute={RATE_PER_MINUTE}
-            arsRate={arsRate}
-            setArsRate={setArsRate}
-            initialGoalMinutes={stats.goalMinutes}
-            initialWorkDays={goalWorkDays}
-            monthlyMinutes={monthlyBanked}
-            dailyMinutes={Math.round(totalDailyMins)}
-            onSaveMonth={(m) => updateStat('monthlyMinutes', m)}
-            onResyncMonth={() => { try { reconcileMonthTotal?.(); } catch (_) {} }}
-            resyncInfo={(() => { try { return getMonthResyncPreview?.(); } catch { return null; } })()}
-            onSave={(m, meta) => {
-              updateStat('goalMinutes', m);
-              if (meta && [17, 22, 26, 28, 30].includes(meta.workDays)) {
-                setGoalWorkDays(meta.workDays);
-                try { localStorage.setItem(GOAL_WORKDAYS_KEY, String(meta.workDays)); } catch (_) {}
-              }
-              setIsTodayDialOpen(false);
-            }}
-            onCancel={() => setIsTodayDialOpen(false)}
-          />
-        ) : null}
+        onOpenGoalsView={onOpenGoalsView}
+        goalsOpen={goalsOpen}
         sttLanguage={sttLanguage}
         onToggleLanguage={onToggleLanguage}
         configuredAudioSourceMode={configuredAudioSourceMode}
@@ -3364,8 +3333,8 @@ ${isInDeficit ? `⚠️ DEFICIT: Behind pace by ${Math.round(monthlyDeficitMins)
             <span className="compact-call-goal-meter__now" style={{ left: `${shiftElapsedRatio * 100}%` }} />
           </div>
           {/* v4.88.5: meter-only HUD carries the daily targets beside the timeline */}
-          {meterOnlyMode && !isTodayDialOpen && (
-            <DailyTargetsChip dailyMinutes={Math.round(totalDailyMins)} monthlyMinutes={monthlyBanked} workDays={goalWorkDays} breakMinutes={Math.round(liveBreakMins)} ratePerMinute={RATE_PER_MINUTE} goalMinutes={stats.goalMinutes} onOpenGoalDial={() => setIsTodayDialOpen(true)} />
+          {meterOnlyMode && (
+            <DailyTargetsChip dailyMinutes={Math.round(totalDailyMins)} monthlyMinutes={monthlyBanked} workDays={goalWorkDays} breakMinutes={Math.round(liveBreakMins)} ratePerMinute={RATE_PER_MINUTE} goalMinutes={stats.goalMinutes} onOpenGoalsView={onOpenGoalsView} />
           )}
         </div>
       )}
@@ -3391,8 +3360,6 @@ ${isInDeficit ? `⚠️ DEFICIT: Behind pace by ${Math.round(monthlyDeficitMins)
           <span className="scoreboard-grab-bar-grip" />
         </div>
       )}
-
-      {isHeatmapOpen && <MonthHeatmap />}
 
       {timeEditMode && <TimeEditModal mode={timeEditMode} onClose={() => setTimeEditMode(null)} />}
 

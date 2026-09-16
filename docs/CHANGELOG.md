@@ -2,6 +2,25 @@
 
 **Version source:** `src/constants/version.js` (must match `package.json` + top-right UI pill)
 
+## v4.113.0 - Goal Tracking view: dial + month calendar, live need/day
+
+- New off-call Goal Tracking view: dial selector + month calendar side-by-side; live pace card shows banked vs goal, remaining over workdays, and need/day with an on-pace verdict (updates live as the dial changes, before saving).
+- Open from the goal button, income card, calendar button, or daily-targets chip; cat or Escape returns to transcription. Transient view: refresh lands back on the scoreboard.
+- Month calendar requirement math moves to a workday basis (remaining goal / remaining workdays) reacting to the live dial preview; click a past day to edit minutes.
+- Separate heatmap overlay removed (calendar lives in the view); workdays/month lifted to session context so header catch-up strip and view never disagree.
+
+## v4.112.3 - Greeting scripts visible before Record
+
+- Clip cards render script `<details open>` (was collapsed until Record); ✏️ edit modal shows script under header. Recording keeps live teleprompter.
+
+## v4.112.2 - Passive ElementHint tooltips retired
+
+- `ElementHintTarget` is a pass-through (native titles back); ⌖ HudInspector picker is the single element-select path. No behavior change for wrapped controls.
+
+## v4.112.1 - Soundboard dock fills the rail
+
+- Dock gallery drops to full-width grid row below header (was squeezed to 1-tile column beside toggle+slider in the 180–240px rail).
+
 ## v4.112.0 - One-tab local translator watch (no more 5-min popup)
 
 - **Retired:** `\CatTS-API-Watchdog` scheduled task (console flash every 5 min; `-WindowStyle Hidden` still flashes on interactive logon) — disabled. Re-enable: `schtasks /change /tn "CatTS-API-Watchdog" /enable`.

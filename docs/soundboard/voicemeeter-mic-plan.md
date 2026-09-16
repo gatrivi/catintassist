@@ -56,3 +56,11 @@ If audio still sounds garbled/robotic, it's the virtual device formats, not the 
 
 - I can: run inspect + `-Apply` via the script, extend the script, verify with recordings.
 - You must: make the test/real call and confirm what the client hears (I can't hear the patient side).
+
+## Live diagnosis (2026-09-12, `scripts/setup-voicemeeter-mic.ps1`)
+
+- Running mixer = Voicemeeter **Standard** (only B1 exists as a live bus). Windows still has the full **Potato** endpoint set registered (In 1-5, AUX, VAIO3, Out A1-A5, B1-B3) → **"Voicemeeter Out B2/B3" are ghosts the Standard mixer never routes to. Never pick them as a mic.** The app's client-mic pill was pinned to Out B3 (dead endpoint).
+- Verified good in the mixer: Strip[0] 'Microphone (Realtek(R) Audio)' → **B1**; VAIO ('Voicemeeter Input' = app greetings) → **A1+B1**; B1 unmuted @ 0 dB. Patient path is correctly fed.
+- Found wrong: **A1 output device = 'CABLE Input'** → the VAIO self-monitor feeds the STT cable, so Deepgram transcribes every greeting into the call transcript. If unintentional: Voicemeeter UI → A1 button → pick your headset ('Speakers (HS-220U)' or 'Speakers (Realtek(R) Audio)'). Remote-API bus device stepping is broken (stores literal '+') — UI only, do not script it.
+- Windows default input must be **'Voicemeeter Out B1'** so any "Default" mic picker (Edge/platform) lands on the live bus, never on a ghost.
+- Script upgrades: kind detection (Standard/Banana/Potato), full strip+bus inspect, safe `-Apply` (XML backup + device match before mutating), `-Restore <file.xml>` recovery, warning when A1 points at a VB device.

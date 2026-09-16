@@ -33,6 +33,7 @@ import { loadFile, generateObjectUrl } from "./utils/storage";
 import { resolveAppBackgroundPath } from "./utils/defaultBackgrounds";
 import SettingsPanel from "./components/SettingsPanel";
 import { OffCallWorkspace } from "./components/OffCallWorkspace";
+import { GoalTrackingView, GOALS_VIEW } from "./components/GoalTrackingView";
 import { SplashScreen } from "./components/SplashScreen";
 import { GuideHostProvider } from "./contexts/GuideHostContext";
 import { ElementHintProvider } from "./components/ElementHint";
@@ -283,6 +284,8 @@ const Dashboard = () => {
 
   const offCallWorkspace = isActive || isZombieCall ? null : workspaceView;
   const isSoundboardStudio = offCallWorkspace === "soundboard";
+  // v4.113.0: transient goal tracking view — never persisted (refresh → scoreboard).
+  const isGoalsView = offCallWorkspace === GOALS_VIEW;
 
   const cycleWorkspaceView = useCallback(() => {
     if (isActive || isZombieCall) return;
@@ -300,6 +303,26 @@ const Dashboard = () => {
     if (isActive || isZombieCall) return;
     markStudioHintSeen();
     setShowStudioHint(false);
+    saveWorkspaceView("scoreboard");
+    setWorkspaceView("scoreboard");
+  }, [isActive, isZombieCall]);
+
+  // v4.113.0: Goal Tracking view — off-call only (same gating as Soundboard).
+  // 'goals' is transient: saveWorkspaceView ignores it, so a refresh restores scoreboard.
+  // Toggle semantics (like onOpenSoundboard): clicking 🎯 again — or the cat — exits.
+  const onOpenGoalsView = useCallback(() => {
+    if (isActive || isZombieCall) return;
+    setWorkspaceView((prev) => {
+      if (prev === GOALS_VIEW) {
+        saveWorkspaceView("scoreboard");
+        return "scoreboard";
+      }
+      return GOALS_VIEW;
+    });
+  }, [isActive, isZombieCall]);
+
+  const exitGoalsView = useCallback(() => {
+    if (isActive || isZombieCall) return;
     saveWorkspaceView("scoreboard");
     setWorkspaceView("scoreboard");
   }, [isActive, isZombieCall]);
@@ -652,6 +675,18 @@ const Dashboard = () => {
     return () => window.removeEventListener("keydown", onKey);
   }, [isSoundboardStudio, isActive, isZombieCall, exitSoundboardStudio]);
 
+  // Escape exits the Goal Tracking view when off-call. (The dial dialog and the
+  // calendar day-editor stop propagation for their own Escape handling.)
+  useEffect(() => {
+    if (!isGoalsView || isActive || isZombieCall) return;
+    const onKey = (e) => {
+      if (e.key !== "Escape" || e.defaultPrevented) return;
+      exitGoalsView();
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [isGoalsView, isActive, isZombieCall, exitGoalsView]);
+
   // Demo Scenario Trigger (Shift + D)
   useEffect(() => {
     const scenarios = ["call", "goal_hit", "break", "reset"];
@@ -871,6 +906,8 @@ const Dashboard = () => {
         onCycleWorkspace={cycleWorkspaceView}
         showStudioHint={showStudioHint}
         settingsOpen={settingsOpen}
+        onOpenGoalsView={onOpenGoalsView}
+        goalsOpen={isGoalsView}
         onOpenSoundboard={() => {
           if (workspaceView === "soundboard") {
             exitSoundboardStudio();
@@ -914,6 +951,13 @@ const Dashboard = () => {
             />
           </div>
           {renderNotesPanel()}
+        </main>
+      )}
+
+      {/* v4.113.0: Goal Tracking view — dial + month calendar, off-call only */}
+      {isGoalsView && (
+        <main className={`main-content view-goals${isNotesOpen ? " notes-open" : ""}`}>
+          <GoalTrackingView onExit={exitGoalsView} />
         </main>
       )}
 

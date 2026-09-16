@@ -52,6 +52,16 @@ import { writeMicTestMode } from "../utils/micMode";
 import { traceCaptionArrayDiff } from "../utils/vanishTrace";
 import { updateVadLoudFrames, shouldWakeFromVad } from "../utils/idleEar";
 import {
+  RING_TRIGGER_FRAMES,
+  RING_LEARN_EVENT,
+  RING_SIG_CHANGED_EVENT,
+  extractPeakHz,
+  buildRingSignature,
+  matchRingSignature,
+  loadRingSignature,
+  saveRingSignature,
+} from "../utils/ringSignature";
+import {
   matchCallStartPhrase,
   matchCallEndPhrase,
   loadAutopilotPhrases,
@@ -921,6 +931,72 @@ export const useDeepgram = () => {
         }
       };
 
+      // ── v4.103.2 CONNECT auto-retry ─────────────────────────────────────
+      // A transient DG failure during the initial CONNECT (1006 handshake
+      // drop, network blip) used to hard-fail the attempt and cost a manual
+      // ZAP — crucial seconds on a live call. Quick socket re-opens (3 max)
+      // fix it silently; auth/quota closes still fail fast (retry is futile).
+      const myAttemptId = connectAttemptIdRef.current;
+      const CONNECT_MAX_RETRIES = 3;
+      let connectRetries = 0;
+      let retryPending = false;
+      let openStallTimer = null;
+      const clearOpenStall = () => {
+        if (openStallTimer) {
+          clearTimeout(openStallTimer);
+          openStallTimer = null;
+        }
+      };
+      /** Handshake hang: sockets never opened (covers En-open/Es-hang too). */
+      const armOpenStall = () => {
+        clearOpenStall();
+        openStallTimer = setTimeout(() => {
+          openStallTimer = null;
+          if (connectAttemptIdRef.current !== myAttemptId) return;
+          if (connectFlagsRef.current.phase !== "connecting") return;
+          const socketsReady = multiMode
+            ? socketRefEn.current?.readyState === 1
+            : socketRefEn.current?.readyState === 1 &&
+              socketRefEs.current?.readyState === 1;
+          if (socketsReady) return; // open-but-silent → 12s audio watchdog owns it
+          if (!retryOpenSockets("socket-open-stall", 0)) {
+            failConnection(
+              "TIMEOUT: Deepgram did not open after retries. Check network/VPN, then press ZAP.",
+              { failureCategory: FAILURE.TIMEOUT },
+            );
+          }
+        }, 8000);
+      };
+      /** Re-open sockets after a connecting-phase failure. Returns true if a
+       * retry is scheduled; false when out of budget (caller should fail). */
+      const retryOpenSockets = (why, delayMs) => {
+        if (retryPending || connectRetries >= CONNECT_MAX_RETRIES) return false;
+        retryPending = true;
+        connectRetries += 1;
+        syncConnectProgress({ connectRetries, lastRetryReason: why });
+        critLog("warn", "connect auto-retry", { why, attempt: connectRetries, delayMs });
+        setConnectionMessage(
+          `Deepgram hiccup — retrying (${connectRetries}/${CONNECT_MAX_RETRIES})...`,
+        );
+        setTimeout(() => {
+          retryPending = false;
+          if (connectAttemptIdRef.current !== myAttemptId) return;
+          if (connectFlagsRef.current.phase !== "connecting") return;
+          try { socketRefEn.current?.close(); } catch (_) {}
+          try { socketRefEs.current?.close(); } catch (_) {}
+          socketRefEn.current = null;
+          socketRefEs.current = null;
+          clearOpenStall();
+          socketRefEn.current = createSocket(
+            multiMode ? "multi" : pair.left,
+            stream,
+            { socketSide: "En", isFirst: !multiMode },
+          );
+          armOpenStall();
+        }, delayMs);
+        return true;
+      };
+
       const createSocket = (lang, stream, { socketSide = "En", isFirst = false } = {}) => {
         const url = buildListenUrl(lang, sttLatencyModeRef.current);
         console.log("[Deepgram] OPENING SOCKET", { lang, socketSide, url });
@@ -1198,6 +1274,9 @@ export const useDeepgram = () => {
         };
 
         ws.onclose = (event) => {
+          // v4.103.2: stale sockets (torn down by a retry/teardown) must not
+          // trigger retries or failures — only the CURRENT socket speaks.
+          if (ws !== socketRefEn.current && ws !== socketRefEs.current) return;
           const code = event?.code;
           const reason = event?.reason || "";
           console.error("[Deepgram] SOCKET CLOSED", { lang, socketSide, code, reason });
@@ -1216,8 +1295,14 @@ export const useDeepgram = () => {
           }
 
           if (connectFlagsRef.current.phase === "connecting") {
-            if (code !== 1000) {
-              scheduleConnectFail(lang, code, reason, socketSide);
+            // v4.103.2: auto-retry transient closes before hard-failing.
+            if (code !== 1000 && !retryPending) {
+              if (
+                !shouldRetryConnectClose(code, reason) ||
+                !retryOpenSockets(`close-${code}`, 600 * (connectRetries + 1))
+              ) {
+                scheduleConnectFail(lang, code, reason, socketSide);
+              }
             }
             return;
           }
@@ -1267,6 +1352,7 @@ export const useDeepgram = () => {
         socketSide: "En",
         isFirst: true,
       });
+      armOpenStall(); // v4.103.2: hang = sockets never open → auto-retry
     },
     [
       isCallDetectionEnabled,

@@ -456,7 +456,18 @@ export const SessionProvider = ({ children }) => {
     const saved = localStorage.getItem('catint_toolbar_visible');
     return saved !== null ? JSON.parse(saved) : false;
   });
-  const [isHeatmapOpen, setIsHeatmapOpen] = useState(false);
+  // v4.113.0: workdays basis (5/6/6.5-day weeks) lifted here from DashboardHeader —
+  // the Goal Tracking view writes it while the header stays mounted, so a header-local
+  // copy would go stale. Same key + default as before (v4.100.1: 6.5/Wk = 28d).
+  const [goalWorkDays, setGoalWorkDays] = useState(() => {
+    try {
+      const v = Number(localStorage.getItem('catint_goal_workdays_v1'));
+      return [17, 22, 26, 28, 30].includes(v) ? v : 28;
+    } catch { return 28; }
+  });
+  useEffect(() => {
+    try { localStorage.setItem('catint_goal_workdays_v1', String(goalWorkDays)); } catch {}
+  }, [goalWorkDays]);
   const [isScoreboardHelpVisible, setIsScoreboardHelpVisible] = useState(false);
   const [isCallDetectionEnabled, setIsCallDetectionEnabled] = useState(() => {
     const saved = localStorage.getItem('catint_call_detect');
@@ -1327,8 +1338,8 @@ export const SessionProvider = ({ children }) => {
     lastSilenceDeductionMins,
     vaultStatus,
     adjustDailyMinutes,
-    isHeatmapOpen,
-    setIsHeatmapOpen,
+    goalWorkDays,
+    setGoalWorkDays,
     isScoreboardHelpVisible,
     setIsScoreboardHelpVisible,
     isCallDetectionEnabled,

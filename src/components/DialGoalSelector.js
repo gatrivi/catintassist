@@ -27,6 +27,8 @@ export const DialGoalSelector = ({
   onResyncMonth = null, // () => {sum, applied} — re-sum daily log
   resyncInfo = null, // {sum} — what re-sum would write (for preview)
   onSave, onCancel, modal = false,
+  // v4.113.0: live (unsaved) selection → parent view, e.g. { monthlyMinutes, workDays, daysPerWeek }.
+  onPreview = null,
 }) => {
   const audioEngine = useProgressiveAudio();
 
@@ -103,6 +105,13 @@ export const DialGoalSelector = ({
   const effectiveMonthly = customMonth !== '' && Number(customMonth) > 0
     ? Math.round(Number(customMonth))
     : monthlyMins;
+
+  // v4.113.0: one effect covers every change path (step/scroll/click/frequency/custom).
+  // Fires on mount too so the Goal Tracking view's pace card starts populated.
+  useEffect(() => {
+    if (!onPreview) return;
+    onPreview({ monthlyMinutes: effectiveMonthly, workDays, daysPerWeek: daysPerWeekOf(workDays) });
+  }, [effectiveMonthly, workDays, onPreview]);
   const applyCustomToDial = () => {
     const v = Number(customMonth);
     if (!Number.isFinite(v) || v <= 0) return;

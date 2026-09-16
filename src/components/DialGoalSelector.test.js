@@ -66,4 +66,17 @@ describe('DialGoalSelector rehab (v4.100.0)', () => {
     expect(onSaveMonth).toHaveBeenCalledWith(1234);
     expect(screen.getByRole('button', { name: /log=1234m/ })).toBeInTheDocument();
   });
+
+  test('onPreview fires on mount and follows dial/frequency changes (v4.113.0)', () => {
+    const onPreview = jest.fn();
+    render(<DialGoalSelector {...baseProps} initialWorkDays={28} monthlyMinutes={1000} dailyMinutes={50} onPreview={onPreview} />);
+    // Mount: 5500m @ 6.5/wk snaps to 20h/wk → round(round(1200/6.5)*28) = 185*28 = 5180m/mo
+    expect(onPreview).toHaveBeenLastCalledWith({ monthlyMinutes: 5180, workDays: 28, daysPerWeek: 6.5 });
+    fireEvent.click(screen.getByRole('button', { name: /Raise weekly commitment/i }));
+    // 25h/wk @ 6.5 → round(round(1500/6.5)*28) = 231*28 = 6468
+    expect(onPreview).toHaveBeenLastCalledWith({ monthlyMinutes: 6468, workDays: 28, daysPerWeek: 6.5 });
+    fireEvent.click(screen.getByRole('button', { name: /^5\/Wk/i }));
+    // 25h/wk @ 5d/wk (22d/mo) → round(1500/5)*22 = 6600
+    expect(onPreview).toHaveBeenLastCalledWith({ monthlyMinutes: 6600, workDays: 22, daysPerWeek: 5 });
+  });
 });

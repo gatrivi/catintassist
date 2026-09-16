@@ -52,3 +52,6 @@
 | 2026-09-12T21:33:21.657Z | 07adf32 | v4.108.2 soundboard selected-output binding, terminal cancellation, corrected VoiceMeeter inspection |
 | 2026-09-12T21:59:09.536Z | 699c97c | v4.108.3 correct VoiceMeeter Input vs In 1 and explicit Caller tests |
 | 2026-09-12T23:26:33.710Z | ebddcbd | v4.109.0 soundboard loudness verdict - pill + tile dots |
+| 2026-09-12T23:41:15.102Z | a71c01a | v4.110.0 soundboard choppiness verdict + distinct indicators |
+| 2026-09-12T23:47:44.393Z | 4e1a5dd | v4.111.0 greetings in notes rail during calls + always-on thumb titles |
+| 2026-09-13T20:43:34.824Z | 8b7e3a6 | v4.112.0 one-tab local translator watch, retire 5-min popup task |

@@ -1217,7 +1217,7 @@ export const GreetingsPanel = ({ onEditModeChange, onExitStudio, micTestMode = f
             return <div className="sb-script sb-script--live">{script}</div>;
           }
           return (
-            <details className="sb-script">
+            <details className="sb-script" open>
               <summary>¶ Script</summary>
               <p>{script}</p>
             </details>
@@ -1244,6 +1244,10 @@ export const GreetingsPanel = ({ onEditModeChange, onExitStudio, micTestMode = f
           <strong>Edit clip — {editingKey}</strong>
           <button type="button" className="sb-filter-chip" onClick={() => setEditingKey(null)}>✕ Close</button>
         </div>
+        {(() => {
+          const editScript = scriptForClipKey(editingKey);
+          return editScript ? <div className="sb-script"><p>{editScript}</p></div> : null;
+        })()}
         <AudioEditorPanel
           key={editingKey}
           blob={blobs[editingKey]}

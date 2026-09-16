@@ -1,5 +1,4 @@
-import React, { createContext, useCallback, useContext, useMemo, useRef, useState } from 'react';
-import { createPortal } from 'react-dom';
+import React, { createContext, useContext } from 'react';
 
 /** Build copyable selector: prefer #id, else [data-guide="…"]. */
 export const buildElementSelector = ({ elementId, guideKey, fallback }) => {
@@ -10,53 +9,11 @@ export const buildElementSelector = ({ elementId, guideKey, fallback }) => {
 
 const ElementHintContext = createContext(null);
 
-/** Global host — mount once near app root (alongside GuideHostProvider). */
+/** Global host — v4.112.2: passive tooltips retired (HudInspector ⌖ picker
+ * covers element select). Kept as a pass-through so existing imports mount
+ * cleanly; renders children only, no portal, no hover listeners. */
 export const ElementHintProvider = ({ children }) => {
-  const [hint, setHint] = useState(null);
-  const [copied, setCopied] = useState(false);
-  const hideTimerRef = useRef(null);
-
-  const show = useCallback((payload) => {
-    if (hideTimerRef.current) clearTimeout(hideTimerRef.current);
-    setCopied(false);
-    setHint(payload);
-  }, []);
-
-  const keepOpen = useCallback(() => {
-    if (hideTimerRef.current) clearTimeout(hideTimerRef.current);
-  }, []);
-
-  const hide = useCallback(() => {
-    if (hideTimerRef.current) clearTimeout(hideTimerRef.current);
-    hideTimerRef.current = setTimeout(() => {
-      setHint(null);
-      setCopied(false);
-    }, 180);
-  }, []);
-
-  const copySelector = useCallback(async () => {
-    const sel = hint?.selector;
-    if (!sel) return;
-    try {
-      await navigator.clipboard.writeText(sel);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 1400);
-    } catch (_) {
-      /* clipboard blocked — ignore */
-    }
-  }, [hint?.selector]);
-
-  const value = useMemo(() => ({ show, hide, keepOpen }), [show, hide, keepOpen]);
-
-  return (
-    <ElementHintContext.Provider value={value}>
-      {children}
-      {hint && createPortal(
-        <ElementHintPanel hint={hint} copied={copied} onCopy={copySelector} onKeepOpen={keepOpen} onHide={hide} />,
-        document.body,
-      )}
-    </ElementHintContext.Provider>
-  );
+  return <>{children}</>;
 };
 
 export const useElementHint = () => {
@@ -75,8 +32,6 @@ const placementStyle = (placement) => {
   if (placement === 'below') return 'translate(-50%, 10px)';
   return 'translate(-50%, calc(-100% - 10px))';
 };
-
-const clamp = (n, min, max) => Math.max(min, Math.min(max, n));
 
 /** Portal panel — rich tooltip with element selector + copy. */
 export const ElementHintPanel = ({ hint, copied, onCopy, onKeepOpen, onHide }) => {
@@ -123,8 +78,9 @@ export const ElementHintPanel = ({ hint, copied, onCopy, onKeepOpen, onHide }) =
 };
 
 /**
- * Wrap any control — hover/focus shows ElementHint with unique selector + copy.
- * Native `title` is stripped to avoid double tooltips.
+ * v4.112.2: passive hover tooltips retired — pass-through wrapper.
+ * Renders the child unchanged (native `title` restored) so the HudInspector
+ * ⌖ picker is the single element-select path.
  */
 export const ElementHintTarget = ({
   elementId,
@@ -136,56 +92,7 @@ export const ElementHintTarget = ({
   placement = 'auto',
   children,
 }) => {
-  const { show, hide, keepOpen } = useElementHint();
-  const selector = buildElementSelector({ elementId, guideKey, fallback: heading });
-
-  const open = (e) => {
-    if (document.querySelector('.app-container[data-call-mode="true"]')) return;
-    const rect = e.currentTarget.getBoundingClientRect();
-    const resolvedPlacement = placement === 'auto'
-      ? (rect.top < 160 ? 'below' : 'above')
-      : placement;
-    const y = resolvedPlacement === 'above' ? rect.top : rect.bottom;
-    const x = clamp(rect.left + rect.width / 2, 140, window.innerWidth - 140);
-    show({
-      x,
-      y,
-      placement: resolvedPlacement,
-      selector,
-      heading,
-      body,
-      icon,
-      color,
-    });
-  };
-
-  const child = React.Children.only(children);
-  const { title: _dropTitle, ...rest } = child.props;
-
-  return React.cloneElement(child, {
-    ...rest,
-    onMouseEnter: (e) => {
-      rest.onMouseEnter?.(e);
-      open(e);
-    },
-    onMouseLeave: (e) => {
-      rest.onMouseLeave?.(e);
-      hide();
-    },
-    onPointerDown: (e) => {
-      rest.onPointerDown?.(e);
-      keepOpen?.();
-      open(e);
-    },
-    onFocus: (e) => {
-      rest.onFocus?.(e);
-      open(e);
-    },
-    onBlur: (e) => {
-      rest.onBlur?.(e);
-      hide();
-    },
-  });
+  return React.Children.only(children);
 };
 
 /** Imperative helper for metric cells / bars that already manage hover coords. */

@@ -25,6 +25,31 @@ import { APP_VERSION } from '../constants/version';
 /** Newest first. Only the entry matching APP_VERSION is shown on load. */
 export const RELEASE_NOTES_CATALOG = [
   {
+    version: '4.113.0',
+    id: 'goal-tracking-view',
+    highlightElementIds: ['header-goal-btn'],
+    es: {
+      title: '🎯 Vista de Metas: dial + calendario',
+      intro: 'El selector de metas ahora tiene su propia vista completa, con calendario mensual y ritmo en vivo.',
+      sections: [{ heading: 'Qué hay', bullets: [
+        '🎯 en el header (o el chip de metas) abre la vista: dial a la izquierda, calendario a la derecha.',
+        'El calendario muestra los minutos trabajados por día — clic en un día para corregirlos.',
+        'El ritmo (need/día) se actualiza EN VIVO mientras mueves el dial o cambias 4/5/6/6.5/7 días por semana, contando lo ya trabajado.',
+        'El gato 🐱 (o Escape) te devuelve a la transcripción. Fuera de llamada solamente.',
+      ] }],
+    },
+    en: {
+      title: '🎯 Goal Tracking view: dial + calendar',
+      intro: 'The goal selector got its own full view, with a month calendar and live pace.',
+      sections: [{ heading: "What's in it", bullets: [
+        '🎯 in the header (or the targets chip) opens the view: dial left, calendar right.',
+        'Calendar shows minutes worked per day — click a day to fix it.',
+        'Pace (need/day) updates LIVE while you move the dial or switch 4/5/6/6.5/7 days per week, counting minutes banked so far.',
+        'The cat 🐱 (or Escape) takes you back to transcription. Off-call only.',
+      ] }],
+    },
+  },
+  {
     version: '4.112.0',
     id: 'local-watch-single-tab',
     highlightElementIds: ['main-transcript'],

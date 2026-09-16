@@ -70,7 +70,7 @@ export const DailyTargetsChip = ({
   ratePerMinute = 0.13,
   goalMinutes = 0, // v4.96.0: real dial goal (stats.goalMinutes) — wins over the $1200 estimate
   workDays = 0, // v4.101.0: workday basis (e.g. 28 for 6.5/Wk) — catch-up spreads over workdays
-  onOpenGoalDial = null, // v4.100.0: HUD goal pill acts as a button → inline dial
+  onOpenGoalsView = null, // v4.113.0: chip click opens the Goal Tracking view (off-call)
 }) => {
   const usdGoal = computeGoalDay({ dailyMinutes, monthlyMinutes, ratePerMinute });
   // v4.96.0: today's target = month catch-up spread over remaining days
@@ -218,12 +218,12 @@ export const DailyTargetsChip = ({
       ref={chipRef}
       onMouseEnter={showSmartTip}
       onMouseLeave={() => setSmartTip(null)}
-      onClick={onOpenGoalDial ? (e) => { e.stopPropagation(); onOpenGoalDial(); } : undefined}
-      onKeyDown={onOpenGoalDial ? (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onOpenGoalDial(); } } : undefined}
-      role={onOpenGoalDial ? 'button' : undefined}
-      tabIndex={onOpenGoalDial ? 0 : undefined}
-      title={onOpenGoalDial ? `Month goal ${fmtHm(monthGoalMin)} · ${deficitText || 'on pace'} — click to open goal picker wheel` : undefined}
-      aria-label={`Daily targets: ${usd(dailyMinutes)} of $${targetUsd.toFixed(0)} today, ${fmtHm(dailyMinutes)} on call, ${fmtHm(breakMinutes)} break taken${onOpenGoalDial ? '. Activate to open goal picker.' : ''}`}
+      onClick={onOpenGoalsView ? (e) => { e.stopPropagation(); onOpenGoalsView(); } : undefined}
+      onKeyDown={onOpenGoalsView ? (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onOpenGoalsView(); } } : undefined}
+      role={onOpenGoalsView ? 'button' : undefined}
+      tabIndex={onOpenGoalsView ? 0 : undefined}
+      title={onOpenGoalsView ? `Month goal ${fmtHm(monthGoalMin)} · ${deficitText || 'on pace'} — click to open Goal Tracking (off-call)` : undefined}
+      aria-label={`Daily targets: ${usd(dailyMinutes)} of $${targetUsd.toFixed(0)} today, ${fmtHm(dailyMinutes)} on call, ${fmtHm(breakMinutes)} break taken${onOpenGoalsView ? '. Activate to open Goal Tracking.' : ''}`}
       style={{
         display: 'inline-flex',
         alignItems: 'center',
@@ -238,7 +238,7 @@ export const DailyTargetsChip = ({
         padding: '0.2rem 0.55rem',
         lineHeight: 1,
         minHeight: 24,
-        cursor: onOpenGoalDial ? 'pointer' : 'help',
+        cursor: onOpenGoalsView ? 'pointer' : 'help',
       }}
     >
       {fitLevel < 2 && mkUsd()}

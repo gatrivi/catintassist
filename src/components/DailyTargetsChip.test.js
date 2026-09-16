@@ -11,14 +11,14 @@ beforeAll(() => {
   }
 });
 
-describe('DailyTargetsChip goal-button (v4.100.0)', () => {
-  test('acts as a button when onOpenGoalDial is wired', () => {
+describe('DailyTargetsChip goal-button (v4.113.0)', () => {
+  test('acts as a button when onOpenGoalsView is wired', () => {
     const open = jest.fn();
     render(
-      <DailyTargetsChip dailyMinutes={53} monthlyMinutes={880} breakMinutes={10} goalMinutes={5500} onOpenGoalDial={open} />,
+      <DailyTargetsChip dailyMinutes={53} monthlyMinutes={880} breakMinutes={10} goalMinutes={5500} onOpenGoalsView={open} />,
     );
     const chip = screen.getByRole('button');
-    expect(chip.getAttribute('title')).toMatch(/goal picker/i);
+    expect(chip.getAttribute('title')).toMatch(/goal tracking/i);
     fireEvent.click(chip);
     expect(open).toHaveBeenCalledTimes(1);
   });

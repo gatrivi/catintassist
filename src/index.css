@@ -956,6 +956,30 @@ body {
   align-content: flex-start;
 }
 
+/* v4.112.1: dock rail is ~180-240px — header (toggle+size) stays on row 1,
+   gallery drops to row 2 full-width grid so tiles fill the container
+   instead of squeezing into a 1-tile column beside the toggle. */
+.tools-soundboard-dock .on-call-soundboard-strip.is-expanded .on-call-sb-toggle {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.tools-soundboard-dock .on-call-soundboard-strip.is-expanded .on-call-sb-gallery {
+  flex: 1 1 100%;
+  width: 100%;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(var(--oncall-thumb, 36px), 1fr));
+  align-content: start;
+}
+
+.tools-soundboard-dock .on-call-soundboard-strip.is-expanded .on-call-sb-tile {
+  width: 100%;
+  height: auto;
+  aspect-ratio: 1;
+  flex-shrink: 1;
+  min-width: 0;
+}
+
 .tools-column > .tools-notes {
   flex: 1; /* Notes is smaller */
   min-height: 0;
@@ -1074,6 +1098,36 @@ body {
 
 .app-container[data-off-call-view="soundboard"] > .main-content.view-soundboard {
   flex: 1 1 auto;
+  min-height: 0;
+}
+
+/* v4.113.0: Goal Tracking view — dial + month calendar side by side */
+.app-container[data-off-call-view="goals"] {
+  min-height: 0;
+}
+
+.app-container[data-off-call-view="goals"] > .dashboard-header.dashboard-header--minimal {
+  flex-shrink: 0;
+  max-height: none;
+  overflow: visible;
+}
+
+.app-container[data-off-call-view="goals"] > .main-content.view-goals {
+  flex: 1 1 auto;
+  min-height: 0;
+}
+
+.main-content.view-goals {
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.goal-tracking-calendar {
+  display: flex;
+  flex-direction: column;
   min-height: 0;
 }
 
