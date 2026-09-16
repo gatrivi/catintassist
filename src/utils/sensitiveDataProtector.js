@@ -4,6 +4,7 @@
 // v4.28.0
 
 import { flagVanish } from './vanishTrace';
+import { getArmedExpectedType } from './expectedDataContext';
 
 // ------------------------------
 // Display-time helpers (UI)
@@ -98,14 +99,19 @@ export const combineCompoundNumbers = (text, lang = 'en') => {
 //      Other lengths → digit groups of 3 with dashes (unchanged).
 // ---------------------------------------------------------------------------
 
-export const formatPhoneAndSSNDigits = (text, { ignoreAddressGuard = false, ignoreDateGuard = false, allowNonStandardDash = false } = {}) => {
+export const formatPhoneAndSSNDigits = (text, { ignoreAddressGuard = false, ignoreDateGuard = false, allowNonStandardDash = false, expectedType = null } = {}) => {
   if (!text) return text;
+  // v4.117.0: armed ID request overrides the ZIP/MRN verbatim brakes below.
+  const armedFull =
+    expectedType === 'phone' || expectedType === 'ssn' || expectedType === 'member';
+  const armedId = expectedType === 'ssn' || expectedType === 'member';
   return text.replace(/\b(?:\d[\s.,-:]*){7,15}\d\b/g, (m, offset, full) => {
     // v4.114.0: clock times are NEVER phones — "1:00, 1:30, 2:00, 2:30"
     // reads as one 12-digit run to this regex. Colons don't appear in phones.
     if (m.includes(':')) return m;
     // v4.115.0: ZIP+4 is not an SSN — "10027-1234" stays verbatim.
-    if (/^\d{5}-\d{4}$/.test(m.trim())) return m;
+    // v4.117.0: unless an SSN/member ID was just asked for (request wins).
+    if (!armedId && /^\d{5}-\d{4}$/.test(m.trim())) return m;
     // v4.115.0: IPs/versions are NEVER phones — "192.168.1.1" (10 digits)
     // must not become a phone number. 2+ dots with digits around = not a phone.
     if (/\d\.\d/.test(m) && (m.match(/\./g) || []).length >= 2) return m;
@@ -118,7 +124,9 @@ export const formatPhoneAndSSNDigits = (text, { ignoreAddressGuard = false, igno
     // v4.115.0: non-phone/SSN lengths (8, 12-16 digits) next to chart cues are
     // MRNs/record numbers — leave undashed. 9/10/11 keep SSN/phone/member
     // behavior (Phase G insurance IDs).
+    // v4.117.0: armed phone/ssn/member request overrides (request wins).
     if (
+      !armedFull &&
       ![9, 10, 11].includes(digitsOnly.length) &&
       /\b(?:mrn|chart|record|account|afiliado|miembro|expediente|historia|folio)\b/i.test(before)
     ) {
@@ -728,8 +736,52 @@ export const expandWordTimes = (text) => {
   return out;
 };
 
+// ---------------------------------------------------------------------------
+// ADJACENT DIGIT-REPEAT COLLAPSE (v4.117.0)
+// ---------------------------------------------------------------------------
+// Chunk straddles duplicate digit groups: "555 123" + "123 4567" merges to
+// "555 123 123 4567" (overlap keeps both by design). Exact adjacent repeats
+// of digit groups collapse to one copy — information-preserving, logged.
+// NEVER collapses runs of identical single digits ("5 5 5 5" stays: that is
+// dictation/stutter territory, and stitch owns it).
+// ---------------------------------------------------------------------------
+
+const isDigitGroupTok = (t) => {
+  const s = (t || '').trim();
+  return s.length > 0 && /[\d]/.test(s) && /^[\d\s.,/:-]+$/.test(s);
+};
+
+export const collapseAdjacentDigitRepeats = (text) => {
+  if (!text) return text;
+  const parts = text.match(/\S+\s*/g) || [];
+  let collapsed = false;
+  for (let k = 4; k >= 1; k -= 1) {
+    for (let i = 0; i + 2 * k <= parts.length; i += 1) {
+      const a = parts.slice(i, i + k);
+      const b = parts.slice(i + k, i + 2 * k);
+      if (!a.every(isDigitGroupTok) || !b.every(isDigitGroupTok)) continue;
+      // v4.117.0: any run of single-digit tokens ("5 5 | 5 5", "9 1 | 9 1")
+      // is dictation/stutter territory — keep both, stitch owns it. Only
+      // multi-char groups ("123 | 123") collapse.
+      if (a.every((t) => t.trim().length === 1)) continue;
+      if (a.map((t) => t.trim()).join(' ') !== b.map((t) => t.trim()).join(' ')) continue;
+      const removed = parts.splice(i + k, k).join('').trim();
+      collapsed = true;
+      flagVanish('display_digit_repeat_collapse', {
+        before: text,
+        after: parts.join(''),
+        stage: 'collapseAdjacentDigitRepeats',
+        force: true,
+        extra: { removed },
+      });
+      i -= 1;
+    }
+  }
+  return collapsed ? parts.join('') : text;
+};
+
 /** Display pipeline order (transcript + translation panes). */
-export const applyDisplayProtections = (text, lang = 'en', { applyNumberWords = true } = {}) => {
+export const applyDisplayProtections = (text, lang = 'en', { applyNumberWords = true, expectedType = getArmedExpectedType() } = {}) => {
   if (!text) return text;
   let out = text;
   if (applyNumberWords) out = convertEnglishNumberWords(out, lang);
@@ -740,20 +792,33 @@ export const applyDisplayProtections = (text, lang = 'en', { applyNumberWords = 
   out = expandClerkTimeShorthand(out);
   // v4.115.0: "half past 2" → "2:30", "at 3 30" → "at 3:30" before sentinels.
   out = expandWordTimes(out);
+  // v4.117.0: straddle dupes ("555 123 123 4567") collapse before sentinels.
+  out = collapseAdjacentDigitRepeats(out);
 
   // Phase C: sentinels gate stitch/phone — display brake only (overlap unchanged).
   // ssn/phone sentinels win over address/date guards (Phase G tests): a dictated
   // ID/phone near "Madison Avenue" or "May 8" must still stitch + group.
+  // v4.117.0: armed expectation (asked 2 bubbles ago) counts as a cue:
+  // phone/ssn/member force full transform, dob/address force verbatim.
+  const armedFull =
+    expectedType === 'phone' || expectedType === 'ssn' || expectedType === 'member';
+  const armedSkip =
+    !armedFull && (expectedType === 'dob' || expectedType === 'address');
   const sentinel = detectSentinelContext(out, lang);
-  const skipStitch = shouldSkipDigitStitch(sentinel.mode);
-  const skipPhone = shouldSkipPhoneFormat(sentinel.mode);
-  const fullTransform = sentinel.mode === 'ssn' || sentinel.mode === 'phone';
+  const skipStitch =
+    !armedFull && (shouldSkipDigitStitch(sentinel.mode) || armedSkip);
+  const skipPhone =
+    !armedFull && (shouldSkipPhoneFormat(sentinel.mode) || armedSkip);
+  const fullTransform =
+    sentinel.mode === 'ssn' || sentinel.mode === 'phone' || armedFull;
   const stitchOpts = {
     ignoreAddressGuard: sentinel.mode === 'address' || fullTransform,
     ignoreDateGuard: fullTransform,
     // v4.116.0: explicit phone/ssn cue ("my phone is ...") still groups odd
     // lengths; everything else leaves non-US lengths verbatim.
     allowNonStandardDash: fullTransform,
+    // v4.117.0: armed request ("asked 2 bubbles ago") overrides ZIP/MRN brakes.
+    expectedType: expectedType || null,
   };
 
   const { text: masked, restore } = maskDateUnits(out);
@@ -816,7 +881,7 @@ export const getNumberHighlightRegex = () =>
 // ---------------------------------------------------------------------------
 
 const EN_DATE_CUE_RE =
-  /\b(date|when|scheduled|schedule|appointment|appt|follow[- ]?up|rescheduled|booked|due|available|availability|spots?|openings?|slots?)\b/i;
+  /\b(date|when|scheduled|schedule|appointment|appt|follow[- ]?up|rescheduled|booked|due|available|availability|spots?|openings?|slots?|birth|born|dob|age|aged)\b|how old/i;
 
 const ES_DATE_CUE_RE =
   /\b(fecha|cu[aá]ndo|programad[oa]|agendad[oa]|turno|cita|control|seguimiento|reprogramad[oa]|vence|disponibles?|disponibilidad|huecos?|cupos?|turnos?)\b/i;
@@ -921,7 +986,11 @@ const EN_SENTINELS = {
   ssn: [
     /\bsocial\b/i,
     /\bssn\b/i,
+    /\bsocial security\b/i,
     /\bsecurity number\b/i,
+    // v4.117.0: request phrasings — "can I have your social?"
+    /can i have your (ssn|social|security)/i,
+    /what is your (ssn|social)/i,
     // Phase G: insurance IDs (member/affiliate/Medicaid) — same digit unit as SSN.
     /\bmedicaid\b/i,
     /\baffiliate[sd]?\b/i,
@@ -934,6 +1003,9 @@ const EN_SENTINELS = {
     /\bphone\b/i,
     /\bcell\b/i,
     /\bmobile\b/i,
+    // v4.117.0: request phrasings — "can I have your phone number?"
+    /can i have your (phone|cell|mobile|contact|number)/i,
+    /what is your (phone|cell|mobile|contact)/i,
     /\bnumber is\b/i,
     /\bcall me at\b/i,
     /\bcontact number\b/i,
@@ -988,6 +1060,8 @@ const ES_SENTINELS = {
     /\bseguro social\b/i,
     /\bnúmero de seguro\b/i,
     /\bssn\b/i,
+    // v4.117.0: request phrasings — "me puede dar su seguro?"
+    /(me puede dar|d[ií]game|cu[aá]l es).{0,25}(seguro|afiliado|miembro|medicaid)/i,
     // Phase G: insurance IDs (afiliado/Medicaid) — same digit unit as SSN.
     /\bmedicaid\b/i,
     /\bafiliad[oa]s?\b/i,
@@ -1001,6 +1075,9 @@ const ES_SENTINELS = {
     /\bcel(ular)?\b/i,
     /\bnúmero de tel[eé]fono\b/i,
     /\bllamar al\b/i,
+    // v4.117.0: request phrasings — "me puede dar su número?"
+    /dame (tu|su) n[uú]mero\b/i,
+    /(me puede dar|d[ií]game|cu[aá]l es).{0,25}(tel[eé]fono|celular|n[uú]mero)/i,
   ],
   address: [
     /\bdirecci[oó]n\b/i,

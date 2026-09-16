@@ -29,7 +29,9 @@ import {
   combineCompoundNumbers,
   expandWordTimes,
   findSpokenEmailUnits,
+  collapseAdjacentDigitRepeats,
 } from './sensitiveDataProtector';
+import { armExpectedData, clearExpectedData } from './expectedDataContext';
 
 // ---------------------------------------------------------------------------
 // convertEnglishNumberWords — lane-guard
@@ -733,6 +735,64 @@ describe('sensitive data round 2 (v4.115.0)', () => {
     expect(removeOverlapPreservingDigitSequences('call 12 34', '12 34 now')).toBe('12 34 now');
     expect(removeOverlapPreservingDigitSequences('call 1234', '12 34 now')).toBe('12 34 now');
     expect(removeOverlapPreservingDigitSequences('the patient is thirty', 'thirty years old')).toBe('thirty years old');
+  });
+});
+
+// ---------------------------------------------------------------------------
+// v4.117.0: armed expectation — the question formats later bubbles
+// ---------------------------------------------------------------------------
+describe('armed expectation (v4.117.0)', () => {
+  beforeEach(() => {
+    clearExpectedData();
+  });
+
+  test('armed phone groups 8 digits (verbatim rule overridden)', () => {
+    armExpectedData('can I have your phone number', {});
+    expect(applyDisplayProtections('1 2 3 4 5 6 7 8', 'en')).toMatch(/123-456-78/);
+  });
+
+  test('no arm: same 8 digits stay verbatim', () => {
+    expect(applyDisplayProtections('code 12345678 ok', 'en')).toContain('12345678');
+  });
+
+  test('armed ssn beats ZIP+4 shape', () => {
+    armExpectedData('what is your social', {});
+    expect(applyDisplayProtections('10027-1234', 'en')).toBe('100-27-1234');
+  });
+
+  test('armed ssn formats spaced 9 digits', () => {
+    armExpectedData('can I have your ssn', {});
+    expect(applyDisplayProtections('1 2 3 4 5 6 7 8 9', 'en')).toBe('123-45-6789');
+  });
+
+  test('armed dob keeps spaced date verbatim', () => {
+    armExpectedData('what is your date of birth', {});
+    expect(applyDisplayProtections('05 12 1980', 'en')).toContain('05 12 1980');
+  });
+
+  test('explicit expectedType param works without the store', () => {
+    expect(
+      applyDisplayProtections('1 2 3 4 5 6 7 8', 'en', { expectedType: 'phone' }),
+    ).toMatch(/123-456-78/);
+  });
+
+  test('straddle dupes collapse to one copy', () => {
+    expect(collapseAdjacentDigitRepeats('call 555 123 123 4567')).toBe('call 555 123 4567');
+    expect(
+      applyDisplayProtections('call 555 123 123 4567', 'en'),
+    ).toBe('call 555-123-4567');
+  });
+
+  test('identical single-digit runs never collapse', () => {
+    expect(collapseAdjacentDigitRepeats('5 5 5 5')).toBe('5 5 5 5');
+    expect(collapseAdjacentDigitRepeats('call 555 123 4567')).toBe('call 555 123 4567');
+  });
+
+  test('request phrasings hit sentinels', () => {
+    expect(detectSentinelContext('can I have your phone number', 'en').mode).toBe('phone');
+    expect(detectSentinelContext('can I have your social', 'en').mode).toBe('ssn');
+    expect(detectSentinelContext('how old are you', 'en').mode).toBe('date');
+    expect(detectSentinelContext('me puede dar su número de teléfono', 'es').mode).toBe('phone');
   });
 });
 

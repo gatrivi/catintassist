@@ -25,6 +25,29 @@ import { APP_VERSION } from '../constants/version';
 /** Newest first. Only the entry matching APP_VERSION is shown on load. */
 export const RELEASE_NOTES_CATALOG = [
   {
+    version: '4.117.0',
+    id: 'request-memory-formatting',
+    highlightElementIds: ['main-transcript'],
+    es: {
+      title: '🧠 Recuerda qué pidió: teléfono/SSN se formatean solos',
+      intro: '"¿Me da su teléfono?" arma el formato: los dígitos que lleguen después salen bien agrupados.',
+      sections: [{ heading: 'Qué cambió', bullets: [
+        '"Can I have your phone number / SSN" + dígitos en otra burbuja → se formatean igual.',
+        'Duplicados de corte ("555 123 123 4567") colapsan a una copia.',
+        'Cubre "me puede dar su número", "birth/born/DOB/age", "how old".',
+      ] }],
+    },
+    en: {
+      title: '🧠 Remembers what was asked: phone/SSN self-format',
+      intro: '"Can I have your number?" arms formatting: digits arriving later still group correctly.',
+      sections: [{ heading: 'What changed', bullets: [
+        '"Can I have your phone number / SSN" + digits in a later bubble → still formatted.',
+        'Cut duplicates ("555 123 123 4567") collapse to one copy.',
+        'Covers "me puede dar su número", "birth/born/DOB/age", "how old".',
+      ] }],
+    },
+  },
+  {
     version: '4.116.0',
     id: 'never-destroy-numbers',
     highlightElementIds: ['main-transcript'],

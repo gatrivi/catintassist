@@ -10,6 +10,7 @@ import {
   hallucinationGuard,
   removeOverlapPreservingDigitSequences,
 } from "./sensitiveDataProtector";
+import { armExpectedData } from "./expectedDataContext";
 import {
   laneSideForLang,
   langForLaneSide,
@@ -307,6 +308,11 @@ export const reduceTranscriptEvent = (prev, event, ctx) => {
   const winSide = laneSideForLang(winnerLang, pair);
   current.lang = winnerLang;
   current.text = winSide === "en" ? enFull : esFull;
+  // v4.117.0: remember WHAT was just asked ("can I have your phone number?")
+  // so digits arriving in later bubbles still format. Miss = keep prior arm.
+  if (current.text?.trim()) {
+    armExpectedData(current.text, { turnId: current.turnId });
+  }
   if (current.text !== textBeforeLane && textBeforeLane) {
     const lost = textBeforeLane.split(/\s+/).filter(Boolean).length
       - (current.text || '').split(/\s+/).filter(Boolean).length;

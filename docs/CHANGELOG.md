@@ -2,6 +2,12 @@
 
 **Version source:** `src/constants/version.js` (must match `package.json` + top-right UI pill)
 
+## v4.117.0 - Request memory: phone/SSN format across bubbles
+
+- New expectedDataContext: "can I have your phone number/SSN" arms formatting for 45s; later-bubble digits group correctly (full override: armed SSN beats ZIP shape, armed phone groups 8 digits, armed DOB/address stay verbatim).
+- collapseAdjacentDigitRepeats: exact straddle dupes ("555 123 123 4567") → one copy; single-digit runs never collapse ("9 1 9 1" kept — caught eating HIPAA digits in testing).
+- Sentinel gaps: bare request phrasings EN/ES, birth/born/dob/age/how-old, "me puede dar su número".
+
 ## v4.116.0 - Doubt shows both, numbers never destroyed
 
 - Ambiguous all-digit dates copy both ISOs ("05/12/1980" → 1980-05-12 / 1980-12-05); display verbatim.
