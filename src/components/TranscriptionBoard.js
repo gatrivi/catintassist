@@ -80,7 +80,7 @@ const getBubbleStyle = (text, isCurrent, lang, pair) => {
   return { borderLeft: `3px solid ${baseBorder}`, backgroundColor: baseBg };
 };
 
-const SENSITIVE_SEGMENT_TYPES = new Set(['date', 'number', 'dosage', 'money', 'address', 'email']);
+const SENSITIVE_SEGMENT_TYPES = new Set(['date', 'schedule', 'number', 'dosage', 'money', 'address', 'email']);
 
 const processDisplayText = (raw, lang, applyNumberWords, protectionsActive) => {
   const spelled = formatTranscriptForDisplay(raw, lang);

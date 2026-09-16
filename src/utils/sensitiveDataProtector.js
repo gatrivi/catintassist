@@ -80,6 +80,9 @@ export const convertEnglishNumberWords = (text, lang = 'en') => {
 export const formatPhoneAndSSNDigits = (text, { ignoreAddressGuard = false, ignoreDateGuard = false } = {}) => {
   if (!text) return text;
   return text.replace(/\b(?:\d[\s.,-:]*){7,15}\d\b/g, (m, offset, full) => {
+    // v4.114.0: clock times are NEVER phones — "1:00, 1:30, 2:00, 2:30"
+    // reads as one 12-digit run to this regex. Colons don't appear in phones.
+    if (m.includes(':')) return m;
     const before = full.slice(Math.max(0, offset - 40), offset);
     const after = full.slice(offset + m.length, offset + m.length + 40);
     if (!ignoreAddressGuard && looksLikeAddressFragment(before, after)) return m;
@@ -243,6 +246,8 @@ export const looksLikeDateFragment = (textBefore, textAfter) => {
   const monthRe = new RegExp(`\\b(?:${MONTH_ALT})\\b`, 'i');
   if (monthRe.test(before) || monthRe.test(after)) return true;
   if (/\b(?:born|dob|birthday|appointment|appt|fecha|nacimiento|cita)\b/i.test(before)) return true;
+  // v4.114.0: clerk slot lists — "we have 1 1 30" adjacent to availability nouns.
+  if (/\b(?:available|availability|spots?|openings?|slots?|scheduled?|appointment|appt|disponibles?|disponibilidad|huecos?|cupos?|turnos?)\b/i.test(before)) return true;
   // year sitting after a lone day digit
   if (/^\s*(?:de\s+)?(?:\d{4}|'\d{2})\b/i.test(after) && /\b\d{1,2}\s*$/.test(before)) return true;
   return false;
@@ -274,7 +279,7 @@ export const maskDateUnits = (text) => {
 
 /**
  * Split for highlight/copy: date → dosage → money units, then number regex on gaps.
- * @returns {{ type: 'text'|'number'|'date'|'dosage'|'money'|'address'|'email', value: string, copyValue?: string }[]}
+ * @returns {{ type: 'text'|'number'|'date'|'schedule'|'dosage'|'money'|'address'|'email', value: string, copyValue?: string }[]}
  */
 export const findDosageUnits = (text) => {
   if (!text) return [];
@@ -408,6 +413,7 @@ export const splitHighlightSegments = (text) => {
   if (!text) return [];
   const units = mergeTypedUnits([
     { type: 'date', units: findDateUnits(text) },
+    { type: 'schedule', units: findScheduleUnits(text) },
     { type: 'dosage', units: findDosageUnits(text) },
     { type: 'money', units: findMoneyUnits(text) },
     { type: 'address', units: findAddressUnits(text) },
@@ -442,6 +448,11 @@ export const splitHighlightSegments = (text) => {
 export const copyableSensitiveValue = (value, type = 'number') => {
   if (type === 'date') {
     const units = findDateUnits(String(value));
+    if (units[0]?.copyValue) return units[0].copyValue;
+    return String(value || '').trim();
+  }
+  if (type === 'schedule') {
+    const units = findScheduleUnits(String(value));
     if (units[0]?.copyValue) return units[0].copyValue;
     return String(value || '').trim();
   }
@@ -515,11 +526,61 @@ export const shouldSkipPhoneFormat = (mode) =>
 /** @deprecated use shouldSkipPhoneFormat — kept for older call sites */
 export const shouldSkipPhoneDigitTransforms = (mode) => shouldSkipPhoneFormat(mode);
 
+// ---------------------------------------------------------------------------
+// CLERK TIME SHORTHAND (v4.114.0)
+// ---------------------------------------------------------------------------
+// Clerks list slots as "we have 1 1 30, 2 2 30" — that is NOT 1:30, it is
+// TWO slots: 1:00 AND 1:30. Without this, stitch reads "1 1 3"→"113"+"0"
+// ="1130" and phone-format then eats the whole list ("113-022-30").
+// Expand FIRST (right after number-word conversion, before stitch/phone):
+//   "1 1 30" → "1:00, 1:30"     "10 10 30" → "10:00, 10:30"
+//   "H H 00" → "H:00" (single — avoids "3:00, 3:00" dupes)
+// Hours are 1–12; minutes 00–59. H H H (phone-style repeats) never matches
+// (third token must be 2 digits), so phone dictation is untouched.
+// ---------------------------------------------------------------------------
+
+export const CLERK_TIME_SHORTHAND_RE = /\b(\d{1,2})\s+\1\s+([0-5]\d)\b/;
+const CLERK_TIME_SHORTHAND_G = new RegExp(CLERK_TIME_SHORTHAND_RE.source, 'g');
+
+export const expandClerkTimeShorthand = (text) => {
+  if (!text) return text;
+  return text.replace(CLERK_TIME_SHORTHAND_G, (m, h, mm) => {
+    const hour = parseInt(h, 10);
+    if (hour < 1 || hour > 12) return m;
+    if (mm === '00') return `${h}:00`;
+    return `${h}:00, ${h}:${mm}`;
+  });
+};
+
+/** Bare clock time after expansion — "1:30" with no am/pm. */
+export const BARE_CLOCK_TIME_RE = /\b(?:[1-9]|1[0-2]):[0-5]\d\b/;
+
+/**
+ * Find schedule/time spans for highlight/copy (v4.114.0).
+ * Display-only — reports spans + copy value, never rewrites text.
+ */
+export const findScheduleUnits = (text) => {
+  if (!text) return [];
+  const units = [];
+  const re = /\b((?:[1-9]|1[0-2]):[0-5]\d\s*(?:a\.?m\.?|p\.?m\.?|am|pm)?)\b/gi;
+  let m;
+  while ((m = re.exec(text))) {
+    const raw = m[1] || m[0];
+    const start = m.index + m[0].indexOf(raw);
+    if (units.some((u) => !(start + raw.length <= u.start || start >= u.end))) continue;
+    units.push({ start, end: start + raw.length, text: raw, copyValue: raw.trim() });
+  }
+  return units.sort((a, b) => a.start - b.start);
+};
+
 /** Display pipeline order (transcript + translation panes). */
 export const applyDisplayProtections = (text, lang = 'en', { applyNumberWords = true } = {}) => {
   if (!text) return text;
   let out = text;
   if (applyNumberWords) out = convertEnglishNumberWords(out, lang);
+  // v4.114.0: clerk "1 1 30" → "1:00, 1:30" BEFORE sentinels see the text,
+  // so bare-time + schedule cues below can trigger the date display brake.
+  out = expandClerkTimeShorthand(out);
 
   // Phase C: sentinels gate stitch/phone — display brake only (overlap unchanged).
   // ssn/phone sentinels win over address/date guards (Phase G tests): a dictated
@@ -593,10 +654,10 @@ export const getNumberHighlightRegex = () =>
 // ---------------------------------------------------------------------------
 
 const EN_DATE_CUE_RE =
-  /\b(date|when|scheduled|schedule|appointment|appt|follow[- ]?up|rescheduled|booked|due)\b/i;
+  /\b(date|when|scheduled|schedule|appointment|appt|follow[- ]?up|rescheduled|booked|due|available|availability|spots?|openings?|slots?)\b/i;
 
 const ES_DATE_CUE_RE =
-  /\b(fecha|cu[aá]ndo|programad[oa]|agendad[oa]|turno|cita|control|seguimiento|reprogramad[oa]|vence)\b/i;
+  /\b(fecha|cu[aá]ndo|programad[oa]|agendad[oa]|turno|cita|control|seguimiento|reprogramad[oa]|vence|disponibles?|disponibilidad|huecos?|cupos?|turnos?)\b/i;
 
 const MONTH_RE =
   /\b(jan(?:uary)?|feb(?:ruary)?|mar(?:ch)?|apr(?:il)?|june?|july?|aug(?:ust)?|sept?(?:ember)?|oct(?:ober)?|nov(?:ember)?|dec(?:ember)?|enero|febrero|marzo|abril|junio|julio|agosto|septiembre|setiembre|octubre|noviembre|diciembre)\b/i;
@@ -646,6 +707,8 @@ export const containsCriticalData = (text) => {
   return (
     NUMERIC_DATE_RE.test(text) ||
     CLOCK_TIME_RE.test(text) ||
+    BARE_CLOCK_TIME_RE.test(text) ||
+    CLERK_TIME_SHORTHAND_RE.test(text) ||
     MONTH_RE.test(text) ||
     MAY_DATE_RE.test(text) ||
     WEEKDAY_RE.test(text) ||
@@ -731,6 +794,10 @@ const EN_SENTINELS = {
     WEEKDAY_RE,
     NUMERIC_DATE_RE,
     CLOCK_TIME_RE,
+    // v4.114.0: clerk slot lists + expanded bare times trigger the date
+    // display brake (skip stitch/phone) even with no other cue words.
+    CLERK_TIME_SHORTHAND_RE,
+    BARE_CLOCK_TIME_RE,
   ],
   medication: [MED_CUE_RE],
   dosage: [MED_CUE_RE, DOSAGE_RE, FREQUENCY_RE],
@@ -781,6 +848,9 @@ const ES_SENTINELS = {
     WEEKDAY_RE,
     NUMERIC_DATE_RE,
     CLOCK_TIME_RE,
+    // v4.114.0: same clerk/bare-time brake for the ES lane.
+    CLERK_TIME_SHORTHAND_RE,
+    BARE_CLOCK_TIME_RE,
   ],
   medication: [MED_CUE_RE],
   dosage: [MED_CUE_RE, DOSAGE_RE, FREQUENCY_RE],

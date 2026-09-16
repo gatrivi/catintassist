@@ -2,6 +2,11 @@
 
 **Version source:** `src/constants/version.js` (must match `package.json` + top-right UI pill)
 
+## v4.114.0 - Greeting Editor view + clerk slot times survive
+
+- Clerk shorthand "we have 1 1 30, 2 2 30" expands to 1:00, 1:30, 2:00, 2:30 (1 1 30 = TWO slots, never 1130); times highlight + click-to-copy, phone colon backstop, translation digit-loss safety covers times.
+- Greeting Editor focused view (see in-app release notes).
+
 ## v4.113.0 - Goal Tracking view: dial + month calendar, live need/day
 
 - New off-call Goal Tracking view: dial selector + month calendar side-by-side; live pace card shows banked vs goal, remaining over workdays, and need/day with an on-pace verdict (updates live as the dial changes, before saving).

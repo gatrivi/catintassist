@@ -25,6 +25,39 @@ import { APP_VERSION } from '../constants/version';
 /** Newest first. Only the entry matching APP_VERSION is shown on load. */
 export const RELEASE_NOTES_CATALOG = [
   {
+    version: '4.114.0',
+    id: 'greeting-editor-view',
+    highlightElementIds: ['audio-route-greeting-editor-btn'],
+    es: {
+      title: '✎ Editor de Saludos: un saludo a la vez',
+      intro: 'Nueva vista enfocada: guion, onda, barras de salud y prueba al caller para UN saludo, sin el panel gigante.',
+      sections: [{ heading: 'Cómo se usa', bullets: [
+        'Botón ✎ Editor en la fila de chips del header (off-call) — o ✏️ en cualquier tile del Studio.',
+        '◀ ▶ (o flechas) navega saludos; Escape sale. La barra lateral marca guardado/vacío por familia.',
+        '🎙 Record · 🔊 You · 📡 Caller (CALL OK al confirmar) · ⬆ Upload · editor de onda integrado.',
+        'El Studio sigue igual: ahora es catálogo; el ✏️ abre esta vista en ese clip.',
+      ] },
+      { heading: 'Horarios de clerk: 1 1 30 = 1:00 y 1:30', bullets: [
+        '"we have 1 1 30, 2 2 30" ya no se destruye: se expande a 1:00, 1:30, 2:00, 2:30.',
+        'Las horas salen resaltadas y clic copia. Teléfonos y SSNs siguen igual.',
+      ] }],
+    },
+    en: {
+      title: '✎ Greeting Editor: one greeting at a time',
+      intro: 'New focused view: script, waveform, health bars and caller test for ONE greeting — no giant panel.',
+      sections: [{ heading: 'How to use', bullets: [
+        '✎ Editor button on the header chips row (off-call) — or ✏️ on any Studio tile.',
+        '◀ ▶ (or arrow keys) navigate greetings; Escape exits. The side rail shows saved/empty per family.',
+        '🎙 Record · 🔊 You · 📡 Caller (CALL OK once confirmed) · ⬆ Upload · inline waveform editor.',
+        'The Studio stays as the catalog; ✏️ now opens this view on that clip.',
+      ] },
+      { heading: 'Clerk slot times: 1 1 30 = 1:00 and 1:30', bullets: [
+        '"we have 1 1 30, 2 2 30" is no longer mangled: expands to 1:00, 1:30, 2:00, 2:30.',
+        'Times highlight and click-to-copy. Phones and SSNs unchanged.',
+      ] }],
+    },
+  },
+  {
     version: '4.113.0',
     id: 'goal-tracking-view',
     highlightElementIds: ['header-goal-btn'],

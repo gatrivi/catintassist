@@ -17,6 +17,8 @@ const DOSAGE_RE =
 const ADDRESS_RE =
   /\b\d{1,6}\s+(?:[A-Za-zÁÉÍÓÚÑáéíóúñ][A-Za-zÁÉÍÓÚÑáéíóúñ0-9.'-]*\s+){0,3}?(?:St|Street|Ave|Avenue|Rd|Road|Blvd|Dr|Drive|Ln|Lane|Ct|Court|Way|Calle|Avenida|Carrera)\.?\b/gi;
 const ID_RE = /\b(?:SSN|ID|MRN|member\s*#?)\s*[:#]?\s*[\dA-Za-z-]{4,}\b|\b\d{3}-\d{2}-\d{4}\b|\b\d{9}\b/gi;
+// v4.114.0: clerk slot times — "1:00, 1:30" must survive translation (digit-loss safety).
+const TIMES_RE = /\b(?:[1-9]|1[0-2]):[0-5]\d\b/gi;
 
 const uniq = (arr) => [...new Set(arr.filter(Boolean))];
 
@@ -29,7 +31,7 @@ const collect = (text, re) => {
   return uniq(out);
 };
 
-/** @returns {{ phones: string[], dobs: string[], dosages: string[], addresses: string[], ids: string[] }} */
+/** @returns {{ phones: string[], dobs: string[], dosages: string[], addresses: string[], ids: string[], times: string[] }} */
 export function extractSensitiveTokens(text) {
   const src = String(text || '');
   return {
@@ -38,6 +40,7 @@ export function extractSensitiveTokens(text) {
     dosages: collect(src, DOSAGE_RE),
     addresses: collect(src, ADDRESS_RE),
     ids: collect(src, ID_RE),
+    times: collect(src, TIMES_RE),
   };
 }
 
@@ -62,6 +65,7 @@ const flattenTokens = (bag) => {
     ...(bag.dosages || []),
     ...(bag.addresses || []),
     ...(bag.ids || []),
+    ...(bag.times || []),
   ];
 };
 

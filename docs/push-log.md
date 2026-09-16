@@ -55,3 +55,4 @@
 | 2026-09-12T23:41:15.102Z | a71c01a | v4.110.0 soundboard choppiness verdict + distinct indicators |
 | 2026-09-12T23:47:44.393Z | 4e1a5dd | v4.111.0 greetings in notes rail during calls + always-on thumb titles |
 | 2026-09-13T20:43:34.824Z | 8b7e3a6 | v4.112.0 one-tab local translator watch, retire 5-min popup task |
+| 2026-09-16T13:22:12.188Z | 0da01f3 | feat(goals): goal tracking view v4.113.0 |

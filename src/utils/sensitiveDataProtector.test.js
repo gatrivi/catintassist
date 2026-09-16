@@ -24,6 +24,8 @@ import {
   findMoneyUnits,
   findAddressUnits,
   findEmailUnits,
+  expandClerkTimeShorthand,
+  findScheduleUnits,
 } from './sensitiveDataProtector';
 
 // ---------------------------------------------------------------------------
@@ -538,6 +540,69 @@ describe('containsNumberSequence', () => {
 
   test('false for a normal sentence', () => {
     expect(containsNumberSequence('the patient seems fine', 2)).toBe(false);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// clerk time shorthand (v4.114.0) — "1 1 30" = 1:00 AND 1:30, never 1130
+// ---------------------------------------------------------------------------
+describe('clerk time shorthand (v4.114.0)', () => {
+  test('expands single shorthand to two slots', () => {
+    expect(expandClerkTimeShorthand('we have 1 1 30')).toBe('we have 1:00, 1:30');
+  });
+
+  test('expands clerk list without mangling', () => {
+    expect(expandClerkTimeShorthand('we have 1 1 30, 2 2 30')).toBe(
+      'we have 1:00, 1:30, 2:00, 2:30'
+    );
+  });
+
+  test('two-digit hours expand', () => {
+    expect(expandClerkTimeShorthand('slots 10 10 30')).toBe('slots 10:00, 10:30');
+  });
+
+  test(':00 shorthand collapses to one slot (no dupe)', () => {
+    expect(expandClerkTimeShorthand('have 3 3 00')).toBe('have 3:00');
+  });
+
+  test('phone-style repeats are untouched', () => {
+    expect(expandClerkTimeShorthand('call 5 5 5 1 2 3 4')).toBe('call 5 5 5 1 2 3 4');
+    expect(expandClerkTimeShorthand('my social is 123456789')).toBe('my social is 123456789');
+  });
+
+  test('hours outside 1-12 are untouched', () => {
+    expect(expandClerkTimeShorthand('code 15 15 30')).toBe('code 15 15 30');
+  });
+
+  test('full pipeline: clerk list survives, phones still format', () => {
+    const out = applyDisplayProtections('we have 1 1 30, 2 2 30', 'en');
+    expect(out).toBe('we have 1:00, 1:30, 2:00, 2:30');
+    expect(out).not.toMatch(/113-022-30|130-23/);
+    expect(applyDisplayProtections('call 5551234567', 'en')).toMatch(/555-123-4567/);
+  });
+
+  test('number-word path: "one one thirty" expands', () => {
+    expect(applyDisplayProtections('we have one one thirty', 'en')).toBe('we have 1:00, 1:30');
+  });
+
+  test('expanded times are schedule highlight units', () => {
+    const segs = splitHighlightSegments('we have 1:00, 1:30');
+    expect(segs.filter((s) => s.type === 'schedule')).toHaveLength(2);
+    expect(segs.filter((s) => s.type === 'number')).toHaveLength(0);
+  });
+
+  test('findScheduleUnits catches bare + am/pm times', () => {
+    expect(findScheduleUnits('at 2:30 pm please')[0]?.text).toBe('2:30 pm');
+  });
+
+  test('clerk shorthand + bare times count as critical data', () => {
+    expect(containsCriticalData('we have 1 1 30')).toBe(true);
+    expect(containsCriticalData('slots at 1:00, 1:30')).toBe(true);
+  });
+
+  test('shorthand triggers date sentinel brake', () => {
+    expect(detectSentinelContext('we have 1 1 30', 'en').mode).toBe('date');
+    expect(detectSentinelContext('slots at 1:00, 1:30', 'en').mode).toBe('date');
   });
 });
 
