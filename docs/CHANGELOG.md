@@ -2,6 +2,15 @@
 
 **Version source:** `src/constants/version.js` (must match `package.json` + top-right UI pill)
 
+## v4.118.0 - Greeting Editor view (one greeting at a time)
+
+- New off-call **Greeting Editor view**: master/detail workspace for a single soundboard clip — script, inline waveform editor, record/upload, legibility + loudness + choppiness, and a caller test.
+- Entry points: ✎ **Editor** button on the header chips row, and ✏️ on any Studio tile (opens pre-selected on that clip). `← Exit` / Escape returns to the scoreboard; `🗂 Studio` returns to the soundboard overview.
+- Navigation: ◀ ▶ buttons or ←/→ keys walk every clip (time-slot variants included); the left rail shows saved/empty counts per greeting family.
+- Safety: **CALL OK** is only offered when a caller test plays to the end; a stopped, cancelled or failed test raises a visible error instead of arming the patient path.
+- Failures (storage, mic, route, Deepgram) now render inside the view — no silent console-only errors. Delete asks in-view, never via `window.confirm`.
+- Studio cleanup: the old per-clip edit **modal** was removed (one editor, one place); the Studio stays the catalog. Shared clip logic extracted to `src/hooks/useGreetingClip.js`.
+
 ## v4.117.0 - Request memory: phone/SSN format across bubbles
 
 - New expectedDataContext: "can I have your phone number/SSN" arms formatting for 45s; later-bubble digits group correctly (full override: armed SSN beats ZIP shape, armed phone groups 8 digits, armed DOB/address stay verbatim).

@@ -284,6 +284,9 @@ const SessionControlsSticky = React.memo(({
   lastDataTime = 0,
   onOpenSoundboard,
   soundboardOpen = false,
+  // v4.114.0: ✎ opens the focused Greeting Editor VIEW
+  onOpenGreetingEditor,
+  greetingEditorOpen = false,
   // v4.113.0: HUD goal button opens the Goal Tracking VIEW (dial + calendar)
   onOpenGoalsView,
   goalsOpen = false,
@@ -861,6 +864,8 @@ const SessionControlsSticky = React.memo(({
           }}
           onOpenSoundboard={!isActive ? onOpenSoundboard : undefined}
           soundboardOpen={soundboardOpen}
+          onOpenGreetingEditor={!isActive ? onOpenGreetingEditor : undefined}
+          greetingEditorOpen={greetingEditorOpen}
           compact
           trailing={trailingSlot}
         />

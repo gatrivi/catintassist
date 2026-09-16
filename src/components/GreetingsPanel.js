@@ -32,7 +32,7 @@ import {
 import { useAudioSettings } from '../contexts/AudioSettingsContext';
 import { diagnoseVbCableRoute } from '../utils/audioSourceManager';
 import { displayDeviceName, readKnownDeviceLabels } from '../utils/audioDeviceLabels';
-import AudioEditorPanel from './AudioEditorPanel';
+// v4.114.0: AudioEditorPanel moved to GreetingEditorView (focused editor view).
 import { getEffectiveDeepgramKey } from '../utils/deepgramRuntimeKey';
 import { classifyLoudness, measureChannelLoudness, measureChoppiness, classifyChoppiness } from '../utils/loudness';
 import { ElementHintTarget } from './ElementHint';
@@ -269,7 +269,9 @@ export const GreetingsPanel = ({ onEditModeChange, onExitStudio, micTestMode = f
   const [missingOnly, setMissingOnly] = useState(false);
   const [storageSummary, setStorageSummary] = useState(null);
   const [storageBusy, setStorageBusy] = useState(false);
-  const [editingKey, setEditingKey] = useState(null);
+  // v4.114.0: the per-clip ✏️ button now opens the focused Greeting Editor
+  // view (App.js listens for 'cat_open_greeting_editor') — the old modal
+  // overlay here was removed. One editor, one place.
 
   const audioRefSink = useRef(new Audio());
   const playbackAttemptRef = useRef(0);
@@ -1183,8 +1185,8 @@ export const GreetingsPanel = ({ onEditModeChange, onExitStudio, micTestMode = f
               <button
                 type="button"
                 className="sb-btn sb-btn--edit"
-                onClick={() => setEditingKey(key)}
-                title="Edit waveform — crop, re-record, remove silences"
+                onClick={() => window.dispatchEvent(new CustomEvent('cat_open_greeting_editor', { detail: { clipKey: key } }))}
+                title="Open in the focused Greeting Editor view (script, waveform, health)"
               >
                 ✏️
               </button>
@@ -1237,43 +1239,12 @@ export const GreetingsPanel = ({ onEditModeChange, onExitStudio, micTestMode = f
     );
   };
 
-  const editorOverlay = editingKey && blobs[editingKey] ? (
-    <div className="sb-editor-overlay" role="dialog" aria-label={`Edit ${editingKey}`}>
-      <div className="sb-editor-modal glass-panel">
-        <div className="sb-editor-modal-head">
-          <strong>Edit clip — {editingKey}</strong>
-          <button type="button" className="sb-filter-chip" onClick={() => setEditingKey(null)}>✕ Close</button>
-        </div>
-        {(() => {
-          const editScript = scriptForClipKey(editingKey);
-          return editScript ? <div className="sb-script"><p>{editScript}</p></div> : null;
-        })()}
-        <AudioEditorPanel
-          key={editingKey}
-          blob={blobs[editingKey]}
-          label={editingKey}
-          localVolume={localVolume}
-          onSave={async (editedBlob) => {
-            await handleFileUpload(editingKey, editedBlob);
-            setEditingKey(null);
-          }}
-          onDelete={() => {
-            handleClear(editingKey);
-            setEditingKey(null);
-          }}
-          onClose={() => setEditingKey(null)}
-        />
-      </div>
-    </div>
-  ) : null;
-
   if (mode === 'settings') {
     const stats = getSetupStats(blobs);
     const pct = stats.total ? Math.round((stats.saved / stats.total) * 100) : 0;
 
     return (
       <div className="sb-setup glass-panel" style={{ border: 'none' }}>
-        {editorOverlay}
         {pendingRouteConfirm && mode === 'settings' && (
           <div className="sb-route-confirm">
             <span>Did remote side hear it cleanly? ({pendingRouteConfirm.clipKey})</span>
@@ -1310,6 +1281,14 @@ export const GreetingsPanel = ({ onEditModeChange, onExitStudio, micTestMode = f
             </button>
             <button type="button" className="sb-btn sb-btn--call" onClick={() => setMode('play')}>
               Save & Play
+            </button>
+            <button
+              type="button"
+              className="sb-filter-chip"
+              onClick={() => window.dispatchEvent(new CustomEvent('cat_open_greeting_editor', { detail: { clipKey: null } }))}
+              title="Open the focused Greeting Editor view — one greeting at a time"
+            >
+              ✎ Editor view
             </button>
             {onExitStudio && (
               <button type="button" className="soundboard-hide-btn" onClick={onExitStudio}>
@@ -1498,7 +1477,6 @@ export const GreetingsPanel = ({ onEditModeChange, onExitStudio, micTestMode = f
 
   return (
     <div className={`sb-play-wrap${showChrome ? ' sb-show-chrome' : ''}`} style={{ '--sb-tile-size': `${tileSize}px` }}>
-      {editorOverlay}
       {safetyNotice && (
         <div style={{ fontSize: '0.7rem', fontWeight: 700, color: '#fbbf24', background: 'rgba(245, 158, 11, 0.12)', border: '1px solid rgba(245, 158, 11, 0.35)', borderRadius: '6px', padding: '0.35rem 0.5rem' }}>
           {safetyNotice}

@@ -34,6 +34,7 @@ import { resolveAppBackgroundPath } from "./utils/defaultBackgrounds";
 import SettingsPanel from "./components/SettingsPanel";
 import { OffCallWorkspace } from "./components/OffCallWorkspace";
 import { GoalTrackingView, GOALS_VIEW } from "./components/GoalTrackingView";
+import GreetingEditorView, { GREETING_EDITOR_VIEW } from "./components/GreetingEditorView";
 import { SplashScreen } from "./components/SplashScreen";
 import { GuideHostProvider } from "./contexts/GuideHostContext";
 import { ElementHintProvider } from "./components/ElementHint";
@@ -326,6 +327,30 @@ const Dashboard = () => {
     saveWorkspaceView("scoreboard");
     setWorkspaceView("scoreboard");
   }, [isActive, isZombieCall]);
+
+  // v4.114.0: Greeting Editor view — focused per-greeting workspace, off-call
+  // only. Transient like 'goals': refresh returns to the scoreboard.
+  const [greetingEditorClip, setGreetingEditorClip] = useState(null);
+  const isGreetingEditorView = offCallWorkspace === GREETING_EDITOR_VIEW;
+
+  const onOpenGreetingEditor = useCallback((clipKey = null) => {
+    if (isActive || isZombieCall) return;
+    setGreetingEditorClip(clipKey || null);
+    setWorkspaceView(GREETING_EDITOR_VIEW);
+  }, [isActive, isZombieCall]);
+
+  const exitGreetingEditor = useCallback(() => {
+    if (isActive || isZombieCall) return;
+    saveWorkspaceView("scoreboard");
+    setWorkspaceView("scoreboard");
+  }, [isActive, isZombieCall]);
+
+  // Studio ↔ Editor: GreetingsPanel dispatches this to open a clip in the editor.
+  useEffect(() => {
+    const onOpen = (e) => onOpenGreetingEditor(e.detail?.clipKey || null);
+    window.addEventListener("cat_open_greeting_editor", onOpen);
+    return () => window.removeEventListener("cat_open_greeting_editor", onOpen);
+  }, [onOpenGreetingEditor]);
 
   const prepareGuideView = useCallback((action = {}) => {
     if (!action) return;
@@ -908,6 +933,8 @@ const Dashboard = () => {
         settingsOpen={settingsOpen}
         onOpenGoalsView={onOpenGoalsView}
         goalsOpen={isGoalsView}
+        onOpenGreetingEditor={onOpenGreetingEditor}
+        greetingEditorOpen={isGreetingEditorView}
         onOpenSoundboard={() => {
           if (workspaceView === "soundboard") {
             exitSoundboardStudio();
@@ -958,6 +985,18 @@ const Dashboard = () => {
       {isGoalsView && (
         <main className={`main-content view-goals${isNotesOpen ? " notes-open" : ""}`}>
           <GoalTrackingView onExit={exitGoalsView} />
+        </main>
+      )}
+
+      {/* v4.114.0: Greeting Editor view — one greeting at a time, off-call only */}
+      {isGreetingEditorView && (
+        <main className={`main-content view-greeting-editor${isNotesOpen ? " notes-open" : ""}`}>
+          <GreetingEditorView
+            initialClipKey={greetingEditorClip}
+            onExit={exitGreetingEditor}
+            onOpenStudio={() => setWorkspaceView("soundboard")}
+            micTestMode={micTestMode}
+          />
         </main>
       )}
 

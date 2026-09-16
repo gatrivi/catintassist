@@ -86,6 +86,9 @@ export const AudioRouteStatusBar = ({
   onTestRoute,
   onOpenSoundboard,
   soundboardOpen = false,
+  /** v4.114.0: ✎ opens the focused Greeting Editor view. */
+  onOpenGreetingEditor,
+  greetingEditorOpen = false,
   compact = false,
   /** v4.99.2: optional node rendered at the right end of the chips row
       (off-call scoreboard merges the metrics strip into this single line). */
@@ -437,6 +440,26 @@ export const AudioRouteStatusBar = ({
                   title={soundboardOpen ? 'Hide Soundboard Studio' : 'Soundboard Studio - record greetings, health check, route test'}
                 >
                   {soundboardOpen ? 'Soundboard ✓' : 'Soundboard'}
+                </button>
+              </ElementHintTarget>
+            )}
+            {/* v4.114.0: focused Greeting Editor view entry. */}
+            {onOpenGreetingEditor && !isActive && (
+              <ElementHintTarget
+                elementId="audio-route-greeting-editor-btn"
+                heading="Greeting Editor"
+                body={greetingEditorOpen ? 'Already open — the focused per-greeting editor view.' : 'One greeting at a time: script, waveform, health bar, caller test.'}
+                color="#22d3ee"
+              >
+                <button
+                  id="audio-route-greeting-editor-btn"
+                  type="button"
+                  className={`audio-route-soundboard-btn${greetingEditorOpen ? ' is-open' : ''}`}
+                  onClick={() => onOpenGreetingEditor()}
+                  aria-pressed={greetingEditorOpen}
+                  title="Greeting Editor - focused one-greeting workspace (waveform, health, caller test)"
+                >
+                  {greetingEditorOpen ? 'Editor ✓' : '✎ Editor'}
                 </button>
               </ElementHintTarget>
             )}
