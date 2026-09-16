@@ -26,6 +26,9 @@ import {
   findEmailUnits,
   expandClerkTimeShorthand,
   findScheduleUnits,
+  combineCompoundNumbers,
+  expandWordTimes,
+  findSpokenEmailUnits,
 } from './sensitiveDataProtector';
 
 // ---------------------------------------------------------------------------
@@ -603,6 +606,111 @@ describe('clerk time shorthand (v4.114.0)', () => {
   test('shorthand triggers date sentinel brake', () => {
     expect(detectSentinelContext('we have 1 1 30', 'en').mode).toBe('date');
     expect(detectSentinelContext('slots at 1:00, 1:30', 'en').mode).toBe('date');
+  });
+});
+
+// ---------------------------------------------------------------------------
+// v4.115.0: DOB/ZIP/MRN/compounds/money/email/street/word-times
+// ---------------------------------------------------------------------------
+describe('sensitive data round 2 (v4.115.0)', () => {
+  test('ZIP+4 is not an SSN', () => {
+    expect(formatPhoneAndSSNDigits('zip 10027-1234')).toBe('zip 10027-1234');
+    expect(applyDisplayProtections('live at 10027-1234', 'en')).toContain('10027-1234');
+  });
+
+  test('8-digit MRN near chart cue stays undashed', () => {
+    const out = applyDisplayProtections('MRN 12345678 please', 'en');
+    expect(out).toContain('12345678');
+    expect(out).not.toMatch(/123-456-78/);
+  });
+
+  test('spaced DOB masks as one date unit with ISO copy', () => {
+    const units = findDateUnits('my DOB is 05 12 1980');
+    expect(units).toHaveLength(1);
+    expect(units[0].text).toBe('05 12 1980');
+    expect(units[0].copyValue).toBe('1980-05-12');
+  });
+
+  test('spaced DOB survives the full pipeline', () => {
+    const out = applyDisplayProtections('my DOB is 05 12 1980', 'en');
+    expect(out).toContain('05 12 1980');
+    expect(out).not.toMatch(/051-219-80|05121980/);
+    expect(containsCriticalData('my DOB is 05 12 1980')).toBe(true);
+  });
+
+  test('dotted ES date is one unit (day>12 forces DMY)', () => {
+    const units = findDateUnits('nacido el 25.12.1980');
+    expect(units).toHaveLength(1);
+    expect(units[0].text).toBe('25.12.1980');
+    expect(units[0].copyValue).toBe('1980-12-25');
+  });
+
+  test('version numbers are not dates', () => {
+    expect(findDateUnits('update to v1.2 today')).toHaveLength(0);
+  });
+
+  test('EN tens+unit combine', () => {
+    expect(applyDisplayProtections('eighty two', 'en')).toBe('82');
+    expect(applyDisplayProtections('room twenty one', 'en')).toBe('room 21');
+  });
+
+  test('ES tens+y+unit combine', () => {
+    expect(applyDisplayProtections('ochenta y dos', 'es')).toBe('82');
+  });
+
+  test('decimal words become decimals + dosage units', () => {
+    expect(applyDisplayProtections('two point five mg', 'en')).toBe('2.5 mg');
+    expect(applyDisplayProtections('dos punto cinco ml', 'es')).toBe('2.5 ml');
+    expect(findDosageUnits('take 2.5 ml')[0]?.text).toBe('2.5 ml');
+  });
+
+  test('pills/gotas are dosage units', () => {
+    expect(findDosageUnits('take 2 pills')[0]?.text).toBe('2 pills');
+    expect(findDosageUnits('tome 5 gotas')[0]?.text).toBe('5 gotas');
+    expect(applyDisplayProtections('take two pills daily', 'en')).toContain('2 pills');
+  });
+
+  test('money thousands are one unit', () => {
+    expect(findMoneyUnits('copay $1,234.56 today')[0]?.text).toBe('$1,234.56');
+    const segs = splitHighlightSegments('total $1,234.56');
+    expect(segs.filter((s) => s.type === 'money')).toHaveLength(1);
+  });
+
+  test('spoken email reconstructs clipboard, display verbatim', () => {
+    const units = findSpokenEmailUnits('contact juan at gmail dot com please');
+    expect(units).toHaveLength(1);
+    expect(units[0].copyValue).toBe('juan@gmail.com');
+    expect(findSpokenEmailUnits('meet at noon tomorrow')).toHaveLength(0);
+  });
+
+  test('Calle number-first ES address is one unit', () => {
+    const units = findAddressUnits('vive en Calle 45 # 12-34');
+    expect(units.some((u) => u.text.includes('45'))).toBe(true);
+  });
+
+  test('word times normalize to clock form', () => {
+    expect(applyDisplayProtections('come at half past two', 'en')).toContain('2:30');
+    expect(applyDisplayProtections('at three thirty', 'en')).toContain('3:30');
+    expect(applyDisplayProtections('a las tres y media', 'es')).toContain('3:30');
+  });
+
+  test('24h times survive + highlight as schedule', () => {
+    expect(applyDisplayProtections('cita a las 14:30', 'es')).toContain('14:30');
+    expect(findScheduleUnits('at 14:30 sharp')[0]?.text).toBe('14:30');
+    expect(findScheduleUnits('call at 3pm')[0]?.text).toBe('3pm');
+  });
+
+  test('decimals survive stitch (v4.115.0 guard)', () => {
+    expect(applyDisplayProtections('take 2.5 ml twice daily', 'en')).toContain('2.5 ml');
+    expect(stitchSingleDigitSequences('dose 2.5 mg')).toBe('dose 2.5 mg');
+  });
+
+  test('IPs are not phones', () => {
+    expect(formatPhoneAndSSNDigits('server 192.168.1.1 down')).toBe('server 192.168.1.1 down');
+  });
+
+  test('slash dictation stitches', () => {
+    expect(stitchSingleDigitSequences('5/5/5/1/2/3/4')).toBe('5551234');
   });
 });
 

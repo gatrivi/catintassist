@@ -25,6 +25,31 @@ import { APP_VERSION } from '../constants/version';
 /** Newest first. Only the entry matching APP_VERSION is shown on load. */
 export const RELEASE_NOTES_CATALOG = [
   {
+    version: '4.115.0',
+    id: 'sensitive-data-round-2',
+    highlightElementIds: ['main-transcript'],
+    es: {
+      title: '🛡️ Números protegidos: DOB, dosis, dinero, emails',
+      intro: 'Segunda ronda de protección de datos: fechas con espacios, dosis con palabras y emails dictados ya no se destruyen.',
+      sections: [{ heading: 'Qué se arregló', bullets: [
+        '"DOB 05 12 1980" y "05.12.1980" quedan intactos con copia ISO.',
+        '"eighty two" → 82, "dos punto cinco mg" → 2.5 mg, "$1,234.56" de una pieza.',
+        '"juan at gmail dot com" resalta y clic copia juan@gmail.com. "Calle 45" protegido.',
+        '"half past two" → 2:30, "14:30" y "3pm" resaltan. ZIP+4 y MRNs no se deforman.',
+      ] }],
+    },
+    en: {
+      title: '🛡️ Protected numbers: DOB, doses, money, emails',
+      intro: 'Second protection round: spaced dates, word doses and dictated emails survive.',
+      sections: [{ heading: 'What got fixed', bullets: [
+        '"DOB 05 12 1980" and "05.12.1980" stay intact with ISO copy.',
+        '"eighty two" → 82, "two point five mg" → 2.5 mg, "$1,234.56" in one piece.',
+        '"juan at gmail dot com" highlights and click-copies juan@gmail.com. "Calle 45" safe.',
+        '"half past two" → 2:30, "14:30" and "3pm" highlight. ZIP+4 and MRNs untouched.',
+      ] }],
+    },
+  },
+  {
     version: '4.114.0',
     id: 'greeting-editor-view',
     highlightElementIds: ['audio-route-greeting-editor-btn'],

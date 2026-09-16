@@ -2,6 +2,15 @@
 
 **Version source:** `src/constants/version.js` (must match `package.json` + top-right UI pill)
 
+## v4.115.0 - Sensitive data round 2: DOB/dose/money/email survive
+
+- Spaced DOB "05 12 1980" masks as one date unit (ISO copy); dotted "05.12.1980" too; "v1.2" untouched.
+- Compounds/decimals: "eighty two"→82, "ochenta y dos"→82, "two point five mg"→2.5 mg; stitch no longer eats decimals ("2.5"→"25" fixed); IPs not phones.
+- ZIP+4 stays verbatim; 8-digit MRN/chart runs undashed (9/10/11 keep SSN/phone/member behavior).
+- Money thousands ("$1,234.56") one unit; pills/gotas/puffs dosage units; spoken email highlight + reconstructed copy; "Calle 45" address unit.
+- Word times: "half past two"→2:30, "at 3 30"→"at 3:30", 24h + "3pm" highlight; translation safety covers times/money/MRN.
+- Corrections gain word boundaries ("ana" can't rewrite "Juana", "212" can't rewrite phones). Caught live bug: translation `dobs` extracted with dosage regex — fixed.
+
 ## v4.114.0 - Greeting Editor view + clerk slot times survive
 
 - Clerk shorthand "we have 1 1 30, 2 2 30" expands to 1:00, 1:30, 2:00, 2:30 (1 1 30 = TWO slots, never 1130); times highlight + click-to-copy, phone colon backstop, translation digit-loss safety covers times.

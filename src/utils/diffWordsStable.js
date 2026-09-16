@@ -102,7 +102,8 @@ export function isProtectedToken(text = '') {
   if (!t) return false;
   if (/\d/.test(t) && t.replace(/\D/g, '').length >= 2) return true;
   if (/^\d+\/\d+/.test(t)) return true;
-  if (/mg|mcg|ml|units?/i.test(t) && /\d/.test(t)) return true;
+  // v4.115.0: full pill/drop/puff units — "2 pills" must not blank mid-morph.
+  if (/mg|mcg|ml|units?|pills?|tablets?|pastillas?|tabletas?|capsules?|drops?|gotas?|puffs?|sprays?|tsp|tbsp/i.test(t) && /\d/.test(t)) return true;
   if (/[$€£]/.test(t) && /\d/.test(t)) return true;
   if (/\b(?:dollars?|pesos?|usd|copay)\b/i.test(t) && /\d/.test(t)) return true;
   // Month-name dates: "May 8 1990", "8 de mayo de 1990"

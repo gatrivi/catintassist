@@ -67,6 +67,27 @@ export const convertEnglishNumberWords = (text, lang = 'en') => {
 };
 
 // ---------------------------------------------------------------------------
+// COMPOUND + DECIMAL numbers (v4.115.0)
+// ---------------------------------------------------------------------------
+// convertEnglishNumberWords leaves "eighty two" → "80 2", "ochenta y dos" →
+// "80 y 2", "two point five" → "2 point 5" — fragments stitch/phone then eat.
+// Combine AFTER word conversion, BEFORE clerk expansion:
+//   EN "80 2" → "82" · ES "80 y 2" → "82" · "2 point 5"/"2 punto/coma 5" → "2.5"
+// ---------------------------------------------------------------------------
+
+export const combineCompoundNumbers = (text, lang = 'en') => {
+  let out = text || '';
+  if (lang === 'es') {
+    out = out.replace(/\b([2-9]0)\s+y\s+([1-9])\b/gi, (_, t, u) => `${parseInt(t, 10) + parseInt(u, 10)}`);
+    out = out.replace(/\b(\d+)\s+(?:punto|coma)\s+(\d+)\b/gi, '$1.$2');
+  } else {
+    out = out.replace(/\b([2-9]0)\s+([1-9])\b/g, (_, t, u) => `${parseInt(t, 10) + parseInt(u, 10)}`);
+    out = out.replace(/\b(\d+)\s+point\s+(\d+)\b/gi, '$1.$2');
+  }
+  return out;
+};
+
+// ---------------------------------------------------------------------------
 // PHONE vs SSN formatting
 // ---------------------------------------------------------------------------
 // v4.27 always formatted 9-digit runs as phone numbers, turning SSNs
@@ -83,12 +104,26 @@ export const formatPhoneAndSSNDigits = (text, { ignoreAddressGuard = false, igno
     // v4.114.0: clock times are NEVER phones — "1:00, 1:30, 2:00, 2:30"
     // reads as one 12-digit run to this regex. Colons don't appear in phones.
     if (m.includes(':')) return m;
+    // v4.115.0: ZIP+4 is not an SSN — "10027-1234" stays verbatim.
+    if (/^\d{5}-\d{4}$/.test(m.trim())) return m;
+    // v4.115.0: IPs/versions are NEVER phones — "192.168.1.1" (10 digits)
+    // must not become a phone number. 2+ dots with digits around = not a phone.
+    if (/\d\.\d/.test(m) && (m.match(/\./g) || []).length >= 2) return m;
     const before = full.slice(Math.max(0, offset - 40), offset);
     const after = full.slice(offset + m.length, offset + m.length + 40);
     if (!ignoreAddressGuard && looksLikeAddressFragment(before, after)) return m;
     if (!ignoreDateGuard && looksLikeDateFragment(before, after)) return m;
 
     const digitsOnly = m.replace(/\D/g, '');
+    // v4.115.0: non-phone/SSN lengths (8, 12-16 digits) next to chart cues are
+    // MRNs/record numbers — leave undashed. 9/10/11 keep SSN/phone/member
+    // behavior (Phase G insurance IDs).
+    if (
+      ![9, 10, 11].includes(digitsOnly.length) &&
+      /\b(?:mrn|chart|record|account|afiliado|miembro|expediente|historia|folio)\b/i.test(before)
+    ) {
+      return m;
+    }
     if (digitsOnly.length === 9) {
       // SSN: NNN-NN-NNNN
       return `${digitsOnly.slice(0, 3)}-${digitsOnly.slice(3, 5)}-${digitsOnly.slice(5)}`;
@@ -112,7 +147,7 @@ export const formatPhoneAndSSNDigits = (text, { ignoreAddressGuard = false, igno
 // Only joins tokens that are exactly one digit; skips address-like context.
 // ---------------------------------------------------------------------------
 
-const SINGLE_DIGIT_RUN_RE = /\b\d(?:[\s,.-]+\d)+\b/g;
+const SINGLE_DIGIT_RUN_RE = /\b\d(?:[\s,./-]+\d)+\b/g;
 
 /** Month token → 1–12 (EN + ES). */
 const MONTH_TO_NUM = {
@@ -211,6 +246,40 @@ export const findDateUnits = (text) => {
     push(m.index, m.index + m[0].length, m[0], iso);
   }
 
+  // v4.115.0: dotted ES dictation "05.12.1980" — full year required so "v1.2"
+  // and "room 4.5" never match.
+  const dottedRe = /\b(\d{1,2})\.(\d{1,2})\.(\d{4})\b/g;
+  while ((m = dottedRe.exec(text))) {
+    const a = parseInt(m[1], 10);
+    const b = parseInt(m[2], 10);
+    const year = normalizeYear(m[3]);
+    let iso = null;
+    if (a >= 1 && a <= 12 && b >= 1 && b <= 31) iso = isoFromParts(year, a, b);
+    else if (b >= 1 && b <= 12 && a >= 1 && a <= 31) iso = isoFromParts(year, b, a);
+    if (!iso) continue;
+    push(m.index, m.index + m[0].length, m[0], iso);
+  }
+
+  // v4.115.0: spaced slow dictation "my DOB is 05 12 1980" — cue required.
+  // Masked like other dates so stitch/phone can never tear it apart.
+  const spacedRe =
+    /\b(?:born|dob|birthday|appointment|appt|fecha|nacimiento|cita)\b[^.\n]{0,40}?(\d{1,2})\s+(\d{1,2})\s+(\d{4})\b/gi;
+  while ((m = spacedRe.exec(text))) {
+    const a = parseInt(m[1], 10);
+    const b = parseInt(m[2], 10);
+    const year = normalizeYear(m[3]);
+    let iso = null;
+    if (a >= 1 && a <= 12 && b >= 1 && b <= 31) iso = isoFromParts(year, a, b);
+    else if (b >= 1 && b <= 12 && a >= 1 && a <= 31) iso = isoFromParts(year, b, a);
+    if (!iso) continue;
+    // Span starts at the digit triple (tail), not at the cue word.
+    const tail = m[0].match(/(\d{1,2}\s+\d{1,2}\s+\d{4})\s*$/);
+    const dateText = tail ? tail[1] : `${m[1]} ${m[2]} ${m[3]}`;
+    const start = m.index + m[0].lastIndexOf(dateText);
+    const end = start + dateText.length;
+    push(start, end, text.slice(start, end), iso);
+  }
+
   // 2) Month name + day + year: May 8 1990 / May 8, 1990 / May 8th 1990
   const mdY = new RegExp(
     `\\b((?:${MONTH_ALT}))\\s+(\\d{1,2}(?:st|nd|rd|th)?|[A-Za-zÁÉÍÓÚáéíóúñÑ-]+)\\s*,?\\s+(\\d{2,4})\\b`,
@@ -281,10 +350,14 @@ export const maskDateUnits = (text) => {
  * Split for highlight/copy: date → dosage → money units, then number regex on gaps.
  * @returns {{ type: 'text'|'number'|'date'|'schedule'|'dosage'|'money'|'address'|'email', value: string, copyValue?: string }[]}
  */
+// v4.115.0 unit list: pills/tablets/drops/puffs + ES gotas/pastillas/tabletas.
+const DOSAGE_UNITS_ALT =
+  'mg|mcg|g|ml|cc|iu|units?|mEq|milligrams?|micrograms?|grams?|milliliters?|miligramos?|microgramos?|gramos?|mililitros?|unidades?|tablets?|tabletas?|pills?|pastillas?|capsules?|c[aá]psulas?|drops?|gotas?|puffs?|sprays?|tsp|tbsp|oz|%';
+
 export const findDosageUnits = (text) => {
   if (!text) return [];
   const units = [];
-  const re = /\b\d+(?:[.,]\d+)?\s*(?:mg|mcg|g|ml|cc|iu|units?|mEq|milligrams?|micrograms?|grams?|milliliters?|miligramos?|microgramos?|gramos?|mililitros?|unidades?)\b/gi;
+  const re = new RegExp(`\\b\\d+(?:[.,]\\d+)?\\s*(?:${DOSAGE_UNITS_ALT})\\b`, 'gi');
   let m;
   while ((m = re.exec(text))) {
     const raw = m[0];
@@ -301,7 +374,8 @@ export const findDosageUnits = (text) => {
 export const findMoneyUnits = (text) => {
   if (!text) return [];
   const units = [];
-  const re = /(?:[$€£]\s*\d+(?:[.,]\d{2})?|\b\d+(?:[.,]\d{2})?\s*(?:dollars?|pesos?|usd|ars|copay|co-pay|copago|coaseguro)\b)/gi;
+  // v4.115.0: thousand separators — "$1,234.56" is ONE unit, not "$1,23"+"4.56".
+  const re = /(?:[$€£]\s*\d+(?:[.,]\d{3})*(?:[.,]\d{2})?|\b\d+(?:(?:[.,]\d{3})+)?(?:[.,]\d{2})?\s*(?:dollars?|pesos?|usd|ars|copay|co-pay|copago|coaseguro)\b)/gi;
   let m;
   while ((m = re.exec(text))) {
     const raw = m[0];
@@ -373,6 +447,16 @@ export const findAddressUnits = (text) => {
     push(m.index + m[0].indexOf(m[1]), m.index + m[0].indexOf(m[1]) + zip.length, zip, zip);
   }
 
+  // v4.115.0: Spanish street-first order — "Calle 45 # 12-34",
+  // "Avenida 6-23", "calle Juárez 420". Whole span is one unit so
+  // stitch/phone can never tear the number off the street.
+  const esStreetRe =
+    /\b(calle|avenida|av\.?|carrera|cra\.?|bulevar)\s+([A-Za-zÁÉÍÓÚÑáéíóúñ.'-]*\s*)?#?\s*(\d{1,6}(?:\s*[–-]\s*\d{1,6})?)/gi;
+  while ((m = esStreetRe.exec(text))) {
+    const raw = m[0];
+    push(m.index, m.index + raw.length, raw, copyableDigits(m[3]));
+  }
+
   return units.sort((a, b) => a.start - b.start);
 };
 
@@ -392,6 +476,25 @@ export const findEmailUnits = (text) => {
     });
   }
   return units;
+};
+
+/**
+ * Spoken email spans (v4.115.0): "juan at gmail dot com" / "maría arroba
+ * correo punto com". Display stays verbatim — only highlight + clipboard
+ * reconstruct "user@domain.tld". Requires an "at ... dot" chain so
+ * "meet at noon tomorrow" never matches.
+ */
+export const findSpokenEmailUnits = (text) => {
+  if (!text) return [];
+  const units = [];
+  const re =
+    /\b([A-Za-z0-9._%+-]+)\s+(?:at|arroba)\s+([A-Za-z0-9-]+(?:\s+(?:dot|punto)\s+[A-Za-z0-9-]+)+)/gi;
+  let m;
+  while ((m = re.exec(text))) {
+    const addr = `${m[1]}@${m[2].replace(/\s+(?:dot|punto)\s+/gi, '.')}`;
+    units.push({ start: m.index, end: m.index + m[0].length, text: m[0], copyValue: addr });
+  }
+  return units.sort((a, b) => a.start - b.start);
 };
 
 /** Merge non-overlapping typed units; earlier/longer wins on overlap. */
@@ -418,6 +521,7 @@ export const splitHighlightSegments = (text) => {
     { type: 'money', units: findMoneyUnits(text) },
     { type: 'address', units: findAddressUnits(text) },
     { type: 'email', units: findEmailUnits(text) },
+    { type: 'email', units: findSpokenEmailUnits(text) },
   ]);
   const segments = [];
   let cursor = 0;
@@ -474,6 +578,8 @@ export const copyableSensitiveValue = (value, type = 'number') => {
   if (type === 'email') {
     const units = findEmailUnits(String(value));
     if (units[0]?.copyValue) return units[0].copyValue;
+    const spoken = findSpokenEmailUnits(String(value));
+    if (spoken[0]?.copyValue) return spoken[0].copyValue;
     return String(value || '').trim();
   }
   return copyableDigits(value);
@@ -482,13 +588,20 @@ export const copyableSensitiveValue = (value, type = 'number') => {
 export const stitchSingleDigitSequences = (text, { minDigits = 2, ignoreAddressGuard = false, ignoreDateGuard = false } = {}) => {
   if (!text) return text;
   return text.replace(SINGLE_DIGIT_RUN_RE, (match, offset, full) => {
-    const parts = match.split(/[\s,.-]+/).filter(Boolean);
+    // v4.115.0: decimals are NEVER stitchable — "2.5 mg" must not become
+    // "25 mg". A dot directly between digits means decimal/version, not dictation.
+    if (/\d\.\d/.test(match)) return match;
+    const parts = match.split(/[\s,./-]+/).filter(Boolean);
     if (parts.length < minDigits || !parts.every((p) => /^\d$/.test(p))) return match;
 
     const before = full.slice(Math.max(0, offset - 40), offset);
     const after = full.slice(offset + match.length, offset + match.length + 40);
     if (!ignoreAddressGuard && looksLikeAddressFragment(before, after)) return match;
     if (!ignoreDateGuard && looksLikeDateFragment(before, after)) return match;
+    // v4.115.0: chart/MRN dictation stays spaced ("MRN 1 2 3 4 5 6 7 8" is
+    // readable and safe). Narrow list on purpose: member/policy/afiliado IDs
+    // belong to Phase G SSN grouping and must still stitch.
+    if (/\b(?:mrn|chart|record|account|folio|expediente)\b/i.test(before)) return match;
 
     const trailingPunct = match.match(/[,.]$/)?.[0] || '';
     return parts.join('') + trailingPunct;
@@ -552,25 +665,54 @@ export const expandClerkTimeShorthand = (text) => {
   });
 };
 
-/** Bare clock time after expansion — "1:30" with no am/pm. */
-export const BARE_CLOCK_TIME_RE = /\b(?:[1-9]|1[0-2]):[0-5]\d\b/;
+/** Bare clock time after expansion — "1:30" with no am/pm. v4.115.0: 24h too. */
+export const BARE_CLOCK_TIME_RE = /\b(?:[01]?\d|2[0-3]):[0-5]\d\b/;
 
 /**
  * Find schedule/time spans for highlight/copy (v4.114.0).
+ * v4.115.0: 24h "14:30" + bare "3pm" join H:MM.
  * Display-only — reports spans + copy value, never rewrites text.
  */
 export const findScheduleUnits = (text) => {
   if (!text) return [];
   const units = [];
-  const re = /\b((?:[1-9]|1[0-2]):[0-5]\d\s*(?:a\.?m\.?|p\.?m\.?|am|pm)?)\b/gi;
-  let m;
-  while ((m = re.exec(text))) {
-    const raw = m[1] || m[0];
-    const start = m.index + m[0].indexOf(raw);
-    if (units.some((u) => !(start + raw.length <= u.start || start >= u.end))) continue;
-    units.push({ start, end: start + raw.length, text: raw, copyValue: raw.trim() });
-  }
+  const pushRe = (re) => {
+    let m;
+    while ((m = re.exec(text))) {
+      const rawFull = m[1] || m[0];
+      // v4.115.0: trailing space from "\s*(am|pm)?" is not part of the time.
+      const raw = rawFull.replace(/\s+$/, '');
+      const start = m.index + m[0].indexOf(rawFull);
+      if (units.some((u) => !(start + raw.length <= u.start || start >= u.end))) continue;
+      units.push({ start, end: start + raw.length, text: raw, copyValue: raw.trim() });
+    }
+  };
+  pushRe(/\b((?:[01]?\d|2[0-3]):[0-5]\d\s*(?:a\.?m\.?|p\.?m\.?|am|pm)?)\b/gi);
+  pushRe(/\b((?:[1-9]|1[0-2])\s*(?:a\.?m\.?|p\.?m\.?|am|pm))\b/gi);
   return units.sort((a, b) => a.start - b.start);
+};
+
+// ---------------------------------------------------------------------------
+// WORD TIMES (v4.115.0)
+// ---------------------------------------------------------------------------
+// After number-word conversion "half past two" is "half past 2" and
+// "tres y media" is "3 y media" — normalize to clock form so highlight,
+// critical-data guards and translation safety see them:
+//   "half past 2" → "2:30" · "3 y media" → "3:30" · "3 y cuarto" → "3:15"
+//   "at 3 30" → "at 3:30" (cue-gated: at/around/about/a las/para las/de las)
+// ---------------------------------------------------------------------------
+
+export const expandWordTimes = (text) => {
+  if (!text) return text;
+  let out = text;
+  out = out.replace(/\bhalf past (\d{1,2})\b/gi, '$1:30');
+  out = out.replace(/\b(\d{1,2})\s+y\s+media\b/gi, '$1:30');
+  out = out.replace(/\b(\d{1,2})\s+y\s+cuarto\b/gi, '$1:15');
+  out = out.replace(
+    /((?:\bat|\baround|\babout|\ba las|\bpara las|\bde las)\s+)((?:[1-9]|1[0-2]))\s+([0-5]\d)\b/gi,
+    '$1$2:$3',
+  );
+  return out;
 };
 
 /** Display pipeline order (transcript + translation panes). */
@@ -578,9 +720,13 @@ export const applyDisplayProtections = (text, lang = 'en', { applyNumberWords = 
   if (!text) return text;
   let out = text;
   if (applyNumberWords) out = convertEnglishNumberWords(out, lang);
+  // v4.115.0: "eighty two" → "82", "dos punto cinco" → "2.5" before stitch.
+  if (applyNumberWords) out = combineCompoundNumbers(out, lang);
   // v4.114.0: clerk "1 1 30" → "1:00, 1:30" BEFORE sentinels see the text,
   // so bare-time + schedule cues below can trigger the date display brake.
   out = expandClerkTimeShorthand(out);
+  // v4.115.0: "half past 2" → "2:30", "at 3 30" → "at 3:30" before sentinels.
+  out = expandWordTimes(out);
 
   // Phase C: sentinels gate stitch/phone — display brake only (overlap unchanged).
   // ssn/phone sentinels win over address/date guards (Phase G tests): a dictated
@@ -671,16 +817,20 @@ const WEEKDAY_RE =
 const ORDINAL_RE =
   /\b(first|second|third|fourth|fifth|sixth|seventh|eighth|ninth|tenth|eleventh|twelfth|thirteenth|fourteenth|fifteenth|sixteenth|seventeenth|eighteenth|nineteenth|twentieth|twenty[-\s]first|twenty[-\s]second|twenty[-\s]third|thirtieth|thirty[-\s]first|primero|segunda?|tercero|cuarto|quinto|sexto|s[eé]ptimo|octavo|noveno|d[eé]cimo)\b/i;
 
-const NUMERIC_DATE_RE = /\b\d{1,2}[/-]\d{1,2}(?:[/-]\d{2,4})?\b/;
+const NUMERIC_DATE_RE = /\b\d{1,2}[/-]\d{1,2}(?:[/-]\d{2,4})?\b|\b\d{1,2}\.\d{1,2}\.\d{4}\b/;
+
+// v4.115.0: slow spaced dictation "my DOB is 05 12 1980" — cue required so
+// random triples ("take 2 12 pills") never match.
+const SPACED_DOB_RE =
+  /\b(?:born|dob|birthday|appointment|appt|fecha|nacimiento|cita)\b[^.\n]{0,40}?\d{1,2}\s+\d{1,2}\s+\d{4}\b/i;
 
 const CLOCK_TIME_RE =
   /\b\d{1,2}(?::\d{2})?\s*(?:a\.?m\.?|p\.?m\.?|am|pm)\b/i;
 
 const MED_CUE_RE =
-  /\b(medication|medicine|med|dose|dosage|prescription|prescribed|pharmacy|pill|tablet|capsule|insulin|medicamento|medicina|dosis|receta|recetad[oa]|farmacia|pastilla|comprimido|c[aá]psula|insulina)\b/i;
+  /\b(medication|medicine|med|dose|dosage|prescription|prescribed|pharmacy|pill|tablet|capsule|insulin|medicamento|medicina|dosis|receta|recetad[oa]|farmacia|pastilla|comprimido|c[aá]psula|insulina|gotas?|puffs?)\b/i;
 
-const DOSAGE_RE =
-  /\b\d+(?:[.,]\d+)?\s*(?:mg|mcg|g|ml|cc|iu|units?|mEq|milligrams?|micrograms?|grams?|milliliters?|miligramos?|microgramos?|gramos?|mililitros?|unidades?)\b/i;
+const DOSAGE_RE = new RegExp(`\\b\\d+(?:[.,]\\d+)?\\s*(?:${DOSAGE_UNITS_ALT})\\b`, 'i');
 
 const FREQUENCY_RE =
   /\b(once|twice|daily|nightly|every|per day|a day|bid|tid|qid|prn|una vez|dos veces|diari[oa]|cada|por d[ií]a|por noche)\b/i;
@@ -689,7 +839,7 @@ const PRICE_CUE_RE =
   /\b(price|cost|costs|charge|fee|pay|paid|payment|copay|co-pay|consultation|procedure|medication|medicine|cuesta|costo|precio|pagar|pag[oó]|cobran|consulta|procedimiento|medicamento|medicina|copago|coaseguro)\b/i;
 
 const MONEY_RE =
-  /(?:[$€£]\s*\d+(?:[.,]\d{2})?|\b\d+(?:[.,]\d{2})?\s*(?:dollars?|pesos?|usd|ars|copay|co-pay|copago|coaseguro)\b)/i;
+  /(?:[$€£]\s*\d+(?:[.,]\d{3})*(?:[.,]\d{2})?|\b\d+(?:(?:[.,]\d{3})+)?(?:[.,]\d{2})?\s*(?:dollars?|pesos?|usd|ars|copay|co-pay|copago|coaseguro)\b)/i;
 
 export const hasCriticalDataCue = (text) => {
   if (!text) return false;
@@ -706,6 +856,7 @@ export const containsCriticalData = (text) => {
 
   return (
     NUMERIC_DATE_RE.test(text) ||
+    SPACED_DOB_RE.test(text) ||
     CLOCK_TIME_RE.test(text) ||
     BARE_CLOCK_TIME_RE.test(text) ||
     CLERK_TIME_SHORTHAND_RE.test(text) ||
@@ -793,6 +944,7 @@ const EN_SENTINELS = {
     MONTH_RE,
     WEEKDAY_RE,
     NUMERIC_DATE_RE,
+    SPACED_DOB_RE,
     CLOCK_TIME_RE,
     // v4.114.0: clerk slot lists + expanded bare times trigger the date
     // display brake (skip stitch/phone) even with no other cue words.
@@ -847,6 +999,7 @@ const ES_SENTINELS = {
     MONTH_RE,
     WEEKDAY_RE,
     NUMERIC_DATE_RE,
+    SPACED_DOB_RE,
     CLOCK_TIME_RE,
     // v4.114.0: same clerk/bare-time brake for the ES lane.
     CLERK_TIME_SHORTHAND_RE,
@@ -880,7 +1033,7 @@ export const detectSentinelContext = (text, lang = 'en') => {
 // Used internally by formatPhoneAndSSNDigits and exported for testing.
 // ---------------------------------------------------------------------------
 
-const STREET_TYPE_RE = /\b(street|st|avenue|ave|boulevard|blvd|drive|dr|road|rd|lane|ln|court|ct|place|pl|way|circle|cir|highway|hwy|route|rt|parkway|pkwy|terrace|ter)\b/i;
+const STREET_TYPE_RE = /\b(street|st|avenue|ave|boulevard|blvd|drive|dr|road|rd|lane|ln|court|ct|place|pl|way|circle|cir|highway|hwy|route|rt|parkway|pkwy|terrace|ter|calle|avenida|av|carrera|cra|bulevar)\b/i;
 const DIRECTION_RE = /\b(north|south|east|west|northeast|northwest|southeast|southwest|n|s|e|w|ne|nw|se|sw)\b/i;
 
 export const looksLikeAddressFragment = (textBefore, textAfter) => {

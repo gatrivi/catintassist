@@ -123,7 +123,13 @@ export const applySttCorrections = (text, lang) => {
     .sort((a, b) => b.sourceHeard.length - a.sourceHeard.length);
 
   for (const entry of entries) {
-    const re = new RegExp(escapeRegex(entry.sourceHeard), 'gi');
+    // v4.115.0: word-boundary guard — a correction for "an" must not rewrite
+    // Susan/Juana, nor "12" inside "555-123-4567". Boundaries only apply
+    // where the source starts/ends with a word char.
+    const src = entry.sourceHeard || '';
+    const left = /^\w/.test(src) ? '\\b' : '';
+    const right = /\w$/.test(src) ? '\\b' : '';
+    const re = new RegExp(`${left}${escapeRegex(src)}${right}`, 'gi');
     out = out.replace(re, entry.corrected);
   }
   return out;

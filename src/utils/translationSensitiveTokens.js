@@ -12,13 +12,16 @@ const PHONE_RE =
   /(?:\+?\d{1,3}[\s.-]?)?(?:\(?\d{3}\)?[\s.-]?)\d{3}[\s.-]?\d{4}\b|\b\d{10,11}\b/g;
 const DOB_RE = /\b\d{1,2}[/-]\d{1,2}[/-]\d{2,4}\b/g;
 const DOSAGE_RE =
-  /\b\d+(?:[.,]\d+)?\s*(?:mg|mcg|g|ml|cc|iu|units?|mEq|milligrams?|micrograms?|gramos?|miligramos?|mililitros?|unidades?)\b/gi;
+  /\b\d+(?:[.,]\d+)?\s*(?:mg|mcg|g|ml|cc|iu|units?|mEq|milligrams?|micrograms?|grams?|milliliters?|miligramos?|microgramos?|gramos?|mililitros?|unidades?|tablets?|tabletas?|pills?|pastillas?|capsules?|c[aá]psulas?|drops?|gotas?|puffs?|sprays?|tsp|tbsp|oz|%)\b/gi;
 // v4.93.0: street suffix is REQUIRED — "7 minutes" / "1 of" / "5 to" are not addresses.
 const ADDRESS_RE =
   /\b\d{1,6}\s+(?:[A-Za-zÁÉÍÓÚÑáéíóúñ][A-Za-zÁÉÍÓÚÑáéíóúñ0-9.'-]*\s+){0,3}?(?:St|Street|Ave|Avenue|Rd|Road|Blvd|Dr|Drive|Ln|Lane|Ct|Court|Way|Calle|Avenida|Carrera)\.?\b/gi;
-const ID_RE = /\b(?:SSN|ID|MRN|member\s*#?)\s*[:#]?\s*[\dA-Za-z-]{4,}\b|\b\d{3}-\d{2}-\d{4}\b|\b\d{9}\b/gi;
+const ID_RE = /\b(?:SSN|ID|MRN|member\s*#?)\s*[:#]?\s*[\dA-Za-z-]{4,}\b|\b\d{3}-\d{2}-\d{4}\b|\b\d{9}\b|\b(?:mrn|chart)[\s:#]*[\dA-Za-z-]{4,}\b/gi;
 // v4.114.0: clerk slot times — "1:00, 1:30" must survive translation (digit-loss safety).
-const TIMES_RE = /\b(?:[1-9]|1[0-2]):[0-5]\d\b/gi;
+// v4.115.0: 24h "14:30" + bare "3pm".
+const TIMES_RE = /\b(?:[01]?\d|2[0-3]):[0-5]\d\b|\b(?:[1-9]|1[0-2])\s*(?:am|pm|a\.m\.|p\.m\.)/gi;
+// v4.115.0: money amounts must survive translation too.
+const MONEY_TR_RE = /(?:[$€£]\s*\d+(?:[.,]\d{3})*(?:[.,]\d{2})?|\b\d+(?:(?:[.,]\d{3})+)?(?:[.,]\d{2})?\s*(?:dollars?|pesos?|usd|ars|copay|co-pay|copago|coaseguro)\b)/gi;
 
 const uniq = (arr) => [...new Set(arr.filter(Boolean))];
 
@@ -31,7 +34,7 @@ const collect = (text, re) => {
   return uniq(out);
 };
 
-/** @returns {{ phones: string[], dobs: string[], dosages: string[], addresses: string[], ids: string[], times: string[] }} */
+/** @returns {{ phones: string[], dobs: string[], dosages: string[], addresses: string[], ids: string[], times: string[], money: string[] }} */
 export function extractSensitiveTokens(text) {
   const src = String(text || '');
   return {
@@ -41,6 +44,7 @@ export function extractSensitiveTokens(text) {
     addresses: collect(src, ADDRESS_RE),
     ids: collect(src, ID_RE),
     times: collect(src, TIMES_RE),
+    money: collect(src, MONEY_TR_RE),
   };
 }
 
@@ -49,9 +53,9 @@ export function normalizeTokenForCompare(token) {
   const raw = String(token || '').trim();
   const digits = copyableDigits(raw);
   if (digits && /\d/.test(raw) && digits.length >= 7) return `d:${digits}`;
-  // dosages: collapse spaces + lower unit
+  // dosages: collapse spaces + lower unit (v4.115.0: same extended unit list)
   const dosage = raw.match(
-    /^(\d+(?:[.,]\d+)?)\s*(mg|mcg|g|ml|cc|iu|units?|meq|milligrams?|micrograms?|gramos?|miligramos?|mililitros?|unidades?)$/i,
+    /^(\d+(?:[.,]\d+)?)\s*(mg|mcg|g|ml|cc|iu|units?|meq|milligrams?|micrograms?|grams?|milliliters?|miligramos?|microgramos?|gramos?|mililitros?|unidades?|tablets?|tabletas?|pills?|pastillas?|capsules?|c[aá]psulas?|drops?|gotas?|puffs?|sprays?|tsp|tbsp|oz|%)$/i,
   );
   if (dosage) return `dose:${dosage[1].replace(',', '.')}:${dosage[2].toLowerCase()}`;
   return `t:${raw.toLowerCase().replace(/\s+/g, ' ')}`;
@@ -66,6 +70,7 @@ const flattenTokens = (bag) => {
     ...(bag.addresses || []),
     ...(bag.ids || []),
     ...(bag.times || []),
+    ...(bag.money || []),
   ];
 };
 

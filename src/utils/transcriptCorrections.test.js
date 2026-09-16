@@ -59,4 +59,16 @@ describe('transcriptCorrections v4.76', () => {
   test('storage key constant', () => {
     expect(CORRECTIONS_STORAGE_KEY).toBe('catint_corrections_v1');
   });
+
+  test('v4.115.0: corrections respect word boundaries inside names', () => {
+    saveCorrection({ sourceHeard: 'ana', corrected: 'Anna', lang: 'en' });
+    expect(applySttCorrections('patient Juana has pain', 'en')).toBe('patient Juana has pain');
+    expect(applySttCorrections('ana is here', 'en')).toBe('Anna is here');
+  });
+
+  test('v4.115.0: digit corrections do not rewrite inside phone runs', () => {
+    saveCorrection({ sourceHeard: '212', corrected: 'two twelve', lang: 'en' });
+    expect(applySttCorrections('call 555-1212-3456', 'en')).toBe('call 555-1212-3456');
+    expect(applySttCorrections('room 212 please', 'en')).toBe('room two twelve please');
+  });
 });

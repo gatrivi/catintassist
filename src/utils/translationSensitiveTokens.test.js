@@ -43,4 +43,19 @@ describe('translationSensitiveTokens', () => {
     const bag = extractSensitiveTokens('Send it to 123 Main Street please.');
     expect(bag.addresses.length).toBeGreaterThan(0);
   });
+
+  // v4.115.0: translation digit-loss safety covers times, money, MRNs, pills.
+  test('times, money, chart IDs survive diff', () => {
+    expect(diffSensitiveTokens('slots 1:00, 1:30', 'ranuras 1:00, 1:30')).toEqual([]);
+    expect(diffSensitiveTokens('cita a las 14:30', 'appt at 14:30')).toEqual([]);
+    expect(diffSensitiveTokens('copay $1,234.56', 'copago $1,234.56')).toEqual([]);
+    const bag = extractSensitiveTokens('MRN chart 12345678, take 2 pills, call at 3pm');
+    expect(bag.ids.length).toBeGreaterThan(0);
+    expect(bag.dosages.some((d) => /2\s*pills/.test(d))).toBe(true);
+    expect(bag.times.some((t) => /3\s*pm/i.test(t))).toBe(true);
+  });
+
+  test('dropped time is reported missing', () => {
+    expect(diffSensitiveTokens('slots 1:00, 1:30', 'ranuras')).toEqual(['1:00', '1:30']);
+  });
 });
