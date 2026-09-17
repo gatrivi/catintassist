@@ -407,11 +407,28 @@ body {
   flex-shrink: 0;
 }
 
-/* Connect shows a two-emoji label (robot + headset) — keep it 2 cells wide
-   so it reads as two glued buttons and stays proportional (v4.86.3). */
-.session-controls-left-cluster .connect-interpret-btn {
-  width: calc(var(--btn-icon) * 2) !important;
-  min-width: calc(var(--btn-icon) * 2);
+/* Uniform buttons: CONNECT, STOP, HOLD are one cell like CAT/ZAP.
+   The 🤖 provider glyph hides in the row (tooltip + data-provider-ready
+   keep the info); the double-cell era ends here. */
+#header-connect-btn > span > svg + svg {
+  display: none;
+}
+
+/* v4.126.0: off-call center never overlaps — every child can shrink, the
+   targets chip truncates via fitLevel instead of painting over neighbors. */
+.off-call-inline-row > * {
+  flex-shrink: 1;
+  min-width: 0;
+}
+.off-call-targets-row {
+  min-width: 0;
+  flex-shrink: 1;
+}
+#daily-targets-chip {
+  flex-shrink: 1 !important;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 /* Gray chrome — mic, goals, STT, lang, key, notes, zap, expand (match settings gear). */
@@ -536,11 +553,9 @@ body {
   align-items: center;
   flex-shrink: 0;
   margin-left: auto;
-  position: sticky;
-  right: 0;
-  z-index: 330;
+  position: static;
   padding-left: 6px;
-  background: linear-gradient(90deg, transparent 0%, rgba(12, 12, 18, 0.92) 28%, rgba(12, 12, 18, 0.98) 100%);
+  background: none;
 }
 
 .session-controls-right-cluster .btn-icon.tiny-btn:not(.header-text-btn):not(.btn-text),
@@ -607,8 +622,12 @@ body {
 }
 
 .session-controls-sticky-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 32px;
   overflow-x: auto;
-  overflow-y: hidden;
+  overflow-y: visible;
   scrollbar-width: thin;
 }
 
@@ -4071,6 +4090,33 @@ body:has(.app-container[data-call-mode="true"]) .element-hint-panel {
   }
 }
 
+/* v4.122.1 HUD tidy batch D: 900–1100px crop guards (CSS-only, no logic).
+   D1: smaller chrome buttons + key-vault hidden (dup of Settings).
+   D2: device selects shrink to emoji+short (full label returns wide).
+   D3: sticky 📞/📡 shed (timeline + chip ⏱ cover them); AR$ income stays. */
+@media (max-width: 1100px) {
+  /* Scoped to header only — body buttons keep full touch size. */
+  .dashboard-header {
+    --btn-h: 23px;
+    --btn-icon: 23px;
+  }
+  .session-controls-right-cluster {
+    gap: 2px;
+    padding-left: 2px;
+  }
+  #header-key-vault-btn {
+    display: none !important;
+  }
+  .audio-route-status-bar .audio-route-select {
+    max-width: 64px !important;
+    min-width: 44px !important;
+  }
+  #header-oncall-mins,
+  #header-offcall-mins {
+    display: none !important;
+  }
+}
+
 @media (max-width: 900px) {
   /* Compact header budget — skip off-call scoreboard (has its own 20vh cap).
      v4.103.1: also skip call-compact/meter-only — their :not chain out-specifies
@@ -4248,24 +4294,6 @@ body:has(.app-container[data-call-mode="true"]) .element-hint-panel {
 
 .audio-route-status-bar.is-compact .audio-route-compact-proof { display: inline-flex; }
 .audio-route-status-bar.is-compact .audio-route-status-full { display: none; }
-
-.audio-route-day-totals {
-  display: inline-flex;
-  gap: 0.3rem;
-  align-items: center;
-  padding: 0.08rem 0.28rem;
-  border: 1px solid rgba(148, 163, 184, 0.24);
-  border-radius: 4px;
-  color: rgba(226, 232, 240, 0.78);
-  background: rgba(15, 23, 42, 0.42);
-  font: 800 0.58rem/1 var(--font-mono);
-  letter-spacing: 0.025em;
-  white-space: nowrap;
-  flex-shrink: 0;
-}
-
-.audio-route-day-totals b { color: #38bdf8; }
-.audio-route-day-totals span { color: #fb923c; }
 
 /* Connect / stop — always visible while scrolling the header
    (stale wrapper neutralized; sticky chrome now lives in `.session-controls-sticky-row`). */

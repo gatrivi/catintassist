@@ -448,7 +448,7 @@ const SessionControlsSticky = React.memo(({
                 type="button"
                 className="header-chrome-btn"
                 onClick={handleStop}
-                title="STOP CALL â€” TAB STAYS READY"
+                title="STOP CALL — TAB STAYS READY"
               >
                 <StopIcon size={14} />
               </button>
@@ -469,7 +469,7 @@ const SessionControlsSticky = React.memo(({
             >
               <span
                 id="header-daily-income"
-                style={{ color: '#fb923c', fontWeight: 800, fontSize: '0.85rem' }}
+                style={{ color: '#fb923c', fontWeight: 800, fontSize: '0.72rem' }}
                 title="Earned today in AR$ (live) — v4.87.0"
               >
                 AR${Math.round(dailyIncomeArs).toLocaleString('en-US')}
