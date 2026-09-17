@@ -67,6 +67,8 @@ export default function SettingsPanel({
     setTranslationMood,
     speechAutoConnect,
     setSpeechAutoConnect,
+    isNotesOpen,
+    setIsNotesOpen,
     vaultStatus,
     autoAttachEnabled,
     setAutoAttachEnabled,
@@ -411,6 +413,15 @@ export default function SettingsPanel({
                 onChange={(e) => setAutoAttachEnabled(e.target.checked)}
               />
               Auto-attach interpreting tab at/after 09:00 (Chrome)
+            </label>
+
+            <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12, cursor: 'pointer', marginTop: 14 }}>
+              <input
+                type="checkbox"
+                checked={!!isNotesOpen}
+                onChange={(e) => setIsNotesOpen(e.target.checked)}
+              />
+              📝 Session notes sidebar (same toggle as the bottom-dock button)
             </label>
             <p style={{ fontSize: 10, color: 'rgba(255,255,255,0.5)', margin: '6px 0 0' }}>
               OFF by default to avoid blocking browser permission dialogs on first use.

@@ -25,6 +25,27 @@ import { APP_VERSION } from '../constants/version';
 /** Newest first. Only the entry matching APP_VERSION is shown on load. */
 export const RELEASE_NOTES_CATALOG = [
   {
+    version: '4.126.0',
+    id: 'slim-sticky-row',
+    highlightElementIds: ['header-settings-btn'],
+    es: {
+      title: '🧹 Fila superior más limpia',
+      intro: 'Notas, STT y llave viven en ⚙️ Ajustes — la fila no se achica a 900px.',
+      sections: [{ heading: 'Qué cambió', bullets: [
+        '📝, STT y llave salieron de la fila superior → ⚙️ Ajustes.',
+        'El interruptor de notas vive en Ajustes → Comportamiento.',
+      ] }],
+    },
+    en: {
+      title: '🧹 Slimmer top row',
+      intro: 'Notes, STT and key live in ⚙️ Settings — the row breathes at 900px.',
+      sections: [{ heading: 'What changed', bullets: [
+        '📝, STT and key left the sticky row → ⚙️ Settings.',
+        'The notes toggle lives in Settings → Behavior.',
+      ] }],
+    },
+  },
+  {
     version: '4.125.0',
     id: 'hold-phrases-v1',
     highlightElementIds: ['header-hold-btn'],

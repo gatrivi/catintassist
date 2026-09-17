@@ -13,7 +13,6 @@ import {
   FocusOffIcon,
   GameIcon,
   HelpIcon,
-  KeyIcon,
   MoonIcon,
   NotesIcon,
   PauseIcon,
@@ -52,12 +51,6 @@ import { AutopilotChip } from './AutopilotGuard';
 import { getAppStatus } from '../utils/appStatus';
 import { SlotMicroValue } from './SlotMicroValue';
 import { needsUserSuppliedDeepgramKey } from '../utils/deepgramRuntimeKey';
-import {
-  STT_LATENCY_CHANGED_EVENT,
-  getSttLatencyConfig,
-  loadSttLatencyMode,
-  saveSttLatencyMode,
-} from '../utils/deepgramListenConfig';
 import {
   isComponentVisible,
   shouldShowProgressStack,
@@ -304,8 +297,6 @@ const SessionControlsSticky = React.memo(({
   dailyIncomeArs = 0,
   callModeExpanded,
   setCallModeExpanded,
-  isNotesOpen,
-  setIsNotesOpen,
 
   tabStreamReady = false,
   cableStreamReady = false,
@@ -346,15 +337,6 @@ const SessionControlsSticky = React.memo(({
   // so Date.now() here ticks live with zero extra timers.
   const lastCallValidToday = isLastCallValidToday(lastCallEndedAt || 0);
   const offCallGapSecs = offCallGapSeconds({ isActive, lastCallEndedAt: lastCallEndedAt || 0 });
-  const [sttLatencyMode, setSttLatencyMode] = useState(loadSttLatencyMode);
-
-  useEffect(() => {
-    const onLatencyChange = (e) => setSttLatencyMode(e.detail || loadSttLatencyMode());
-    window.addEventListener(STT_LATENCY_CHANGED_EVENT, onLatencyChange);
-    return () => window.removeEventListener(STT_LATENCY_CHANGED_EVENT, onLatencyChange);
-  }, []);
-
-  const sttLatencyLabel = getSttLatencyConfig(sttLatencyMode).label;
   const appStatus = getAppStatus({
     isActive,
     isZombieCall,
@@ -383,18 +365,6 @@ const SessionControlsSticky = React.memo(({
   const handleLangClick = () => {
     if (didLongPressRef.current) return;
     onToggleLanguage?.();
-  };
-
-  const toggleQuickNotes = () => {
-    setIsNotesOpen((open) => {
-      const next = !open;
-      if (next) {
-        window.setTimeout(() => {
-          window.dispatchEvent(new Event('catint_focus_notes'));
-        }, 80);
-      }
-      return next;
-    });
   };
 
   // v4.100.0: cat logo = "take me back to transcription".
@@ -600,23 +570,6 @@ const SessionControlsSticky = React.memo(({
             </>
           )}
 
-          <ElementHintTarget
-            elementId="header-quick-notes-btn"
-            guideKey="notes"
-            heading="Quick notes"
-            body="Toggle the quick notes sidebar for jotting during calls."
-            color="#f43f5e"
-          >
-            <button
-              id="header-quick-notes-btn"
-              type="button"
-              className={`header-chrome-btn${isNotesOpen ? ' is-on' : ''}`}
-              onClick={toggleQuickNotes}
-              title="Quick Notes"
-            >
-              <NotesIcon size={14} />
-            </button>
-          </ElementHintTarget>
         </div>
 
         <div className="session-controls-center">
@@ -801,16 +754,6 @@ const SessionControlsSticky = React.memo(({
             </ElementHintTarget>
           )}
 
-          <button
-            id="header-stt-latency-btn"
-            type="button"
-            className={`header-chrome-btn header-text-btn${sttLatencyMode === 'fast' ? ' is-on' : ''}`}
-            onClick={() => saveSttLatencyMode(sttLatencyMode === 'fast' ? 'balanced' : 'fast')}
-            title="STT speed — FAST = lower latency (reconnects). BAL = steadier interims."
-          >
-            STT:{sttLatencyLabel}
-          </button>
-
           {onToggleLanguage && (
             <ElementHintTarget
               elementId="header-lang-pair-btn"
@@ -835,28 +778,6 @@ const SessionControlsSticky = React.memo(({
               </button>
             </ElementHintTarget>
           )}
-
-          <ElementHintTarget
-            elementId="header-key-vault-btn"
-            heading="Deepgram key vault"
-            body="Open settings to manage your Deepgram API key (encrypted vault)."
-            color="#94a3b8"
-          >
-            <button
-              id="header-key-vault-btn"
-              type="button"
-              className={`header-chrome-btn${apiKeyRejected ? ' is-on' : ''}`}
-              onClick={() => {
-                try {
-                  window.dispatchEvent(new CustomEvent('cat_show_settings'));
-                } catch (_) {}
-              }}
-              title="Deepgram Key Vault"
-              aria-label="Deepgram Key Vault"
-            >
-              <KeyIcon size={14} />
-            </button>
-          </ElementHintTarget>
 
           {showEndDayButton && (
             <ElementHintTarget
@@ -3343,8 +3264,6 @@ ${isInDeficit ? `⚠️ DEFICIT: Behind pace by ${Math.round(monthlyDeficitMins)
         goalMinutes={stats.goalMinutes}
         callModeExpanded={callModeExpanded}
         setCallModeExpanded={setCallModeExpanded}
-        isNotesOpen={isNotesOpen}
-        setIsNotesOpen={setIsNotesOpen}
 
         tabStreamReady={tabStreamReady}
         cableStreamReady={cableStreamReady}
