@@ -25,6 +25,29 @@ import { APP_VERSION } from '../constants/version';
 /** Newest first. Only the entry matching APP_VERSION is shown on load. */
 export const RELEASE_NOTES_CATALOG = [
   {
+    version: '4.125.0',
+    id: 'hold-phrases-v1',
+    highlightElementIds: ['header-hold-btn'],
+    es: {
+      title: '⏸ Hold automático que entiende la sala de espera',
+      intro: '"wait for the provider", "un momento", "ya viene el doctor" activan hold.',
+      sections: [{ heading: 'Qué cambió', bullets: [
+        'Detecta frases de espera en inglés y español (antes: 7 fijas en inglés).',
+        'La música de espera ya no rompe el hold.',
+        'Sigue pidiendo 3s de silencio real antes de activarse.',
+      ] }],
+    },
+    en: {
+      title: '⏸ Auto-hold that understands the waiting room',
+      intro: '"wait for the provider", "un momento", "doctor will be in" trigger hold.',
+      sections: [{ heading: 'What changed', bullets: [
+        'Waiting-room phrases in EN + ES (was: 7 hardcoded English).',
+        'Hold music no longer breaks hold.',
+        'Still needs 3s of real silence before engaging.',
+      ] }],
+    },
+  },
+  {
     version: '4.124.0',
     id: 'on-off-last-timers',
     highlightElementIds: ['off-call-gap-row'],

@@ -66,6 +66,7 @@ import {
   matchCallEndPhrase,
   loadAutopilotPhrases,
 } from "../utils/callAutopilot";
+import { matchHoldPhrase } from "../utils/holdPhrases";
 import { analyzeToneFrame, createToneTracker } from "../utils/toneWatch";
 
 const CAPTIONS_CLEARED_EVENT = "catint_captions_cleared";
@@ -128,6 +129,7 @@ export const useDeepgram = () => {
     isCaptionsLoaded,
     isActive,
     isZombieCall,
+    isHold,
     hipaaGraceActiveRef,
     notifySpeechDuringCall,
     trySpeechAutoStart,
@@ -481,11 +483,13 @@ export const useDeepgram = () => {
   // startSession on EVERY transcript (call timer reset to 0, spam events).
   const isActiveLiveRef = useRef(isActive);
   const isZombieCallLiveRef = useRef(isZombieCall);
+  const isHoldLiveRef = useRef(isHold);
   useEffect(() => {
     isActiveLiveRef.current = isActive;
     isZombieCallLiveRef.current = isZombieCall;
+    isHoldLiveRef.current = isHold;
     shouldCaptureCaptionsRef.current = !!(isActive || isZombieCall);
-  }, [isActive, isZombieCall]);
+  }, [isActive, isZombieCall, isHold]);
 
   const armCaptionCapture = useCallback((on = true) => {
     shouldCaptureCaptionsRef.current = !!on;
@@ -1152,27 +1156,29 @@ export const useDeepgram = () => {
             ...socketConfidencePatch,
           });
 
+          // v4.125.0: hold-phrase matcher (EN+ES, STT-tolerant). Computed once,
+          // used twice: arming the intent below, and guarding the silence
+          // clock above so hold music can't break hold.
+          const holdPhrase = matchHoldPhrase(transcript);
           if (isCallDetectionEnabled && confidence > 0.4) {
-            updateActivity();
+            // Hold music/announcements heard WHILE holding are more of the
+            // same hold — not the provider returning. Stream-data clock still
+            // ticks (stale detection must see the packets); only the silence
+            // clock is shielded so auto-resume can't fire on music.
+            if (!(isHoldLiveRef.current && holdPhrase)) {
+              updateActivity();
+            }
             setLastDataTime(Date.now());
           }
 
-          const lowTrans = transcript.toLowerCase();
-          if (
-            lowTrans.includes("stay on the line") ||
-            lowTrans.includes("please hold") ||
-            lowTrans.includes("hold please") ||
-            lowTrans.includes("put you on hold") ||
-            lowTrans.includes("one moment") ||
-            lowTrans.includes("one minute") ||
-            (lowTrans.includes("hold") && lowTrans.includes("interpreter"))
-          ) {
+          if (holdPhrase) {
             requestHoldIntent();
           }
 
           // v4.98.0: call autopilot — the platform's own announcements drive
           // the session. Runs BEFORE the capture gate so phrases land between
           // calls too (idle ear wakes on the announcement's speech energy).
+          const lowTrans = transcript.toLowerCase();
           if (matchCallStartPhrase(lowTrans, loadAutopilotPhrases())) {
             if (tryAutopilotStart()) {
               shouldCaptureCaptionsRef.current = true;
