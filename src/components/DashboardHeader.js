@@ -489,6 +489,9 @@ const SessionControlsSticky = React.memo(({
             </span>
           </ElementHintTarget>
 
+          {/* Break lives off-call only — unmounted (not dimmed) in-call to
+              free a left-cluster slot at 900px. */}
+          {!isActive && (
           <ElementHintTarget
             elementId="header-break-btn"
             heading="Break"
@@ -501,9 +504,7 @@ const SessionControlsSticky = React.memo(({
               onClick={isBreakActive ? stopBreak : onStartBreak}
               style={{
                 color: '#fff',
-                opacity: isActive ? 0.35 : 1,
               }}
-              disabled={isActive}
               title={shouldBreakNudge ? '90+ min on call — take a break when you can' : 'BREAK'}
             >
               {showBreakLabel ? (
@@ -516,6 +517,7 @@ const SessionControlsSticky = React.memo(({
               )}
             </button>
           </ElementHintTarget>
+          )}
 
           {!isActive && onOpenGoalsView && (
             <ElementHintTarget
@@ -680,10 +682,10 @@ const SessionControlsSticky = React.memo(({
               <DailyTargetsChip dailyMinutes={dailyMinutes} monthlyMinutes={monthlyMinutes} workDays={workDays} breakMinutes={breakMinutes} ratePerMinute={ratePerMinute} goalMinutes={goalMinutes} onOpenGoalsView={onOpenGoalsView} />
             </div>
           ) : (
-            <div className="off-call-status-column" style={{ display: 'flex', flexDirection: 'column', gap: '0.15rem' }}>
-              {/* v4.119.0: status strip only mounts when there is something to say —
-                  zombie/error/connecting. A healthy idle center is just mic + targets,
-                  so the empty grid row can never push the TAB/VB strip down. */}
+            <div className="off-call-inline-row" id="off-call-inline-row">
+              {/* Status strip only mounts when there is something to say —
+                  zombie/error/connecting. Gap + mic + targets share ONE row so
+                  off-call center never stacks or pushes the TAB/VB strip down. */}
               {(isZombieCall || connectionState === 'error' || connectionState === 'connecting') && (
               <div className="call-micro-bar-center off-call-status-bar" title={offCallStatusLabel}>
                 <span

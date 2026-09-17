@@ -750,6 +750,18 @@ body {
   line-height: 1.1;
   white-space: nowrap;
 }
+/* HUD tidy: off-call center is ONE inline row (status + gap + mic + targets).
+   Never stacks — scrolls thin instead of pushing the transcript down. */
+.off-call-inline-row {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.35rem;
+  min-width: 0;
+  overflow-x: auto;
+  scrollbar-width: thin;
+  white-space: nowrap;
+}
 .call-micro-bar-center--compact .status-bar-timers {
   margin-top: 0.1rem;
 }
