@@ -695,9 +695,8 @@ const SessionControlsSticky = React.memo(({
                 </span>
               </div>
               <MicVerifyChip title="Client mic + last MIC VERIFY verdict — full panel in the idle pane below" />
-              <div className="off-call-targets-row">
-                <StickyTargetsChip dailyMinutes={dailyMinutes} monthlyMinutes={monthlyMinutes} workDays={workDays} breakMinutes={breakMinutes} ratePerMinute={ratePerMinute} goalMinutes={goalMinutes} onOpenGoalsView={onOpenGoalsView} />
-              </div>
+              {/* Targets chip lives in the audio strip (trailing slot) off-call —
+                  the sticky row keeps gap counters only. */}
             </div>
           )}
         </div>
@@ -3282,7 +3281,7 @@ ${isInDeficit ? `⚠️ DEFICIT: Behind pace by ${Math.round(monthlyDeficitMins)
         offCallStatusLabel={offCallStatusLabel}
         meterOnly={meterOnlyMode}
         onToggleMeterHud={toggleMeterHud}
-        trailingSlot={offCallScoreboardView ? renderInlineMetricsStrip(offCallMetricsExpanded) : null}
+        trailingSlot={offCallScoreboardView ? renderInlineMetricsStrip(offCallMetricsExpanded) : (!isActive ? <StickyTargetsChip dailyMinutes={Math.round(totalDailyMins)} monthlyMinutes={monthlyBanked} workDays={goalWorkDays} breakMinutes={Math.round(liveBreakMins)} ratePerMinute={RATE_PER_MINUTE} goalMinutes={stats.goalMinutes} onOpenGoalsView={onOpenGoalsView} /> : null)}
       />
 
       {headerCallCompact && (
