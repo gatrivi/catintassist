@@ -25,6 +25,48 @@ import { APP_VERSION } from '../constants/version';
 /** Newest first. Only the entry matching APP_VERSION is shown on load. */
 export const RELEASE_NOTES_CATALOG = [
   {
+    version: '4.130.2',
+    id: 'reattach-per-mode',
+    highlightElementIds: ['last-call-seal'],
+    es: {
+      title: '🟡 Re-attach habla tu idioma',
+      intro: 'El aviso de reconexión ahora nombra tu ruta real: VB-Cable, mic o tab.',
+      sections: [{ heading: 'Qué cambió', bullets: [
+        'Si usás VB-Cable, el cartel dice "re-attach VB-Cable" — nunca más "re-attach tab".',
+      ] }],
+    },
+    en: {
+      title: '🟡 Re-attach speaks your route',
+      intro: 'The reconnect banner now names your real route: VB-Cable, mic, or tab.',
+      sections: [{ heading: 'What changed', bullets: [
+        'On VB-Cable the banner says "re-attach VB-Cable" — never "re-attach tab" again.',
+      ] }],
+    },
+  },
+  {
+    version: '4.131.0',
+    id: 'studio-soundcheck-line',
+    highlightElementIds: ['sb-preflight-check'],
+    es: {
+      title: '🔇 Soundboard sin ruido',
+      intro: 'El estudio muestra una sola línea de estado; probar y arreglar vive en su propia vista.',
+      sections: [{ heading: 'Qué cambió', bullets: [
+        'Una línea: listo o qué falta (EN/ES) + botón Sound check →.',
+        'El chequeo de 3 pasos, volúmenes y bocina se mudaron al Greeting Editor.',
+        'Tus clips no se perdieron: viven por navegador — usa Download/Upload recordings para pasarlos entre live y localhost.',
+      ] }],
+    },
+    en: {
+      title: '🔇 Quieter soundboard',
+      intro: 'Studio is one status line; test + fix live in their own view.',
+      sections: [{ heading: 'What changed', bullets: [
+        'One line: ready or what is missing (EN/ES) + Sound check → button.',
+        'The 3-step check, volumes and beep moved to the Greeting Editor.',
+        'Clips are per-browser — use Download/Upload recordings to move them between live and localhost.',
+      ] }],
+    },
+  },
+  {
     version: '4.130.1',
     id: 'last-call-seal',
     highlightElementIds: ['last-call-seal'],

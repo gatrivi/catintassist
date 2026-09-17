@@ -2,6 +2,10 @@
 
 **Version source:** `src/constants/version.js` (must match `package.json` + top-right UI pill)
 
+## v4.130.2 - Re-attach banner names your route
+
+- Zombie banner reads the configured audio route: `re-attach VB-Cable` / `re-attach mic` / `re-attach tab` (was hardcoded tab).
+
 ## v4.130.1 - Last-call seal + outage is not call end
 
 - STOP/auto-end seals a read-only last-call transcript (IDB) — re-readable after refresh/update until next call, End Day, or 🗑.

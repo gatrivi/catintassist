@@ -1015,6 +1015,7 @@ const Dashboard = () => {
               connectionState={connectionState}
               audioAttached={audioAttached}
               micTestMode={micTestMode}
+              audioSourceMode={configuredAudioSourceMode}
               onClearAll={clearCaptions}
               onReconnect={handleRecovery}
               lastDataTime={lastDataTime}

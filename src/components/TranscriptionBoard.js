@@ -14,6 +14,7 @@ import {
 } from '../utils/sensitiveDataProtector';
 import { formatTranscriptForDisplay, collectCopyableEntities } from '../utils/transcriptFormat';
 import { composeCaptionTranslation } from '../utils/translationApplicator';
+import { reattachLabelForMode, resolveIdleAudioMode } from '../utils/offCallIdleMessages';
 import { ScrambleText } from './ScrambleText';
 import { StableLiveTranscriptText } from './StableLiveTranscriptText';
 import { buildCaptionContinuityKeys } from '../utils/stableLiveTranscript';
@@ -722,6 +723,7 @@ export const TranscriptionBoard = ({
   connectionState = 'disconnected',
   audioAttached = false,
   micTestMode = false,
+  audioSourceMode = 'tab',
 }) => {
   const bottomRef = useRef(null);
   const scrollAreaRef = useRef(null);
@@ -1207,7 +1209,7 @@ export const TranscriptionBoard = ({
             Click here or press the yellow 🟡 button above. Transcript and call timer are preserved — no need to Stop.
           </div>
           <div style={{ fontSize: '0.65rem', opacity: 0.85, textAlign: 'center' }}>
-            {ioRouteHint} · STT: {connectionState === 'connected' ? 'disconnected (re-attach tab)' : connectionState}
+            {ioRouteHint} · STT: {connectionState === 'connected' ? `disconnected (${reattachLabelForMode(resolveIdleAudioMode({ micTestMode, audioSourceMode }))})` : connectionState}
           </div>
           <div style={{ fontSize: '0.7rem', marginTop: '4px', textDecoration: 'underline' }}>[RE-ATTACH AUDIO]</div>
         </div>

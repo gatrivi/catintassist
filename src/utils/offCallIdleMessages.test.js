@@ -3,6 +3,7 @@ import {
   buildOffCallStatusLabel,
   checklistForMode,
   pickRotatingAdvice,
+  reattachLabelForMode,
   resolveIdleAudioMode,
   tipsForMode,
 } from './offCallIdleMessages';
@@ -19,6 +20,15 @@ describe('resolveIdleAudioMode', () => {
   });
   test('tab default', () => {
     expect(resolveIdleAudioMode({})).toBe('tab');
+  });
+});
+
+describe('reattachLabelForMode', () => {
+  test('VB users never see "re-attach tab"', () => {
+    expect(reattachLabelForMode('virtualCable')).toBe('re-attach VB-Cable');
+    expect(reattachLabelForMode('mic')).toBe('re-attach mic');
+    expect(reattachLabelForMode('tab')).toBe('re-attach tab');
+    expect(reattachLabelForMode()).toBe('re-attach tab');
   });
 });
 

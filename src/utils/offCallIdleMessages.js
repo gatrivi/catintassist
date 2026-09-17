@@ -20,6 +20,13 @@ export const resolveIdleAudioMode = ({
   return 'tab';
 };
 
+/** Zombie-banner wording matches the configured route — never "re-attach tab" on VB. */
+export const reattachLabelForMode = (mode = 'tab') => {
+  if (mode === 'virtualCable') return 're-attach VB-Cable';
+  if (mode === 'mic') return 're-attach mic';
+  return 're-attach tab';
+};
+
 const TIPS_COMMON = [
   'Pin key details so numbers stay visible while you wait.',
   'Settings → Language to change transcription pair (default EN↔ES).',

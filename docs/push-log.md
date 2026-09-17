@@ -66,3 +66,4 @@
 | 2026-09-16T20:56:37.566Z | 3a2e4b2 | v4.121.0 rooms, ranges, honest yellow - no more positional guessing |
 | 2026-09-17T18:01:25.581Z | 000641e | v4.129.1 connect = BREAK exact box (shared 26x26 ID rule) |
 | 2026-09-17T18:55:58.187Z | 3f92091 | v4.130.0 header buttons share chrome base - Connect/Hold same 26px box as STOP/ZAP |
+| 2026-09-17T19:19:57.558Z | 0177ded | v4.130.1 last-call seal - STOP seals readable transcript, DG-down never auto-ends, flush-on-hide |
