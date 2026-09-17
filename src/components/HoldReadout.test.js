@@ -7,7 +7,7 @@ describe('HoldReadout (HUD end of hold counter)', () => {
     expect(container).toBeEmptyDOMElement();
   });
 
-  it('shows H only while on hold (uniform 23px cell; time in aria)', () => {
+  it('shows H only while on hold (uniform icon cell; time in aria)', () => {
     render(<HoldReadout isHold holdSeconds={0} />);
     expect(screen.getByText('H')).toBeInTheDocument();
   });

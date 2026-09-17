@@ -414,10 +414,12 @@ body {
   display: none;
 }
 /* Belt-and-suspenders: IDs win over every width rule, boxes can never grow.
-   CONNECT = BREAK exact box — 26x26 icon-only, padding 0, radius 4px
-   (23px ≤1100px via vars, icon 14px). :not(.has-label) so the 90m BREAK
-   label can still expand to width:auto via the .has-label rule below. */
+   CONNECT = HOLD = BREAK exact box — 26x26 icon-only, padding 0, radius 4px
+   (23px ≤1100px via vars, icon 14px). All three share header-chrome-btn as
+   base so border/line-height match STOP/ZAP. :not(.has-label) so the 90m
+   BREAK label can still expand to width:auto via the .has-label rule below. */
 #header-connect-btn,
+#header-hold-btn,
 #header-break-btn:not(.has-label) {
   width: var(--btn-icon) !important;
   min-width: var(--btn-icon) !important;
@@ -5891,18 +5893,9 @@ body:has(.app-container[data-call-mode="true"]) .element-hint-panel {
 }
 
 
-.connect-interpret-btn:not(.connect-interpret-btn--idle) {
-  width: var(--btn-icon);
-  height: var(--btn-h);
-  min-width: var(--btn-icon);
-  min-height: var(--btn-h);
-  padding: 0;
-  border-radius: var(--btn-radius);
-  box-sizing: border-box;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-}
+/* v4.129.2: retired — sizing lives in ONE place (uniform left-cluster rule +
+   #header-connect-btn ID lock above). This duplicate (no !important) only
+   invited drift; header-chrome-btn is now the shared base. */
 
 .connect-interpret-btn--idle {
   width: 100%;

@@ -541,9 +541,8 @@ const SessionControlsSticky = React.memo(({
                 <button
                   id="header-hold-btn"
                   type="button"
-                  className={`btn-emoji header-accent-hold${isHold ? ' is-active' : ''}`}
+                  className={`header-chrome-btn header-accent-hold${isHold ? ' is-active' : ''}`}
                   onClick={() => setIsHold(!isHold)}
-                  style={{ fontSize: '0.65rem' }}
                   title={isHold ? `On hold — ${formatTime(holdSeconds)} elapsed. Tap to resume.` : 'Hold — pause without ending the call'}
                 >
                   {isHold ? <HoldReadout isHold holdSeconds={holdSeconds} /> : <PauseIcon size={14} />}

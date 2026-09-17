@@ -7,9 +7,10 @@ import { formatTime } from './HeaderWidgets';
 // Auto triggers live on the other end (holdState.js) and feed the same flag,
 // so this component never cares HOW hold started — manual or auto.
 //
-// Uniform-buttons rule: the button is one 23px cell like CAT/ZAP, so only
-// "H" fits — elapsed time lives in aria-label + title (screen readers and
-// hover), and the call micro-bar hold slot shows it live during calls.
+// Uniform-buttons rule: the button is one icon cell like CAT/ZAP
+// (26px, 23px ≤1100px via vars), so only "H" fits — elapsed time lives in
+// aria-label + title (screen readers and hover), and the call micro-bar
+// hold slot shows it live during calls.
 export const HoldReadout = ({ isHold, holdSeconds = 0 }) => {
   if (!isHold) return null;
   const elapsed = formatTime(holdSeconds);

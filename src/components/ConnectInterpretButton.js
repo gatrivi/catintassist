@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef } from 'react';
+import React, { useEffect, useRef } from 'react';
 import { BookmarkIcon, HeadsetIcon, MicIcon, RobotIcon } from './HeaderIcons';
 import { ElementHintTarget } from './ElementHint';
 import { resolveIdleAudioMode } from '../utils/offCallIdleMessages';
@@ -39,8 +39,6 @@ export const ConnectInterpretButton = ({
       if (timeoutRef.current) clearTimeout(timeoutRef.current);
     };
   }, []);
-
-  const style = useMemo(() => ({ color: '#fff' }), []);
 
   const handleClick = () => {
     if (disabled) return;
@@ -97,8 +95,7 @@ export const ConnectInterpretButton = ({
       data-provider-ready={providerReady ? '1' : '0'}
       onClick={handleClick}
       disabled={disabled}
-      className={`connect-interpret-btn btn-primaryish header-accent-connect ${size === 'idle' ? 'connect-interpret-btn--idle' : ''} ${flash || isPendingDoubleTap ? 'connect-interpret-flash' : ''}`}
-      style={style}
+      className={`connect-interpret-btn header-chrome-btn header-accent-connect ${size === 'idle' ? 'connect-interpret-btn--idle' : ''} ${flash || isPendingDoubleTap ? 'connect-interpret-flash' : ''}`}
       title={doubleTitle
         ? (requireDoubleTapIndicator
             ? `${label} — double-tap required (2nd click opens picker).`

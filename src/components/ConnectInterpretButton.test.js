@@ -34,6 +34,14 @@ describe('ConnectInterpretButton', () => {
     expect(onDouble).toHaveBeenCalledTimes(1);
   });
 
+  test('shares header-chrome-btn base so its box matches STOP/ZAP', () => {
+    render(<ConnectInterpretButton onSingle={() => {}} />);
+    const btn = screen.getByRole('button', { name: /connect/i });
+    expect(btn).toHaveClass('header-chrome-btn');
+    expect(btn).toHaveClass('header-accent-connect');
+    expect(btn).not.toHaveClass('btn-primaryish');
+  });
+
   test('shows mode icon + robot when provider ready', () => {
     const { rerender } = render(
       <ConnectInterpretButton audioMode="tab" providerReady label="Connect" />
