@@ -64,3 +64,4 @@
 | 2026-09-16T20:08:54.713Z | bb55e3e | v4.119.0 addresses survive - split-ZIP join, directional slot, whole-span chips |
 | 2026-09-16T20:33:01.979Z | af517e4 | v4.120.0 dictation words, magnitudes, NPI verbatim, vitals chips |
 | 2026-09-16T20:56:37.566Z | 3a2e4b2 | v4.121.0 rooms, ranges, honest yellow - no more positional guessing |
+| 2026-09-17T18:01:25.581Z | 000641e | v4.129.1 connect = BREAK exact box (shared 26x26 ID rule) |
