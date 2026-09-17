@@ -76,13 +76,6 @@ export default function SettingsPanel({
   const [section, setSection] = useState(initialSection);
   const [personalDock, setPersonalDock] = useState(isWellbeingDockEnabled);
   const [componentVisibility, setComponentVisibility] = useState(loadComponentVisibility);
-  const [showVersionBadge, setShowVersionBadge] = useState(() => {
-    try {
-      return localStorage.getItem('catint_show_version_badge_v1') !== '0';
-    } catch {
-      return true;
-    }
-  });
   const [themePalette, setThemePalette] = useState(loadThemePalette);
   const [themeStatus, setThemeStatus] = useState('');
   const [languagePair, setLanguagePair] = useState(loadLanguagePair);
@@ -541,38 +534,6 @@ export default function SettingsPanel({
             <div style={{ fontSize: 11, color: '#93c5fd', marginBottom: 4 }}>
               Component visibility [{APP_VERSION_LABEL}]
             </div>
-            <label
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: 8,
-                fontSize: 10,
-                color: '#93c5fd',
-                cursor: 'pointer',
-                marginBottom: 10,
-              }}
-            >
-              <input
-                type="checkbox"
-                checked={showVersionBadge}
-                onChange={(e) => {
-                  const enabled = e.target.checked;
-                  setShowVersionBadge(enabled);
-                  try {
-                    localStorage.setItem('catint_show_version_badge_v1', enabled ? '1' : '0');
-                  } catch (_) {}
-                  try {
-                    window.dispatchEvent(
-                      new CustomEvent('catint_show_version_badge_changed', {
-                        detail: { enabled },
-                      })
-                    );
-                  } catch (_) {}
-                }}
-                style={{ margin: 0 }}
-              />
-              Show build version badge (debug)
-            </label>
             <label
               className="hud-inspector-exempt"
               style={{

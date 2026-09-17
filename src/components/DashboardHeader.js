@@ -229,7 +229,6 @@ const SessionControlsSticky = React.memo(({
   isActive,
   isBreakActive,
   isZombieCall,
-  versionLabel = "",
   apiKeyMissing,
   vaultNeedsDecrypt,
   apiKeyMissingNoVault = false,
@@ -854,7 +853,6 @@ export const DashboardHeader = ({
   onStartCall,
   onStopAudio,
   onReconnectStream,
-  versionLabel = "",
   sttLanguage,
   onToggleLanguage,
   onRecovery,
@@ -3196,11 +3194,6 @@ ${isInDeficit ? `⚠️ DEFICIT: Behind pace by ${Math.round(monthlyDeficitMins)
   return (
     <>
     <header className={`dashboard-header glass-panel${headerMinimal ? ' dashboard-header--minimal' : ''}${headerCallCompact ? ' dashboard-header--call-compact' : ''}${isActive && callModeExpanded ? ' dashboard-header--call-expanded' : ''}${offCallScoreboardView ? ' dashboard-header--off-call-scoreboard' : ''}${offCallScoreboardView && offCallMetricsExpanded ? ' dashboard-header--metrics-expanded' : ''}${meterOnlyMode ? ' dashboard-header--meter-only' : ''}`} style={{ position: 'relative', zIndex: 100, ...(offCallScoreboardView && offCallMetricsExpanded ? { maxHeight: `${scoreboardMaxVh}vh` } : {}) }}>
-      {versionLabel && (
-        <div className="app-version-pill">
-          {versionLabel}
-        </div>
-      )}
       <SessionControlsSticky
         isActive={isActive}
         isBreakActive={isBreakActive}
@@ -3286,7 +3279,6 @@ ${isInDeficit ? `⚠️ DEFICIT: Behind pace by ${Math.round(monthlyDeficitMins)
           } catch (_) {}
         }}
         languagePairLabel={languagePairLabel}
-        versionLabel={versionLabel}
         offCallStatusLabel={offCallStatusLabel}
         meterOnly={meterOnlyMode}
         onToggleMeterHud={toggleMeterHud}

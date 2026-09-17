@@ -52,7 +52,6 @@ import {
 } from "./utils/deepgramRuntimeKey";
 import { getDeepgramBlockReason, getDeepgramSettingsPrompt } from "./utils/deepgramSettingsPrompt";
 import { applyThemePalette, loadThemePalette } from "./utils/themePalette";
-import { APP_VERSION_LABEL } from "./constants/version";
 import { setSttActive } from "./utils/routeDiagnostics";
 import { isWellbeingDockEnabled } from "./utils/wellbeingDock";
 import {
@@ -180,28 +179,12 @@ const Dashboard = () => {
     handleLater: onReleaseNotesLater,
     handleNever: onReleaseNotesNever,
   } = useReleaseNotes({ shellReady, isActive, isZombieCall });
-  const [showVersionBadge, setShowVersionBadge] = useState(() => {
-    try {
-      return localStorage.getItem('catint_show_version_badge_v1') !== '0';
-    } catch {
-      return true;
-    }
-  });
   useComponentVisibilityRefresh();
 
   useEffect(() => {
     setSttActive(connectionState === "connected");
     return () => setSttActive(false);
   }, [connectionState]);
-
-  useEffect(() => {
-    const onToggle = (e) => {
-      const enabled = e?.detail?.enabled;
-      if (typeof enabled === 'boolean') setShowVersionBadge(enabled);
-    };
-    window.addEventListener('catint_show_version_badge_changed', onToggle);
-    return () => window.removeEventListener('catint_show_version_badge_changed', onToggle);
-  }, []);
 
   const showWellbeingWidgets =
     showWellbeingDock &&
@@ -893,7 +876,6 @@ const Dashboard = () => {
       </a>
 
       <DashboardHeader
-        versionLabel={showVersionBadge ? APP_VERSION_LABEL : ''}
         onAttachAudio={() => handleAttachAudio(false)}
         onAttachAudioFresh={() => handleAttachAudio(true)}
         onStartCall={() => handleStartCall(false)}
@@ -1043,8 +1025,11 @@ const Dashboard = () => {
         </main>
       )}
 
+      {/* v4.126.0: never offer a reload mid-call — location.reload() kills
+          the tab stream + DG sockets and the re-attach picker loop reads as
+          "hanging". The flag persists, so the banner returns after STOP. */}
       <UpdateAppBanner
-        show={updateAvailable && shellReady && !blockSecondaryChrome && isAppGuideDone() && hasConfiguredDeepgramKey()}
+        show={updateAvailable && shellReady && !blockSecondaryChrome && isAppGuideDone() && hasConfiguredDeepgramKey() && !isActive && !isZombieCall && !isBreakActive}
         latestVersionToken={latestVersionToken}
         onDismiss={dismissUpdate}
         onUpdate={reloadToUpdate}
