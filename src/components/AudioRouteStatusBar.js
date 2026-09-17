@@ -437,9 +437,10 @@ export const AudioRouteStatusBar = ({
                   className={`audio-route-soundboard-btn${soundboardOpen ? ' is-open' : ''}`}
                   onClick={onOpenSoundboard}
                   aria-pressed={soundboardOpen}
+                  aria-label={soundboardOpen ? 'Hide Soundboard Studio' : 'Soundboard Studio - record greetings, health check, route test'}
                   title={soundboardOpen ? 'Hide Soundboard Studio' : 'Soundboard Studio - record greetings, health check, route test'}
                 >
-                  {soundboardOpen ? 'Soundboard ✓' : 'Soundboard'}
+                  <span aria-hidden="true" style={{ fontSize: '0.8rem', lineHeight: 1 }}>🎛</span>
                 </button>
               </ElementHintTarget>
             )}
@@ -457,9 +458,10 @@ export const AudioRouteStatusBar = ({
                   className={`audio-route-soundboard-btn${greetingEditorOpen ? ' is-open' : ''}`}
                   onClick={() => onOpenGreetingEditor()}
                   aria-pressed={greetingEditorOpen}
+                  aria-label="Greeting Editor - focused one-greeting workspace (waveform, health, caller test)"
                   title="Greeting Editor - focused one-greeting workspace (waveform, health, caller test)"
                 >
-                  {greetingEditorOpen ? 'Editor ✓' : '✎ Editor'}
+                  <span aria-hidden="true" style={{ fontSize: '0.8rem', lineHeight: 1 }}>✎</span>
                 </button>
               </ElementHintTarget>
             )}

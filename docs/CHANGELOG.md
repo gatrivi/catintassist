@@ -2,6 +2,16 @@
 
 **Version source:** `src/constants/version.js` (must match `package.json` + top-right UI pill)
 
+## v4.129.1 - Connect = BREAK exact box
+
+- `#header-connect-btn` + `#header-break-btn:not(.has-label)` share one ID rule: 26×26, padding 0, radius 4px (23px ≤1100px via vars); 90m BREAK label still expands via `.has-label`.
+- Both off-call only (STOP replaces Connect in-call); icon 14px both.
+
+## v4.129.0 - Small buttons, slim row
+
+- Soundboard (🎛) + Editor (✎) are 26px squares like BREAK; Connect forced to exact 26×26 box + glow without scale.
+- Full name stays in the tooltip.
+
 ## v4.128.0 - Greetings play once (sink-only caller audio)
 
 - Caller-bound audio (on-call strip fires, Studio caller sends, editor caller tests, TTS) is sink-only by default — the parallel local copy + the Voicemeeter A1→cable loop made every greeting sound twice.

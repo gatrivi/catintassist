@@ -413,11 +413,25 @@ body {
 #header-connect-btn > span > svg + svg {
   display: none;
 }
-/* Belt-and-suspenders: ID wins over every width rule, box can never grow. */
-#header-connect-btn {
+/* Belt-and-suspenders: IDs win over every width rule, boxes can never grow.
+   CONNECT = BREAK exact box — 26x26 icon-only, padding 0, radius 4px
+   (23px ≤1100px via vars, icon 14px). :not(.has-label) so the 90m BREAK
+   label can still expand to width:auto via the .has-label rule below. */
+#header-connect-btn,
+#header-break-btn:not(.has-label) {
   width: var(--btn-icon) !important;
   min-width: var(--btn-icon) !important;
   max-width: var(--btn-icon) !important;
+  height: var(--btn-h) !important;
+  min-height: var(--btn-h) !important;
+  max-height: var(--btn-h) !important;
+  padding: 0 !important;
+  border-radius: var(--btn-radius) !important;
+  display: inline-flex !important;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  box-sizing: border-box;
   overflow: hidden;
 }
 
@@ -3262,18 +3276,20 @@ body {
   cursor: pointer;
   font-size: var(--btn-font-size);
   font-weight: 900;
-  padding: 0 var(--btn-px);
+  /* v4.129.0: BREAK-size icon square (26px) — was 12ch text pill. */
+  width: var(--btn-icon) !important;
+  min-width: var(--btn-icon) !important;
+  max-width: var(--btn-icon) !important;
+  padding: 0 !important;
   min-height: var(--btn-h);
   height: var(--btn-h);
-  /* Fixed stable width: open/closed labels differ ("Soundboard" vs
-     "Soundboard ✓") — the row must not jump between states. */
-  min-width: 12ch;
   justify-content: center;
   display: inline-flex;
   align-items: center;
   white-space: nowrap;
   flex-shrink: 0;
   box-sizing: border-box;
+  overflow: hidden;
 }
 
 .audio-route-soundboard-btn:hover {
@@ -4341,7 +4357,7 @@ body:has(.app-container[data-call-mode="true"]) .element-hint-panel {
   }
   50% {
     box-shadow: 0 0 18px rgba(16, 185, 129, 0.45), 0 0 38px rgba(16, 185, 129, 0.18);
-    transform: scale(1.03);
+    transform: scale(1);
     border-color: rgba(16, 185, 129, 0.9);
   }
 }

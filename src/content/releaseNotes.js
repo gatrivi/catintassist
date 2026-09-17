@@ -25,6 +25,50 @@ import { APP_VERSION } from '../constants/version';
 /** Newest first. Only the entry matching APP_VERSION is shown on load. */
 export const RELEASE_NOTES_CATALOG = [
   {
+    version: '4.129.1',
+    id: 'connect-equals-break-box',
+    highlightElementIds: ['header-connect-btn', 'header-break-btn'],
+    es: {
+      title: '🟰 Connect igual que BREAK',
+      intro: 'Connect ahora comparte la caja exacta de BREAK: 26×26.',
+      sections: [{ heading: 'Qué cambió', bullets: [
+        'Connect y BREAK usan la misma regla: 26×26, padding 0, radio 4px (23px ≤1100px).',
+        'La etiqueta BREAK de 90m sigue expandiéndose; Connect nunca crece.',
+      ] }],
+    },
+    en: {
+      title: '🟰 Connect = BREAK',
+      intro: 'Connect now shares BREAK exact box: 26×26.',
+      sections: [{ heading: 'What changed', bullets: [
+        'Connect + BREAK share one rule: 26×26, padding 0, radius 4px (23px ≤1100px).',
+        '90m BREAK label still expands; Connect never grows.',
+      ] }],
+    },
+  },
+  {
+    version: '4.129.0',
+    id: 'break-size-soundboard-buttons',
+    highlightElementIds: ['audio-route-soundboard-btn', 'header-break-btn', 'header-connect-btn'],
+    es: {
+      title: '🎛 Botones chicos, fila fina',
+      intro: 'Soundboard, Editor y Connect ya miden lo mismo que BREAK.',
+      sections: [{ heading: 'Qué cambió', bullets: [
+        'Soundboard (🎛) y Editor (✎) ahora son cuadrados de 26px como BREAK.',
+        'Connect forzado a caja exacta 26×26 + glow sin escala (el flash lo agrandaba 3%).',
+        'Nombre completo sigue en el tooltip.',
+      ] }],
+    },
+    en: {
+      title: '🎛 Small buttons, slim row',
+      intro: 'Soundboard + Editor + Connect now match BREAK size.',
+      sections: [{ heading: 'What changed', bullets: [
+        'Soundboard (🎛) + Editor (✎) are 26px squares like BREAK.',
+        'Connect forced to exact 26×26 box + glow without scale (flash grew it 3%).',
+        'Full name stays in the tooltip.',
+      ] }],
+    },
+  },
+  {
     version: '4.128.0',
     id: 'sink-only-caller-audio',
     highlightElementIds: ['header-connect-btn'],
