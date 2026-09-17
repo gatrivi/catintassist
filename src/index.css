@@ -736,6 +736,20 @@ body {
   color: #fdba74;
   text-shadow: 0 0 6px rgba(253, 186, 116, 0.3);
 }
+/* v4.124.0: OFF-call gap + LAST call counters — one centered mono line,
+   same footprint as the status-bar timers (fits the 32px bar at 900px). */
+.off-call-gap-row {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.35rem;
+  min-width: 0;
+  font-family: var(--font-mono);
+  font-size: 0.62rem;
+  font-weight: 900;
+  line-height: 1.1;
+  white-space: nowrap;
+}
 .call-micro-bar-center--compact .status-bar-timers {
   margin-top: 0.1rem;
 }

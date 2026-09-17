@@ -142,7 +142,7 @@ export const SessionProvider = ({ children }) => {
   // from the previous day, so yesterday's off-call tail banked into TODAY
   // (the impossible "893m OFF CALL"). A day tag wipes them on the first load
   // of a new day; startSession re-checks for the open-across-midnight case.
-  const LIVE_COUNTER_KEYS = ['catint_s_sec', 'catint_a_sec', 'catint_b_sec'];
+  const LIVE_COUNTER_KEYS = ['catint_s_sec', 'catint_a_sec', 'catint_b_sec', 'catint_last_call_secs', 'catint_last_call_ended_at'];
   const COUNTERS_DAY_KEY = 'catint_counters_day';
   const wipeStaleLiveCounters = () => {
     try {
@@ -496,6 +496,12 @@ export const SessionProvider = ({ children }) => {
 
   // Post-Call Summary: extract key data when a call ends
   const [lastCallSummary, setLastCallSummary] = useState(null);
+  // v4.124.0: last-call wall-clock + end stamp — powers the OFF-call
+  // "how long was the last call / how long off call" HUD counters.
+  const [lastCallSeconds, setLastCallSeconds] = useState(() => Number(localStorage.getItem('catint_last_call_secs')) || 0);
+  const [lastCallEndedAt, setLastCallEndedAt] = useState(() => Number(localStorage.getItem('catint_last_call_ended_at')) || 0);
+  useEffect(() => { safeLocalStorageSet('catint_last_call_secs', lastCallSeconds); }, [lastCallSeconds]);
+  useEffect(() => { safeLocalStorageSet('catint_last_call_ended_at', lastCallEndedAt); }, [lastCallEndedAt]);
 
   const extractCallSummary = (callCaptions) => {
     if (!callCaptions || callCaptions.length === 0) return null;
@@ -756,6 +762,8 @@ export const SessionProvider = ({ children }) => {
       } catch (_) {}
       setAvailSeconds(0);
       setBreakSeconds(0);
+      setLastCallSeconds(0);
+      setLastCallEndedAt(0);
     }
 
     commitAvailTime();
@@ -958,6 +966,14 @@ export const SessionProvider = ({ children }) => {
       if (onCallEnded) onCallEnded(minutesToAdd);
       playCoinStack(minutesToAdd);
     }
+    // v4.124.0: snapshot the finished call for the OFF-call HUD counters
+    // (wall-clock length + end stamp) BEFORE zeroing the live timer.
+    const finishedCallSecs = Math.max(0, Math.floor(sessionSeconds || 0));
+    const finishedCallAt = Date.now();
+    setLastCallSeconds(finishedCallSecs);
+    setLastCallEndedAt(finishedCallAt);
+    safeLocalStorageSet('catint_last_call_secs', finishedCallSecs);
+    safeLocalStorageSet('catint_last_call_ended_at', finishedCallAt);
     // v4.99.2: the call is banked — zero the live timer so a later zombie
     // re-attach (startSession(true)) can never bank the same call twice.
     setSessionSeconds(0);
@@ -1125,6 +1141,8 @@ export const SessionProvider = ({ children }) => {
         setAvailSeconds(0);
         setBreakSeconds(0);
         setSessionSeconds(0);
+        setLastCallSeconds(0);
+        setLastCallEndedAt(0);
       } catch (e) {
         console.warn('[Session] Day rollover failed:', e);
       }
@@ -1350,6 +1368,8 @@ export const SessionProvider = ({ children }) => {
     setCallFocusMode,
     lastCallSummary,
     setLastCallSummary,
+    lastCallSeconds,
+    lastCallEndedAt,
     requestHoldIntent,
     getCompensatedLogOff,
     minutesSinceLastBreak,

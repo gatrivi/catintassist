@@ -25,6 +25,29 @@ import { APP_VERSION } from '../constants/version';
 /** Newest first. Only the entry matching APP_VERSION is shown on load. */
 export const RELEASE_NOTES_CATALOG = [
   {
+    version: '4.124.0',
+    id: 'on-off-last-timers',
+    highlightElementIds: ['off-call-gap-row'],
+    es: {
+      title: '⏱ OFF y LAST siempre visibles',
+      intro: 'Fuera de llamada ves cuánto llevas libre y cuánto duró la última.',
+      sections: [{ heading: 'Qué cambió', bullets: [
+        'Fuera de llamada: 🚪 OFF en vivo · 📞 LAST (duración última llamada) · 📞/📡 del día.',
+        'En llamada: el cronómetro lleva 📞 ON adelante.',
+        'Los totales del día viajan en la misma fila (a ≤1100px el CSS los esconde).',
+      ] }],
+    },
+    en: {
+      title: '⏱ OFF and LAST always visible',
+      intro: 'Off-call you see time since the last call and how long it was.',
+      sections: [{ heading: 'What changed', bullets: [
+        'Off-call: live 🚪 OFF · 📞 LAST (last call length) · day 📞/📡.',
+        'On-call: live timer carries a 📞 ON prefix.',
+        'Day totals ride the same row (CSS hides them at ≤1100px).',
+      ] }],
+    },
+  },
+  {
     version: '4.123.0',
     id: 'auto-start-any-speech',
     highlightElementIds: ['main-transcript'],
