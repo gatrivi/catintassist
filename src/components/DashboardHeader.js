@@ -1975,6 +1975,20 @@ export const DashboardHeader = ({
     />
   );
 
+  // v4.131.0: the 💵⏱☕ chip off-call — one definition for every mount in this
+  // component (scoreboard trailing slot + non-scoreboard views + meter-only HUD).
+  const renderTargetsChip = () => (
+    <StickyTargetsChip
+      dailyMinutes={Math.round(totalDailyMins)}
+      monthlyMinutes={monthlyBanked}
+      workDays={goalWorkDays}
+      breakMinutes={Math.round(liveBreakMins)}
+      ratePerMinute={RATE_PER_MINUTE}
+      goalMinutes={stats.goalMinutes}
+      onOpenGoalsView={onOpenGoalsView}
+    />
+  );
+
   const renderOffCallMetricsBars = () => (
     <HeaderMetricsStrip
       {...stripMetrics}
@@ -3191,6 +3205,11 @@ ${isInDeficit ? `⚠️ DEFICIT: Behind pace by ${Math.round(monthlyDeficitMins)
 
   return (
     <>
+    {/* v4.131.0: the off-call scoreboard is off-call chrome too — its audio chips
+        row carries the targets chip WITH the inline metrics strip. 3884ce5 moved
+        💵⏱☕ into that trailing slot but left the scoreboard branch strip-only,
+        which hid it in the default off-call view. Chip first, strip last: the
+        strip keeps its margin-left:auto right-edge anchor. */}
     <header className={`dashboard-header glass-panel${headerMinimal ? ' dashboard-header--minimal' : ''}${headerCallCompact ? ' dashboard-header--call-compact' : ''}${isActive && callModeExpanded ? ' dashboard-header--call-expanded' : ''}${offCallScoreboardView ? ' dashboard-header--off-call-scoreboard' : ''}${offCallScoreboardView && offCallMetricsExpanded ? ' dashboard-header--metrics-expanded' : ''}${meterOnlyMode ? ' dashboard-header--meter-only' : ''}`} style={{ position: 'relative', zIndex: 100, ...(offCallScoreboardView && offCallMetricsExpanded ? { maxHeight: `${scoreboardMaxVh}vh` } : {}) }}>
       <SessionControlsSticky
         isActive={isActive}
@@ -3280,7 +3299,7 @@ ${isInDeficit ? `⚠️ DEFICIT: Behind pace by ${Math.round(monthlyDeficitMins)
         offCallStatusLabel={offCallStatusLabel}
         meterOnly={meterOnlyMode}
         onToggleMeterHud={toggleMeterHud}
-        trailingSlot={offCallScoreboardView ? renderInlineMetricsStrip(offCallMetricsExpanded) : (!isActive ? <StickyTargetsChip dailyMinutes={Math.round(totalDailyMins)} monthlyMinutes={monthlyBanked} workDays={goalWorkDays} breakMinutes={Math.round(liveBreakMins)} ratePerMinute={RATE_PER_MINUTE} goalMinutes={stats.goalMinutes} onOpenGoalsView={onOpenGoalsView} /> : null)}
+        trailingSlot={(offCallScoreboardView ? (<>{renderTargetsChip()}{renderInlineMetricsStrip(offCallMetricsExpanded)}</>) : (!isActive ? renderTargetsChip() : null))}
       />
 
       {headerCallCompact && (
@@ -3305,7 +3324,7 @@ ${isInDeficit ? `⚠️ DEFICIT: Behind pace by ${Math.round(monthlyDeficitMins)
           </div>
           {/* v4.88.5: meter-only HUD carries the daily targets beside the timeline */}
           {meterOnlyMode && (
-            <StickyTargetsChip dailyMinutes={Math.round(totalDailyMins)} monthlyMinutes={monthlyBanked} workDays={goalWorkDays} breakMinutes={Math.round(liveBreakMins)} ratePerMinute={RATE_PER_MINUTE} goalMinutes={stats.goalMinutes} onOpenGoalsView={onOpenGoalsView} />
+            renderTargetsChip()
           )}
         </div>
       )}
