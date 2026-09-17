@@ -284,6 +284,13 @@ body {
 .call-micro-bar-row > * {
   padding: 4px;
 }
+/* HUD tidy B: the sticky row keeps a 32px budget — no 4px breathing room
+   inside its own rows (metrics/audio strips above keep theirs). */
+.session-controls-sticky-row .call-micro-bar-row > *,
+.session-controls-sticky-row .off-call-targets-row > *,
+.session-controls-sticky-row .off-call-inline-row > * {
+  padding: 0;
+}
 
 /* v4.91.0: goal meter is its own row below the buttons, never an overlay. */
 .dashboard-header--call-compact .compact-call-goal-meter {

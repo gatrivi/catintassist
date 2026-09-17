@@ -125,8 +125,29 @@ const CelebrationParticles = ({ type, label, coins, onDismiss }) => {
   );
 };
 
-const StateIndicators = ({ state, breakMinutes, isZombie, silenceCount }) => {
-  const showSilenceTimer = silenceCount > 30;
+/* HUD tidy B: single source for the ON-call live timer (expanded + compact
+   micro-bar mounted the same markup twice) and for the targets chip
+   (3 exclusive branches: in-call, off-call, meter-only). */
+const MicroBarTimer = ({ showConnecting, connectionMessage, sessionSeconds }) => (
+  <span className="call-micro-bar-slot call-micro-bar-timer" title={`ON CALL live — ${formatTime(sessionSeconds)}`}>
+    {showConnecting ? (
+      <span style={{ fontSize: '0.68rem', fontWeight: 900, color: '#f59e0b' }}>
+        {connectionMessage || 'Connecting…'}
+      </span>
+    ) : (
+      <span aria-label={`On call live ${formatTime(sessionSeconds)}`}>
+        <span aria-hidden="true">📞 </span>
+        <SlotMicroValue text={formatTime(sessionSeconds)} />
+      </span>
+    )}
+  </span>
+);
+
+const StickyTargetsChip = ({ dailyMinutes, monthlyMinutes, workDays, breakMinutes, ratePerMinute, goalMinutes, onOpenGoalsView }) => (
+  <DailyTargetsChip dailyMinutes={dailyMinutes} monthlyMinutes={monthlyMinutes} workDays={workDays} breakMinutes={breakMinutes} ratePerMinute={ratePerMinute} goalMinutes={goalMinutes} onOpenGoalsView={onOpenGoalsView} />
+);
+
+const StateIndicators = ({ state, breakMinutes, isZombie, silenceCount }) => {  const showSilenceTimer = silenceCount > 30;
   if (state === 'call') {
     return (
       <div className="emoji-money" style={{ fontSize: '1.1rem', marginRight: '0.2rem' }}>💰</div>
@@ -611,18 +632,7 @@ const SessionControlsSticky = React.memo(({
                 {formatTime(Math.max(0, Math.floor((Date.now() - lastEnglishActivityTime) / 1000)))}
               </span>
 
-              <span className="call-micro-bar-slot call-micro-bar-timer" title={`ON CALL live — ${formatTime(sessionSeconds)}`}>
-                {showConnecting ? (
-                  <span style={{ fontSize: '0.68rem', fontWeight: 900, color: '#f59e0b' }}>
-                    {connectionMessage || 'Connecting…'}
-                  </span>
-                ) : (
-                  <span aria-label={`On call live ${formatTime(sessionSeconds)}`}>
-                    <span aria-hidden="true">📞 </span>
-                    <SlotMicroValue text={formatTime(sessionSeconds)} />
-                  </span>
-                )}
-              </span>
+              <MicroBarTimer showConnecting={showConnecting} connectionMessage={connectionMessage} sessionSeconds={sessionSeconds} />
 
               {!showConnecting && (
                 <span className="call-micro-bar-slot call-micro-bar-earnings">
@@ -665,21 +675,10 @@ const SessionControlsSticky = React.memo(({
             </div>
             ) : (
             <div className="call-micro-bar-center call-micro-bar-center--compact" title={`ON CALL live — ${formatTime(sessionSeconds)}`}>
-              <span className="call-micro-bar-slot call-micro-bar-timer">
-                {showConnecting ? (
-                  <span style={{ fontSize: '0.68rem', fontWeight: 900, color: '#f59e0b' }}>
-                    {connectionMessage || 'Connecting…'}
-                  </span>
-                ) : (
-                  <span aria-label={`On call live ${formatTime(sessionSeconds)}`}>
-                    <span aria-hidden="true">📞 </span>
-                    <SlotMicroValue text={formatTime(sessionSeconds)} />
-                  </span>
-                )}
-              </span>
+              <MicroBarTimer showConnecting={showConnecting} connectionMessage={connectionMessage} sessionSeconds={sessionSeconds} />
             </div>
             )}
-              <DailyTargetsChip dailyMinutes={dailyMinutes} monthlyMinutes={monthlyMinutes} workDays={workDays} breakMinutes={breakMinutes} ratePerMinute={ratePerMinute} goalMinutes={goalMinutes} onOpenGoalsView={onOpenGoalsView} />
+              <StickyTargetsChip dailyMinutes={dailyMinutes} monthlyMinutes={monthlyMinutes} workDays={workDays} breakMinutes={breakMinutes} ratePerMinute={ratePerMinute} goalMinutes={goalMinutes} onOpenGoalsView={onOpenGoalsView} />
             </div>
           ) : (
             <div className="off-call-inline-row" id="off-call-inline-row">
@@ -745,7 +744,7 @@ const SessionControlsSticky = React.memo(({
               </div>
               <MicVerifyChip title="Client mic + last MIC VERIFY verdict — full panel in the idle pane below" />
               <div className="off-call-targets-row">
-                <DailyTargetsChip dailyMinutes={dailyMinutes} monthlyMinutes={monthlyMinutes} workDays={workDays} breakMinutes={breakMinutes} ratePerMinute={ratePerMinute} goalMinutes={goalMinutes} onOpenGoalsView={onOpenGoalsView} />
+                <StickyTargetsChip dailyMinutes={dailyMinutes} monthlyMinutes={monthlyMinutes} workDays={workDays} breakMinutes={breakMinutes} ratePerMinute={ratePerMinute} goalMinutes={goalMinutes} onOpenGoalsView={onOpenGoalsView} />
               </div>
             </div>
           )}
@@ -3397,7 +3396,7 @@ ${isInDeficit ? `⚠️ DEFICIT: Behind pace by ${Math.round(monthlyDeficitMins)
           </div>
           {/* v4.88.5: meter-only HUD carries the daily targets beside the timeline */}
           {meterOnlyMode && (
-            <DailyTargetsChip dailyMinutes={Math.round(totalDailyMins)} monthlyMinutes={monthlyBanked} workDays={goalWorkDays} breakMinutes={Math.round(liveBreakMins)} ratePerMinute={RATE_PER_MINUTE} goalMinutes={stats.goalMinutes} onOpenGoalsView={onOpenGoalsView} />
+            <StickyTargetsChip dailyMinutes={Math.round(totalDailyMins)} monthlyMinutes={monthlyBanked} workDays={goalWorkDays} breakMinutes={Math.round(liveBreakMins)} ratePerMinute={RATE_PER_MINUTE} goalMinutes={stats.goalMinutes} onOpenGoalsView={onOpenGoalsView} />
           )}
         </div>
       )}
