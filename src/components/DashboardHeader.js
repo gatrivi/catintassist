@@ -25,6 +25,7 @@ import {
   ZapIcon,
 } from './HeaderIcons';
 import { buildHeaderStripMetrics } from '../utils/headerMetrics';
+import { isLastCallValidToday, offCallGapSeconds } from '../utils/callTimers';
 import { MicVerifyChip } from './MicVerifyChip';
 import { computeCatchUp, formatCatchUpLine, formatCatchUpVerdict } from '../utils/catchUpPlan';
 import {
@@ -251,6 +252,7 @@ const SessionControlsSticky = React.memo(({
   handleStop,
   isHold,
   setIsHold,
+  holdSeconds = 0,
   disableZap,
   isZapping,
   onReconnectStream,
@@ -262,6 +264,10 @@ const SessionControlsSticky = React.memo(({
   sessionArsLive,
   totalOffCallSeconds = 0,
   totalOnCallSeconds = 0,
+  // v4.124.0: last-call snapshot + live avail — powers OFF 🚪/📞LAST counters
+  lastCallSeconds = 0,
+  lastCallEndedAt = 0,
+  availSeconds = 0,
   // v4.87.0: daily $1200-goal chip in status bar
   dailyMinutes = 0,
   monthlyMinutes = 0,
@@ -313,6 +319,11 @@ const SessionControlsSticky = React.memo(({
 }) => {
   const showConnecting = isActive && connectionState !== 'connected';
   const slackText = `SLACK ${formatTime(silenceCount)}`;
+  // v4.124.0: OFF-call gap + LAST call counters. This sticky bar already
+  // re-renders every second (sessionSeconds on-call, availSeconds off-call),
+  // so Date.now() here ticks live with zero extra timers.
+  const lastCallValidToday = isLastCallValidToday(lastCallEndedAt || 0);
+  const offCallGapSecs = offCallGapSeconds({ isActive, lastCallEndedAt: lastCallEndedAt || 0 });
   const [sttLatencyMode, setSttLatencyMode] = useState(loadSttLatencyMode);
 
   useEffect(() => {
@@ -468,12 +479,12 @@ const SessionControlsSticky = React.memo(({
               <span
                 id="header-daily-income"
                 style={{ color: '#fb923c', fontWeight: 800, fontSize: '0.85rem' }}
-                title="Earned today (live) — v4.87.0"
+                title="Earned today in AR$ (live) — v4.87.0"
               >
-                ${Math.round(dailyIncomeArs).toLocaleString('en-US')}
+                AR${Math.round(dailyIncomeArs).toLocaleString('en-US')}
               </span>
-              <span style={{ color: '#34d399' }}>📞{Math.round(onCallMins)}m</span>
-              <span style={{ color: '#fbbf24' }}>📡{Math.round(offCallMins)}m</span>
+              <span id="header-oncall-mins" style={{ color: '#34d399' }}>📞{Math.round(onCallMins)}m</span>
+              <span id="header-offcall-mins" style={{ color: '#fbbf24' }}>📡{Math.round(offCallMins)}m</span>
             </span>
           </ElementHintTarget>
 
@@ -540,8 +551,9 @@ const SessionControlsSticky = React.memo(({
                   className={`btn-emoji header-accent-hold${isHold ? ' is-active' : ''}`}
                   onClick={() => setIsHold(!isHold)}
                   style={{ fontSize: '0.65rem' }}
+                  title={isHold ? `On hold — ${formatTime(holdSeconds)} elapsed. Tap to resume.` : 'Hold — pause without ending the call'}
                 >
-                  {isHold ? 'H' : <PauseIcon size={14} />}
+                  {isHold ? `H ${formatTime(holdSeconds)}` : <PauseIcon size={14} />}
                 </button>
               </ElementHintTarget>
               <ElementHintTarget
@@ -596,13 +608,16 @@ const SessionControlsSticky = React.memo(({
                 {formatTime(Math.max(0, Math.floor((Date.now() - lastEnglishActivityTime) / 1000)))}
               </span>
 
-              <span className="call-micro-bar-slot call-micro-bar-timer">
+              <span className="call-micro-bar-slot call-micro-bar-timer" title={`ON CALL live — ${formatTime(sessionSeconds)}`}>
                 {showConnecting ? (
                   <span style={{ fontSize: '0.68rem', fontWeight: 900, color: '#f59e0b' }}>
                     {connectionMessage || 'Connecting…'}
                   </span>
                 ) : (
-                  <SlotMicroValue text={formatTime(sessionSeconds)} />
+                  <span aria-label={`On call live ${formatTime(sessionSeconds)}`}>
+                    <span aria-hidden="true">📞 </span>
+                    <SlotMicroValue text={formatTime(sessionSeconds)} />
+                  </span>
                 )}
               </span>
 
@@ -646,14 +661,17 @@ const SessionControlsSticky = React.memo(({
               </span>
             </div>
             ) : (
-            <div className="call-micro-bar-center call-micro-bar-center--compact" title="Call timer">
+            <div className="call-micro-bar-center call-micro-bar-center--compact" title={`ON CALL live — ${formatTime(sessionSeconds)}`}>
               <span className="call-micro-bar-slot call-micro-bar-timer">
                 {showConnecting ? (
                   <span style={{ fontSize: '0.68rem', fontWeight: 900, color: '#f59e0b' }}>
                     {connectionMessage || 'Connecting…'}
                   </span>
                 ) : (
-                  <SlotMicroValue text={formatTime(sessionSeconds)} />
+                  <span aria-label={`On call live ${formatTime(sessionSeconds)}`}>
+                    <span aria-hidden="true">📞 </span>
+                    <SlotMicroValue text={formatTime(sessionSeconds)} />
+                  </span>
                 )}
               </span>
             </div>
@@ -662,6 +680,10 @@ const SessionControlsSticky = React.memo(({
             </div>
           ) : (
             <div className="off-call-status-column" style={{ display: 'flex', flexDirection: 'column', gap: '0.15rem' }}>
+              {/* v4.119.0: status strip only mounts when there is something to say —
+                  zombie/error/connecting. A healthy idle center is just mic + targets,
+                  so the empty grid row can never push the TAB/VB strip down. */}
+              {(isZombieCall || connectionState === 'error' || connectionState === 'connecting') && (
               <div className="call-micro-bar-center off-call-status-bar" title={offCallStatusLabel}>
                 <span
                   className="call-micro-bar-slot call-micro-bar-status"
@@ -673,23 +695,52 @@ const SessionControlsSticky = React.memo(({
                       ? '#fbbf24'
                       : connectionState === 'error'
                         ? '#f87171'
-                        : connectionState === 'connecting'
-                          ? '#fbbf24'
-                          : audioAttached
-                            ? '#34d399'
-                            : isBreakActive
-                              ? '#fb923c'
-                              : '#9dffed',
+                        : '#fbbf24',
                   }}
                 >
-                  {/* v4.89.3: daily targets chip fills the idle center (moved from I/O strip). */}
-                  {(isZombieCall || connectionState === 'error' || connectionState === 'connecting')
-                    ? offCallStatusLabel
-                    : null}
+                  {offCallStatusLabel}
                 </span>
-                {/* v4.97.0: one-glance mic status off-call — the pre-avail gate */}
-                <MicVerifyChip title="Client mic + last MIC VERIFY verdict — full panel in the idle pane below" />
               </div>
+              )}
+              {/* v4.97.0: one-glance mic status off-call — the pre-avail gate */}
+              {/* v4.124.0: OFF-call gap + LAST call counters — one line, ticks live
+                  (gap since last call end; live avail before the first call). */}
+              <div
+                className="off-call-gap-row"
+                id="off-call-gap-row"
+                title={lastCallValidToday
+                  ? `Off call for ${formatTime(offCallGapSecs)} — last call was ${formatTime(lastCallSeconds || 0)}`
+                  : 'Off call right now (live) — LAST appears after your first call today'}
+                aria-label={lastCallValidToday
+                  ? `Off call for ${formatTime(offCallGapSecs)}, last call was ${formatTime(lastCallSeconds || 0)}`
+                  : `Off call live ${formatTime(availSeconds || 0)}, no call banked yet today`}
+              >
+                <span className="status-bar-timer status-bar-timer--off-call">
+                  <span className="status-bar-timer-icon" aria-hidden>🚪</span>
+                  <span>OFF&nbsp;</span>
+                  <SlotMicroValue text={formatTime(lastCallValidToday ? offCallGapSecs : (availSeconds || 0))} />
+                </span>
+                {lastCallValidToday && (
+                  <>
+                    <span className="status-bar-timer-sep" aria-hidden>·</span>
+                    <span className="status-bar-timer status-bar-timer--on-call">
+                      <span className="status-bar-timer-icon" aria-hidden>📞</span>
+                      <span>LAST&nbsp;</span>
+                      <SlotMicroValue text={formatTime(lastCallSeconds || 0)} />
+                    </span>
+                  </>
+                )}
+                {/* v4.124.0: DAY totals ride here too — #header-oncall/offcall-mins
+                    are CSS-hidden at ≤1100px, so 900px would otherwise show none. */}
+                <span className="status-bar-timer-sep" aria-hidden>·</span>
+                <span className="status-bar-timer status-bar-timer--on-call" title="On-call today (total)">
+                  <span>📞{Math.round(onCallMins || 0)}m</span>
+                </span>
+                <span className="status-bar-timer status-bar-timer--off-call" title="Off-call today (total)">
+                  <span>📡{Math.round(offCallMins || 0)}m</span>
+                </span>
+              </div>
+              <MicVerifyChip title="Client mic + last MIC VERIFY verdict — full panel in the idle pane below" />
               <div className="off-call-targets-row">
                 <DailyTargetsChip dailyMinutes={dailyMinutes} monthlyMinutes={monthlyMinutes} workDays={workDays} breakMinutes={breakMinutes} ratePerMinute={ratePerMinute} goalMinutes={goalMinutes} onOpenGoalsView={onOpenGoalsView} />
               </div>
@@ -910,7 +961,7 @@ export const DashboardHeader = ({
   onSwitchToTabShare,
   onSwitchToVirtualCable,
 }) => {
-  const { isActive, sessionSeconds, sessionEarnings, stats, updateStat, stopSession, endDay, RATE_PER_MINUTE, arsRate, setArsRate, isBreakActive, breakSeconds, startBreak, stopBreak, availSeconds, isEditingScoreboard, setIsEditingScoreboard, visibleCards, toggleCard, visibleMetrics, toggleMetric, scoreboardPreset, applyScoreboardPreset, isNotesOpen, setIsNotesOpen, isToolbarVisible, setIsToolbarVisible, goalWorkDays, isZombieCall, isScoreboardHelpVisible, setIsScoreboardHelpVisible, isHold, setIsHold, dailyTimeline, historyTimeline, dailyLog, lastActivityTime, lastEnglishActivityTime, isCallDetectionEnabled, setIsCallDetectionEnabled, callFocusMode, setCallFocusMode, minutesSinceLastBreak, vaultStatus, getMonthResyncPreview, reconcileMonthTotal } = useSession();
+  const { isActive, sessionSeconds, sessionEarnings, stats, updateStat, stopSession, endDay, RATE_PER_MINUTE, arsRate, setArsRate, isBreakActive, breakSeconds, startBreak, stopBreak, availSeconds, isEditingScoreboard, setIsEditingScoreboard, visibleCards, toggleCard, visibleMetrics, toggleMetric, scoreboardPreset, applyScoreboardPreset, isNotesOpen, setIsNotesOpen, isToolbarVisible, setIsToolbarVisible, goalWorkDays, isZombieCall, isScoreboardHelpVisible, setIsScoreboardHelpVisible, isHold, setIsHold, holdSeconds, dailyTimeline, historyTimeline, dailyLog, lastActivityTime, lastEnglishActivityTime, isCallDetectionEnabled, setIsCallDetectionEnabled, callFocusMode, setCallFocusMode, minutesSinceLastBreak, vaultStatus, getMonthResyncPreview, reconcileMonthTotal, lastCallSeconds, lastCallEndedAt } = useSession();
 
   const headerMinimal = !isActive && (offCallWorkspace === 'soundboard' || offCallWorkspace === 'goals');
   const offCallScoreboardView = !isActive && offCallWorkspace === 'scoreboard';
@@ -1403,9 +1454,9 @@ export const DashboardHeader = ({
   // v4.95.4: perf live counters — old odometer (LiveRollingNumber, 30-div
   // strip per digit + per-digit timers) replaced by 1Hz StatNumber ticks.
   // Values already re-render every second via sessionSeconds/availSeconds,
-  // and $ TODAY moves ~2 AR$/s, so the roll is visible with zero extra
+  // and AR$ TODAY moves ~2 AR$/s, so the roll is visible with zero extra
   // timers, nodes, or layout thrash. tabular-nums keeps width stable.
-  const renderLiveArs = (discreteValue, size = 'lg', prefix = '$') => (
+  const renderLiveArs = (discreteValue, size = 'lg', prefix = 'AR$') => (
     <StatNumber value={discreteValue} prefix={prefix} size={size} />
   );
 
@@ -1432,13 +1483,13 @@ export const DashboardHeader = ({
     },
     4: {
       icon: '💵',
-      heading: '$ TODAY',
+      heading: 'AR$ TODAY',
       color: '#34d399',
       body: 'Estimated earnings you’ve made today in AR$ (live if you’re on a call). Use it to judge whether your pacing is paying off right now.'
     },
     5: {
       icon: '🧾',
-      heading: '$ LEFT TODAY',
+      heading: 'AR$ LEFT TODAY',
       color: '#fcd34d',
       body: 'Remaining AR$ needed to hit your daily money target. When this trends toward zero, you’re “done” even if your call still has time left.'
     },
@@ -1450,13 +1501,13 @@ export const DashboardHeader = ({
     },
     7: {
       icon: '🗓️',
-      heading: '$ MONTH',
+      heading: 'AR$ MONTH',
       color: '#a855f7',
       body: 'Your banked monthly earnings vs the big monthly target. This is the “long game” number—small daily wins compound.'
     },
     8: {
       icon: '🧱',
-      heading: '$ LEFT MONTH',
+      heading: 'AR$ LEFT MONTH',
       color: '#fcd34d',
       body: 'How much AR$ you still need to finish the month on target. Use it like a countdown: late-month rush is avoidable with small catch-up beats.'
     },
@@ -2187,10 +2238,10 @@ export const DashboardHeader = ({
                       onMouseLeave={hideMetricTooltip}
                     >
                       <MetricVisibilityToggle metricKey="m4" />
-                      <HelpLabel text="4. $ TODAY" />
-                      <div className="metric-cell-val" style={{ color: '#34d399' }}>{renderLiveArs(todayArsLive, 'lg', '$')}</div>
+                      <HelpLabel text="4. AR$ TODAY" />
+                      <div className="metric-cell-val" style={{ color: '#34d399' }}>{renderLiveArs(todayArsLive, 'lg', 'AR$')}</div>
                       <MetricPct>{metricPcts.arsToday}</MetricPct>
-                      <div className="metric-cell-label">$ TODAY</div>
+                      <div className="metric-cell-label">AR$ TODAY</div>
                     </div>
                     )}
 
@@ -2205,10 +2256,10 @@ export const DashboardHeader = ({
                       onMouseLeave={hideMetricTooltip}
                     >
                       <MetricVisibilityToggle metricKey="m5" />
-                      <HelpLabel text="5. $ LEFT TODAY" />
-                      <div className="metric-cell-val" style={{ color: '#fcd34d' }}><StatNumber value={cashToTodayGoal} prefix="$" size="lg" /></div>
+                      <HelpLabel text="5. AR$ LEFT TODAY" />
+                      <div className="metric-cell-val" style={{ color: '#fcd34d' }}><StatNumber value={cashToTodayGoal} prefix="AR$" size="lg" /></div>
                       <MetricPct>{metricPcts.arsLeft}</MetricPct>
-                      <div className="metric-cell-label">$ LEFT TODAY</div>
+                      <div className="metric-cell-label">AR$ LEFT TODAY</div>
                     </div>
                     )}
 
@@ -2243,8 +2294,8 @@ export const DashboardHeader = ({
                       onMouseLeave={hideMetricTooltip}
                     >
                       <MetricVisibilityToggle metricKey="m7" />
-                      <HelpLabel text="7. $ MONTH" />
-                      <div className="metric-cell-val"><StatNumber value={monthlyArs} prefix="$" size="lg" /></div>
+                      <HelpLabel text="7. AR$ MONTH" />
+                      <div className="metric-cell-val"><StatNumber value={monthlyArs} prefix="AR$" size="lg" /></div>
                       <MetricPct>{metricPcts.arsMonth}</MetricPct>
                       {/* v4.87.0: monthly minutes visible + one-click editable target */}
                       <button
@@ -2259,7 +2310,7 @@ export const DashboardHeader = ({
                       >
                         {Math.round(stats.monthlyMinutes + unbankedMins)} / {stats.goalMinutes}m ✎
                       </button>
-                      <div className="metric-cell-label">$ MONTH</div>
+                      <div className="metric-cell-label">AR$ MONTH</div>
                     </div>
                     )}
 
@@ -2274,10 +2325,10 @@ export const DashboardHeader = ({
                       onMouseLeave={hideMetricTooltip}
                     >
                       <MetricVisibilityToggle metricKey="m8" />
-                      <HelpLabel text="8. $ LEFT MONTH" />
-                      <div className="metric-cell-val"><StatNumber value={Math.max(0, monthlyTargetArs - monthlyArs)} prefix="$" size="lg" /></div>
+                      <HelpLabel text="8. AR$ LEFT MONTH" />
+                      <div className="metric-cell-val"><StatNumber value={Math.max(0, monthlyTargetArs - monthlyArs)} prefix="AR$" size="lg" /></div>
                       <MetricPct>{metricPcts.arsLeftMonth}</MetricPct>
-                      <div className="metric-cell-label">$ LEFT MONTH</div>
+                      <div className="metric-cell-label">AR$ LEFT MONTH</div>
                     </div>
                     )}
 
@@ -2356,7 +2407,7 @@ export const DashboardHeader = ({
                       <HelpLabel text="12. CURR CALL" />
                       <div className="metric-cell-val" style={{ display: 'flex', gap: '0.2rem', alignItems: 'center' }}>
                         <StatNumber value={formatTime(sessionSeconds)} size="md" format={false} />
-                        {renderSessionArs('lg', '$')}
+                        {renderSessionArs('lg', 'AR$')}
                       </div>
                       <MetricPct>{metricPcts.currCall}</MetricPct>
                       <div className="metric-cell-label">CURR CALL</div>
@@ -2501,7 +2552,7 @@ export const DashboardHeader = ({
                 <button id="header-tools-btn" className="btn-icon tiny-btn" onClick={toggleToolbar} style={{ opacity: isToolbarVisible ? 1 : 0.3, background: isToolbarVisible ? 'rgba(239,68,68,0.15)' : 'transparent' }} title="Show tools (notes + background)"><ToolsIcon size={14} /></button>
                 <button id="header-help-btn" className="btn-icon tiny-btn" onClick={() => setIsScoreboardHelpVisible(!isScoreboardHelpVisible)} style={{ opacity: isScoreboardHelpVisible ? 1 : 0.3, background: isScoreboardHelpVisible ? 'rgba(239,68,68,0.15)' : 'transparent' }} title="Scoreboard help labels"><HelpIcon size={14} /></button>
                 <button id="header-edit-btn" className="btn-icon tiny-btn" onClick={() => { if(isCollapsed) setIsCollapsed(false); setIsEditingScoreboard(!isEditingScoreboard); }} style={{ opacity: isEditingScoreboard ? 1 : 0.3 }} title="Edit Grid"><EditIcon size={14} /></button>
-                <button id="header-expand-btn" className="btn-icon tiny-btn" onClick={() => setIsCollapsed(!isCollapsed)} title={isCollapsed ? "Expand HUD" : "Collapse HUD"}>{isCollapsed ? <ChevronUpIcon size={14} /> : <ChevronDownIcon size={14} />}</button>
+                <button id="header-hud-collapse-btn" className="btn-icon tiny-btn" onClick={() => setIsCollapsed(!isCollapsed)} title={isCollapsed ? "Expand HUD" : "Collapse HUD"}>{isCollapsed ? <ChevronUpIcon size={14} /> : <ChevronDownIcon size={14} />}</button>
                 <button id="header-calldetect-btn" className="btn-icon tiny-btn" onClick={() => setIsCallDetectionEnabled(!isCallDetectionEnabled)} style={{ opacity: isCallDetectionEnabled ? 1 : 0.3, background: isCallDetectionEnabled ? 'rgba(16,185,129,0.1)' : 'transparent' }} title="Call Detection">{isCallDetectionEnabled ? <SignalIcon size={14} /> : <SignalOffIcon size={14} />}</button>
                 <button id="header-focus-btn" className="btn-icon tiny-btn" onClick={() => setCallFocusMode(!callFocusMode)} style={{ opacity: callFocusMode ? 1 : 0.3, background: callFocusMode ? 'rgba(16,185,129,0.1)' : 'transparent' }} title="Call Focus: auto-hide sidebars during calls">{callFocusMode ? <FocusIcon size={14} /> : <FocusOffIcon size={14} />}</button>
             </div>
@@ -2545,11 +2596,11 @@ export const DashboardHeader = ({
                 <span className="income-label">🗓️ MO.PROFIT</span>
                 <span className="income-ars" style={{ whiteSpace: 'nowrap', display: 'flex', alignItems: 'center', gap: '0.2rem' }}>
                   <span>🌊</span>
-                  <StatNumber value={monthlyArs} prefix="$" size="lg" />
+                  <StatNumber value={monthlyArs} prefix="AR$" size="lg" />
                 </span>
                 <span style={{ fontSize: '0.55rem', opacity: 0.5, whiteSpace: 'nowrap', display: 'flex', gap: '0.1rem' }}>
                   <span>/</span>
-                  <StatNumber value={monthlyTargetArs} prefix="$" size="xs" />
+                  <StatNumber value={monthlyTargetArs} prefix="AR$" size="xs" />
                 </span>
               </div>
             )}
@@ -2624,7 +2675,7 @@ export const DashboardHeader = ({
               title={`EFFECTIVE RATE: AR$${effectiveRateArsHr?.toLocaleString('es-AR') || '–'}/hr. This represents your true hourly wage today, factoring in both active call time and unpaid waiting time (Avail).`}>
               <span className="income-label">⚡ EFF. RATE</span>
               <span style={{ fontSize: '1rem', fontWeight: 800, color: effectiveRateArsHr ? '#c4b5fd' : 'var(--text-muted)' }}>
-                {effectiveRateArsHr ? `$${effectiveRateArsHr.toLocaleString('es-AR')}/h` : '–'}
+                {effectiveRateArsHr ? `AR$${effectiveRateArsHr.toLocaleString('es-AR')}/h` : '–'}
               </span>
               <span style={{ fontSize: '0.5rem', opacity: 0.5 }}>incl. avail time</span>
             </div>
@@ -3223,7 +3274,7 @@ ${isInDeficit ? `⚠️ DEFICIT: Behind pace by ${Math.round(monthlyDeficitMins)
     <>
     <header className={`dashboard-header glass-panel${headerMinimal ? ' dashboard-header--minimal' : ''}${headerCallCompact ? ' dashboard-header--call-compact' : ''}${isActive && callModeExpanded ? ' dashboard-header--call-expanded' : ''}${offCallScoreboardView ? ' dashboard-header--off-call-scoreboard' : ''}${offCallScoreboardView && offCallMetricsExpanded ? ' dashboard-header--metrics-expanded' : ''}${meterOnlyMode ? ' dashboard-header--meter-only' : ''}`} style={{ position: 'relative', zIndex: 100, ...(offCallScoreboardView && offCallMetricsExpanded ? { maxHeight: `${scoreboardMaxVh}vh` } : {}) }}>
       {versionLabel && (
-        <div className="app-version-pill" style={{ position: 'absolute', top: 6, right: 8 }}>
+        <div className="app-version-pill">
           {versionLabel}
         </div>
       )}
@@ -3268,6 +3319,7 @@ ${isInDeficit ? `⚠️ DEFICIT: Behind pace by ${Math.round(monthlyDeficitMins)
         handleStop={handleStop}
         isHold={isHold}
         setIsHold={setIsHold}
+        holdSeconds={holdSeconds}
         disableZap={false}
         isZapping={isZapping}
         onReconnectStream={handleZap}
@@ -3278,6 +3330,9 @@ ${isInDeficit ? `⚠️ DEFICIT: Behind pace by ${Math.round(monthlyDeficitMins)
         sessionArsLive={sessionArsLive}
         totalOffCallSeconds={totalOffCallSeconds}
         totalOnCallSeconds={totalOnCallSeconds}
+        lastCallSeconds={lastCallSeconds}
+        lastCallEndedAt={lastCallEndedAt}
+        availSeconds={availSeconds}
         dailyMinutes={Math.round(totalDailyMins)}
         monthlyMinutes={monthlyBanked}
         workDays={goalWorkDays}
