@@ -94,7 +94,21 @@ try {
   Set-If 'Strip[0].Mute' 0
   Set-If 'Strip[0].Gain' 0
   $vaioIndex = ($L.Virtual.GetEnumerator() | Where-Object { $_.Value -eq 'VAIO' } | Select-Object -First 1).Key
+  # Echo fix (2026-09-17): VAIO must NOT feed A1 while A1 = CABLE Input —
+  # that looped every greeting into the STT cable (2nd delayed copy).
+  Set-If "Strip[$vaioIndex].A1" 0
   Set-If "Strip[$vaioIndex].B1" 1
+  # Empty hardware strips must route nowhere (an unplugged Strip[1] was feeding A1+B1).
+  for ($s = 1; $s -lt $L.Hw; $s++) {
+   $nm = Read-Text "Strip[$s].device.name"
+   if ([string]::IsNullOrWhiteSpace($nm)) {
+    Set-If "Strip[$s].A1" 0
+    Set-If "Strip[$s].B1" 0
+    Set-If "Strip[$s].B2" 0
+    Set-If "Strip[$s].B3" 0
+    Write-Output ("  cleared empty Strip[$s] routing")
+   }
+  }
   Set-If "Strip[$vaioIndex].B2" 0
   Set-If "Strip[$vaioIndex].B3" 0
   Set-If ("Bus[" + $BusIndexOf['B1'] + "].Mute") 0

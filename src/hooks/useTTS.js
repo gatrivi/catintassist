@@ -2,6 +2,7 @@ import { useState, useRef } from 'react';
 import { useAudioSettings } from '../contexts/AudioSettingsContext';
 import { bindAudioToSink, primePlaybackElements } from '../utils/audioRoute';
 import { readRouteModePreference, ROUTE_MODE } from '../utils/audioRoutePassthrough';
+import { readCallerMonitor } from '../utils/callerMonitor';
 import { logRouteEvent, ROUTE_EVENT } from '../utils/routeDiagnostics';
 import { readMicTestMode } from '../utils/micMode';
 import { isLocalOnlyPlayback } from '../utils/audioSelfTest';
@@ -78,7 +79,10 @@ export const useTTS = () => {
       const audioLocal = new Audio(audioUrl);
       primePlaybackElements(audioLocal, null);
       activeAudioLocalRef.current = audioLocal;
-      audioLocal.volume = localVolume;
+      // v4.128.0: caller-bound TTS is sink-only by default — the parallel local
+      // copy doubled everything the patient heard. Volume 0 still clocks onended.
+      // Mic-test (local-only) previews stay audible.
+      audioLocal.volume = (localOnly || readCallerMonitor()) ? localVolume : 0;
       audioLocal.src = audioUrl;
 
       if (localOnly) {

@@ -12,6 +12,7 @@ import {
 } from '../utils/routeVerification';
 import { bindAudioToSink, primePlaybackElements, rampVolume } from '../utils/audioRoute';
 import { readRouteModePreference, ROUTE_MODE } from '../utils/audioRoutePassthrough';
+import { readCallerMonitor, writeCallerMonitor } from '../utils/callerMonitor';
 import { logRouteEvent, ROUTE_EVENT } from '../utils/routeDiagnostics';
 import { APP_VERSION } from '../constants/version';
 
@@ -85,6 +86,9 @@ export function OnCallSoundboardStrip({ micTestMode = false, collapsed: collapse
   const [playbackProgress, setPlaybackProgress] = useState(0);
   const [notice, setNotice] = useState('');
   const [thumbSize, setThumbSize] = useState(readThumbSize);
+  // v4.128.0: caller fires are sink-only by default — a parallel local copy
+  // plus the old A1→cable loop made every greeting sound twice.
+  const [monitor, setMonitor] = useState(readCallerMonitor);
 
   const audioRefLocal = useRef(new Audio());
   const audioRefSink = useRef(new Audio());
@@ -162,7 +166,11 @@ export function OnCallSoundboardStrip({ micTestMode = false, collapsed: collapse
   };
 
   const trackProgress = useCallback(() => {
-    const a = audioRefLocal.current;
+    // v4.128.0: clock whichever element is actually playing (sink-only fires
+    // leave the local element parked with no src).
+    const l = audioRefLocal.current;
+    const s = audioRefSink.current;
+    const a = (l && l.duration && !l.paused) ? l : s;
     if (a && a.duration) {
       setPlaybackProgress(a.currentTime / a.duration);
     }
@@ -245,14 +253,20 @@ export function OnCallSoundboardStrip({ micTestMode = false, collapsed: collapse
     const url = URL.createObjectURL(blob);
     const routeMode = readRouteModePreference();
     const usePassthrough = routeMode === ROUTE_MODE.PASSTHROUGH;
+    // v4.128.0: sink-only caller fire. The old always-on local copy is what
+    // the interpreter heard as greeting #1 (greeting #2 was the A1→cable loop).
+    const withMonitor = readCallerMonitor();
 
-    logRouteEvent(ROUTE_EVENT.PLAY_START, { clipKey: key, routeMode, onCall: true });
+    logRouteEvent(ROUTE_EVENT.PLAY_START, { clipKey: key, routeMode, onCall: true, withMonitor });
     setPlayingKey(key);
     progressRafRef.current = requestAnimationFrame(trackProgress);
-    primePlaybackElements(audioRefLocal.current, audioRefSink.current);
-    audioRefLocal.current.src = url;
+    primePlaybackElements(withMonitor ? audioRefLocal.current : null, audioRefSink.current);
+    if (withMonitor) audioRefLocal.current.src = url;
 
+    let ended = false;
     const onEnd = () => {
+      if (ended) return;
+      ended = true;
       URL.revokeObjectURL(url);
       clearPlay();
       logRouteEvent(ROUTE_EVENT.PLAY_END, { clipKey: key, onCall: true });
@@ -261,11 +275,16 @@ export function OnCallSoundboardStrip({ micTestMode = false, collapsed: collapse
     audioRefSink.current.onended = onEnd;
 
     try {
-      await audioRefLocal.current.play();
-      rampCancelRef.current = rampVolume(audioRefLocal.current, null, localVolume, 0);
+      if (withMonitor) {
+        await audioRefLocal.current.play();
+        rampCancelRef.current = rampVolume(audioRefLocal.current, null, localVolume, 0);
+      }
 
       if (usePassthrough) {
-        const pt = await playClipToSink(blob, sinkVolume, { clipKey: key });
+        const pt = await playClipToSink(blob, sinkVolume, {
+          clipKey: key,
+          onProgress: (p) => { if (!withMonitor) setPlaybackProgress(p); },
+        });
         if (pt.cancelled) {
           if (attempt !== playbackAttemptRef.current) return;
           clearPlay(false); // Cancellation must not stop the shared sink's replacement clip.
@@ -280,11 +299,15 @@ export function OnCallSoundboardStrip({ micTestMode = false, collapsed: collapse
           if (bound) {
             audioRefSink.current.src = url;
             await audioRefSink.current.play();
-            rampCancelRef.current = rampVolume(audioRefLocal.current, audioRefSink.current, localVolume, sinkVolume);
+            rampCancelRef.current = rampVolume(withMonitor ? audioRefLocal.current : null, audioRefSink.current, localVolume, sinkVolume);
           } else {
             flashNotice('⚠️ Route failed');
             clearPlay();
           }
+        } else if (!withMonitor) {
+          // Passthrough owns the sink element — no local/sink element will end,
+          // so close the tile state from its progress callback instead of hanging on ▶.
+          onEnd();
         }
       } else {
         const bound = await bindAudioToSink(audioRefSink.current, selectedSinkId);
@@ -295,7 +318,7 @@ export function OnCallSoundboardStrip({ micTestMode = false, collapsed: collapse
         }
         audioRefSink.current.src = url;
         await audioRefSink.current.play();
-        rampCancelRef.current = rampVolume(audioRefLocal.current, audioRefSink.current, localVolume, sinkVolume);
+        rampCancelRef.current = rampVolume(withMonitor ? audioRefLocal.current : null, audioRefSink.current, localVolume, sinkVolume);
       }
     } catch (e) {
       console.error('On-call soundboard play error:', e);
@@ -351,6 +374,20 @@ export function OnCallSoundboardStrip({ micTestMode = false, collapsed: collapse
                 try { localStorage.setItem(SIZE_KEY, String(n)); } catch { /* ignore */ }
               }}
             />
+          </label>
+          <label
+            className="on-call-sb-monitor"
+            title="OFF = greeting goes to the caller only (no double-hear). ON = you also hear a local copy."
+          >
+            <input
+              type="checkbox"
+              checked={monitor}
+              onChange={(e) => {
+                setMonitor(e.target.checked);
+                writeCallerMonitor(e.target.checked);
+              }}
+            />
+            Monitor
           </label>
           <div className="on-call-sb-gallery">
             {ON_CALL_SLOTS.map((slot) => {

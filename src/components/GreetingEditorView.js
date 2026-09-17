@@ -17,6 +17,7 @@ import {
   loadManualCallOk, setManualCallOk, isManualCallOk, warnLegacyCallPathStorage,
 } from '../utils/routeVerification';
 import { readRouteModePreference } from '../utils/audioRoutePassthrough';
+import { readCallerMonitor } from '../utils/callerMonitor';
 import { generateObjectUrl } from '../utils/storage';
 import AudioEditorPanel from './AudioEditorPanel';
 import { APP_VERSION_LABEL } from '../constants/version';
@@ -145,6 +146,10 @@ export const GreetingEditorView = ({ onExit, onOpenStudio, initialClipKey = null
     const localEl = localAudioRef.current;
     localEl.src = url;
     localEl.volume = Math.min(1, localVolume);
+    // v4.128.0: caller tests are sink-only by default — the local copy played
+    // at full volume is what made every test sound doubled. Muted still clocks
+    // the progress bar. 🔊 You previews are unaffected.
+    localEl.muted = toCaller && !readCallerMonitor();
     const sinkEl = sinkAudioRef.current;
     const usePassthrough = toCaller && readRouteModePreference() === 'passthrough';
     const sinkVol = capSinkTestVolume(sinkVolume); // studio tests are capped quiet

@@ -2,6 +2,19 @@
 
 **Version source:** `src/constants/version.js` (must match `package.json` + top-right UI pill)
 
+## v4.128.0 - Greetings play once (sink-only caller audio)
+
+- Caller-bound audio (on-call strip fires, Studio caller sends, editor caller tests, TTS) is sink-only by default — the parallel local copy + the Voicemeeter A1→cable loop made every greeting sound twice.
+- Opt-in local monitor: "Monitor" checkbox on the on-call strip (`CATINT_CALLER_MONITOR`).
+- Voicemeeter fix applied live: VAIO→B1 only, empty Strip[1] cleared; `setup-voicemeeter-mic.ps1 -Apply` now enforces both.
+
+## v4.126.0 - Header declutter + no mid-call updates
+
+- Update banner deferred off-call (`App.js`): no reload offers while active/zombie/on-break — the flag persists so it returns after STOP.
+- STOP matches CONNECT height at double width; off-call center children shrink instead of overlapping (`index.css`).
+- Mic-verify chip + DG/greetings proof spans moved to Settings → audio (live output label); compact bar keeps TAB/VB toggle + ZAP.
+- Notes auto-close on STOP (`stopSession`).
+
 ## v4.123.0 - Auto-start on any speech (fix B)
 
 - Off-call auto-start no longer needs confidence>0.4: any non-empty transcript starts the call and opens the capture gate, so mumbled openers land in bubbles instead of dropped (`shouldSpeechAutoStart` in `idleEar.js`, unit-tested).

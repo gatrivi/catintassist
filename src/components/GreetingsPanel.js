@@ -13,6 +13,7 @@ import {
 import { fileNameForBlob, keyFromFileName, extToMime } from '../utils/recordingFileNaming';
 import { bindAudioToSink, primePlaybackElements, rampVolume } from '../utils/audioRoute';
 import { readRouteModePreference, ROUTE_MODE } from '../utils/audioRoutePassthrough';
+import { readCallerMonitor } from '../utils/callerMonitor';
 import {
   logRouteEvent,
   assessSttLoadRisk,
@@ -938,7 +939,10 @@ export const GreetingsPanel = ({ onEditModeChange, onExitStudio, micTestMode = f
       }
     }
 
-    let playLocal = !callerOnly;
+    // v4.128.0: anything routed to the caller is sink-only by default — a
+    // parallel local copy is what made greetings sound twice. Opt back in
+    // with Monitor on the on-call strip.
+    let playLocal = !callerOnly && (!sendToCaller || readCallerMonitor());
     let playSink = sendToCaller;
     callerRouteRef.current = playSink;
     setRouteLive(!!playSink);

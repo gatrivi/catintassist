@@ -25,6 +25,29 @@ import { APP_VERSION } from '../constants/version';
 /** Newest first. Only the entry matching APP_VERSION is shown on load. */
 export const RELEASE_NOTES_CATALOG = [
   {
+    version: '4.128.0',
+    id: 'sink-only-caller-audio',
+    highlightElementIds: ['header-connect-btn'],
+    es: {
+      title: '📡 Saludos una sola vez',
+      intro: 'Lo que va al paciente ya no suena en tus bocinas.',
+      sections: [{ heading: 'Qué cambió', bullets: [
+        'Disparar un saludo lo manda SOLO al paciente — antes sonaba doble.',
+        'Si quieres escucharlo tú también, marca Monitor en la tira de saludos.',
+        'Se cortó el retorno A1→cable: tus saludos ya no se transcriben solos.',
+      ] }],
+    },
+    en: {
+      title: '📡 Greetings play once',
+      intro: 'Caller-bound audio no longer echoes on your speakers.',
+      sections: [{ heading: 'What changed', bullets: [
+        'Firing a greeting sends it to the patient ONLY — no more double-hear.',
+        'Want to hear it too? Check Monitor on the greetings strip.',
+        'Cut the A1→cable loop: greetings stop transcribing themselves.',
+      ] }],
+    },
+  },
+  {
     version: '4.127.0',
     id: 'uniform-header-buttons',
     highlightElementIds: ['header-connect-btn'],
