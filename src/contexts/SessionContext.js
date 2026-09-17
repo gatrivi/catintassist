@@ -25,6 +25,13 @@ import {
   AUTOPILOT_START_COOLDOWN_MS,
   AUTOPILOT_END_COUNTDOWN_MS,
 } from '../utils/callAutopilot';
+import {
+  saveLastCallArchive,
+  loadLastCallArchive,
+  clearLastCallArchive as clearLastCallArchiveStore,
+  isSealableArchive,
+  buildLastCallArchive,
+} from '../utils/lastCallArchive';
 
 const PURGE_KEYS_PREFIX = 'trans_cache:';
 
@@ -270,7 +277,38 @@ export const SessionProvider = ({ children }) => {
     loadCaptions();
   }, []);
 
+  // v4.130.1 last-call seal: STOP wipes live captions, but a read-only
+  // copy survives until next call / End Day / explicit clear. Update
+  // reloads and DG reconnects never seal — only real call ends do.
+  const [lastCallArchive, setLastCallArchive] = useState(null);
+  useEffect(() => {
+    loadLastCallArchive().then((saved) => {
+      if (saved) setLastCallArchive(saved);
+    }).catch(() => {});
+  }, []);
+  const clearLastCallArchive = useCallback(async () => {
+    setLastCallArchive(null);
+    await clearLastCallArchiveStore();
+  }, []);
+
   const saveCaptionsTimeoutRef = useRef(null);
+  // v4.130.1: flush live captions synchronously when the page hides so an
+  // update reload / refresh loses nothing (kills the 1s debounce window).
+  useEffect(() => {
+    const flushCaptions = () => {
+      try {
+        const cur = captionsRef.current;
+        if (Array.isArray(cur) && cur.length > 0) idbSet('catint_captions_v2', cur);
+      } catch (_) {}
+    };
+    const onVis = () => { if (document.visibilityState === 'hidden') flushCaptions(); };
+    window.addEventListener('pagehide', flushCaptions);
+    document.addEventListener('visibilitychange', onVis);
+    return () => {
+      window.removeEventListener('pagehide', flushCaptions);
+      document.removeEventListener('visibilitychange', onVis);
+    };
+  }, []);
   const updateCaptions = useCallback((newCaptionsOrFn) => {
     setCaptions(prev => {
       const next = typeof newCaptionsOrFn === 'function' ? newCaptionsOrFn(prev) : newCaptionsOrFn;
@@ -772,6 +810,9 @@ export const SessionProvider = ({ children }) => {
       // v4.86.8: pins now PERSIST across calls (product decision).
       // Consume the one-shot skip flag so stale state never accumulates.
       if (skipPinnedClearOnceRef.current) skipPinnedClearOnceRef.current = false;
+      // v4.130.1: a new call expires the previous last-call seal.
+      setLastCallArchive(null);
+      clearLastCallArchiveStore().catch(() => {});
       setSessionSeconds(0);
       accumulatorRef.current = 0;
     }
@@ -922,6 +963,14 @@ export const SessionProvider = ({ children }) => {
       setLastCallSummary({ ...summary, noStt: bankedNoStt });
     }
 
+    // v4.130.1: seal a read-only last-call copy BEFORE the wipe — the call
+    // ended but the transcript must stay readable until next call/End Day.
+    // Fire-and-forget: stopSession stays sync; IDB write + state land async.
+    if (isSealableArchive(captionsRef.current)) {
+      const sealed = buildLastCallArchive(captionsRef.current);
+      setLastCallArchive(sealed);
+      saveLastCallArchive(captionsRef.current).catch(() => {});
+    }
     // HIPAA/UX: wipe transcript log as soon as the call ends (summary already captured).
     // v4.86.8: pinned messages PERSIST across calls — they are references, not PHI dumps.
     clearCaptions();
@@ -989,6 +1038,9 @@ export const SessionProvider = ({ children }) => {
     // HIPAA: ensure residual notes trash is destroyed at latest.
     // v4.86.8: pins persist — no longer wiped at end of day.
     purgeNotesTrashAtEndOfDay();
+    // v4.130.1: End Day expires the last-call seal too.
+    setLastCallArchive(null);
+    clearLastCallArchiveStore().catch(() => {});
 
     commitAvailTime();
     setStats(prev => {
@@ -1368,6 +1420,8 @@ export const SessionProvider = ({ children }) => {
     setCallFocusMode,
     lastCallSummary,
     setLastCallSummary,
+    lastCallArchive,
+    clearLastCallArchive,
     lastCallSeconds,
     lastCallEndedAt,
     requestHoldIntent,

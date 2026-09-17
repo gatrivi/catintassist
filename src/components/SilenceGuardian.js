@@ -9,7 +9,7 @@ import { shouldAutoEndGhostCall } from '../utils/callEndGuard';
  * or forgotten disconnects. It prompts the user if no audio activity is detected
  * for a sustained period while the session is active.
  */
-export const SilenceGuardian = ({ lastDataTime, onStopAudio }) => {
+export const SilenceGuardian = ({ lastDataTime, onStopAudio, connectionState = 'connected' }) => {
   const { isActive, lastActivityTime, stopSession, startBreak, isHold } = useSession();
   const audioEngine = useProgressiveAudio();
   const [, setShowWarning] = useState(false);
@@ -82,7 +82,10 @@ export const SilenceGuardian = ({ lastDataTime, onStopAudio }) => {
         setShowWarning((w) => (w ? false : w));
       }
 
-      if (shouldAutoEndGhostCall({ silenceSecs, promptCount: pc, isHold })) {
+      // v4.130.1: DG down (collapse/update/reconnect) also reads as silence —
+      // never auto-end on an unproven audio path. Warn only; Zap reconnects.
+      const dgConnected = connectionState === 'connected';
+      if (shouldAutoEndGhostCall({ silenceSecs, promptCount: pc, isHold, dgConnected })) {
         // The existing seven-minute guard was ending the scoreboard only.
         // Stop Deepgram too: an ended call must not keep billing/audio alive.
         onStopAudio?.();
@@ -114,6 +117,7 @@ export const SilenceGuardian = ({ lastDataTime, onStopAudio }) => {
     stopSession,
     onStopAudio,
     doNotShowDisconnectTooltip,
+    connectionState,
   ]);
 
   if (!isActive || isHold) return null;

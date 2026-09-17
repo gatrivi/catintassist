@@ -866,7 +866,7 @@ const Dashboard = () => {
         />
       </div>
 
-      <SilenceGuardian lastDataTime={lastDataTime} onStopAudio={stopRecording} />
+      <SilenceGuardian lastDataTime={lastDataTime} onStopAudio={stopRecording} connectionState={connectionState} />
 
       {/* v4.98.0: autopilot 10s auto-end countdown banner */}
       <AutopilotGuard onStopAudio={stopRecording} />

@@ -13,6 +13,7 @@ import {
   splitHighlightSegments,
 } from '../utils/sensitiveDataProtector';
 import { formatTranscriptForDisplay, collectCopyableEntities } from '../utils/transcriptFormat';
+import { composeCaptionTranslation } from '../utils/translationApplicator';
 import { ScrambleText } from './ScrambleText';
 import { StableLiveTranscriptText } from './StableLiveTranscriptText';
 import { buildCaptionContinuityKeys } from '../utils/stableLiveTranscript';
@@ -750,7 +751,8 @@ export const TranscriptionBoard = ({
   const [languagePair, setLanguagePair] = useState(loadLanguagePair);
   const protectionsActive = isEnEsProtectionMode(languagePair);
   const { playTTS, stopTTS, isPlaying, playingUrl, prefetchTTS } = useTTS();
-  const { isActive, isZombieCall, lastCallSummary, setLastCallSummary, updateCaptions } = useSession();
+  const { isActive, isZombieCall, lastCallSummary, setLastCallSummary, updateCaptions, lastCallArchive, clearLastCallArchive } = useSession();
+  const [lastCallOpen, setLastCallOpen] = useState(true);
 
   /** Persist sealed translation entries onto caption.translations (IDB via updateCaptions). */
   const persistCaptionTranslation = useCallback((capId, entry) => {
@@ -1241,6 +1243,52 @@ export const TranscriptionBoard = ({
             </div>
           </div>
           <button onClick={() => setLastCallSummary(null)} type="button" aria-label="Dismiss call summary" style={{ background: 'transparent', border: 'none', color: 'rgba(255,255,255,0.5)', cursor: 'pointer', fontSize: '1rem', padding: '0 4px' }} title="Dismiss">✕</button>
+        </div>
+      )}
+
+      {/* v4.130.1 Last Call seal — read-only transcript of the finished call.
+          Survives STOP/refresh/update; expires on next call, End Day, or 🗑. */}
+      {(!isActive && lastCallArchive && captions.length === 0) && (
+        <div id="last-call-seal" style={{
+          margin: '0 8px 0.5rem', border: '1px solid rgba(52, 211, 153, 0.35)',
+          borderRadius: '6px', background: 'rgba(6, 20, 16, 0.85)', overflow: 'hidden',
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', padding: '0.3rem 0.5rem' }}>
+            <button
+              type="button"
+              onClick={() => setLastCallOpen((o) => !o)}
+              aria-expanded={lastCallOpen}
+              style={{ background: 'transparent', border: 'none', color: '#6ee7b7', cursor: 'pointer', fontSize: '0.7rem', fontWeight: 900, letterSpacing: '0.04em', padding: 0 }}
+              title={lastCallOpen ? 'Collapse last call' : 'Expand last call'}
+            >
+              {lastCallOpen ? '▾' : '▸'} 📞 LAST CALL · {new Date(lastCallArchive.endedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} · {lastCallArchive.captions.length} msgs
+            </button>
+            <span style={{ flex: 1 }} />
+            <button
+              type="button"
+              onClick={() => { if (window.confirm('Delete the sealed last-call transcript?')) clearLastCallArchive?.(); }}
+              aria-label="Delete last-call transcript"
+              style={{ background: 'transparent', border: 'none', color: 'rgba(255,255,255,0.5)', cursor: 'pointer', fontSize: '0.8rem', padding: '0 4px' }}
+              title="Delete the sealed last-call transcript now"
+            >
+              🗑
+            </button>
+          </div>
+          {lastCallOpen && (
+            <div style={{ maxHeight: '30vh', overflowY: 'auto', padding: '0 0.5rem 0.4rem', display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
+              {lastCallArchive.captions.map((cap) => {
+                const sealed = cap?.translations ? composeCaptionTranslation(cap.translations) : '';
+                return (
+                  <div key={`last-${cap.id}`} style={{ background: 'rgba(255,255,255,0.05)', borderRadius: '4px', padding: '0.2rem 0.4rem', fontSize: '0.75rem', lineHeight: 1.3 }}>
+                    <div style={{ color: '#fff' }}>{cap.text}</div>
+                    {sealed && sealed !== cap.text && (
+                      <div style={{ color: 'rgba(255,255,255,0.6)' }}>{sealed}</div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          )}
         </div>
       )}
 

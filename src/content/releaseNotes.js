@@ -25,6 +25,29 @@ import { APP_VERSION } from '../constants/version';
 /** Newest first. Only the entry matching APP_VERSION is shown on load. */
 export const RELEASE_NOTES_CATALOG = [
   {
+    version: '4.130.1',
+    id: 'last-call-seal',
+    highlightElementIds: ['last-call-seal'],
+    es: {
+      title: '📞 La llamada queda guardada',
+      intro: 'Al terminar, la transcripción queda sellada y legible hasta la próxima llamada.',
+      sections: [{ heading: 'Qué cambió', bullets: [
+        'STOP / fin automático sellan la última llamada: se puede releer aunque se recargue.',
+        'Se borra sola con la próxima llamada, al cerrar el día, o con 🗑.',
+        'Sin Deepgram no se termina sola: corte o update ya no significan fin de llamada.',
+      ] }],
+    },
+    en: {
+      title: '📞 Last call is sealed',
+      intro: 'After a call ends, its transcript stays readable until the next call.',
+      sections: [{ heading: 'What changed', bullets: [
+        'STOP / auto-end seals the last call — re-readable even after a refresh.',
+        'Auto-expires on next call, End Day, or 🗑.',
+        'No more auto-end while Deepgram is down: outage or update is not a call end.',
+      ] }],
+    },
+  },
+  {
     version: '4.129.1',
     id: 'connect-equals-break-box',
     highlightElementIds: ['header-connect-btn', 'header-break-btn'],

@@ -2,6 +2,12 @@
 
 **Version source:** `src/constants/version.js` (must match `package.json` + top-right UI pill)
 
+## v4.130.1 - Last-call seal + outage is not call end
+
+- STOP/auto-end seals a read-only last-call transcript (IDB) — re-readable after refresh/update until next call, End Day, or 🗑.
+- Ghost auto-end now requires Deepgram connected: STT collapse / update / reconnect can never end the call or wipe text.
+- Live captions flush to IDB on pagehide/hide (kills the 1s debounce-loss window on reload).
+
 ## v4.129.1 - Connect = BREAK exact box
 
 - `#header-connect-btn` + `#header-break-btn:not(.has-label)` share one ID rule: 26×26, padding 0, radius 4px (23px ≤1100px via vars); 90m BREAK label still expands via `.has-label`.
