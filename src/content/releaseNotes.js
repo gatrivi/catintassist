@@ -25,6 +25,29 @@ import { APP_VERSION } from '../constants/version';
 /** Newest first. Only the entry matching APP_VERSION is shown on load. */
 export const RELEASE_NOTES_CATALOG = [
   {
+    version: '4.127.0',
+    id: 'uniform-header-buttons',
+    highlightElementIds: ['header-connect-btn'],
+    es: {
+      title: '🔲 Botones parejos, fila fina',
+      intro: 'Conectar, stop, hold, todo de 23px — también en llamada.',
+      sections: [{ heading: 'Qué cambió', bullets: [
+        'Todos los botones de la fila: mismo tamaño en llamada y fuera.',
+        'Hold activo muestra H (el tiempo sigue en el tooltip).',
+        'El centro off-call es una sola fila; el cartel de versión se fue (versión en el 🐱).',
+      ] }],
+    },
+    en: {
+      title: '🔲 Uniform buttons, slim rows',
+      intro: 'Connect, stop, hold — all 23px, on-call too.',
+      sections: [{ heading: 'What changed', bullets: [
+        'Every sticky-row button the same size, on-call and off.',
+        'Active hold shows H (time stays in the tooltip).',
+        'Off-call center is one row; version pill gone (version on the 🐱).',
+      ] }],
+    },
+  },
+  {
     version: '4.126.0',
     id: 'slim-sticky-row',
     highlightElementIds: ['header-settings-btn'],
@@ -34,6 +57,10 @@ export const RELEASE_NOTES_CATALOG = [
       sections: [{ heading: 'Qué cambió', bullets: [
         '📝, STT y llave salieron de la fila superior → ⚙️ Ajustes.',
         'El interruptor de notas vive en Ajustes → Comportamiento.',
+      ] },
+      { heading: 'Más aire', bullets: [
+        'STOP del mismo alto que CONNECT, doble ancho. Mic verify y estado I/O en Settings → audio.',
+        'Las notas se cierran al terminar la llamada. El aviso de update espera a que cuelgues.',
       ] }],
     },
     en: {
@@ -42,6 +69,10 @@ export const RELEASE_NOTES_CATALOG = [
       sections: [{ heading: 'What changed', bullets: [
         '📝, STT and key left the sticky row → ⚙️ Settings.',
         'The notes toggle lives in Settings → Behavior.',
+      ] },
+      { heading: 'More breathing room', bullets: [
+        'STOP matches CONNECT height at double width. Mic-verify + I/O status moved to Settings → audio.',
+        'Notes auto-close on STOP. Update banner waits until you hang up.',
       ] }],
     },
   },
