@@ -413,6 +413,13 @@ body {
 #header-connect-btn > span > svg + svg {
   display: none;
 }
+/* Belt-and-suspenders: ID wins over every width rule, box can never grow. */
+#header-connect-btn {
+  width: var(--btn-icon) !important;
+  min-width: var(--btn-icon) !important;
+  max-width: var(--btn-icon) !important;
+  overflow: hidden;
+}
 
 /* v4.126.0: off-call center never overlaps — every child can shrink, the
    targets chip truncates via fitLevel instead of painting over neighbors. */
@@ -3258,6 +3265,10 @@ body {
   padding: 0 var(--btn-px);
   min-height: var(--btn-h);
   height: var(--btn-h);
+  /* Fixed stable width: open/closed labels differ ("Soundboard" vs
+     "Soundboard ✓") — the row must not jump between states. */
+  min-width: 12ch;
+  justify-content: center;
   display: inline-flex;
   align-items: center;
   white-space: nowrap;
