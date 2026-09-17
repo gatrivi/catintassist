@@ -50,7 +50,7 @@ import {
 } from "../utils/deepgramListenConfig";
 import { writeMicTestMode } from "../utils/micMode";
 import { traceCaptionArrayDiff } from "../utils/vanishTrace";
-import { updateVadLoudFrames, shouldWakeFromVad } from "../utils/idleEar";
+import { updateVadLoudFrames, shouldWakeFromVad, shouldSpeechAutoStart } from "../utils/idleEar";
 import {
   RING_TRIGGER_FRAMES,
   RING_LEARN_EVENT,
@@ -1120,16 +1120,23 @@ export const useDeepgram = () => {
               : lang;
           const laneSide = laneSideForLang(socketLaneLang, pair);
 
-          if (confidence > 0.4) {
-            // v4.87.2: live refs — this closure may predate the auto-start it
-            // triggers, so state reads here are stale by one call.
-            if (isActiveLiveRef.current) {
-              notifySpeechDuringCall();
-            } else if (!isZombieCallLiveRef.current) {
-              if (trySpeechAutoStart()) {
-                shouldCaptureCaptionsRef.current = true;
-                notifySpeechDuringCall();
-              }
+          // v4.87.2: live refs — this closure may predate the auto-start it
+          // triggers, so state reads here are stale by one call.
+          // v4.123.0 fix B: ANY audible transcript starts the call — a mumbled
+          // low-confidence opener is still intake. Confidence >0.4 stays the
+          // gate for billing/activity signals only.
+          if (isActiveLiveRef.current) {
+            if (confidence > 0.4) notifySpeechDuringCall();
+          } else if (
+            shouldSpeechAutoStart({
+              transcript,
+              isActive: isActiveLiveRef.current,
+              isZombie: isZombieCallLiveRef.current,
+            })
+          ) {
+            if (trySpeechAutoStart()) {
+              shouldCaptureCaptionsRef.current = true;
+              if (confidence > 0.4) notifySpeechDuringCall();
             }
           }
 

@@ -25,6 +25,27 @@ import { APP_VERSION } from '../constants/version';
 /** Newest first. Only the entry matching APP_VERSION is shown on load. */
 export const RELEASE_NOTES_CATALOG = [
   {
+    version: '4.123.0',
+    id: 'auto-start-any-speech',
+    highlightElementIds: ['main-transcript'],
+    es: {
+      title: '📞 La llamada arranca con cualquier voz',
+      intro: 'Aunque el audio llegue dudoso, la llamada empieza y nada se pierde.',
+      sections: [{ heading: 'Qué cambió', bullets: [
+        'Cualquier voz audible inicia la llamada, aunque Deepgram dude (antes: se perdía).',
+        'La confianza sigue mandando solo para facturación/actividad.',
+      ] }],
+    },
+    en: {
+      title: '📞 Calls start on any speech',
+      intro: 'Even low-confidence openers start the call — no intake lost.',
+      sections: [{ heading: 'What changed', bullets: [
+        'Any audible speech starts the call, even when Deepgram is unsure (was: dropped).',
+        'Confidence still gates billing/activity signals only.',
+      ] }],
+    },
+  },
+  {
     version: '4.122.0',
     id: 'fractions-percent-selfpay',
     highlightElementIds: ['main-transcript'],

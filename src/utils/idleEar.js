@@ -15,3 +15,14 @@ export const updateVadLoudFrames = ({ rms, prevLoudFrames }) =>
 
 export const shouldWakeFromVad = (loudFrames) =>
   loudFrames >= IDLE_EAR_TRIGGER_FRAMES;
+
+/** Any non-empty transcript counts as audible speech for auto-START
+ * (v4.123.0 fix B — a mumbled opener is still intake). */
+export const hasSpeechText = (transcript) =>
+  String(transcript || '').trim().length > 0;
+
+/** Off-call start gate: audible text + not active + not zombie. Confidence
+ * is deliberately NOT part of this gate — it stays for billing/activity
+ * signals only (useDeepgram keeps the >0.4 checks there). */
+export const shouldSpeechAutoStart = ({ transcript, isActive, isZombie }) =>
+  hasSpeechText(transcript) && !isActive && !isZombie;

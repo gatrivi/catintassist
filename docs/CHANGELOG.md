@@ -2,6 +2,11 @@
 
 **Version source:** `src/constants/version.js` (must match `package.json` + top-right UI pill)
 
+## v4.123.0 - Auto-start on any speech (fix B)
+
+- Off-call auto-start no longer needs confidence>0.4: any non-empty transcript starts the call and opens the capture gate, so mumbled openers land in bubbles instead of dropped (`shouldSpeechAutoStart` in `idleEar.js`, unit-tested).
+- Confidence >0.4 stays the gate for billing/activity (`notifySpeechDuringCall`, call-detect pulse) only.
+
 ## v4.122.0 - Fractions, percent, self-pay
 
 - foldFractions/foldPercents run FIRST on words ("one half"→1/2, "50 por ciento"→50%); stitch skips 2-part slash runs ("1/2" safe, "5/5/5/1/2/3/4" still stitches); PERCENT_RE joins critical data.
