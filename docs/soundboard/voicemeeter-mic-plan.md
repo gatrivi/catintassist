@@ -57,6 +57,13 @@ If audio still sounds garbled/robotic, it's the virtual device formats, not the 
 - I can: run inspect + `-Apply` via the script, extend the script, verify with recordings.
 - You must: make the test/real call and confirm what the client hears (I can't hear the patient side).
 
+## Echo fix (2026-09-17, v4.128.0 — applied, script enforces)
+
+- VAIO → **B1 only** (was A1+B1 into CABLE = every greeting heard twice + self-transcribed). Empty Strip[1] → nowhere.
+- Verified post-apply: Strip[0] mic →B1 · Strip[1] →NOTHING · VAIO →B1 · 48kHz everywhere.
+- Still manual (UI only): A1 = 'CABLE Input' → point at headset. Harmless now — nothing routes to A1.
+- Backup: `%TEMP%\catint-voicemeeter-before-2026-09-17-*.xml`. Full story: [`echo-fix-2026-09-17.md`](echo-fix-2026-09-17.md).
+
 ## Live diagnosis (2026-09-12, `scripts/setup-voicemeeter-mic.ps1`)
 
 - Running mixer = Voicemeeter **Standard** (only B1 exists as a live bus). Windows still has the full **Potato** endpoint set registered (In 1-5, AUX, VAIO3, Out A1-A5, B1-B3) → **"Voicemeeter Out B2/B3" are ghosts the Standard mixer never routes to. Never pick them as a mic.** The app's client-mic pill was pinned to Out B3 (dead endpoint).

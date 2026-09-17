@@ -19,6 +19,11 @@ See [`../development/button-sizing.md`](../development/button-sizing.md):
 
 On-call **Greetings** strip (collapsible above transcript) fires 7 high-use slots when health + CALL OK pass.
 
+## Sink-only caller audio (v4.128.0)
+Caller-bound fires go to the patient path **only** — no parallel local copy (that + an A1→cable loop was the hear-it-twice echo). Details: [`echo-fix-2026-09-17.md`](echo-fix-2026-09-17.md).
+- Want to hear your own fires? Tick **Monitor** on the on-call strip (default off).
+- Tile ▶ + progress = sent once. Any ⚠️ notice = NOT sent.
+
 ## Off-call preflight (v4.84.33)
 
 **Will callers hear it?** — 3 steps in Soundboard Studio (no more 🧪 Test toggle):
