@@ -27,6 +27,7 @@ import {
 import { buildHeaderStripMetrics } from '../utils/headerMetrics';
 import { isLastCallValidToday, offCallGapSeconds } from '../utils/callTimers';
 import { MicVerifyChip } from './MicVerifyChip';
+import { HoldReadout } from './HoldReadout';
 import { computeCatchUp, formatCatchUpLine, formatCatchUpVerdict } from '../utils/catchUpPlan';
 import {
   buildOffCallStatusLabel,
@@ -553,7 +554,7 @@ const SessionControlsSticky = React.memo(({
                   style={{ fontSize: '0.65rem' }}
                   title={isHold ? `On hold — ${formatTime(holdSeconds)} elapsed. Tap to resume.` : 'Hold — pause without ending the call'}
                 >
-                  {isHold ? `H ${formatTime(holdSeconds)}` : <PauseIcon size={14} />}
+                  {isHold ? <HoldReadout isHold holdSeconds={holdSeconds} /> : <PauseIcon size={14} />}
                 </button>
               </ElementHintTarget>
               <ElementHintTarget
