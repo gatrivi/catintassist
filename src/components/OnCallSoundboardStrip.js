@@ -30,6 +30,22 @@ export const ON_CALL_SLOTS = [
   { actionId: 'intake', label: 'Intake' },
 ];
 
+const TIME_SLOTS = ['morning', 'afternoon', 'evening'];
+
+/** v4.131.0: the slot name shown in the collapsed pill. */
+export const SLOT_LABEL = { morning: 'Morning', afternoon: 'Afternoon', evening: 'Evening' };
+
+/**
+ * v4.131.0: fallback order is nearest-first (afternoon before morning when the
+ * evening slot is empty), so the recording that plays still sounds right for
+ * the hour. The pill always names the recording actually used.
+ */
+const FALLBACK_ORDER = {
+  morning: ['afternoon', 'evening'],
+  afternoon: ['morning', 'evening'],
+  evening: ['afternoon', 'morning'],
+};
+
 const getTimeOfDay = () => {
   const h = new Date().getHours();
   if (h < 12) return 'morning';
@@ -45,7 +61,8 @@ const resolveFireKey = (slot, timeOfDay, blobs) => {
   const preferred = resolveClipKey(slot, timeOfDay);
   if (blobs[preferred]) return preferred;
   if (!slot.dynamic) return preferred;
-  return ['morning', 'afternoon', 'evening'].map((t) => `${slot.actionId}_${t}`).find((k) => blobs[k]) || preferred;
+  const order = FALLBACK_ORDER[timeOfDay] || TIME_SLOTS;
+  return order.map((t) => `${slot.actionId}_${t}`).find((k) => blobs[k]) || preferred;
 };
 
 /** v4.110.0: icon shown when a non-preferred time-of-day recording fires. */
@@ -72,6 +89,9 @@ export function OnCallSoundboardStrip({ micTestMode = false, collapsed: collapse
 
   const [collapsed, setCollapsed] = useState(collapsedProp ?? true);
   const [blobs, setBlobs] = useState({});
+  // v4.131.0: gates the pill's "missing recording" cue — without it the warning
+  // would flash for a frame before the IndexedDB load resolves.
+  const [clipsLoaded, setClipsLoaded] = useState(false);
   const [thumbs, setThumbs] = useState({});
   const [healthScores, setHealthScores] = useState(() => {
     try {
@@ -128,9 +148,15 @@ export function OnCallSoundboardStrip({ micTestMode = false, collapsed: collapse
       const thumbState = {};
       const urls = [];
       for (const slot of ON_CALL_SLOTS) {
-        const key = resolveClipKey(slot, getTimeOfDay());
-        const b = await loadFile(key);
-        if (b && !cancelled) state[key] = b;
+        // v4.131.0: dynamic greetings load every time-of-day variant, so the
+        // nearest-slot fallback and its pill cue work off their own slot too.
+        const keys = slot.dynamic
+          ? TIME_SLOTS.map((t) => `${slot.actionId}_${t}`)
+          : [slot.actionId];
+        for (const key of keys) {
+          const b = await loadFile(key);
+          if (b && !cancelled) state[key] = b;
+        }
         const thumbBlob = await loadFile(`thumb_${slot.actionId}`);
         if (thumbBlob && !cancelled) {
           const url = URL.createObjectURL(thumbBlob);
@@ -143,6 +169,7 @@ export function OnCallSoundboardStrip({ micTestMode = false, collapsed: collapse
         thumbUrlsRef.current = urls;
         setBlobs(state);
         setThumbs(thumbState);
+        setClipsLoaded(true);
       } else {
         urls.forEach((u) => URL.revokeObjectURL(u));
       }
@@ -333,12 +360,32 @@ export function OnCallSoundboardStrip({ micTestMode = false, collapsed: collapse
     onToggleCollapse?.(next);
   };
 
+  // v4.131.0: one writer for the caller-monitor pref — the pill control and the
+  // expanded checkbox can never drift. fireClip still re-reads it at fire time.
+  const applyMonitor = (next) => {
+    setMonitor(next);
+    writeCallerMonitor(next);
+  };
+
   const playingSlot = playingKey
     ? ON_CALL_SLOTS.find((s) => resolveClipKey(s, timeOfDay) === playingKey)
     : null;
   const playingLabel = playingSlot
     ? (playingSlot.label || ACTIONS.find((a) => a.id === playingSlot.actionId)?.label || playingKey)
     : null;
+
+  // v4.131.0 pill cues: which recording the two dynamic greetings would fire,
+  // and whether any of them has no recording at all.
+  const langOf = (actionId) => (ACTIONS.find((a) => a.id === actionId)?.lang || '').toUpperCase();
+  const greetingSlots = ON_CALL_SLOTS.filter((s) => s.dynamic);
+  const greetingCues = greetingSlots.map((slot) => {
+    const key = resolveFireKey(slot, timeOfDay, blobs);
+    return { slot, has: !!blobs[key], variant: key.slice(slot.actionId.length + 1) };
+  });
+  const fallbackVariants = [...new Set(
+    greetingCues.filter((c) => c.has && c.variant !== timeOfDay).map((c) => c.variant)
+  )];
+  const missingLangs = greetingCues.filter((c) => !c.has).map((c) => langOf(c.slot.actionId));
 
   return (
     <div
@@ -353,12 +400,50 @@ export function OnCallSoundboardStrip({ micTestMode = false, collapsed: collapse
         title={`Quick greetings [v${APP_VERSION}]`}
       >
         {collapsed ? '▸' : '▾'} Greetings
+        <span className="on-call-sb-slot">· {SLOT_LABEL[timeOfDay]}</span>
         {playingKey && (
           <span className="on-call-sb-live" role="status">
             ▶ {micTestMode ? 'local' : 'LIVE'}{playingLabel ? ` · ${playingLabel}` : ''}
           </span>
         )}
       </button>
+      {collapsed && fallbackVariants.map((v) => (
+        <span
+          key={`variant-${v}`}
+          className="on-call-sb-slot-variant"
+          title={`No ${SLOT_LABEL[timeOfDay]} recording — this fires the ${SLOT_LABEL[v]} clip`}
+        >
+          {VARIANT_ICON[v]} using {SLOT_LABEL[v]}
+        </span>
+      ))}
+      {collapsed && clipsLoaded && missingLangs.map((lang) => (
+        <span
+          key={`missing-${lang}`}
+          className="on-call-sb-slot-missing"
+          title={`No ${lang} greeting recorded for any time of day — record it in Soundboard Studio`}
+        >
+          · {lang} missing
+        </span>
+      ))}
+      <button
+        type="button"
+        className={`on-call-sb-hear${monitor ? ' is-on' : ''}`}
+        aria-pressed={monitor}
+        onClick={() => applyMonitor(!monitor)}
+        title="OFF: greeting goes to the caller only. ON: you also hear a local copy."
+      >
+        {monitor ? '🔊' : '🔇'} Hear
+      </button>
+      {playingKey && (
+        <button
+          type="button"
+          className="on-call-sb-stop"
+          onClick={() => clearPlay()}
+          title="Stop the greeting now — patient path goes silent"
+        >
+          ⏹ Stop
+        </button>
+      )}
       {!collapsed && (
         <>
           <label className="on-call-sb-size" title="Thumbnail size">
@@ -382,10 +467,7 @@ export function OnCallSoundboardStrip({ micTestMode = false, collapsed: collapse
             <input
               type="checkbox"
               checked={monitor}
-              onChange={(e) => {
-                setMonitor(e.target.checked);
-                writeCallerMonitor(e.target.checked);
-              }}
+              onChange={(e) => applyMonitor(e.target.checked)}
             />
             Monitor
           </label>

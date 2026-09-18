@@ -46,7 +46,7 @@ export const RELEASE_NOTES_CATALOG = [
   {
     version: '4.131.0',
     id: 'studio-soundcheck-line',
-    highlightElementIds: ['sb-preflight-check'],
+    highlightElementIds: ['sb-soundcheck-line'],
     es: {
       title: '🔇 Soundboard sin ruido',
       intro: 'El estudio muestra una sola línea de estado; probar y arreglar vive en su propia vista.',
@@ -556,7 +556,7 @@ export const RELEASE_NOTES_CATALOG = [
   {
     version: '4.110.0',
     id: 'choppiness-verdict',
-    highlightElementIds: ['sb-preflight-check'],
+    highlightElementIds: ['sb-soundcheck-line'],
     es: {
       title: '〰️ Detector de audio entrecortado',
       intro: 'Ahora cada grabación también se evalúa por entrecortado (stutter), además del volumen.',
@@ -579,7 +579,7 @@ export const RELEASE_NOTES_CATALOG = [
   {
     version: '4.109.0',
     id: 'loudness-verdict',
-    highlightElementIds: ['sb-preflight-check'],
+    highlightElementIds: ['sb-soundcheck-line'],
     es: {
       title: '🔊 Medidor de volumen de los saludos',
       intro: 'Cada grabación del soundboard ahora se evalúa localmente: ¿es suficientemente fuerte para escucharse claro?',
@@ -1072,7 +1072,7 @@ export const RELEASE_NOTES_CATALOG = [
   },  {
     version: '4.96.4',
     id: 'pf-fail-shows-script-v1',
-    highlightElementIds: ['sb-preflight-check'],
+    highlightElementIds: ['sb-soundcheck-line'],
     es: {
       title: 'El fallo de calidad ya muestra el guion',
       intro: 'v4.96.4 — Cuando un clip sale UNACCEPTABLE por palabras equivocadas, el mensaje mandaba a buscar "el guion en Setup"… sin mostrarlo. Ahora el guion esperado aparece justo ahí, y el botón 🔧 Fix abre Setup en ese clip.',
@@ -2251,7 +2251,7 @@ export const RELEASE_NOTES_CATALOG = [
   {
     version: '4.84.33',
     id: 'greeting-preflight-v1',
-    highlightElementIds: ['sb-preflight-check'],
+    highlightElementIds: ['sb-soundcheck-line'],
     es: {
       title: 'Checklist de saludos',
       intro: 'Off-call: 3 pasos claros — calidad, tú escuchas, caller escucha.',

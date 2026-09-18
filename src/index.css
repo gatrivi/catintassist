@@ -2590,7 +2590,30 @@ body {
   font-size: 0.72rem;
 }
 
-/* Off-call greeting preflight — 3-step checklist */
+/* v4.131.0: Studio soundcheck — one-line status; full test/fix lives in the Greeting Editor view */
+.sb-soundcheck-line {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.35rem 0.55rem;
+  border-radius: 8px;
+  border: 1px solid rgba(148, 163, 184, 0.22);
+  background: rgba(15, 23, 42, 0.55);
+  flex-shrink: 0;
+  flex-wrap: wrap;
+}
+
+.sb-soundcheck-status {
+  flex: 1;
+  min-width: 0;
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: #e2e8f0;
+}
+
+/* v4.131.0: preflight reduced to the mic-mode strip (.sb-preflight--mic);
+   the off-call status line uses .sb-soundcheck-line and tests moved to the
+   Greeting Editor view — the old 3-step checklist classes are gone. */
 .sb-preflight {
   display: flex;
   flex-direction: column;
@@ -2610,19 +2633,6 @@ body {
   gap: 0.35rem;
 }
 
-.sb-preflight-head {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: 0.5rem;
-  flex-wrap: wrap;
-}
-
-.sb-preflight-head strong {
-  font-size: 0.82rem;
-  color: #e2e8f0;
-}
-
 .sb-preflight-sub {
   font-size: 0.62rem;
   color: var(--text-muted);
@@ -2639,110 +2649,6 @@ body {
   border-radius: 4px;
   padding: 0.05rem 0.35rem;
   vertical-align: middle;
-}
-
-.sb-preflight-pick {
-  display: flex;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: 0.3rem;
-  font-size: 0.68rem;
-  color: var(--text-muted);
-}
-
-.sb-pf-lang {
-  min-height: 22px;
-  padding: 0 0.45rem;
-  border-radius: 4px;
-  border: 1px solid rgba(255, 255, 255, 0.15);
-  background: transparent;
-  color: var(--text-muted);
-  font-size: 0.65rem;
-  font-weight: 800;
-  cursor: pointer;
-}
-
-.sb-pf-lang.is-on {
-  border-color: rgba(56, 189, 248, 0.55);
-  color: #7dd3fc;
-  background: rgba(56, 189, 248, 0.12);
-}
-
-.sb-preflight-slot {
-  font-weight: 700;
-  color: #cbd5e1;
-}
-
-.sb-preflight-steps {
-  display: flex;
-  flex-direction: column;
-  gap: 0.35rem;
-}
-
-.sb-pf-step {
-  display: flex;
-  align-items: center;
-  gap: 0.45rem;
-  padding: 0.35rem 0.4rem;
-  border-radius: 6px;
-  border: 1px solid rgba(255, 255, 255, 0.06);
-  background: rgba(0, 0, 0, 0.2);
-}
-
-.sb-pf-step.is-done {
-  border-color: rgba(16, 185, 129, 0.35);
-  background: rgba(16, 185, 129, 0.08);
-}
-
-.sb-pf-step.is-fail {
-  border-color: rgba(239, 68, 68, 0.4);
-  background: rgba(239, 68, 68, 0.08);
-}
-
-.sb-pf-step.is-active {
-  border-color: rgba(245, 158, 11, 0.45);
-  background: rgba(245, 158, 11, 0.1);
-}
-
-.sb-pf-dot {
-  width: 9px;
-  height: 9px;
-  border-radius: 50%;
-  flex-shrink: 0;
-  background: rgba(255, 255, 255, 0.25);
-}
-
-.sb-pf-dot--ok { background: #10b981; box-shadow: 0 0 6px rgba(16, 185, 129, 0.55); }
-.sb-pf-dot--fail { background: #fb923c; }
-.sb-pf-dot--confirm { background: #f59e0b; animation: pulseGlow 1.5s infinite; }
-.sb-pf-dot--pending { background: #64748b; }
-.sb-pf-dot--missing { background: rgba(255, 255, 255, 0.15); border: 1px dashed rgba(255, 255, 255, 0.25); }
-
-.sb-pf-step-body {
-  flex: 1;
-  min-width: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 0.05rem;
-}
-
-.sb-pf-step-title {
-  font-size: 0.72rem;
-  font-weight: 800;
-  color: #e2e8f0;
-}
-
-.sb-pf-step-hint {
-  font-size: 0.62rem;
-  color: var(--text-muted);
-  line-height: 1.3;
-}
-
-.sb-pf-step-actions {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.25rem;
-  align-items: center;
 }
 
 .sb-pf-btn {
@@ -2764,37 +2670,16 @@ body {
   cursor: not-allowed;
 }
 
-.sb-pf-btn--you {
-  border-color: rgba(245, 158, 11, 0.45);
-  color: #fbbf24;
-  background: rgba(245, 158, 11, 0.12);
-}
-
 .sb-pf-btn--caller {
   border-color: rgba(16, 185, 129, 0.5);
   color: #6ee7b7;
   background: rgba(16, 185, 129, 0.12);
 }
 
-.sb-pf-btn--ok {
-  border-color: rgba(16, 185, 129, 0.65);
-  color: #a7f3d0;
-  background: rgba(16, 185, 129, 0.22);
-}
-
 .sb-pf-btn--ghost {
   background: transparent;
   font-weight: 600;
   font-size: 0.65rem;
-}
-
-.sb-preflight-foot {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 0.45rem;
-  padding-top: 0.15rem;
-  border-top: 1px solid rgba(255, 255, 255, 0.06);
 }
 
 .sb-pf-vol {
@@ -2809,16 +2694,6 @@ body {
 .sb-pf-vol input[type="range"] {
   width: 64px;
   accent-color: #94a3b8;
-}
-
-.sb-route-tip {
-  font-size: 0.68rem;
-  line-height: 1.35;
-  color: #fde68a;
-  background: rgba(245, 158, 11, 0.12);
-  border: 1px solid rgba(245, 158, 11, 0.35);
-  border-radius: 6px;
-  padding: 0.35rem 0.5rem;
 }
 
 .sb-advanced {
@@ -2997,6 +2872,11 @@ body {
 }
 
 .sb-slot--empty {
+  /* v4.131.0: empty tile is a <button> now — undo UA button font/colour/cursor defaults
+     so the card looks exactly like the old <div>, only hoverable/focusable. */
+  font: inherit;
+  color: inherit;
+  cursor: pointer;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -3105,25 +2985,14 @@ body {
   background: linear-gradient(to top, rgba(0, 0, 0, 0.88), rgba(0, 0, 0, 0.22) 48%, rgba(0, 0, 0, 0.08));
 }
 
-/* Labels/health: hover-only unless .sb-show-chrome */
+/* v4.131.0: labels/health chrome is always visible on ready tiles — the old
+   hover-reveal and the retired "Labels" gallery toggle were no-ops. */
 .sb-slot-chrome {
   position: relative;
   z-index: 1;
-  opacity: 0;
+  opacity: 1;
   transition: opacity 0.15s ease;
   pointer-events: none;
-}
-
-.sb-slot--ready.has-thumb .sb-slot-chrome {
-  opacity: 1;
-}
-
-.sb-slot--ready:hover .sb-slot-chrome,
-.sb-slot--ready:focus-visible .sb-slot-chrome,
-.sb-slot--ready.is-playing .sb-slot-chrome,
-.sb-play-wrap.sb-show-chrome .sb-slot-chrome,
-.sb-slot--ready:not(.has-thumb) .sb-slot-chrome {
-  opacity: 1;
 }
 
 .sb-slot-live-badge {
@@ -7323,6 +7192,82 @@ body:has(.app-container[data-call-mode="true"]) .element-hint-panel {
   font-size: 0.6rem;
   color: #f59e0b;
   white-space: nowrap;
+}
+
+/* v4.131.0: collapsed pill — slot name, fallback/missing cues and the
+   Hear/Stop controls all live on the single 28-34px row. No wrap: a second
+   line would be clipped by max-height instead of helping. */
+.on-call-soundboard-strip:not(.is-expanded) {
+  flex-wrap: nowrap;
+}
+
+.on-call-sb-slot {
+  color: rgba(255, 255, 255, 0.78);
+  font-weight: 600;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.on-call-sb-slot-variant,
+.on-call-sb-slot-missing {
+  font-size: 0.62rem;
+  font-weight: 700;
+  white-space: nowrap;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.on-call-sb-slot-variant {
+  color: #fbbf24;
+}
+
+.on-call-sb-slot-missing {
+  color: #f87171;
+}
+
+.on-call-sb-hear,
+.on-call-sb-stop {
+  font-size: 0.62rem;
+  font-weight: 700;
+  line-height: 1;
+  height: 18px;
+  padding: 0 0.35rem;
+  border-radius: 4px;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  background: rgba(255, 255, 255, 0.06);
+  color: rgba(255, 255, 255, 0.7);
+  cursor: pointer;
+  white-space: nowrap;
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.2rem;
+  box-sizing: border-box;
+}
+
+/* visible ON state — the local copy is opt-in, so it must read at a glance */
+.on-call-sb-hear.is-on {
+  border-color: rgba(16, 185, 129, 0.6);
+  background: rgba(16, 185, 129, 0.18);
+  color: #6ee7b7;
+}
+
+.on-call-sb-stop {
+  border-color: rgba(248, 113, 113, 0.55);
+  background: rgba(248, 113, 113, 0.14);
+  color: #fca5a5;
+}
+
+/* 900x600 keeps every cue (collapsed row is ~420px of the ~888px available).
+   Phones are the only place the cue text must go — slot + controls stay. */
+@media (max-width: 640px) {
+  .on-call-sb-slot-variant,
+  .on-call-sb-slot-missing {
+    display: none;
+  }
 }
 
 /* legacy text-btn class kept for any leftover refs */
