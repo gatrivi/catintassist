@@ -7210,6 +7210,48 @@ body:has(.app-container[data-call-mode="true"]) .element-hint-panel {
   white-space: nowrap;
 }
 
+/* v4.131.1: manual time-of-day picker (AM/PM/Eve/A) in the collapsed pill.
+   The clock is only the default — this row lets the interpreter force which
+   recording fires. Segmented 18px row, muted until picked, blue when active,
+   and it never wraps out of the 28-34px pill. */
+.on-call-sb-picks {
+  display: inline-flex;
+  align-items: center;
+  flex-shrink: 0;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.on-call-sb-pick {
+  font-size: 0.62rem;
+  font-weight: 700;
+  line-height: 1;
+  height: 18px;
+  padding: 0 0.3rem;
+  border: none;
+  background: rgba(255, 255, 255, 0.05);
+  color: rgba(255, 255, 255, 0.5);
+  cursor: pointer;
+  white-space: nowrap;
+  box-sizing: border-box;
+}
+
+/* hairline separators instead of gaps — keeps the group one compact block */
+.on-call-sb-pick + .on-call-sb-pick {
+  border-left: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.on-call-sb-pick:hover {
+  color: rgba(255, 255, 255, 0.85);
+}
+
+/* the picked slot (or "A" for the clock rule) — must read at a glance */
+.on-call-sb-pick.is-active {
+  background: rgba(59, 130, 246, 0.32);
+  color: #bfdbfe;
+}
+
 .on-call-sb-slot-variant,
 .on-call-sb-slot-missing {
   font-size: 0.62rem;
@@ -7261,8 +7303,8 @@ body:has(.app-container[data-call-mode="true"]) .element-hint-panel {
   color: #fca5a5;
 }
 
-/* 900x600 keeps every cue (collapsed row is ~420px of the ~888px available).
-   Phones are the only place the cue text must go — slot + controls stay. */
+/* 900x600 keeps every cue (collapsed row is ~470px of the ~888px available).
+   Phones are the only place the cue text must go — slot + picker + controls stay. */
 @media (max-width: 640px) {
   .on-call-sb-slot-variant,
   .on-call-sb-slot-missing {

@@ -5,6 +5,7 @@ import { useAudioSettings } from '../contexts/AudioSettingsContext';
 import { generateObjectUrl, getStorageSummary, loadFile } from '../utils/storage';
 import { bindAudioToSink } from '../utils/audioRoute';
 import { capSinkTestVolume } from '../utils/audioSelfTest';
+import { getWorkSlot } from '../utils/workTime';
 
 jest.mock('../contexts/AudioSettingsContext', () => ({ useAudioSettings: jest.fn() }));
 jest.mock('../utils/storage');
@@ -14,6 +15,23 @@ jest.mock('../utils/audioRoute', () => ({
   rampVolume: jest.fn(),
 }));
 jest.mock('./AudioEditorPanel', () => () => null);
+// v4.131.1: the slot is now computed in US Pacific by the shared helper, so
+// tests pin the helper's answer instead of standing in for the machine clock.
+jest.mock('../utils/workTime', () => {
+  const actual = jest.requireActual('../utils/workTime');
+  return { ...actual, getWorkSlot: jest.fn(actual.getWorkSlot) };
+});
+
+const realGetWorkSlot = jest.requireActual('../utils/workTime').getWorkSlot;
+/** Pin the Pacific slot; restores the real clock rule afterwards. */
+const withSlot = (slot) => {
+  getWorkSlot.mockReturnValue(slot);
+  return () => getWorkSlot.mockImplementation(realGetWorkSlot);
+};
+
+// CRA's jest config resets mocks before every test, which also drops the
+// factory's default implementation — re-arm the real Pacific rule each time.
+beforeEach(() => getWorkSlot.mockImplementation(realGetWorkSlot));
 
 describe('soundboard recording playback buttons', () => {
   let settings;
@@ -104,7 +122,7 @@ describe('soundboard recording playback buttons', () => {
   });
 
   test('soundcheck opens the saved fallback recording rather than the empty current slot', async () => {
-    const hour = jest.spyOn(Date.prototype, 'getHours').mockReturnValue(14);
+    const restore = withSlot('afternoon');
     loadFile.mockImplementation(async (key) => key === 'greeting_en_morning' ? recording : null);
     const onOpen = jest.fn();
     window.addEventListener('cat_open_greeting_editor', onOpen);
@@ -123,7 +141,7 @@ describe('soundboard recording playback buttons', () => {
       expect(mediaPlay).not.toHaveBeenCalled();
     } finally {
       window.removeEventListener('cat_open_greeting_editor', onOpen);
-      hour.mockRestore();
+      restore();
     }
   });
 
@@ -202,7 +220,7 @@ describe('v4.131.0 studio soundcheck line', () => {
 
   // v4.131.0: the pill must spell out its claim (EN + ES, current slot, caller-tested).
   test('CALL READY pill states exactly what it means', async () => {
-    const hour = jest.spyOn(Date.prototype, 'getHours').mockReturnValue(9);
+    const restore = withSlot('morning');
     const clip = new Blob(['greeting'], { type: 'audio/webm' });
     localStorage.setItem('catint_manual_call_ok_v1', JSON.stringify({
       'greeting_en|voicemeeter-in-1|': { at: 1, clipKey: 'greeting_en_morning', sinkId: 'voicemeeter-in-1', micId: '' },
@@ -216,7 +234,7 @@ describe('v4.131.0 studio soundcheck line', () => {
       const pill = await screen.findByText('CALL READY');
       expect(pill).toHaveAttribute('title', 'EN and ES greetings for this slot have a passing caller test (CALL OK)');
     } finally {
-      hour.mockRestore();
+      restore();
     }
   });
 

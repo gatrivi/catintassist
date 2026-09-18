@@ -36,8 +36,9 @@ import { displayDeviceName, readKnownDeviceLabels } from '../utils/audioDeviceLa
 import { getEffectiveDeepgramKey } from '../utils/deepgramRuntimeKey';
 import { classifyLoudness, measureChannelLoudness, measureChoppiness, classifyChoppiness } from '../utils/loudness';
 import { ElementHintTarget } from './ElementHint';
+// v4.131.1: slot picking is US-Pacific, shared with the on-call strip (workTime.js).
+import { getWorkSlot, nearestSlotOrder, TIME_SLOTS } from '../utils/workTime';
 
-const TIME_SLOTS = ['morning', 'afternoon', 'evening'];
 const TIME_SLOT_META = {
   morning: { icon: '☀️', short: 'AM', name: 'Morning' },
   afternoon: { icon: '🌤', short: 'PM', name: 'Afternoon' },
@@ -72,7 +73,9 @@ export const resolvePlayableClip = (action, timeOfDay, blobs) => {
   }
   const preferred = `${action.id}_${timeOfDay}`;
   if (blobs[preferred]) return { key: preferred, fromSlot: timeOfDay };
-  const alt = TIME_SLOTS.find((t) => blobs[`${action.id}_${t}`]);
+  // v4.131.1: same nearest-first order the on-call strip fires with, so the
+  // Studio tile and the strip can never pick different variants.
+  const alt = nearestSlotOrder(timeOfDay).find((t) => blobs[`${action.id}_${t}`]);
   return alt ? { key: `${action.id}_${alt}`, fromSlot: alt } : { key: null, fromSlot: null };
 };
 
@@ -270,12 +273,8 @@ export const GreetingsPanel = ({ onEditModeChange, onExitStudio, micTestMode = f
   const callerRouteRef = useRef(false);
 
   useEffect(() => {
-    const updateTime = () => {
-      const h = new Date().getHours();
-      if (h < 12) setTimeOfDay('morning');
-      else if (h < 17) setTimeOfDay('afternoon');
-      else setTimeOfDay('evening');
-    };
+    // v4.131.1: Pacific slot, not the machine clock (see utils/workTime.js).
+    const updateTime = () => setTimeOfDay(getWorkSlot());
     updateTime();
     const intv = setInterval(updateTime, 60000);
     return () => clearInterval(intv);

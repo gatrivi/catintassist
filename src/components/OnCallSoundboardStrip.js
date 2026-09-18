@@ -15,6 +15,7 @@ import { readRouteModePreference, ROUTE_MODE } from '../utils/audioRoutePassthro
 import { readCallerMonitor, writeCallerMonitor } from '../utils/callerMonitor';
 import { logRouteEvent, ROUTE_EVENT } from '../utils/routeDiagnostics';
 import { APP_VERSION } from '../constants/version';
+import { getWorkSlot, getSlotAuto, getWorkClockLabel, readSlotOverride, writeSlotOverride, nearestSlotOrder, TIME_SLOTS, WORK_TIMEZONE } from '../utils/workTime';
 
 const CALL_ROUTE_MIN_SCORE = 0.5;
 const SIZE_KEY = 'catint_oncall_sb_size';
@@ -30,28 +31,16 @@ export const ON_CALL_SLOTS = [
   { actionId: 'intake', label: 'Intake' },
 ];
 
-const TIME_SLOTS = ['morning', 'afternoon', 'evening'];
-
 /** v4.131.0: the slot name shown in the collapsed pill. */
 export const SLOT_LABEL = { morning: 'Morning', afternoon: 'Afternoon', evening: 'Evening' };
 
-/**
- * v4.131.0: fallback order is nearest-first (afternoon before morning when the
- * evening slot is empty), so the recording that plays still sounds right for
- * the hour. The pill always names the recording actually used.
- */
-const FALLBACK_ORDER = {
-  morning: ['afternoon', 'evening'],
-  afternoon: ['morning', 'evening'],
-  evening: ['afternoon', 'morning'],
-};
-
-const getTimeOfDay = () => {
-  const h = new Date().getHours();
-  if (h < 12) return 'morning';
-  if (h < 17) return 'afternoon';
-  return 'evening';
-};
+/** v4.131.1: the manual picker row — three slots plus "A" (auto/clock). */
+export const SLOT_PICKS = [
+  { value: 'morning', short: 'AM' },
+  { value: 'afternoon', short: 'PM' },
+  { value: 'evening', short: 'Eve' },
+  { value: null, short: 'A' },
+];
 
 const resolveClipKey = (slot, timeOfDay) =>
   slot.dynamic ? `${slot.actionId}_${timeOfDay}` : slot.actionId;
@@ -61,8 +50,7 @@ const resolveFireKey = (slot, timeOfDay, blobs) => {
   const preferred = resolveClipKey(slot, timeOfDay);
   if (blobs[preferred]) return preferred;
   if (!slot.dynamic) return preferred;
-  const order = FALLBACK_ORDER[timeOfDay] || TIME_SLOTS;
-  return order.map((t) => `${slot.actionId}_${t}`).find((k) => blobs[k]) || preferred;
+  return nearestSlotOrder(timeOfDay).map((t) => `${slot.actionId}_${t}`).find((k) => blobs[k]) || preferred;
 };
 
 /** v4.110.0: icon shown when a non-preferred time-of-day recording fires. */
@@ -101,7 +89,14 @@ export function OnCallSoundboardStrip({ micTestMode = false, collapsed: collapse
     }
   });
   const [manualCallOk, setManualCallOk] = useState(() => loadManualCallOk());
-  const [timeOfDay, setTimeOfDay] = useState(getTimeOfDay);
+  // v4.131.1: the slot in use. Seeded from getWorkSlot(), so a saved manual
+  // pick survives a reload and the tiles show the right recording at once.
+  const [timeOfDay, setTimeOfDay] = useState(getWorkSlot);
+  // v4.131.1: the manual pick (`null` = follow the clock), the pick the clock
+  // alone would make (shown in the "A" tooltip) and the shift clock itself.
+  const [slotPick, setSlotPick] = useState(readSlotOverride);
+  const [autoSlot, setAutoSlot] = useState(getSlotAuto);
+  const [workClock, setWorkClock] = useState(getWorkClockLabel);
   const [playingKey, setPlayingKey] = useState(null);
   const [playbackProgress, setPlaybackProgress] = useState(0);
   const [notice, setNotice] = useState('');
@@ -118,7 +113,11 @@ export function OnCallSoundboardStrip({ micTestMode = false, collapsed: collapse
   const thumbUrlsRef = useRef([]);
 
   useEffect(() => {
-    const tick = () => setTimeOfDay(getTimeOfDay());
+    const tick = () => {
+      setTimeOfDay(getWorkSlot());
+      setAutoSlot(getSlotAuto());
+      setWorkClock(getWorkClockLabel());
+    };
     tick();
     const id = setInterval(tick, 60000);
     return () => clearInterval(id);
@@ -367,6 +366,16 @@ export function OnCallSoundboardStrip({ micTestMode = false, collapsed: collapse
     writeCallerMonitor(next);
   };
 
+  // v4.131.1: manual slot pick. Persist first (so every caller of workTime obeys
+  // it), then switch this strip on the SAME click — tiles and pill move together.
+  // `null` clears the key and hands control back to the work clock.
+  const pickSlot = (slot) => {
+    writeSlotOverride(slot);
+    const saved = readSlotOverride(); // junk input normalises to "auto"
+    setSlotPick(saved);
+    setTimeOfDay(saved || getWorkSlot());
+  };
+
   const playingSlot = playingKey
     ? ON_CALL_SLOTS.find((s) => resolveClipKey(s, timeOfDay) === playingKey)
     : null;
@@ -407,6 +416,32 @@ export function OnCallSoundboardStrip({ micTestMode = false, collapsed: collapse
           </span>
         )}
       </button>
+      {/* v4.131.1: manual time-of-day pick — the interpreter's choice beats the
+          work clock. A sibling of the pill controls, never inside a button. */}
+      <span
+        className="on-call-sb-picks"
+        data-guide="on-call-slot-pick"
+        role="group"
+        aria-label="Greeting time of day"
+      >
+        {SLOT_PICKS.map(({ value, short }) => {
+          const active = slotPick === value;
+          return (
+            <button
+              key={short}
+              type="button"
+              className={`on-call-sb-pick${active ? ' is-active' : ''}`}
+              aria-pressed={active}
+              onClick={() => pickSlot(value)}
+              title={value
+                ? `Play the ${SLOT_LABEL[value]} recording`
+                : `Automatic - follows the work clock (${SLOT_LABEL[autoSlot].toLowerCase()} now, ${workClock} ${WORK_TIMEZONE})`}
+            >
+              {short}
+            </button>
+          );
+        })}
+      </span>
       {collapsed && fallbackVariants.map((v) => (
         <span
           key={`variant-${v}`}
