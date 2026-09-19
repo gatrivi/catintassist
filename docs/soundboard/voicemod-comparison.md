@@ -73,7 +73,7 @@ Same element, same `setSinkId`, same path as live speech — closer to Voicemod 
 
 ## Files
 
-- [`audioRoutePassthrough.js`](../src/utils/audioRoutePassthrough.js)
-- [`routeDiagnostics.js`](../src/utils/routeDiagnostics.js)
-- [`AudioSettingsContext.js`](../src/contexts/AudioSettingsContext.js) — `playClipToSink`
-- [`OnCallSoundboardStrip.js`](../src/components/OnCallSoundboardStrip.js)
+- [`audioRoutePassthrough.js`](../../src/utils/audioRoutePassthrough.js)
+- [`routeDiagnostics.js`](../../src/utils/routeDiagnostics.js)
+- [`AudioSettingsContext.js`](../../src/contexts/AudioSettingsContext.js) — `playClipToSink`
+- [`OnCallSoundboardStrip.js`](../../src/components/OnCallSoundboardStrip.js)
