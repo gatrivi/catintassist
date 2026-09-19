@@ -2,6 +2,12 @@
 
 **Version source:** `src/constants/version.js` (must match `package.json` + top-right UI pill)
 
+## v4.133.1 - hotfix: unreadable captions value can't brick the greeting editor
+
+- Prod failure: corrupt/unreadable `catint_captions_v2` (transcript array sharing the greeting IDB store) made `loadAllBlobs` throw forever — Greeting Editor stuck on "Load failed … Retry loading".
+- Fix: known non-audio keys (`catint_captions_v2`, `catint_last_call_v1`) are skipped outright; a recording key that lost its blob now fails SOFT — remaining clips load, bad keys listed in a warning.
+- Transcript data untouched (never delete a tirade); main transcript view was already fail-soft.
+
 ## v4.133.0 - ER incident: never delete a tirade
 
 - `stopRecording` no longer wipes captions — audio stops were clearing the whole transcript before the last-call archive could seal it (unrecoverable loss in the ER).

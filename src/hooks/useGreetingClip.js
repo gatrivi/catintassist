@@ -15,6 +15,7 @@ import {
 } from '../utils/loudness';
 import { analyzeClipLegibility } from '../utils/audioSelfTest';
 import { routeFamilyKey, MANUAL_CALL_OK_STORAGE, LEGACY_CALL_PATH_STORAGE } from '../utils/routeVerification';
+import { LAST_CALL_ARCHIVE_KEY } from '../utils/lastCallArchive';
 
 const withoutKey = (store, key) => {
   const next = { ...store };
@@ -72,22 +73,29 @@ const LS = {
   chop: 'catint_sb_chop',
 };
 
-/** Reload every clip blob from IndexedDB (excludes thumbs/backgrounds). */
+/** Reload every clip blob from IndexedDB (excludes thumbs/backgrounds).
+ *  v4.133.1 fail-soft: a bad key never fails the load — good clips still
+ *  show, bad ones are reported. Captions/last-call seal share this IDB
+ *  store and are skipped outright (a corrupt transcript value must not
+ *  brick the greeting editor, nor be deleted — never delete a tirade). */
+const NON_AUDIO_KEYS = ['catint_captions_v2', LAST_CALL_ARCHIVE_KEY];
 const loadAllBlobs = async () => {
   const next = {};
+  const badKeys = [];
   const keys = (await listStorageKeys()).filter(
-    (k) => typeof k === 'string' && !k.startsWith('url_') && !k.startsWith('thumb_') && k !== 'bg_app',
+    (k) => typeof k === 'string' && !k.startsWith('url_') && !k.startsWith('thumb_')
+      && k !== 'bg_app' && !NON_AUDIO_KEYS.includes(k),
   );
   for (const key of keys) {
     const blob = await loadFile(key);
     if (blob?.size) { next[key] = blob; continue; }
-    // Not a blob. The IDB store is shared with non-audio values (caption
-    // array, last-call archive) — skip those silently instead of failing
-    // the whole load. Throw ONLY for a real recording key that lost its blob.
+    // Not a blob. The IDB store is shared with non-audio values — skip those
+    // silently. Otherwise it is a real recording key that lost its blob
+    // (or reads corrupt): report it, keep loading the rest.
     const raw = await loadRawValue(key);
-    if (raw === undefined) throw new Error(`Recording ${key} is missing or unreadable. Retry loading.`);
+    if (raw === undefined) badKeys.push(key);
   }
-  return next;
+  return { blobs: next, badKeys };
 };
 
 export const useGreetingClip = ({ onChange } = {}) => {
@@ -125,10 +133,15 @@ export const useGreetingClip = ({ onChange } = {}) => {
     const request = ++reloadRef.current;
     setIsLoading(true);
     try {
-      const next = await loadAllBlobs();
+      const { blobs: next, badKeys } = await loadAllBlobs();
       if (!mountedRef.current || request !== reloadRef.current) return false;
       setBlobs(next);
       onChangeRef.current?.(next);
+      // Fail-soft (v4.133.1): warn about unreadable recordings, never block the rest.
+      setError(badKeys.length
+        ? `${badKeys.length} recording${badKeys.length > 1 ? 's' : ''} missing or unreadable: `
+          + `${badKeys.join(', ')}. Re-record or re-upload them — everything else loaded.`
+        : null);
       return true;
     } catch (e) {
       if (mountedRef.current && request === reloadRef.current) setError(`Load failed: ${e.message || e}`);

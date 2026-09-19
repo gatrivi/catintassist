@@ -25,6 +25,29 @@ import { APP_VERSION } from '../constants/version';
 /** Newest first. Only the entry matching APP_VERSION is shown on load. */
 export const RELEASE_NOTES_CATALOG = [
   {
+    version: '4.133.1',
+    id: 'greeting-editor-load-hotfix',
+    highlightElementIds: ['gee-record-bar'],
+    es: {
+      title: '🛠 El editor de saludos ya no se bloquea',
+      intro: 'Si el almacenamiento del navegador dañaba el valor del transcript, el editor de saludos quedaba trabado en "Load failed" para siempre.',
+      sections: [{ heading: 'Qué cambió', bullets: [
+        'Los valores que no son audio (transcript, sello de última llamada) ya no pueden romper la carga.',
+        'Si un clip está ilegible, el resto carga igual y el editor te dice cuál regrabar.',
+        'Tu transcript no se borra ni se toca.',
+      ] }],
+    },
+    en: {
+      title: '🛠 Greeting editor no longer bricks',
+      intro: 'If browser storage corrupted the transcript value, the greeting editor got stuck on "Load failed" forever.',
+      sections: [{ heading: 'What changed', bullets: [
+        'Non-audio values (transcript, last-call seal) can no longer break the load.',
+        'If a clip is unreadable, everything else still loads and the editor names the bad clip.',
+        'Your transcript is never deleted or touched.',
+      ] }],
+    },
+  },
+  {
     version: '4.131.1',
     id: 'pacific-shift-clock',
     highlightElementIds: ['on-call-soundboard'],

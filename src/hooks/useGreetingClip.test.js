@@ -248,6 +248,28 @@ describe('visible failures', () => {
     expect(result.current.blobs.catint_captions_v2).toBeUndefined();
   });
 
+  // v4.133.1 fail-soft: a recording whose blob is gone must not fail the whole
+  // load — remaining clips still show and the bad key is reported as a warning.
+  test('unreadable recording key warns but other clips still load', async () => {
+    files.greeting_es_morning = blob();
+    loadFile.mockImplementation(async (k) => (k === key ? null : files[k] || null));
+    const { result } = await clips();
+    expect(result.current.error).toMatch(/missing or unreadable/);
+    expect(result.current.error).toContain(key);
+    expect(result.current.blobs.greeting_es_morning).toBeDefined();
+    expect(result.current.isLoading).toBe(false);
+  });
+
+  // The exact prod failure (v4.133.1): a corrupt captions value makes even the
+  // raw read fail (loadRawValue → undefined). Known non-audio keys must be
+  // skipped outright — the editor loads with no error at all.
+  test('unreadable captions value never errors the greeting editor', async () => {
+    listStorageKeys.mockResolvedValue(['catint_captions_v2', 'catint_last_call_v1', key]);
+    const { result } = await clips();
+    expect(result.current.error).toBeNull();
+    expect(result.current.blobs[key]).toBeDefined();
+  });
+
   test('decode rejection closes its context', async () => {
     const close = jest.fn().mockResolvedValue();
     window.AudioContext = jest.fn(() => ({ close, decodeAudioData: jest.fn().mockRejectedValue(new Error('bad audio')) }));

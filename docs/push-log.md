@@ -70,3 +70,5 @@
 | 2026-09-17T19:25:56.999Z | ef95e6e | v4.130.2 re-attach banner names route - VB-Cable/mic/tab per configured source |
 | 2026-09-18T15:51:56.118Z | 2806bcd | v4.131.0 soundboard - Studio one-line soundcheck, on-call slot cue + Hear/Stop, gallery cleanup |
 | 2026-09-18T17:07:10.696Z | aae8003 | v4.131.1 greeting slot - US Central work clock + manual AM/PM/Eve picker on the on-call strip |
+| 2026-09-19T17:16:11.884Z | fcb0aaa | v4.133.0 ER incident: never delete a tirade |
+| 2026-09-19T18:13:41.718Z | fcb0aaa | v4.133.1 hotfix: corrupt captions value can no longer brick the greeting editor (fail-soft load) |
