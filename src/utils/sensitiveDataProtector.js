@@ -1220,6 +1220,13 @@ const MED_CUE_RE =
 
 const DOSAGE_RE = new RegExp(`\\b\\d+(?:[.,]\\d+)?\\s*(?:${DOSAGE_UNITS_ALT})\\b`, 'i');
 
+// Spelled-out doses: "five hundred milligrams", "twenty units" — nurse dictation
+// often has no digits, so DOSAGE_RE alone never fires and the stutter-prune eats it.
+const WORD_DOSAGE_RE = new RegExp(
+  `\\b(?:zero|one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve|thirteen|fourteen|fifteen|sixteen|seventeen|eighteen|nineteen|twenty|thirty|forty|fifty|sixty|seventy|eighty|ninety|hundred|thousand|uno|dos|tres|cuatro|cinco|seis|siete|ocho|nueve|diez|once|doce|trece|catorce|quince|veinte|treinta|cuarenta|cincuenta|sesenta|setenta|ochenta|noventa|cien|mil)(?:[-\\s](?:one|two|three|four|five|six|seven|eight|nine|uno|dos|tres|cuatro|cinco|seis|siete|ocho|nueve|hundred|thousand|cien|mil))?\\s+(?:${DOSAGE_UNITS_ALT})\\b`,
+  'i',
+);
+
 const FREQUENCY_RE =
   /\b(once|twice|daily|nightly|every|per day|a day|bid|tid|qid|prn|una vez|dos veces|diari[oa]|cada|por d[ií]a|por noche)\b/i;
 
@@ -1256,6 +1263,7 @@ export const containsCriticalData = (text) => {
     WEEKDAY_RE.test(text) ||
     ORDINAL_RE.test(text) ||
     DOSAGE_RE.test(text) ||
+    WORD_DOSAGE_RE.test(text) ||
     VITALS_RE.test(text) ||
     PERCENT_RE.test(text) ||
     MONEY_RE.test(text) ||
@@ -1520,6 +1528,14 @@ const FILLER_WORDS = new Set([
   'yep', 'nope', 'hmm', 'hm', 'bueno', 'pues', 'este', 'ees', 'ehm',
 ]);
 
+// Dedupe must never eat these — clinical repeats ("take take" → drop is fine,
+// but "insulin insulin" during a correction can be the nurse re-stressing).
+const DEDUPE_NEVER_DROP = new Set([
+  'mg', 'ml', 'units', 'unidades', 'insulin', 'insulina', 'metformin',
+  'metformina', 'not', 'no', 'never', 'nunca', 'allergic', 'alergica',
+  'alergico', 'without', 'sin',
+]);
+
 const PHRASE_FILLERS = ['you know', 'i mean', 'sort of', 'kind of'];
 
 export const cleanFillerWords = (text) => {
@@ -1589,6 +1605,7 @@ export const hallucinationGuard = (text) => {
       norm === lastWord &&
       norm.length > 1 &&
       !isNumberLike(word) &&
+      !DEDUPE_NEVER_DROP.has(norm) &&
       !containsCriticalData(localWindow) &&
       !hasCriticalDataCue(localWindow)
     )
@@ -1596,6 +1613,7 @@ export const hallucinationGuard = (text) => {
     if (
       pair === lastPair &&
       pair.length > 4 &&
+      !DEDUPE_NEVER_DROP.has(norm) &&
       !containsNumberSequence(words.slice(i - 1, i + 1).join(' ')) &&
       !containsCriticalData(pairWindow) &&
       !hasCriticalDataCue(pairWindow)
@@ -1611,7 +1629,8 @@ export const hallucinationGuard = (text) => {
     words.length > 15 &&
     cleaned.length < words.length * 0.5 &&
     !containsNumberSequence(text, 2) &&
-    !containsCriticalData(text)
+    !containsCriticalData(text) &&
+    !hasCriticalDataCue(text)
   ) {
     const pruned = `${cleaned.slice(0, 12).join(' ')}... [Stutter Pruned]`;
     // eslint-disable-next-line no-console
@@ -1684,7 +1703,8 @@ export const removeOverlapPreservingDigitSequences = (base, addition) => {
       /\d/.test(overlapText) ||
       overlapSlice.some(isNumberLike) ||
       containsCriticalData(overlapText) ||
-      containsCriticalData(boundaryText)
+      containsCriticalData(boundaryText) ||
+      hasCriticalDataCue(boundaryText)
     ) {
       bestOverlap = 0;
     }

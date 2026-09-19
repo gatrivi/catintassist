@@ -632,10 +632,12 @@ const SessionControlsSticky = React.memo(({
               <StickyTargetsChip dailyMinutes={dailyMinutes} monthlyMinutes={monthlyMinutes} workDays={workDays} breakMinutes={breakMinutes} ratePerMinute={ratePerMinute} goalMinutes={goalMinutes} onOpenGoalsView={onOpenGoalsView} />
             </div>
           ) : (
+            <>
             <div className="off-call-inline-row" id="off-call-inline-row">
               {/* Status strip only mounts when there is something to say —
-                  zombie/error/connecting. Gap + mic + targets share ONE row so
-                  off-call center never stacks or pushes the TAB/VB strip down. */}
+                  zombie/error/connecting. Status + gap counters share ONE row so
+                  off-call center never stacks or pushes the TAB/VB strip down.
+                  (v4.132.0: the mic chip left this row for Settings → Audio.) */}
               {(isZombieCall || connectionState === 'error' || connectionState === 'connecting') && (
               <div className="call-micro-bar-center off-call-status-bar" title={offCallStatusLabel}>
                 <span
@@ -655,7 +657,6 @@ const SessionControlsSticky = React.memo(({
                 </span>
               </div>
               )}
-              {/* v4.97.0: one-glance mic status off-call — the pre-avail gate */}
               {/* v4.124.0: OFF-call gap + LAST call counters — one line, ticks live
                   (gap since last call end; live avail before the first call). */}
               <div
@@ -693,10 +694,21 @@ const SessionControlsSticky = React.memo(({
                   <span>📡{Math.round(offCallMins || 0)}m</span>
                 </span>
               </div>
-              <MicVerifyChip title="Client mic + last MIC VERIFY verdict — full panel in the idle pane below" />
-              {/* Targets chip lives in the audio strip (trailing slot) off-call —
-                  the sticky row keeps gap counters only. */}
+              {/* v4.132.0: the off-call MIC VERIFY chip moved out of this row (it
+                  lives in Settings → Audio → Devices now). The ON-CALL chip in the
+                  call micro bar stays — do not re-add a chip here: this row must
+                  stay ONE non-stacking line (see comment above). */}
             </div>
+            {/* v4.133.0: the 💵⏱☕ targets chip gets its OWN line under the gap
+                counters — NOT the audio strip trailing slot. The chip measures
+                `closest('.session-controls-center')` (DailyTargetsChip.js:119),
+                so it must live inside the center column: the audio row has no
+                such ancestor, so the chip measured the whole audio line, kept all
+                three pairs and painted over the TAB/VB proof spans (3884ce5 bug). */}
+            <div className="off-call-targets-row" id="off-call-targets-row">
+              <StickyTargetsChip dailyMinutes={dailyMinutes} monthlyMinutes={monthlyMinutes} workDays={workDays} breakMinutes={breakMinutes} ratePerMinute={ratePerMinute} goalMinutes={goalMinutes} onOpenGoalsView={onOpenGoalsView} />
+            </div>
+            </>
           )}
         </div>
 
@@ -1975,8 +1987,9 @@ export const DashboardHeader = ({
     />
   );
 
-  // v4.131.0: the 💵⏱☕ chip off-call — one definition for every mount in this
-  // component (scoreboard trailing slot + non-scoreboard views + meter-only HUD).
+  // v4.131.0: the 💵⏱☕ chip off-call — one definition for the meter-only HUD
+  // mount. (v4.133.0: the off-call mounts use SessionControlsSticky's copy; the
+  // chip no longer rides the audio chips row — see trailingSlot below.)
   const renderTargetsChip = () => (
     <StickyTargetsChip
       dailyMinutes={Math.round(totalDailyMins)}
@@ -3205,11 +3218,12 @@ ${isInDeficit ? `⚠️ DEFICIT: Behind pace by ${Math.round(monthlyDeficitMins)
 
   return (
     <>
-    {/* v4.131.0: the off-call scoreboard is off-call chrome too — its audio chips
-        row carries the targets chip WITH the inline metrics strip. 3884ce5 moved
-        💵⏱☕ into that trailing slot but left the scoreboard branch strip-only,
-        which hid it in the default off-call view. Chip first, strip last: the
-        strip keeps its margin-left:auto right-edge anchor. */}
+    {/* v4.133.0: the off-call 💵⏱☕ chip lives in the sticky row's own
+        `.off-call-targets-row` (inside `.session-controls-center`) for EVERY
+        off-call view; the audio chips row trailing slot carries only the
+        scoreboard inline metrics strip. 3884ce5 pushed the chip into that
+        trailing slot — it then measured the whole audio line and overlapped
+        the TAB/VB proof. Chip never returns to `trailingSlot`. */}
     <header className={`dashboard-header glass-panel${headerMinimal ? ' dashboard-header--minimal' : ''}${headerCallCompact ? ' dashboard-header--call-compact' : ''}${isActive && callModeExpanded ? ' dashboard-header--call-expanded' : ''}${offCallScoreboardView ? ' dashboard-header--off-call-scoreboard' : ''}${offCallScoreboardView && offCallMetricsExpanded ? ' dashboard-header--metrics-expanded' : ''}${meterOnlyMode ? ' dashboard-header--meter-only' : ''}`} style={{ position: 'relative', zIndex: 100, ...(offCallScoreboardView && offCallMetricsExpanded ? { maxHeight: `${scoreboardMaxVh}vh` } : {}) }}>
       <SessionControlsSticky
         isActive={isActive}
@@ -3299,7 +3313,7 @@ ${isInDeficit ? `⚠️ DEFICIT: Behind pace by ${Math.round(monthlyDeficitMins)
         offCallStatusLabel={offCallStatusLabel}
         meterOnly={meterOnlyMode}
         onToggleMeterHud={toggleMeterHud}
-        trailingSlot={(offCallScoreboardView ? (<>{renderTargetsChip()}{renderInlineMetricsStrip(offCallMetricsExpanded)}</>) : (!isActive ? renderTargetsChip() : null))}
+        trailingSlot={offCallScoreboardView ? renderInlineMetricsStrip(offCallMetricsExpanded) : null}
       />
 
       {headerCallCompact && (

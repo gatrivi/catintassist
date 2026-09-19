@@ -6,6 +6,9 @@
 export const AUTOPILOT_END_COUNTDOWN_MS = 10000;
 export const AUTOPILOT_START_COOLDOWN_MS = 25000;
 export const AUTOPILOT_MIN_CALL_SECS = 60;
+// v4.132.0: after a human farewell, wait this long with NO speech before
+// ending. Any transcript in the window cancels (call is still alive).
+export const AUTOPILOT_FAREWELL_SILENCE_MS = 30000;
 
 export const DEFAULT_START_PHRASES = [
   'call is being bridged',
@@ -27,6 +30,26 @@ export const DEFAULT_END_PHRASES = [
 
 // Queue-wait announcements must NOT start a call — they contain
 // start-like wording ("connecting you") while still in the waiting room.
+// v4.132.0: HUMAN farewells (the medical provider / nurse ending the call).
+// These do NOT end the call instantly — they ARM a flag. The call auto-ends
+// only after AUTOPILOT_FAREWELL_SILENCE_MS of no speech, so a farewell mid-call
+// never cuts a live conversation. Kept separate from `end` so user-saved
+// `end` overrides don't wipe this safety list.
+export const DEFAULT_FAREWELL_PHRASES = [
+  'thank you for your help',
+  'thank you so much for your help',
+  'thank you for your time',
+  'have a great day',
+  'have a good day',
+  'have a good one',
+  'is there anything else',
+  'anything else i can help',
+  'that will be all',
+  "that's all for today",
+  'you have a good day',
+  'take care',
+];
+
 export const DEFAULT_QUEUE_PHRASES = [
   'please continue to hold',
   'your call is important',
@@ -51,9 +74,10 @@ export const loadAutopilotPhrases = () => {
       start: pick(raw?.start, DEFAULT_START_PHRASES),
       end: pick(raw?.end, DEFAULT_END_PHRASES),
       queue: pick(raw?.queue, DEFAULT_QUEUE_PHRASES),
+      farewell: pick(raw?.farewell, DEFAULT_FAREWELL_PHRASES),
     };
   } catch {
-    return { start: DEFAULT_START_PHRASES, end: DEFAULT_END_PHRASES, queue: DEFAULT_QUEUE_PHRASES };
+    return { start: DEFAULT_START_PHRASES, end: DEFAULT_END_PHRASES, queue: DEFAULT_QUEUE_PHRASES, farewell: DEFAULT_FAREWELL_PHRASES };
   }
 };
 
@@ -107,6 +131,13 @@ export const matchCallEndPhrase = (transcript, phrases = loadAutopilotPhrases())
   const lowTranscript = String(transcript || '').toLowerCase();
   if (!lowTranscript) return null;
   return phrases.end.find((p) => lowTranscript.includes(p)) || null;
+};
+
+/** v4.132.0: First human-farewell phrase found, or null. Arms (not ends) the call. */
+export const matchFarewellPhrase = (transcript, phrases = loadAutopilotPhrases()) => {
+  const lowTranscript = String(transcript || '').toLowerCase();
+  if (!lowTranscript) return null;
+  return (phrases.farewell || DEFAULT_FAREWELL_PHRASES).find((p) => lowTranscript.includes(p)) || null;
 };
 
 /** Auto-START gate: armed, idle (not zombie), and out of the post-end cooldown. */

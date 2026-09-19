@@ -67,3 +67,6 @@
 | 2026-09-17T18:01:25.581Z | 000641e | v4.129.1 connect = BREAK exact box (shared 26x26 ID rule) |
 | 2026-09-17T18:55:58.187Z | 3f92091 | v4.130.0 header buttons share chrome base - Connect/Hold same 26px box as STOP/ZAP |
 | 2026-09-17T19:19:57.558Z | 0177ded | v4.130.1 last-call seal - STOP seals readable transcript, DG-down never auto-ends, flush-on-hide |
+| 2026-09-17T19:25:56.999Z | ef95e6e | v4.130.2 re-attach banner names route - VB-Cable/mic/tab per configured source |
+| 2026-09-18T15:51:56.118Z | 2806bcd | v4.131.0 soundboard - Studio one-line soundcheck, on-call slot cue + Hear/Stop, gallery cleanup |
+| 2026-09-18T17:07:10.696Z | aae8003 | v4.131.1 greeting slot - US Central work clock + manual AM/PM/Eve picker on the on-call strip |

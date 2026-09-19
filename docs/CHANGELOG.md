@@ -2,6 +2,13 @@
 
 **Version source:** `src/constants/version.js` (must match `package.json` + top-right UI pill)
 
+## v4.132.0 - Sentence-boundary bubbles + medical prune guards
+
+- New bubble after every sealed sentence end (`.!?…`) even mid-tirade with no silence break (`captionEngine.js`); mid-sentence fragments still merge.
+- Spelled-out doses ("five hundred milligrams") now critical data — stutter-prune/dedupe/overlap-strip skip them (`sensitiveDataProtector.js`).
+- Stutter-prune blocked by any med/date/money cue word; dedupe never drops `not/never/nunca/insulin/mg…`; overlap-strip skips boundaries with critical cues.
+- AGENTS.md: agent replies ≤3× user prompt length.
+
 ## v4.130.2 - Re-attach banner names your route
 
 - Zombie banner reads the configured audio route: `re-attach VB-Cable` / `re-attach mic` / `re-attach tab` (was hardcoded tab).

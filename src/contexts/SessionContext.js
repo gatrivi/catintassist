@@ -24,6 +24,7 @@ import {
   canAutopilotEnd,
   AUTOPILOT_START_COOLDOWN_MS,
   AUTOPILOT_END_COUNTDOWN_MS,
+  AUTOPILOT_FAREWELL_SILENCE_MS,
 } from '../utils/callAutopilot';
 import {
   saveLastCallArchive,

@@ -29,6 +29,7 @@ import { AuthPanel } from './AuthPanel';
 import { CorrectionsBackupPanel } from './CorrectionsBackupPanel';
 import { CallLogImportPanel } from './CallLogImportPanel';
 import { displayDeviceName } from '../utils/audioDeviceLabels';
+import { MicVerifyChip } from './MicVerifyChip';
 import { useAuth } from '../contexts/AuthContext';
 import { useAudioSource } from '../hooks/useAudioSource';
 import { useAudioSettings } from '../contexts/AudioSettingsContext';
@@ -701,6 +702,21 @@ export default function SettingsPanel({
                   Used in mic mode + as the tab-share fallback. In Tab-share mode the interpreter tab audio is captured instead.
                 </span>
               </label>
+
+              {/* v4.132.0: MIC VERIFY chip relocated here from the off-call header
+                  inline row (#off-call-inline-row) — it reports THIS mic (pin) +
+                  last verdict, so it sits with the mic selectors now. Label stays
+                  visible even when the chip renders null (no pin, no TEST yet); the
+                  hint below says why, so the row never reads as broken. */}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+                <span style={{ fontSize: 11, color: '#6ee7b7' }}>
+                  🎙️ Client mic — last MIC VERIFY verdict
+                </span>
+                <MicVerifyChip title="Client mic + last MIC VERIFY verdict — full panel in the idle pane below" />
+                <span style={{ ...devHintStyle }}>
+                  Full MIC VERIFY panel stays in the idle pane — press TEST there before going avail. This chip is empty until a mic is pinned or a TEST has run.
+                </span>
+              </div>
 
               <label style={{ fontSize: 11, color: '#6ee7b7' }}>
                 🎙️ Greeting recording mic

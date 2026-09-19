@@ -158,21 +158,11 @@ export const DialGoalSelector = ({
       role="dialog"
       aria-label={`Goal configurator ${APP_VERSION_LABEL}`}
       tabIndex={0}
+      className={`dial-goal-selector${modal ? ' dial-goal-selector--modal' : ''}`}
       onKeyDown={(e) => {
         if (e.key === 'ArrowUp' || e.key === 'ArrowLeft') { e.preventDefault(); step(-1); }
         if (e.key === 'ArrowDown' || e.key === 'ArrowRight') { e.preventDefault(); step(1); }
         if (e.key === 'Escape') onCancel?.();
-      }}
-      style={{
-        position: modal ? 'fixed' : 'relative',
-        top: modal ? '50%' : 'auto',
-        left: modal ? '50%' : 'auto',
-        transform: modal ? 'translate(-50%, -50%)' : 'none',
-        background: 'rgba(15, 23, 42, 0.98)', border: '1px solid rgba(139, 92, 246, 0.4)',
-        borderRadius: '12px', padding: '1rem', width: '95vw', maxWidth: '520px', zIndex: modal ? 9999 : 50,
-        backdropFilter: 'blur(24px)', boxShadow: '0 12px 50px rgba(0,0,0,0.8)',
-        display: 'flex', flexDirection: 'column', gap: '0.8rem',
-        margin: modal ? 0 : '0 auto',
       }}
     >
       <h4 style={{ margin: 0, fontSize: '1rem', color: 'var(--text-muted)', textAlign: 'center' }}>

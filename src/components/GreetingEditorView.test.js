@@ -12,6 +12,7 @@ jest.mock('../contexts/AudioSettingsContext', () => ({
 jest.mock('../utils/storage', () => ({
   saveFile: jest.fn(),
   loadFile: jest.fn(),
+  loadRawValue: jest.fn(), // undefined → treated as a vanished recording blob
   deleteFile: jest.fn(),
   listStorageKeys: jest.fn(),
   generateObjectUrl: jest.fn(() => 'blob:mock'),

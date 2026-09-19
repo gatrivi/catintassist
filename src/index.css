@@ -443,9 +443,15 @@ body {
   flex-shrink: 1;
   min-width: 0;
 }
+/* v4.133.0: the chip's dedicated off-call line (inside .session-controls-center).
+   One flex line, centered, never wrapping — matches the ≤900px rule so the
+   chip can never stack vertically. */
 .off-call-targets-row {
   min-width: 0;
   flex-shrink: 1;
+  display: flex;
+  justify-content: center;
+  flex-wrap: nowrap;
 }
 #daily-targets-chip {
   flex-shrink: 1 !important;
@@ -779,7 +785,8 @@ body {
   line-height: 1.1;
   white-space: nowrap;
 }
-/* HUD tidy: off-call center is ONE inline row (status + gap + mic + targets).
+/* HUD tidy: off-call center is ONE inline row (status + gap counters).
+   v4.132.0: the mic chip left this row for Settings → Audio → Devices.
    Never stacks — scrolls thin instead of pushing the transcript down. */
 .off-call-inline-row {
   display: flex;
@@ -1180,10 +1187,174 @@ body {
   overflow: hidden;
 }
 
+/* Goal configurator dialog (v4.113.0/v4.131.x) — layout lives here instead of
+   inline so the Goal Tracking view can widen it to its own column. */
+.dial-goal-selector {
+  position: relative;
+  background: rgba(15, 23, 42, 0.98);
+  border: 1px solid rgba(139, 92, 246, 0.4);
+  border-radius: 12px;
+  padding: 1rem;
+  width: 95vw;
+  max-width: 520px;
+  margin: 0 auto;
+  z-index: 50;
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
+  box-shadow: 0 12px 50px rgba(0, 0, 0, 0.8);
+  display: flex;
+  flex-direction: column;
+  gap: 0.8rem;
+}
+.dial-goal-selector--modal {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  margin: 0;
+  z-index: 9999;
+}
+
+/* ── v4.131.x: Goal Tracking layout (small-desktop fit) ────────────────────────
+   Rules of this block:
+   · the VIEW never scrolls — only the individual panes may scroll;
+   · dial + calendar are a 2-column GRID so both can shrink (the old
+     flex-wrap row let the dial's content height leak out of the panes box);
+   · grid rows are minmax(0,1fr) so pane content can never push the view taller;
+   · the dial configurator fills its own column (no 95vw / 520px cap).
+   The dial wheel itself is untouched (itemHeight 44 / 3-row viewport math). */
+
+.goal-tracking-view {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+  height: 100%;
+  min-height: 0;
+  padding: 0.4rem;
+  box-sizing: border-box;
+  overflow: hidden;
+}
+
+/* ── Pace card: one row on desktop, meta line folds to its own row when narrow ── */
+.goal-pace-card {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: nowrap;
+  flex: 0 0 auto;
+  padding: 0.5rem 0.9rem;
+  border-radius: 10px;
+}
+.goal-pace-card__need {
+  display: flex;
+  align-items: baseline;
+  gap: 0.4rem;
+  flex: 0 0 auto;
+}
+.goal-pace-card__meta {
+  flex: 1 1 auto;
+  min-width: 0;
+  font-size: 0.7rem;
+  color: var(--text-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.goal-pace-card__verdict {
+  flex: 0 0 auto;
+  font-size: 0.7rem;
+  font-weight: 700;
+  color: #fde68a;
+}
+.goal-pace-card__live {
+  flex: 0 0 auto;
+  font-size: 0.6rem;
+  color: #a855f7;
+  font-weight: 700;
+}
+.goal-pace-card__flash {
+  flex: 0 0 auto;
+  font-size: 0.65rem;
+  color: #34d399;
+  font-weight: 800;
+}
+.goal-pace-card__right {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex: 0 0 auto;
+}
+
+/* ── Panes: dial left, calendar right. Grid, not flex-wrap. ── */
+.goal-tracking-panes {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1.15fr);
+  grid-template-rows: minmax(0, 1fr);
+  gap: 0.6rem;
+  flex: 1 1 auto;
+  min-height: 0;
+}
+.goal-tracking-dial {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+  overflow-y: auto;
+}
 .goal-tracking-calendar {
   display: flex;
   flex-direction: column;
+  min-width: 0;
   min-height: 0;
+}
+/* Dial configurator uses its column width; centred when the pane is taller than
+   the card (auto margins collapse to 0 when it does not fit → nothing clipped). */
+.goal-tracking-dial > .dial-goal-selector {
+  width: 100%;
+  max-width: 100%;
+  margin: auto 0;
+}
+
+/* ── Month calendar: fills its pane; the day grid absorbs the leftover height ── */
+.goal-calendar-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  flex: 1 1 auto;
+  min-width: 0;
+  min-height: 0;
+  overflow-y: auto;
+}
+.goal-calendar-section {
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 auto;
+  min-height: 0;
+}
+.goal-calendar-days {
+  flex: 1 1 auto;
+  min-height: 0;
+  grid-auto-rows: minmax(38px, 96px);
+}
+
+/* Mid/narrow desktop: pace card folds (meta gets its own full-width row).
+   Threshold is 1179px, not 999px: measured, the meta line needs ~457px at a
+   1180px viewport and is ellipsized just below that, so a 1000-1179px window
+   would hide its tail ("today -> 11h36m") instead of wrapping it. */
+@media (max-width: 1179px) {
+  .goal-pace-card { flex-wrap: wrap; }
+  .goal-pace-card__meta { order: 2; flex: 1 1 100%; white-space: normal; overflow: visible; }
+}
+
+/* Genuinely narrow (<800px): stack the panes — each fills the row width and
+   they split the pane box height, so the view still cannot overflow. */
+@media (max-width: 799px) {
+  .goal-tracking-panes {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: minmax(0, 1.1fr) minmax(0, 1fr);
+  }
+  .goal-tracking-dial > .dial-goal-selector { margin: 0; }
 }
 
 .dashboard-header--off-call-scoreboard .session-controls-sticky {

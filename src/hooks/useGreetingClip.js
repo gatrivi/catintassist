@@ -7,7 +7,7 @@
  * migrating it onto this hook is deferred (see docs/soundboard/).
  */
 import { useEffect, useRef, useState, useCallback } from 'react';
-import { saveFile, loadFile, deleteFile, listStorageKeys } from '../utils/storage';
+import { saveFile, loadFile, loadRawValue, deleteFile, listStorageKeys } from '../utils/storage';
 import { getScriptForClip } from '../services/soundboardMetaService';
 import { getEffectiveDeepgramKey } from '../utils/deepgramRuntimeKey';
 import {
@@ -80,8 +80,12 @@ const loadAllBlobs = async () => {
   );
   for (const key of keys) {
     const blob = await loadFile(key);
-    if (!blob?.size) throw new Error(`Recording ${key} is missing or unreadable. Retry loading.`);
-    next[key] = blob;
+    if (blob?.size) { next[key] = blob; continue; }
+    // Not a blob. The IDB store is shared with non-audio values (caption
+    // array, last-call archive) — skip those silently instead of failing
+    // the whole load. Throw ONLY for a real recording key that lost its blob.
+    const raw = await loadRawValue(key);
+    if (raw === undefined) throw new Error(`Recording ${key} is missing or unreadable. Retry loading.`);
   }
   return next;
 };

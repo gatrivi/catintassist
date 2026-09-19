@@ -2,7 +2,7 @@
 
 import { act, renderHook, waitFor } from '@testing-library/react';
 import { useGreetingClip, useGreetingRecorder, analyzeClipAudio } from './useGreetingClip';
-import { loadFile, saveFile, deleteFile, listStorageKeys } from '../utils/storage';
+import { loadFile, saveFile, deleteFile, listStorageKeys, loadRawValue } from '../utils/storage';
 import { getEffectiveDeepgramKey } from '../utils/deepgramRuntimeKey';
 import { getScriptForClip } from '../services/soundboardMetaService';
 import { analyzeClipLegibility } from '../utils/audioSelfTest';
@@ -234,6 +234,18 @@ describe('visible failures', () => {
     listStorageKeys.mockRejectedValue(new Error('IDB unavailable'));
     const { result } = await clips();
     expect(result.current.error).toMatch(/IDB unavailable/);
+  });
+
+  // v4.131.0: the IDB store is shared with non-audio values (captions array,
+  // last-call archive object). loadAllBlobs must skip them, not throw.
+  test('non-audio IDB entries (captions/archive) are skipped, not thrown', async () => {
+    files.catint_captions_v2 = [{ text: 'hello' }]; // not a Blob → loadFile null
+    // Real IDB returns the array raw; storage is automocked so set it explicitly.
+    loadRawValue.mockImplementation(async (k) => files[k]);
+    const { result } = await clips();
+    expect(result.current.error).toBeNull();
+    expect(result.current.blobs[key]).toBeDefined();
+    expect(result.current.blobs.catint_captions_v2).toBeUndefined();
   });
 
   test('decode rejection closes its context', async () => {

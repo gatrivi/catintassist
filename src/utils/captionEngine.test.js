@@ -278,4 +278,56 @@ describe("captionEngine", () => {
     expect(texts.every(Boolean)).toBe(true);
     expect(state2.filter((c) => !c.text?.trim())).toHaveLength(0);
   });
+  // v4.123.0: sentence-final punctuation on the sealed lane starts a new bubble
+  test("final after sealed period opens a new bubble (nurse tirade split)", () => {
+    const ctx = makeCtx();
+    const now1 = Date.now();
+    const now2 = now1 + 2000;
+
+    const first = reduceTranscriptEvent(
+      [],
+      makeEvent({ transcript: "Take the medication twice daily.", isFinal: true, now: now1 }),
+      ctx,
+    );
+    const second = reduceTranscriptEvent(
+      first,
+      makeEvent({
+        transcript: "If the fever continues call us.",
+        isFinal: true,
+        now: now2,
+        isSilentBreak: false,
+      }),
+      ctx,
+    );
+
+    const sealed = second.filter((r) => r.isFinal === true);
+    expect(sealed.length).toBeGreaterThanOrEqual(2);
+    expect(second.map((r) => r.text).join(" ")).toMatch(/fever continues/i);
+  });
+
+  test("final after mid-sentence fragment merges into same bubble", () => {
+    const ctx = makeCtx();
+    const now1 = Date.now();
+    const now2 = now1 + 2000;
+
+    const first = reduceTranscriptEvent(
+      [],
+      makeEvent({ transcript: "Take the medication", isFinal: true, now: now1 }),
+      ctx,
+    );
+    const second = reduceTranscriptEvent(
+      first,
+      makeEvent({
+        transcript: "twice daily with food",
+        isFinal: true,
+        now: now2,
+        isSilentBreak: false,
+      }),
+      ctx,
+    );
+
+    const enRows = second.filter((r) => (r.text || "").includes("medication"));
+    expect(enRows).toHaveLength(1);
+    expect(enRows[0].text).toMatch(/twice daily/i);
+  });
 });

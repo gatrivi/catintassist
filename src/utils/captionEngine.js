@@ -195,12 +195,23 @@ export const reduceTranscriptEvent = (prev, event, ctx) => {
   const eventWordConfidence = normalizeWordConfidence(words);
 
   let last = prev[prev.length - 1];
-  const isNewTurn = isSilentBreak || !last;
+  // v4.123.0: previous bubble already ended in sentence-final punctuation and a
+  // new final arrived → start a fresh bubble. Prevents "wall of text" when a
+  // speaker (nurse tirade) talks continuously without a silence break.
+  const prevLaneFinal = last
+    ? ((laneSide === "en" ? last.enFinalized : last.esFinalized) || last.text || "")
+    : "";
+  const startsAfterPeriod =
+    shouldFinalize &&
+    /[.!?…]["')\]]?\s*$/.test(prevLaneFinal.trim()) &&
+    Boolean(transcript && String(transcript).trim());
+  const isNewTurn = isSilentBreak || !last || startsAfterPeriod;
 
   if (isNewTurn) {
     const lastStarted = lastBubbleStartedRef?.current || 0;
     // Never skip the first bubble — empty prev left `last` undefined and broke STT.
-    const debounceNewBubble = last && now - lastStarted < 400 && !isSilentBreak;
+    const debounceNewBubble =
+      last && now - lastStarted < 400 && !isSilentBreak && !startsAfterPeriod;
     if (!debounceNewBubble) {
       if (lastBubbleStartedRef) lastBubbleStartedRef.current = now;
       if (isSilentBreak || !last) {
@@ -234,10 +245,16 @@ export const reduceTranscriptEvent = (prev, event, ctx) => {
   if (!last) return prev;
 
   const current = { ...last };
-  const historyText = prev
-    .slice(-4, -1)
-    .map((c) => c.text || "")
-    .join(" ");
+  // After a sentence-boundary split the new bubble stands alone: its first
+  // transcript often repeats words of the previous sentence ("the the…").
+  // Skip overlap removal so nothing is eaten; the sealed previous bubble
+  // already owns that text.
+  const historyText = startsAfterPeriod
+    ? ""
+    : prev
+        .slice(-4, -1)
+        .map((c) => c.text || "")
+        .join(" ");
   const currentFinalized =
     (laneSide === "en" ? current.enFinalized : current.esFinalized) || "";
   const baseContext = (historyText + " " + currentFinalized).trim();

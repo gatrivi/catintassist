@@ -493,6 +493,25 @@ describe('hallucinationGuard', () => {
     const short = 'The patient has chest pain';
     expect(hallucinationGuard(short)).toBe(short);
   });
+
+  // v4.119.x: nurse dictation with spelled-out doses — no digits → was unprotected.
+  test('spelled-out dose is critical data (no digit needed)', () => {
+    const stutter = 'the the the the patient should take five hundred milligrams of metformin twice daily and and and the the the the dose dose dose dose is important yes yes yes';
+    const out = hallucinationGuard(stutter);
+    expect(out).not.toMatch(/\[Stutter Pruned\]/);
+  });
+
+  test('stutter-prune blocked when med cue present even without digits', () => {
+    const words = 'yeah yeah yeah well well well so so so okay okay okay um um um the medication medication medication'.split(' ');
+    const text = words.join(' ') + ' list list list list list';
+    expect(text.split(' ').length).toBeGreaterThan(15);
+    const out = hallucinationGuard(text);
+    expect(out).not.toMatch(/\[Stutter Pruned\]/);
+  });
+
+  test('dedupe never drops negation or key med tokens', () => {
+    expect(hallucinationGuard('patient is not not allergic')).toBe('patient is not not allergic');
+  });
 });
 
 // ---------------------------------------------------------------------------

@@ -25,6 +25,29 @@ import { APP_VERSION } from '../constants/version';
 /** Newest first. Only the entry matching APP_VERSION is shown on load. */
 export const RELEASE_NOTES_CATALOG = [
   {
+    version: '4.131.1',
+    id: 'pacific-shift-clock',
+    highlightElementIds: ['on-call-soundboard'],
+    es: {
+      title: '🕘 El saludo sigue tu hora del Pacífico',
+      intro: 'Antes el saludo elegía mañana/tarde/noche con el reloj de tu computadora: en GMT-3 a las 13:02 disparaba el de la tarde cuando en el Pacífico eran las 09:02.',
+      sections: [{ heading: 'Qué cambió', bullets: [
+        'El saludo ahora se elige con la hora del Pacífico (America/Los_Angeles), no con la hora de tu máquina.',
+        'Mismos cortes de siempre: mañana antes de las 12:00, tarde antes de las 17:00, noche después.',
+        'La tira de saludos y el Soundboard Studio usan la misma regla — nunca más eligen distintos.',
+      ] }],
+    },
+    en: {
+      title: '🕘 Greetings follow Pacific shift time',
+      intro: 'The opener used to pick morning/afternoon/evening from your computer clock: on a GMT-3 machine at 13:02 it fired the afternoon take while Pacific time was still 09:02.',
+      sections: [{ heading: 'What changed', bullets: [
+        'The slot is now read from US Pacific time (America/Los_Angeles), never the machine clock.',
+        'Same boundaries as before: morning before 12:00, afternoon before 17:00, evening after.',
+        'The on-call strip and Soundboard Studio share one rule — they can no longer disagree.',
+      ] }],
+    },
+  },
+  {
     version: '4.130.2',
     id: 'reattach-per-mode',
     highlightElementIds: ['last-call-seal'],

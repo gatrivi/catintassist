@@ -136,17 +136,12 @@ export const MonthCalendarPanel = ({ previewGoalMinutes = null, workDays = 0 }) 
 
   return (
     <div
+      className="goal-calendar-panel"
       style={{
         background: 'rgba(15,23,42,0.97)',
         border: '1px solid rgba(255,255,255,0.1)',
         borderRadius: '14px',
         padding: '1rem',
-        maxHeight: '100%',
-        overflowY: 'auto',
-        display: 'flex',
-        flexDirection: 'column',
-        gap: '0.75rem',
-        minWidth: 0,
       }}
     >
       {/* Header */}
@@ -217,8 +212,8 @@ export const MonthCalendarPanel = ({ previewGoalMinutes = null, workDays = 0 }) 
         })}
       </div>
 
-      {/* CALENDAR GRID */}
-      <div>
+      {/* CALENDAR GRID — grows to fill the pane (v4.131.x) */}
+      <div className="goal-calendar-section">
         <div style={{ fontSize: '0.6rem', color: '#475569', letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: '0.4rem' }}>
           Daily breakdown · Click a past day to edit
         </div>
@@ -231,7 +226,7 @@ export const MonthCalendarPanel = ({ previewGoalMinutes = null, workDays = 0 }) 
         </div>
 
         {/* Day cells */}
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: '0.25rem' }}>
+        <div className="goal-calendar-days" style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: '0.25rem' }}>
           {/* Empty offset cells */}
           {Array.from({ length: offset }).map((_, i) => (
             <div key={`empty-${i}`} />

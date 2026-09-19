@@ -35,6 +35,20 @@ export const loadFile = async (key) => {
   }
 };
 
+/**
+ * Raw value exactly as stored (no blob normalization). Lets callers tell
+ * "key holds a non-audio value" (captions array, archive object) apart from
+ * "recording key whose blob vanished". Returns undefined on miss/error.
+ */
+export const loadRawValue = async (key) => {
+  try {
+    return await get(key);
+  } catch (err) {
+    console.error(`Failed to read ${key} from IndexedDB:`, err);
+    return undefined;
+  }
+};
+
 export const deleteFile = async (key) => {
   try {
     await del(key);

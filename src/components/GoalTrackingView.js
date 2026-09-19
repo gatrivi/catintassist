@@ -68,48 +68,40 @@ export const GoalTrackingView = ({ onExit }) => {
     : '';
 
   return (
-    <div
-      className="goal-tracking-view"
-      style={{
-        display: 'flex', flexDirection: 'column', gap: '0.6rem',
-        height: '100%', minHeight: 0, padding: '0.4rem',
-      }}
-    >
+    <div className="goal-tracking-view">
       {/* ── Pace card: the live answer to "how much per day do I need?" ── */}
       <div
         className="goal-pace-card glass-panel"
         style={{
-          display: 'flex', alignItems: 'center', gap: '1rem', flexWrap: 'wrap',
-          padding: '0.5rem 0.9rem', borderRadius: '10px',
           background: isPreviewing ? 'rgba(168,85,247,0.08)' : 'rgba(15,23,42,0.9)',
           border: `1px solid ${isPreviewing ? 'rgba(168,85,247,0.5)' : 'rgba(255,255,255,0.08)'}`,
           transition: 'all 0.2s',
         }}
       >
         <span style={{ fontSize: '1rem' }}>🎯</span>
-        <div style={{ display: 'flex', alignItems: 'baseline', gap: '0.4rem' }}>
+        <div className="goal-pace-card__need">
           <span style={{ fontSize: '0.65rem', color: 'var(--text-muted)', textTransform: 'uppercase' }}>need / workday</span>
           <span id="goal-pace-need" style={{ fontSize: '1.3rem', fontWeight: 900, color: isPreviewing ? '#c4b5fd' : '#34d399' }}>
             {plan ? fmtHm(plan.requiredToday) : '—'}
           </span>
         </div>
-        <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>
+        <span className="goal-pace-card__meta">
           {plan && <>
             banked <b style={{ color: '#e2e8f0' }}>{fmtHm(monthlyBanked)}</b> / goal <b style={{ color: '#e2e8f0' }}>{fmtHm(previewGoalMinutes)}</b>
             {' '}· <b style={{ color: '#7dd3fc' }}>{plan.remainingWorkdays}</b> workdays left @ {daysPerWeekOf(previewWorkDays)}/wk
             {' '}· today → <b style={{ color: '#fbbf24' }}>{fmtHm(plan.needToday)}</b>
           </>}
         </span>
-        <span style={{ fontSize: '0.7rem', fontWeight: 700, color: '#fde68a' }}>{verdictText}</span>
+        <span className="goal-pace-card__verdict">{verdictText}</span>
         {isPreviewing && (
-          <span style={{ fontSize: '0.6rem', color: '#a855f7', fontWeight: 700 }}>
+          <span className="goal-pace-card__live">
             LIVE — press “Bank Goal” to keep this
           </span>
         )}
         {savedFlash && (
-          <span id="goal-saved-flash" style={{ fontSize: '0.65rem', color: '#34d399', fontWeight: 800 }}>✔ {savedFlash}</span>
+          <span id="goal-saved-flash" className="goal-pace-card__flash">✔ {savedFlash}</span>
         )}
-        <span style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+        <span className="goal-pace-card__right">
           <span style={{ fontSize: '0.6rem', opacity: 0.6, color: 'var(--text-muted)' }}>{APP_VERSION_LABEL}</span>
           <button
             type="button"
@@ -127,15 +119,9 @@ export const GoalTrackingView = ({ onExit }) => {
         </span>
       </div>
 
-      {/* ── Two panes: dial left, calendar right ── */}
-      <div
-        className="goal-tracking-panes"
-        style={{
-          display: 'flex', gap: '0.6rem', flex: 1, minHeight: 0,
-          flexDirection: 'row', alignItems: 'stretch', flexWrap: 'wrap',
-        }}
-      >
-        <div className="goal-tracking-dial" style={{ flex: '0 1 520px', minWidth: '300px', overflowY: 'auto' }}>
+      {/* ── Two panes: dial left, calendar right (grid — both can shrink) ── */}
+      <div className="goal-tracking-panes">
+        <div className="goal-tracking-dial">
           <DialGoalSelector
             ratePerMinute={RATE_PER_MINUTE}
             arsRate={arsRate}
@@ -152,7 +138,7 @@ export const GoalTrackingView = ({ onExit }) => {
             onPreview={setPreview}
           />
         </div>
-        <div className="goal-tracking-calendar" style={{ flex: '1 1 420px', minWidth: '300px', minHeight: 0 }}>
+        <div className="goal-tracking-calendar">
           <MonthCalendarPanel previewGoalMinutes={preview?.monthlyMinutes ?? null} workDays={previewWorkDays} />
         </div>
       </div>
