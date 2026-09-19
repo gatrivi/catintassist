@@ -1549,13 +1549,13 @@ export const useDeepgram = () => {
     if (!enterIdleEar()) {
       closeConnections();
     }
-    // HIPAA grace: do not destroy transcription/translation immediately;
-    // defer to SessionContext finalizer (15s leeway for quick reconnect).
-    if (!hipaaGraceActiveRef?.current) {
-      resetCaptionEngine();
-      clearCaptions();
-    }
-  }, [enterIdleEar, closeConnections, clearCaptions, hipaaGraceActiveRef, resetCaptionEngine]);
+    // v4.133.0 SAFETY (ER incident 2026-09-19): this used to call
+    // resetCaptionEngine() + clearCaptions(). It runs on stream-end, stuck
+    // audio and guard stops — i.e. BEFORE SessionContext seals the last-call
+    // archive — so the transcript was wiped with nothing to recover.
+    // Stopping audio must never destroy text: SessionContext.stopSession seals
+    // first (and HIPAA grace decides when to actually clear).
+  }, [enterIdleEar, closeConnections]);
 
   const stopRecordingRef = useRef(stopRecording);
   stopRecordingRef.current = stopRecording;

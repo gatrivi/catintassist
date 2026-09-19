@@ -6,9 +6,11 @@
 export const AUTOPILOT_END_COUNTDOWN_MS = 10000;
 export const AUTOPILOT_START_COOLDOWN_MS = 25000;
 export const AUTOPILOT_MIN_CALL_SECS = 60;
-// v4.132.0: after a human farewell, wait this long with NO speech before
+// v4.133.0: after a human farewell, wait this long with NO speech before
 // ending. Any transcript in the window cancels (call is still alive).
-export const AUTOPILOT_FAREWELL_SILENCE_MS = 30000;
+// Raised 30s→120s after an ER trauma call auto-ended on a mid-conversation
+// "is there anything else" — busy providers go quiet while they think.
+export const AUTOPILOT_FAREWELL_SILENCE_MS = 120000;
 
 export const DEFAULT_START_PHRASES = [
   'call is being bridged',
@@ -42,8 +44,9 @@ export const DEFAULT_FAREWELL_PHRASES = [
   'have a great day',
   'have a good day',
   'have a good one',
-  'is there anything else',
-  'anything else i can help',
+  // v4.133.0 REMOVED: 'is there anything else' / 'anything else i can help' —
+  // ER providers say these MID-conversation while still working. Saying them
+  // armed the auto-end and a 30s thinking-pause ended the call (2026-09-19).
   'that will be all',
   "that's all for today",
   'you have a good day',

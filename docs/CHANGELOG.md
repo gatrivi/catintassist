@@ -2,6 +2,14 @@
 
 **Version source:** `src/constants/version.js` (must match `package.json` + top-right UI pill)
 
+## v4.133.0 - ER incident: never delete a tirade
+
+- `stopRecording` no longer wipes captions — audio stops were clearing the whole transcript before the last-call archive could seal it (unrecoverable loss in the ER).
+- `stopSession` HARD RULE: no wipe without a verified archive; billing still stops.
+- Long-bubble compression policy: live + newest-2 + any medical/digit row never clip; expansion keyed by text signature (survives re-seal/id churn).
+- Overlap/dedupe: clinical repeats (epinephrine, airway, mg…) are emphasis — exact-repeat only; med-cue boundaries never strip.
+- Autopilot farewells: dropped mid-conversation triggers ('is there anything else'), silence 30s→120s.
+
 ## v4.132.0 - Sentence-boundary bubbles + medical prune guards
 
 - New bubble after every sealed sentence end (`.!?…`) even mid-tirade with no silence break (`captionEngine.js`); mid-sentence fragments still merge.

@@ -1530,10 +1530,26 @@ const FILLER_WORDS = new Set([
 
 // Dedupe must never eat these — clinical repeats ("take take" → drop is fine,
 // but "insulin insulin" during a correction can be the nurse re-stressing).
+// v4.133.0: also med NAMES + trauma words (not just cues) — a trauma doctor
+// mid-tirade repeating a drug name is emphasis, never stutter.
 const DEDUPE_NEVER_DROP = new Set([
   'mg', 'ml', 'units', 'unidades', 'insulin', 'insulina', 'metformin',
-  'metformina', 'not', 'no', 'never', 'nunca', 'allergic', 'alergica',
+  'metformina', 'milligrams', 'miligramos', 'twice', 'daily', 'diario',
+  'not', 'no', 'never', 'nunca', 'allergic', 'alergica',
   'alergico', 'without', 'sin',
+  'warfarin', 'lisinopril', 'aspirin', 'ibuprofen', 'acetaminophen', 'tylenol',
+  'morphine', 'fentanyl', 'epinephrine', 'adrenaline', 'heparin', 'penicillin',
+  'amoxicillin', 'azithromycin', 'cephalexin', 'metoprolol', 'atorvastatin',
+  'furosemide', 'hydrocortisone', 'prednisone', 'albuterol', 'salbutamol',
+  'diazepam', 'lorazepam', 'haloperidol', 'ketamine', 'propofol', 'ondansetron',
+  'omeprazole', 'losartan', 'amlodipine', 'clonidine', 'hydralazine', 'labetalol',
+  'nitroglycerin', 'dopamine', 'dobutamine', 'norepinephrine', 'vasopressin',
+  'tranexamic', 'txa', 'naloxone', 'flumazenil', 'lidocaine', 'bupivacaine',
+  'ceftriaxone', 'vancomycin', 'gentamicin', 'ciprofloxacin', 'levetiracetam',
+  'phenytoin', 'dextrose', 'potassium', 'magnesium', 'calcium', 'sodium',
+  'normal', 'saline', 'lactated', 'ringers', 'cpr', 'compressions', 'defibrillator',
+  'intubate', 'ventilator', 'tourniquet', 'bleeding', 'airway', 'seizure',
+  'stroke', 'trauma', 'code', 'stat',
 ]);
 
 const PHRASE_FILLERS = ['you know', 'i mean', 'sort of', 'kind of'];
@@ -1666,16 +1682,26 @@ export const removeOverlapPreservingDigitSequences = (base, addition) => {
   // treats "12 34" ≡ "1234" ≡ "1 2 3 4". When digits sit near the boundary,
   // only an EXACT raw-word repeat counts as overlap — when in doubt both
   // copies stay on screen and downstream guards sort it out.
-  const boundaryHasDigits = /\d/.test(
-    `${base.trim().split(/\s+/).slice(-10).join(' ')} ${aWordsRaw.slice(0, 10).join(' ')}`,
-  );
-  const bCmp = boundaryHasDigits
+  // v4.133.0 (ER incident): a tirade repeats medical words across the
+  // boundary ("airway airway", "epinephrine epinephrine") — those are
+  // emphasis, never overlap. Same rule: exact repeat only.
+  // NOTE: a genuine 1-word echo ("the airway" → "the airway is patent")
+  // still strips — the clinical list only protects *emphasis* repeats like
+  // epinephrine/airway; plain function words still dedupe across chunks.
+  const boundaryWindow = `${base.trim().split(/\s+/).slice(-10).join(' ')} ${aWordsRaw.slice(0, 10).join(' ')}`;
+  const boundaryHasDigits = /\d/.test(boundaryWindow);
+  const boundaryHasClinical = boundaryWindow
+    .toLowerCase()
+    .split(/[^a-z0-9]+/)
+    .some((w) => DEDUPE_NEVER_DROP.has(w));
+  const useExactRepeat = boundaryHasDigits || boundaryHasClinical;
+  const bCmp = useExactRepeat
     ? base.trim().split(/\s+/).map((w) => w.toLowerCase())
     : bWords;
-  const aCmp = boundaryHasDigits
+  const aCmp = useExactRepeat
     ? aWordsRaw.map((w) => w.toLowerCase())
     : aWords;
-  const joiner = boundaryHasDigits ? ' ' : '';
+  const joiner = useExactRepeat ? ' ' : '';
 
   let bestOverlap = 0;
   const maxCheck = Math.min(aWords.length, bWords.length, 50);
@@ -1704,7 +1730,8 @@ export const removeOverlapPreservingDigitSequences = (base, addition) => {
       overlapSlice.some(isNumberLike) ||
       containsCriticalData(overlapText) ||
       containsCriticalData(boundaryText) ||
-      hasCriticalDataCue(boundaryText)
+      hasCriticalDataCue(boundaryText) ||
+      overlapSlice.some((w) => DEDUPE_NEVER_DROP.has(normalize(w)))
     ) {
       bestOverlap = 0;
     }

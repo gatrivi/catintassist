@@ -7,6 +7,7 @@ import { useAudioSettings } from '../contexts/AudioSettingsContext';
 import { truncateDeviceLabel } from '../utils/audioSelfTest';
 import {
   applyDisplayProtections,
+  containsCriticalData,
   copyableDigits,
   copyableSensitiveValue,
   NUMBER_HIGHLIGHT_REGEX,
@@ -27,6 +28,13 @@ import {
   togglePinEntry,
 } from '../utils/pinnedCaptions';
 import { NewcomerIdleGuide } from './NewcomerIdleGuide';
+import {
+  bubbleExpandKey,
+  countWords as countBubbleWords,
+  isCriticalBubbleText,
+  shouldAutoCollapseBubble,
+  ALWAYS_VISIBLE_TAIL_ROWS,
+} from '../utils/bubbleCompression';
 import { ConfirmDialog } from './ConfirmDialog';
 import { isNewcomerGuideDismissed } from '../utils/newcomerGuide';
 import { isTranslationStuckForRetranslate } from '../utils/translationQuality';
@@ -967,16 +975,30 @@ export const TranscriptionBoard = ({
     );
   }, [pinnedCaptions]);
   
-  // Smart Bubble Compression: auto-collapse long bubbles to reduce reading fatigue
+  // Smart Bubble Compression (v4.133.0): expansion is remembered by TEXT
+  // SIGNATURE, not caption id — ids mutate on seal/split/dedupe, which used to
+  // re-collapse a bubble you had opened (or were reading) mid-call.
   const [expandedIds, setExpandedIds] = useState(new Set());
-  const toggleExpand = (id) => {
+  const toggleExpand = (capOrId) => {
+    const key = typeof capOrId === 'string' ? capOrId : bubbleExpandKey(capOrId);
+    const id = typeof capOrId === 'string' ? capOrId : capOrId?.id;
     setExpandedIds(prev => {
       const next = new Set(prev);
-      if (next.has(id)) next.delete(id);
-      else next.add(id);
+      const has = next.has(key) || (id && next.has(id));
+      if (has) {
+        next.delete(key);
+        if (id) next.delete(id);
+      } else {
+        next.add(key);
+        if (id) next.add(id);
+      }
+      // Soft cap — never let this set grow unbounded over a long shift.
+      if (next.size > 400) return new Set([key, id].filter(Boolean));
       return next;
     });
   };
+  const isBubbleExpanded = (cap) =>
+    expandedIds.has(bubbleExpandKey(cap)) || expandedIds.has(cap.id);
 
   useEffect(() => {
     safeSet('catint_pinned_msgs', JSON.stringify(pinnedCaptions));
@@ -1398,7 +1420,7 @@ export const TranscriptionBoard = ({
             return null;
           }
           const isSameAsPrevious = i > 0 && captions[i-1].lang === cap.lang;
-          const wordCount = cap.text.trim().split(/\s+/).length;
+          const wordCount = countBubbleWords(cap.text);
           const tid = cap.turnId || `solo-${cap.id}`;
           const turnWordCount = turnDisplayMeta.maxCountByTurn[tid] ?? cap.turnWordCount ?? 0;
           const showTurnWordCount = i === turnDisplayMeta.lastIndexByTurn[tid];
@@ -1410,8 +1432,18 @@ export const TranscriptionBoard = ({
           // differ. Blue should be attached to ONLY the moved section substring.
           const isSplitContinuation = isSameAsPrevious && wordCount < 50;
           const isLive = cap.isFinal === false;
-          const isLongBubble = wordCount > 50 && !isLive;
-          const isExpanded = expandedIds.has(cap.id);
+          // v4.133.0: never clip (a) the live row, (b) the trailing rows you are
+          // reading right now, (c) any row with medical data. The full
+          // containsCriticalData pass also runs: protection must not depend on
+          // the fast regex alone (e.g. spelled-out doses without units nearby).
+          const isRecentRow = i >= captions.length - ALWAYS_VISIBLE_TAIL_ROWS;
+          const isLongBubble = shouldAutoCollapseBubble({
+            wordCount,
+            isLive,
+            isRecent: isRecentRow,
+            isCritical: isCriticalBubbleText(cap.text) || containsCriticalData(cap.text),
+          });
+          const isExpanded = isBubbleExpanded(cap);
           const bubbleStyle = getBubbleStyle(cap.text, isLive, cap.lang, languagePair);
           const stableMinHeight = isLive
             ? liveBubbleHeightsRef.current.get(cap.id)?.height
@@ -1459,7 +1491,7 @@ export const TranscriptionBoard = ({
               </div>
               
               {isLongBubble && (
-                <button className="bubble-expand-btn" onClick={() => toggleExpand(cap.id)}>
+                <button className="bubble-expand-btn" onClick={() => toggleExpand(cap)}>
                   {isExpanded ? '▲ collapse' : `··· ${wordCount} words ···`}
                 </button>
               )}

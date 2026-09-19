@@ -512,6 +512,23 @@ describe('hallucinationGuard', () => {
   test('dedupe never drops negation or key med tokens', () => {
     expect(hallucinationGuard('patient is not not allergic')).toBe('patient is not not allergic');
   });
+
+  // v4.133.0 ER incident: tirade repeats of drug names are emphasis, never stutter.
+  test('dedupe never drops repeated ER drug/trauma tokens', () => {
+    expect(hallucinationGuard('push epinephrine epinephrine now')).toBe('push epinephrine epinephrine now');
+    expect(hallucinationGuard('check airway airway and breathing')).toBe(
+      'check airway airway and breathing',
+    );
+  });
+
+  test('overlap strip keeps clinical repeats across chunk boundaries', () => {
+    // Normalized ("secure the airway airway" ≡ "secure the airway secure the
+    // airway" up to the repeat) used to eat the repeated word; the exact
+    // repeat rule keeps both copies on screen.
+    expect(
+      removeOverlapPreservingDigitSequences('secure the airway', 'the airway airway is patent'),
+    ).toBe('the airway airway is patent');
+  });
 });
 
 // ---------------------------------------------------------------------------

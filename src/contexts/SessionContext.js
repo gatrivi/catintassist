@@ -964,19 +964,29 @@ export const SessionProvider = ({ children }) => {
       setLastCallSummary({ ...summary, noStt: bankedNoStt });
     }
 
+    let keptTranscriptVisible = false; // v4.133.0 — skipping the wipe path below.
     // v4.130.1: seal a read-only last-call copy BEFORE the wipe — the call
     // ended but the transcript must stay readable until next call/End Day.
-    // Fire-and-forget: stopSession stays sync; IDB write + state land async.
+    // v4.133.0 HARD RULE: the wipe below NEVER runs without the seal. If the
+    // transcript is non-empty and no archive was produced, keep the text on
+    // screen — losing an ER trauma report is worse than keeping PHI visible
+    // until the next session teardown.
     if (isSealableArchive(captionsRef.current)) {
       const sealed = buildLastCallArchive(captionsRef.current);
       setLastCallArchive(sealed);
       saveLastCallArchive(captionsRef.current).catch(() => {});
+    } else if (captionsRef.current?.length) {
+      // Belt-and-braces: keep text visible rather than wiping it. Billing and
+      // timers below still stop — only the destructive lines are skipped.
+      keptTranscriptVisible = true;
     }
-    // HIPAA/UX: wipe transcript log as soon as the call ends (summary already captured).
-    // v4.86.8: pinned messages PERSIST across calls — they are references, not PHI dumps.
-    clearCaptions();
-    purgeTranslationCache();
-    requestHipaaDisconnectGrace();
+    if (!keptTranscriptVisible) {
+      // HIPAA/UX: wipe transcript log as soon as the call ends (summary already captured + archive sealed above).
+      // v4.86.8: pinned messages PERSIST across calls — they are references, not PHI dumps.
+      clearCaptions();
+      purgeTranslationCache();
+      requestHipaaDisconnectGrace();
+    }
 
     const trailingSilenceSecs = Math.max(0, (Date.now() - callLastSpeechAtRef.current) / 1000);
     // v4.99.2: pure billing rule (unit-tested in callBilling.test.js) —
