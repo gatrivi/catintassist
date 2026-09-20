@@ -524,6 +524,9 @@ export const SessionProvider = ({ children }) => {
   });
 
   useEffect(() => { localStorage.setItem('catint_notes_open', JSON.stringify(isNotesOpen)); }, [isNotesOpen]);
+  // v4.139.0: notes follow call state — open when a call starts, closed when it ends.
+  // Manual 📝 toggle still works any time; the next call transition re-applies the default.
+  useEffect(() => { setIsNotesOpen(isActive); }, [isActive]);
   useEffect(() => { localStorage.setItem('catint_toolbar_visible', JSON.stringify(isToolbarVisible)); }, [isToolbarVisible]);
   useEffect(() => { localStorage.setItem('catint_call_detect', JSON.stringify(isCallDetectionEnabled)); }, [isCallDetectionEnabled]);
   useEffect(() => { localStorage.setItem('catint_call_focus', JSON.stringify(callFocusMode)); }, [callFocusMode]);

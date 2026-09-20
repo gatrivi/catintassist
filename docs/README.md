@@ -29,6 +29,7 @@ This is the single source of truth for *documentation + onboarding*.
 ## Agent handoff (outside models start here)
 - [`docs/handoff/README.md`](handoff/README.md): task specs, file boundaries, phased roadmap
 - [`docs/handoff/00_global_rules.md`](handoff/00_global_rules.md): hard constraints (80/20, stability, tests)
+- [`docs/ui/ui-libraries.md`](ui/ui-libraries.md): UI library references (shadcn, Transitions.dev…) + eval, bubble-overlap fix notes (v4.134.0)
 
 ## Start Here
 - [Second microphone cable](development/second-mic-cable.md): installation prerequisite, separate routing, and pending app support (2026-09-05).

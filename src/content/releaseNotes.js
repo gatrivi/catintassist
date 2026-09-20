@@ -25,6 +25,33 @@ import { APP_VERSION } from '../constants/version';
 /** Newest first. Only the entry matching APP_VERSION is shown on load. */
 export const RELEASE_NOTES_CATALOG = [
   {
+    version: '4.139.0',
+    id: 'offcall-ui-cleanup',
+    highlightElementIds: ['off-call-guidelines-btn', 'audio-route-mode-label'],
+    es: {
+      title: '🧹 Interfaz fuera de llamada más limpia',
+      intro: 'Menos ruido antes de conectarte: el panel de verificación de micrófono ahora se puede ocultar, los botones Tab/VB/mic se mudaron a Ajustes y las notas se abren solas en llamada.',
+      sections: [{ heading: 'Qué cambió', bullets: [
+        'Mic verify ahora se oculta desde Ajustes → Pantalla (visualización de componentes).',
+        'Los botones Tab/VB/mic ya no están en la barra de audio: solo queda una etiqueta informativa. El cambio de fuente se hace en Ajustes → Audio (la tecla M sigue alternando modo mic).',
+        'Las notas de sesión se abren automáticamente al iniciar llamada y se cierran al terminar; el botón 📝 sigue funcionando.',
+        'Nuevo botón 📖 Guidelines en el panel fuera de llamada: reabre la guía de QA/configuración cuando quieras.',
+        'Sincronización navegador ↔ app Pake: los días laborables del objetivo se comparten por nube, los minutos se re-descargan al volver el foco a la ventana y el login de Google tiene respaldo si el popup es bloqueado.',
+      ] }],
+    },
+    en: {
+      title: '🧹 Cleaner off-call interface',
+      intro: 'Less noise before you connect: mic verify is now hideable, the Tab/VB/mic pills moved to Settings, and session notes open automatically during calls.',
+      sections: [{ heading: 'What changed', bullets: [
+        'Mic verify can be hidden via Settings → Display (component visibility).',
+        'Tab/VB/mic pills are gone from the audio bar — a read-only label remains. Switch sources in Settings → Audio (M key still toggles mic mode).',
+        'Session notes auto-open when a call starts and auto-close when it ends; the 📝 toggle still works.',
+        'New 📖 Guidelines button in the off-call pane reopens the QA/setup guided tour on demand.',
+        'Browser ↔ Pake app sync: goal workdays now share via cloud, minutes re-pull when the window regains focus, and Google sign-in falls back to redirect if the popup is blocked.',
+      ] }],
+    },
+  },
+  {
     version: '4.138.0',
     id: 'honest-dg-status-idle-ear',
     highlightElementIds: ['audio-route-zap-btn'],

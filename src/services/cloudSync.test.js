@@ -38,6 +38,12 @@ describe('settingsService', () => {
     expect(localStorage.getItem('catint_trans_mood')).toBe('fast');
   });
 
+  it('syncs the goal workdays key across browser/Pake (v4.139.0)', () => {
+    expect(CLOUD_SYNC_KEYS).toContain('catint_goal_workdays_v1');
+    applySettingsToLocal({ catint_goal_workdays_v1: '24' });
+    expect(localStorage.getItem('catint_goal_workdays_v1')).toBe('24');
+  });
+
   it('offers import when local prefs exist and cloud is empty', () => {
     localStorage.setItem('catint_trans_mood', 'chill');
     expect(hasLocalSettingsToImport()).toBe(true);

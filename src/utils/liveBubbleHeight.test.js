@@ -31,4 +31,18 @@ describe('nextLiveHeightLock', () => {
     const out = nextLiveHeightLock(undefined, 60, 30);
     expect(out).toEqual({ set: { height: 60, textLen: 30 }, rerender: true });
   });
+
+  // v4.134.0 bubble-overlap guards
+  test('height growth with unchanged text is noise — ignored (no inflated lock)', () => {
+    expect(nextLiveHeightLock({ height: 100, textLen: 50 }, 180, 50)).toBeNull();
+  });
+
+  test('height shrink while text grows is mid-relayout noise — ignored', () => {
+    expect(nextLiveHeightLock({ height: 100, textLen: 50 }, 60, 90)).toBeNull();
+  });
+
+  test('legit growth (height AND text grew) still locks', () => {
+    const out = nextLiveHeightLock({ height: 100, textLen: 50 }, 140, 90);
+    expect(out).toEqual({ set: { height: 140, textLen: 90 }, rerender: true });
+  });
 });

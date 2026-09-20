@@ -651,7 +651,10 @@ export default function SettingsPanel({
               <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
                 <button
                   type="button"
-                  onClick={() => switchAudioSourceMode('tab')}
+                  onClick={() => {
+                    window.dispatchEvent(new CustomEvent('cat_set_mic_mode', { detail: { on: false } }));
+                    switchAudioSourceMode('tab');
+                  }}
                   style={{
                     ...tabBtn,
                     background: currentSourceMode === 'tab' ? 'rgba(59,130,246,0.25)' : tabBtn.background,
@@ -663,7 +666,10 @@ export default function SettingsPanel({
                 </button>
                 <button
                   type="button"
-                  onClick={() => switchAudioSourceMode('virtualCable')}
+                  onClick={() => {
+                    window.dispatchEvent(new CustomEvent('cat_set_mic_mode', { detail: { on: false } }));
+                    switchAudioSourceMode('virtualCable');
+                  }}
                   style={{
                     ...tabBtn,
                     background: currentSourceMode === 'virtualCable' ? 'rgba(245,158,11,0.20)' : tabBtn.background,
@@ -672,6 +678,15 @@ export default function SettingsPanel({
                   aria-pressed={currentSourceMode === 'virtualCable'}
                 >
                   Virtual cable
+                </button>
+                {/* v4.139.0: mic mode moved here from the retired header pill (M hotkey still toggles) */}
+                <button
+                  type="button"
+                  onClick={() => window.dispatchEvent(new CustomEvent('cat_set_mic_mode', { detail: { on: true } }))}
+                  style={{ ...tabBtn, borderColor: 'rgba(255,255,255,0.10)' }}
+                  title="Mic STT — device microphone (phone / no tab share). Soundboard plays local only. Toggle off with the M key."
+                >
+                  Mic 🎤
                 </button>
               </div>
             </div>

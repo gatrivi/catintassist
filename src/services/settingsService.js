@@ -33,6 +33,7 @@ export const CLOUD_SYNC_KEYS = [
   'catint_studio_hint_seen',
   'catint_guide_lang_v1',
   'catint_off_call_metrics_expanded_v1',
+  'catint_goal_workdays_v1', // v4.139.0: workdays-per-month shared across browser + Pake
 ];
 
 const IMPORT_DONE_PREFIX = 'catint_cloud_import_done_';

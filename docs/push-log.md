@@ -72,3 +72,9 @@
 | 2026-09-18T17:07:10.696Z | aae8003 | v4.131.1 greeting slot - US Central work clock + manual AM/PM/Eve picker on the on-call strip |
 | 2026-09-19T17:16:11.884Z | fcb0aaa | v4.133.0 ER incident: never delete a tirade |
 | 2026-09-19T18:13:41.718Z | fcb0aaa | v4.133.1 hotfix: corrupt captions value can no longer brick the greeting editor (fail-soft load) |
+| 2026-09-19T18:14:13.799Z | 0fd4b6a | v4.133.1 greeting editor fail-soft - corrupt captions value can't brick clip loading |
+| 2026-09-20T15:02:20.414Z | fa019d2 | v4.134.0 bubble overlap fix (height-lock guards, no min-height transition) + docs/ui/ui-libraries.md |
+| 2026-09-20T15:26:45.140Z | 341d896 | v4.135.0 retroactive debug ring (catLog) |
+| 2026-09-20T15:40:13.240Z | caa1301 | v4.137.0 lane-flip digit guard (zip vanish fix) |
+| 2026-09-20T15:47:51.703Z | 7b22ccc | v4.138.0 honest DG status + background-tab idle ear + Zap/Connect fixes |
+| 2026-09-20T17:00:17.049Z | 7b22ccc | v4.139.0 off-call UI cleanup + browser/Pake goal-minutes cloud sync (workdays key, focus re-pull, redirect sign-in fallback) |

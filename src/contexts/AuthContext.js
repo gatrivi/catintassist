@@ -1,5 +1,11 @@
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
-import { onAuthStateChanged, signInWithPopup, signOut as firebaseSignOut } from 'firebase/auth';
+import {
+  onAuthStateChanged,
+  signInWithPopup,
+  signInWithRedirect,
+  getRedirectResult,
+  signOut as firebaseSignOut,
+} from 'firebase/auth';
 import { auth, googleProvider, isFirebaseConfigured } from '../config/firebase';
 import {
   collectLocalSettings,
@@ -22,6 +28,7 @@ import {
 
 const AuthContext = createContext(null);
 const PUSH_INTERVAL_MS = 45000;
+const REPULL_MIN_GAP_MS = 2 * 60 * 1000; // v4.139.0: focus re-pull throttle
 
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
@@ -30,6 +37,7 @@ export const AuthProvider = ({ children }) => {
   const [syncState, setSyncState] = useState('idle'); // idle | pulling | pushing | error
   const [importPrompt, setImportPrompt] = useState(null);
   const pushTimerRef = useRef(null);
+  const lastPullAtRef = useRef(0);
 
   const pushCloud = useCallback(async (uid) => {
     if (!uid) return;
@@ -47,9 +55,9 @@ export const AuthProvider = ({ children }) => {
     }
   }, []);
 
-  const handleSignedIn = useCallback(async (nextUser) => {
-    const uid = nextUser?.uid;
-    if (!uid) return;
+  // One pull of settings + soundboard + timetrack. Used at sign-in and on
+  // window focus (v4.139.0) so an alternated browser/Pake session sees fresh minutes.
+  const pullCloud = useCallback(async (uid) => {
     setSyncState('pulling');
     try {
       const cloudDoc = await pullSettingsFromCloud(uid);
@@ -66,6 +74,7 @@ export const AuthProvider = ({ children }) => {
       } else {
         setImportPrompt(null);
       }
+      lastPullAtRef.current = Date.now();
       setSyncState('idle');
       setAuthError(null);
     } catch (err) {
@@ -75,11 +84,22 @@ export const AuthProvider = ({ children }) => {
     }
   }, []);
 
+  const handleSignedIn = useCallback(async (nextUser) => {
+    const uid = nextUser?.uid;
+    if (!uid) return;
+    await pullCloud(uid);
+  }, [pullCloud]);
+
   useEffect(() => {
     if (!isFirebaseConfigured() || !auth) {
       setAuthReady(true);
       return undefined;
     }
+
+    // v4.139.0: surface redirect sign-in failures (Pake popup fallback path).
+    getRedirectResult(auth).catch((err) => {
+      setAuthError(err?.message || 'Google sign-in failed');
+    });
 
     const unsub = onAuthStateChanged(auth, async (nextUser) => {
       setUser(nextUser);
@@ -119,6 +139,19 @@ export const AuthProvider = ({ children }) => {
     };
   }, [user, pushCloud]);
 
+  // v4.139.0: alternating browser/Pake use — re-pull on focus after a gap so
+  // this instance shows the minutes the other one banked (missing-days merge only).
+  useEffect(() => {
+    if (!user?.uid) return undefined;
+    const uid = user.uid;
+    const onFocus = () => {
+      if (Date.now() - lastPullAtRef.current < REPULL_MIN_GAP_MS) return;
+      pullCloud(uid);
+    };
+    window.addEventListener('focus', onFocus);
+    return () => window.removeEventListener('focus', onFocus);
+  }, [user, pullCloud]);
+
   const signInWithGoogle = useCallback(async () => {
     if (!isFirebaseConfigured() || !auth || !googleProvider) {
       setAuthError('Firebase is not configured. Add REACT_APP_FIREBASE_* env vars.');
@@ -130,6 +163,16 @@ export const AuthProvider = ({ children }) => {
       return result.user;
     } catch (err) {
       if (err?.code === 'auth/popup-closed-by-user') return null;
+      // v4.139.0: Pake/WebView2 may block popups — fall back to full-page redirect.
+      if (['auth/popup-blocked', 'auth/operation-not-supported-in-this-environment', 'auth/cancelled-popup-request'].includes(err?.code)) {
+        try {
+          await signInWithRedirect(auth, googleProvider);
+          return null; // page redirects; session resumes via onAuthStateChanged
+        } catch (redirectErr) {
+          setAuthError(redirectErr?.message || 'Google sign-in failed');
+          throw redirectErr;
+        }
+      }
       setAuthError(err?.message || 'Google sign-in failed');
       throw err;
     }

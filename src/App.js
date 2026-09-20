@@ -612,6 +612,7 @@ const Dashboard = () => {
         setMicTestMode(!micTestMode);
         return;
       }
+      // v4.139.0: Settings → Audio mic-mode button bridges here (header pill retired)
       if (e.code === "KeyC" && !isActive && !isBreakActive) {
         e.preventDefault();
         if (isZombieCall) {
@@ -636,6 +637,14 @@ const Dashboard = () => {
     handleStartCall,
     handleRecovery,
   ]);
+
+  // v4.139.0: Settings → Audio mic-mode button bridges here (header pill retired).
+  // detail.on === false (Tab/VB buttons) exits mic mode; default is enter.
+  useEffect(() => {
+    const onSetMicMode = (e) => setMicTestMode(e.detail?.on === false ? false : true);
+    window.addEventListener("cat_set_mic_mode", onSetMicMode);
+    return () => window.removeEventListener("cat_set_mic_mode", onSetMicMode);
+  }, [setMicTestMode]);
 
   // Micro-break nudge: top bar color shifts when working too long without a break
   const micBarColor =

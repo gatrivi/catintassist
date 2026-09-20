@@ -1638,6 +1638,21 @@ body {
   color: rgba(186, 230, 253, 0.92);
 }
 
+/* v4.139.0: off-call Guidelines button — reopens the guided tour */
+.interpret-pane-tip-link {
+  margin: 0.5rem 0 0;
+  padding: 0.35rem 0.7rem;
+  border-radius: 6px;
+  border: 1px solid rgba(56, 189, 248, 0.3);
+  background: rgba(56, 189, 248, 0.08);
+  font-size: 0.72rem;
+  cursor: pointer;
+  color: rgba(186, 230, 253, 0.95);
+}
+.interpret-pane-tip-link:hover {
+  background: rgba(56, 189, 248, 0.16);
+}
+
 /* ── Study cue cards (v4.88.0) — idle pane + hold overlay ───────────── */
 
 .study-cue-cards {
@@ -4691,7 +4706,7 @@ body:has(.app-container[data-call-mode="true"]) .element-hint-panel {
 /* Scrollable Areas */
 .scroll-area {
   overflow-y: auto;
-  padding: 0.2rem;
+  padding: 0.2rem 0.2rem 2rem;
   height: 100%;
 }
 
@@ -6628,8 +6643,10 @@ body:has(.app-container[data-call-mode="true"]) .element-hint-panel {
   display: none !important;
 }
 
+/* v4.134.0: no min-height transition — the height-lock measured rects
+   mid-animation and locked inflated heights, making bubbles collide. */
 .transcript-bubble.is-live {
-  transition: opacity 120ms ease, min-height 120ms ease;
+  transition: opacity 120ms ease;
 }
 
 /* Bubble correction editor — floating overlay, no row height change */

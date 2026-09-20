@@ -112,8 +112,10 @@ export const OffCallWorkspace = ({
                 ))}
               </ul>
             )}
-            {/* v4.97.0: mic verify lives here — the "will the client hear me" gate before avail */}
-            <MicVerifyPanel />
+            {/* v4.97.0 mic verify · v4.139.0 hideable via Settings → Display */}
+            {isComponentVisible(COMPONENT_IDS.mic_verify_panel, { isActive: false, isZombieCall: false }) && (
+              <MicVerifyPanel />
+            )}
             {detail.showDiagnostics && (
               <div className="interpret-pane-diagnostics">
                 <ConnectionDiagnosticsBar
@@ -123,6 +125,16 @@ export const OffCallWorkspace = ({
                 />
               </div>
             )}
+            {/* v4.139.0: QA guidelines — reopens the guided tour on demand */}
+            <button
+              type="button"
+              id="off-call-guidelines-btn"
+              className="interpret-pane-tip-link"
+              onClick={() => window.dispatchEvent(new CustomEvent('cat_open_app_guide'))}
+              title="Open QA / setup guidelines (guided tour)"
+            >
+              📖 Guidelines
+            </button>
           </div>
         )}
       </div>

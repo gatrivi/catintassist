@@ -2,7 +2,6 @@ import React, { useMemo, useState, useEffect } from 'react';
 import { useAudioSettings } from '../contexts/AudioSettingsContext';
 import { useAudioSource } from '../hooks/useAudioSource';
 import {
-  AUDIO_SOURCE_MODE_TAB,
   AUDIO_SOURCE_MODE_VIRTUAL_CABLE,
   diagnoseVbCableRoute,
   pickVbCableSinkDevice,
@@ -121,7 +120,6 @@ export const AudioRouteStatusBar = ({
     selectedInputDeviceId: selectedCableInputId,
     refreshSelectedDeviceId: changeCableInputId,
     refreshInputDevices: refreshCableInputDevices,
-    switchAudioSourceMode,
     currentSourceMode,
   } = useAudioSource();
   useComponentVisibilityRefresh();
@@ -132,17 +130,8 @@ export const AudioRouteStatusBar = ({
     (configuredAudioSourceMode || currentSourceMode) === AUDIO_SOURCE_MODE_VIRTUAL_CABLE;
   const isTabMode = !mobileMicMode && !isCableMode;
 
-  const selectTabMode = () => {
-    setMicTestMode?.(false);
-    switchAudioSourceMode(AUDIO_SOURCE_MODE_TAB);
-  };
-  const selectCableMode = () => {
-    setMicTestMode?.(false);
-    switchAudioSourceMode(AUDIO_SOURCE_MODE_VIRTUAL_CABLE);
-  };
-  const selectMicMode = () => {
-    setMicTestMode?.(true);
-  };
+  // v4.139.0: off-call pill switcher moved to Settings → Audio. In-call compact
+  // TAB/VB rescue toggle (switchWorkSource) stays — it preserves the live stream.
 
   const switchWorkSource = async (source) => {
     if (source === 'virtualCable') return onSwitchToVirtualCable?.();
@@ -241,12 +230,7 @@ export const AudioRouteStatusBar = ({
   const isModeMismatch =
     isActive && !mobileMicMode && configuredAudioSourceMode !== attachedSettingsMode;
 
-  // ponytail: emoji-first 3-way STT picker (🔖 tab · 🎧 VB · 🎤 mic)
-  const routeTabLabel = isTabMode && (tabStreamReady || audioAttached) ? '🔖✓' : '🔖';
-  const routeCableLabel = isCableMode
-    ? (cableStreamReady || isCableAttached ? '🎧✓' : '🎧')
-    : '🎧';
-  const routeMicLabel = mobileMicMode && audioAttached ? '🎤✓' : '🎤';
+  // v4.139.0: ponytail picker labels retired with the off-call pills.
 
   const sttInLabel = isMicAttached
     ? 'Mic STT'
@@ -482,39 +466,15 @@ export const AudioRouteStatusBar = ({
           </div>
         )}
         <div className="audio-route-status-full">
-        <div className="audio-route-source-toggle" role="group" aria-label="STT route">
-          <button
-            type="button"
-            id="audio-route-tab-mode-btn"
-            className={`audio-route-source-btn${isTabMode ? ' is-active is-tab' : ''}`}
-            onClick={selectTabMode}
-            aria-pressed={isTabMode}
-            title="Tab share STT — browser picks the interpreting tab"
-          >
-            {routeTabLabel}
-          </button>
-          <button
-            type="button"
-            id="audio-route-cable-mode-btn"
-            className={`audio-route-source-btn${isCableMode ? ' is-active is-cable' : ''}`}
-            onClick={selectCableMode}
-            aria-pressed={isCableMode}
-            title="VB-Cable STT — CABLE Output feeds Deepgram (no tab picker)"
-          >
-            {routeCableLabel}
-          </button>
-          <button
-            type="button"
-            id="audio-route-mic-mode-btn"
-            data-guide="mic-test"
-            className={`audio-route-source-btn${mobileMicMode ? ' is-active is-mic' : ''}`}
-            onClick={selectMicMode}
-            aria-pressed={mobileMicMode}
-            title="Mic STT — device microphone (phone / no tab share). Soundboard plays local only."
-          >
-            {routeMicLabel}
-          </button>
-        </div>
+        {/* v4.139.0: switcher moved to Settings → Audio; bar shows a read-only mode label
+            (VB is the default route now — new users shouldn't face the pills). */}
+        <span
+          id="audio-route-mode-label"
+          className="audio-route-badge"
+          title="STT route — switch in Settings → Audio"
+        >
+          {isCableMode ? '🎧 VB' : mobileMicMode ? '🎤 Mic' : '🔖 Tab'}
+        </span>
 
         {tabProof && (
           <span id="audio-route-tab-proof" className="audio-route-badge" title={tabProof.title}>
