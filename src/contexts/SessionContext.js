@@ -1,3 +1,4 @@
+import { catWarn, catError } from "../utils/catLog";
 import React, { createContext, useContext, useState, useEffect, useRef, useCallback } from 'react';
 import { useRewardAudio } from '../hooks/useRewardAudio';
 import { set as idbSet, get as idbGet } from 'idb-keyval';
@@ -41,7 +42,7 @@ const safeLocalStorageSet = (key, value) => {
     localStorage.setItem(key, value);
   } catch (e) {
     if (e.name === 'QuotaExceededError') {
-      console.warn('[Storage] Quota exceeded, purging non-essential data...');
+      catWarn('[Storage] Quota exceeded, purging non-essential data...');
       // Emergency: clear all translation caches to make room for critical stats
       Object.keys(localStorage)
         .filter(k => k.startsWith(PURGE_KEYS_PREFIX))
@@ -51,7 +52,7 @@ const safeLocalStorageSet = (key, value) => {
       try {
         localStorage.setItem(key, value);
       } catch (err) {
-        console.error('[Storage] CRITICAL: Could not save after purge!', err);
+        catError('[Storage] CRITICAL: Could not save after purge!', err);
       }
     }
   }
@@ -270,7 +271,7 @@ export const SessionProvider = ({ children }) => {
           setCaptions(saved);
         }
       } catch (e) {
-        console.warn('[Session] Failed to load captions:', e);
+        catWarn('[Session:load] Failed to load captions:', e);
       } finally {
         setIsCaptionsLoaded(true);
       }
@@ -320,7 +321,7 @@ export const SessionProvider = ({ children }) => {
         try {
           await idbSet('catint_captions_v2', next);
         } catch (e) {
-          console.error('[Session] Failed to save captions:', e);
+          catError('[Session:save] Failed to save captions:', e);
         }
       }, 1000);
       
@@ -709,7 +710,7 @@ export const SessionProvider = ({ children }) => {
           setArsRate(data.rates.ARS);
         }
       })
-      .catch(err => console.error("Failed to fetch ARS rate:", err));
+      .catch(err => catError("[Session:fx] Failed to fetch ARS rate:", err));
   }, []);
 
   const RATE_PER_MINUTE = 0.13;
@@ -1207,7 +1208,7 @@ export const SessionProvider = ({ children }) => {
         setLastCallSeconds(0);
         setLastCallEndedAt(0);
       } catch (e) {
-        console.warn('[Session] Day rollover failed:', e);
+        catWarn('[Session:rollover] Day rollover failed:', e);
       }
     }, 30000);
     return () => clearInterval(dayGuard);

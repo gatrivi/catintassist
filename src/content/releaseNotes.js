@@ -25,6 +25,52 @@ import { APP_VERSION } from '../constants/version';
 /** Newest first. Only the entry matching APP_VERSION is shown on load. */
 export const RELEASE_NOTES_CATALOG = [
   {
+    version: '4.135.0',
+    id: 'retroactive-debug-ring',
+    highlightElementIds: ['goal-config-version-pill'],
+    es: {
+      title: '🔍 Grabadora de errores retroactiva',
+      intro: 'Cuando un dato (ej. un zip code) desaparece, ya no importa que la consola estuviera inundada: la grabadora ya estaba corriendo.',
+      sections: [{ heading: 'Qué cambió', bullets: [
+        'Nuevo anillo en memoria con los últimos ~500 eventos de consola (warn/error siempre conservados).',
+        'Tras un incidente, abre la consola y ejecuta __CAT_DUMP("zip") para ver la traza completa.',
+        'Etiquetas separadas por evento ([Deepgram:open], [Session:save]…) para poder filtrar.',
+      ] }],
+    },
+    en: {
+      title: '🔍 Retroactive debug recorder',
+      intro: 'When data (e.g. a zip code) vanishes, it no longer matters that the console was flooded — the recorder was already running.',
+      sections: [{ heading: 'What changed', bullets: [
+        'New in-memory ring keeps the last ~500 console events (warn/error entries always retained).',
+        'After an incident, open the console and run __CAT_DUMP("zip") to see the full trace.',
+        'Labels split per event ([Deepgram:open], [Session:save]…) so they are filterable.',
+      ] }],
+    },
+  },
+  {
+    version: '4.134.0',
+    id: 'bubble-overlap-fix',
+    highlightElementIds: ['scroll-bottom-anchor'],
+    es: {
+      title: '🫧 Burbujas que ya no se enciman',
+      intro: 'A veces una burbuja del transcript se desbordaba sobre la siguiente y ninguna se podía leer.',
+      sections: [{ heading: 'Qué cambió', bullets: [
+        'El bloqueo de altura de la burbuja viva ya no se traba con alturas medidas a mitad de animación.',
+        'Las burbujas ahora ajustan su altura solo cuando el texto realmente crece.',
+        'La última burbuja ya no se corta contra el borde inferior.',
+      ] }],
+    },
+    en: {
+      title: '🫧 Bubbles no longer overlap',
+      intro: 'Transcript bubbles sometimes overflowed into the next bubble so neither was readable.',
+      sections: [{ heading: 'What changed', bullets: [
+        'The live-bubble height lock no longer traps heights measured mid-animation.',
+        'Bubbles now resize only when the text actually grew.',
+        'The last bubble no longer clips against the bottom edge.',
+      ] }],
+    },
+  },
+  {
     version: '4.133.1',
     id: 'greeting-editor-load-hotfix',
     highlightElementIds: ['gee-record-bar'],

@@ -1,3 +1,4 @@
+import { catError } from "./catLog";
 import { get, set, del, keys, entries } from 'idb-keyval';
 
 /** Normalize values restored from IndexedDB into Blob (some browsers return plain objects). */
@@ -20,7 +21,7 @@ export const saveFile = async (key, fileOrBlob) => {
     await set(key, fileOrBlob);
     return true;
   } catch (err) {
-    console.error(`Failed to save ${key} to IndexedDB:`, err);
+    catError(`[Storage:save] Failed to save ${key} to IndexedDB:`, err);
     return false;
   }
 };
@@ -30,7 +31,7 @@ export const loadFile = async (key) => {
     const raw = await get(key);
     return normalizeStoredBlob(raw);
   } catch (err) {
-    console.error(`Failed to load ${key} from IndexedDB:`, err);
+    catError(`[Storage:load] Failed to load ${key} from IndexedDB:`, err);
     return null;
   }
 };
@@ -44,7 +45,7 @@ export const loadRawValue = async (key) => {
   try {
     return await get(key);
   } catch (err) {
-    console.error(`Failed to read ${key} from IndexedDB:`, err);
+    catError(`[Storage:read] Failed to read ${key} from IndexedDB:`, err);
     return undefined;
   }
 };
@@ -54,7 +55,7 @@ export const deleteFile = async (key) => {
     await del(key);
     return true;
   } catch (err) {
-    console.error(`Failed to delete ${key} from IndexedDB:`, err);
+    catError(`[Storage:delete] Failed to delete ${key} from IndexedDB:`, err);
     return false;
   }
 };
@@ -63,7 +64,7 @@ export const listStorageKeys = async () => {
   try {
     return await keys();
   } catch (err) {
-    console.error('Failed to list IndexedDB keys:', err);
+    catError('[Storage:list] Failed to list IndexedDB keys:', err);
     return [];
   }
 };
@@ -79,7 +80,7 @@ export const getAllFileEntries = async () => {
     }
     return out;
   } catch (err) {
-    console.error('Failed to read IndexedDB entries:', err);
+    catError('[Storage:scan] Failed to read IndexedDB entries:', err);
     return [];
   }
 };

@@ -5,6 +5,7 @@
  * Usage: window.__catintVanishTrace  ·  window.__catintVanishOn = false to mute
  */
 
+import { catWarn } from "./catLog";
 const MAX = 400;
 
 const wordList = (t) => (t || '').trim().split(/\s+/).filter(Boolean);
@@ -61,7 +62,7 @@ export function flagVanish(reason, detail = {}) {
   if (buf.length > MAX) buf.splice(0, buf.length - MAX);
 
   // eslint-disable-next-line no-console
-  console.warn('[CAT VANISH]', reason, entry);
+  catWarn('[CAT VANISH]', reason, entry);
   return entry;
 }
 

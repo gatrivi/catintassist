@@ -166,7 +166,7 @@ export const DialGoalSelector = ({
       }}
     >
       <h4 style={{ margin: 0, fontSize: '1rem', color: 'var(--text-muted)', textAlign: 'center' }}>
-        Goal Configurator <span style={{ fontSize: '0.6rem', opacity: 0.6 }}>{APP_VERSION_LABEL}</span>
+        Goal Configurator <span id="goal-config-version-pill" style={{ fontSize: '0.6rem', opacity: 0.6 }}>{APP_VERSION_LABEL}</span>
       </h4>
 
       {/* v4.100.0: catch-up preview — "how much per day to get back?" */}

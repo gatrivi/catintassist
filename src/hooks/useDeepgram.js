@@ -1,3 +1,4 @@
+import { catLog, catWarn, catError } from "../utils/catLog";
 import { useState, useRef, useEffect, useCallback } from "react";
 import { useSession } from "../contexts/SessionContext";
 import {
@@ -624,7 +625,7 @@ export const useDeepgram = () => {
 
   const failConnection = useCallback(
     (message, extra = {}) => {
-      console.error("[Deepgram] CONNECTION FAILED", { message, ...extra });
+      catError("[Deepgram:connect] CONNECTION FAILED", { message, ...extra });
       critLog("warn", "failConnection", {
         message,
         failureCategory: extra?.failureCategory,
@@ -767,7 +768,7 @@ export const useDeepgram = () => {
     (stream) => {
       const API_KEY = getEffectiveDeepgramKey();
       if (!API_KEY) {
-        console.error("[Deepgram] API KEY MISSING");
+        catError("[Deepgram:key] API KEY MISSING");
         critLog("error", "credential unavailable", {
           reason: "browser_key_missing",
           source: streamSourceRef.current || "none",
@@ -809,7 +810,7 @@ export const useDeepgram = () => {
       const pair = languagePairRef.current;
       const multiMode = usesMultiSocket(pair);
       const protectionsOn = isEnEsProtectionMode(pair);
-      console.log("[Deepgram] STARTING", {
+      catLog("[Deepgram:start] STARTING", {
         source: streamSourceRef.current,
         pair,
         multiMode,
@@ -1003,13 +1004,13 @@ export const useDeepgram = () => {
 
       const createSocket = (lang, stream, { socketSide = "En", isFirst = false } = {}) => {
         const url = buildListenUrl(lang, sttLatencyModeRef.current);
-        console.log("[Deepgram] OPENING SOCKET", { lang, socketSide, url });
+        catLog("[Deepgram:open] OPENING SOCKET", { lang, socketSide, url });
         const ws = new WebSocket(url, ["token", API_KEY]);
         const sk = socketSide === "En" ? "socketEn" : "socketEs";
         const skClose = socketSide === "En" ? "socketEnClose" : "socketEsClose";
 
         ws.onopen = () => {
-          console.log("[Deepgram] SOCKET OPEN", { lang, socketSide });
+          catLog("[Deepgram:open] SOCKET OPEN", { lang, socketSide });
           reconnectAttemptsRef.current = 0;
           syncConnectProgress({ [sk]: "open" });
           critLog("info", `socket open (${lang}/${socketSide})`, {
@@ -1052,7 +1053,7 @@ export const useDeepgram = () => {
               received?.description ||
               JSON.stringify(received?.error || received);
             if (isLikelyApiKeyRejected(errText)) {
-              console.error("[Deepgram] API KEY REJECTED", received);
+              catError("[Deepgram:key] API KEY REJECTED", received);
               const msg = deepgramKeyRejectedMessage();
               failConnection(msg, {
                 failureCategory: FAILURE.AUTH,
@@ -1292,7 +1293,7 @@ export const useDeepgram = () => {
           if (ws !== socketRefEn.current && ws !== socketRefEs.current) return;
           const code = event?.code;
           const reason = event?.reason || "";
-          console.error("[Deepgram] SOCKET CLOSED", { lang, socketSide, code, reason });
+          catError("[Deepgram:close] SOCKET CLOSED", { lang, socketSide, code, reason });
           syncConnectProgress({
             [sk]: "error",
             [skClose]: `${code}${reason ? `: ${reason}` : ""}`,
@@ -1350,11 +1351,11 @@ export const useDeepgram = () => {
         };
 
         ws.onerror = (event) => {
-          console.error("[Deepgram] WEBSOCKET ERROR", { lang, socketSide, event });
+          catError("[Deepgram:err] WEBSOCKET ERROR", { lang, socketSide, event });
           if (connectFlagsRef.current.phase === "ready") return;
           if (connectFlagsRef.current.phase !== "connecting") return;
           syncConnectProgress({ [sk]: "error" });
-          console.warn(`[Deepgram] ${lang} WebSocket error (awaiting close code…)`);
+          catWarn(`[Deepgram:err] ${lang} WebSocket error (awaiting close code…)`);
           critLog("error", `socket error (${lang}/${socketSide})`);
         };
         return ws;

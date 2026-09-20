@@ -2,6 +2,20 @@
 
 **Version source:** `src/constants/version.js` (must match `package.json` + top-right UI pill)
 
+## v4.135.0 - retroactive debug ring (`catLog`)
+
+- Problem: `[Deepgram]` socket-event spam buried the rare `[CAT VANISH]` warns — the exact trace for vanished numbers/zips. Debugging happens *after* the incident, so a toggle is useless; the recorder must already be running.
+- New `src/utils/catLog.js`: console passes through unchanged, and every call is mirrored into an in-memory circular ring (~500 entries; warn/error entries get a guaranteed window that info spam cannot evict; exact repeats collapse into `label ×N`).
+- Retrieval: `__CAT_DUMP()` / `__CAT_DUMP("zip")` / `copy(__CAT_DUMP("zip", true))` in the browser console.
+- Wired: `useDeepgram` `[Deepgram]` → sub-labeled `[Deepgram:start|open|close|err|connect|key]`; `vanishTrace` `[CAT VANISH]` → `catWarn` (always retained); `SessionContext` + `storage.js` errors/warns.
+- No console stripping in builds — output looks the same as before; the ring is additive.
+
+## v4.134.0 - bubble overlap fix + UI libraries doc
+
+- Transcription bubbles could overflow into the next bubble, both unreadable. Root cause: the live-bubble `minHeight` lock (`liveBubbleHeight.js`) locked heights measured mid-animation, because `.is-live` animated `min-height` over 120ms — inflated bubble N, next bubble mounted over unreadable space.
+- Fix: height-lock growth now requires the text to have grown; height-shrink-while-text-grows treated as noise; `min-height` transition removed; scroll-area bottom padding so the last bubble can't clip.
+- New: [`docs/ui/ui-libraries.md`](ui/ui-libraries.md) — shadcn/Transitions.dev/Beautiful UI/BeUI/Rare UI refs + what to crib for this app.
+
 ## v4.133.1 - hotfix: unreadable captions value can't brick the greeting editor
 
 - Prod failure: corrupt/unreadable `catint_captions_v2` (transcript array sharing the greeting IDB store) made `loadAllBlobs` throw forever — Greeting Editor stuck on "Load failed … Retry loading".
