@@ -6,6 +6,7 @@ import {
   formatTranscriptForDisplay,
   formatSpellingText,
   isSpellingBlock,
+  splitLongTextAtCommas,
 } from './transcriptFormat';
 
 describe('consolidateSpelling', () => {
@@ -118,5 +119,26 @@ describe('collectCopyableEntities', () => {
     const text = 'S as in Sam, M as in Mary, I as in India, T as in Tom, H as in Henry';
     const ents = collectCopyableEntities(text, 'en');
     expect(ents.find((e) => e.kind === 'spelling')?.value).toBe('SMITH');
+  });
+});
+
+// v4.136.0: a comma boundary between two digit groups tears a zip across
+// bubbles ("93, 550") and render-time repair can never rejoin it.
+describe('splitLongTextAtCommas digit guard', () => {
+  const words = (n) => Array(n).fill('palabra').join(' ');
+
+  test('keeps "93, 550" in one chunk at the >40-word boundary', () => {
+    const text = `${words(39)} 93, 550, y una cosa mas`;
+    const chunks = splitLongTextAtCommas(text, 40);
+    expect(chunks.length).toBe(2);
+    expect(chunks[0]).toMatch(/93, 550/);
+    expect(chunks[0]).not.toMatch(/93,\s*$/);
+  });
+
+  test('still splits at normal word boundaries', () => {
+    const text = `${words(42)}, ${words(5)}`;
+    const chunks = splitLongTextAtCommas(text, 40);
+    expect(chunks.length).toBe(2);
+    expect(chunks[1]).toBe(words(5));
   });
 });

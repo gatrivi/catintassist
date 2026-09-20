@@ -330,4 +330,57 @@ describe("captionEngine", () => {
     expect(enRows).toHaveLength(1);
     expect(enRows[0].text).toMatch(/twice daily/i);
   });
+
+  // v4.136.0: the losing lane may be the only one that heard the zip — a lane
+  // flip that drops a digit run must keep the visible text instead.
+  describe("lane flip digit guard", () => {
+    test("keeps zip when longer es lane lacks it", () => {
+      const ctx = makeCtx();
+      const now = Date.now();
+      const state1 = reduceTranscriptEvent(
+        [],
+        makeEvent({ transcript: "my zip is 93550", isFinal: true, now, isSilentBreak: false }),
+        ctx,
+      );
+      expect(state1[0].text).toMatch(/93550/);
+
+      const state2 = reduceTranscriptEvent(
+        state1,
+        makeEvent({
+          transcript: "el paciente vive cerca del hospital grande",
+          laneSide: "es",
+          channelKey: "es",
+          isFinal: true,
+          now: now + 2000,
+          isSilentBreak: false,
+        }),
+        ctx,
+      );
+      expect(state2[0].text).toMatch(/93550/);
+    });
+
+    test("still flips lanes when no digits are lost", () => {
+      const ctx = makeCtx();
+      const now = Date.now();
+      const state1 = reduceTranscriptEvent(
+        [],
+        makeEvent({ transcript: "hello there friend", isFinal: true, now, isSilentBreak: false }),
+        ctx,
+      );
+
+      const state2 = reduceTranscriptEvent(
+        state1,
+        makeEvent({
+          transcript: "buenos dias señor gracias por venir",
+          laneSide: "es",
+          channelKey: "es",
+          isFinal: true,
+          now: now + 2000,
+          isSilentBreak: false,
+        }),
+        ctx,
+      );
+      expect(state2[0].text).toMatch(/buenos dias/i);
+    });
+  });
 });

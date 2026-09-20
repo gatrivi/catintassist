@@ -2,6 +2,13 @@
 
 **Version source:** `src/constants/version.js` (must match `package.json` + top-right UI pill)
 
+## v4.137.0 - lane-flip digit guard (zips can't vanish)
+
+- Reported: a zipcode disappeared from the transcription bubble (and translation, which inherits it). Root cause: `captionEngine.js` picks the EN/ES lane winner and overwrote the visible text wholesale (`current.text = enFull : esFull`); a zip heard in only one lane vanished on a lane flip.
+- Fix: before a lane flip overwrites bubble text, digit runs are compared (normalized, "93 550" ≡ "93550"); if any run would be lost, the old visible text is kept and `caption_lane_digit_guard` is logged to the vanish trace. Normal flips unchanged.
+- Second hole: `splitLongTextAtCommas` could tear "93, 550" across two bubbles at the 40-word boundary (render-time `repairSplitZips` can't rejoin across bubbles) — boundaries between digit groups are no longer split points.
+- Tests: lane-flip guard keeps zip / still flips without digits; comma-split keeps "93, 550" whole; 43 tests in both suites green.
+
 ## v4.135.0 - retroactive debug ring (`catLog`)
 
 - Problem: `[Deepgram]` socket-event spam buried the rare `[CAT VANISH]` warns — the exact trace for vanished numbers/zips. Debugging happens *after* the incident, so a toggle is useless; the recorder must already be running.

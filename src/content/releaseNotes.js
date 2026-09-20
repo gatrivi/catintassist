@@ -25,6 +25,29 @@ import { APP_VERSION } from '../constants/version';
 /** Newest first. Only the entry matching APP_VERSION is shown on load. */
 export const RELEASE_NOTES_CATALOG = [
   {
+    version: '4.137.0',
+    id: 'lane-flip-digit-guard',
+    highlightElementIds: [],
+    es: {
+      title: '🔢 Los dígitos ya no se borran',
+      intro: 'Un cambio de pista EN/ES borraba números (ej. un zip code) que solo la otra pista había escuchado. Ahora los dígitos visibles nunca se borran.',
+      sections: [{ heading: 'Qué cambió', bullets: [
+        'Si la pista ganadora no tiene un número que ya se estaba mostrando, el globo conserva el texto con el número.',
+        'Los zips dictados con coma ("93, 550") ya no se parten entre dos burbujas.',
+        'Todo intento de borrado queda registrado en la traza (__CAT_DUMP("zip")).',
+      ] }],
+    },
+    en: {
+      title: '🔢 Digits can no longer vanish',
+      intro: 'An EN/ES lane switch could erase a number (e.g. a zip code) that only the other lane had heard. Digits already on screen are now never dropped.',
+      sections: [{ heading: 'What changed', bullets: [
+        'If the winning lane lacks a number the bubble already showed, the bubble keeps the text with the number.',
+        'Comma-dictated zips ("93, 550") are never torn across two bubbles.',
+        'Every block attempt is logged to the vanish trace (__CAT_DUMP("zip")).',
+      ] }],
+    },
+  },
+  {
     version: '4.135.0',
     id: 'retroactive-debug-ring',
     highlightElementIds: ['goal-config-version-pill'],

@@ -28,6 +28,17 @@ export const buildStableCaptionId = (channelKey, startTime, isFinal) =>
 
 export const createCaptionEngineState = () => ({ finals: [], liveDraft: null });
 
+// v4.136.0: digit runs ("93550", "93 550" ≡ "93550") — a lane flip may never
+// drop one; the losing lane is sometimes the only one that heard the zip.
+export const digitRunKeys = (text) =>
+  (String(text || '').match(/\d[\d\s,.-]*\d|\d/g) || []).map((run) =>
+    run.replace(/\D/g, ''),
+  );
+export const lostDigitRuns = (prevText, nextText) => {
+  const nextKeys = new Set(digitRunKeys(nextText));
+  return [...new Set(digitRunKeys(prevText))].filter((key) => !nextKeys.has(key));
+};
+
 const normalizeWord = (word) =>
   (word || "").toString().toLowerCase().replace(/[^\p{L}\p{N}]+/gu, "");
 
@@ -323,8 +334,24 @@ export const reduceTranscriptEvent = (prev, event, ctx) => {
   else if (langMode === "right") winnerLang = pair.right;
 
   const winSide = laneSideForLang(winnerLang, pair);
-  current.lang = winnerLang;
-  current.text = winSide === "en" ? enFull : esFull;
+  // v4.136.0: a lane flip that would drop a digit run (zip/phone) keeps the
+  // visible text — digits already shown must never vanish on a lane switch.
+  const nextText = winSide === "en" ? enFull : esFull;
+  const lostDigits = lostDigitRuns(textBeforeLane, nextText);
+  if (lostDigits.length) {
+    flagVanish('caption_lane_digit_guard', {
+      id: current.id,
+      turnId: current.turnId,
+      before: textBeforeLane,
+      after: nextText,
+      stage: 'captionEngine.assignText',
+      force: true,
+      extra: { lostDigits, winnerLang },
+    });
+  } else {
+    current.lang = winnerLang;
+    current.text = nextText;
+  }
   // v4.117.0: remember WHAT was just asked ("can I have your phone number?")
   // so digits arriving in later bubbles still format. Miss = keep prior arm.
   if (current.text?.trim()) {

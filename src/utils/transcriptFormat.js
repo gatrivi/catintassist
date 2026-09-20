@@ -244,8 +244,11 @@ export const splitLongTextAtCommas = (text, maxWords = 40) => {
     const seg = segments[i];
     const candidate = current ? `${current}, ${seg}` : seg;
     const wc = candidate.split(/\s+/).filter(Boolean).length;
+    // v4.136.0: never open a new chunk between two digit groups — "93, 550"
+    // is one zip, and render-time repair cannot rejoin across bubbles.
+    const splitsDigits = /\d$/.test(current) && /^\d/.test(seg);
 
-    if (wc > maxWords && current) {
+    if (wc > maxWords && current && !splitsDigits) {
       chunks.push(current.trim());
       current = seg;
     } else {
