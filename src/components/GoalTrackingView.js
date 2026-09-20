@@ -3,18 +3,21 @@ import { useSession } from '../contexts/SessionContext';
 import { DialGoalSelector, daysPerWeekOf } from './DialGoalSelector';
 import { MonthCalendarPanel } from './MonthCalendarPanel';
 import { computeCatchUp, fmtHm } from '../utils/catchUpPlan';
+import { anchorForCatchUp, goalSetLabel } from '../utils/goalAnchor';
 import { APP_VERSION_LABEL } from '../constants/version';
 
 // v4.113.0: Goal Tracking view — the goal dial got its own full workspace view.
 // Left: weekly-commitment dial. Right: month calendar (click a day to fix minutes).
 // The pace card + calendar react LIVE to the dial (before saving), including the
 // 4/5/6/6.5/7-day-week basis, always accounting for minutes banked so far.
+// ANCHORED-GOAL: the target counts from the day it is banked — never a
+// full-month quota for days that were already gone when you set it.
 export const GOALS_VIEW = 'goals';
 
 export const GoalTrackingView = ({ onExit }) => {
   const {
-    stats, updateStat, dailyLog,
-    goalWorkDays, setGoalWorkDays,
+    stats, updateStat, bankGoal, dailyLog,
+    goalWorkDays,
     RATE_PER_MINUTE, arsRate, setArsRate,
     getMonthResyncPreview, reconcileMonthTotal,
   } = useSession();
@@ -33,6 +36,16 @@ export const GoalTrackingView = ({ onExit }) => {
   const previewGoalMinutes = preview?.monthlyMinutes ?? stats.goalMinutes;
   const previewWorkDays = preview?.workDays ?? goalWorkDays;
 
+  // ANCHORED-GOAL: the pace clock follows the saved anchor while the dial still
+  // shows the saved number; a moved dial is a candidate → anchored at "banked now".
+  const anchor = anchorForCatchUp({
+    targetMinutes: previewGoalMinutes,
+    bankedMinutes: monthlyBanked,
+    savedGoalMinutes: stats.goalMinutes,
+    savedGoalSetAt: stats.goalSetAt,
+    savedGoalBaseMinutes: stats.goalBaseMinutes,
+  });
+
   // THE number this view exists for: what each remaining workday must produce.
   const plan = useMemo(() => {
     try {
@@ -41,23 +54,32 @@ export const GoalTrackingView = ({ onExit }) => {
         monthlyMinutes: stats.monthlyMinutes,
         dailyMinutes: stats.dailyMinutes,
         workDays: previewWorkDays,
+        ...(anchor || {}),
       });
     } catch { return null; }
-  }, [previewGoalMinutes, stats.monthlyMinutes, stats.dailyMinutes, previewWorkDays]);
+  }, [previewGoalMinutes, stats.monthlyMinutes, stats.dailyMinutes, previewWorkDays, anchor?.goalSetAt, anchor?.goalBaseMinutes]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const isPreviewing = preview != null
     && (Math.round(preview.monthlyMinutes) !== Math.round(stats.goalMinutes)
       || preview.workDays !== goalWorkDays);
 
+  const savedGoalLabel = goalSetLabel(stats.goalSetAt);
+
   const handleSave = useCallback((mins, meta) => {
-    updateStat('goalMinutes', mins);
-    if (meta && [17, 22, 26, 28, 30].includes(meta.workDays)) {
-      setGoalWorkDays(meta.workDays); // context persists to catint_goal_workdays_v1
-    }
-    setSavedFlash(`Banked ${Math.round(mins)}m/mo · ${daysPerWeekOf(meta?.workDays || goalWorkDays)}/wk basis`);
+    // ANCHORED-GOAL: target + anchor in one write (set date, worked-so-far base,
+    // per-workday commitment for the next month's re-derivation).
+    const written = bankGoal({
+      targetMinutes: mins,
+      workDays: meta?.workDays ?? goalWorkDays,
+      perWorkdayMinutes: meta?.perWorkdayMinutes ?? 0,
+      baseMinutes: meta?.baseMinutes ?? monthlyBanked,
+    });
+    const setLabel = goalSetLabel(written?.goalSetAt) || 'today';
+    setSavedFlash(`Banked ${Math.round(mins)}m/mo · counts from ${setLabel}` +
+      ` (${daysPerWeekOf(meta?.workDays || goalWorkDays)}/wk basis)`);
     window.setTimeout(() => setSavedFlash(''), 4000);
     // Stay in the view — the calendar + pace card now reflect the saved goal.
-  }, [updateStat, setGoalWorkDays, goalWorkDays]);
+  }, [bankGoal, goalWorkDays, monthlyBanked]);
 
   const verdictText = plan
     ? (plan.deficitMins > 30
@@ -88,6 +110,7 @@ export const GoalTrackingView = ({ onExit }) => {
         <span className="goal-pace-card__meta">
           {plan && <>
             banked <b style={{ color: '#e2e8f0' }}>{fmtHm(monthlyBanked)}</b> / goal <b style={{ color: '#e2e8f0' }}>{fmtHm(previewGoalMinutes)}</b>
+            {savedGoalLabel && !isPreviewing && <> since <b style={{ color: '#c4b5fd' }}>{savedGoalLabel}</b></>}
             {' '}· <b style={{ color: '#7dd3fc' }}>{plan.remainingWorkdays}</b> workdays left @ {daysPerWeekOf(previewWorkDays)}/wk
             {' '}· today → <b style={{ color: '#fbbf24' }}>{fmtHm(plan.needToday)}</b>
           </>}
@@ -136,6 +159,12 @@ export const GoalTrackingView = ({ onExit }) => {
             onSave={handleSave}
             onCancel={onExit}
             onPreview={setPreview}
+            savedGoalSetAt={stats.goalSetAt || null}
+            savedGoalBaseMinutes={stats.goalBaseMinutes || 0}
+            // ANCHORED-GOAL follow-up: the saved COMMITMENT, so re-opening the
+            // configurator lands on the row that was actually banked.
+            committedPerWorkdayMinutes={stats.goalPerWorkdayMinutes || 0}
+            committedWorkDays={stats.goalWorkDays || 0}
           />
         </div>
         <div className="goal-tracking-calendar">

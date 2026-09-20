@@ -33,6 +33,7 @@ import {
 } from '../utils/offCallIdleMessages';
 import { dispatchOpenDeepgramSettings } from '../utils/deepgramSettingsPrompt';
 import { daysPerWeekOf } from './DialGoalSelector';
+import { perWorkdayFromStats, weeklyHoursFromCommitment, savedGoalWorkDays } from '../utils/goalAnchor';
 import { fmtHm } from '../utils/catchUpPlan';
 import { ElementHintTarget, useElementHint, buildHintPayload } from './ElementHint';
 import { useProgressiveAudio } from '../hooks/useProgressiveAudio';
@@ -136,8 +137,8 @@ const MicroBarTimer = ({ showConnecting, connectionMessage, sessionSeconds }) =>
   </span>
 );
 
-const StickyTargetsChip = ({ dailyMinutes, monthlyMinutes, workDays, breakMinutes, ratePerMinute, goalMinutes, onOpenGoalsView }) => (
-  <DailyTargetsChip dailyMinutes={dailyMinutes} monthlyMinutes={monthlyMinutes} workDays={workDays} breakMinutes={breakMinutes} ratePerMinute={ratePerMinute} goalMinutes={goalMinutes} onOpenGoalsView={onOpenGoalsView} />
+const StickyTargetsChip = ({ dailyMinutes, monthlyMinutes, workDays, breakMinutes, ratePerMinute, goalMinutes, goalSetAt, goalBaseMinutes, onOpenGoalsView }) => (
+  <DailyTargetsChip dailyMinutes={dailyMinutes} monthlyMinutes={monthlyMinutes} workDays={workDays} breakMinutes={breakMinutes} ratePerMinute={ratePerMinute} goalMinutes={goalMinutes} goalSetAt={goalSetAt} goalBaseMinutes={goalBaseMinutes} onOpenGoalsView={onOpenGoalsView} />
 );
 
 const StateIndicators = ({ state, breakMinutes, isZombie, silenceCount }) => {  const showSilenceTimer = silenceCount > 30;
@@ -289,6 +290,7 @@ const SessionControlsSticky = React.memo(({
   breakMinutes = 0,
   ratePerMinute = 0.13,
   goalMinutes = 0, // v4.96.0: dial goal for the chip's deficit pair + catch-up target
+  goalSetAt = null, goalBaseMinutes = 0, // ANCHORED-GOAL: when it was banked + base
   // Today timers (minutes) — shown next to Connect in the sticky row (v4.86.5)
   onCallMins = 0,
   offCallMins = 0,
@@ -629,7 +631,7 @@ const SessionControlsSticky = React.memo(({
               <MicroBarTimer showConnecting={showConnecting} connectionMessage={connectionMessage} sessionSeconds={sessionSeconds} />
             </div>
             )}
-              <StickyTargetsChip dailyMinutes={dailyMinutes} monthlyMinutes={monthlyMinutes} workDays={workDays} breakMinutes={breakMinutes} ratePerMinute={ratePerMinute} goalMinutes={goalMinutes} onOpenGoalsView={onOpenGoalsView} />
+              <StickyTargetsChip dailyMinutes={dailyMinutes} monthlyMinutes={monthlyMinutes} workDays={workDays} breakMinutes={breakMinutes} ratePerMinute={ratePerMinute} goalMinutes={goalMinutes} goalSetAt={goalSetAt} goalBaseMinutes={goalBaseMinutes} onOpenGoalsView={onOpenGoalsView} />
             </div>
           ) : (
             <>
@@ -706,7 +708,7 @@ const SessionControlsSticky = React.memo(({
                 such ancestor, so the chip measured the whole audio line, kept all
                 three pairs and painted over the TAB/VB proof spans (3884ce5 bug). */}
             <div className="off-call-targets-row" id="off-call-targets-row">
-              <StickyTargetsChip dailyMinutes={dailyMinutes} monthlyMinutes={monthlyMinutes} workDays={workDays} breakMinutes={breakMinutes} ratePerMinute={ratePerMinute} goalMinutes={goalMinutes} onOpenGoalsView={onOpenGoalsView} />
+              <StickyTargetsChip dailyMinutes={dailyMinutes} monthlyMinutes={monthlyMinutes} workDays={workDays} breakMinutes={breakMinutes} ratePerMinute={ratePerMinute} goalMinutes={goalMinutes} goalSetAt={goalSetAt} goalBaseMinutes={goalBaseMinutes} onOpenGoalsView={onOpenGoalsView} />
             </div>
             </>
           )}
@@ -1014,7 +1016,15 @@ export const DashboardHeader = ({
     }
   }, [onReconnectStream]);
 
-  const weeklyGoalHours = Math.round((stats.goalMinutes * 5) / (60 * 22));
+  // ANCHORED-GOAL follow-up: the weekly pill shows the COMMITMENT. Deriving it
+  // by dividing the month total (which mid-month is prorated: worked so far +
+  // commitment × workdays left) showed "13h/wk goal" for a 35h/Wk commitment,
+  // and hardcoded the 22d/5d basis instead of the real workdays basis.
+  const goalBasis = savedGoalWorkDays(stats, goalWorkDays) || 22;
+  const committedPerWorkday = perWorkdayFromStats(stats, { workDays: goalBasis });
+  const weeklyGoalHours = Math.round(
+    weeklyHoursFromCommitment(committedPerWorkday, daysPerWeekOf(goalBasis)),
+  );
 
   const [showAsHours, setShowAsHours] = useState(false);
   const [rateView, setRateView] = useState('effective'); // 'effective' | 'active'
@@ -1310,7 +1320,13 @@ export const DashboardHeader = ({
   const remainingMinutesFromStartOfDay = Math.max(0, stats.goalMinutes - minutesBeforeToday);
 
   const remainingWorkDays = getRemainingWorkDays(year, month, currentDay);
-  const baseYield = (stats.goalMinutes || 5500) / (getWorkingDays(year, month) || 22);
+  // ANCHORED-GOAL follow-up: with a stored commitment the day floor IS the
+  // commitment (a banked mid-month month total ÷ business days would floor
+  // today's goal at 152m instead of the promised 420m). Legacy stats keep the
+  // exact old formula.
+  const baseYield = Number(stats.goalPerWorkdayMinutes) > 0
+    ? committedPerWorkday
+    : (stats.goalMinutes || 5500) / (getWorkingDays(year, month) || 22);
   
   // REALISTIC CATCH-UP: Divide remaining by workdays, but cap at 600m (10h)
   const rawCatchUp = remainingWorkDays > 0 ? (remainingMinutesFromStartOfDay / remainingWorkDays) : baseYield;
@@ -1687,19 +1703,23 @@ export const DashboardHeader = ({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [monthlyBanked]);
 
-  // ── MONTHLY DEFICIT ───────────────────────────────────
-  const expectedByToday = Math.round((stats.goalMinutes / daysInMonth) * currentDay);
-  const monthlyDeficitMins = expectedByToday - monthlyBanked; // positive = behind
-  const isInDeficit = monthlyDeficitMins > 30;
-
-  // ── CATCH-UP PLAN (v4.96.0): month-pace deficit → today's number → per-day split ──
+  // ── MONTHLY DEFICIT + CATCH-UP PLAN (v4.96.0) ──────────────────────────
+  // One source of truth: computeCatchUp owns the pace math now. Duplicating it
+  // here is how the HUD and the Goal Tracking view drift apart.
   // v4.101.0: catch-up spreads over WORKDAYS (6.5/Wk → 28d basis), not calendar days.
+  // ANCHORED-GOAL: goalSetAt/goalBaseMinutes make the pace clock start the day
+  // the goal was banked (a goal set on the 20th is not judged against day 1).
+  // Absent for legacy saved stats → exactly the previous full-month pace.
   const catchUpPlan = computeCatchUp({
     goalMinutes: stats.goalMinutes,
     monthlyMinutes: monthlyBanked,
     dailyMinutes: Math.round(totalDailyMins),
     workDays: goalWorkDays,
+    goalSetAt: stats.goalSetAt || null,
+    goalBaseMinutes: stats.goalBaseMinutes || 0,
   });
+  const monthlyDeficitMins = catchUpPlan.deficitMins; // positive = behind
+  const isInDeficit = monthlyDeficitMins > 30;
   const catchUpVerdictColor = catchUpPlan.verdict === 'fits-by-18' ? '#34d399'
     : catchUpPlan.verdict === 'needs-ot' ? '#fbbf24'
     : catchUpPlan.verdict === 'impossible' ? '#f87171'
@@ -1723,6 +1743,8 @@ export const DashboardHeader = ({
     });
     if ((Number(stats.dailyMinutes) || 0) > 0) { worked += 1; sum += Number(stats.dailyMinutes) || 0; }
     const avgPerWorked = worked > 0 ? Math.round(sum / worked) : 0;
+    // ANCHORED-GOAL: goalMinutes is a month total that includes what is already
+    // worked, so "remaining to the goal" stays honest mid-month.
     const remainingGoal = Math.max(0, stats.goalMinutes - monthlyBanked);
     const workdaysNeeded = avgPerWorked > 0 ? Math.ceil(remainingGoal / avgPerWorked) : null;
     // workdays → calendar days via the 6.5/Wk spread (workDays per daysInMonth)
@@ -1998,6 +2020,8 @@ export const DashboardHeader = ({
       breakMinutes={Math.round(liveBreakMins)}
       ratePerMinute={RATE_PER_MINUTE}
       goalMinutes={stats.goalMinutes}
+      goalSetAt={stats.goalSetAt || null}
+      goalBaseMinutes={stats.goalBaseMinutes || 0}
       onOpenGoalsView={onOpenGoalsView}
     />
   );
@@ -2911,7 +2935,11 @@ ${isInDeficit ? `⚠️ DEFICIT: Behind pace by ${Math.round(monthlyDeficitMins)
                     color: i < 6 ? '#7dd3fc' : '#fde68a',
                   }}>{i < 6 ? day : `${day}½`}</span>
                 ))}
-                <span style={{ opacity: 0.7 }}>({fmtHm(Math.round((stats.goalMinutes / Math.max(1, goalWorkDays)) * 1))}/d target)</span>
+                {/* ANCHORED-GOAL follow-up: the COMMITMENT per workday, not the
+                    prorated month total ÷ workdays (which read 152m for a 420m goal). */}
+                {/* ANCHORED-GOAL follow-up: the COMMITMENT per workday — the month
+                    total ÷ workdays read 152m for a 420m/d (35h/Wk) commitment. */}
+                <span style={{ opacity: 0.7 }}>({fmtHm(committedPerWorkday)}/d target)</span>
               </span>
             </div>
           )}
@@ -3286,6 +3314,8 @@ ${isInDeficit ? `⚠️ DEFICIT: Behind pace by ${Math.round(monthlyDeficitMins)
         breakMinutes={Math.round(liveBreakMins)}
         ratePerMinute={RATE_PER_MINUTE}
         goalMinutes={stats.goalMinutes}
+        goalSetAt={stats.goalSetAt || null}
+        goalBaseMinutes={stats.goalBaseMinutes || 0}
         callModeExpanded={callModeExpanded}
         setCallModeExpanded={setCallModeExpanded}
 

@@ -34,8 +34,23 @@ import {
   isSealableArchive,
   buildLastCallArchive,
 } from '../utils/lastCallArchive';
+import {
+  buildGoalAnchor,
+  rollGoalForNewMonth,
+  isGoalWorkDays,
+} from '../utils/goalAnchor';
 
 const PURGE_KEYS_PREFIX = 'trans_cache:';
+const GOAL_WORKDAYS_KEY = 'catint_goal_workdays_v1';
+
+/** Workdays basis (17/22/26/28/30 d/mo) — read straight from storage so the
+ *  stats initializer can use it before the goalWorkDays state exists. */
+const readStoredGoalWorkDays = () => {
+  try {
+    const v = Number(localStorage.getItem(GOAL_WORKDAYS_KEY));
+    return isGoalWorkDays(v) ? v : 28;
+  } catch { return 28; }
+};
 
 const safeLocalStorageSet = (key, value) => {
   try {
@@ -200,6 +215,12 @@ export const SessionProvider = ({ children }) => {
       weeklyMinutes: 0,
       monthlyMinutes: 0,
       goalMinutes: 9231, // v4.100.1: $1200 @ $0.13/min (was 5500 FLOOR)
+      // ANCHORED-GOAL: a banked goal counts from the moment it was banked.
+      // goalMinutes stays the MONTH TOTAL; these three record where its pace
+      // clock starts so a goal set on the 20th is not judged against day 1.
+      goalSetAt: null,          // 'YYYY-MM-DD' it was banked (null = legacy stats)
+      goalBaseMinutes: 0,       // minutes already worked when it was banked
+      goalPerWorkdayMinutes: 0, // commitment per workday (re-derives next month)
       callsToday: 0,
       streak: 0,
       lastDate: today,
@@ -251,6 +272,9 @@ export const SessionProvider = ({ children }) => {
           parsed.monthlyMinutes = 0;
           parsed.weeklyMinutes = 0;
           parsed.shiftStartSentiment = 0;
+          // ANCHORED-GOAL: a fresh month gets the full-month quota again from
+          // the same commitment — never the prorated mid-month target.
+          Object.assign(parsed, rollGoalForNewMonth(parsed, readStoredGoalWorkDays(), now));
         }
 
         parsed.lastMonthKey = currentMonthKey;
@@ -499,15 +523,14 @@ export const SessionProvider = ({ children }) => {
   // v4.113.0: workdays basis (5/6/6.5-day weeks) lifted here from DashboardHeader —
   // the Goal Tracking view writes it while the header stays mounted, so a header-local
   // copy would go stale. Same key + default as before (v4.100.1: 6.5/Wk = 28d).
-  const [goalWorkDays, setGoalWorkDays] = useState(() => {
-    try {
-      const v = Number(localStorage.getItem('catint_goal_workdays_v1'));
-      return [17, 22, 26, 28, 30].includes(v) ? v : 28;
-    } catch { return 28; }
-  });
+  const [goalWorkDays, setGoalWorkDays] = useState(readStoredGoalWorkDays);
   useEffect(() => {
-    try { localStorage.setItem('catint_goal_workdays_v1', String(goalWorkDays)); } catch {}
+    try { localStorage.setItem(GOAL_WORKDAYS_KEY, String(goalWorkDays)); } catch {}
   }, [goalWorkDays]);
+  // Ref mirror: the month-rollover interval re-derives next month's goal from
+  // the current basis without re-creating the interval.
+  const goalWorkDaysRef = useRef(goalWorkDays);
+  useEffect(() => { goalWorkDaysRef.current = goalWorkDays; }, [goalWorkDays]);
   const [isScoreboardHelpVisible, setIsScoreboardHelpVisible] = useState(false);
   const [isCallDetectionEnabled, setIsCallDetectionEnabled] = useState(() => {
     const saved = localStorage.getItem('catint_call_detect');
@@ -1165,7 +1188,9 @@ export const SessionProvider = ({ children }) => {
       const monthKey = `${now.getFullYear()}-${now.getMonth()}`;
       setStats(prev => {
         if (!prev || prev.lastMonthKey === monthKey) return prev;
-        return { ...prev, monthlyMinutes: 0, weeklyMinutes: 0, shiftStartSentiment: 0, lastMonthKey: monthKey };
+        // ANCHORED-GOAL: same commitment, fresh month → full-month quota again.
+        const goalRoll = rollGoalForNewMonth(prev, goalWorkDaysRef.current, now);
+        return { ...prev, monthlyMinutes: 0, weeklyMinutes: 0, shiftStartSentiment: 0, lastMonthKey: monthKey, ...goalRoll };
       });
     }, 30000);
     return () => clearInterval(monthGuard);
@@ -1322,6 +1347,39 @@ export const SessionProvider = ({ children }) => {
     setStats((prev) => ({ ...prev, [key]: Number(value) }));
   };
 
+  /**
+   * ANCHORED-GOAL: bank a goal so it counts FROM NOW.
+   * One write, so `goalMinutes` and its anchor can never land apart:
+   *   goalMinutes      = month total to reach (worked so far + commitment × workdays left)
+   *   goalSetAt        = the day the pace clock starts
+   *   goalBaseMinutes  = minutes already worked at that moment (deficit starts at 0)
+   *   goalPerWorkdayMinutes = commitment, reused to re-derive next month's quota
+   * Returns the anchor that was written.
+   */
+  const bankGoal = useCallback(({
+    targetMinutes,
+    workDays = 0,
+    perWorkdayMinutes = 0,
+    baseMinutes = 0,
+  } = {}) => {
+    const now = new Date();
+    const target = Math.round(Number(targetMinutes) || 0);
+    const anchor = buildGoalAnchor({
+      targetMinutes: target,
+      bankedMinutes: baseMinutes,
+      perWorkdayMinutes,
+      workDays,
+      now,
+    });
+    if (isGoalWorkDays(workDays)) setGoalWorkDays(Number(workDays));
+    setStats((prev) => {
+      const next = { ...prev, goalMinutes: target, ...anchor };
+      safeLocalStorageSet('catintassist_stats', JSON.stringify(next));
+      return next;
+    });
+    return anchor;
+  }, []);
+
   /** Retroactive daily edit — keeps monthly + progress bar in sync. */
   const adjustDailyMinutes = (newDailyMinutes) => {
     setStats((prev) => {
@@ -1425,6 +1483,7 @@ export const SessionProvider = ({ children }) => {
     adjustDailyMinutes,
     goalWorkDays,
     setGoalWorkDays,
+    bankGoal, // ANCHORED-GOAL: writes goalMinutes + set-date/base/per-workday together
     isScoreboardHelpVisible,
     setIsScoreboardHelpVisible,
     isCallDetectionEnabled,

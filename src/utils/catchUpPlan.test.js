@@ -1,4 +1,7 @@
-import { computeCatchUp, formatCatchUpLine, formatCatchUpVerdict, fmtHm } from './catchUpPlan';
+import {
+  computeCatchUp, formatCatchUpLine, formatCatchUpVerdict, fmtHm,
+  monthBasis, expectedByTodayFor, goalSetDayOfMonth,
+} from './catchUpPlan';
 
 // Fixed "now" so the math is deterministic in tests
 const NOON = new Date('2026-09-10T12:00:00'); // day 10 of 30, 6h to 18:00, 11h to 23:00
@@ -104,5 +107,131 @@ describe('catchUpPlan', () => {
     expect(p.deficitMins).toBeGreaterThan(0);
     expect(p.requiredToday).toBe(423);
     expect(p.remainingWorkdays).toBe(19);
+  });
+
+  // ── ANCHORED-GOAL: a goal banked MID-MONTH counts from the day it is banked ──
+  // Sep 2026 = 30 days. 40h/wk @ 5d/wk = 480m/workday; 22d/mo basis.
+  const PER_WORKDAY = 480;         // 40h/wk ÷ 5
+  const MID = new Date('2026-09-20T12:00:00');
+  const MID_ISO = '2026-09-20';
+
+  describe('goal anchor (mid-month banking)', () => {
+    it('monthBasis matches the legacy spread (22d basis, day 20 of 30)', () => {
+      const b = monthBasis({ workDays: 22, now: MID });
+      expect(b).toEqual({ daysInMonth: 30, currentDay: 20, remainingDays: 11, remainingWorkdays: 8 });
+    });
+
+    it('anchor detection: missing / malformed / other-month dates are ignored', () => {
+      expect(goalSetDayOfMonth(null, MID)).toBeNull();
+      expect(goalSetDayOfMonth('nope', MID)).toBeNull();
+      expect(goalSetDayOfMonth('2026-08-20', MID)).toBeNull(); // stale month → legacy
+      expect(goalSetDayOfMonth(MID_ISO, MID)).toBe(20);
+    });
+
+    it('legacy path is untouched: no anchor → goal × day / daysInMonth', () => {
+      expect(expectedByTodayFor({ goalMinutes: 10560, now: MID })).toBe(7040);
+      expect(expectedByTodayFor({ goalMinutes: 10560, goalBaseMinutes: 0, goalSetAt: null, now: MID })).toBe(7040);
+    });
+
+    it('deficit grows one calendar day of the commitment at a time after banking', () => {
+      // 9840 banked on the 20th from a 6000m base: 3840m over the 10 days to month end
+      const at = (day) => computeCatchUp({
+        goalMinutes: 9840, monthlyMinutes: 6000, dailyMinutes: 0, workDays: 22,
+        goalSetAt: MID_ISO, goalBaseMinutes: 6000,
+        now: new Date(`2026-09-${String(day).padStart(2, '0')}T12:00:00`),
+      });
+      expect(at(20).deficitMins).toBe(0);      // the day you bank: exactly on pace
+      expect(at(24).deficitMins).toBe(1536);   // 4 days later, nothing worked since
+      expect(at(30).deficitMins).toBe(3840);   // last day: the whole remainder is due
+    });
+
+    it('Sep 20, 22d basis, 0 banked → on pace, 480m today (not 22h / impossible)', () => {
+      // target derived forward by the dial: 0 worked + 480 × 8 workdays left
+      const p = computeCatchUp({
+        goalMinutes: 3840, monthlyMinutes: 0, dailyMinutes: 0, workDays: 22,
+        goalSetAt: MID_ISO, goalBaseMinutes: 0, now: MID,
+      });
+      expect(p.expectedByToday).toBe(0);
+      expect(p.deficitMins).toBe(0);
+      expect(p.requiredToday).toBe(480);
+      expect(p.needToday).toBe(480);
+      expect(p.remainingWorkdays).toBe(8);
+      expect(p.verdict).toBe('needs-ot'); // 8h committed at noon → OT, never "impossible"
+    });
+
+    it('Sep 20, 22d basis, 6000 banked from a 6000 base → ~0 deficit', () => {
+      const p = computeCatchUp({
+        goalMinutes: 9840, monthlyMinutes: 6000, dailyMinutes: 0, workDays: 22,
+        goalSetAt: MID_ISO, goalBaseMinutes: 6000, now: MID,
+      });
+      expect(p.expectedByToday).toBe(6000);
+      expect(p.deficitMins).toBe(0);
+      expect(p.requiredToday).toBe(480);
+      expect(formatCatchUpLine(p)).toBe('✅ ON PACE');
+    });
+
+    it('same 6000 banked WITHOUT an anchor still reads the old 117h scare', () => {
+      // guard: the fix must not silently change legacy saved data
+      const p = computeCatchUp({ goalMinutes: 10560, monthlyMinutes: 6000, dailyMinutes: 0, workDays: 22, now: MID });
+      expect(p.deficitMins).toBe(1040);
+      expect(p.requiredToday).toBe(570);
+    });
+
+    it('Sep 1, 22d basis, 0 banked → full-month quota 10560m @ 480m/day', () => {
+      const p = computeCatchUp({
+        goalMinutes: 10560, monthlyMinutes: 0, dailyMinutes: 0, workDays: 22,
+        goalSetAt: '2026-09-01', goalBaseMinutes: 0,
+        now: new Date('2026-09-01T09:00:00'),
+      });
+      expect(p.remainingWorkdays).toBe(22);
+      expect(p.requiredToday).toBe(480);
+      expect(p.expectedByToday).toBe(0);
+      expect(p.deficitMins).toBe(0);
+    });
+
+    it('Sep 28 (2 workdays left): 480m today, not 88h', () => {
+      const p = computeCatchUp({
+        goalMinutes: 960, monthlyMinutes: 0, dailyMinutes: 0, workDays: 22,
+        goalSetAt: '2026-09-28', goalBaseMinutes: 0,
+        now: new Date('2026-09-28T12:00:00'),
+      });
+      expect(p.remainingWorkdays).toBe(2);
+      expect(p.requiredToday).toBe(480);
+      expect(p.deficitMins).toBe(0);
+      const legacy = computeCatchUp({ goalMinutes: 10560, monthlyMinutes: 0, dailyMinutes: 0, workDays: 22, now: new Date('2026-09-28T12:00:00') });
+      expect(legacy.deficitMins).toBe(9856); // what the user was being shown before
+      expect(legacy.verdict).toBe('impossible');
+    });
+
+    it('Sep 30 (last day): the whole remainder is due, exactly at month end', () => {
+      const p = computeCatchUp({
+        goalMinutes: 9840, monthlyMinutes: 6000, dailyMinutes: 0, workDays: 22,
+        goalSetAt: MID_ISO, goalBaseMinutes: 6000,
+        now: new Date('2026-09-30T12:00:00'),
+      });
+      expect(p.remainingWorkdays).toBe(1);
+      expect(p.deficitMins).toBe(3840);
+      expect(p.requiredToday).toBe(3840);
+    });
+
+    it('a stale anchor from a previous month falls back to legacy pace', () => {
+      const anchored = computeCatchUp({
+        goalMinutes: 10560, monthlyMinutes: 1000, dailyMinutes: 0, workDays: 22,
+        goalSetAt: '2026-08-20', goalBaseMinutes: 0, now: MID,
+      });
+      const legacy = computeCatchUp({ goalMinutes: 10560, monthlyMinutes: 1000, dailyMinutes: 0, workDays: 22, now: MID });
+      expect(anchored.expectedByToday).toBe(legacy.expectedByToday);
+    });
+
+    it('a goal banked ahead of the base keeps a monotonic expected line', () => {
+      // base clamped to the target: custom goal below what is already worked
+      const p = computeCatchUp({
+        goalMinutes: 5000, monthlyMinutes: 6000, dailyMinutes: 0, workDays: 22,
+        goalSetAt: MID_ISO, goalBaseMinutes: 6000, now: MID,
+      });
+      expect(p.expectedByToday).toBe(5000); // clamped, never below the target
+      expect(p.deficitMins).toBe(-1000);
+      expect(p.requiredToday).toBe(0);      // nothing left to do
+    });
   });
 });

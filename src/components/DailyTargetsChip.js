@@ -1,6 +1,7 @@
 import React, { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { APP_VERSION } from '../constants/version';
 import { computeCatchUp, fmtHm } from '../utils/catchUpPlan';
+import { goalSetLabel } from '../utils/goalAnchor';
 
 // v4.88.0: daily targets always visible in the status bar.
 // Primary goal: $1200 USD/month. Fallback (rate floor): 5500 min/month.
@@ -70,13 +71,16 @@ export const DailyTargetsChip = ({
   ratePerMinute = 0.13,
   goalMinutes = 0, // v4.96.0: real dial goal (stats.goalMinutes) — wins over the $1200 estimate
   workDays = 0, // v4.101.0: workday basis (e.g. 28 for 6.5/Wk) — catch-up spreads over workdays
+  // ANCHORED-GOAL: goalSetAt/goalBaseMinutes = when the goal was banked + what
+  // was already worked then. Without them (legacy stats) pace stays full-month.
+  goalSetAt = null, goalBaseMinutes = 0,
   onOpenGoalsView = null, // v4.113.0: chip click opens the Goal Tracking view (off-call)
 }) => {
   const usdGoal = computeGoalDay({ dailyMinutes, monthlyMinutes, ratePerMinute });
   // v4.96.0: today's target = month catch-up spread over remaining days
   // (same math as the dashboard catch-up strip → chip and dashboard always agree).
   const catchUp = goalMinutes > 0
-    ? computeCatchUp({ goalMinutes, monthlyMinutes, dailyMinutes, workDays })
+    ? computeCatchUp({ goalMinutes, monthlyMinutes, dailyMinutes, workDays, goalSetAt, goalBaseMinutes })
     : null;
   const dailyMin = catchUp ? catchUp.requiredToday : usdGoal.dailyMin;
   const leftMin = catchUp ? Math.max(0, goalMinutes - monthlyMinutes) : usdGoal.leftMin;
@@ -151,12 +155,15 @@ export const DailyTargetsChip = ({
   const usd = (m) => `$${(m * ratePerMinute).toFixed(2)}`;
   const pctToday = targetUsd > 0 ? Math.round((earnedUsd / targetUsd) * 100) : 0;
   // v4.96.0: month-pace deficit leads the tooltip — the "am I behind?" answer first
+  // ANCHORED-GOAL: when the goal was banked mid-month, say so (the deficit is
+  // measured from that day, not from the 1st).
+  const sinceSuffix = goalSetAt ? ` (goal set ${goalSetLabel(goalSetAt)})` : '';
   const deficitRow = catchUp
     ? catchUp.deficitMins > 30
-      ? `📉 behind month pace ${fmtHm(catchUp.deficitMins)} → ${fmtHm(catchUp.requiredToday)}/day × ${catchUp.remainingWorkdays}d`
+      ? `📉 behind month pace ${fmtHm(catchUp.deficitMins)} → ${fmtHm(catchUp.requiredToday)}/day × ${catchUp.remainingWorkdays}d${sinceSuffix}`
       : catchUp.deficitMins < -30
-        ? `📈 ahead of month pace ${fmtHm(-catchUp.deficitMins)}`
-        : `✅ on month pace · ${fmtHm(catchUp.requiredToday)}/day × ${catchUp.remainingWorkdays}d`
+        ? `📈 ahead of month pace ${fmtHm(-catchUp.deficitMins)}${sinceSuffix}`
+        : `✅ on month pace · ${fmtHm(catchUp.requiredToday)}/day × ${catchUp.remainingWorkdays}d${sinceSuffix}`
     : null;
   const tipRows = [
     deficitRow,
@@ -205,7 +212,7 @@ export const DailyTargetsChip = ({
     </span>
   );
   const mkDeficit = () => deficitText && (
-    <span key="deficit" style={pairStyle} title={`Month-pace deficit: expected ${catchUp.expectedByToday}m by today · banked ${Math.round(monthlyMinutes)}m`}>
+    <span key="deficit" style={pairStyle} title={`Month-pace deficit: expected ${catchUp.expectedByToday}m ${goalSetAt ? `by today (goal banked ${goalSetAt})` : 'by today'} · banked ${Math.round(monthlyMinutes)}m`}>
       <span style={{ ...valStyle, fontSize: '0.72rem', color: catchUp.deficitMins > 0 ? '#f87171' : '#34d399' }}>
         {deficitText}
       </span>
