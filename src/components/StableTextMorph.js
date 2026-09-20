@@ -7,12 +7,20 @@ import {
   splitHighlightSegments,
 } from '../utils/sensitiveDataProtector';
 import { formatTranscriptForDisplay } from '../utils/transcriptFormat';
+import { isProtectedToken } from '../utils/diffWordsStable';
 import {
-  diffWordsStable,
-  isProtectedToken,
-} from '../utils/diffWordsStable';
+  SUPERSEDE_HOLD_MS,
+  SUPERSEDE_MAX_EPISODE_MS,
+  SUPERSEDE_MODE,
+  SUPERSEDE_RETIRE_MS,
+  classifySupersede,
+  isEpisodeOverBudget,
+  presentOpParts,
+  resolveSupersedeTiming,
+} from '../utils/textSupersede';
 import { flagVanish } from '../utils/vanishTrace';
 
+/** Short cue for plain continuation (growth) — unchanged since v4.84.1. */
 const CUE_MS = 480;
 const REDUCED_CUE_MS = 120;
 
@@ -67,9 +75,19 @@ const renderTokenText = (text) => {
 };
 
 /**
- * Continuity-preserving live transcript morph (v4.84.1).
+ * Continuity-preserving live transcript morph (v4.84.1) + supersede model (v4.140.0).
+ *
  * Same parent stays mounted; word diff cues changes; never blank between A and B.
  * Not ScrambleText — critical reading continuity.
+ *
+ * v4.140.0 supersede model, for the reported symptom "words vanish while I am
+ * reading them":
+ *  - episode base: the first revision freezes the wording the interpreter is
+ *    reading; every later revision re-diffs against THAT, so dimmed wording does
+ *    not flicker back to full brightness nor accumulate as duplicates.
+ *  - lifecycle: hold (readable, dimmed) -> retiring (exit fade) -> idle. Bounded
+ *    twice: per episode (hold + retire) and by `SUPERSEDE_MAX_EPISODE_MS`.
+ *  - decision is pure (`utils/textSupersede.js`), not inline JSX.
  */
 export function StableTextMorph({
   text = '',
@@ -78,16 +96,29 @@ export function StableTextMorph({
   protectionsActive = true,
   continuityKey = '',
   cueMs = CUE_MS,
+  wordConfidence = null,
+  supersedeHoldMs = SUPERSEDE_HOLD_MS,
+  supersedeRetireMs = SUPERSEDE_RETIRE_MS,
 }) {
   const continuityRef = useRef(continuityKey);
   const prevDisplayRef = useRef('');
-  const [cueOps, setCueOps] = useState(null);
+  const prevScoresRef = useRef([]);
+  // While a supersede is on screen: the frozen wording + its scores + age.
+  const episodeRef = useRef(null);
+  // Exactly one pending stage at a time (hold | retire | plain cue).
+  const timerRef = useRef(null);
+  const [cue, setCue] = useState(null);
+  const [phase, setPhase] = useState('idle');
   const [reducedCue, setReducedCue] = useState(false);
-  const cueTimerRef = useRef(null);
 
   const display = useMemo(
     () => (text ? processDisplayText(text, lang, applyNumberWords, protectionsActive) : ''),
     [text, lang, applyNumberWords, protectionsActive],
+  );
+
+  const scores = useMemo(
+    () => (Array.isArray(wordConfidence) ? wordConfidence : []),
+    [wordConfidence],
   );
 
   if (continuityRef.current !== continuityKey) {
@@ -103,10 +134,36 @@ export function StableTextMorph({
     }
     continuityRef.current = continuityKey;
     prevDisplayRef.current = '';
+    prevScoresRef.current = [];
+    episodeRef.current = null;
   }
 
   useEffect(() => {
     const prev = prevDisplayRef.current;
+    const prevScores = prevScoresRef.current;
+    prevDisplayRef.current = display;
+    prevScoresRef.current = scores;
+
+    const clearTimer = () => {
+      if (timerRef.current) {
+        clearTimeout(timerRef.current);
+        timerRef.current = null;
+      }
+    };
+    const schedule = (ms, fn) => {
+      clearTimer();
+      timerRef.current = setTimeout(() => {
+        timerRef.current = null;
+        fn();
+      }, ms);
+    };
+    const settle = () => {
+      clearTimer();
+      episodeRef.current = null;
+      setCue(null);
+      setPhase('idle');
+    };
+
     if (!display) {
       if (prev) {
         flagVanish('morph_display_empty', {
@@ -117,126 +174,179 @@ export function StableTextMorph({
           stage: 'StableTextMorph',
         });
       }
-      prevDisplayRef.current = '';
-      setCueOps(null);
-      return undefined;
+      settle();
+      return () => {};
     }
 
     if (!prev || prev === display) {
-      prevDisplayRef.current = display;
-      setCueOps(null);
-      return undefined;
+      settle();
+      return () => {};
     }
 
-    const ops = diffWordsStable(prev, display);
-    const lost = ops
-      .filter((o) => o.type === 'delete' || o.type === 'replace')
-      .map((o) => o.from || o.text)
-      .filter(Boolean);
-    if (lost.length) {
+    const openEpisode = episodeRef.current;
+    const baseText = openEpisode ? openEpisode.baseText : prev;
+    const baseScores = openEpisode ? openEpisode.baseScores : prevScores;
+    const decision = classifySupersede({
+      prevText: baseText,
+      nextText: display,
+      prevScores: baseScores,
+      nextScores: scores,
+    });
+
+    if (decision.lostTokens.length) {
       flagVanish('morph_word_diff', {
-        before: prev,
+        before: baseText,
         after: display,
-        lost,
+        lost: decision.lostTokens,
         stage: 'StableTextMorph',
         force: true,
         extra: {
-          ops: ops.filter((o) => o.type !== 'equal').map((o) => ({ type: o.type, from: o.from, text: o.text })),
+          mode: decision.mode,
+          reason: decision.reason,
+          ops: decision.ops.filter((o) => o.type !== 'equal').map((o) => ({ type: o.type, from: o.from, text: o.text })),
         },
       });
-    }
-    prevDisplayRef.current = display;
-
-    const hasChange = ops.some((o) => o.type !== 'equal');
-    if (!hasChange) {
-      setCueOps(null);
-      return undefined;
     }
 
     const reduced = prefersReducedMotion();
     setReducedCue(reduced);
-    setCueOps(ops);
-    if (cueTimerRef.current) clearTimeout(cueTimerRef.current);
-    const ms = reduced ? REDUCED_CUE_MS : cueMs;
-    cueTimerRef.current = setTimeout(() => {
-      setCueOps(null);
-      cueTimerRef.current = null;
-    }, ms);
 
-    return () => {
-      if (cueTimerRef.current) {
-        clearTimeout(cueTimerRef.current);
-        cueTimerRef.current = null;
-      }
+    // Bounded lifecycle: a long utterance keeps sending revisions. Without the
+    // cap one dimmed word could ride the whole bubble, which is the duplicate
+    // look we are removing. Past the cap we adopt quietly.
+    const overBudget =
+      Boolean(openEpisode) && isEpisodeOverBudget(openEpisode.startedAt, Date.now(), SUPERSEDE_MAX_EPISODE_MS);
+    const superseding = decision.mode === SUPERSEDE_MODE.SUPERSEDE && !overBudget;
+
+    if (!superseding) {
+      episodeRef.current = null;
+      const mode = overBudget && decision.mode === SUPERSEDE_MODE.SUPERSEDE
+        ? SUPERSEDE_MODE.QUIET
+        : decision.mode;
+      setCue(mode === SUPERSEDE_MODE.NONE ? null : { ops: decision.ops, mode });
+      setPhase('cue');
+      schedule(reduced ? REDUCED_CUE_MS : cueMs, () => {
+        setCue(null);
+        setPhase('idle');
+      });
+      return () => clearTimer();
+    }
+
+    const timing = resolveSupersedeTiming(reduced, {
+      holdMs: supersedeHoldMs,
+      retireMs: supersedeRetireMs,
+    });
+    episodeRef.current = {
+      baseText,
+      baseScores,
+      startedAt: openEpisode ? openEpisode.startedAt : Date.now(),
     };
-  }, [display, cueMs]);
+    flagVanish('morph_supersede', {
+      before: baseText,
+      after: display,
+      lost: decision.lostTokens,
+      stage: 'StableTextMorph',
+      force: true,
+      extra: {
+        reason: decision.reason,
+        holdMs: timing.holdMs,
+        retireMs: timing.retireMs,
+        animate: timing.animate,
+      },
+    });
 
-  if (!display && !cueOps) return null;
+    setCue({ ops: decision.ops, mode: decision.mode });
+    setPhase('cue');
+    schedule(timing.holdMs, () => {
+      setPhase('retiring');
+      schedule(timing.retireMs, () => {
+        episodeRef.current = null;
+        setCue(null);
+        setPhase('idle');
+      });
+    });
+    return () => clearTimer();
+  }, [display, cueMs, scores, supersedeHoldMs, supersedeRetireMs]);
 
-  if (cueOps) {
+  if (!display && !cue) return null;
+
+  const renderParts = (op) => {
+    let parts = presentOpParts(op, cue?.mode);
+    if (!parts.length) return null;
+    // Reduced motion: no ladder, the old wording leaves at once — except
+    // protected tokens, which hold on screen (v4.116.0 numbers never vanish).
+    if (reducedCue) {
+      parts = parts.filter((p) => p.role !== 'superseded' || isProtectedToken(p.text));
+    }
+    // A separator without a left side is just noise.
+    parts = parts.filter((p, i) => p.role !== 'arrow' || parts[i - 1]?.role === 'superseded');
+    if (!parts.length) return null;
+
     return (
-      <span className="stable-text-morph" data-morphing="1">
-        {cueOps.map((op) => {
-          if (op.type === 'equal') {
+      <React.Fragment key={op.key}>
+        {parts.map((part, i) => {
+          if (part.role === 'equal') {
             return (
-              <span key={op.key} className="stm-equal">
-                {renderTokenText(op.text)}
+              <span key={`p${i}`} className="stm-equal">
+                {renderTokenText(part.text)}
               </span>
             );
           }
-          if (op.type === 'insert') {
+          if (part.role === 'arriving') {
             return (
-              <span key={op.key} className="stm-insert">
-                {renderTokenText(op.text)}
+              <span key={`p${i}`} className="stm-arriving">
+                {renderTokenText(part.text)}
               </span>
             );
           }
-          if (op.type === 'delete') {
-            if (reducedCue && !isProtectedToken(op.text)) return null;
-            const cls = isProtectedToken(op.text)
-              ? 'stm-delete stm-delete--protected'
-              : 'stm-delete';
+          if (part.role === 'adopted') {
             return (
-              <span key={op.key} className={cls} aria-hidden>
-                {renderTokenText(op.text)}
+              <span key={`p${i}`} className="stm-arriving stm-arriving--quiet">
+                {renderTokenText(part.text)}
               </span>
             );
           }
-          if (op.type === 'replace') {
-            const protect = isProtectedToken(op.from) || isProtectedToken(op.to);
-            if (reducedCue) {
-              return (
-                <span
-                  key={op.key}
-                  className={`stm-replace stm-replace--instant${protect ? ' stm-replace--protected' : ''}`}
-                >
-                  {renderTokenText(op.to)}
-                </span>
-              );
-            }
+          if (part.role === 'arrow') {
             return (
-              <span
-                key={op.key}
-                className={`stm-replace${protect ? ' stm-replace--protected' : ''}`}
-              >
-                <span className="stm-replace-from" aria-hidden>
-                  {renderTokenText(op.from)}
-                </span>
-                <span className="stm-replace-arrow" aria-hidden>
-                  {' ⇢ '}
-                </span>
-                <span className="stm-replace-to">{renderTokenText(op.to)}</span>
+              <span key={`p${i}`} className="stm-arrow" aria-hidden>
+                {part.text}
               </span>
             );
           }
-          return null;
+          const protectedTok = isProtectedToken(part.text);
+          return (
+            <span
+              key={`p${i}`}
+              className={`stm-superseded${protectedTok ? ' stm-superseded--protected' : ''}`}
+              aria-hidden
+            >
+              {/* Plain text on purpose: the superseded wording must stay readable
+                  but must never be copyable — clicking it used to hand back a
+                  stale phone number / dose (v4.140.0). */}
+              {part.text}
+            </span>
+          );
         })}
+      </React.Fragment>
+    );
+  };
+
+  if (cue) {
+    return (
+      <span
+        className="stable-text-morph"
+        data-morphing="1"
+        data-phase={phase}
+        // Lets the framed word settle over the same window JS holds it for.
+        style={{ '--stm-hold-ms': `${supersedeHoldMs}ms` }}
+      >
+        {cue.ops.map(renderParts)}
       </span>
     );
   }
 
   return (
-    <span className="stable-text-morph" data-morphing="0">
+    <span className="stable-text-morph" data-morphing="0" data-phase={phase}>
       {renderTokenText(display)}
     </span>
   );

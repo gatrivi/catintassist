@@ -25,6 +25,35 @@ import { APP_VERSION } from '../constants/version';
 /** Newest first. Only the entry matching APP_VERSION is shown on load. */
 export const RELEASE_NOTES_CATALOG = [
   {
+    version: '4.140.0',
+    id: 'live-text-supersede',
+    highlightElementIds: ['transcript-pane', 'audio-route-mode-label'],
+    es: {
+      title: '👀 El texto en vivo ya no desaparece mientras lo lees',
+      intro: 'Cuando Deepgram reescribe una frase, las palabras reemplazadas se quedaban 480 ms y desaparecían de golpe. Ahora se quedan visibles en gris tenue y el reemplazo se marca con un marco claro.',
+      sections: [{ heading: 'Qué cambió', bullets: [
+        'Palabra reemplazada: queda en pantalla atenuada (~25%) durante 1,5 s y luego se desvanece — puedes terminar de leerla.',
+        'Palabra nueva: entra con un marco/borde claro que se apaga solo.',
+        'Números, teléfonos y dosis siguen a peso legible hasta que salen: nunca se borran mientras los lees.',
+        'Si la reescritura NO tiene más confianza, se adopta en el lugar sin dejar dos versiones de la misma frase.',
+        'Menos saltos: mientras la frase se revisa, el texto atenuado ya no parpadea ni se duplica.',
+        'Con "reducir movimiento" activado, todo es instantáneo y sin animaciones.',
+      ] }],
+    },
+    en: {
+      title: '👀 Live text no longer vanishes while you read it',
+      intro: 'When Deepgram rewrites a phrase, the replaced words used to linger 480 ms then pop out. Now they stay visible in dim grey and the replacement is marked with a bright frame.',
+      sections: [{ heading: 'What changed', bullets: [
+        'Replaced wording: stays on screen dimmed (~25%) for 1.5 s, then fades — enough to finish reading it.',
+        'Replacing wording: arrives with a bright frame/edge that settles on its own.',
+        'Numbers, phones and doses hold at readable weight until they leave — never blanked mid-read.',
+        'If the rewrite is NOT higher-confidence it is adopted in place, so the pane never shows two versions of one phrase.',
+        'Less jagged: while a phrase is being revised, the dimmed text no longer flickers back or duplicates.',
+        'With reduced motion on, everything is instant and animation-free.',
+      ] }],
+    },
+  },
+  {
     version: '4.139.0',
     id: 'offcall-ui-cleanup',
     highlightElementIds: ['off-call-guidelines-btn', 'audio-route-mode-label'],

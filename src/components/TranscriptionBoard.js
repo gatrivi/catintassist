@@ -594,6 +594,7 @@ const TranslatedBubble = ({
               applyNumberWords={sourceUsesNumberWords}
               protectionsActive={protectionsActive}
               continuityKey={continuityKey || id}
+              wordConfidence={wordConfidence}
             />
           ) : (
             <MemoInteractiveText
@@ -1318,6 +1319,7 @@ export const TranscriptionBoard = ({
 
       <div 
         className="scroll-area"
+        id="transcript-pane"
         style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column' }} 
         onScroll={handleScroll}
         onWheel={handleWheel}

@@ -1,0 +1,195 @@
+{
+  "id": "interim-rewrite",
+  "label": "Interim wording rewritten in place (supersede input, v4.140.0)",
+  "meta": {
+    "protectionsOn": true,
+    "pair": { "left": "en", "right": "es" },
+    "phiNote": "FAKE ONLY"
+  },
+  "events": [
+    {
+      "atMs": 0,
+      "lane": "en",
+      "payload": {
+        "type": "Results",
+        "is_final": false,
+        "speech_final": false,
+        "start": 10.0,
+        "channel": {
+          "alternatives": [
+            {
+              "transcript": "he has a fever",
+              "confidence": 0.4,
+              "words": [
+                { "word": "he", "confidence": 0.92 },
+                { "word": "has", "confidence": 0.93 },
+                { "word": "a", "confidence": 0.9 },
+                { "word": "fever", "confidence": 0.4 }
+              ]
+            }
+          ]
+        }
+      }
+    },
+    {
+      "atMs": 400,
+      "lane": "en",
+      "payload": {
+        "type": "Results",
+        "is_final": false,
+        "speech_final": false,
+        "start": 10.0,
+        "channel": {
+          "alternatives": [
+            {
+              "transcript": "he has a headache",
+              "confidence": 0.96,
+              "words": [
+                { "word": "he", "confidence": 0.96 },
+                { "word": "has", "confidence": 0.96 },
+                { "word": "a", "confidence": 0.95 },
+                { "word": "headache", "confidence": 0.96 }
+              ]
+            }
+          ]
+        }
+      }
+    },
+    {
+      "atMs": 800,
+      "lane": "en",
+      "payload": {
+        "type": "Results",
+        "is_final": false,
+        "speech_final": false,
+        "start": 10.0,
+        "channel": {
+          "alternatives": [
+            {
+              "transcript": "he has a headache and chills",
+              "confidence": 0.95,
+              "words": [
+                { "word": "he", "confidence": 0.96 },
+                { "word": "has", "confidence": 0.96 },
+                { "word": "a", "confidence": 0.95 },
+                { "word": "headache", "confidence": 0.96 },
+                { "word": "and", "confidence": 0.94 },
+                { "word": "chills", "confidence": 0.95 }
+              ]
+            }
+          ]
+        }
+      }
+    },
+    {
+      "atMs": 1200,
+      "lane": "en",
+      "payload": {
+        "type": "Results",
+        "is_final": true,
+        "speech_final": true,
+        "start": 10.0,
+        "channel": {
+          "alternatives": [
+            {
+              "transcript": "he has a headache and chills",
+              "confidence": 0.96,
+              "words": [
+                { "word": "he", "confidence": 0.96 },
+                { "word": "has", "confidence": 0.96 },
+                { "word": "a", "confidence": 0.95 },
+                { "word": "headache", "confidence": 0.96 },
+                { "word": "and", "confidence": 0.94 },
+                { "word": "chills", "confidence": 0.95 }
+              ]
+            }
+          ]
+        }
+      }
+    },
+    {
+      "atMs": 6000,
+      "lane": "en",
+      "payload": {
+        "type": "Results",
+        "is_final": false,
+        "speech_final": false,
+        "start": 22.0,
+        "channel": {
+          "alternatives": [
+            {
+              "transcript": "call me at 555 123 4567",
+              "confidence": 0.55,
+              "words": [
+                { "word": "call", "confidence": 0.9 },
+                { "word": "me", "confidence": 0.9 },
+                { "word": "at", "confidence": 0.9 },
+                { "word": "555", "confidence": 0.5 },
+                { "word": "123", "confidence": 0.55 },
+                { "word": "4567", "confidence": 0.55 }
+              ]
+            }
+          ]
+        }
+      }
+    },
+    {
+      "atMs": 6400,
+      "lane": "en",
+      "payload": {
+        "type": "Results",
+        "is_final": false,
+        "speech_final": false,
+        "start": 22.0,
+        "channel": {
+          "alternatives": [
+            {
+              "transcript": "call me at 555 123 4568",
+              "confidence": 0.97,
+              "words": [
+                { "word": "call", "confidence": 0.97 },
+                { "word": "me", "confidence": 0.97 },
+                { "word": "at", "confidence": 0.97 },
+                { "word": "555", "confidence": 0.97 },
+                { "word": "123", "confidence": 0.97 },
+                { "word": "4568", "confidence": 0.97 }
+              ]
+            }
+          ]
+        }
+      }
+    },
+    {
+      "atMs": 6800,
+      "lane": "en",
+      "payload": {
+        "type": "Results",
+        "is_final": true,
+        "speech_final": true,
+        "start": 22.0,
+        "channel": {
+          "alternatives": [
+            {
+              "transcript": "call me at 555 123 4568",
+              "confidence": 0.97,
+              "words": [
+                { "word": "call", "confidence": 0.97 },
+                { "word": "me", "confidence": 0.97 },
+                { "word": "at", "confidence": 0.97 },
+                { "word": "555", "confidence": 0.97 },
+                { "word": "123", "confidence": 0.97 },
+                { "word": "4568", "confidence": 0.97 }
+              ]
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "expect": {
+    "finalTexts": ["555", "headache and chills"],
+    "preserveDigits": ["5551234567"],
+    "minFinals": 2,
+    "langs": ["en"]
+  }
+}

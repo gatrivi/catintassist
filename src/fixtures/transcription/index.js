@@ -8,6 +8,7 @@ import address from "./address.json";
 import bilingualSwitch from "./bilingual-switch.json";
 import lowConfidence from "./low-confidence.json";
 import disconnectReconnect from "./disconnect-reconnect.json";
+import interimRewrite from "./interim-rewrite.json";
 
 export const TRANSCRIPTION_FIXTURES = {
   "phone-number": phoneNumber,
@@ -17,6 +18,8 @@ export const TRANSCRIPTION_FIXTURES = {
   "bilingual-switch": bilingualSwitch,
   "low-confidence": lowConfidence,
   "disconnect-reconnect": disconnectReconnect,
+  // v4.140.0: in-place interim rewrite — the input to the supersede model.
+  "interim-rewrite": interimRewrite,
 };
 
 export const TRANSCRIPTION_FIXTURE_LIST = Object.values(TRANSCRIPTION_FIXTURES);

@@ -2,6 +2,17 @@
 
 **Version source:** `src/constants/version.js` (must match `package.json` + top-right UI pill)
 
+## v4.140.0 - live text supersede model (no more words vanishing mid-read)
+
+- Reported: when Deepgram rewrote interim wording for the same speech, the words being read disappeared mid-read; the interpreter cut off mid-sentence. The old cue removed them after **480 ms** with a hard pop.
+- Supersede presentation (`StableTextMorph` + new pure `utils/textSupersede.js`): superseded wording stays on screen at **~25% weight** (faint strike-through) while the replacing wording gets a bright frame, then it exits with a fade. Numbers/doses hold at readable weight.
+- **Episode base**: the first revision freezes the wording on screen; later revisions re-diff against that, so dimmed text no longer flickers back to full brightness nor piles up as duplicates.
+- Bounded lifecycle: hold **1500 ms** (prop `supersedeHoldMs`) → retire fade **320 ms** (prop `supersedeRetireMs`) → settle; hard cap 4000 ms per episode. Reduced motion: animations off, hold 120 ms, retire 0 ms.
+- Quiet adopt (no dim, no frame) when the rewrite is equal/lower confidence or past the episode cap — the pane never shows two live-looking versions of one phrase.
+- Wired `wordConfidence` into the live source path (dropped since v4.84.1), so the decision can tell a genuine higher-confidence rewrite from noise.
+- Enter/update/exit easing on `.bubble-col-source .bubble-line` (color/opacity only — no layout animation); `stm-*` classes are now `stm-arriving` / `stm-superseded` / `stm-arrow`, with a `prefers-reduced-motion` block.
+- Tests: `textSupersede.test.js` (18), new `StableTextMorph.test.js` (10, written first and red against the 480 ms behaviour), new `interim-rewrite` fixture. Spec: `docs/transcription-pane/README.md` §12b.
+
 ## v4.138.0 - honest DG status + background-tab idle ear + Zap/Connect correctness
 
 - Reported: red "DG STUCK" flashed while transcription was working, then flipped ✓; speech auto-detect failed too often; status never said what was actually happening.

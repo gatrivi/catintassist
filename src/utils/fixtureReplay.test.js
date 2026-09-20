@@ -105,6 +105,40 @@ describe("fixtureReplay", () => {
     expect(result.ok).toBe(true);
   });
 
+  test("interim-rewrite: same row is rewritten in place, digits never vanish (v4.140.0)", () => {
+    const fixture = getTranscriptionFixture("interim-rewrite");
+    expect(fixture).toBeTruthy();
+    const seen = [];
+    const { rows } = replayFixtureEvents(fixture, {
+      onStep: ({ index, rows: stepRows }) => {
+        const live = stepRows.filter((r) => !r.isFinal).pop() || stepRows[stepRows.length - 1];
+        if (live) seen.push({ index, id: live.id, text: live.text || "" });
+      },
+    });
+
+    // Two revisions of the SAME speech stay on ONE row id. That is exactly why
+    // the swap is a display concern (StableTextMorph) and not a remount: the row
+    // the interpreter is reading is the same row after the rewrite.
+    const fever = seen.find((s) => s.text.includes("fever"));
+    const headache = seen.find((s) => s.text.includes("headache"));
+    expect(fever).toBeTruthy();
+    expect(headache).toBeTruthy();
+    expect(headache.id).toBe(fever.id);
+
+    // The engine really does drop the superseded wording, so the display layer
+    // is the only thing keeping it readable for the interpreter.
+    expect(headache.text).not.toContain("fever");
+
+    // Numbers are the exception on purpose: the 0.97-confidence rewrite of the
+    // last digit is refused and the digits already on screen are kept (v4.136.0
+    // guard — "digits already shown must never vanish").
+    expect(seen.some((s) => s.text.includes("555 123 4567"))).toBe(true);
+    expect(rows.some((r) => r.text.includes("555"))).toBe(true);
+
+    const result = assertFixtureExpect(replayFixtureEvents(fixture).rows, fixture.expect);
+    expect(result.failures).toEqual([]);
+  });
+
   test("all registered fixtures replay without throw", () => {
     for (const fixture of TRANSCRIPTION_FIXTURE_LIST) {
       const { rows, steps } = replayFixtureEvents(fixture);

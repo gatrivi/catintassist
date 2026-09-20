@@ -90,13 +90,46 @@ Core interaction features:
 Standing rule (also in `AGENTS.md` MAINVIEW + `handoff/00_global_rules.md`):
 
 - Never destroy readable text **A** and remount blank **B**.
-- Morph **A→B** on the **same mount**: stable prefix stays visible; only changed spans cue (`from ⇢ to`); **no blank frame**.
+- Morph **A→B** on the **same mount**: stable prefix stays visible; only changed spans cue; **no blank frame**.
 - Protected tokens (phones, dates, doses, money, digit runs) **never vanish** during interim→final or correction morphs.
 - Continuity keys by `turnId` so live id flips do not remount readable text.
 - **ScrambleText ≠ critical live transcript** — keep for non-critical UI only.
 - Code: `StableTextMorph.js` · `diffWordsStable.js` · `stableLiveTranscript.js` · live path in `TranscriptionBoard.js`
 
 Manual smoke: long correction only changes the span; prefix stays; phone does not vanish; seal/split does not blank the line.
+
+### 12b) Supersede presentation model (v4.140.0)
+Deepgram rewrites interim wording for the same speech. Reported symptom: the words
+being read vanish mid-read, so the interpreter cuts off mid-sentence.
+
+- **Old wording is dimmed, not deleted**: superseded words stay on screen at
+  **~25% visual weight** (`#64748b`, faint strike-through) while the replacing
+  wording gets a **bright frame/edge** (`stm-arriving`). Protected tokens
+  (numbers/doses/money) hold at readable weight (`stm-superseded--protected`).
+  Superseded wording keeps **no copy chip** — a stale phone/dose must never be
+  one click away (it stays selectable and readable, just not "click to copy").
+- **Episode base**: the first revision freezes the wording you are reading; every
+  later revision re-diffs against THAT, so dimmed text neither flickers back to
+  full brightness nor accumulates as duplicates.
+- **Bounded lifecycle** (defaults; override per call via props):
+
+  | Phase | Default | Prop |
+  |---|---|---|
+  | hold — dimmed wording stays readable | **1500 ms** | `supersedeHoldMs` |
+  | retire — exit fade (derender is eased) | **320 ms** | `supersedeRetireMs` |
+  | hard cap per episode | 4000 ms | `SUPERSEDE_MAX_EPISODE_MS` |
+
+- **Quiet adopt** (no dim, no frame): rewrites whose new words are *equal or
+  lower* confidence, plus any revision arriving after the episode cap. Two
+  live-looking versions of one phrase confuse more than a clean in-place update.
+- **Reduced motion** (`prefersReducedMotion`): animations off, hold 120 ms,
+  retire 0 ms; non-protected superseded words leave at once, digits still hold.
+- Decision logic is pure: `src/utils/textSupersede.js` (`classifySupersede`,
+  `presentOpParts`, `resolveSupersedeTiming`) with colocated tests; the component
+  owns only timers (one pending stage at a time).
+- Telemetry: `morph_supersede` plus the existing `morph_word_diff` in the vanish trace.
+- Fixture: `src/fixtures/transcription/interim-rewrite.json` — same row id
+  rewritten in place, and a phone rewrite refused by the v4.136.0 digit guard.
 
 ## 13) Reload / hot-reload mid-call = transcript gap (incident 2026-09-08)
 What happened: dev-server hot-reload restarted the app during a live 911 call.
