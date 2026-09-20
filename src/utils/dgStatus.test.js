@@ -1,0 +1,71 @@
+import {
+  dgStatus,
+  DG_FRESH_TEXT_MS,
+  DG_QUIET_MS,
+  DG_STUCK_MS,
+} from './dgStatus';
+
+const NOW = 1_000_000_000;
+const base = {
+  connectionState: 'connected',
+  isActive: true,
+  enOpen: true,
+  esOpen: true,
+  now: NOW,
+};
+
+describe('dgStatus truthful chip flags (v4.136.0)', () => {
+  it(`reads TEXT ✓ when any transcript landed within ${DG_FRESH_TEXT_MS / 1000}s (no confidence gate)`, () => {
+    const s = dgStatus({ ...base, lastDataTime: NOW - 10_000, lastDeepgramMessageAt: NOW - 10_000 });
+    expect(s.freshText).toBe(true);
+    expect(s.quiet).toBe(false);
+    expect(s.stuck).toBe(false);
+  });
+
+  it('stays calm while dead air keeps Deepgram keepalive messages flowing', () => {
+    const s = dgStatus({ ...base, lastDataTime: NOW - 90_000, lastDeepgramMessageAt: NOW - 5_000 });
+    expect(s.freshText).toBe(false);
+    expect(s.quiet).toBe(false);
+    expect(s.stuck).toBe(false);
+  });
+
+  it(`reads QUIET between ${DG_QUIET_MS / 1000}s and ${DG_STUCK_MS / 1000}s of zero messages`, () => {
+    const s = dgStatus({ ...base, lastDataTime: NOW - 40_000, lastDeepgramMessageAt: NOW - 40_000 });
+    expect(s.quiet).toBe(true);
+    expect(s.stuck).toBe(false);
+  });
+
+  it(`reads STUCK past ${DG_STUCK_MS / 1000}s of zero messages`, () => {
+    const s = dgStatus({ ...base, lastDataTime: NOW - 70_000, lastDeepgramMessageAt: NOW - 70_000 });
+    expect(s.stuck).toBe(true);
+    expect(s.quiet).toBe(false);
+  });
+
+  it('reads STUCK the moment a socket is lost, even with fresh text', () => {
+    const s = dgStatus({ ...base, lastDataTime: NOW - 5_000, lastDeepgramMessageAt: NOW - 5_000, esOpen: false });
+    expect(s.stuck).toBe(true);
+  });
+
+  it('zero timestamps never fake TEXT ✓ and never hide a stall (epoch contract)', () => {
+    const s = dgStatus({ ...base, lastDataTime: 0, lastDeepgramMessageAt: 0 });
+    expect(s.freshText).toBe(false);
+    expect(s.stuck).toBe(true);
+  });
+
+  it('off-call (warm idle ear) is never stale — v4.100.3 kept', () => {
+    const s = dgStatus({ ...base, isActive: false, lastDataTime: NOW - 600_000, lastDeepgramMessageAt: NOW - 600_000 });
+    expect(s.inCall).toBe(false);
+    expect(s.quiet).toBe(false);
+    expect(s.stuck).toBe(false);
+    expect(s.freshText).toBe(false);
+  });
+
+  it('connecting/error states are never stale-flagged', () => {
+    const connecting = dgStatus({ ...base, connectionState: 'connecting', lastDeepgramMessageAt: 0 });
+    const errored = dgStatus({ ...base, connectionState: 'error', lastDeepgramMessageAt: 0 });
+    expect(connecting.stuck).toBe(false);
+    expect(connecting.quiet).toBe(false);
+    expect(errored.stuck).toBe(false);
+    expect(errored.quiet).toBe(false);
+  });
+});

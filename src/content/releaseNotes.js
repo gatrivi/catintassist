@@ -25,9 +25,38 @@ import { APP_VERSION } from '../constants/version';
 /** Newest first. Only the entry matching APP_VERSION is shown on load. */
 export const RELEASE_NOTES_CATALOG = [
   {
+    version: '4.138.0',
+    id: 'honest-dg-status-idle-ear',
+    highlightElementIds: ['audio-route-zap-btn'],
+    es: {
+      title: '🩺 El estado de Deepgram ya no miente',
+      intro: 'El chip marcaba "DG STUCK" en rojo mientras el texto seguía fluyendo, y el oído en reposo se quedaba sordo con la pestaña de fondo. Ambos arreglados.',
+      sections: [{ heading: 'Qué cambió', bullets: [
+        'TEXT ✓ cuenta CUALQUIER transcripción (antes solo confianza >0.4): nunca más "DG STUCK" con texto fluyendo.',
+        'Zap reinicia los relojes: tras reconectar ves CONNECTING → DG EN/ES, no un STUCK viejo.',
+        'DG QUIET = esperando voz, no es falla. STUCK solo si Deepgram no manda NADA 60s (los keepalives vacíos cuentan como vida).',
+        'Auto-Zap ya no se dispara en silencios normales ni con detección de llamada apagada; solo en stall real con audio fluyendo.',
+        'Zap durante el oído en reposo ya no deja un segundo grabador corriendo.',
+        'La detección de voz ya funciona con la pestaña en segundo plano (timer en Web Worker); si el audio se bloquea, ahora avisa en vez de quedarse mudo.',
+      ] }],
+    },
+    en: {
+      title: '🩺 The Deepgram status no longer lies',
+      intro: 'The chip flashed red "DG STUCK" while text was still flowing, and the idle ear went deaf in background tabs. Both fixed.',
+      sections: [{ heading: 'What changed', bullets: [
+        'TEXT ✓ now counts ANY transcript (before: confidence >0.4 only) — no more "DG STUCK" while text flows.',
+        'Zap resets the clocks: after a reconnect you see CONNECTING → DG EN/ES, never a stale STUCK.',
+        'DG QUIET = waiting for speech, not a fault. STUCK only when Deepgram sends NOTHING for 60s (empty keepalives count as life).',
+        'Auto-Zap no longer fires on normal silence or with call detection off; only on a real stall while audio still flows.',
+        'Zap during idle ear no longer leaves a second recorder racing the rebuilt sockets.',
+        'Speech detection now works in background tabs (Web Worker timer); a blocked audio context warns instead of deaf-listening.',
+      ] }],
+    },
+  },
+  {
     version: '4.137.0',
     id: 'lane-flip-digit-guard',
-    highlightElementIds: [],
+    highlightElementIds: ['scroll-bottom-anchor'],
     es: {
       title: '🔢 Los dígitos ya no se borran',
       intro: 'Un cambio de pista EN/ES borraba números (ej. un zip code) que solo la otra pista había escuchado. Ahora los dígitos visibles nunca se borran.',

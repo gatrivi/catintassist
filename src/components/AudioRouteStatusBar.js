@@ -15,6 +15,7 @@ import {
   useComponentVisibilityRefresh,
 } from '../utils/componentVisibility';
 import { APP_VERSION } from '../constants/version';
+import { dgStatus } from '../utils/dgStatus';
 
 const dotColor = (state) => {
   if (state === 'ok') return '#10b981';
@@ -212,9 +213,24 @@ export const AudioRouteStatusBar = ({
     changeSinkId(suggestedCableSinkId);
   };
 
-  const timeSincePacket = Date.now() - (lastDataTime || 0);
-  const stale = isActive && connectionState === 'connected' && timeSincePacket > 30000;
-  const critical = isActive && connectionState === 'connected' && timeSincePacket > 60000;
+  // v4.136.0: truthful health from two clocks (utils/dgStatus.js).
+  // lastDataTime = last non-empty transcript (ANY confidence — the old
+  // confidence>0.4 gate let the chip age to red while text flowed);
+  // lastDeepgramMessageAt = last Deepgram message of any kind (empty
+  // keepalives during dead air count as life), seeded fresh at every connect.
+  // Zero timestamps = nothing known yet → can read QUIET/STUCK, never TEXT ✓.
+  const enOk = connectProgress?.socketEn === 'open';
+  const esOk = connectProgress?.socketEs === 'open';
+  const dg = dgStatus({
+    connectionState,
+    isActive,
+    lastDataTime,
+    lastDeepgramMessageAt: connectProgress?.lastDeepgramMessageAt || 0,
+    enOpen: enOk,
+    esOpen: esOk,
+  });
+  const stale = dg.quiet;     // amber: connected, zero DG data 30s+ (waiting, not dead)
+  const critical = dg.stuck;  // red: zero DG data 60s+ or a socket lost
   const isDeepgramError = connectionState === 'error';
 
   const isMicAttached = attachedAudioSourceMode === 'mic' || micTestMode;
@@ -254,8 +270,6 @@ export const AudioRouteStatusBar = ({
         ? 'ok'
         : 'warn';
 
-  const enOk = connectProgress?.socketEn === 'open';
-  const esOk = connectProgress?.socketEs === 'open';
   // v4.100.2: a silent stall (open sockets, no results) must NOT read ok/TEXT —
   // stale/critical outrank the connected state.
   const sttState =
@@ -296,8 +310,8 @@ export const AudioRouteStatusBar = ({
     if (connectionState === 'error') return 'Deepgram error — check API key in Settings or tap Zap to reconnect.';
     if (connectionState === 'connected') {
       const parts = [`EN ${enOk ? 'open' : 'closed'}`, `ES ${esOk ? 'open' : 'closed'}`];
-      if (critical) return `${parts.join(' · ')} — no transcript data 60s+; try Zap or reconnect.`;
-      if (stale) return `${parts.join(' · ')} — no data 30s+; audio may not be reaching Deepgram.`;
+      if (critical) return `${parts.join(' · ')} — no Deepgram data 60s+; try Zap or reconnect.`;
+      if (stale) return `${parts.join(' · ')} — no Deepgram data 30s+; may need ↻ STT reconnect.`;
       return `Connected but partial: ${parts.join(' · ')}.`;
     }
     if (audioAttached) return 'Audio attached but Deepgram not connected — press CONNECT.';
@@ -326,11 +340,10 @@ export const AudioRouteStatusBar = ({
     return { state: 'ok', label: 'TAB ✓ · DG ✓ · SPEAK', title: 'Tab audio is reaching Deepgram. Waiting for speech text.' };
   })();
 
-  // v4.100.3: one honest label shared by compact + full chips. "TEXT ✓" means
-  // data arrived in the LAST 30s — not "ever" (the old sticky flag lied during
-  // warm-socket off-call stalls). In-call gaps read DG QUIET / DG STUCK.
-  const hasFreshText =
-    connectProgress?.transcriptReceived && timeSincePacket > 0 && timeSincePacket < 30000;
+  // v4.136.0: one honest label shared by compact + full chips. TEXT ✓ = a
+  // transcript (any confidence) landed in the last 30s. In-call gaps read
+  // DG QUIET (waiting for speech — not a fault) / DG STUCK (truly no data).
+  const hasFreshText = dg.freshText;
   const dgChipLabel = critical
     ? 'DG STUCK ⚠'
     : stale
@@ -409,9 +422,10 @@ export const AudioRouteStatusBar = ({
                 🎤 RESTORE{micRestoreFlash ? ` · ${micRestoreFlash}` : ''}
               </button>
             )}
-            {/* v4.100.3: ZAP whenever DG is connected but data is stale (in-call
-                or warm off-call) or errored — the manual escape hatch stays up. */}
-            {(isDeepgramError || (connectionState === 'connected' && timeSincePacket > 30000)) && onReconnectStream && (
+            {/* v4.136.0: ZAP on a real stall (zero DG data / lost socket) or
+                error — in-call only. Off-call it used to appear 30s after the
+                last transcript even with a healthy idle ear. */}
+            {(isDeepgramError || stale || critical) && onReconnectStream && (
               <button
                 id="audio-route-zap-btn"
                 type="button"

@@ -52,6 +52,7 @@ import {
 import { writeMicTestMode } from "../utils/micMode";
 import { traceCaptionArrayDiff } from "../utils/vanishTrace";
 import { updateVadLoudFrames, shouldWakeFromVad, shouldSpeechAutoStart } from "../utils/idleEar";
+import { createUnthrottledInterval } from "../utils/workerInterval";
 import {
   RING_TRIGGER_FRAMES,
   RING_LEARN_EVENT,
@@ -238,6 +239,10 @@ export const useDeepgram = () => {
   const vadIntervalRef = useRef(null);
   const vadCtxRef = useRef(null);
   const vadLoudFramesRef = useRef(0);
+  // v4.136.0: closeConnections must tear the ear down too — stopIdleEar is
+  // defined further down, so a ref bridges the order (same pattern as the
+  // other *Ref bridges in this hook).
+  const stopIdleEarRef = useRef(null);
   const startRecordingRef = useRef(null);
   const speechAutoConnectRef = useRef(speechAutoConnect);
   useEffect(() => { speechAutoConnectRef.current = speechAutoConnect; }, [speechAutoConnect]);
@@ -557,6 +562,12 @@ export const useDeepgram = () => {
   }, [callAutopilotRef, critLog]);
 
   const closeConnections = useCallback(() => {
+    // v4.136.0: closing sockets must also close the idle ear. A Zap used to
+    // leave VAD + idle KeepAlive running into whatever sockets open next —
+    // the ear could then wake and build a SECOND recorder mid-reconnect.
+    try {
+      stopIdleEarRef.current?.();
+    } catch (_) {}
     stopToneMonitor();
     clearKeepalive();
     if (connectFailTimerRef.current) {
@@ -829,6 +840,10 @@ export const useDeepgram = () => {
           socketEn: "open",
           socketEs: multiMode ? "skipped" : "open",
           phase: "connecting",
+          // v4.136.0: seed the DG-message clock with a fresh epoch at every
+          // connect — after a Zap, stall is measured from NOW, never from the
+          // pre-stall transcript (the old stale age kept the chip red).
+          lastDeepgramMessageAt: Date.now(),
         });
         startKeepalive();
         const attemptId = connectAttemptIdRef.current;
@@ -1161,15 +1176,18 @@ export const useDeepgram = () => {
           // used twice: arming the intent below, and guarding the silence
           // clock above so hold music can't break hold.
           const holdPhrase = matchHoldPhrase(transcript);
+          // v4.136.0: the health clock ticks on ANY non-empty transcript. The
+          // old confidence>0.4 gate froze it during mumbled stretches, so the
+          // status chip aged to DG STUCK while text still flowed to the board.
+          // Confidence>0.4 stays the gate for activity/billing signals only.
+          setLastDataTime(Date.now());
           if (isCallDetectionEnabled && confidence > 0.4) {
             // Hold music/announcements heard WHILE holding are more of the
-            // same hold — not the provider returning. Stream-data clock still
-            // ticks (stale detection must see the packets); only the silence
-            // clock is shielded so auto-resume can't fire on music.
+            // same hold — not the provider returning. Only the silence clock
+            // is shielded so auto-resume can't fire on music.
             if (!(isHoldLiveRef.current && holdPhrase)) {
               updateActivity();
             }
-            setLastDataTime(Date.now());
           }
 
           if (holdPhrase) {
@@ -1397,14 +1415,15 @@ export const useDeepgram = () => {
   // Speech → resume recorder → transcript → trySpeechAutoStart starts the
   // call by itself. First attach still needs one CONNECT press (browser rule).
 
-  /** Tear down VAD + idle keepalive. */
+  /** Tear down VAD + idle keepalive. Refs hold stop-fns (worker-backed). */
   const stopIdleEar = useCallback(() => {
     idleEarActiveRef.current = false;
-    if (vadIntervalRef.current) { clearInterval(vadIntervalRef.current); vadIntervalRef.current = null; }
-    if (idleKeepAliveRef.current) { clearInterval(idleKeepAliveRef.current); idleKeepAliveRef.current = null; }
+    if (vadIntervalRef.current) { vadIntervalRef.current(); vadIntervalRef.current = null; }
+    if (idleKeepAliveRef.current) { idleKeepAliveRef.current(); idleKeepAliveRef.current = null; }
     try { vadCtxRef.current?.close(); } catch (_) {}
     vadCtxRef.current = null;
   }, []);
+  stopIdleEarRef.current = stopIdleEar;
 
   /** Rebuild just the MediaRecorder and stream into the already-open sockets. */
   const startRecorderOnSockets = useCallback((stream) => {
@@ -1450,11 +1469,17 @@ export const useDeepgram = () => {
       if (startRecorderOnSockets(stream)) {
         setConnectionState("connected");
         setConnectionMessage("Speech detected — reconnecting…");
+        sttTrace("idle ear wake: warm recorder resume");
         return;
       }
     }
     // Cold path: sockets died while idle — full rebuild from the preserved
     // stream (reuse path, no tab picker, no user gesture needed).
+    // v4.136.0: the wake is now visible and logged. If the rebuild then fails
+    // (e.g. the share died in a background tab and the picker needs a
+    // gesture), the user still knows speech WAS heard and CONNECT is the fix.
+    sttTrace("idle ear wake: cold rebuild");
+    setConnectionMessage("Speech detected — press CONNECT if text doesn't resume");
     startRecordingRef.current?.();
   }, [stopIdleEar, startRecorderOnSockets]);
 
@@ -1490,7 +1515,10 @@ export const useDeepgram = () => {
     });
 
     // Deepgram closes a socket after ~10s without audio — KeepAlive every 4s.
-    idleKeepAliveRef.current = setInterval(() => {
+    // v4.136.0: worker-backed interval. A hidden tab throttles page timers to
+    // ~1/min, which starved the KeepAlive (socket died) AND the VAD (ear
+    // went deaf) — the main "fails to detect speech" cause.
+    idleKeepAliveRef.current = createUnthrottledInterval(() => {
       const multiMode = usesMultiSocket(languagePairRef.current);
       const payload = JSON.stringify({ type: "KeepAlive" });
       const enOpen = socketRefEn.current?.readyState === 1;
@@ -1518,9 +1546,25 @@ export const useDeepgram = () => {
       srcNode.connect(analyser);
       const buf = new Uint8Array(analyser.frequencyBinCount);
       vadLoudFramesRef.current = 0;
-      vadIntervalRef.current = setInterval(() => {
+      const vadTick = () => {
         if (!idleEarActiveRef.current) return;
         try {
+          // v4.136.0 self-checks: a suspended AudioContext yields silence
+          // forever, and a dead track makes the ear deaf — surface both
+          // instead of silently never firing.
+          if (ctx.state === "suspended") {
+            ctx.resume?.();
+            setConnectionMessage("Idle ear — audio blocked, click the app once");
+            return;
+          }
+          const liveTrack = stream.getAudioTracks()[0];
+          if (!liveTrack || liveTrack.readyState !== "live") {
+            critLog("warn", "idle ear: audio track ended — closing ear");
+            stopIdleEar();
+            closeConnections();
+            setConnectionMessage("Ear lost — audio share ended. Press CONNECT.");
+            return;
+          }
           analyser.getByteTimeDomainData(buf);
           let sum = 0;
           for (let i = 0; i < buf.length; i++) {
@@ -1531,7 +1575,8 @@ export const useDeepgram = () => {
           vadLoudFramesRef.current = updateVadLoudFrames({ rms, prevLoudFrames: vadLoudFramesRef.current });
           if (shouldWakeFromVad(vadLoudFramesRef.current)) wakeFromIdleEarRef.current();
         } catch (_) {}
-      }, 100);
+      };
+      vadIntervalRef.current = createUnthrottledInterval(vadTick, 100);
     } catch (e) {
       critLog("warn", "idle ear VAD unavailable", { err: String(e) });
     }
@@ -1912,6 +1957,9 @@ export const useDeepgram = () => {
     resetConnectProgress();
     setConnectionState("connecting");
     setConnectionMessage("Reconnecting to Deepgram...");
+    // v4.136.0: the text clock restarts with the connection — the chip must
+    // never keep ageing a pre-Zap transcript once the new sockets are live.
+    setLastDataTime(Date.now());
     setTimeout(() => {
       if (streamRef.current && isActiveRef.current)
         startDeepgram(streamRef.current);
@@ -1940,21 +1988,26 @@ export const useDeepgram = () => {
   reconnectStreamRef.current = reconnectStream;
 
   // v4.100.2: auto-Zap — a silent Deepgram stall (connected, audio flowing,
-  // but no transcript data 65s+) used to leave the app dead until manual ZAP.
-  // Recover once per episode; the 2-min guard prevents a reconnect loop, and
-  // any arriving transcript simply makes the check pass again.
+  // but no data 65s+) used to leave the app dead until manual ZAP.
+  // v4.136.0: "silent" now means Deepgram sent NOTHING for 65s+ — empty
+  // keepalive Results during dead air count as life, so a quiet stretch no
+  // longer triggers pointless reconnects (and call-detect being off can't
+  // freeze the clock into a Zap loop). The recorder must also still be
+  // sending audio; a dead recorder is the watchdog's failure, not Zap's.
   const lastAutoZapAtRef = useRef(0);
   useEffect(() => {
     if (!isActive || connectionState !== "connected") return undefined;
     const t = setInterval(() => {
-      if (Date.now() - (lastDataTime || 0) < 65000) return;
+      const lastMsgAt = connectFlagsRef.current.lastDeepgramMessageAt || 0;
+      if (lastMsgAt && Date.now() - lastMsgAt < 65000) return;
+      if (Date.now() - (lastAudioProgressAtRef.current || 0) > 15000) return;
       if (Date.now() - lastAutoZapAtRef.current < 120000) return;
       lastAutoZapAtRef.current = Date.now();
-      critLog("warn", "auto reconnectStream: no STT data for 65s+");
+      critLog("warn", "auto reconnectStream: no Deepgram data for 65s+");
       reconnectStream();
     }, 5000);
     return () => clearInterval(t);
-  }, [isActive, connectionState, lastDataTime, reconnectStream, critLog]);
+  }, [isActive, connectionState, reconnectStream, critLog]);
 
   useEffect(() => {
     const onPairChange = (e) => {

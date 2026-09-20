@@ -2,6 +2,16 @@
 
 **Version source:** `src/constants/version.js` (must match `package.json` + top-right UI pill)
 
+## v4.138.0 - honest DG status + background-tab idle ear + Zap/Connect correctness
+
+- Reported: red "DG STUCK" flashed while transcription was working, then flipped ✓; speech auto-detect failed too often; status never said what was actually happening.
+- Root cause 1 (lying chip): the health clock `lastDataTime` only ticked on confidence > 0.4 transcripts — low-confidence text reached the board but aged the chip to red. It was also never reset by Zap, so a rebuilt connection stayed red until the first confident hit; with call-detection OFF it read STUCK permanently and auto-Zapped every 2 min.
+- Fix (`dgStatus.js` + `AudioRouteStatusBar`): TEXT ✓ = any transcript within 30s; DG QUIET (amber, 30–60s, "waiting for speech") only when Deepgram sends literally nothing — empty keepalive Results count as life; DG STUCK (red) at 60s+ or a lost socket. `lastDeepgramMessageAt` is seeded fresh at every connect, so stall is always measured from the current connection. Off-call stays never-stale (v4.100.3).
+- Root cause 2 (deaf idle ear): VAD (100ms) + idle KeepAlive (4s) were main-thread `setInterval`s → Chrome throttles hidden tabs to ~1/min; a suspended VAD AudioContext yielded silence forever; dead tracks failed silently; `wakeFromIdleEar` logged nothing.
+- Fix (`workerInterval.js` + `useDeepgram`): both timers run on an inline Web Worker (not visibility-throttled; setInterval fallback). VAD tick self-checks: suspended context → resume + "Idle ear — audio blocked" message; ended track → ear closes with "Ear lost — audio share ended"; wake attempts now logged (warm/cold) via sttTrace.
+- Zap/Connect: `closeConnections` now tears down the idle ear (a Zap during idle ear used to leave VAD + KeepAlive racing the new sockets — double-recorder risk). Auto-Zap keeps 65s/120s rules but keys on the DG message clock + requires audio still flowing; the compact ZAP button now appears only on a real stall or error (it used to appear 30s after the last transcript even with a healthy idle ear).
+- Tests: `dgStatus` flag matrix (8), `workerInterval` fallback contract (3); full suite green.
+
 ## v4.137.0 - lane-flip digit guard (zips can't vanish)
 
 - Reported: a zipcode disappeared from the transcription bubble (and translation, which inherits it). Root cause: `captionEngine.js` picks the EN/ES lane winner and overwrote the visible text wholesale (`current.text = enFull : esFull`); a zip heard in only one lane vanished on a lane flip.
