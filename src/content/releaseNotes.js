@@ -25,6 +25,64 @@ import { APP_VERSION } from '../constants/version';
 /** Newest first. Only the entry matching APP_VERSION is shown on load. */
 export const RELEASE_NOTES_CATALOG = [
   {
+    version: '4.142.0',
+    id: 'repeat-dim',
+    highlightElementIds: ['transcript-pane'],
+    es: {
+      title: '👓 Frase repetida: se atenúa, nunca se borra',
+      intro: 'Una burbuja podía imprimir la misma frase dos veces seguida (fragmento recortado a mitad de línea, filas guardadas de una sesión anterior, o el texto atenuado del reemplazo) y el renglón se volvía ilegible. Ahora la segunda copia se ve más suave, pero sigue legible.',
+      sections: [{ heading: 'Qué cambió', bullets: [
+        'Comparación simple de palabras: si una secuencia de 4 palabras o más ya apareció antes en el mismo texto, la copia posterior se atenúa.',
+        'Se atenúa al 70%: sigue leyéndose. Nada de tachado ni de texto casi invisible.',
+        'NUNCA se borra ni se reordena nada: las palabras permanecen en pantalla tal como se transcribieron.',
+        'Números, teléfonos y dosis: si se repiten, se atenúan igual, pero siguen completos y legibles.',
+        'Frases que se dicen una sola vez no se tocan. Repeticiones cortas ("no no", "gracias gracias") tampoco.',
+        'El texto atenuado del reemplazo (v4.140.0) ahora también se ve al 70%: antes quedaba casi ilegible.',
+      ] }],
+    },
+    en: {
+      title: '👓 Repeated phrase: dimmed, never removed',
+      intro: 'A bubble could print the same sentence twice in a row (a segment re-cut mid-line, rows saved from an earlier session, or the dimmed wording of a rewrite) and the line became impossible to read. The later copy is now softer, but still readable.',
+      sections: [{ heading: 'What changed', bullets: [
+        'Simple word compare: if a run of 4+ words already appeared earlier in the same text, the later copy is dimmed.',
+        'Dimmed to 70%: it still reads. No strike-through, no almost-invisible text.',
+        'Nothing is ever deleted or reordered: every word stays on screen exactly as transcribed.',
+        'Numbers, phones and doses: when repeated they dim like anything else, but stay complete and readable.',
+        'A phrase said once is left alone. Short repeats ("no no", "thank you thank you") are left alone too.',
+        'The dimmed wording of a rewrite (v4.140.0) is now at 70% as well: it used to be nearly illegible.',
+      ] }],
+    },
+  },
+  {
+    version: '4.141.0',
+    id: 'restart-split',
+    highlightElementIds: ['transcript-pane', 'audio-route-mode-label'],
+    es: {
+      title: '🔁 La misma frase ya no se imprime dos veces en una línea',
+      intro: 'Cuando Deepgram reenviaba un fragmento que ya había cerrado (recorte de audio, reconexión), ese texto se pegaba a la línea anterior: la frase aparecía dos veces dentro de la misma burbuja y la traducción la copiaba igual.',
+      sections: [{ heading: 'Qué cambió', bullets: [
+        'El fragmento reenviado ahora abre su propia burbuja: dos renglones limpios seguidos, cada palabra una vez.',
+        'NO se borra nada: la línea ya cerrada conserva todas sus palabras tal como las leíste.',
+        'Números, teléfonos y dosis quedan intactos (nunca se eliminan al reacomodar).',
+        'Repeticiones clínicas ("epinephrine epinephrine") y palabras protegidas siguen sin tocarse.',
+        'Menos renglones repetidos: una burbuja en vivo que termina en "?" ya no deja una copia sellada al lado.',
+        'Reordenamientos: el texto gris atenuado ya no repite palabras que la línea actual ya muestra.',
+      ] }],
+    },
+    en: {
+      title: '🔁 The same sentence no longer prints twice in one line',
+      intro: 'When Deepgram re-delivered a segment it had already finalized (audio re-cut, reconnect replay), that text was appended to the line before it: the phrase appeared twice inside one bubble and the translation copied it.',
+      sections: [{ heading: 'What changed', bullets: [
+        'A re-delivered segment now opens its own bubble: two clean rows, every word once.',
+        'Nothing is deleted: the finalized line keeps every word exactly as you read it.',
+        'Numbers, phones and doses stay untouched (never removed while re-routing).',
+        'Clinical repeats ("epinephrine epinephrine") and protected words are still never pruned.',
+        'Fewer repeated rows: a live draft ending in "?" no longer leaves a sealed copy beside it.',
+        'Reorders: the dimmed grey wording no longer repeats words the current line already shows.',
+      ] }],
+    },
+  },
+  {
     version: '4.140.0',
     id: 'live-text-supersede',
     highlightElementIds: ['transcript-pane', 'audio-route-mode-label'],

@@ -1,0 +1,143 @@
+{
+  "id": "interim-restart",
+  "label": "Restarted Deepgram segment repeats finalized text (v4.141.0)",
+  "meta": {
+    "protectionsOn": true,
+    "pair": { "left": "en", "right": "es" },
+    "phiNote": "FAKE ONLY"
+  },
+  "events": [
+    {
+      "atMs": 0,
+      "lane": "en",
+      "payload": {
+        "type": "Results",
+        "is_final": false,
+        "speech_final": false,
+        "start": 10.0,
+        "channel": {
+          "alternatives": [
+            {
+              "transcript": "Yourself, Anna, and is there anybody else?",
+              "confidence": 0.9,
+              "words": [
+                { "word": "Yourself", "confidence": 0.9 },
+                { "word": "Anna", "confidence": 0.9 },
+                { "word": "and", "confidence": 0.9 },
+                { "word": "is", "confidence": 0.9 },
+                { "word": "there", "confidence": 0.9 },
+                { "word": "anybody", "confidence": 0.9 },
+                { "word": "else?", "confidence": 0.9 }
+              ]
+            }
+          ]
+        }
+      }
+    },
+    {
+      "atMs": 1200,
+      "lane": "en",
+      "payload": {
+        "type": "Results",
+        "is_final": true,
+        "speech_final": true,
+        "start": 10.0,
+        "channel": {
+          "alternatives": [
+            {
+              "transcript": "Yourself, Anna, and is there anybody else? Can you provide me with their first names, if",
+              "confidence": 0.95,
+              "words": [
+                { "word": "Yourself", "confidence": 0.95 },
+                { "word": "Anna", "confidence": 0.95 },
+                { "word": "and", "confidence": 0.95 },
+                { "word": "is", "confidence": 0.95 },
+                { "word": "there", "confidence": 0.95 },
+                { "word": "anybody", "confidence": 0.95 },
+                { "word": "else?", "confidence": 0.95 },
+                { "word": "Can", "confidence": 0.95 },
+                { "word": "you", "confidence": 0.95 },
+                { "word": "provide", "confidence": 0.95 },
+                { "word": "me", "confidence": 0.95 },
+                { "word": "with", "confidence": 0.95 },
+                { "word": "their", "confidence": 0.95 },
+                { "word": "first", "confidence": 0.95 },
+                { "word": "names,", "confidence": 0.95 },
+                { "word": "if", "confidence": 0.95 }
+              ]
+            }
+          ]
+        }
+      }
+    },
+    {
+      "atMs": 2000,
+      "lane": "en",
+      "payload": {
+        "type": "Results",
+        "is_final": false,
+        "speech_final": false,
+        "start": 12.0,
+        "channel": {
+          "alternatives": [
+            {
+              "transcript": "Can you provide me with their 1st names if so?",
+              "confidence": 0.96,
+              "words": [
+                { "word": "Can", "confidence": 0.96 },
+                { "word": "you", "confidence": 0.96 },
+                { "word": "provide", "confidence": 0.96 },
+                { "word": "me", "confidence": 0.96 },
+                { "word": "with", "confidence": 0.96 },
+                { "word": "their", "confidence": 0.96 },
+                { "word": "1st", "confidence": 0.96 },
+                { "word": "names", "confidence": 0.96 },
+                { "word": "if", "confidence": 0.96 },
+                { "word": "so?", "confidence": 0.96 }
+              ]
+            }
+          ]
+        }
+      }
+    },
+    {
+      "atMs": 2400,
+      "lane": "en",
+      "payload": {
+        "type": "Results",
+        "is_final": true,
+        "speech_final": true,
+        "start": 12.0,
+        "channel": {
+          "alternatives": [
+            {
+              "transcript": "Can you provide me with their 1st names if so?",
+              "confidence": 0.97,
+              "words": [
+                { "word": "Can", "confidence": 0.97 },
+                { "word": "you", "confidence": 0.97 },
+                { "word": "provide", "confidence": 0.97 },
+                { "word": "me", "confidence": 0.97 },
+                { "word": "with", "confidence": 0.97 },
+                { "word": "their", "confidence": 0.97 },
+                { "word": "1st", "confidence": 0.97 },
+                { "word": "names", "confidence": 0.97 },
+                { "word": "if", "confidence": 0.97 },
+                { "word": "so?", "confidence": 0.97 }
+              ]
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "expect": {
+    "finalTexts": [
+      "Yourself, Anna, and is there anybody else?",
+      "Can you provide me with their first names, if",
+      "Can you provide me with their 1st names if so?"
+    ],
+    "minFinals": 3,
+    "langs": ["en"]
+  }
+}

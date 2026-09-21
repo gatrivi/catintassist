@@ -42,6 +42,48 @@ export const lostDigitRuns = (prevText, nextText) => {
 const normalizeWord = (word) =>
   (word || "").toString().toLowerCase().replace(/[^\p{L}\p{N}]+/gu, "");
 
+/**
+ * v4.141.0 — restarted-segment detection.
+ *
+ * Deepgram sometimes re-delivers a segment it has already finalized on the same
+ * lane: an audio re-cut, a socket/reconnect replay, a re-segmentation. The
+ * overlap guard (`removeOverlapPreservingDigitSequences`) only cleans a repeat
+ * that starts at the base's TAIL — its comparison is "addition prefix ≡ base
+ * suffix". So a restart that re-states a phrase from the HEAD or MIDDLE of the
+ * base was appended verbatim as a second copy *inside one line*
+ * (`laneFinalized + " " + cleaned`), then sealed, persisted and translated.
+ *
+ * This helper only LOOKS: it returns the length (in words) of the longest run of
+ * LEADING words of `addition` that also occurs somewhere in `base` — 0 when the
+ * leading words never repeat. Nothing is removed here; the caller routes such a
+ * segment into its own bubble instead (see `reduceTranscriptEvent`).
+ *
+ * Words are compared case- and punctuation-insensitively, the same way the
+ * overlap guard normalizes ("names," ≡ "names").
+ */
+export const RESTART_MIN_WORDS = 4;
+/** A restart re-states a phrase; checking more than this only burns CPU. */
+const RESTART_HEAD_MAX_WORDS = 24;
+
+const captionWords = (text) =>
+  (String(text || "").match(/\S+/g) || [])
+    .map((w) => w.toLowerCase().replace(/[^\p{L}\p{N}]+/gu, ""))
+    .filter(Boolean);
+
+export const restatedHeadWindow = (base, addition) => {
+  const b = captionWords(base);
+  const a = captionWords(addition);
+  if (b.length < RESTART_MIN_WORDS || a.length < RESTART_MIN_WORDS) return 0;
+  const maxLen = Math.min(a.length, b.length, RESTART_HEAD_MAX_WORDS);
+  for (let len = maxLen; len >= RESTART_MIN_WORDS; len -= 1) {
+    const head = a.slice(0, len).join(" ");
+    for (let start = 0; start + len <= b.length; start += 1) {
+      if (b.slice(start, start + len).join(" ") === head) return len;
+    }
+  }
+  return 0;
+};
+
 export const normalizeWordConfidence = (words = []) =>
   (Array.isArray(words) ? words : [])
     .map((w) => ({
@@ -209,8 +251,14 @@ export const reduceTranscriptEvent = (prev, event, ctx) => {
   // v4.123.0: previous bubble already ended in sentence-final punctuation and a
   // new final arrived → start a fresh bubble. Prevents "wall of text" when a
   // speaker (nurse tirade) talks continuously without a silence break.
+  // v4.141.0: only SEALED lane text may trigger this split. A live draft
+  // (`isFinal === false`, still being rewritten) must not: the arriving final is
+  // a rewrite of that same speech, so splitting there left the draft row
+  // unsealed next to a sealed copy of itself — the same sentence twice.
+  // Repro: interim "How are you feeling today?" + its final → 2 identical rows.
   const prevLaneFinal = last
-    ? ((laneSide === "en" ? last.enFinalized : last.esFinalized) || last.text || "")
+    ? (laneSide === "en" ? last.enFinalized : last.esFinalized) ||
+      (last.isFinal === false ? "" : last.text || "")
     : "";
   const startsAfterPeriod =
     shouldFinalize &&
@@ -255,7 +303,12 @@ export const reduceTranscriptEvent = (prev, event, ctx) => {
   }
   if (!last) return prev;
 
-  const current = { ...last };
+  // The lane text this event would be APPENDED to (`merged = finalized + cleaned`
+  // for finals, `enFull = finalized + interim` for drafts). Strictly the lane's
+  // finalized text: an earlier interim is replaced, not appended, so it can never
+  // duplicate itself and must never trigger a split.
+  const laneFinalized = (laneSide === "en" ? last.enFinalized : last.esFinalized) || "";
+
   // After a sentence-boundary split the new bubble stands alone: its first
   // transcript often repeats words of the previous sentence ("the the…").
   // Skip overlap removal so nothing is eaten; the sealed previous bubble
@@ -266,11 +319,69 @@ export const reduceTranscriptEvent = (prev, event, ctx) => {
         .slice(-4, -1)
         .map((c) => c.text || "")
         .join(" ");
-  const currentFinalized =
-    (laneSide === "en" ? current.enFinalized : current.esFinalized) || "";
-  const baseContext = (historyText + " " + currentFinalized).trim();
+  const baseContext = (historyText + " " + laneFinalized).trim();
 
+  // One guard call per event. The split below only fires when this guard removed
+  // NOTHING (`guardStripped === false`), and a brand-new bubble has no base text
+  // to strip against anyway — so `cleaned` is valid in both branches.
   const cleaned = removeOverlapPreservingDigitSequences(baseContext, transcript);
+  const guardStripped = wordCount(cleaned) < wordCount(transcript);
+
+  // v4.141.0 — restarted segment: the incoming text re-states a phrase that is
+  // already finalized on this lane, from its head or middle (not its tail, which
+  // the guard above cleans on its own). Appending it would print those words
+  // twice in ONE line and then seal/translate/persist that line. Nothing is
+  // deleted here: the finalized row keeps every word, the restart gets its own
+  // bubble below it (same primitive as the sentence-boundary split).
+  const restatedWords =
+    !startsAfterPeriod && !guardStripped
+      ? restatedHeadWindow(laneFinalized, transcript)
+      : 0;
+  if (restatedWords > 0) {
+    const displaced = last;
+    if (displaced?.isFinal === false) {
+      if ((displaced.text || "").trim()) {
+        // The row we leave behind can never grow again — freeze it as a sealed
+        // row (translatable/editable/persistable like any other) and bank its
+        // words into the turn counter so the turn badge stays monotonic.
+        turnWordsBaseRef.current = (turnWordsBaseRef.current || 0) + wordCount(displaced.text);
+        prev = [
+          ...prev.slice(0, -1),
+          { ...displaced, isFinal: true, tailPreviewText: null },
+        ];
+      } else {
+        prev = prev.slice(0, -1); // blank draft row: nothing to keep
+      }
+    }
+    if (lastBubbleStartedRef) lastBubbleStartedRef.current = now;
+    last = {
+      id: buildStableCaptionId(channelKey, startTime, false),
+      enFinalized: "",
+      enInterim: "",
+      esFinalized: "",
+      esInterim: "",
+      turnId: displaced?.turnId || currentTurnIdRef.current || `turn-${now}`,
+      turnWordCount: turnWordsBaseRef.current || 0,
+      isSplit: true,
+      tailPreviewText: null,
+      wordConfidence: [],
+      wordConfidenceOffset: 0,
+      isFinal: false,
+    };
+    prev = [...prev, last];
+    flagVanish('caption_restart_split', {
+      id: last.id,
+      turnId: last.turnId,
+      before: `${laneFinalized} ${transcript}`.trim(),
+      after: `${laneFinalized} || ${transcript}`,
+      remount: true,
+      force: true,
+      stage: 'captionEngine.restartSplit',
+      extra: { restatedWords, laneSide, startTime },
+    });
+  }
+
+  const current = { ...last };
   if (!cleaned.trim() && !shouldFinalize) {
     flagVanish('overlap_empty_freeze', {
       id: current.id,

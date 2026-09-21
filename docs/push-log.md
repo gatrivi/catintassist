@@ -79,3 +79,4 @@
 | 2026-09-20T15:47:51.703Z | 7b22ccc | v4.138.0 honest DG status + background-tab idle ear + Zap/Connect fixes |
 | 2026-09-20T17:00:17.049Z | 7b22ccc | v4.139.0 off-call UI cleanup + browser/Pake goal-minutes cloud sync (workdays key, focus re-pull, redirect sign-in fallback) |
 | 2026-09-20T17:00:40.107Z | 57f510f | v4.139.0 off-call UI cleanup + browser/Pake cloud sync |
+| 2026-09-20T21:39:07.126Z | 8fed156 | v4.140.0 live text supersede model (dimmed old wording + framed replacement) |

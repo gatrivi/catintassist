@@ -17,6 +17,7 @@ import { formatTranscriptForDisplay, collectCopyableEntities } from '../utils/tr
 import { composeCaptionTranslation } from '../utils/translationApplicator';
 import { reattachLabelForMode, resolveIdleAudioMode } from '../utils/offCallIdleMessages';
 import { ScrambleText } from './ScrambleText';
+import { RepeatDimText } from './RepeatDimText';
 import { StableLiveTranscriptText } from './StableLiveTranscriptText';
 import { buildCaptionContinuityKeys } from '../utils/stableLiveTranscript';
 import { alignWordConfidence, confidenceVisualFor } from '../utils/wordConfidenceAlign';
@@ -157,7 +158,12 @@ const CopyChip = ({ value, label, kind = 'default' }) => {
   );
 };
 
-const InteractiveText = ({
+/**
+ * Bubble text renderer (source + translation lines).
+ * Exported since v4.142.0 so the repeat-dim contract (textContent unchanged,
+ * `.repeat-dim` on the later copy) can be pinned without booting the whole board.
+ */
+export const InteractiveText = ({
   text,
   scramble = true,
   applyNumberWords = false,
@@ -369,6 +375,23 @@ const InteractiveText = ({
     return (
       <>
         {liveDiffText}
+        {chipRow}
+      </>
+    );
+  }
+
+  // v4.142.0 — readability net (display-only): a phrase that already appeared in
+  // this same text is DIMMED (`.repeat-dim`, ≥70% visible), never removed.
+  // Chunks split at word boundaries, so each chunk keeps the confidence-word
+  // offsets it would have had in the whole line. Scrambling paths are untouched.
+  if (!scramble) {
+    return (
+      <>
+        <RepeatDimText
+          text={repairedText}
+          renderChunk={(chunk, part) =>
+            renderConfidenceText(chunk, part.wordOffset, true, `rd-${part.index}`, false)}
+        />
         {chipRow}
       </>
     );

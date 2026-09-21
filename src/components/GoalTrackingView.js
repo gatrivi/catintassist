@@ -4,6 +4,7 @@ import { DialGoalSelector, daysPerWeekOf } from './DialGoalSelector';
 import { MonthCalendarPanel } from './MonthCalendarPanel';
 import { computeCatchUp, fmtHm } from '../utils/catchUpPlan';
 import { anchorForCatchUp, goalSetLabel } from '../utils/goalAnchor';
+import { downloadAppBackup, formatBytes } from '../utils/appBackup';
 import { APP_VERSION_LABEL } from '../constants/version';
 
 // v4.113.0: Goal Tracking view — the goal dial got its own full workspace view.
@@ -25,6 +26,7 @@ export const GoalTrackingView = ({ onExit }) => {
   // Live (unsaved) dial selection — null until the dial reports its first preview.
   const [preview, setPreview] = useState(null);
   const [savedFlash, setSavedFlash] = useState('');
+  const [backupFlash, setBackupFlash] = useState('');
 
   // Banked month total: never below what the daily log actually sums to.
   const monthlyBanked = useMemo(() => {
@@ -81,6 +83,21 @@ export const GoalTrackingView = ({ onExit }) => {
     // Stay in the view — the calendar + pace card now reflect the saved goal.
   }, [bankGoal, goalWorkDays, monthlyBanked]);
 
+  /**
+   * One-click rescue for the two things a hot reload wipes that hurt most:
+   * the banked goal and this month's minutes. Deliberately NOT the greetings
+   * scope — that is megabytes of audio and belongs in Settings → Data.
+   */
+  const handleBackup = useCallback(async () => {
+    try {
+      const { filename, bytes } = await downloadAppBackup({ scopes: ['goals', 'progress'] });
+      setBackupFlash(`✔ ${filename} · ${formatBytes(bytes)}`);
+    } catch (err) {
+      setBackupFlash(`⚠ backup failed: ${err.message}`);
+    }
+    window.setTimeout(() => setBackupFlash(''), 6000);
+  }, []);
+
   const verdictText = plan
     ? (plan.deficitMins > 30
         ? `📉 behind ${fmtHm(plan.deficitMins)}`
@@ -124,8 +141,24 @@ export const GoalTrackingView = ({ onExit }) => {
         {savedFlash && (
           <span id="goal-saved-flash" className="goal-pace-card__flash">✔ {savedFlash}</span>
         )}
+        {backupFlash && (
+          <span id="goal-backup-flash" className="goal-pace-card__flash">{backupFlash}</span>
+        )}
         <span className="goal-pace-card__right">
           <span style={{ fontSize: '0.6rem', opacity: 0.6, color: 'var(--text-muted)' }}>{APP_VERSION_LABEL}</span>
+          <button
+            type="button"
+            id="goal-view-backup-btn"
+            onClick={handleBackup}
+            title="Download goal + month progress as one small file (no audio). Restore it from Settings → Data if a hot reload wipes this browser."
+            style={{
+              background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.12)',
+              color: '#93c5fd', borderRadius: '8px', padding: '0.35rem 0.55rem',
+              fontSize: '0.7rem', fontWeight: 700, cursor: 'pointer',
+            }}
+          >
+            ⤓ Backup
+          </button>
           <button
             type="button"
             id="goal-view-exit-btn"

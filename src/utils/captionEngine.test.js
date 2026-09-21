@@ -1,15 +1,18 @@
 import {
   INTERIM_THROTTLE_MS,
   CAPTION_ROW_LIMIT,
+  RESTART_MIN_WORDS,
   buildStableCaptionId,
   createCaptionEngineState,
   mergeCaptionsForUi,
+  restatedHeadWindow,
   splitCaptionRows,
   initEngineFromPersisted,
   reduceTranscriptEvent,
   shouldFlushImmediately,
   captionsSnapshotEqual,
 } from "./captionEngine";
+import { removeOverlapPreservingDigitSequences } from "./sensitiveDataProtector";
 
 const makeCtx = () => ({
   turnWordsBaseRef: { current: 0 },
@@ -381,6 +384,227 @@ describe("captionEngine", () => {
         ctx,
       );
       expect(state2[0].text).toMatch(/buenos dias/i);
+    });
+  });
+
+  // ---------------------------------------------------------------------------
+  // v4.141.0 — restarted segment (Deepgram re-delivers a phrase it already
+  // finalized on the same lane). Two hard rules, both from the booth:
+  //   1. nothing is deleted, ever (the engine only ROUTES, never strips here);
+  //   2. the repeated fragment may never appear twice inside ONE row.
+  // ---------------------------------------------------------------------------
+  describe("restarted segment split (v4.141.0)", () => {
+    const t0 = 1_700_000_000_000;
+    const FIRST = "Yourself, Anna, and is there anybody else?";
+    const FIRST_TAIL = "Can you provide me with their first names, if";
+    const RESTART = "Can you provide me with their 1st names if so?";
+
+    const textsOf = (rows) => rows.map((r) => r.text || "");
+    const rowsContaining = (rows, needle) =>
+      rows.filter((r) => (r.text || "").includes(needle));
+
+    /** Runs of >= minWords words that occur more than once inside ONE row. */
+    const runsRepeatedTwice = (text, minWords = 4) => {
+      const w = String(text || "")
+        .toLowerCase()
+        .replace(/[^\p{L}\p{N}\s]+/gu, " ")
+        .trim()
+        .split(/\s+/)
+        .filter(Boolean);
+      const seen = new Map();
+      for (let i = 0; i + minWords <= w.length; i += 1) {
+        const key = w.slice(i, i + minWords).join(" ");
+        seen.set(key, (seen.get(key) || 0) + 1);
+      }
+      return [...seen.entries()].filter(([, n]) => n > 1).map(([key]) => key);
+    };
+
+    /** The reported sequence: interim → final (leaves a mid-sentence tail) → restarting interim. */
+    const runRestartSequence = (laneOverrides = {}) => {
+      const ctx = makeCtx();
+      let rows = reduceTranscriptEvent(
+        [],
+        makeEvent({ transcript: FIRST, startTime: 10, now: t0, isSilentBreak: true, ...laneOverrides }),
+        ctx,
+      );
+      rows = reduceTranscriptEvent(
+        rows,
+        makeEvent({
+          transcript: `${FIRST} ${FIRST_TAIL}`,
+          isFinal: true,
+          speechFinal: true,
+          startTime: 10,
+          now: t0 + 1200,
+          isSilentBreak: false,
+          ...laneOverrides,
+        }),
+        ctx,
+      );
+      rows = reduceTranscriptEvent(
+        rows,
+        makeEvent({ transcript: RESTART, startTime: 12, now: t0 + 2000, isSilentBreak: false, ...laneOverrides }),
+        ctx,
+      );
+      return { ctx, rows };
+    };
+
+    test("restatedHeadWindow measures the repeating head, 0 for a plain continuation", () => {
+      expect(restatedHeadWindow(FIRST_TAIL, RESTART)).toBe(6);
+      expect(restatedHeadWindow(FIRST, `${FIRST} ${FIRST_TAIL}`)).toBe(7);
+      expect(restatedHeadWindow("And who do I need to update the address for?", "and who do I need to update the address for? Yourself")).toBe(10);
+      // Too short to be a restatement / different wording / no base at all.
+      expect(restatedHeadWindow("hello there friend", "hello there")).toBe(0);
+      expect(restatedHeadWindow("Take the medication", "twice daily with food")).toBe(0);
+      expect(restatedHeadWindow("", RESTART)).toBe(0);
+      expect(RESTART_MIN_WORDS).toBe(4);
+    });
+
+    test("screenshot string: fragment never twice in one row, every word kept", () => {
+      const { rows } = runRestartSequence();
+      const texts = textsOf(rows);
+
+      // BEFORE v4.141.0 this was ONE row holding both copies:
+      // "…their first names, if Can you provide me with their 1st names if so?"
+      expect(texts).not.toContain(`${FIRST_TAIL} ${RESTART}`);
+      texts.forEach((t) => expect(runsRepeatedTwice(t)).toEqual([]));
+
+      // Each delivered segment owns exactly one row: nothing is on screen twice.
+      expect(rowsContaining(rows, FIRST_TAIL)).toHaveLength(1);
+      expect(rowsContaining(rows, RESTART)).toHaveLength(1);
+
+      // Nothing was deleted or rewritten: both copies are on screen verbatim.
+      expect(texts).toContain(FIRST_TAIL);
+      expect(texts).toContain(RESTART);
+    });
+
+    test("the restart seals on its own final — one clean row per sentence", () => {
+      const { ctx, rows } = runRestartSequence();
+      const after = reduceTranscriptEvent(
+        rows,
+        makeEvent({
+          transcript: RESTART,
+          isFinal: true,
+          speechFinal: true,
+          startTime: 12,
+          now: t0 + 2400,
+          isSilentBreak: false,
+        }),
+        ctx,
+      );
+
+      expect(after.filter((r) => r.isFinal === true).map((r) => r.text)).toEqual([
+        FIRST,
+        FIRST_TAIL,
+        RESTART,
+      ]);
+      // No live draft left behind, and no third copy of the restart.
+      expect(after.filter((r) => r.isFinal === false)).toHaveLength(0);
+      after.forEach((r) => expect(runsRepeatedTwice(r.text)).toEqual([]));
+    });
+
+    test("mirrored on the ES lane — same split, same wording", () => {
+      const { rows } = runRestartSequence({ laneSide: "es", channelKey: "es" });
+      const texts = textsOf(rows);
+
+      texts.forEach((t) => expect(runsRepeatedTwice(t)).toEqual([]));
+      expect(rowsContaining(rows, FIRST_TAIL)).toHaveLength(1);
+      expect(rowsContaining(rows, RESTART)).toHaveLength(1);
+      expect(rows.every((r) => !r.enFinalized)).toBe(true);
+    });
+
+    test("digit runs survive a restart: never dropped, never doubled inside a row", () => {
+      const ctx = makeCtx();
+      const base = "the number is 555 123 4567 and";
+      const restart = "the number is 555 123 4567 and I will call you back";
+
+      let rows = reduceTranscriptEvent(
+        [],
+        makeEvent({ transcript: base, isFinal: true, now: t0, isSilentBreak: true }),
+        ctx,
+      );
+      rows = reduceTranscriptEvent(
+        rows,
+        makeEvent({ transcript: restart, startTime: 12, now: t0 + 2000, isSilentBreak: false }),
+        ctx,
+      );
+
+      const perRowDigitRuns = textsOf(rows).map(
+        (t) => (t.replace(/\D/g, "").match(/5551234567/g) || []).length,
+      );
+      // Once per delivered copy, never twice in the same line.
+      expect(perRowDigitRuns.filter((n) => n > 0)).toHaveLength(2);
+      perRowDigitRuns.forEach((n) => expect(n).toBeLessThanOrEqual(1));
+      expect(textsOf(rows).join(" ").replace(/\D/g, "")).toContain("5551234567");
+    });
+
+    test("suffix repeats the overlap guard already cleans are NOT split", () => {
+      const ctx = makeCtx();
+      let rows = reduceTranscriptEvent(
+        [],
+        makeEvent({ transcript: "the patient says his name is Robert", isFinal: true, now: t0, isSilentBreak: true }),
+        ctx,
+      );
+      rows = reduceTranscriptEvent(
+        rows,
+        makeEvent({
+          transcript: "his name is Robert and he is here",
+          isFinal: true,
+          speechFinal: true,
+          startTime: 5,
+          now: t0 + 2000,
+          isSilentBreak: false,
+        }),
+        ctx,
+      );
+
+      const hits = rowsContaining(rows, "Robert");
+      expect(hits).toHaveLength(1);
+      expect(hits[0].text).toBe("the patient says his name is Robert and he is here");
+    });
+
+    test("overlap guard deletions are unchanged (no new stripping anywhere)", () => {
+      // These are exactly the boundaries the guard refuses to clean today
+      // (v4.116.0 digits / v4.133.0 clinical + emphasis repeats). The restart
+      // split must not turn any of them into a deletion.
+      const untouched = [
+        ["she has no fever and the address is", "no fever and the address is 42 Main"],
+        ["epinephrine epinephrine", "epinephrine epinephrine again"],
+        ["take the medication twice daily", "twice daily with food"],
+        ["the number is 555 123 4567 and", "the number is 555 123 4567 and I will call you back"],
+      ];
+      untouched.forEach(([base, addition]) => {
+        expect(removeOverlapPreservingDigitSequences(base, addition)).toBe(addition);
+      });
+      // …and the one it does clean still gets cleaned (no split takes over).
+      expect(
+        removeOverlapPreservingDigitSequences(
+          "the patient says his name is Robert",
+          "his name is Robert and he is here",
+        ),
+      ).toBe("and he is here");
+    });
+
+    test("live draft + its own final no longer renders the same sentence twice", () => {
+      const ctx = makeCtx();
+      let rows = reduceTranscriptEvent(
+        [],
+        makeEvent({ transcript: "How are you feeling today?", now: t0, isSilentBreak: true }),
+        ctx,
+      );
+      rows = reduceTranscriptEvent(
+        rows,
+        makeEvent({
+          transcript: "How are you feeling today?",
+          isFinal: true,
+          speechFinal: true,
+          now: t0 + 800,
+          isSilentBreak: false,
+        }),
+        ctx,
+      );
+
+      expect(rows.filter((r) => (r.text || "").trim())).toHaveLength(1);
+      expect(rows.filter((r) => r.isFinal === true)).toHaveLength(1);
     });
   });
 });

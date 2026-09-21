@@ -6394,18 +6394,31 @@ body:has(.app-container[data-call-mode="true"]) .element-hint-panel {
   animation: stm-arrive 180ms ease-out both;
 }
 
-/* Superseded wording: ~25% visual weight, still readable, never blank. */
+/* v4.142.0 — readability net for a repeated phrase (see utils/repeatedWordRuns.js).
+   A later repeat (>4-word run that already appeared above/inside the same text)
+   is DIMMED, never removed: the words stay in the DOM, byte-identical, and this
+   opacity is a floor, not a suggestion — `REPEAT_DIM_MIN_OPACITY` (0.70) is
+   asserted against this declaration in `repeatedWordRuns.test.js`. No
+   strike-through, no blur, no color override: dimming is a hierarchy cue. */
+.repeat-dim {
+  display: inline;
+  opacity: 0.72;
+}
+
+/* Superseded wording: secondary, but readable — v4.142.0 raises it from ~25%
+   weight (which the operator reported as unreadable) to the same 70% floor as
+   `.repeat-dim`; the strike-through is gone (it chewed up letterforms at this
+   size). Numbers/phones/doses keep their amber weight. */
 .stm-superseded {
   display: inline;
-  opacity: 0.25;
-  color: #64748b;
-  text-decoration: line-through;
-  text-decoration-color: rgba(148, 163, 184, 0.45);
+  opacity: 0.72;
+  color: #94a3b8;
+  text-decoration: none;
   animation: stm-old-word 220ms ease-out both;
 }
 /* Numbers/phones/doses: readable weight until they leave (v4.116.0 rule). */
 .stm-superseded--protected {
-  opacity: 0.7;
+  opacity: 0.72;
   color: #fcd34d;
   text-decoration: none;
 }
@@ -6434,8 +6447,8 @@ body:has(.app-container[data-call-mode="true"]) .element-hint-panel {
 }
 
 @keyframes stm-old-word {
-  from { opacity: 0.45; }
-  to { opacity: 0.25; }
+  from { opacity: 0.9; }
+  to { opacity: 0.72; }
 }
 
 @keyframes stm-frame-settle {
@@ -6450,7 +6463,7 @@ body:has(.app-container[data-call-mode="true"]) .element-hint-panel {
 }
 
 @keyframes stm-retire {
-  from { opacity: 0.25; }
+  from { opacity: 0.72; }
   to { opacity: 0; }
 }
 

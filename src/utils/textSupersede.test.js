@@ -8,6 +8,7 @@ import {
   SUPERSEDE_RETIRE_MS,
   classifySupersede,
   isEpisodeOverBudget,
+  isRedundantSupersededPart,
   minConfidenceForTokens,
   presentOpParts,
   resolveSupersedeTiming,
@@ -192,5 +193,35 @@ describe('textSupersede', () => {
     expect(isEpisodeOverBudget(1000, 5100, 4000)).toBe(true);
     expect(isEpisodeOverBudget(1000, 5000, 4000)).toBe(false);
     expect(isEpisodeOverBudget(null, 5000)).toBe(false);
+  });
+});
+
+// v4.141.0 — a reorder must not print the same words twice: the "deleted" dim
+// copy is dropped only when the wording on screen already carries those words.
+describe('isRedundantSupersededPart (v4.141.0)', () => {
+  test('flags a dim copy the current wording already contains (reorder)', () => {
+    expect(
+      isRedundantSupersededPart(
+        'Yourself, Anna?',
+        'Yourself, Anna? And who do I need to update the address for?',
+      ),
+    ).toBe(true);
+    expect(isRedundantSupersededPart('the address for?', 'who do I need to update the address for?')).toBe(true);
+    expect(isRedundantSupersededPart('and chills', 'he has a headache and chills now')).toBe(true);
+  });
+
+  test('keeps a real retraction dimmed and readable (words absent from the new wording)', () => {
+    expect(isRedundantSupersededPart('daily', 'take 5 mg')).toBe(false);
+    expect(isRedundantSupersededPart('the patient has a fever', 'the patient has a headache')).toBe(false);
+  });
+
+  test('never drops a fragment carrying digits (numbers hold until they leave)', () => {
+    expect(isRedundantSupersededPart('call me at 555-123-4567', 'call me at 555-123-4567 now')).toBe(false);
+    expect(isRedundantSupersededPart('he takes 2 mg', 'he takes 2 mg of it')).toBe(false);
+  });
+
+  test('presence must be contiguous and whole-ish, otherwise the dim copy stays', () => {
+    expect(isRedundantSupersededPart('Anna, Yourself?', 'Yourself, Anna?')).toBe(false);
+    expect(isRedundantSupersededPart('', 'anything')).toBe(false);
   });
 });

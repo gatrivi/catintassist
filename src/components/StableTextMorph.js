@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
+import { RepeatDimText } from './RepeatDimText';
 import { prefersReducedMotion } from '../utils/motionPreference';
 import {
   applyDisplayProtections,
@@ -15,6 +16,7 @@ import {
   SUPERSEDE_RETIRE_MS,
   classifySupersede,
   isEpisodeOverBudget,
+  isRedundantSupersededPart,
   presentOpParts,
   resolveSupersedeTiming,
 } from '../utils/textSupersede';
@@ -64,14 +66,24 @@ const SensitiveSpan = ({ value, type = 'number' }) => {
   );
 };
 
-const renderTokenText = (text) => {
+const renderSegments = (text, keyPrefix = 't') => {
   if (!text) return null;
   return splitHighlightSegments(text).map((seg, i) => {
     if (seg.type && SENSITIVE_TYPES.has(seg.type)) {
-      return <SensitiveSpan key={`${seg.type}${i}`} value={seg.value} type={seg.type} />;
+      return <SensitiveSpan key={`${seg.type}${keyPrefix}${i}`} value={seg.value} type={seg.type} />;
     }
-    return <span key={`t${i}`}>{seg.value}</span>;
+    return <span key={`${keyPrefix}${i}`}>{seg.value}</span>;
   });
+};
+
+/**
+ * Token rendering for one string slice. v4.142.0: a later repeat of a >4-word run
+ * is dimmed (`repeat-dim`, ≥70% visible) — style only, the characters are
+ * untouched, so the line still reads exactly as transcribed.
+ */
+const renderTokenText = (text) => {
+  if (!text) return null;
+  return <RepeatDimText text={text} renderChunk={(chunk) => renderSegments(chunk, 't')} />;
 };
 
 /**
@@ -278,6 +290,12 @@ export function StableTextMorph({
     if (reducedCue) {
       parts = parts.filter((p) => p.role !== 'superseded' || isProtectedToken(p.text));
     }
+    // v4.141.0: never print the same words twice. A reorder makes the diff emit
+    // the old fragment as a dimmed "delete" while the current wording already
+    // contains it — drop that copy (it hides nothing: the words are on screen).
+    parts = parts.filter(
+      (p) => p.role !== 'superseded' || !isRedundantSupersededPart(p.text, display),
+    );
     // A separator without a left side is just noise.
     parts = parts.filter((p, i) => p.role !== 'arrow' || parts[i - 1]?.role === 'superseded');
     if (!parts.length) return null;

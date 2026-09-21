@@ -176,6 +176,46 @@ export function isEpisodeOverBudget(startedAt, now, maxMs = SUPERSEDE_MAX_EPISOD
   return now - startedAt > maxMs;
 }
 
+const compareWords = (text) =>
+  (String(text || '').match(/\S+/g) || [])
+    .map((w) => w.toLowerCase().replace(/[^\p{L}\p{N}]+/gu, ''))
+    .filter(Boolean);
+
+/**
+ * v4.141.0 — the REORDER case: does the dimmed (superseded) wording say anything
+ * the wording on screen does not already say?
+ *
+ * A reorder diffs as `delete(old) + equal(middle) + insert(new)`, so under
+ * SUPERSEDE the "deleted" wording gets rendered dimmed NEXT TO the current
+ * wording that already contains those very words — the line reads like the same
+ * sentence printed twice (reported from the booth; rides up to ~4 s per episode).
+ *
+ * True only when dropping the dim copy hides nothing:
+ *  - its words must appear as a CONTIGUOUS run of the current wording, and
+ *  - it must carry no digit (v4.116.0: numbers/doses never leave the screen
+ *    early, whatever the diff says).
+ * A real retraction ("take 5 mg daily" → "take 5 mg") is never affected: "daily"
+ * is absent from the new wording, so it keeps its dimmed, readable treatment.
+ */
+export function isRedundantSupersededPart(text, currentText) {
+  if (/[0-9]/.test(String(text || ''))) return false;
+  const needle = compareWords(text);
+  if (!needle.length) return false;
+  const hay = compareWords(currentText);
+  if (hay.length < needle.length) return false;
+  for (let i = 0; i + needle.length <= hay.length; i += 1) {
+    let hit = true;
+    for (let j = 0; j < needle.length; j += 1) {
+      if (hay[i + j] !== needle[j]) {
+        hit = false;
+        break;
+      }
+    }
+    if (hit) return true;
+  }
+  return false;
+}
+
 /**
  * Hold/retire timing. Reduced motion collapses the ladder to a near-instant,
  * animation-free settle.

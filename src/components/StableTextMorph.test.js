@@ -225,6 +225,50 @@ describe('StableTextMorph supersede model (v4.140.0)', () => {
   });
 });
 
+describe('StableTextMorph reorder duplication (v4.141.0)', () => {
+  test('reordered revision renders the fragment ONCE (no dim copy of words on screen)', () => {
+    const { container, rerender } = render(
+      <Morph text="And who do I need to update the address for? Yourself, Anna?" />,
+    );
+
+    rerender(<Morph text="Yourself, Anna? And who do I need to update the address for?" />);
+
+    const line = wrap(container);
+    // A reorder used to render delete(old) + equal(middle) + insert(new):
+    // "Yourself, Anna? And who do I need…?Yourself, Anna?" for up to ~4 s.
+    expect(line.textContent.split('Yourself, Anna?').length - 1).toBe(1);
+    expect(line.textContent).toContain('And who do I need to update the address for?');
+    expect(supersededCount(container)).toBe(0);
+    expect(line.textContent.trim().length).toBeGreaterThan(0);
+
+    act(() => {
+      jest.advanceTimersByTime(HOLD_MS + RETIRE_MS + 20);
+    });
+    expect(wrap(container).textContent.split('Yourself, Anna?').length - 1).toBe(1);
+  });
+
+  test('a real retraction still keeps the old wording dimmed on screen', () => {
+    const { container, rerender } = render(<Morph text="take 5 mg daily" />);
+
+    rerender(<Morph text="take 5 mg" />);
+
+    const line = wrap(container);
+    expect(line.textContent).toContain('daily');
+    expect(supersededCount(container)).toBe(1);
+    expect(line.textContent.trim().length).toBeGreaterThan(0);
+  });
+
+  test('a reordered fragment carrying digits is never dropped early', () => {
+    const { container, rerender } = render(<Morph text="call 555-123-4567 now" />);
+
+    rerender(<Morph text="now call 555-123-4567" />);
+
+    const line = wrap(container);
+    expect(line.textContent).toContain('555-123-4567');
+    expect(line.textContent.trim().length).toBeGreaterThan(0);
+  });
+});
+
 describe('StableTextMorph reduced motion (v4.140.0)', () => {
   test('reduced motion shortens the hold and drops non-protected superseded words fast', () => {
     prefersReducedMotion.mockReturnValue(true);

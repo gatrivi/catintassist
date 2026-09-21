@@ -103,11 +103,13 @@ Deepgram rewrites interim wording for the same speech. Reported symptom: the wor
 being read vanish mid-read, so the interpreter cuts off mid-sentence.
 
 - **Old wording is dimmed, not deleted**: superseded words stay on screen at
-  **~25% visual weight** (`#64748b`, faint strike-through) while the replacing
-  wording gets a **bright frame/edge** (`stm-arriving`). Protected tokens
-  (numbers/doses/money) hold at readable weight (`stm-superseded--protected`).
-  Superseded wording keeps **no copy chip** — a stale phone/dose must never be
-  one click away (it stays selectable and readable, just not "click to copy").
+  **≥70% visual weight** (`#94a3b8`, no strike-through) while the replacing
+  wording gets a **bright frame/edge** (`stm-arriving`). The floor was raised
+  from ~25% in **v4.142.0** (see §12d) — the dim copy must stay readable.
+  Protected tokens (numbers/doses/money) hold at readable weight
+  (`stm-superseded--protected`). Superseded wording keeps **no copy chip** — a
+  stale phone/dose must never be one click away (it stays selectable and
+  readable, just not "click to copy").
 - **Episode base**: the first revision freezes the wording you are reading; every
   later revision re-diffs against THAT, so dimmed text neither flickers back to
   full brightness nor accumulates as duplicates.
@@ -130,6 +132,83 @@ being read vanish mid-read, so the interpreter cuts off mid-sentence.
 - Telemetry: `morph_supersede` plus the existing `morph_word_diff` in the vanish trace.
 - Fixture: `src/fixtures/transcription/interim-rewrite.json` — same row id
   rewritten in place, and a phone rewrite refused by the v4.136.0 digit guard.
+- **No duplicate wording (v4.141.0)**: a *reorder* diffs as
+  `delete(old) + equal(middle) + insert(new)`, so the dimmed copy used to print
+  words the current line already contains ("…for?Yourself, Anna?"). The dim copy
+  is dropped only when `isRedundantSupersededPart(text, currentText)` is true —
+  its words are a **contiguous run of the wording on screen** and it carries no
+  digit. A real retraction ("take 5 mg daily" → "take 5 mg") keeps its dim copy,
+  so nothing absent from the current wording is ever hidden.
+
+### 12c) Restarted segment rule (v4.141.0) — **one line, one copy**
+Deepgram sometimes re-delivers a segment it already finalized on the same lane
+(audio re-cut, reconnect replay, re-segmentation). The overlap guard only cleans
+a repeat that starts at the base's **tail** (`addition prefix ≡ base suffix`) and
+it cancels itself near digits/clinical words, so a restart that re-states a
+phrase from the **head or middle** of a line used to be appended to that line
+(`captionEngine.js`: `merged = finalized + " " + cleaned`) → the fragment printed
+**twice inside one row**, then sealed, persisted and translated.
+
+Rule — **route, never delete**:
+
+- `restatedHeadWindow(base, addition)` (exported from `captionEngine.js`) returns
+  the longest run of **leading** words of the arriving segment that occurs
+  anywhere in that lane's finalized text; `RESTART_MIN_WORDS = 4` is the bar.
+- It only fires on a boundary the overlap guard **cannot** clean on its own
+  (`guardStripped === false`); a boundary the guard already cleans is left alone.
+- When it fires, the finalized row is kept **verbatim** (marked sealed, it can
+  never grow again) and the restart opens a **new bubble** — the same primitive as
+  the sentence-boundary split, on both lanes (`enFinalized` / `esFinalized`).
+- Telemetry: `caption_restart_split` in the vanish trace (`restatedWords`, lane).
+- The sentence-boundary split (`startsAfterPeriod`) only considers **sealed** lane
+  text: a live draft plus its own final used to leave two rows with the same
+  sentence (the draft was never sealed, a sealed copy opened beside it).
+- Guards that must never regress: no transcribed token deleted, digit runs
+  intact, the overlap guard's code and `DEDUPE_NEVER_DROP` / clinical-repeat /
+  tirade rules untouched, and translation never sees duplicated row text.
+- Fixture: `src/fixtures/transcription/interim-restart.json` (the reported
+  screenshot sequence). Tests: `captionEngine.test.js` › "restarted segment
+  split", `fixtureReplay.test.js` › "interim-restart".
+
+### 12d) Repeated wording net (v4.142.0) — **dim, never remove**
+The v4.141.0 rule routes a *restarted* segment to its own bubble, but a duplicate
+can still reach the pane (a mid-line re-cut the overlap guard cannot clean, rows
+persisted by an older session, the supersede presentation). Reported: one bubble
+printed the same ~22-word sentence twice and became "impossible to read".
+
+Rule (the operator's own proposal): **a simple string compare; if a sequence of
+words is repeated, dim the later one — but leave it at least 70% visible.**
+
+- Pure detector: `src/utils/repeatedWordRuns.js` → `findRepeatedWordRuns(text,
+  {minWords, maxChars})` returns the **character ranges of the LATER
+  occurrences** of a word run that already appeared earlier in the same text.
+- **Only later copies are marked**; the first occurrence keeps full brightness.
+  Matching is case/punctuation-insensitive ("names," ≡ "names"), but the ranges
+  map back onto the **original characters** — matching is normalized, rendering
+  is not.
+- **Minimum run: 4 words** (`MIN_REPEAT_WORDS`) — "no no", "you you" and other
+  ordinary speech are untouched. Configurable per call.
+- Ranges come back sorted and non-overlapping (`mergeRanges`); work is capped at
+  `MAX_SCAN_CHARS` (6000) — past the cap the scan simply stops (no dimming is
+  better than dimming the wrong words).
+- Render: `src/components/RepeatDimText.js` wraps a dim chunk in
+  `<span class="repeat-dim">` and hands every chunk to the call site's own token
+  renderer (sensitive-data chips, number highlights, confidence tints keep
+  working; `part.wordOffset` keeps word-indexed tinting aligned). Split points are
+  at whitespace between words, so no token is ever cut.
+- Call sites: live line `StableTextMorph.js` (+ `StableLiveTranscriptText`), and
+  `TranscriptionBoard.js` sealed source **and** translation line (`InteractiveText`,
+  non-scrambling paths only).
+- **Display-only invariant**: the concatenation of the rendered chunks is
+  byte-identical to the text that was already on screen. Nothing is deleted,
+  hidden, reordered or normalized; digits/doses/phones stay fully present (a
+  repeated phone is dimmed like any other repeat, never removed). `textContent`
+  equality is asserted in `RepeatDimText.test.js`.
+- **Visibility floor**: `.repeat-dim { opacity: 0.72 }` in `src/index.css` — no
+  strike-through, no blur, no color override, no font shrink. The floor (0.70,
+  `REPEAT_DIM_MIN_OPACITY`) is asserted **from the stylesheet** in
+  `RepeatDimText.test.js`, together with the same floor for `.stm-superseded`
+  (which also lost its strike-through in v4.142.0).
 
 ## 13) Reload / hot-reload mid-call = transcript gap (incident 2026-09-08)
 What happened: dev-server hot-reload restarted the app during a live 911 call.

@@ -27,6 +27,7 @@ import { TestHarnessPanel, isTestHarnessEnabled } from './TestHarnessPanel';
 import { Phase0SmokeDashboard, isPhase0SmokeEnabled } from './Phase0SmokeDashboard';
 import { AuthPanel } from './AuthPanel';
 import { CorrectionsBackupPanel } from './CorrectionsBackupPanel';
+import { AppBackupPanel } from './AppBackupPanel';
 import { CallLogImportPanel } from './CallLogImportPanel';
 import { displayDeviceName } from '../utils/audioDeviceLabels';
 import { MicVerifyChip } from './MicVerifyChip';
@@ -476,7 +477,11 @@ export default function SettingsPanel({
 
         {section === 'data' && (
           <div style={{ marginTop: 12 }}>
-            <div style={{ fontSize: 11, color: '#93c5fd', marginBottom: 8 }}>Company call log import</div>
+            <div style={{ fontSize: 11, color: '#93c5fd', marginBottom: 8 }}>
+              App backup — goals · month progress · greetings · settings
+            </div>
+            <AppBackupPanel />
+            <div style={{ fontSize: 11, color: '#93c5fd', marginBottom: 8, marginTop: 14 }}>Company call log import</div>
             <CallLogImportPanel />
             <div style={{ fontSize: 11, color: '#93c5fd', marginBottom: 8, marginTop: 14 }}>Taught corrections</div>
             <CorrectionsBackupPanel />
