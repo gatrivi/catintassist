@@ -99,10 +99,12 @@ export async function acquireInputSource(kind, opts = {}) {
     try {
       micId = localStorage.getItem(MIC_DEVICE_KEY);
     } catch (_) {}
+    // v4.143.1: browser DSP muffled the interpreter's voice — keep raw mic,
+    // same as every other mic path (GreetingsPanel, AudioSettingsContext).
     const withProcessing = {
-      echoCancellation: true,
-      noiseSuppression: true,
-      autoGainControl: true,
+      echoCancellation: false,
+      noiseSuppression: false,
+      autoGainControl: false,
     };
     try {
       const audio = micId
