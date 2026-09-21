@@ -11,7 +11,7 @@ import {
   checklistForMode,
   pickRotatingAdvice,
 } from '../utils/offCallIdleMessages';
-import { needsUserSuppliedDeepgramKey } from '../utils/deepgramRuntimeKey';
+import { needsUserSuppliedDeepgramKey, rememberDeepgramKey, isValidDeepgramApiKey } from '../utils/deepgramRuntimeKey';
 import { StudyCueCards } from './StudyCueCards';
 import { MicVerifyPanel } from './MicVerifyPanel';
 import { COMPONENT_IDS } from '../utils/componentVisibility';
@@ -35,6 +35,8 @@ export const OffCallWorkspace = ({
 }) => {
   const [sessionHidden, setSessionHidden] = useState(false);
   const [tipTick, setTipTick] = useState(0);
+  const [pastedKey, setPastedKey] = useState('');
+  const [keySavedTick, setKeySavedTick] = useState(0);
   useComponentVisibilityRefresh();
   const showOffCallGuide = isComponentVisible('off_call_guide', { isActive: false, isZombieCall: false });
   const showGuide = showOffCallGuide && !sessionHidden && !isNewcomerGuideDismissed();
@@ -124,6 +126,34 @@ export const OffCallWorkspace = ({
                   connectionMessage={connectionMessage}
                 />
               </div>
+            )}
+            {/* v4.145.1 hotfix: paste Deepgram API key when none is configured */}
+            {apiKeyMissingNoVault && (
+              <form
+                className="interpret-pane-key-paste"
+                onSubmit={(e) => {
+                  e.preventDefault();
+                  const k = pastedKey.trim();
+                  if (!isValidDeepgramApiKey(k)) return;
+                  rememberDeepgramKey(k);
+                  setPastedKey('');
+                  setKeySavedTick((n) => n + 1);
+                }}
+                style={{ display: 'flex', gap: 6, marginTop: 10, alignItems: 'center' }}
+              >
+                <input
+                  type="password"
+                  value={pastedKey}
+                  onChange={(e) => setPastedKey(e.target.value)}
+                  placeholder="Paste Deepgram API key…"
+                  autoComplete="off"
+                  style={{ flex: 1, minWidth: 0, padding: '4px 8px', fontSize: 13 }}
+                />
+                <button type="submit" className="interpret-pane-tip-link" disabled={!isValidDeepgramApiKey(pastedKey.trim())}>
+                  🔑 Save key
+                </button>
+                {keySavedTick > 0 && <span style={{ fontSize: 12 }}>✅ saved — reconnect</span>}
+              </form>
             )}
             {/* v4.139.0: QA guidelines — reopens the guided tour on demand */}
             <button

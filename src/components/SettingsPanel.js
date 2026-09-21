@@ -35,6 +35,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { useAudioSource } from '../hooks/useAudioSource';
 import { useAudioSettings } from '../contexts/AudioSettingsContext';
 import { getDeepgramSettingsPrompt } from '../utils/deepgramSettingsPrompt';
+import { getDeepgramKeySource } from '../utils/deepgramRuntimeKey';
 import {
   THEME_PALETTES,
   derivePaletteFromImageUrl,
@@ -187,7 +188,7 @@ export default function SettingsPanel({
         </div>
 
         <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap', marginTop: 10 }}>
-          {['account', 'deepgram', 'language', 'translation', 'behavior', 'data', 'layout', 'display', 'audio'].map((id) => (
+          {['account', 'deepgram', 'dg-key', 'language', 'translation', 'behavior', 'data', 'layout', 'display', 'audio'].map((id) => (
             <button
               key={id}
               type="button"
@@ -228,7 +229,7 @@ export default function SettingsPanel({
           </div>
         )}
 
-        {section === 'deepgram' && (
+{section === 'deepgram' && (
           <div style={{ marginTop: 12 }}>
             {deepgramPrompt && (
               <div
@@ -277,7 +278,26 @@ export default function SettingsPanel({
             </div>
           </div>
         )}
-
+        {section === 'dg-key' && (
+          <div style={{ marginTop: 12 }}>
+            <div style={{ fontSize: 11, color: '#93c5fd', marginBottom: 8 }}>
+              DG Key
+            </div>
+            <div style={{ background: 'rgba(255,255,255,0.05)', borderRadius: 8, padding: 12 }}>
+              <p style={{ fontSize: 10, color: 'rgba(255,255,255,0.5)', marginBottom: 8 }}>
+                Runtime Deepgram API key status
+              </p>
+              <div style={{ display: 'flex', gap: 8, marginBottom: 8 }}>
+                <span style={{ fontSize: 10, color: 'rgba(255,255,255,0.6)' }}>
+                  Source: {getDeepgramKeySource()}
+                </span>
+              </div>
+              <p style={{ fontSize: 10, color: 'rgba(255,255,255,0.5)' }}>
+                Use the DeepgramKeyVault tab to manage encrypted key storage.
+              </p>
+            </div>
+          </div>
+        )}
         {section === 'language' && (
           <div style={{ marginTop: 12, display: 'flex', flexDirection: 'column', gap: 12 }}>
             <p style={{ fontSize: 10, color: 'rgba(255,255,255,0.55)', margin: 0, lineHeight: 1.45 }}>
