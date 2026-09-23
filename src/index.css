@@ -4735,6 +4735,8 @@ body:has(.app-container[data-call-mode="true"]) .element-hint-panel {
   font-size: 0.8rem;
   line-height: 1.25;
   color: #fff;
+  /* safety net: no direct text node may paint past the bubble box (overlap fix) */
+  overflow-wrap: break-word;
 }
 
 /* UI flow/move cue — border only, no animation (v4.55: stable work pane) */

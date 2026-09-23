@@ -118,6 +118,7 @@ describe('DialGoalSelector rehab (v4.100.0)', () => {
 describe('banked commitment survives a re-open (ANCHORED-GOAL follow-up)', () => {
   const WORKDAYS = 22;        // 5/Wk basis
   const PER_WORKDAY = 420;    // 35h/Wk ÷ 5 d/wk
+  const CUSTOM_PER_WORKDAY = 1145;   // 95.4h/Wk: between dial rows, so nearest-row rounding is exercised
   const left = () => monthBasis({ workDays: WORKDAYS }).remainingWorkdays;
   const bankedTotal = () => PER_WORKDAY * left(); // worked so far (0) + commitment × workdays left
 
@@ -154,18 +155,37 @@ describe('banked commitment survives a re-open (ANCHORED-GOAL follow-up)', () =>
     render(
       <DialGoalSelector
         {...baseProps}
-        initialGoalMinutes={9200}
+        initialGoalMinutes={CUSTOM_PER_WORKDAY * left()}
         initialWorkDays={WORKDAYS}
         monthlyMinutes={0}
         dailyMinutes={0}
         onPreview={onPreview}
         // what the dial stores for a custom total: the per-workday value it implies
-        committedPerWorkdayMinutes={Math.round(9200 / left())}
+        committedPerWorkdayMinutes={CUSTOM_PER_WORKDAY}
         committedWorkDays={WORKDAYS}
       />,
     );
-    // 9200m ÷ workdays left → ~1150m/d → 95.8h/Wk → nearest row 95h/Wk (1140m/d).
+    // 1145m/workday -> 95.4h/Wk -> nearest dial row 95h/Wk (1140m/d), whatever the date.
     expect(onPreview).toHaveBeenLastCalledWith({ monthlyMinutes: 1140 * left(), workDays: WORKDAYS, daysPerWeek: 5 });
+  });
+
+  test('a custom total past the dial range clamps to the top row (documented limit)', () => {
+    const onPreview = jest.fn();
+    render(
+      <DialGoalSelector
+        {...baseProps}
+        initialGoalMinutes={2000 * left()}
+        initialWorkDays={WORKDAYS}
+        monthlyMinutes={0}
+        dailyMinutes={0}
+        onPreview={onPreview}
+        // 2000m/workday = 166.7h/Wk, far past the dial's 100h/Wk top row
+        committedPerWorkdayMinutes={2000}
+        committedWorkDays={WORKDAYS}
+      />,
+    );
+    // Clamps to 100h/Wk (1200m/d) instead of inventing a row that does not exist.
+    expect(onPreview).toHaveBeenLastCalledWith({ monthlyMinutes: 1200 * left(), workDays: WORKDAYS, daysPerWeek: 5 });
   });
 
   test('legacy stats without a stored commitment keep the old derivation', () => {

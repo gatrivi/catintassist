@@ -47,11 +47,12 @@ describe("inputSource", () => {
     const result = await acquireInputSource("mic");
     expect(result.stream).toBe(mockStream);
     expect(getUserMedia).toHaveBeenCalledTimes(2);
+    // v4.143.1: fallback keeps the mic raw (no browser DSP) — voice was muffled.
     expect(getUserMedia.mock.calls[1][0]).toEqual({
       audio: {
-        echoCancellation: true,
-        noiseSuppression: true,
-        autoGainControl: true,
+        echoCancellation: false,
+        noiseSuppression: false,
+        autoGainControl: false,
       },
     });
   });

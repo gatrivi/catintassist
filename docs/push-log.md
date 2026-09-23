@@ -80,3 +80,5 @@
 | 2026-09-20T17:00:17.049Z | 7b22ccc | v4.139.0 off-call UI cleanup + browser/Pake goal-minutes cloud sync (workdays key, focus re-pull, redirect sign-in fallback) |
 | 2026-09-20T17:00:40.107Z | 57f510f | v4.139.0 off-call UI cleanup + browser/Pake cloud sync |
 | 2026-09-20T21:39:07.126Z | 8fed156 | v4.140.0 live text supersede model (dimmed old wording + framed replacement) |
+| 2026-09-21T19:46:09.345Z | 0fab943 | v4.143.0 hotfix: Deepgram key paste button |
+| 2026-09-21T19:55:01.473Z | 0ce4419 | v4.143.1: mic path no longer muffled by browser call-quality DSP |

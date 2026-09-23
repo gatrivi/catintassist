@@ -25,6 +25,27 @@ import { APP_VERSION } from '../constants/version';
 /** Newest first. Only the entry matching APP_VERSION is shown on load. */
 export const RELEASE_NOTES_CATALOG = [
   {
+    version: '4.143.1',
+    id: 'hotfix-key-paste-mic-dsp',
+    highlightElementIds: ['transcript-pane', 'audio-route-mode-label'],
+    es: {
+      title: '🎙️ Hotfix: mic sin amortiguar + pegar clave de Deepgram',
+      intro: 'Dos arreglos rápidos: el micrófono ya no suena "de teléfono" y la clave de Deepgram se puede pegar desde la interfaz cuando falta.',
+      sections: [{ heading: 'Qué cambió', bullets: [
+        'La ruta de respaldo del micrófono ya no pasa por el EC/NS/AGC del navegador — antes dejaba la voz amortiguada.',
+        'Sin clave de Deepgram configurada, Settings ofrece pegarla al instante (recorte del lapso sin clave).',
+      ] }],
+    },
+    en: {
+      title: '🎙️ Hotfix: unmuffled mic + paste Deepgram key',
+      intro: 'Two quick fixes: the mic no longer sounds muffled, and the Deepgram key can be pasted in-app when none is configured.',
+      sections: [{ heading: 'What changed', bullets: [
+        'Mic fallback path no longer runs browser call-quality DSP (EC/NS/AGC) — voice was muffled.',
+        'With no Deepgram API key configured, Settings now offers a paste button (outage recovery).',
+      ] }],
+    },
+  },
+  {
     version: '4.142.0',
     id: 'repeat-dim',
     highlightElementIds: ['transcript-pane'],
