@@ -25,6 +25,29 @@ import { APP_VERSION } from '../constants/version';
 /** Newest first. Only the entry matching APP_VERSION is shown on load. */
 export const RELEASE_NOTES_CATALOG = [
   {
+    version: '4.144.0',
+    id: 'bubble-flex-shrink-overlap',
+    highlightElementIds: ['transcript-pane'],
+    es: {
+      title: '🫧 Fix: el texto ya no se monta sobre la burbuja siguiente',
+      intro: 'Causa raíz: el panel del transcript es una columna flexible; cuando se llenaba, el navegador encogía la caja de cada burbuja y la última línea se pintaba encima de la burbuja siguiente.',
+      sections: [{ heading: 'Qué cambió', bullets: [
+        'Las burbujas ya no se encogen (flex-shrink: 0): cada una conserva su alto natural.',
+        'Si el transcript llena la pantalla, ahora hace scroll en vez de aplastar las burbujas.',
+        'La traducción y la transcripción completas quedan siempre legibles, sin texto encima de texto.',
+      ] }],
+    },
+    en: {
+      title: '🫧 Fix: text no longer paints over the next bubble',
+      intro: 'Root cause: the transcript pane is a flex column — once it filled up, the browser squashed each bubble below its content height and the last line painted over the next bubble.',
+      sections: [{ heading: 'What changed', bullets: [
+        'Bubbles no longer shrink (flex-shrink: 0) — each keeps its natural height.',
+        'When the transcript fills the pane it scrolls instead of crushing bubbles.',
+        'Full transcription + translation stay readable — never text on top of text.',
+      ] }],
+    },
+  },
+  {
     version: '4.143.1',
     id: 'hotfix-key-paste-mic-dsp',
     highlightElementIds: ['transcript-pane', 'audio-route-mode-label'],

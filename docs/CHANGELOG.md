@@ -2,6 +2,13 @@
 
 **Version source:** `src/constants/version.js` (must match `package.json` + top-right UI pill)
 
+## v4.144.0 - bubble text can no longer paint over the next bubble (overlap root cause)
+
+- Reported (screenshot): translation span of bubble N rendered *on top of* the first line of bubble N+1 (`.bubble-line > span` overlapping the following span) — worse on busy calls, after v4.143.1's update only "a little better".
+- Root cause: `#transcript-pane` (`.scroll-area`) is `display: flex; flex-direction: column; overflow-y: auto` (`TranscriptionBoard.js:1346`) and `.transcript-bubble` shipped with the **default `flex-shrink: 1`** (no override anywhere). Once total content exceeded the pane, flex distributed the negative space by squashing bubbles **below their content height**; with `overflow: visible` the bottom line painted over the next bubble. The v4.134.0 height-lock hardening only reduced the inflated-height symptom — it is a `min-height` floor and cannot stop a shrink below content.
+- Fix (one declaration): `src/index.css` `.transcript-bubble` gains `flex-shrink: 0`. Bubbles always keep natural height; the pane scrolls instead (pinned wrapper + bottom anchor already had `flex-shrink: 0` inline). Height-lock / `liveBubbleHeight.js` untouched.
+- Tests: new `src/components/bubbleOverlap.test.js` — asserts `flex-shrink: 0` on the `.transcript-bubble` rule read straight from `src/index.css` (same stylesheet-contract pattern as `RepeatDimText.test.js`), plus asserts no later rule re-enables shrink for the bubble.
+
 ## v4.142.0 - repeated wording is dimmed, never removed (readability net)
 
 - Reported (screenshot): one sealed bubble printed the same ~22-word sentence twice ("…You said you did a unemployment claim, but they wanted to follow-up with you. Or you want to speak with Social Security…") and the pane became impossible to read. A duplicate can still reach the pane even with v4.141.0's routing: a mid-line re-cut the overlap guard cannot clean, rows persisted by an older session, or the supersede presentation.
