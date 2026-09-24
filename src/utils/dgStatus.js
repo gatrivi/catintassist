@@ -60,6 +60,27 @@ export const CONNECT_STALL_MAX_RETRIES = 3;
 export const isSocketHealthy = (state) => state === 'open' || state === 'skipped';
 
 /**
+ * v4.148.1 — mid-call stall recovery rules. The DG message clock is truthful
+ * (v4.136) and connect-time dead pipes self-heal in 12s (v4.148.0), so the old
+ * 65s auto-Zap wait — sized when a frozen clock caused Zap loops — is halved.
+ * Empty keepalive Results during dead air count as life, so 35s of TOTAL
+ * silence while audio still flows means Deepgram, not the caller, went quiet.
+ */
+export const DG_AUTO_ZAP_SILENCE_MS = 35000;
+
+/** Recorder must still be sending audio, else it's the watchdog's failure. */
+export const DG_AUTO_ZAP_AUDIO_FRESH_MS = 15000;
+
+/** Max one recovery Zap per 2 min — bounds churn if a false positive slips through. */
+export const DG_AUTO_ZAP_COOLDOWN_MS = 120000;
+
+export function shouldAutoZap({ msgAgeMs, audioProgressAgeMs, sinceLastZapMs }) {
+  if (msgAgeMs == null || msgAgeMs < DG_AUTO_ZAP_SILENCE_MS) return false;
+  if (audioProgressAgeMs == null || audioProgressAgeMs > DG_AUTO_ZAP_AUDIO_FRESH_MS) return false;
+  return sinceLastZapMs >= DG_AUTO_ZAP_COOLDOWN_MS;
+}
+
+/**
  * v4.148.0 — verdict for the 12s connect watchdog. The old watchdog stood down
  * the moment audio was being sent, so "Deepgram accepted the socket but never
  * sent ANYTHING (not even startup Metadata)" sat 'connected' until the 60s red

@@ -2,6 +2,9 @@ import {
   dgStatus,
   connectStallVerdict,
   isSocketHealthy,
+  shouldAutoZap,
+  DG_AUTO_ZAP_SILENCE_MS,
+  DG_AUTO_ZAP_COOLDOWN_MS,
   CONNECT_STALL_MAX_RETRIES,
   DG_FRESH_TEXT_MS,
   DG_QUIET_MS,
@@ -108,5 +111,28 @@ describe("isSocketHealthy — 'skipped' (Multilingual single-socket) is healthy 
     [undefined, false],
   ])('socketEs=%s → %s', (state, expected) => {
     expect(isSocketHealthy(state)).toBe(expected);
+  });
+});
+
+describe('shouldAutoZap — 35s mid-call stall recovery (v4.148.1)', () => {
+  const zap = (msgAgeMs = 40_000) =>
+    shouldAutoZap({ msgAgeMs, audioProgressAgeMs: 3_000, sinceLastZapMs: DG_AUTO_ZAP_COOLDOWN_MS });
+
+  it('zaps after 35s+ of zero Deepgram messages while audio still flows', () => {
+    expect(zap(DG_AUTO_ZAP_SILENCE_MS)).toBe(true);
+    expect(zap(90_000)).toBe(true);
+  });
+
+  it('holds fire during live dead air (messages still arriving)', () => {
+    expect(zap(DG_AUTO_ZAP_SILENCE_MS - 1)).toBe(false);
+    expect(zap(5_000)).toBe(false);
+  });
+
+  it('never zaps a dead recorder — that is the audio watchdog failure', () => {
+    expect(shouldAutoZap({ msgAgeMs: 90_000, audioProgressAgeMs: 20_000, sinceLastZapMs: 999_999 })).toBe(false);
+  });
+
+  it('respects the 120s cooldown between recovery Zaps', () => {
+    expect(shouldAutoZap({ msgAgeMs: 90_000, audioProgressAgeMs: 3_000, sinceLastZapMs: DG_AUTO_ZAP_COOLDOWN_MS - 1 })).toBe(false);
   });
 });

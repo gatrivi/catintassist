@@ -25,6 +25,27 @@ import { APP_VERSION } from '../constants/version';
 /** Newest first. Only the entry matching APP_VERSION is shown on load. */
 export const RELEASE_NOTES_CATALOG = [
   {
+    version: '4.148.1',
+    id: 'fast-auto-zap',
+    highlightElementIds: ['audio-route-zap-btn'],
+    es: {
+      title: 'Recuperación automática en 35s',
+      intro: 'Si Deepgram deja de enviar datos a mitad de llamada, la app se reconecta sola mucho antes.',
+      sections: [{ heading: 'Qué cambió', bullets: [
+        'Auto-Zap ahora actúa a los 35s sin mensajes de Deepgram (antes 65s) — el Zap sigue siendo instantáneo y no corta la llamada.',
+        'Sigue exigiendo que tu audio siga fluyendo y deja un mínimo de 2 minutos entre recuperaciones.',
+      ] }],
+    },
+    en: {
+      title: 'Self-recovery now at 35s',
+      intro: 'If Deepgram goes silent mid-call, the app reconnects itself far sooner.',
+      sections: [{ heading: 'What changed', bullets: [
+        'Auto-Zap now fires after 35s of zero Deepgram messages (was 65s) — Zap stays instant and never ends the call.',
+        'Still requires your audio to keep flowing and keeps a 2-minute minimum between recoveries.',
+      ] }],
+    },
+  },
+  {
     version: '4.148.0',
     id: 'stt-evidence-inspector',
     highlightElementIds: ['header-hold-btn'],

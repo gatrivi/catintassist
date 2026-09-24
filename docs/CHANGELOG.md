@@ -2,6 +2,11 @@
 
 **Version source:** `src/constants/version.js` (must match `package.json` + top-right UI pill)
 
+## v4.148.1 - auto-Zap waits 35s, not 65s
+
+- Reported live: "65s auto zap seems bonkers." Correct — that wait was sized in v4.136 when a frozen message clock caused Zap loops. The clock is trustworthy now (v4.136/v4.148.0 fixes) and the guards that matter stayed: recorder must still be sending audio (else it's the audio watchdog's failure) + 120s cooldown between recovery Zaps.
+- Fix: the 65s inline thresholds became the pure, unit-tested `shouldAutoZap()` in `dgStatus.js` with `DG_AUTO_ZAP_SILENCE_MS = 35000`. A mid-call Deepgram stall now self-heals in ~35-40s; a connect-time dead pipe was already ~12s since v4.148.0. Empty keepalive Results during dead air count as life, so live conversation is never interrupted by a recovery Zap.
+
 ## v4.148.0 - STT evidence inspector + visible hold counter + CONNECT no longer goes "stuck"
 
 - **CONNECT reliability (reported: red "DG STUCK" right after connect, manual Zap needed, intake info missed):** the 12s connect watchdog stood down the moment audio was being sent, so "Deepgram accepted the socket but never sent ANYTHING (not even startup Metadata)" sat `connected` until the 60s red chip and a manual Zap — about a minute of the call lost. Now a dead pipe is detected within 12s and sockets auto-rebuild (status: "Deepgram not responding — reconnecting…", 3-try budget, then an actionable timeout). Deepgram answering once (any message, incl. Metadata) stands the watchdog down; mid-call stalls still use the 65s auto-Zap (v4.136 tuning untouched). Verdict logic is the pure, unit-tested `connectStallVerdict()` in `dgStatus.js`.

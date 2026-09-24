@@ -72,6 +72,7 @@ import {
 import { matchHoldPhrase } from "../utils/holdPhrases";
 import {
   connectStallVerdict,
+  shouldAutoZap,
   CONNECT_STALL_MAX_RETRIES,
 } from "../utils/dgStatus";
 import { analyzeToneFrame, createToneTracker } from "../utils/toneWatch";
@@ -2134,22 +2135,29 @@ export const useDeepgram = () => {
   reconnectStreamRef.current = reconnectStream;
 
   // v4.100.2: auto-Zap — a silent Deepgram stall (connected, audio flowing,
-  // but no data 65s+) used to leave the app dead until manual ZAP.
-  // v4.136.0: "silent" now means Deepgram sent NOTHING for 65s+ — empty
-  // keepalive Results during dead air count as life, so a quiet stretch no
-  // longer triggers pointless reconnects (and call-detect being off can't
-  // freeze the clock into a Zap loop). The recorder must also still be
-  // sending audio; a dead recorder is the watchdog's failure, not Zap's.
+  // but no data) used to leave the app dead until manual ZAP.
+  // v4.136.0: "silent" means Deepgram sent NOTHING — empty keepalive Results
+  // during dead air count as life, so a quiet stretch can't trigger reconnects.
+  // v4.148.1: 65s → 35s. The clock is trustworthy now and the recorder-must-
+  // still-be-sending + 120s-cooldown guards stay, so the loop risk that sized
+  // the old 65s wait is gone. Rules are the pure, tested shouldAutoZap().
   const lastAutoZapAtRef = useRef(0);
   useEffect(() => {
     if (!isActive || connectionState !== "connected") return undefined;
     const t = setInterval(() => {
+      const now = Date.now();
       const lastMsgAt = connectFlagsRef.current.lastDeepgramMessageAt || 0;
-      if (lastMsgAt && Date.now() - lastMsgAt < 65000) return;
-      if (Date.now() - (lastAudioProgressAtRef.current || 0) > 15000) return;
-      if (Date.now() - lastAutoZapAtRef.current < 120000) return;
-      lastAutoZapAtRef.current = Date.now();
-      critLog("warn", "auto reconnectStream: no Deepgram data for 65s+");
+      if (
+        !shouldAutoZap({
+          msgAgeMs: lastMsgAt ? now - lastMsgAt : Infinity,
+          audioProgressAgeMs: now - (lastAudioProgressAtRef.current || 0),
+          sinceLastZapMs: now - lastAutoZapAtRef.current,
+        })
+      ) {
+        return;
+      }
+      lastAutoZapAtRef.current = now;
+      critLog("warn", "auto reconnectStream: no Deepgram message for 35s+");
       reconnectStream();
     }, 5000);
     return () => clearInterval(t);
