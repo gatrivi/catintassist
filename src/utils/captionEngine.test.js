@@ -512,7 +512,7 @@ describe("captionEngine", () => {
       expect(rows.every((r) => !r.enFinalized)).toBe(true);
     });
 
-    test("digit runs survive a restart: never dropped, never doubled inside a row", () => {
+    test("digit runs VETO a restart split: the number stays in one line", () => {
       const ctx = makeCtx();
       const base = "the number is 555 123 4567 and";
       const restart = "the number is 555 123 4567 and I will call you back";
@@ -528,13 +528,36 @@ describe("captionEngine", () => {
         ctx,
       );
 
-      const perRowDigitRuns = textsOf(rows).map(
-        (t) => (t.replace(/\D/g, "").match(/5551234567/g) || []).length,
+      // v4.146.0: digits at the boundary veto the split — the re-cut appends in
+      // place so the per-bubble display stitch can still group the full run.
+      // Nothing is deleted: both delivered copies stay on screen in ONE line
+      // (the repeated-word net dims the second copy; it never deletes).
+      expect(rows).toHaveLength(1);
+      const joined = textsOf(rows).join(" ").replace(/\D/g, "");
+      expect(joined).toBe("55512345675551234567");
+    });
+
+    test("phone dictation re-cut (number WORDS) never splits the run across bubbles", () => {
+      const ctx = makeCtx();
+      let rows = reduceTranscriptEvent(
+        [],
+        makeEvent({ transcript: "my number is five five five one", isFinal: true, now: t0, isSilentBreak: true }),
+        ctx,
       );
-      // Once per delivered copy, never twice in the same line.
-      expect(perRowDigitRuns.filter((n) => n > 0)).toHaveLength(2);
-      perRowDigitRuns.forEach((n) => expect(n).toBeLessThanOrEqual(1));
-      expect(textsOf(rows).join(" ").replace(/\D/g, "")).toContain("5551234567");
+      rows = reduceTranscriptEvent(
+        rows,
+        makeEvent({
+          transcript: "five five five one two three four five six seven",
+          startTime: 12,
+          now: t0 + 1500,
+          isSilentBreak: false,
+        }),
+        ctx,
+      );
+      // Without the v4.146.0 veto the 4-word restated head ("five five five
+      // one") split the dictation into two bubbles and neither could group.
+      expect(rows).toHaveLength(1);
+      expect(textsOf(rows)[0]).toContain("five five five one two three four five six seven");
     });
 
     test("suffix repeats the overlap guard already cleans are NOT split", () => {

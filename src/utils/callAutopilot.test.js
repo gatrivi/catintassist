@@ -1,9 +1,11 @@
 import {
   DEFAULT_START_PHRASES,
   DEFAULT_END_PHRASES,
+  DEFAULT_FAREWELL_PHRASES,
   AUTOPILOT_MIN_CALL_SECS,
   matchCallStartPhrase,
   matchCallEndPhrase,
+  matchFarewellPhrase,
   canAutopilotStart,
   canAutopilotEnd,
   phrasesToText,
@@ -39,6 +41,22 @@ describe('callAutopilot phrase matching', () => {
 
   test('end phrase absent → null', () => {
     expect(matchCallEndPhrase('my name is María, how are you', phrases)).toBeNull();
+  });
+
+  // v4.146.0: farewell matcher drives the silence-gated auto-end (SessionContext
+  // armAutopilotFarewell) — these are the phrases real calls actually end with.
+  test('farewell phrase matches human goodbyes', () => {
+    expect(matchFarewellPhrase('alright, thank you for your help today', phrases)).toBe('thank you for your help');
+    expect(matchFarewellPhrase('OKAY HAVE A GOOD DAY', phrases)).toBe('have a good day');
+    expect(matchFarewellPhrase('take care, bye', phrases)).toBe('take care');
+  });
+
+  test('farewell absent / mid-call probes do not arm', () => {
+    expect(matchFarewellPhrase('the patient has a fever of 101', phrases)).toBeNull();
+    // "good day" alone is not a farewell — needs the full phrase
+    expect(matchFarewellPhrase('it is a good day for a walk', phrases)).toBeNull();
+    expect(matchFarewellPhrase('', phrases)).toBeNull();
+    expect((phrases.farewell || DEFAULT_FAREWELL_PHRASES).length).toBeGreaterThan(0);
   });
 });
 

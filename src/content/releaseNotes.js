@@ -25,6 +25,32 @@ import { APP_VERSION } from '../constants/version';
 /** Newest first. Only the entry matching APP_VERSION is shown on load. */
 export const RELEASE_NOTES_CATALOG = [
   {
+    version: '4.146.1',
+    id: 'disconnect-autodetect-farewell',
+    highlightElementIds: ['header-autopilot-chip'],
+    es: {
+      title: '🤖 La llamada cuelga sola: despedidas detectadas + números protegidos de nuevo',
+      intro: 'Dos arreglos. (1) El auto-fin por despedida humana ("have a good day") existía en papel pero nunca se conectó al transcript — ahora sí: tras 2 min de silencio abre el aviso cancelable de 10 s. (2) El protector de teléfonos: un corte nuevo de burbujas (v4.141.0) partía el número dictado en dos burbujas y ya no se agrupaba 555-123-4567 — ahora los números vetan ese corte.',
+      sections: [{ heading: 'Qué cambió', bullets: [
+        'Despedida ("thank you", "have a good day", "take care") + 2 min sin voz → aviso "Auto-end in 10s" cancelable. Cualquier voz lo anula.',
+        'El chip 🤖 AUTO se pone ámbar (🤖 END⏳) mientras la despedida está armada.',
+        'Teléfonos/IDs dictados ya no se parten entre burbujas: la agrupación 555-123-4567 vuelve a funcionar.',
+        'Requiere el toggle de Autopilot (Settings → Behavior) para el auto-fin.',
+      ] }],
+    },
+    en: {
+      title: '🤖 Calls hang up on their own: farewell detection + phone protector restored',
+      intro: 'Two fixes. (1) The human-farewell auto-end ("have a good day") existed on paper but was never wired to the transcript — now it is: after 2 min of silence the 10s cancellable banner opens. (2) Phone protector: a new bubble split (v4.141.0) was cutting dictated numbers across two bubbles so 555-123-4567 never grouped — digits now veto that split.',
+      sections: [{ heading: 'What changed', bullets: [
+        'Farewell ("thank you", "have a good day", "take care") + 2 min of no speech → cancellable "Auto-end in 10s" banner. Any speech cancels it.',
+        'The 🤖 AUTO chip turns amber (🤖 END⏳) while a farewell is armed.',
+        'Dictated phones/IDs no longer split across bubbles: 555-123-4567 grouping works again.',
+        'Auto-end needs the Autopilot toggle (Settings → Behavior).',
+      ] }],
+    },
+  },
+
+  {
     version: '4.145.0',
     id: 'sticky-bottom-follow',
     highlightElementIds: ['transcript-pane', 'sticky-bottom-toggle'],

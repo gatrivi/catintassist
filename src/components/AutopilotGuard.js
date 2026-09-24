@@ -110,12 +110,14 @@ export const AutopilotGuard = ({ onStopAudio }) => {
 };
 
 export const AutopilotChip = () => {
-  const { callAutopilot, autopilotEvent } = useSession();
+  const { callAutopilot, autopilotEvent, autopilotFarewellAt } = useSession();
   if (!callAutopilot) return null;
   return (
     <span
       id="header-autopilot-chip"
-      title={`Call Autopilot armed — ring/bridge phrase starts, disconnect phrase ends (10s cancellable).${autopilotEvent ? ` Last: ${autopilotEvent}` : ''}`}
+      title={autopilotFarewellAt
+        ? `🤖 Farewell heard — auto-ends after 2 min of silence; any speech cancels.${autopilotEvent ? ` Last: ${autopilotEvent}` : ''}`
+        : `Call Autopilot armed — ring/bridge phrase starts, disconnect phrase or a farewell + 2 min silence ends (10s cancellable).${autopilotEvent ? ` Last: ${autopilotEvent}` : ''}`}
       style={{
         display: 'inline-flex',
         alignItems: 'center',
@@ -123,16 +125,16 @@ export const AutopilotChip = () => {
         marginLeft: '4px',
         padding: '2px 7px',
         borderRadius: '999px',
-        background: 'rgba(16, 185, 129, 0.16)',
-        border: '1px solid rgba(16, 185, 129, 0.4)',
-        color: '#6ee7b7',
+        background: autopilotFarewellAt ? 'rgba(245, 158, 11, 0.18)' : 'rgba(16, 185, 129, 0.16)',
+        border: `1px solid ${autopilotFarewellAt ? 'rgba(245, 158, 11, 0.45)' : 'rgba(16, 185, 129, 0.4)'}`,
+        color: autopilotFarewellAt ? '#fbbf24' : '#6ee7b7',
         fontSize: '0.62rem',
         fontWeight: 900,
         letterSpacing: '0.04em',
         cursor: 'default',
       }}
     >
-      🤖 AUTO
+      {autopilotFarewellAt ? '🤖 END⏳' : '🤖 AUTO'}
     </span>
   );
 };

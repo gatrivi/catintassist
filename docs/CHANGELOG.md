@@ -2,6 +2,10 @@
 
 **Version source:** `src/constants/version.js` (must match `package.json` + top-right UI pill)
 
+## v4.146.1 - actually ship the v4.146.0 code
+
+- The v4.146.0 deploy carried only the version bump + this changelog entry (a concurrent commit swept up docs mid-edit). This release ships the actual fix: `SessionContext.js`, `useDeepgram.js`, `AutopilotGuard.js`, `captionEngine.js` (+ tests).
+
 ## v4.146.0 - call disconnect autodetect: farewell auto-end was never wired
 
 - Reported: "call disconnect autodetect is not working."
@@ -9,6 +13,7 @@
 - Fix: `useDeepgram` now checks farewell phrases on final transcripts → `SessionContext.armAutopilotFarewell()` arms a flag → after **120s of no speech** the standard 10s cancellable auto-end banner opens (`requestAutopilotEnd`). Any speech in the window resets it (ER-incident rule: a farewell mid-conversation never cuts a live call). STOP / auto-start / call end clear the arm.
 - UI: header 🤖 AUTO chip turns amber **🤖 END⏳** while a farewell is armed (hover explains: 2 min silence → auto-end, speech cancels).
 - Still requires the autopilot toggle (Settings → Behavior). Tests: farewell matcher cases in `callAutopilot.test.js`.
+- **Phone number protector (second report):** the v4.141.0 restart-split had **no digit exemption** (unlike the overlap guard above it). Deepgram re-cuts during phone/ID dictation ("…five five five one" finalized, then "five five five one two three…" re-delivered) fired the split and scattered the run across bubbles — the per-bubble display stitch could never group it into `XXX-XXX-XXXX`. Fix: a digit run (≥2 digits; ordinals like "1st" don't count) or ≥2 consecutive number-words at the boundary vetoes the split, so the dictation stays in ONE line where `collapseAdjacentDigitRepeats` + stitch heal it. Nothing is deleted — this only changes routing. Tests: rewritten digit-veto case + new number-word dictation re-cut case in `captionEngine.test.js`.
 
 
 ## v4.145.0 - sticky bottom always shows the newest line (interpreter-blocking)

@@ -9,6 +9,7 @@ import {
 import {
   hallucinationGuard,
   removeOverlapPreservingDigitSequences,
+  isNumberLike,
 } from "./sensitiveDataProtector";
 import { armExpectedData } from "./expectedDataContext";
 import {
@@ -93,6 +94,31 @@ export const normalizeWordConfidence = (words = []) =>
     .filter((w) => w.word);
 
 const wordCount = (text) => (text || "").trim().split(/\s+/).filter(Boolean).length;
+
+// v4.146.0 — digit veto for the restart split. Phone/ID dictation is
+// constantly re-cut by Deepgram (a pause mid-number finalizes, then the next
+// segment re-states the first digits). Splitting there scatters the run
+// across bubbles, and the display stitch (per-bubble) can never group it into
+// XXX-XXX-XXXX — the "phone number protector is not working" report. Mirrors
+// the overlap guard's rule: digits (or a run of ≥2 number-words) at the
+// boundary keep everything in ONE line; `collapseAdjacentDigitRepeats` +
+// stitch heal the straddle dupe at display time. Nothing is deleted either
+// way — this only decides routing.
+const restartBoundaryHasNumbers = (base, addition) => {
+  const window = `${(base || "").split(/\s+/).slice(-10).join(" ")} ${(addition || "")
+    .split(/\s+/)
+    .slice(0, 10)
+    .join(" ")}`;
+  // A digit RUN (>=2 digits, separators ok) — single ordinals like "1st" are
+  // prose and must NOT veto the split (they ride along in normal restarts).
+  if (/\d[\d\s.,/-]*\d/.test(window)) return true;
+  let run = 0;
+  for (const w of window.split(/\s+/).filter(Boolean)) {
+    run = isNumberLike(w) ? run + 1 : 0;
+    if (run >= 2) return true;
+  }
+  return false;
+};
 
 const sliceWordConfidenceForText = (wordConfidence, text, offset = 0) => {
   if (!wordConfidence?.length || !text?.trim()) return [];
@@ -334,7 +360,7 @@ export const reduceTranscriptEvent = (prev, event, ctx) => {
   // deleted here: the finalized row keeps every word, the restart gets its own
   // bubble below it (same primitive as the sentence-boundary split).
   const restatedWords =
-    !startsAfterPeriod && !guardStripped
+    !startsAfterPeriod && !guardStripped && !restartBoundaryHasNumbers(laneFinalized, transcript)
       ? restatedHeadWindow(laneFinalized, transcript)
       : 0;
   if (restatedWords > 0) {

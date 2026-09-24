@@ -933,6 +933,14 @@ export const SessionProvider = ({ children }) => {
     setAutopilotEndsAt(at);
   }, []);
 
+  // v4.146.0: human farewell heard — arms a silence-gated auto-end. The
+  // matcher/spec shipped v4.132.0 but the transcript→arm wiring was never
+  // connected, so farewells ("thank you, have a good day") never ended a
+  // call. Any speech resets the window (callLastSpeechAtRef); firing opens
+  // the same 10s cancellable banner as a platform disconnect phrase.
+  const [autopilotFarewellAt, setAutopilotFarewellAt] = useState(0);
+  const autopilotFarewellAtRef = useRef(0);
+
   const tryAutopilotStart = useCallback(() => {
     const ok = canAutopilotStart({
       enabled: callAutopilotRef.current,
@@ -942,6 +950,8 @@ export const SessionProvider = ({ children }) => {
     });
     if (!ok) return false;
     setAutopilotDeadline(0); // a fresh call cancels any dangling end countdown
+    autopilotFarewellAtRef.current = 0; // …and any armed farewell (v4.146.0)
+    setAutopilotFarewellAt(0);
     startSessionRef.current(false);
     setAutopilotEvent(`auto-START · ${new Date().toLocaleTimeString()}`);
     return true;
@@ -977,6 +987,31 @@ export const SessionProvider = ({ children }) => {
     setAutopilotEvent(`auto-END fired · ${new Date().toLocaleTimeString()}`);
     return true;
   }, [setAutopilotDeadline]);
+
+  /** v4.146.0: farewell phrase heard → arm the silence-gated auto-end. */
+  const armAutopilotFarewell = useCallback(() => {
+    if (!callAutopilotRef.current || !isActiveStateRef.current) return false;
+    if (autopilotEndsAtRef.current || autopilotFarewellAtRef.current) return true; // already ending/armed
+    autopilotFarewellAtRef.current = Date.now();
+    setAutopilotFarewellAt(autopilotFarewellAtRef.current);
+    setAutopilotEvent(`farewell heard · ${new Date().toLocaleTimeString()}`);
+    return true;
+  }, []);
+
+  // Farewell armed → wait AUTOPILOT_FAREWELL_SILENCE_MS of NO speech, then
+  // open the standard 10s cancellable end countdown. notifySpeechDuringCall
+  // keeps callLastSpeechAtRef fresh, so any speech in the window pushes the
+  // fire time forward (a farewell mid-conversation never cuts a live call).
+  useEffect(() => {
+    if (!autopilotFarewellAt) return undefined;
+    const iv = setInterval(() => {
+      if (Date.now() - callLastSpeechAtRef.current < AUTOPILOT_FAREWELL_SILENCE_MS) return;
+      autopilotFarewellAtRef.current = 0;
+      setAutopilotFarewellAt(0);
+      requestAutopilotEnd();
+    }, 2000);
+    return () => clearInterval(iv);
+  }, [autopilotFarewellAt, requestAutopilotEnd]);
   // ────────────────────────────────────────────────────────────────────────
 
   // TERMINAR LLAMADA: Guardamos los minutos que trabajamos para no perderlos.
@@ -984,6 +1019,10 @@ export const SessionProvider = ({ children }) => {
     setIsActive(false);
     // Clear revenant/re-attach gate — STOP must not leave zombie banner/capture gate.
     clearZombieState();
+    // v4.146.0: STOP also clears an armed farewell / pending end countdown.
+    autopilotFarewellAtRef.current = 0;
+    setAutopilotFarewellAt(0);
+    setAutopilotDeadline(0);
     const summary = extractCallSummary(captionsRef.current);
     // v4.99.2: flag calls that will bank wall-clock (no STT speech, ≥60s).
     const bankedNoStt = !callHadSpeechRef.current && sessionSeconds >= 60;
@@ -1477,6 +1516,8 @@ export const SessionProvider = ({ children }) => {
     consumeAutopilotEnd,
     autopilotEndsAt,
     autopilotEvent,
+    armAutopilotFarewell,
+    autopilotFarewellAt,
     notifySpeechDuringCall,
     lastSilenceDeductionMins,
     vaultStatus,

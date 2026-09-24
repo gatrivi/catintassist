@@ -66,6 +66,7 @@ import {
 import {
   matchCallStartPhrase,
   matchCallEndPhrase,
+  matchFarewellPhrase,
   loadAutopilotPhrases,
 } from "../utils/callAutopilot";
 import { matchHoldPhrase } from "../utils/holdPhrases";
@@ -137,6 +138,7 @@ export const useDeepgram = () => {
     trySpeechAutoStart,
     tryAutopilotStart,
     requestAutopilotEnd,
+    armAutopilotFarewell,
     callAutopilotRef,
     speechAutoConnect,
   } = useSession();
@@ -1203,11 +1205,16 @@ export const useDeepgram = () => {
               shouldCaptureCaptionsRef.current = true;
               notifySpeechDuringCall();
             }
-          } else if (
-            (isFinal || speechFinal) &&
-            matchCallEndPhrase(lowTrans, loadAutopilotPhrases())
-          ) {
-            requestAutopilotEnd();
+          } else if (isFinal || speechFinal) {
+            const phrases = loadAutopilotPhrases();
+            if (matchCallEndPhrase(lowTrans, phrases)) {
+              requestAutopilotEnd();
+            } else if (matchFarewellPhrase(lowTrans, phrases)) {
+              // v4.146.0: human farewell ("have a good day") arms the
+              // silence-gated auto-end — 120s of no speech → the same 10s
+              // cancellable banner. Any speech in the window cancels it.
+              armAutopilotFarewell();
+            }
           }
 
           const now = Date.now();
