@@ -14,7 +14,7 @@ import {
   useComponentVisibilityRefresh,
 } from '../utils/componentVisibility';
 import { APP_VERSION } from '../constants/version';
-import { dgStatus } from '../utils/dgStatus';
+import { dgStatus, isSocketHealthy } from '../utils/dgStatus';
 
 const dotColor = (state) => {
   if (state === 'ok') return '#10b981';
@@ -209,7 +209,9 @@ export const AudioRouteStatusBar = ({
   // keepalives during dead air count as life), seeded fresh at every connect.
   // Zero timestamps = nothing known yet → can read QUIET/STUCK, never TEXT ✓.
   const enOk = connectProgress?.socketEn === 'open';
-  const esOk = connectProgress?.socketEs === 'open';
+  // v4.148.0: 'skipped' is healthy (Multilingual auto-detect = one socket) —
+  // it used to read as a lost ES socket → instant red "DG STUCK" while text flowed.
+  const esOk = isSocketHealthy(connectProgress?.socketEs);
   const dg = dgStatus({
     connectionState,
     isActive,

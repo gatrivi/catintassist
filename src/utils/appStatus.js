@@ -1,4 +1,6 @@
 /** One-glance cat status. Kept conservative: silence is not an outage. */
+import { isSocketHealthy } from './dgStatus';
+
 export const getAppStatus = ({
   isActive = false,
   isZombieCall = false,
@@ -15,7 +17,9 @@ export const getAppStatus = ({
     return { tone: 'warn', label: 'Audio needs attention', title: 'Cat is amber: reconnect or choose TAB/VB.' };
   }
   if (isActive && connectionState === 'connected') {
-    const bothSocketsOpen = connectProgress.socketEn === 'open' && connectProgress.socketEs === 'open';
+    // v4.148.0: 'skipped' (Multilingual single-socket) counts as open.
+    const bothSocketsOpen =
+      isSocketHealthy(connectProgress.socketEn) && isSocketHealthy(connectProgress.socketEs);
     return bothSocketsOpen
       ? { tone: 'live', label: 'STT live', title: 'Cat is green: audio and both Deepgram lanes are live.' }
       : { tone: 'warn', label: 'STT checking', title: 'Cat is amber: call is active but STT is still checking.' };

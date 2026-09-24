@@ -5,6 +5,10 @@ describe('getAppStatus', () => {
     expect(getAppStatus({ isActive: true, connectionState: 'connected', connectProgress: { socketEn: 'open', socketEs: 'open' } }).tone).toBe('live');
   });
 
+  test("Multilingual single-socket mode ('skipped') counts as live — v4.148.0", () => {
+    expect(getAppStatus({ isActive: true, connectionState: 'connected', connectProgress: { socketEn: 'open', socketEs: 'skipped' } }).tone).toBe('live');
+  });
+
   test('shows red for an STT error and never treats silence as an outage', () => {
     expect(getAppStatus({ isActive: true, connectionState: 'error' }).tone).toBe('error');
     expect(getAppStatus({ isActive: true, connectionState: 'connected' }).tone).toBe('warn');

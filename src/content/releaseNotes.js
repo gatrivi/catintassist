@@ -25,6 +25,58 @@ import { APP_VERSION } from '../constants/version';
 /** Newest first. Only the entry matching APP_VERSION is shown on load. */
 export const RELEASE_NOTES_CATALOG = [
   {
+    version: '4.148.0',
+    id: 'stt-evidence-inspector',
+    highlightElementIds: ['header-hold-btn'],
+    es: {
+      title: 'Inspector de voz + contador visible de espera',
+      intro: 'Diagnóstico opcional para encontrar exactamente dónde se pierde una transcripción, sin guardar audio ni texto en disco.',
+      sections: [{ heading: 'Qué cambió', bullets: [
+        'Settings → Audio → Admin STT diagnostics activa el rastro y, si hace falta, los últimos 60 segundos de audio local.',
+        'Ctrl+Alt+D abre IDs, horas, confianza, texto original y texto visible de cada burbuja.',
+        'El audio y el rastro quedan solo en memoria durante la llamada y se borran al detenerla.',
+        'Si Deepgram no responde tras CONNECT, la app se reconecta sola en ~12s (antes: 60s en rojo y Zap manual).',
+        'Modo Multilingüe: ya no marca "DG STUCK" en rojo — usa un solo socket y eso ya no cuenta como falla.',
+        'El botón de espera ahora muestra H 00:42 y el tiempo transcurrido.',
+      ] }],
+    },
+    en: {
+      title: 'Speech evidence inspector + visible hold counter',
+      intro: 'Optional diagnostics for finding exactly where a transcription disappears, without saving audio or text to disk.',
+      sections: [{ heading: 'What changed', bullets: [
+        'Settings → Audio → Admin STT diagnostics enables the trace and, when needed, the last 60 seconds of local audio.',
+        'Ctrl+Alt+D opens IDs, timestamps, confidence, raw text, and visible text for each bubble.',
+        'Audio and traces stay in memory during the call and are wiped on STOP.',
+        'If Deepgram goes silent after CONNECT, the app now reconnects itself in ~12s (before: 60s red + manual Zap).',
+        'Multilingual mode no longer shows a false red "DG STUCK" — one socket is normal there.',
+        'The hold button now shows H 00:42 with elapsed time.',
+      ] }],
+    },
+  },
+  {
+    version: '4.147.0',
+    id: 'calm-hold-detector',
+    highlightElementIds: ['header-hold-btn'],
+    es: {
+      title: 'El modo estudio ya no interrumpe por pausas cortas',
+      intro: 'El detector de espera ahora exige 30 segundos completos de silencio después de una frase de espera.',
+      sections: [{ heading: 'Qué cambió', bullets: [
+        'La ventana de espera pasó de 3 a 30 segundos de silencio continuo.',
+        'Cualquier voz posterior y segura cancela una frase de espera antigua.',
+        'La intención permanece activa durante 60 segundos y la voz aún reanuda inmediatamente.',
+      ] }],
+    },
+    en: {
+      title: 'Study mode no longer interrupts for short pauses',
+      intro: 'Hold detection now requires 30 full seconds of silence after a hold phrase.',
+      sections: [{ heading: 'What changed', bullets: [
+        'The hold wait increased from 3 to 30 seconds of continuous silence.',
+        'Any later confident, non-hold speech cancels an old hold phrase.',
+        'Intent stays valid for 60 seconds, and speech still resumes immediately.',
+      ] }],
+    },
+  },
+  {
     version: '4.146.1',
     id: 'disconnect-autodetect-farewell',
     highlightElementIds: ['header-autopilot-chip'],

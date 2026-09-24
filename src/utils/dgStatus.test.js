@@ -1,5 +1,8 @@
 import {
   dgStatus,
+  connectStallVerdict,
+  isSocketHealthy,
+  CONNECT_STALL_MAX_RETRIES,
   DG_FRESH_TEXT_MS,
   DG_QUIET_MS,
   DG_STUCK_MS,
@@ -67,5 +70,43 @@ describe('dgStatus truthful chip flags (v4.136.0)', () => {
     expect(connecting.quiet).toBe(false);
     expect(errored.stuck).toBe(false);
     expect(errored.quiet).toBe(false);
+  });
+});
+
+describe('connectStallVerdict — 12s watchdog (v4.148.0)', () => {
+  it('stands down once Deepgram sent anything (even just Metadata)', () => {
+    expect(connectStallVerdict({ audioChunksSent: true, gotDgMessage: true })).toBe('ok');
+  });
+
+  it('stands down once a transcript already flowed', () => {
+    expect(connectStallVerdict({ audioChunksSent: false, transcriptReceived: true })).toBe('ok');
+  });
+
+  it('fails with the no-audio guidance when audio never reached Deepgram', () => {
+    expect(connectStallVerdict({ audioChunksSent: false, gotDgMessage: false })).toBe('fail-no-audio');
+  });
+
+  it('reconnects while budget remains when audio flows but Deepgram is mute', () => {
+    expect(
+      connectStallVerdict({ audioChunksSent: true, gotDgMessage: false, retriesLeft: CONNECT_STALL_MAX_RETRIES })
+    ).toBe('stall-reconnect');
+    expect(connectStallVerdict({ audioChunksSent: true, gotDgMessage: false, retriesLeft: 1 })).toBe('stall-reconnect');
+  });
+
+  it('hard-fails when the retry budget is spent', () => {
+    expect(connectStallVerdict({ audioChunksSent: true, gotDgMessage: false, retriesLeft: 0 })).toBe('fail-silent');
+  });
+});
+
+describe("isSocketHealthy — 'skipped' (Multilingual single-socket) is healthy (v4.148.0)", () => {
+  it.each([
+    ['open', true],
+    ['skipped', true],
+    ['connecting', false],
+    ['pending', false],
+    ['error', false],
+    [undefined, false],
+  ])('socketEs=%s → %s', (state, expected) => {
+    expect(isSocketHealthy(state)).toBe(expected);
   });
 });

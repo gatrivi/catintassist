@@ -158,6 +158,7 @@ export const captionsSnapshotEqual = (a, b) => {
     if (x?.text !== y?.text) return false;
     if (x?.isFinal !== y?.isFinal) return false;
     if (x?.tailPreviewText !== y?.tailPreviewText) return false;
+    if (x?.sttEventId !== y?.sttEventId) return false;
     if (wordConfidenceKey(x?.wordConfidence) !== wordConfidenceKey(y?.wordConfidence)) return false;
   }
   return true;

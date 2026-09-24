@@ -46,3 +46,39 @@ export function dgStatus({
   const quiet = inCall && !stuck && socketsOk && msgAge > DG_QUIET_MS;
   return { inCall, freshText, quiet, stuck };
 }
+
+/** Max auto-reconnects the connect watchdog will spend on a dead pipe before
+ * hard-failing with an actionable message. v4.148.0. */
+export const CONNECT_STALL_MAX_RETRIES = 3;
+
+/**
+ * A socket state is healthy when opened — or intentionally not opened:
+ * Multilingual (auto-detect) mode runs ONE socket and marks the other
+ * 'skipped' (useDeepgram tryStartStreaming). 'skipped' used to read as a
+ * lost socket → instant red "DG STUCK" / amber cat on every connect.
+ */
+export const isSocketHealthy = (state) => state === 'open' || state === 'skipped';
+
+/**
+ * v4.148.0 — verdict for the 12s connect watchdog. The old watchdog stood down
+ * the moment audio was being sent, so "Deepgram accepted the socket but never
+ * sent ANYTHING (not even startup Metadata)" sat 'connected' until the 60s red
+ * chip and a manual Zap — the first minute of a call lost. Audio flowing +
+ * zero Deepgram messages back = dead pipe; recover within 12s instead.
+ *
+ * Returns:
+ *   'ok'             — Deepgram proved alive (any message) or text already flowed.
+ *   'fail-no-audio'  — audio never reached Deepgram (existing TIMEOUT guidance).
+ *   'stall-reconnect'— audio sent, Deepgram mute, retries left → auto reconnect.
+ *   'fail-silent'    — same stall but retry budget spent → hard fail.
+ */
+export function connectStallVerdict({
+  audioChunksSent = false,
+  transcriptReceived = false,
+  gotDgMessage = false,
+  retriesLeft = 0,
+} = {}) {
+  if (transcriptReceived || gotDgMessage) return 'ok';
+  if (!audioChunksSent) return 'fail-no-audio';
+  return retriesLeft > 0 ? 'stall-reconnect' : 'fail-silent';
+}

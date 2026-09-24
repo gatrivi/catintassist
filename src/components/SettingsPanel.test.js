@@ -1,5 +1,5 @@
 import React from 'react';
-import { render, screen } from '@testing-library/react';
+import { fireEvent, render, screen } from '@testing-library/react';
 import SettingsPanel from './SettingsPanel';
 
 // v4.132.0: the MIC VERIFY chip left the off-call header row
@@ -82,9 +82,21 @@ describe('SettingsPanel → Audio: MIC VERIFY chip (v4.132.0)', () => {
     renderAudioSection();
 
     expect(document.querySelector('.mic-verify-chip')).toBeNull();
-    // Label stays on purpose: the row explains where the verdict comes from
-    // instead of silently vanishing (the chip itself returns null).
     expect(screen.getByText(/Client mic — last MIC VERIFY verdict/)).toBeInTheDocument();
     expect(screen.getByText(/Full MIC VERIFY panel stays in the idle pane/)).toBeInTheDocument();
+  });
+
+  test('admin STT trace and audio ring default off and toggle explicitly', () => {
+    renderAudioSection();
+    const trace = screen.getByRole('button', { name: /Trace: OFF/i });
+    const audio = screen.getByRole('button', { name: /Last 60s audio: OFF/i });
+    expect(trace).toHaveAttribute('aria-pressed', 'false');
+    expect(audio).toHaveAttribute('aria-pressed', 'false');
+
+    fireEvent.click(trace);
+    fireEvent.click(audio);
+
+    expect(screen.getByRole('button', { name: /Trace: ON/i })).toHaveAttribute('aria-pressed', 'true');
+    expect(screen.getByRole('button', { name: /Last 60s audio: ON/i })).toHaveAttribute('aria-pressed', 'true');
   });
 });

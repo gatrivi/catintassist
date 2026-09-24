@@ -2,6 +2,21 @@
 
 **Version source:** `src/constants/version.js` (must match `package.json` + top-right UI pill)
 
+## v4.148.0 - STT evidence inspector + visible hold counter + CONNECT no longer goes "stuck"
+
+- **CONNECT reliability (reported: red "DG STUCK" right after connect, manual Zap needed, intake info missed):** the 12s connect watchdog stood down the moment audio was being sent, so "Deepgram accepted the socket but never sent ANYTHING (not even startup Metadata)" sat `connected` until the 60s red chip and a manual Zap — about a minute of the call lost. Now a dead pipe is detected within 12s and sockets auto-rebuild (status: "Deepgram not responding — reconnecting…", 3-try budget, then an actionable timeout). Deepgram answering once (any message, incl. Metadata) stands the watchdog down; mid-call stalls still use the 65s auto-Zap (v4.136 tuning untouched). Verdict logic is the pure, unit-tested `connectStallVerdict()` in `dgStatus.js`.
+- **Multilingual false red:** Multilingual (auto-detect) mode runs ONE Deepgram socket (`socketEs: "skipped"`), but every health surface required `=== 'open'` — the DG chip read red "DG STUCK" and the cat read amber "STT checking" on every connect while text flowed. New shared `isSocketHealthy()` accepts `'open'` and `'skipped'`; used by the DG status chip, the cat status, and the connect diagnostics checklist.
+- Settings → Audio → Admin STT diagnostics: optional raw Deepgram trace and last-60-seconds local audio ring, both off by default and opened with `Ctrl+Alt+D`.
+- Every diagnostic event now has a stable session/event ID shared with CAT STT logs, provider and wall-clock timestamps, confidence/final state, linked caption IDs, and raw→visible text for phone-loss diagnosis.
+- Diagnostic transcript/audio data remains memory-only, is bounded, and is wiped on STOP; a visible `STT AUDIO REC` indicator appears while enabled audio is retained.
+- Active hold button now shows `H 00:42` instead of only `H`.
+
+## v4.147.0 - calmer hold detector
+
+- Study mode now requires a hold phrase plus **30 seconds of continuous silence**, instead of firing after 3 seconds.
+- Any later confident, non-hold speech clears the armed intent, so an old “one moment” cannot fire after the conversation continues.
+- Hold intent remains valid for 60 seconds; speech still resumes hold immediately.
+
 ## v4.146.1 - actually ship the v4.146.0 code
 
 - The v4.146.0 deploy carried only the version bump + this changelog entry (a concurrent commit swept up docs mid-edit). This release ships the actual fix: `SessionContext.js`, `useDeepgram.js`, `AutopilotGuard.js`, `captionEngine.js` (+ tests).

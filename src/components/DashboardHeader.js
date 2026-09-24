@@ -537,7 +537,7 @@ const SessionControlsSticky = React.memo(({
               <ElementHintTarget
                 elementId="header-hold-btn"
                 heading="Hold"
-                body="Pause interpretation without ending the call. Shows H when hold is active."
+                body="Pause interpretation without ending the call. Shows elapsed hold time when active."
                 color="#f59e0b"
               >
                 <button

@@ -7,13 +7,14 @@ describe('HoldReadout (HUD end of hold counter)', () => {
     expect(container).toBeEmptyDOMElement();
   });
 
-  it('shows H only while on hold (uniform icon cell; time in aria)', () => {
+  it('shows H and elapsed time while on hold', () => {
     render(<HoldReadout isHold holdSeconds={0} />);
-    expect(screen.getByText('H')).toBeInTheDocument();
+    expect(screen.getByText('H 00:00')).toBeInTheDocument();
   });
 
   it('formats 95s as H 01:35', () => {
     render(<HoldReadout isHold holdSeconds={95} />);
+    expect(screen.getByText('H 01:35')).toBeInTheDocument();
     expect(screen.getByLabelText(/on hold 01:35 elapsed/i)).toBeInTheDocument();
   });
 

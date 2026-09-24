@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { FAILURE } from '../utils/deepgramDiagnostics';
 import { getDeepgramKeyInfo } from '../utils/deepgramRuntimeKey';
+import { isSocketHealthy } from '../utils/dgStatus';
 
 const mk = (done, active, failed) => {
   // Important: failure must not look like "the whole app is useless".
@@ -69,8 +70,9 @@ export const ConnectionDiagnosticsBar = ({
   if (!shouldShowAnything) return null;
 
   const step1 = keyResolved;
-  const step2a = s.socketEn === 'open';
-  const step2b = s.socketEs === 'open';
+  // v4.148.0: 'skipped' (Multilingual single-socket) counts as open.
+  const step2a = isSocketHealthy(s.socketEn);
+  const step2b = isSocketHealthy(s.socketEs);
   const step3 = !!s.audioStreamReady;
   const step4 = !!s.audioChunksSent;
   const step5 = !!s.transcriptReceived;

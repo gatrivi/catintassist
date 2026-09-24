@@ -50,6 +50,11 @@ import {
   saveSttLatencyMode,
 } from '../utils/deepgramListenConfig';
 import {
+  STT_DIAGNOSTIC_SETTINGS_CHANGED_EVENT,
+  readSttDiagnosticSettings,
+  setSttDiagnosticSettings,
+} from '../utils/sttDiagnosticTrace';
+import {
   INSPECTOR_CHANGED_EVENT,
   readInspectorEnabled,
   setInspectorEnabled,
@@ -83,6 +88,7 @@ export default function SettingsPanel({
   const [themeStatus, setThemeStatus] = useState('');
   const [languagePair, setLanguagePair] = useState(loadLanguagePair);
   const [sttLatencyMode, setSttLatencyMode] = useState(loadSttLatencyMode);
+  const [sttDiagnostics, setSttDiagnostics] = useState(readSttDiagnosticSettings);
   const [inspectorOn, setInspectorOn] = useState(readInspectorEnabled);
   const {
     currentSourceMode,
@@ -142,11 +148,14 @@ export default function SettingsPanel({
     const onInspectorChange = (e) => setInspectorOn(
       typeof e?.detail?.enabled === 'boolean' ? e.detail.enabled : readInspectorEnabled(),
     );
+    const onSttDiagnosticsChange = () => setSttDiagnostics(readSttDiagnosticSettings());
     window.addEventListener(STT_LATENCY_CHANGED_EVENT, onLatencyChange);
     window.addEventListener(INSPECTOR_CHANGED_EVENT, onInspectorChange);
+    window.addEventListener(STT_DIAGNOSTIC_SETTINGS_CHANGED_EVENT, onSttDiagnosticsChange);
     return () => {
       window.removeEventListener(STT_LATENCY_CHANGED_EVENT, onLatencyChange);
       window.removeEventListener(INSPECTOR_CHANGED_EVENT, onInspectorChange);
+      window.removeEventListener(STT_DIAGNOSTIC_SETTINGS_CHANGED_EVENT, onSttDiagnosticsChange);
     };
   }, []);
 
@@ -668,6 +677,37 @@ export default function SettingsPanel({
             <p style={{ fontSize: 10, color: 'rgba(255,255,255,0.45)', margin: 0, lineHeight: 1.45 }}>
               Mic mode (🎤) also forces TTS and soundboard to <strong>local speakers only</strong> — for phone assistant / debug.
             </p>
+
+            <div style={{ padding: 9, border: '1px solid rgba(148,163,184,.28)', borderRadius: 8, background: 'rgba(15,23,42,.7)' }}>
+              <div style={{ fontSize: 11, color: '#c4b5fd', fontWeight: 700 }}>Admin STT diagnostics</div>
+              <p style={{ ...devHintStyle, marginTop: 3 }}>
+                Ctrl+Alt+D opens the hidden inspector. Traces and audio stay in memory only, active-call only, and are wiped on STOP.
+              </p>
+              <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginTop: 7 }}>
+                <button
+                  type="button"
+                  aria-pressed={sttDiagnostics.traceEnabled}
+                  onClick={() => {
+                    const next = { ...readSttDiagnosticSettings(), traceEnabled: !sttDiagnostics.traceEnabled };
+                    setSttDiagnostics(setSttDiagnosticSettings(next));
+                  }}
+                  style={{ ...tabBtn, background: sttDiagnostics.traceEnabled ? 'rgba(139,92,246,.3)' : tabBtn.background }}
+                >
+                  Trace: {sttDiagnostics.traceEnabled ? 'ON' : 'OFF'}
+                </button>
+                <button
+                  type="button"
+                  aria-pressed={sttDiagnostics.audioRingEnabled}
+                  onClick={() => {
+                    const next = { ...readSttDiagnosticSettings(), audioRingEnabled: !sttDiagnostics.audioRingEnabled };
+                    setSttDiagnostics(setSttDiagnosticSettings(next));
+                  }}
+                  style={{ ...tabBtn, background: sttDiagnostics.audioRingEnabled ? 'rgba(239,68,68,.3)' : tabBtn.background }}
+                >
+                  Last 60s audio: {sttDiagnostics.audioRingEnabled ? 'ON' : 'OFF'}
+                </button>
+              </div>
+            </div>
 
             <div>
               <div style={{ fontSize: 11, color: '#93c5fd', marginBottom: 6, fontWeight: 700 }}>

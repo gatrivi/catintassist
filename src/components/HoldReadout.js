@@ -19,7 +19,7 @@ export const HoldReadout = ({ isHold, holdSeconds = 0 }) => {
       aria-label={`On hold ${elapsed} elapsed`}
       title={`On hold — ${elapsed} elapsed. Tap to resume.`}
     >
-      H
+      <span aria-hidden="true">H {elapsed}</span>
     </span>
   );
 };

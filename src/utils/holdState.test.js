@@ -1,11 +1,11 @@
 import { shouldAutoHold, shouldAutoResume } from './holdState';
 
 describe('holdState auto hold/resume', () => {
-  it('auto-holds on recent intent + 3s silence', () => {
-    expect(shouldAutoHold({ isHold: false, holdIntentAgeMs: 5000, silenceSecs: 3 })).toBe(true);
-    expect(shouldAutoHold({ isHold: false, holdIntentAgeMs: 5000, silenceSecs: 2.9 })).toBe(false);
-    expect(shouldAutoHold({ isHold: false, holdIntentAgeMs: 31000, silenceSecs: 10 })).toBe(false);
-    expect(shouldAutoHold({ isHold: true, holdIntentAgeMs: 1000, silenceSecs: 10 })).toBe(false);
+  it('auto-holds only on recent intent + 30s continuous silence', () => {
+    expect(shouldAutoHold({ isHold: false, holdIntentAgeMs: 30000, silenceSecs: 30 })).toBe(true);
+    expect(shouldAutoHold({ isHold: false, holdIntentAgeMs: 30000, silenceSecs: 29.9 })).toBe(false);
+    expect(shouldAutoHold({ isHold: false, holdIntentAgeMs: 61000, silenceSecs: 30 })).toBe(false);
+    expect(shouldAutoHold({ isHold: true, holdIntentAgeMs: 1000, silenceSecs: 30 })).toBe(false);
   });
 
   it('auto-resumes on any speech while holding', () => {

@@ -22,6 +22,7 @@ import { StableLiveTranscriptText } from './StableLiveTranscriptText';
 import { buildCaptionContinuityKeys } from '../utils/stableLiveTranscript';
 import { alignWordConfidence, confidenceVisualFor } from '../utils/wordConfidenceAlign';
 import { flagVanish, traceCaptionArrayDiff, observeDomVanish } from '../utils/vanishTrace';
+import { linkDisplayedCaption } from '../utils/sttDiagnosticTrace';
 import { nextLiveHeightLock } from '../utils/liveBubbleHeight';
 import {
   PROGRAMMATIC_GRACE_MS,
@@ -857,6 +858,14 @@ export const TranscriptionBoard = ({
   useEffect(() => {
     traceCaptionArrayDiff(prevCaptionsRef.current, captions, 'TranscriptionBoard.captions');
     prevCaptionsRef.current = captions;
+    for (const caption of captions) {
+      if (!caption.sttEventId || !caption.id) continue;
+      linkDisplayedCaption(
+        caption.sttEventId,
+        caption.id,
+        applySttCorrections(caption.text || '', caption.lang),
+      );
+    }
   }, [captions]);
 
   // DOM-level vanish net: catches bubble remove/relocate that state diffing misses.

@@ -455,6 +455,7 @@ export const SessionProvider = ({ children }) => {
   const updateActivity = () => setLastActivityTime(Date.now());
   const updateEnglishActivity = () => setLastEnglishActivityTime(Date.now());
   const requestHoldIntent = () => setHoldIntentAt(Date.now());
+  const clearHoldIntent = () => setHoldIntentAt(0);
 
   // ── AUTO-BREAK (v4.90.0): break counts ALL time with no transcription ──
   // Refs mirror state so the 1s auto-break loop never needs re-creating.
@@ -1184,8 +1185,8 @@ export const SessionProvider = ({ children }) => {
       timerRef.current = setInterval(() => {
         setSessionSeconds(prev => prev + 1);
 
-        // SMART HOLD AUTO-TRIGGER + AUTO-RESUME (v4.89.1: speech = back)
-        // Hold phrase recently detected (<30s) + silence (>3s) → hold.
+        // SMART HOLD AUTO-TRIGGER + AUTO-RESUME (v4.147.0: speech = back)
+        // Hold phrase recently detected (<60s) + silence (30s) → hold.
         // Any speech while holding (<2s silence) → resume.
         const silenceSecs = (Date.now() - lastActivityTime) / 1000;
         const holdIntentAgeMs = Date.now() - holdIntentAt;
@@ -1540,6 +1541,7 @@ export const SessionProvider = ({ children }) => {
     lastCallSeconds,
     lastCallEndedAt,
     requestHoldIntent,
+    clearHoldIntent,
     getCompensatedLogOff,
     minutesSinceLastBreak,
     historyTimeline,

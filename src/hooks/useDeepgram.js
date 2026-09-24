@@ -70,7 +70,22 @@ import {
   loadAutopilotPhrases,
 } from "../utils/callAutopilot";
 import { matchHoldPhrase } from "../utils/holdPhrases";
+import {
+  connectStallVerdict,
+  CONNECT_STALL_MAX_RETRIES,
+} from "../utils/dgStatus";
 import { analyzeToneFrame, createToneTracker } from "../utils/toneWatch";
+import {
+  STT_EVENT_STATUS,
+  addSttAudioChunk,
+  beginSttSession,
+  endSttSession,
+  getActiveSttSessionId,
+  readSttDiagnosticSettings,
+  recordSttEvent,
+  setSttAudioRecording,
+  updateSttEvent,
+} from "../utils/sttDiagnosticTrace";
 
 const CAPTIONS_CLEARED_EVENT = "catint_captions_cleared";
 const STT_TRACE_LIMIT = 300;
@@ -126,6 +141,7 @@ export const useDeepgram = () => {
     updateEnglishActivity,
     isCallDetectionEnabled,
     requestHoldIntent,
+    clearHoldIntent,
     captions,
     updateCaptions,
     clearCaptions,
@@ -206,6 +222,13 @@ export const useDeepgram = () => {
   const interimFlushTimerRef = useRef(null);
   const lastInterimAtRef = useRef(0);
   const lastAudioProgressAtRef = useRef(0);
+  // v4.148.0: fast stall recovery — Deepgram accepted the socket but never
+  // sent a single message (not even startup Metadata). The old 12s watchdog
+  // stood down once audio was sent, leaving a dead pipe 'connected' until the
+  // 60s red chip + manual Zap (first minute of intake lost).
+  const dgMessageSeenRef = useRef(false);
+  const connectStallRetriesRef = useRef(0);
+  const lastDiagnosticAudioChunkAtRef = useRef(0);
   const sttLatencyModeRef = useRef(loadSttLatencyMode());
   const captionsHydratedRef = useRef(false);
 
@@ -587,6 +610,7 @@ export const useDeepgram = () => {
       console.warn("Failed to stop recorder:", e);
     }
     mediaRecorderRef.current = null;
+    setSttAudioRecording(false);
 
     if (socketRefEn.current) {
       socketRefEn.current.close();
@@ -799,6 +823,12 @@ export const useDeepgram = () => {
         });
         return;
       }
+      const diagnosticSettings = readSttDiagnosticSettings();
+      if ((diagnosticSettings.traceEnabled || diagnosticSettings.audioRingEnabled) && !getActiveSttSessionId()) {
+        beginSttSession();
+      }
+      setSttAudioRecording(false);
+      lastDiagnosticAudioChunkAtRef.current = 0;
 
       // ponytail: tear down stale sockets/recorder before opening new ones (reuse-stream path).
       clearKeepalive();
@@ -847,17 +877,36 @@ export const useDeepgram = () => {
           // pre-stall transcript (the old stale age kept the chip red).
           lastDeepgramMessageAt: Date.now(),
         });
+        // v4.148.0: fresh "has Deepgram answered at all?" probe per attempt.
+        dgMessageSeenRef.current = false;
         startKeepalive();
         const attemptId = connectAttemptIdRef.current;
         clearWatchdog();
         watchdogTimeoutRef.current = setTimeout(() => {
-          const stillSameAttempt = connectAttemptIdRef.current === attemptId;
-          if (!stillSameAttempt) return;
-          if (connectFlagsRef.current.audioChunksSent) return;
-          if (connectFlagsRef.current.transcriptReceived) return;
-
+          if (connectAttemptIdRef.current !== attemptId) return;
+          const flags = connectFlagsRef.current;
+          const verdict = connectStallVerdict({
+            audioChunksSent: flags.audioChunksSent,
+            transcriptReceived: flags.transcriptReceived,
+            gotDgMessage: dgMessageSeenRef.current,
+            retriesLeft: CONNECT_STALL_MAX_RETRIES - connectStallRetriesRef.current,
+          });
+          if (verdict === "ok") return;
+          if (verdict === "stall-reconnect") {
+            // Audio IS flowing but Deepgram never answered — dead pipe.
+            // Rebuild sockets NOW instead of aging to the 60s red chip.
+            connectStallRetriesRef.current += 1;
+            setConnectionMessage("Deepgram not responding — reconnecting…");
+            catWarn(
+              `[Deepgram:stall] audio sent, zero Deepgram messages — auto reconnect (try ${connectStallRetriesRef.current}/${CONNECT_STALL_MAX_RETRIES})`,
+            );
+            reconnectStreamRef.current?.();
+            return;
+          }
           failConnection(
-            "TIMEOUT: Sockets open but no audio reached Deepgram. Check Share audio on tab, unmute call, or try mic mode.",
+            verdict === "fail-silent"
+              ? "TIMEOUT: Deepgram never responded to audio. Check network/VPN, then press CONNECT."
+              : "TIMEOUT: Sockets open but no audio reached Deepgram. Check Share audio on tab, unmute call, or try mic mode.",
             { failureCategory: FAILURE.TIMEOUT },
           );
         }, 12000);
@@ -891,6 +940,24 @@ export const useDeepgram = () => {
             mediaRecorderRef.current.addEventListener("dataavailable", (e) => {
               if (e.data.size > 0) {
                 const audioNow = Date.now();
+                if (readSttDiagnosticSettings().audioRingEnabled) {
+                  const previousChunkAt = lastDiagnosticAudioChunkAtRef.current;
+                  const durationMs = previousChunkAt
+                    ? Math.min(2000, Math.max(50, audioNow - previousChunkAt))
+                    : getMediaRecorderTimeslice(sttLatencyModeRef.current);
+                  lastDiagnosticAudioChunkAtRef.current = audioNow;
+                  setSttAudioRecording(true);
+                  const diagnosticSessionId = getActiveSttSessionId();
+                  e.data.arrayBuffer().then((buffer) => {
+                    if (diagnosticSessionId === getActiveSttSessionId()) {
+                      addSttAudioChunk(buffer, {
+                        durationMs,
+                        mimeType: e.data.type || mediaRecorderRef.current?.mimeType || "audio/webm",
+                        wallClockMs: audioNow,
+                      });
+                    }
+                  }).catch(() => {});
+                }
                 let sentAny = false;
                 const lanes = [];
                 if (socketRefEn.current?.readyState === 1) {
@@ -1045,6 +1112,12 @@ export const useDeepgram = () => {
         };
 
         ws.onmessage = (message) => {
+          // v4.148.0: ANY traffic (Metadata, empty Results, …) proves the pipe
+          // is alive — arm the probe and give the stall budget back.
+          if (!dgMessageSeenRef.current) {
+            dgMessageSeenRef.current = true;
+            connectStallRetriesRef.current = 0;
+          }
           let received;
           try {
             received = JSON.parse(message.data);
@@ -1055,7 +1128,25 @@ export const useDeepgram = () => {
           const socketMsgPatch = socketSide === "En"
             ? { lastSocketEnMessageAt: dgMessageAt }
             : { lastSocketEsMessageAt: dgMessageAt };
+          const receivedAlt = received.channel?.alternatives?.[0];
+          const receivedTranscript = receivedAlt?.transcript;
+          const diagnosticEvent = recordSttEvent({
+            text: receivedTranscript || "",
+            wallClockMs: dgMessageAt,
+            providerStart: received.start ?? null,
+            providerDuration: received.duration ?? null,
+            lane: lang,
+            socket: socketSide,
+            confidence: receivedAlt?.confidence ?? null,
+            final: !!received.is_final,
+            metadata: {
+              messageType: received.type || "transcript",
+              speechFinal: !!received.speech_final,
+              wordCount: receivedAlt?.words?.length || 0,
+            },
+          });
           sttTrace("3 Deepgram websocket message received", {
+            diagnosticEventId: diagnosticEvent?.id || null,
             lang,
             type: received?.type || "transcript",
             isFinal: !!received?.is_final,
@@ -1064,6 +1155,7 @@ export const useDeepgram = () => {
           syncConnectProgress({ lastDeepgramMessageAt: dgMessageAt, ...socketMsgPatch });
           const errType = (received?.type || "").toString().toLowerCase();
           if (errType === "error" || received?.error) {
+            updateSttEvent(diagnosticEvent?.id, { status: STT_EVENT_STATUS.BLOCKED });
             const errText =
               received?.error?.message ||
               received?.error?.code ||
@@ -1079,7 +1171,7 @@ export const useDeepgram = () => {
               return;
             }
           }
-          const alt = received.channel?.alternatives?.[0];
+          const alt = receivedAlt;
           const transcript = alt?.transcript;
           const socketConfidencePatch = socketSide === "En"
             ? {
@@ -1091,6 +1183,7 @@ export const useDeepgram = () => {
                 lastSocketEsHadText: Boolean(transcript?.trim()),
               };
           if (!transcript || transcript.trim().length === 0) {
+            updateSttEvent(diagnosticEvent?.id, { status: STT_EVENT_STATUS.EMPTY });
             syncConnectProgress({
               ...socketConfidencePatch,
               lastEmptyTranscriptAt: dgMessageAt,
@@ -1124,7 +1217,9 @@ export const useDeepgram = () => {
           const isFinal = received.is_final;
           const speechFinal = received.speech_final;
           const wordConfidenceCount = (alt?.words || []).filter((w) => Number.isFinite(w?.confidence)).length;
+          updateSttEvent(diagnosticEvent?.id, { status: STT_EVENT_STATUS.PROCESSED });
           sttTrace("4 Deepgram processed + 5 returned string", {
+            diagnosticEventId: diagnosticEvent?.id || null,
             lang,
             chars: transcript.length,
             text: transcript.slice(0, 160),
@@ -1194,6 +1289,8 @@ export const useDeepgram = () => {
 
           if (holdPhrase) {
             requestHoldIntent();
+          } else if (isCallDetectionEnabled && confidence > 0.4) {
+            clearHoldIntent();
           }
 
           // v4.98.0: call autopilot — the platform's own announcements drive
@@ -1223,6 +1320,7 @@ export const useDeepgram = () => {
           const isSilentBreak = timeSinceLast > 2500;
 
           if (!shouldCaptureCaptionsRef.current) {
+            updateSttEvent(diagnosticEvent?.id, { status: STT_EVENT_STATUS.BLOCKED });
             if (!didLogCaptureGateWhileNotActiveRef.current && typeof window !== "undefined") {
               didLogCaptureGateWhileNotActiveRef.current = true;
               sttTrace("blocked before render: capture gate off", {
@@ -1242,7 +1340,10 @@ export const useDeepgram = () => {
           if (!isFinalish) {
             const nowPerf = performance.now();
             const interimGate = getInterimProcessThrottleMs(sttLatencyModeRef.current);
-            if (nowPerf - lastInterimAtRef.current < interimGate) return;
+            if (nowPerf - lastInterimAtRef.current < interimGate) {
+              updateSttEvent(diagnosticEvent?.id, { status: STT_EVENT_STATUS.THROTTLED });
+              return;
+            }
             lastInterimAtRef.current = nowPerf;
           }
 
@@ -1268,8 +1369,19 @@ export const useDeepgram = () => {
           if (!applied) return;
           captionEngineRef.current = applied.nextEngineState;
           const newArr = applied.nextRows;
+          const appliedLastRow = newArr[newArr.length - 1];
+          if (diagnosticEvent?.id && appliedLastRow) appliedLastRow.sttEventId = diagnosticEvent.id;
+          updateSttEvent(diagnosticEvent?.id, {
+            status: STT_EVENT_STATUS.COMMITTED,
+            metadata: {
+              captionId: appliedLastRow?.id || null,
+              rowCount: newArr.length,
+              protectionMode: protectionsOn ? "on" : "off",
+            },
+          });
           const dt = performance.now() - t0;
           sttTrace("6 caption engine committed", {
+            diagnosticEventId: diagnosticEvent?.id || null,
             ms: Number(dt.toFixed(2)),
             rows: newArr.length,
             lastRowId: applied.debug?.lastRowId || null,
@@ -1400,6 +1512,7 @@ export const useDeepgram = () => {
       scheduleInterimFlush,
       updateEnglishActivity,
       requestHoldIntent,
+      clearHoldIntent,
       notifySpeechDuringCall,
       trySpeechAutoStart,
       speechAutoConnect,
@@ -1448,11 +1561,30 @@ export const useDeepgram = () => {
         : new MediaRecorder(audioStream);
       mediaRecorderRef.current.addEventListener("dataavailable", (e) => {
         if (e.data.size > 0) {
+          const audioNow = Date.now();
+          if (readSttDiagnosticSettings().audioRingEnabled) {
+            const previousChunkAt = lastDiagnosticAudioChunkAtRef.current;
+            const durationMs = previousChunkAt
+              ? Math.min(2000, Math.max(50, audioNow - previousChunkAt))
+              : getMediaRecorderTimeslice(sttLatencyModeRef.current);
+            lastDiagnosticAudioChunkAtRef.current = audioNow;
+            setSttAudioRecording(true);
+            const diagnosticSessionId = getActiveSttSessionId();
+            e.data.arrayBuffer().then((buffer) => {
+              if (diagnosticSessionId === getActiveSttSessionId()) {
+                addSttAudioChunk(buffer, {
+                  durationMs,
+                  mimeType: e.data.type || mediaRecorderRef.current?.mimeType || "audio/webm",
+                  wallClockMs: audioNow,
+                });
+              }
+            }).catch(() => {});
+          }
           try {
             if (socketRefEn.current?.readyState === 1) socketRefEn.current.send(e.data);
             if (!multiMode && socketRefEs.current?.readyState === 1) socketRefEs.current.send(e.data);
           } catch (_) {}
-          lastAudioProgressAtRef.current = Date.now();
+          lastAudioProgressAtRef.current = audioNow;
           syncConnectProgress({ audioChunksSent: true, lastAudioChunkAt: Date.now() });
         }
       });
@@ -1509,6 +1641,7 @@ export const useDeepgram = () => {
       }
     } catch (_) {}
     mediaRecorderRef.current = null;
+    setSttAudioRecording(false);
     idleEarActiveRef.current = true;
     setConnectionState("connected");
     setConnectionMessage("Idle ear — listening for speech (auto-connect on)");
@@ -1599,6 +1732,7 @@ export const useDeepgram = () => {
     isActiveRef.current = false;
     turnWordsBaseRef.current = 0;
     currentTurnIdRef.current = null;
+    endSttSession();
     if (!enterIdleEar()) {
       closeConnections();
     }
@@ -1636,6 +1770,11 @@ export const useDeepgram = () => {
 
   const beginStream = useCallback(
     (stream, source) => {
+      // v4.148.0: a brand-new session (fresh stream acquired) starts with a
+      // full stall-retry budget. Deliberately NOT reset in startRecording /
+      // resetConnectProgress — reconnectStream reaches those, and a reset
+      // there would turn the 3-try budget into a 12s Zap loop.
+      connectStallRetriesRef.current = 0;
       const audioTrackCount = stream.getAudioTracks().length;
 
       if (audioTrackCount === 0) {
@@ -2040,6 +2179,7 @@ export const useDeepgram = () => {
 
   // v4.92.0: unmount — release idle-ear resources (VAD context + intervals).
   useEffect(() => () => {
+    endSttSession();
     idleEarActiveRef.current = false;
     if (vadIntervalRef.current) clearInterval(vadIntervalRef.current);
     if (idleKeepAliveRef.current) clearInterval(idleKeepAliveRef.current);
