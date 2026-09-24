@@ -85,3 +85,5 @@
 | 2026-09-23T16:09:02.422Z | cf5b9ac | v4.143.1 test-suite green: release-notes entry + raw-mic test sync + bubble overflow-wrap |
 | 2026-09-23T17:27:44.052Z | 1314a32 | v4.144.0: bubble overlap root cause fix (flex-shrink:0) |
 | 2026-09-24T15:27:42.584Z | 55a4fad | v4.145.0 sticky bottom - newest transcript line always visible |
+
+| 2026-09-24T15:48:39.711Z | 20a10e3 | v4.146.1: disconnect autodetect wired + phone protector digit veto |
