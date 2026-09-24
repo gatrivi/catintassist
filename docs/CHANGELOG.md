@@ -2,6 +2,22 @@
 
 **Version source:** `src/constants/version.js` (must match `package.json` + top-right UI pill)
 
+## v4.146.0 - call disconnect autodetect: farewell auto-end was never wired
+
+- Reported: "call disconnect autodetect is not working."
+- Root cause: the v4.132.0/v4.133.0 human-farewell auto-end shipped as **dead code** — `matchFarewellPhrase()` and `AUTOPILOT_FAREWELL_SILENCE_MS` existed, but nothing ever called the matcher from the transcript pipeline, so real-life call endings ("thank you, have a good day") never ended the session. Only platform phrases ("caller has disconnected") fired, and only with the autopilot toggle ON.
+- Fix: `useDeepgram` now checks farewell phrases on final transcripts → `SessionContext.armAutopilotFarewell()` arms a flag → after **120s of no speech** the standard 10s cancellable auto-end banner opens (`requestAutopilotEnd`). Any speech in the window resets it (ER-incident rule: a farewell mid-conversation never cuts a live call). STOP / auto-start / call end clear the arm.
+- UI: header 🤖 AUTO chip turns amber **🤖 END⏳** while a farewell is armed (hover explains: 2 min silence → auto-end, speech cancels).
+- Still requires the autopilot toggle (Settings → Behavior). Tests: farewell matcher cases in `callAutopilot.test.js`.
+
+
+## v4.145.0 - sticky bottom always shows the newest line (interpreter-blocking)
+
+- Reported: "the sticky scroll that ensures new transcriptions are always visible — if new transcriptions are not visible, the interpreter cannot work."
+- Root cause (three, all in `TranscriptionBoard.js`): (1) the follow was paused by scroll **geometry** (`scrollHeight - scrollTop - clientHeight > 35`), so every scroll the operator did not make — the browser's **scroll-anchoring** moving the viewport when a live bubble grows, or our own programmatic scroll — looked like "the operator scrolled away", and the 15 s resume kept being re-armed; (2) `scrollIntoView` scrolls *any* ancestor (page included) and silently does nothing if the engine declines — nothing checked whether the pane actually moved; (3) follow ran only when a `scrollKey` changed, so height that arrives *after* the render (translation line, morph, re-wrap) never triggered a follow.
+- Fix: new pure module `src/utils/stickyScroll.js` — `classifyScroll()` labels each scroll event `self` (ours, inside a 300 ms grace window) / `user` (wheel-drag-scrollbar gesture, wins over the grace window) / `content` (nobody touched it → snap back, never pause). `followLatest()` sets `pane.scrollTop = pane.scrollHeight` directly (instant, pane-only; `scrollIntoView` kept only as a last resort). Two settle passes (120 ms + 400 ms) catch late height growth. `overflow-anchor: none` on `#transcript-pane` so the browser stops moving us. While paused, the corner toggle turns amber and reads **`⬇ N new`** — one click jumps to the newest line (and no longer switches the follow off in that state).
+- Tests: `src/utils/stickyScroll.test.js` (decisions), `src/components/stickyBottomBehavior.test.js` (real `TranscriptionBoard` render in jsdom: new caption snaps to bottom; a no-gesture scroll snaps back; wheel up is respected and counted; the amber click jumps; dragging back to the bottom resumes), `src/components/stickyBottom.test.js` (stylesheet + source contract: anchoring off, `pane.scrollTop = pane.scrollHeight`, no return of the geometry-only flag).
+
 ## v4.144.0 - bubble text can no longer paint over the next bubble (overlap root cause)
 
 - Reported (screenshot): translation span of bubble N rendered *on top of* the first line of bubble N+1 (`.bubble-line > span` overlapping the following span) — worse on busy calls, after v4.143.1's update only "a little better".

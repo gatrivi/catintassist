@@ -974,6 +974,23 @@ body {
   background: rgba(16, 185, 129, 0.12);
 }
 
+/* v4.145.0 — paused follow with unread lines: impossible to miss. */
+.sticky-bottom-toggle.has-new {
+  border-color: rgba(245, 158, 11, 0.8);
+  color: #fbbf24;
+  background: rgba(245, 158, 11, 0.18);
+  font-weight: 900;
+}
+
+/* v4.145.0 — sticky bottom (src/utils/stickyScroll.js).
+   The browser's scroll-anchoring moves the viewport by itself whenever a live
+   bubble grows: the newest line slid below the fold and that self-inflicted
+   scroll event paused the follow. The follow code owns scrolling in this pane,
+   so anchoring is off. Do not remove without reading stickyScroll.js. */
+#transcript-pane {
+  overflow-anchor: none;
+}
+
 .main-content.tools-open > .transcription-area,
 .main-content.notes-open > .transcription-area {
   grid-column: 1;

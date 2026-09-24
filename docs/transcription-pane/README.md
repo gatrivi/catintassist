@@ -83,7 +83,11 @@ Goals:
 
 Core interaction features:
 - Pinning: important messages can be pinned
-- Auto-scroll anchored to latest transcript
+- Auto-scroll anchored to latest transcript — **rule (v4.145.0): follow unless the operator scrolled away.**
+  Only a real gesture (wheel up / drag / scrollbar) pauses it; every other scroll event —
+  browser scroll-anchoring, late layout, our own scroll — means "snap back to the newest line".
+  Pane scrolls directly (`pane.scrollTop = pane.scrollHeight`), `overflow-anchor: none`,
+  settle passes at 120/400 ms. Logic: `src/utils/stickyScroll.js` · paused state shows `⬇ N new` in amber.
 - Inactivity detect: Silence Guardian monitors this view for active audio flow
 
 ## 12) No Vanishing Text / StableTextMorph (v4.84.1+) — **rendering invariant**

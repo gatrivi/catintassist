@@ -24,6 +24,15 @@ import { alignWordConfidence, confidenceVisualFor } from '../utils/wordConfidenc
 import { flagVanish, traceCaptionArrayDiff, observeDomVanish } from '../utils/vanishTrace';
 import { nextLiveHeightLock } from '../utils/liveBubbleHeight';
 import {
+  PROGRAMMATIC_GRACE_MS,
+  RESUME_AFTER_USER_MS,
+  USER_GESTURE_HOLD_MS,
+  classifyScroll,
+  isAtBottom,
+  readScrollMetrics,
+  shouldFollow,
+} from '../utils/stickyScroll';
+import {
   isCaptionPinned,
   migratePinnedCaptions,
   togglePinEntry,
@@ -759,9 +768,14 @@ export const TranscriptionBoard = ({
 }) => {
   const bottomRef = useRef(null);
   const scrollAreaRef = useRef(null);
-  const isScrolledUpRef = useRef(false);
-  const scrollTimeoutRef = useRef(null);
-  const lastScrollKeyRef = useRef('');
+  // v4.145.0 sticky-bottom state — see src/utils/stickyScroll.js
+  const userScrolledUpRef = useRef(false);   // operator read back — do not yank
+  const userGestureRef = useRef(false);      // wheel/drag/scrollbar in progress
+  const gestureTimerRef = useRef(null);
+  const programmaticUntilRef = useRef(0);    // scrolls we caused ourselves
+  const resumeTimerRef = useRef(null);
+  const lastCountRef = useRef(0);
+  const [newBelow, setNewBelow] = useState(0); // lines waiting while paused
   const STICKY_BOTTOM_KEY = 'catint_sticky_bottom_v1';
   const [stickyBottom, setStickyBottom] = useState(() => {
     try {
@@ -1125,74 +1139,128 @@ export const TranscriptionBoard = ({
     }));
   };
 
-  useEffect(() => {
-    const lastCap = captions[captions.length - 1];
-    const count = captions.length;
-    const lastId = lastCap?.id || '';
-    const isFinal = lastCap?.isFinal !== false;
-    // Include live text length so sticky follows mid-bubble growth (was missing → missed latest).
-    const liveLen = !isFinal ? String(lastCap?.text || '').length : 0;
-    const scrollKey = `${count}|${lastId}|${isFinal ? 'final' : 'live'}|${liveLen}`;
-
-    const prev = lastScrollKeyRef.current;
-    const [prevCountStr, prevId, prevFinalFlag] = prev.split('|');
-    const prevCount = parseInt(prevCountStr || '0', 10);
-    const countIncreased = count > prevCount;
-    const becameFinal = prevFinalFlag === 'live' && isFinal && prevId === lastId;
-    const liveGrew = !isFinal && prev !== scrollKey;
-
-    if (
-      stickyBottomRef.current &&
-      !isScrolledUpRef.current &&
-      (countIncreased || becameFinal || liveGrew)
-    ) {
-      bottomRef.current?.scrollIntoView({ behavior: 'auto' });
+  /**
+   * v4.145.0 — snap the pane to the newest line.
+   * Instant, and scoped to the pane: `scrollIntoView` could move the whole
+   * page and could silently do nothing, which is how the last line was lost.
+   */
+  const followLatest = useCallback(() => {
+    const pane = scrollAreaRef.current;
+    if (!pane) return;
+    programmaticUntilRef.current = Date.now() + PROGRAMMATIC_GRACE_MS;
+    pane.scrollTop = pane.scrollHeight;
+    if (!isAtBottom(readScrollMetrics(pane))) {
+      // Engine refused the direct scroll (rare) — last resort.
+      bottomRef.current?.scrollIntoView({ behavior: 'auto', block: 'end' });
     }
-    lastScrollKeyRef.current = scrollKey;
-  }, [captions]);
+    setNewBelow(0);
+  }, []);
+
+  /** Called by wheel / pointer / touch so a real gesture is never mistaken for layout. */
+  const markUserGesture = useCallback(() => {
+    userGestureRef.current = true;
+    if (gestureTimerRef.current) clearTimeout(gestureTimerRef.current);
+    gestureTimerRef.current = setTimeout(() => {
+      userGestureRef.current = false;
+    }, USER_GESTURE_HOLD_MS);
+  }, []);
+
+  /** Operator read back — pause + re-arm later so a long read is not punished. */
+  const pauseFollow = useCallback(() => {
+    userScrolledUpRef.current = true;
+    if (resumeTimerRef.current) clearTimeout(resumeTimerRef.current);
+    resumeTimerRef.current = setTimeout(() => {
+      userScrolledUpRef.current = false;
+      if (stickyBottomRef.current) followLatest();
+    }, RESUME_AFTER_USER_MS);
+  }, [followLatest]);
+
+  const following = () =>
+    shouldFollow({ sticky: stickyBottomRef.current, userScrolledUp: userScrolledUpRef.current });
+
+  /**
+   * New captions → follow. Two settle passes because a bubble can grow AFTER
+   * this render (translation line arrives, morph, re-wrap) — that late growth
+   * was the other way the newest line slid out of view.
+   */
+  useEffect(() => {
+    const count = captions.length;
+    const prevCount = lastCountRef.current;
+    lastCountRef.current = count;
+
+    if (following()) {
+      followLatest();
+      const settle = () => { if (following()) followLatest(); };
+      const t1 = setTimeout(settle, 120);
+      const t2 = setTimeout(settle, 400);
+      return () => { clearTimeout(t1); clearTimeout(t2); };
+    }
+    if (count > prevCount) setNewBelow((n) => n + (count - prevCount));
+    return undefined;
+  }, [captions, followLatest]);
 
   const toggleStickyBottom = () => {
-    setStickyBottom((prev) => {
-      const next = !prev;
-      try {
-        localStorage.setItem(STICKY_BOTTOM_KEY, next ? '1' : '0');
-      } catch (_) {}
-      if (next) {
-        isScrolledUpRef.current = false;
-        bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
-      }
-      return next;
-    });
-  };
-
-  const resetScrollTimer = () => {
-    if (!stickyBottomRef.current) return;
-    if (scrollTimeoutRef.current) clearTimeout(scrollTimeoutRef.current);
-    scrollTimeoutRef.current = setTimeout(() => {
-      isScrolledUpRef.current = false;
-      bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
-    }, 15000); 
+    // Paused mid-read? The button reads "⬇ N new" — a click means
+    // "take me to the newest line", not "switch the follow off".
+    if (stickyBottomRef.current && userScrolledUpRef.current) {
+      userScrolledUpRef.current = false;
+      if (resumeTimerRef.current) clearTimeout(resumeTimerRef.current);
+      followLatest();
+      return;
+    }
+    const next = !stickyBottomRef.current;
+    setStickyBottom(next);
+    try {
+      localStorage.setItem(STICKY_BOTTOM_KEY, next ? '1' : '0');
+    } catch (_) {}
+    if (next) {
+      userScrolledUpRef.current = false;
+      if (resumeTimerRef.current) clearTimeout(resumeTimerRef.current);
+      followLatest();
+    }
   };
 
   const handleScroll = () => {
-    if (!scrollAreaRef.current) return;
-    const { scrollTop, scrollHeight, clientHeight } = scrollAreaRef.current;
-    const isAtBottom = scrollHeight - scrollTop - clientHeight <= 35;
-    if (isAtBottom) {
-      isScrolledUpRef.current = false;
-      if (scrollTimeoutRef.current) clearTimeout(scrollTimeoutRef.current);
-    } else {
-      isScrolledUpRef.current = true;
-      resetScrollTimer();
+    const pane = scrollAreaRef.current;
+    if (!pane) return;
+    const cause = classifyScroll({
+      now: Date.now(),
+      programmaticUntil: programmaticUntilRef.current,
+      userGesture: userGestureRef.current,
+    });
+    if (cause === 'self') return; // we did this — never a reason to stop
+
+    if (isAtBottom(readScrollMetrics(pane))) {
+      userScrolledUpRef.current = false;
+      if (resumeTimerRef.current) clearTimeout(resumeTimerRef.current);
+      if (newBelow) setNewBelow(0);
+      return;
     }
+    if (cause === 'user') {
+      pauseFollow();
+      return;
+    }
+    // 'content': scroll-anchoring / late layout moved us — put the newest line back.
+    if (following()) followLatest();
   };
 
   const handleWheel = (e) => {
-    if (e.deltaY < 0) {
-      isScrolledUpRef.current = true;
-      resetScrollTimer();
-    }
+    markUserGesture();
+    const pane = scrollAreaRef.current;
+    // Only a real scroll-up intent pauses; a wheel on a short transcript does not.
+    if (e.deltaY < 0 && pane && pane.scrollTop > 0) pauseFollow();
   };
+
+  /** Wheel/drag/scrollbar all mean "a human is moving this pane". */
+  const handlePointerDown = () => markUserGesture();
+  const handlePointerUp = () => markUserGesture();
+  const handleTouchStart = () => markUserGesture();
+  const handleTouchMove = () => markUserGesture();
+
+  useEffect(() => () => {
+    if (gestureTimerRef.current) clearTimeout(gestureTimerRef.current);
+    if (resumeTimerRef.current) clearTimeout(resumeTimerRef.current);
+  }, []);
 
   useEffect(() => {
     const handleSelectionChange = () => {
@@ -1346,6 +1414,10 @@ export const TranscriptionBoard = ({
         style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column' }} 
         onScroll={handleScroll}
         onWheel={handleWheel}
+        onPointerDown={handlePointerDown}
+        onPointerUp={handlePointerUp}
+        onTouchStart={handleTouchStart}
+        onTouchMove={handleTouchMove}
         ref={scrollAreaRef}
       >
         {pinnedCaptions.length > 0 && (
@@ -1539,12 +1611,18 @@ export const TranscriptionBoard = ({
       <button
         type="button"
         id="sticky-bottom-toggle"
-        className={`sticky-bottom-toggle${stickyBottom ? ' is-on' : ''}`}
+        className={`sticky-bottom-toggle${stickyBottom ? ' is-on' : ''}${newBelow > 0 ? ' has-new' : ''}`}
         onClick={toggleStickyBottom}
         aria-pressed={stickyBottom}
-        title={stickyBottom ? 'Sticky bottom ON — following latest transcript (click to pause)' : 'Sticky bottom OFF — click to follow latest'}
+        title={
+          newBelow > 0
+            ? `${newBelow} new line(s) below — click to jump to the newest line`
+            : stickyBottom
+              ? 'Sticky bottom ON — always showing the newest transcript line (click to pause)'
+              : 'Sticky bottom OFF — click to follow the newest line'
+        }
       >
-        {stickyBottom ? '⬇ sticky' : '⬇ off'}
+        {newBelow > 0 ? `⬇ ${newBelow} new` : stickyBottom ? '⬇ sticky' : '⬇ off'}
       </button>
 
       {showSttSoundbar && (

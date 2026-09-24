@@ -25,6 +25,31 @@ import { APP_VERSION } from '../constants/version';
 /** Newest first. Only the entry matching APP_VERSION is shown on load. */
 export const RELEASE_NOTES_CATALOG = [
   {
+    version: '4.145.0',
+    id: 'sticky-bottom-follow',
+    highlightElementIds: ['transcript-pane', 'sticky-bottom-toggle'],
+    es: {
+      title: '📌 El transcript ya no se queda atrás: la última línea siempre visible',
+      intro: 'El scroll fijo se pausaba solo: cada vez que una burbuja crecía, el navegador movía el panel por su cuenta y el código lo leía como "el operador se fue hacia arriba". La última línea quedaba debajo del borde y no se podía interpretar.',
+      sections: [{ heading: 'Qué cambió', bullets: [
+        'Solo una acción real (rueda, arrastre, barra de scroll) pausa el seguimiento.',
+        'El panel se desplaza directo a la última línea; el anclaje automático del navegador queda desactivado.',
+        'Dos pasadas de ajuste (120 y 400 ms) atrapan la altura que llega después del render (traducción, reajuste de texto).',
+        'Si estás leyendo hacia arriba, el botón se pone ámbar: "⬇ N new" — un clic te devuelve a lo último.',
+      ] }],
+    },
+    en: {
+      title: '📌 The transcript never falls behind: newest line always visible',
+      intro: 'The sticky scroll paused itself: every time a bubble grew, the browser moved the pane on its own and the code read that as "the operator scrolled away". The newest line stayed below the fold — impossible to interpret.',
+      sections: [{ heading: 'What changed', bullets: [
+        'Only a real gesture (wheel, drag, scrollbar) pauses the follow.',
+        'The pane scrolls straight to the newest line; browser scroll-anchoring is off.',
+        'Two settle passes (120 and 400 ms) catch height that arrives after the render (translation line, re-wrap).',
+        'If you are reading back, the button turns amber: "⬇ N new" — one click returns to the newest line.',
+      ] }],
+    },
+  },
+  {
     version: '4.144.0',
     id: 'bubble-flex-shrink-overlap',
     highlightElementIds: ['transcript-pane'],

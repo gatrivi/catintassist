@@ -83,3 +83,4 @@
 | 2026-09-21T19:46:09.345Z | 0fab943 | v4.143.0 hotfix: Deepgram key paste button |
 | 2026-09-21T19:55:01.473Z | 0ce4419 | v4.143.1: mic path no longer muffled by browser call-quality DSP |
 | 2026-09-23T16:09:02.422Z | cf5b9ac | v4.143.1 test-suite green: release-notes entry + raw-mic test sync + bubble overflow-wrap |
+| 2026-09-23T17:27:44.052Z | 1314a32 | v4.144.0: bubble overlap root cause fix (flex-shrink:0) |
