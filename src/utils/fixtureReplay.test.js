@@ -139,39 +139,33 @@ describe("fixtureReplay", () => {
     expect(result.failures).toEqual([]);
   });
 
-  test("interim-restart: a restarted segment never lands twice in one row (v4.141.0)", () => {
+  test("interim-restart: a restated segment supersedes in place, never a duplicate message (v4.151.0)", () => {
     const fixture = getTranscriptionFixture("interim-restart");
     expect(fixture).toBeTruthy();
     const { rows } = replayFixtureEvents(fixture);
     const texts = rows.map((r) => r.text || "");
-    const all = texts.join(" || ");
-    const normalized = all.replace(/[^\p{L}\p{N}]+/gu, " ");
 
-    // (a) no single row carries the repeated fragment twice. This is the exact
-    // string the booth saw in v4.140.0: "…their first names, if Can you provide
-    // me with their 1st names if so?" — one line, the question twice.
+    // (a) no single row carries the repeated fragment twice (the v4.140.0 bug).
     const doubledRows = texts.filter(
       (t) => /their first names[\s\S]*their 1st names/.test(t),
     );
     expect(doubledRows).toEqual([]);
 
-    // (b) every delivered wording is on screen exactly once — nothing lost, no
-    // row repeated, no live draft left behind.
-    expect(texts.filter((t) => t.includes("Can you provide me with their first names, if"))).toHaveLength(1);
-    expect(texts.filter((t) => t.includes("Can you provide me with their 1st names if so?"))).toHaveLength(1);
-    expect(texts.filter((t) => t.includes("Yourself, Anna, and is there anybody else?"))).toHaveLength(1);
+    // (b) one utterance = one message. Before v4.151.0 both wordings sat on screen
+    // as two rows and the booth (rightly) read that as a duplicated message; now the
+    // re-cut owns the row it restated. The superseded wording is *replaced*, never
+    // deleted to nothing, and digits stay in place (v4.133.0 / v4.136.0).
+    expect(
+      texts.filter((t) => t.includes("Can you provide me with their 1st names if so?")),
+    ).toHaveLength(1);
+    expect(
+      texts.filter((t) => t.includes("Can you provide me with their first names, if")),
+    ).toHaveLength(0);
+    expect(
+      texts.filter((t) => t.includes("Yourself, Anna, and is there anybody else?")),
+    ).toHaveLength(1);
     expect(new Set(texts).size).toBe(texts.length);
     expect(rows.filter((r) => r.isFinal === false)).toHaveLength(0);
-
-    // No word of any delivered segment was dropped, including the restated head.
-    fixture.events.forEach((ev) => {
-      const transcript = ev.payload.channel.alternatives[0].transcript;
-      const missing = transcript
-        .split(/\s+/)
-        .map((w) => w.replace(/[^\p{L}\p{N}]+/gu, ""))
-        .filter((w) => w && !normalized.includes(w));
-      expect(missing).toEqual([]);
-    });
 
     const result = assertFixtureExpect(rows, fixture.expect);
     expect(result.failures).toEqual([]);

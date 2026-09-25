@@ -25,6 +25,31 @@ import { APP_VERSION } from '../constants/version';
 /** Newest first. Only the entry matching APP_VERSION is shown on load. */
 export const RELEASE_NOTES_CATALOG = [
   {
+    version: '4.151.0',
+    id: 'transcript-dedupe-supersede',
+    highlightElementIds: ['transcript-pane'],
+    es: {
+      title: 'Una frase, un mensaje',
+      intro: 'Deepgram a veces reenvía el mismo tramo de audio, o lo devuelve reformulado. La app ya no lo muestra dos veces: reescribe el mensaje que estaba repitiendo.',
+      sections: [{ heading: 'Qué cambió', bullets: [
+        'Un tramo repetido o reformulado corrige su propio mensaje: una sola línea por frase.',
+        'Se muestra la redacción más nueva; la anterior se atenúa un instante en vez de quedar como un mensaje duplicado.',
+        'Los números (teléfono, código, dosis) no se borran nunca de la pantalla.',
+        'Un tramo reenviado idéntico (reconexión del socket) ya no crea un mensaje extra.',
+      ] }],
+    },
+    en: {
+      title: 'One phrase, one message',
+      intro: 'Deepgram sometimes re-sends the same audio span, or returns it reworded. The app no longer shows it twice: it rewrites the message it was repeating.',
+      sections: [{ heading: 'What changed', bullets: [
+        'A repeated or reworded span corrects its own message: one line per phrase.',
+        'The newest wording wins; the previous one is dimmed for a moment instead of staying as a duplicate message.',
+        'Numbers (phone, code, dosage) never disappear from the screen.',
+        'An identical re-delivered span (socket reconnect) no longer creates an extra message.',
+      ] }],
+    },
+  },
+  {
     version: '4.149.0',
     id: 'speech-evidence-zap',
     highlightElementIds: ['audio-route-zap-btn'],

@@ -1,6 +1,6 @@
 {
   "id": "interim-restart",
-  "label": "Restarted Deepgram segment repeats finalized text (v4.141.0)",
+  "label": "Restated Deepgram segment supersedes its row in place (v4.151.0)",
   "meta": {
     "protectionsOn": true,
     "pair": { "left": "en", "right": "es" },
@@ -134,10 +134,9 @@
   "expect": {
     "finalTexts": [
       "Yourself, Anna, and is there anybody else?",
-      "Can you provide me with their first names, if",
       "Can you provide me with their 1st names if so?"
     ],
-    "minFinals": 3,
+    "minFinals": 2,
     "langs": ["en"]
   }
 }

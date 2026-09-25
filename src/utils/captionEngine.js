@@ -85,6 +85,43 @@ export const restatedHeadWindow = (base, addition) => {
   return 0;
 };
 
+/** v4.151.0 - drop the first n words (the restated head we consume). */
+const dropLeadingWords = (text, n) =>
+  String(text || '').trim().split(/\s+/).filter(Boolean).slice(n).join(' ');
+
+/** v4.151.0 - comparison key: the normalization the overlap guard uses. */
+const dupKey = (text) =>
+  String(text || '').toLowerCase().replace(/[^\p{L}\p{N}]+/gu, ' ').trim();
+
+/** Deepgram segment start encoded in a caption id ("dg-<lane>-<start>-f"). */
+const startFromCaptionId = (id) => {
+  const m = /^dg-[^-]+-([\d.]+)-[fi]/.exec(String(id || ''));
+  return m ? Number(m[1]) : null;
+};
+
+/**
+ * v4.151.0 - true when this event is the SAME audio segment a recent row already
+ * holds (a stale-socket replay or a re-cut that kept the same Deepgram start).
+ * Exact text + same span only: a speaker genuinely repeating a sentence arrives
+ * with a later start, and is always kept.
+ */
+const isVerbatimRedelivery = (rows, laneSide, text, startTime) => {
+  const key = dupKey(text);
+  if (!key) return false;
+  const laneKey = laneSide === 'en' ? 'enFinalized' : 'esFinalized';
+  const recent = (rows || []).slice(-6);
+  for (let i = recent.length - 1; i >= 0; i -= 1) {
+    const row = recent[i];
+    if (!row) continue;
+    const laneText = dupKey(row[laneKey] || '') || dupKey(row.text || '');
+    if (laneText !== key) continue;
+    const rowStart = Number.isFinite(row.startTime) ? row.startTime : startFromCaptionId(row.id);
+    if (rowStart === null || rowStart === undefined) continue;
+    if (Number(rowStart) === Number(startTime == null ? 0 : startTime)) return true;
+  }
+  return false;
+};
+
 export const normalizeWordConfidence = (words = []) =>
   (Array.isArray(words) ? words : [])
     .map((w) => ({
@@ -292,6 +329,13 @@ export const reduceTranscriptEvent = (prev, event, ctx) => {
     /[.!?…]["')\]]?\s*$/.test(prevLaneFinal.trim()) &&
     Boolean(transcript && String(transcript).trim());
   const isNewTurn = isSilentBreak || !last || startsAfterPeriod;
+  // v4.151.0: the SAME segment delivered twice (stale-socket replay, re-cut with
+  // an unchanged start) must not print a second identical message. Gated on exact
+  // normalized text + the same Deepgram span, so a repeated sentence (later start)
+  // is still kept.
+  if (isNewTurn && last && isVerbatimRedelivery(prev, laneSide, transcript, startTime)) {
+    return prev;
+  }
 
   if (isNewTurn) {
     const lastStarted = lastBubbleStartedRef?.current || 0;
@@ -355,66 +399,65 @@ export const reduceTranscriptEvent = (prev, event, ctx) => {
   // One guard call per event. The split below only fires when this guard removed
   // NOTHING (`guardStripped === false`), and a brand-new bubble has no base text
   // to strip against anyway — so `cleaned` is valid in both branches.
-  const cleaned = removeOverlapPreservingDigitSequences(baseContext, transcript);
+  let cleaned = removeOverlapPreservingDigitSequences(baseContext, transcript);
   const guardStripped = wordCount(cleaned) < wordCount(transcript);
 
-  // v4.141.0 — restarted segment: the incoming text re-states a phrase that is
-  // already finalized on this lane, from its head or middle (not its tail, which
-  // the guard above cleans on its own). Appending it would print those words
-  // twice in ONE line and then seal/translate/persist that line. Nothing is
-  // deleted here: the finalized row keeps every word, the restart gets its own
-  // bubble below it (same primitive as the sentence-boundary split).
+  // v4.151.0 - a restated segment SUPERSEDES the row it repeats instead of
+  // becoming a second bubble. v4.141.0 routed it into its own bubble to stop the
+  // phrase printing twice inside ONE line; the booth then read one utterance as two
+  // nearly identical messages ("super hard to tell"). The row is now rewritten in
+  // place: the newest wording owns it, the row keeps its id/turn/position, and text
+  // is never removed down to nothing (v4.133.0 "ER incident: never delete a tirade").
+  // Digits may never leave the screen (v4.136.0), so when the re-cut would drop a
+  // digit run the row is kept and only the repeated head is consumed (splice) -
+  // nothing is lost either way.
+  // The v4.141.0 detector, unchanged: the incoming text re-states a phrase that is
+  // already finalized on this lane (head or middle - the guard above cleans tails).
+  // A number at the boundary still vetoes it (v4.146.0 phone protector).
   const restatedWords =
     !startsAfterPeriod && !guardStripped && !restartBoundaryHasNumbers(laneFinalized, transcript)
       ? restatedHeadWindow(laneFinalized, transcript)
       : 0;
-  if (restatedWords > 0) {
-    const displaced = last;
-    if (displaced?.isFinal === false) {
-      if ((displaced.text || "").trim()) {
-        // The row we leave behind can never grow again — freeze it as a sealed
-        // row (translatable/editable/persistable like any other) and bank its
-        // words into the turn counter so the turn badge stays monotonic.
-        turnWordsBaseRef.current = (turnWordsBaseRef.current || 0) + wordCount(displaced.text);
-        prev = [
-          ...prev.slice(0, -1),
-          { ...displaced, isFinal: true, tailPreviewText: null },
-        ];
-      } else {
-        prev = prev.slice(0, -1); // blank draft row: nothing to keep
-      }
+  let supersedeInPlace = false;
+  if (restatedWords > 0 && cleaned.trim()) {
+    if (lostDigitRuns(laneFinalized, transcript).length) {
+      cleaned = dropLeadingWords(cleaned, restatedWords);
+    } else {
+      supersedeInPlace = true;
     }
-    if (lastBubbleStartedRef) lastBubbleStartedRef.current = now;
-    last = {
-      id: buildStableCaptionId(channelKey, startTime, false),
-      // Same wall-clock stamp contract as the main turn template (v4.150.0).
-      createdAt: now,
-      enFinalized: "",
-      enInterim: "",
-      esFinalized: "",
-      esInterim: "",
-      turnId: displaced?.turnId || currentTurnIdRef.current || `turn-${now}`,
-      turnWordCount: turnWordsBaseRef.current || 0,
-      isSplit: true,
-      tailPreviewText: null,
-      wordConfidence: [],
-      wordConfidenceOffset: 0,
-      isFinal: false,
-    };
-    prev = [...prev, last];
-    flagVanish('caption_restart_split', {
-      id: last.id,
-      turnId: last.turnId,
-      before: `${laneFinalized} ${transcript}`.trim(),
-      after: `${laneFinalized} || ${transcript}`,
-      remount: true,
+  }
+  const current = { ...last };
+  if (supersedeInPlace) {
+    // Rewrite in place. `cleaned` already holds the replacement wording, so this
+    // is a swap, never a delete-then-restore (v4.133.0). The turn badge stays
+    // monotonic: words the newer wording no longer shows are banked.
+    const prevVisibleWords = wordCount(current.text) || wordCount(laneFinalized);
+    if (laneSide === 'en') {
+      current.enFinalized = '';
+      current.enInterim = '';
+    } else {
+      current.esFinalized = '';
+      current.esInterim = '';
+    }
+    if (turnWordsBaseRef) {
+      turnWordsBaseRef.current =
+        (turnWordsBaseRef.current || 0) + Math.max(0, prevVisibleWords - wordCount(cleaned));
+    }
+    flagVanish('caption_restart_supersede', {
+      id: current.id,
+      turnId: current.turnId,
+      before: (laneFinalized + ' ' + transcript).trim(),
+      after: String(transcript),
+      stage: 'captionEngine.restartSupersede',
       force: true,
-      stage: 'captionEngine.restartSplit',
-      extra: { restatedWords, laneSide, startTime },
+      extra: {
+        restatedWords,
+        laneSide,
+        startTime,
+        supersededWords: wordCount(laneFinalized),
+      },
     });
   }
-
-  const current = { ...last };
   if (!cleaned.trim() && !shouldFinalize) {
     flagVanish('overlap_empty_freeze', {
       id: current.id,

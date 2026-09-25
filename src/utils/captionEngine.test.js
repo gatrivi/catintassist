@@ -393,7 +393,9 @@ describe("captionEngine", () => {
   //   1. nothing is deleted, ever (the engine only ROUTES, never strips here);
   //   2. the repeated fragment may never appear twice inside ONE row.
   // ---------------------------------------------------------------------------
-  describe("restarted segment split (v4.141.0)", () => {
+  describe("restarted segment supersede in place (v4.151.0)", () => {
+    // v4.151.0 - the row is REWRITTEN in place, not split into a second bubble.
+    // Nothing is deleted down to nothing; digits never leave the screen.
     const t0 = 1_700_000_000_000;
     const FIRST = "Yourself, Anna, and is there anybody else?";
     const FIRST_TAIL = "Can you provide me with their first names, if";
@@ -459,25 +461,24 @@ describe("captionEngine", () => {
       expect(RESTART_MIN_WORDS).toBe(4);
     });
 
-    test("screenshot string: fragment never twice in one row, every word kept", () => {
+    test("restated segment supersedes its row: one row, newest wording, no duplicate", () => {
       const { rows } = runRestartSequence();
       const texts = textsOf(rows);
 
-      // BEFORE v4.141.0 this was ONE row holding both copies:
-      // "…their first names, if Can you provide me with their 1st names if so?"
-      expect(texts).not.toContain(`${FIRST_TAIL} ${RESTART}`);
+      // v4.140.0 put both copies in ONE row ("...their first names, if Can you
+      // provide me with their 1st names if so?"); v4.141.0 gave the restart its own
+      // bubble, which the booth then read as a duplicated message. v4.151.0 rewrites
+      // the row instead: the re-cut owns the row it restated.
+      expect(texts).not.toContain(FIRST_TAIL + " " + RESTART);
       texts.forEach((t) => expect(runsRepeatedTwice(t)).toEqual([]));
 
-      // Each delivered segment owns exactly one row: nothing is on screen twice.
-      expect(rowsContaining(rows, FIRST_TAIL)).toHaveLength(1);
       expect(rowsContaining(rows, RESTART)).toHaveLength(1);
-
-      // Nothing was deleted or rewritten: both copies are on screen verbatim.
-      expect(texts).toContain(FIRST_TAIL);
-      expect(texts).toContain(RESTART);
+      expect(rowsContaining(rows, FIRST_TAIL)).toHaveLength(0);
+      expect(texts.filter((t) => t.includes("first names"))).toEqual([]);
+      expect(rowsContaining(rows, FIRST)).toHaveLength(1);
     });
 
-    test("the restart seals on its own final — one clean row per sentence", () => {
+    test("the restated final seals in place: one clean row, no third copy", () => {
       const { ctx, rows } = runRestartSequence();
       const after = reduceTranscriptEvent(
         rows,
@@ -494,21 +495,20 @@ describe("captionEngine", () => {
 
       expect(after.filter((r) => r.isFinal === true).map((r) => r.text)).toEqual([
         FIRST,
-        FIRST_TAIL,
         RESTART,
       ]);
-      // No live draft left behind, and no third copy of the restart.
+      // No live draft left behind, and no second copy of the restatement.
       expect(after.filter((r) => r.isFinal === false)).toHaveLength(0);
       after.forEach((r) => expect(runsRepeatedTwice(r.text)).toEqual([]));
     });
 
-    test("mirrored on the ES lane — same split, same wording", () => {
+    test("mirrored on the ES lane: same in-place supersede", () => {
       const { rows } = runRestartSequence({ laneSide: "es", channelKey: "es" });
       const texts = textsOf(rows);
 
       texts.forEach((t) => expect(runsRepeatedTwice(t)).toEqual([]));
-      expect(rowsContaining(rows, FIRST_TAIL)).toHaveLength(1);
       expect(rowsContaining(rows, RESTART)).toHaveLength(1);
+      expect(rowsContaining(rows, FIRST_TAIL)).toHaveLength(0);
       expect(rows.every((r) => !r.enFinalized)).toBe(true);
     });
 
