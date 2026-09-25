@@ -25,6 +25,56 @@ import { APP_VERSION } from '../constants/version';
 /** Newest first. Only the entry matching APP_VERSION is shown on load. */
 export const RELEASE_NOTES_CATALOG = [
   {
+    version: '4.151.2',
+    id: 'transcript-dedupe-supersede',
+    highlightElementIds: ['transcript-pane'],
+    es: {
+      title: 'Una frase, un mensaje',
+      intro: 'Deepgram reenvía o reformula el mismo tramo de audio. La app ya no lo muestra dos veces: corrige el mensaje que estaba repitiendo.',
+      sections: [{ heading: 'Qué cambió', bullets: [
+        'Un tramo repetido o reformulado corrige su propio renglón: una sola línea por frase.',
+        'Se muestra la redacción más nueva; la anterior se atenúa un instante en vez de quedar como un mensaje duplicado.',
+        'Aunque cambie una palabra (need/have), sigue siendo un solo mensaje.',
+        'Una frase ya escrita que Deepgram vuelve a mandar más tarde no se imprime de nuevo.',
+        'Los números (teléfono, código, dosis) no se borran nunca, y nada de lo que ya estaba en el renglón se pierde.',
+      ] }],
+    },
+    en: {
+      title: 'One phrase, one message',
+      intro: 'Deepgram re-sends or reworks the same audio span. The app no longer shows it twice: it corrects the message it was repeating.',
+      sections: [{ heading: 'What changed', bullets: [
+        'A repeated or reworded span corrects its own line: one line per phrase.',
+        'The newest wording wins; the previous one is dimmed for a moment instead of staying as a duplicate message.',
+        'Even when a word changes (need/have) it stays a single message.',
+        'A sentence already on screen that Deepgram re-sends later is not printed again.',
+        'Numbers (phone, code, dosage) never disappear, and nothing the line already showed is dropped.',
+      ] }],
+    },
+  },
+  {
+    version: '4.151.1',
+    id: 'mic-connect-restore',
+    highlightElementIds: ['header-connect-btn'],
+    es: {
+      title: 'CONNECT en modo mic vuelve a funcionar',
+      intro: 'Con modo mic activo, CONNECT pedía una pestaña (o VB-Cable) en vez del micrófono, y Deepgram no arrancaba.',
+      sections: [{ heading: 'Qué cambió', bullets: [
+        'CONNECT en modo mic ahora pide el micrófono y arranca Deepgram.',
+        'La ruta se decide en un solo lugar: mic > cable > pestaña, igual que el icono del header.',
+        'Si el micrófono falla, el mensaje lo dice claro en vez de hablar de captura de pestaña.',
+      ] }],
+    },
+    en: {
+      title: 'Mic-mode CONNECT works again',
+      intro: 'With mic mode on, CONNECT asked for a tab (or VB-Cable) instead of the microphone, so Deepgram never started.',
+      sections: [{ heading: 'What changed', bullets: [
+        'CONNECT in mic mode now requests the microphone and starts Deepgram.',
+        'The route is decided in one place: mic > cable > tab, same as the header icon.',
+        'If the microphone fails, the message says so instead of talking about tab capture.',
+      ] }],
+    },
+  },
+  {
     version: '4.151.0',
     id: 'transcript-dedupe-supersede',
     highlightElementIds: ['transcript-pane'],

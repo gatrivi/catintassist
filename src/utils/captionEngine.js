@@ -122,6 +122,62 @@ const isVerbatimRedelivery = (rows, laneSide, text, startTime) => {
   return false;
 };
 
+/**
+ * v4.151.1 - where (and how long) the addition re-states a run of the base.
+ * Same scan as restatedHeadWindow, but it also returns the position so that run
+ * can be spliced out instead of replacing the whole lane.
+ */
+const restatedRunMatch = (base, addition) => {
+  const b = captionWords(base);
+  const a = captionWords(addition);
+  if (b.length < RESTART_MIN_WORDS || a.length < RESTART_MIN_WORDS) return null;
+  const maxLen = Math.min(a.length, b.length, RESTART_HEAD_MAX_WORDS);
+  for (let len = maxLen; len >= RESTART_MIN_WORDS; len -= 1) {
+    const head = a.slice(0, len).join(' ');
+    for (let start = 0; start + len <= b.length; start += 1) {
+      if (b.slice(start, start + len).join(' ') === head) return { len, start };
+    }
+  }
+  return null;
+};
+
+/**
+ * v4.151.2 - the part of the base that the newer wording does NOT restate: everything
+ * before the re-stated run. The run and everything after it belong to the audio the
+ * addition re-covers, so the row keeps its earlier content and takes the new wording
+ * ("It can take a whole week to have a poop. Okay." + the corrected sentence).
+ */
+const restatedPrefix = (base, addition) => {
+  const match = restatedRunMatch(base, addition);
+  if (!match) return base;
+  const words = String(base || '').trim().split(/\s+/).filter(Boolean);
+  return words.slice(0, match.start).join(' ');
+};
+
+/** v4.151.2 - the part of the base the addition supersedes (from the run on). */
+const supersededTail = (base, addition) => {
+  const match = restatedRunMatch(base, addition);
+  if (!match) return '';
+  const words = String(base || '').trim().split(/\s+/).filter(Boolean);
+  return words.slice(match.start).join(' ');
+};
+
+/** v4.151.1 - normalized token list (same normalization as the overlap guard). */
+const dupTokens = (text) => {
+  const key = dupKey(text);
+  return key ? key.split(' ').filter(Boolean) : [];
+};
+
+/** v4.151.1 - is `inner` a contiguous run of `outer` tokens? */
+const isRunInside = (inner, outer) => {
+  if (!inner.length || inner.length > outer.length) return false;
+  const needle = inner.join(' ');
+  for (let i = 0; i + inner.length <= outer.length; i += 1) {
+    if (outer.slice(i, i + inner.length).join(' ') === needle) return true;
+  }
+  return false;
+};
+
 export const normalizeWordConfidence = (words = []) =>
   (Array.isArray(words) ? words : [])
     .map((w) => ({
@@ -333,7 +389,19 @@ export const reduceTranscriptEvent = (prev, event, ctx) => {
   // an unchanged start) must not print a second identical message. Gated on exact
   // normalized text + the same Deepgram span, so a repeated sentence (later start)
   // is still kept.
+  // v4.151.2: a segment re-delivered IDENTICALLY on the same audio span must not
+  // print a second message. Deliberately strict (exact normalized text + same
+  // Deepgram start): a genuinely repeated sentence, or a word the fixture suite
+  // requires to be re-shown (medication repeats), is NOT a duplicate. Suppressing
+  // by text containment alone broke that contract - do not reintroduce it without
+  // an audio-span overlap check.
   if (isNewTurn && last && isVerbatimRedelivery(prev, laneSide, transcript, startTime)) {
+    const lastRow = prev[prev.length - 1];
+    if (shouldFinalize && lastRow && lastRow.isFinal === false && (lastRow.text || '').trim()) {
+      // freeze the row that already holds those words (v4.141.0 primitive) so the
+      // turn still seals, without a duplicate bubble.
+      return [...prev.slice(0, -1), { ...lastRow, isFinal: true, tailPreviewText: null }];
+    }
     return prev;
   }
 
@@ -419,12 +487,32 @@ export const reduceTranscriptEvent = (prev, event, ctx) => {
       ? restatedHeadWindow(laneFinalized, transcript)
       : 0;
   let supersedeInPlace = false;
+  let supersedeReplacesLane = false;
   if (restatedWords > 0 && cleaned.trim()) {
     if (lostDigitRuns(laneFinalized, transcript).length) {
+      // digits may never leave the screen (v4.136.0): keep the row, consume the
+      // repeated head and splice the rest in.
       cleaned = dropLeadingWords(cleaned, restatedWords);
-    } else {
+    } else if (wordCount(cleaned) >= wordCount(supersededTail(laneFinalized, transcript))) {
+      // The newer wording covers at least as much as the part it restates: the row
+      // keeps everything before that part and takes the new wording in its place.
       supersedeInPlace = true;
+    } else {
+      // The arriving wording adds nothing (it is shorter): keep the row untouched.
+      cleaned = '';
     }
+  } else if (
+    cleaned.trim() &&
+    dupTokens(laneFinalized).length >= RESTART_MIN_WORDS &&
+    !restartBoundaryHasNumbers(laneFinalized, cleaned) &&
+    !lostDigitRuns(laneFinalized, cleaned).length &&
+    isRunInside(dupTokens(laneFinalized), dupTokens(cleaned))
+  ) {
+    // Reworded re-cut ("Do you need some" -> "Do you have some, or do you need
+    // some?"): every word the row already shows is inside the new wording, so the
+    // row BECOMES that wording - appending it would print the phrase twice.
+    supersedeInPlace = true;
+    supersedeReplacesLane = true;
   }
   const current = { ...last };
   if (supersedeInPlace) {
@@ -432,11 +520,14 @@ export const reduceTranscriptEvent = (prev, event, ctx) => {
     // is a swap, never a delete-then-restore (v4.133.0). The turn badge stays
     // monotonic: words the newer wording no longer shows are banked.
     const prevVisibleWords = wordCount(current.text) || wordCount(laneFinalized);
+    // v4.151.1: only the re-stated run is replaced. Anything else the row already
+    // showed stays exactly where it was - the supersede must never shrink a row.
+    const laneBase = supersedeReplacesLane ? '' : restatedPrefix(laneFinalized, transcript);
     if (laneSide === 'en') {
-      current.enFinalized = '';
+      current.enFinalized = laneBase;
       current.enInterim = '';
     } else {
-      current.esFinalized = '';
+      current.esFinalized = laneBase;
       current.esInterim = '';
     }
     if (turnWordsBaseRef) {

@@ -667,3 +667,112 @@ describe("reduceTranscriptEvent createdAt", () => {
     expect(lastRow.createdAt).toBe(now);
   });
 });
+
+// ---------------------------------------------------------------------------
+// v4.151.1 - duplicate suppression, shaped by a real session paste (2026-09-25):
+// restated heads, reworded re-cuts and re-delivered sentences must all end as ONE
+// row, and nothing the row already showed may be dropped.
+// ---------------------------------------------------------------------------
+describe("duplicate suppression from a live session (v4.151.1)", () => {
+  const t0 = 1_700_000_000_000;
+
+  const textsOf = (rows) => rows.map((r) => r.text || "");
+  const wordList = (t) => String(t || "").trim().split(/\s+/).filter(Boolean);
+  const runsRepeatedTwice = (text, minWords = 4) => {
+    const w = String(text || "")
+      .toLowerCase()
+      .replace(/[^\p{L}\p{N}\s]+/gu, " ")
+      .trim()
+      .split(/\s+/)
+      .filter(Boolean);
+    const seen = new Map();
+    for (let i = 0; i + minWords <= w.length; i += 1) {
+      const key = w.slice(i, i + minWords).join(" ");
+      seen.set(key, (seen.get(key) || 0) + 1);
+    }
+    return [...seen.entries()].filter(([, n]) => n > 1).map(([key]) => key);
+  };
+
+  test("re-stated sentence keeps the row and never prints the phrase twice", () => {
+    const ctx = makeCtx();
+    const FIRST =
+      "It can take a whole week to have a poop. Okay. You can take a stool softener if you have it at home, or we";
+    const RESTATED =
+      "You can take a stool softener if you have it at home, or we can send you in some to the pharmacy.";
+    let rows = reduceTranscriptEvent(
+      [],
+      makeEvent({ transcript: FIRST, isFinal: true, speechFinal: true, now: t0, isSilentBreak: true }),
+      ctx,
+    );
+    rows = reduceTranscriptEvent(
+      rows,
+      makeEvent({ transcript: RESTATED, startTime: 12, now: t0 + 2000, isSilentBreak: false }),
+      ctx,
+    );
+
+    // A final legitimately splits into sentence bubbles, so the row COUNT is not the
+    // point: the sentence must be on screen once, and nothing shown may be dropped.
+    const text = textsOf(rows).join(" ");
+    expect(text).toContain("It can take a whole week to have a poop.");
+    expect(text).toContain("we can send you in some to the pharmacy.");
+    expect(text.match(/stool softener/gi)).toHaveLength(1);
+    expect(runsRepeatedTwice(text)).toEqual([]);
+  });
+
+  test("head re-stated mid-turn: the row holds the newer wording once", () => {
+    const ctx = makeCtx();
+    let rows = reduceTranscriptEvent(
+      [],
+      makeEvent({
+        transcript: "Okay. Do you need some ibuprofen, or",
+        isFinal: true,
+        speechFinal: true,
+        now: t0,
+        isSilentBreak: true,
+      }),
+      ctx,
+    );
+    rows = reduceTranscriptEvent(
+      rows,
+      makeEvent({
+        transcript: "Do you need some ibuprofen, or do you have that at home?",
+        startTime: 14,
+        now: t0 + 2000,
+        isSilentBreak: false,
+      }),
+      ctx,
+    );
+
+    const text = textsOf(rows).join(" ");
+    expect(text).toBe("Okay. Do you need some ibuprofen, or do you have that at home?");
+    expect(runsRepeatedTwice(text)).toEqual([]);
+  });
+
+  test("reworded re-cut (need -> have) supersedes instead of doubling the phrase", () => {
+    const ctx = makeCtx();
+    let rows = reduceTranscriptEvent(
+      [],
+      makeEvent({ transcript: "Do you need some", now: t0, isSilentBreak: true }),
+      ctx,
+    );
+    rows = reduceTranscriptEvent(
+      rows,
+      makeEvent({
+        transcript: "Do you have some, or do you need some?",
+        startTime: 14,
+        now: t0 + 1200,
+        isSilentBreak: false,
+      }),
+      ctx,
+    );
+
+    expect(rows).toHaveLength(1);
+    expect(rows[0].text).toBe("Do you have some, or do you need some?");
+  });
+
+    // KNOWN GAP (documented, not asserted): when Deepgram re-sends a sentence that is
+  // already on screen as its own later segment, the engine still creates a row for
+  // it. Suppressing that needs an audio-span overlap check (payload start+duration),
+  // because text containment alone also catches repeats the fixture suite requires
+  // (medication words). Do not fix it by containment.
+});
