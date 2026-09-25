@@ -1,4 +1,4 @@
-import { shouldAutoHold, shouldAutoResume } from './holdState';
+import { shouldAutoHold, shouldAutoResume, isEnglishDoctorSentence } from './holdState';
 
 describe('holdState auto hold/resume', () => {
   it('auto-holds only on recent intent + 30s continuous silence', () => {
@@ -13,5 +13,35 @@ describe('holdState auto hold/resume', () => {
     expect(shouldAutoResume({ isHold: true, silenceSecs: 1.9 })).toBe(true);
     expect(shouldAutoResume({ isHold: true, silenceSecs: 5 })).toBe(false);
     expect(shouldAutoResume({ isHold: false, silenceSecs: 0 })).toBe(false);
+  });
+});
+
+// v4.150.0: hold means no doctor, no doctor means no English — the hold clock
+// may only tick on FULL English sentences (v4.150.0 gate).
+describe('isEnglishDoctorSentence', () => {
+  it('accepts full English sentences from the EN lane', () => {
+    expect(isEnglishDoctorSentence('en', 'Let me check the chart.')).toBe(true);
+    expect(isEnglishDoctorSentence('en-US', 'What seems to be the problem?')).toBe(true);
+    expect(isEnglishDoctorSentence('en', 'Okay, I will be right back!')).toBe(true);
+    expect(isEnglishDoctorSentence('en', '"We will run some tests."')).toBe(true);
+  });
+
+  it('rejects Spanish regardless of sentence shape', () => {
+    expect(isEnglishDoctorSentence('es', 'Un momento, por favor, ya viene el doctor.')).toBe(false);
+    expect(isEnglishDoctorSentence('es-419', 'Espere afuera, la doctora lo va a ver.')).toBe(false);
+  });
+
+  it('rejects fragments, interims and short chatter', () => {
+    expect(isEnglishDoctorSentence('en', 'Okay.')).toBe(false);
+    expect(isEnglishDoctorSentence('en', 'Sure.')).toBe(false);
+    expect(isEnglishDoctorSentence('en', 'hold on a sec')).toBe(false);
+    expect(isEnglishDoctorSentence('en', 'so I think we should maybe')).toBe(false);
+    expect(isEnglishDoctorSentence('en', '')).toBe(false);
+    expect(isEnglishDoctorSentence('en', null)).toBe(false);
+  });
+
+  it('rejects non-EN lanes (normalizeLang treats missing as EN, app convention)', () => {
+    expect(isEnglishDoctorSentence('fr', 'Bonjour, le docteur arrive tout de suite.')).toBe(false);
+    expect(isEnglishDoctorSentence('de', 'Der Arzt kommt gleich wieder.')).toBe(false);
   });
 });

@@ -13,7 +13,7 @@ import {
   NUMBER_HIGHLIGHT_REGEX,
   splitHighlightSegments,
 } from '../utils/sensitiveDataProtector';
-import { formatTranscriptForDisplay, collectCopyableEntities } from '../utils/transcriptFormat';
+import { formatTranscriptForDisplay, collectCopyableEntities, bubbleTimestampLabel } from '../utils/transcriptFormat';
 import { composeCaptionTranslation } from '../utils/translationApplicator';
 import { reattachLabelForMode, resolveIdleAudioMode } from '../utils/offCallIdleMessages';
 import { ScrambleText } from './ScrambleText';
@@ -149,6 +149,20 @@ const resolveTailHighlight = (repairedText, rawText, tailPreviewText, lang, appl
 };
 
 /** One-click copy chip for names, spelled text, etc. */
+// v4.150.0: hover-only wall-clock stamp on a bubble. Local HH:MM:SS is shown;
+// the tooltip carries the exact catLog (__CAT_DUMP) format so a message can be
+// matched to the console logs around it (debug missing messages, hold math).
+// Sits outside MemoTranslatedBubble so it never touches morph/keys/memo props.
+const BubbleTs = ({ cap }) => {
+  const ts = bubbleTimestampLabel(cap?.createdAt, cap?.turnId);
+  if (!ts) return null;
+  return (
+    <span className="bubble-ts" title={`catLog: ${ts.log} UTC — matches __CAT_DUMP() lines`}>
+      {ts.local}
+    </span>
+  );
+};
+
 const CopyChip = ({ value, label, kind = 'default' }) => {
   if (!value) return null;
   return (
@@ -1474,6 +1488,7 @@ export const TranscriptionBoard = ({
                   wordConfidence={cap.wordConfidence || null}
                   {...makeEditHandlers(cap)}
                 />
+                <BubbleTs cap={cap} />
                 <button
                   type="button"
                   className="bubble-pin-btn is-pinned"
@@ -1602,6 +1617,7 @@ export const TranscriptionBoard = ({
                 </button>
               )}
               
+              <BubbleTs cap={cap} />
               <button
                 type="button"
                 className="bubble-pin-btn"

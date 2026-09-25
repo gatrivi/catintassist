@@ -1185,10 +1185,12 @@ export const SessionProvider = ({ children }) => {
       timerRef.current = setInterval(() => {
         setSessionSeconds(prev => prev + 1);
 
-        // SMART HOLD AUTO-TRIGGER + AUTO-RESUME (v4.147.0: speech = back)
-        // Hold phrase recently detected (<60s) + silence (30s) → hold.
-        // Any speech while holding (<2s silence) → resume.
-        const silenceSecs = (Date.now() - lastActivityTime) / 1000;
+        // SMART HOLD AUTO-TRIGGER + AUTO-RESUME (v4.150.0: English sentence = back)
+        // Hold phrase recently detected (<60s) + 30s with NO full English
+        // sentence → hold. The clock is lastEnglishActivityTime on purpose:
+        // Spanish / background chatter used to reset the old any-speech clock
+        // and block hold from ever firing. A full EN sentence <2s ago → resume.
+        const silenceSecs = (Date.now() - lastEnglishActivityTime) / 1000;
         const holdIntentAgeMs = Date.now() - holdIntentAt;
 
         if (shouldAutoResume({ isHold, silenceSecs })) {
@@ -1205,7 +1207,7 @@ export const SessionProvider = ({ children }) => {
     return () => {
       if (timerRef.current) clearInterval(timerRef.current);
     };
-  }, [isActive, lastActivityTime, holdIntentAt, isHold]);
+  }, [isActive, lastEnglishActivityTime, holdIntentAt, isHold]);
 
   const breakTimerRef = useRef(null);
   useEffect(() => {

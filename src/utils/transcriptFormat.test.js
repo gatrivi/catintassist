@@ -7,6 +7,7 @@ import {
   formatSpellingText,
   isSpellingBlock,
   splitLongTextAtCommas,
+  bubbleTimestampLabel,
 } from './transcriptFormat';
 
 describe('consolidateSpelling', () => {
@@ -140,5 +141,26 @@ describe('splitLongTextAtCommas digit guard', () => {
     const chunks = splitLongTextAtCommas(text, 40);
     expect(chunks.length).toBe(2);
     expect(chunks[1]).toBe(words(5));
+  });
+});
+
+// v4.150.0: hover timestamp — local for hold math, catLog format for log correlation.
+describe('bubbleTimestampLabel', () => {
+  test('formats local HH:MM:SS and catLog HH:MM:SS.mmm (UTC)', () => {
+    const ms = Date.UTC(2026, 8, 25, 14, 32, 7, 123);
+    const ts = bubbleTimestampLabel(ms);
+    expect(ts).not.toBeNull();
+    expect(ts.log).toBe('14:32:07.123');
+    expect(ts.local).toMatch(/^\d{2}:\d{2}:\d{2}$/);
+  });
+
+  test('falls back to turn-<ms> id for pre-createdAt persisted bubbles', () => {
+    const ms = Date.UTC(2026, 8, 25, 9, 5, 3, 400);
+    expect(bubbleTimestampLabel(undefined, `turn-${ms}`).log).toBe('09:05:03.400');
+  });
+
+  test('returns null when nothing usable is present', () => {
+    expect(bubbleTimestampLabel(undefined, undefined)).toBeNull();
+    expect(bubbleTimestampLabel(NaN, 'turn-notanumber')).toBeNull();
   });
 });

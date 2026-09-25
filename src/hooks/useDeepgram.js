@@ -28,7 +28,6 @@ import {
   isEnEsProtectionMode,
   usesMultiSocket,
   laneSideForLang,
-  normalizeLang,
   LANG_PAIR_CHANGED_EVENT,
 } from "../utils/languageConfig";
 import {
@@ -70,6 +69,7 @@ import {
   loadAutopilotPhrases,
 } from "../utils/callAutopilot";
 import { matchHoldPhrase } from "../utils/holdPhrases";
+import { isEnglishDoctorSentence } from "../utils/holdState";
 import {
   connectStallVerdict,
   shouldAutoZap,
@@ -1347,7 +1347,14 @@ export const useDeepgram = () => {
 
           if (holdPhrase) {
             requestHoldIntent();
-          } else if (isCallDetectionEnabled && confidence > 0.4) {
+          } else if (
+            isCallDetectionEnabled &&
+            confidence > 0.4 &&
+            // v4.150.0: only a FULL English sentence proves "the doctor is
+            // back". Spanish / background chatter must not disarm hold intent
+            // — that was why auto-hold never armed while nurses talked.
+            isEnglishDoctorSentence(socketLaneLang, transcript)
+          ) {
             clearHoldIntent();
           }
 
@@ -1468,13 +1475,16 @@ export const useDeepgram = () => {
             scheduleInterimFlush();
           }
 
-          const lastRow = newArr[newArr.length - 1];
+          // v4.150.0: the English clock ticks ONLY on a full English sentence
+          // from this message's own lane (socketLaneLang, not lastRow.lang —
+          // the last row may belong to the ES lane). Interims lack terminal
+          // punctuation and fail the gate, so fragments/background chatter
+          // never look like the doctor is back. Feeds hold auto-resume and
+          // the header "non-doctor hold" micro-bar.
           if (
             isCallDetectionEnabled &&
-            lastRow &&
-            normalizeLang(lastRow.lang) === "en" &&
             confidence > 0.4 &&
-            lastRow.text?.trim() &&
+            isEnglishDoctorSentence(socketLaneLang, transcript) &&
             now - lastEnglishActivityPulseRef.current > 500
           ) {
             updateEnglishActivity();

@@ -6876,6 +6876,29 @@ body:has(.app-container[data-call-mode="true"]) .element-hint-panel {
   color: #bbf7d0;
 }
 
+/* v4.150.0: hover-only message timestamp — debug aid, zero footprint at rest.
+   Top-right corner is free (edit btns live on the columns, pin on the left). */
+.bubble-ts {
+  position: absolute;
+  top: 1px;
+  right: 3px;
+  z-index: 9;
+  opacity: 0;
+  pointer-events: none;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 9px;
+  line-height: 1.4;
+  padding: 0 4px;
+  border-radius: 3px;
+  background: rgba(24, 24, 27, 0.85);
+  color: #a1a1aa;
+  transition: opacity 0.12s ease;
+}
+
+.transcript-bubble:hover .bubble-ts {
+  opacity: 0.92;
+}
+
 /* Pin — ghost by default; bigger glass hit on row hover (left edge, clear of ES column) */
 .bubble-pin-btn {
   position: absolute;

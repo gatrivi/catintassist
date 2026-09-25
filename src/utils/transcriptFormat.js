@@ -271,3 +271,21 @@ export const formatTranscriptForDisplay = (text, lang = 'en') => {
 };
 
 export const applyTranscriptFormatting = (text, lang = 'en') => formatTranscriptForDisplay(text, lang);
+
+/**
+ * v4.150.0: hover timestamp for a transcript bubble (debug aid).
+ * `local` = wall clock HH:MM:SS (what you compare against "how long on hold").
+ * `log` = catLog ring-buffer format (HH:MM:SS.mmm UTC) so it can be matched
+ * byte-for-byte against __CAT_DUMP() console output.
+ * Falls back to the `turn-<ms>` id for bubbles persisted before createdAt existed.
+ */
+export const bubbleTimestampLabel = (createdAt, turnId) => {
+  const ms = Number(createdAt) || Number(String(turnId || '').replace(/^turn-/, '')) || 0;
+  if (!ms) return null;
+  const d = new Date(ms);
+  if (Number.isNaN(d.getTime())) return null;
+  return {
+    local: d.toTimeString().slice(0, 8),
+    log: d.toISOString().slice(11, 23),
+  };
+};

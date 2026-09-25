@@ -631,3 +631,39 @@ describe("captionEngine", () => {
     });
   });
 });
+
+// v4.150.0: every bubble row carries wall-clock createdAt for the hover stamp;
+// sealed copies inherit it via the template spread.
+describe("reduceTranscriptEvent createdAt", () => {
+  test("new interim row carries createdAt = event.now", () => {
+    const ctx = makeCtx();
+    const now = 1758800000000;
+    const next = reduceTranscriptEvent([], makeEvent({ transcript: "hello there", now }), ctx);
+    expect(next[0].createdAt).toBe(now);
+  });
+
+  test("sealed row keeps the draft row's createdAt", () => {
+    const ctx = makeCtx();
+    const now = 1758800000000;
+    // Realistic flow: interim draft, then its final with the SAME segment
+    // start time — the final appends to that draft and seals it in place.
+    const interim = reduceTranscriptEvent(
+      [],
+      makeEvent({ transcript: "hello there", now, isSilentBreak: true }),
+      ctx,
+    );
+    const sealed = reduceTranscriptEvent(
+      interim,
+      makeEvent({
+        transcript: "hello there doctor.",
+        isFinal: true,
+        isSilentBreak: false,
+        now: now + 900,
+      }),
+      ctx,
+    );
+    const lastRow = sealed[sealed.length - 1];
+    expect(lastRow.isFinal).toBe(true);
+    expect(lastRow.createdAt).toBe(now);
+  });
+});

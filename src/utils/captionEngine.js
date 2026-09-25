@@ -309,6 +309,10 @@ export const reduceTranscriptEvent = (prev, event, ctx) => {
 
       last = {
         id: buildStableCaptionId(channelKey, startTime, false),
+        // v4.150.0: wall-clock ms this bubble started — powers the hover
+        // timestamp (debug: correlate messages with __CAT_DUMP console logs).
+        // Sealed copies inherit it via the template spread.
+        createdAt: now,
         enFinalized: "",
         enInterim: "",
         esFinalized: "",
@@ -383,6 +387,8 @@ export const reduceTranscriptEvent = (prev, event, ctx) => {
     if (lastBubbleStartedRef) lastBubbleStartedRef.current = now;
     last = {
       id: buildStableCaptionId(channelKey, startTime, false),
+      // Same wall-clock stamp contract as the main turn template (v4.150.0).
+      createdAt: now,
       enFinalized: "",
       enInterim: "",
       esFinalized: "",
