@@ -51,7 +51,7 @@ import {
 } from "../utils/deepgramListenConfig";
 import { writeMicTestMode } from "../utils/micMode";
 import { traceCaptionArrayDiff } from "../utils/vanishTrace";
-import { updateVadLoudFrames, shouldWakeFromVad, shouldSpeechAutoStart } from "../utils/idleEar";
+import { updateVadLoudFrames, shouldWakeFromVad, shouldSpeechAutoStart, IDLE_EAR_RMS_THRESHOLD } from "../utils/idleEar";
 import { createUnthrottledInterval } from "../utils/workerInterval";
 import {
   RING_TRIGGER_FRAMES,
@@ -229,6 +229,13 @@ export const useDeepgram = () => {
   // 60s red chip + manual Zap (first minute of intake lost).
   const dgMessageSeenRef = useRef(false);
   const connectStallRetriesRef = useRef(0);
+  // v4.149.0: outgoing-audio speech evidence — last time the stream was
+  // actually LOUD locally (RMS). Separates a dead Deepgram pipe (Zap fixes)
+  // from a silent mic/tab/headset route (Zap useless). Local-only analyser.
+  const lastLoudAudioAtRef = useRef(0);
+  const callVadCtxRef = useRef(null);
+  const callVadIntervalRef = useRef(null);
+  const stopCallVadRef = useRef(null);
   const lastDiagnosticAudioChunkAtRef = useRef(0);
   const sttLatencyModeRef = useRef(loadSttLatencyMode());
   const captionsHydratedRef = useRef(false);
@@ -587,12 +594,60 @@ export const useDeepgram = () => {
     }
   }, [callAutopilotRef, critLog]);
 
+  // ── v4.149.0: call-time outgoing-audio RMS ──────────────────────────────
+  // "Is anyone audibly speaking into the pipe right now?" Worker-timed (a
+  // hidden tab can't starve it) and local-only: no audio leaves the machine.
+  const stopCallVad = useCallback(() => {
+    if (callVadIntervalRef.current) {
+      callVadIntervalRef.current();
+      callVadIntervalRef.current = null;
+    }
+    if (callVadCtxRef.current) {
+      try { callVadCtxRef.current.close(); } catch (_) {}
+      callVadCtxRef.current = null;
+    }
+  }, []);
+  stopCallVadRef.current = stopCallVad;
+
+  const startCallVad = useCallback((stream) => {
+    stopCallVad();
+    try {
+      const Ctx = window.AudioContext || window.webkitAudioContext;
+      const ctx = new Ctx();
+      if (ctx.state === "suspended" && ctx.resume) ctx.resume();
+      callVadCtxRef.current = ctx;
+      const srcNode = ctx.createMediaStreamSource(new MediaStream(stream.getAudioTracks()));
+      const analyser = ctx.createAnalyser();
+      analyser.fftSize = 512;
+      srcNode.connect(analyser);
+      const buf = new Uint8Array(analyser.frequencyBinCount);
+      const tick = () => {
+        try {
+          analyser.getByteTimeDomainData(buf);
+          let sum = 0;
+          for (let i = 0; i < buf.length; i++) {
+            const v = (buf[i] - 128) / 128;
+            sum += v * v;
+          }
+          const rms = Math.sqrt(sum / buf.length);
+          if (rms >= IDLE_EAR_RMS_THRESHOLD) lastLoudAudioAtRef.current = Date.now();
+        } catch (_) {}
+      };
+      callVadIntervalRef.current = createUnthrottledInterval(tick, 250);
+    } catch (e) {
+      catWarn(`[callVAD] unavailable: ${String(e)}`);
+    }
+  }, [stopCallVad]);
+
   const closeConnections = useCallback(() => {
     // v4.136.0: closing sockets must also close the idle ear. A Zap used to
     // leave VAD + idle KeepAlive running into whatever sockets open next —
     // the ear could then wake and build a SECOND recorder mid-reconnect.
     try {
       stopIdleEarRef.current?.();
+    } catch (_) {}
+    try {
+      stopCallVadRef.current?.();
     } catch (_) {}
     stopToneMonitor();
     clearKeepalive();
@@ -914,6 +969,8 @@ export const useDeepgram = () => {
 
         setConnectionState("connected");
         setConnectionMessage("Live");
+        // v4.149.0: start watching outgoing loudness for speech evidence.
+        startCallVad(stream);
         try {
           const needsRecorder =
             !mediaRecorderRef.current ||
@@ -1527,6 +1584,7 @@ export const useDeepgram = () => {
       isLikelyApiKeyRejected,
       sttTrace,
       critLog,
+      startCallVad,
     ],
   );
 
@@ -2152,12 +2210,15 @@ export const useDeepgram = () => {
           msgAgeMs: lastMsgAt ? now - lastMsgAt : Infinity,
           audioProgressAgeMs: now - (lastAudioProgressAtRef.current || 0),
           sinceLastZapMs: now - lastAutoZapAtRef.current,
+          speakingAgeMs: lastLoudAudioAtRef.current
+            ? now - lastLoudAudioAtRef.current
+            : Infinity,
         })
       ) {
         return;
       }
       lastAutoZapAtRef.current = now;
-      critLog("warn", "auto reconnectStream: no Deepgram message for 35s+");
+      critLog("warn", "auto reconnectStream: Deepgram silent 15s+ while speaking (or 35s+ total)");
       reconnectStream();
     }, 5000);
     return () => clearInterval(t);

@@ -25,6 +25,29 @@ import { APP_VERSION } from '../constants/version';
 /** Newest first. Only the entry matching APP_VERSION is shown on load. */
 export const RELEASE_NOTES_CATALOG = [
   {
+    version: '4.149.0',
+    id: 'speech-evidence-zap',
+    highlightElementIds: ['audio-route-zap-btn'],
+    es: {
+      title: 'Zap solo cuando sirve de algo',
+      intro: 'La app ahora distingue si falló Deepgram o si se murió tu audio (mic/tablita/cable), y solo se reconecta en el primer caso.',
+      sections: [{ heading: 'Qué cambió', bullets: [
+        'Si alguien está hablando y Deepgram no manda nada por 15s → reconexión automática (~15-20s).',
+        'Si nadie habla, no reconecta: el silencio no es una falla (antes podía hacer Zap en pausas largas).',
+        'Si tu audio entra en silencio total 35s+, recupera igual por si el tubo murió sin nadie hablando.',
+      ] }],
+    },
+    en: {
+      title: 'Zap only when it can help',
+      intro: 'The app now tells apart "Deepgram died" from "your audio went silent (mic/tab/cable)" and only reconnects in the first case.',
+      sections: [{ heading: 'What changed', bullets: [
+        'Someone is speaking and Deepgram sends nothing for 15s → auto-reconnect in ~15-20s.',
+        'Nobody speaking → no reconnect: dead air is not a fault (long pauses can no longer trigger churn).',
+        'Total silence for 35s+ still recovers, in case the pipe died while no one talked.',
+      ] }],
+    },
+  },
+  {
     version: '4.148.1',
     id: 'fast-auto-zap',
     highlightElementIds: ['audio-route-zap-btn'],

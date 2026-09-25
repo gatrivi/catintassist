@@ -88,3 +88,4 @@
 
 | 2026-09-24T15:48:39.711Z | 20a10e3 | v4.146.1: disconnect autodetect wired + phone protector digit veto |
 | 2026-09-24T18:51:34.108Z | 975d41a | v4.148.0: STT evidence inspector + hold counter + CONNECT self-heal (~12s auto-reconnect, no more manual Zap) + Multilingual false-red fix |
+| 2026-09-24T19:01:53.143Z | 381bf59 | v4.148.1: auto-Zap 65s -> 35s — mid-call Deepgram stall self-heals in ~35s |

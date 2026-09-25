@@ -2,6 +2,12 @@
 
 **Version source:** `src/constants/version.js` (must match `package.json` + top-right UI pill)
 
+## v4.149.0 - speech evidence: Zap only when it can help
+
+- Reported: still stuck after v4.148.1. Two different failures look identical on the Deepgram message clock: a dead Deepgram pipe (a Zap rebuilds it) and a silent audio route — mic/tab/VB-Cable/headset stopped delivering signal (a Zap is useless). Zapping the second case burns the cooldown while nothing is fixed.
+- Fix: a call-time local RMS monitor (WebAudio analyser on the outgoing stream, worker-timed so a hidden tab can't starve it, zero audio leaves the machine) stamps when the pipe last carried real speech energy. `shouldAutoZap()` now requires speech evidence: **15s+ of zero Deepgram messages while someone is audibly speaking → Zap in ~15-20s** (down from 35s when it matters most); 35s+ of total silence still Zaps regardless (pipe that died during dead air); a quiet stretch with no speech never Zaps (dead air is not a fault). Recorder-alive + 120s-cooldown guards unchanged. Pure + unit-tested in `dgStatus.js`.
+- Version note: the pill the user reported as "4.184.1" is v4.148.1 (no such version exists in the repo).
+
 ## v4.148.1 - auto-Zap waits 35s, not 65s
 
 - Reported live: "65s auto zap seems bonkers." Correct — that wait was sized in v4.136 when a frozen message clock caused Zap loops. The clock is trustworthy now (v4.136/v4.148.0 fixes) and the guards that matter stayed: recorder must still be sending audio (else it's the audio watchdog's failure) + 120s cooldown between recovery Zaps.

@@ -3,7 +3,9 @@ import {
   connectStallVerdict,
   isSocketHealthy,
   shouldAutoZap,
+  DG_ZAP_SPEAKING_SILENCE_MS,
   DG_AUTO_ZAP_SILENCE_MS,
+  DG_SPEAKING_FRESH_MS,
   DG_AUTO_ZAP_COOLDOWN_MS,
   CONNECT_STALL_MAX_RETRIES,
   DG_FRESH_TEXT_MS,
@@ -114,18 +116,34 @@ describe("isSocketHealthy — 'skipped' (Multilingual single-socket) is healthy 
   });
 });
 
-describe('shouldAutoZap — 35s mid-call stall recovery (v4.148.1)', () => {
-  const zap = (msgAgeMs = 40_000) =>
-    shouldAutoZap({ msgAgeMs, audioProgressAgeMs: 3_000, sinceLastZapMs: DG_AUTO_ZAP_COOLDOWN_MS });
+describe('shouldAutoZap — speech-evidence stall recovery (v4.149.0)', () => {
+  const zap = (msgAgeMs = 40_000, speakingAgeMs = Infinity) =>
+    shouldAutoZap({
+      msgAgeMs,
+      audioProgressAgeMs: 3_000,
+      sinceLastZapMs: DG_AUTO_ZAP_COOLDOWN_MS,
+      speakingAgeMs,
+    });
 
-  it('zaps after 35s+ of zero Deepgram messages while audio still flows', () => {
+  it('zaps after 35s+ of total silence even with no speech (pipe died during dead air)', () => {
     expect(zap(DG_AUTO_ZAP_SILENCE_MS)).toBe(true);
     expect(zap(90_000)).toBe(true);
   });
 
-  it('holds fire during live dead air (messages still arriving)', () => {
-    expect(zap(DG_AUTO_ZAP_SILENCE_MS - 1)).toBe(false);
-    expect(zap(5_000)).toBe(false);
+  it('zaps after only 15s when someone is audibly speaking into a silent pipe', () => {
+    expect(zap(DG_ZAP_SPEAKING_SILENCE_MS, 1_000)).toBe(true);
+    expect(zap(20_000, 5_000)).toBe(true);
+  });
+
+  it('never zaps a quiet stretch without speech evidence — dead air is not a fault', () => {
+    expect(zap(DG_ZAP_SPEAKING_SILENCE_MS, Infinity)).toBe(false);
+    expect(zap(20_000, 60_000)).toBe(false);
+    expect(zap(5_000, 1_000)).toBe(false);
+  });
+
+  it('speaking evidence must be fresh (within 10s)', () => {
+    expect(zap(20_000, DG_SPEAKING_FRESH_MS)).toBe(true);
+    expect(zap(20_000, DG_SPEAKING_FRESH_MS + 1)).toBe(false);
   });
 
   it('never zaps a dead recorder — that is the audio watchdog failure', () => {
