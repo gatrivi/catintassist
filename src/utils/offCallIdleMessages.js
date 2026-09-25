@@ -2,7 +2,7 @@
 
 import { isRememberExpired, needsUserSuppliedDeepgramKey } from './deepgramRuntimeKey';
 import {
-  AUDIO_SOURCE_MODE_VIRTUAL_CABLE,
+  resolveSttSource,
   canUseTabCapture,
   isLikelyEmbeddedPreviewBrowser,
 } from './audioSourceManager';
@@ -10,15 +10,11 @@ import {
 export const IDLE_TIP_LEVEL_KEY = 'catint_idle_tip_level_v1';
 export const IDLE_TIP_SNOOZE_UNTIL_KEY = 'catint_idle_tip_snoozed_until_v1';
 
-/** mic wins (phone/local); else VB; else tab. */
+/** mic wins (phone/local); else VB; else tab - one rule, shared with STT. */
 export const resolveIdleAudioMode = ({
   micTestMode = false,
   audioSourceMode = 'tab',
-} = {}) => {
-  if (micTestMode) return 'mic';
-  if (audioSourceMode === AUDIO_SOURCE_MODE_VIRTUAL_CABLE) return 'virtualCable';
-  return 'tab';
-};
+} = {}) => resolveSttSource({ micTestMode, audioSourceMode });
 
 /** Zombie-banner wording matches the configured route — never "re-attach tab" on VB. */
 export const reattachLabelForMode = (mode = 'tab') => {

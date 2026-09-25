@@ -90,3 +90,7 @@
 | 2026-09-24T18:51:34.108Z | 975d41a | v4.148.0: STT evidence inspector + hold counter + CONNECT self-heal (~12s auto-reconnect, no more manual Zap) + Multilingual false-red fix |
 | 2026-09-24T19:01:53.143Z | 381bf59 | v4.148.1: auto-Zap 65s -> 35s — mid-call Deepgram stall self-heals in ~35s |
 | 2026-09-25T14:35:33.293Z | 44fd98a | v4.149.0: speech-evidence auto-recovery (~15s while speaking; dead air never zaps; silent audio route detected) |
+| 2026-09-25T15:46:03.080Z | f3d318b | v4.150.0: hover message timestamps (debug log correlation) + hold detector English-only (full EN sentence gate) |
+| 2026-09-25T17:53:50.148Z | 0b02f2d | v4.151.0 dedup: restated Deepgram segments supersede in place - no duplicate transcript bubbles |
+| 2026-09-25T18:42:03.552Z | 04cfe09 | v4.151.2 dedup: restated/reworded spans supersede in place, nothing else dropped - no duplicate transcript messages |
+| 2026-09-25T20:11:56.621Z | 61624b5 | v4.152.0 cross-message repeat dim |

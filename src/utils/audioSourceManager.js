@@ -8,6 +8,31 @@
 export const AUDIO_SOURCE_MODE_TAB = "tab";
 export const AUDIO_SOURCE_MODE_VIRTUAL_CABLE = "virtualCable";
 
+/** Input sources a Deepgram connect attempt can start on. */
+export const STT_SOURCE_TAB = "tab";
+export const STT_SOURCE_VIRTUAL_CABLE = "virtualCable";
+export const STT_SOURCE_MIC = "mic";
+
+/**
+ * Route for a CONNECT attempt (v4.151.1).
+ *
+ * Mic mode wins over tab/VB, exactly like resolveIdleAudioMode, so the header
+ * icon and the Deepgram sockets can never disagree. This is the single place
+ * that decides the STT route: the v4.84 regression in useDeepgram ignored the
+ * mic flag and opened a tab picker (or VB) instead, so Deepgram never started.
+ *
+ * @param {{ micTestMode?: boolean, audioSourceMode?: string }} [opts]
+ * @returns {'tab'|'virtualCable'|'mic'}
+ */
+export const resolveSttSource = ({
+  micTestMode = false,
+  audioSourceMode = AUDIO_SOURCE_MODE_TAB,
+} = {}) => {
+  if (micTestMode) return STT_SOURCE_MIC;
+  if (audioSourceMode === AUDIO_SOURCE_MODE_VIRTUAL_CABLE) return STT_SOURCE_VIRTUAL_CABLE;
+  return STT_SOURCE_TAB;
+};
+
 export const AUDIO_SOURCE_MODE_KEY = "CATINTASSIST_AUDIO_SOURCE_MODE";
 export const VIRTUAL_CABLE_INPUT_DEVICE_ID_KEY =
   "CATINTASSIST_VIRTUAL_CABLE_INPUT_DEVICE_ID";

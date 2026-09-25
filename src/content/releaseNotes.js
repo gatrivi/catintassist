@@ -25,6 +25,29 @@ import { APP_VERSION } from '../constants/version';
 /** Newest first. Only the entry matching APP_VERSION is shown on load. */
 export const RELEASE_NOTES_CATALOG = [
   {
+    version: '4.152.1',
+    id: 'stt-route-resolver',
+    highlightElementIds: ['header-connect-btn'],
+    es: {
+      title: 'CONNECT siempre por la ruta correcta',
+      intro: 'Corregido: con el modo micrófono activo, CONNECT ya no intenta capturar pestaña o cable virtual — Deepgram arranca a la primera.',
+      sections: [{ heading: 'Qué cambió', bullets: [
+        'Un único resolvedor decide la ruta (micrófono > cable virtual > pestaña) para cada intento de conexión.',
+        'Mensajes de estado honestos: en modo micrófono ahora dice “Requesting Microphone…”.',
+        'Error claro si falla el permiso del micrófono, en vez de un mensaje de pestaña.',
+      ] }],
+    },
+    en: {
+      title: 'CONNECT always takes the right route',
+      intro: 'Fixed: with mic mode active, CONNECT no longer tries tab capture or virtual cable — Deepgram starts on the first press.',
+      sections: [{ heading: 'What changed', bullets: [
+        'One resolver decides the route (mic > virtual cable > tab) for every connect attempt.',
+        'Honest status messages: in mic mode it now says “Requesting Microphone…”.',
+        'Clear error if the mic permission fails, instead of a tab-related message.',
+      ] }],
+    },
+  },
+  {
     version: '4.152.0',
     id: 'cross-message-repeat-dim',
     highlightElementIds: ['transcript-pane'],

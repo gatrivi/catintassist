@@ -15,6 +15,7 @@ import {
 import {
   AUDIO_SOURCE_MODE_VIRTUAL_CABLE,
   readAudioSourceMode,
+  resolveSttSource,
   buildVirtualCableFailureUiState,
   classifyTabCaptureError,
   isTabCaptureUserCancel,
@@ -1898,10 +1899,14 @@ export const useDeepgram = () => {
       clearWatchdog();
       setConnectionState("connecting");
       // Mic mode wins over persisted VB-Cable — UI 🎤 must match STT path.
-      const configuredMode = readAudioSourceMode();
-      const source = configuredMode === AUDIO_SOURCE_MODE_VIRTUAL_CABLE
-        ? "virtualCable"
-        : "tab";
+      // v4.151.1: ONE resolver decides the route for every connect attempt.
+      // Mic mode must win here (v4.84 regression: it did not, so CONNECT
+      // opened a tab picker / VB and Deepgram never started).
+      const source = resolveSttSource({
+        micTestMode: micTestModeRef.current,
+        audioSourceMode: readAudioSourceMode(),
+      });
+      const useMic = source === "mic";
 
 
       // REUSE EXISTING STREAM IF AVAILABLE AND ACTIVE (same source type)
@@ -1914,7 +1919,9 @@ export const useDeepgram = () => {
         setConnectionMessage(
           source === "virtualCable"
             ? "Reusing Virtual Cable..."
-            : "Reusing Tab Audio...",
+            : useMic
+              ? "Reusing Microphone..."
+              : "Reusing Tab Audio...",
         );
         isActiveRef.current = true;
         setAttachedAudioSourceMode(source);
@@ -1927,6 +1934,10 @@ export const useDeepgram = () => {
           try {
             sessionStorage.setItem(TAB_STREAM_READY_KEY, "1");
           } catch {}
+        } else {
+          // Mic: neither tab nor cable attached (audioAttached reads micTestMode).
+          setTabStreamReady(false);
+          setCableStreamReady(false);
         }
         startDeepgram(streamRef.current);
         return true;
@@ -1935,7 +1946,9 @@ export const useDeepgram = () => {
       setConnectionMessage(
         source === "virtualCable"
           ? "Requesting Virtual Cable..."
-          : "Requesting Tab Audio...",
+          : useMic
+            ? "Requesting Microphone..."
+            : "Requesting Tab Audio...",
       );
       const stream = await acquireAudioStreamForSource(source);
       const ok = beginStream(stream, source);
@@ -1952,10 +1965,10 @@ export const useDeepgram = () => {
       return ok;
     } catch (err) {
       console.error(err);
-      const configuredMode = readAudioSourceMode();
-      const attemptedSource = configuredMode === AUDIO_SOURCE_MODE_VIRTUAL_CABLE
-        ? "virtualCable"
-        : "tab";
+      const attemptedSource = resolveSttSource({
+        micTestMode: micTestModeRef.current,
+        audioSourceMode: readAudioSourceMode(),
+      });
 
       if (attemptedSource === "tab") {
         const tabErr = classifyTabCaptureError(err);
@@ -1992,7 +2005,9 @@ export const useDeepgram = () => {
         return false;
       }
 
-      const msg = classifyTabCaptureError(err).message;
+      const msg = attemptedSource === "mic"
+        ? "Microphone capture failed. Allow mic access in the browser, then press CONNECT."
+        : classifyTabCaptureError(err).message;
       setConnectionState("error");
       setConnectionMessage(msg);
       syncConnectProgress({ phase: "error", lastError: msg });
@@ -2007,16 +2022,22 @@ export const useDeepgram = () => {
     try {
       connectAttemptIdRef.current += 1;
       clearWatchdog();
-      const configuredMode = readAudioSourceMode();
-      const source = configuredMode === AUDIO_SOURCE_MODE_VIRTUAL_CABLE
-        ? "virtualCable"
-        : "tab";
+      // v4.151.1: ONE resolver decides the route for every connect attempt.
+      // Mic mode must win here (v4.84 regression: it did not, so CONNECT
+      // opened a tab picker / VB and Deepgram never started).
+      const source = resolveSttSource({
+        micTestMode: micTestModeRef.current,
+        audioSourceMode: readAudioSourceMode(),
+      });
+      const useMic = source === "mic";
       closeConnections();
       stopStreamTracks();
       resetConnectProgress();
       setConnectionState("connecting");
       setConnectionMessage(
-        source === "virtualCable"
+        useMic
+          ? "Requesting Microphone (fresh)..."
+          : source === "virtualCable"
             ? "Requesting Virtual Cable (fresh)..."
             : "Requesting Tab Audio (fresh)...",
       );
@@ -2033,7 +2054,9 @@ export const useDeepgram = () => {
       setConnectionMessage(
         source === "virtualCable"
           ? "Requesting Virtual Cable..."
-          : "Requesting Tab Audio...",
+          : useMic
+            ? "Requesting Microphone..."
+            : "Requesting Tab Audio...",
       );
       const stream = await acquireAudioStreamForSource(source);
       const ok = beginStream(stream, source);
@@ -2050,10 +2073,10 @@ export const useDeepgram = () => {
       return ok;
     } catch (err) {
       console.error(err);
-      const configuredMode = readAudioSourceMode();
-      const attemptedSource = configuredMode === AUDIO_SOURCE_MODE_VIRTUAL_CABLE
-        ? "virtualCable"
-        : "tab";
+      const attemptedSource = resolveSttSource({
+        micTestMode: micTestModeRef.current,
+        audioSourceMode: readAudioSourceMode(),
+      });
 
       if (attemptedSource === "tab") {
         const tabErr = classifyTabCaptureError(err);
@@ -2089,7 +2112,9 @@ export const useDeepgram = () => {
         return false;
       }
 
-      const msg = classifyTabCaptureError(err).message;
+      const msg = attemptedSource === "mic"
+        ? "Microphone capture failed. Allow mic access in the browser, then press CONNECT."
+        : classifyTabCaptureError(err).message;
       setConnectionState("error");
       setConnectionMessage(msg);
       syncConnectProgress({ phase: "error", lastError: msg });
