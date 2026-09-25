@@ -25,6 +25,29 @@ import { APP_VERSION } from '../constants/version';
 /** Newest first. Only the entry matching APP_VERSION is shown on load. */
 export const RELEASE_NOTES_CATALOG = [
   {
+    version: '4.152.0',
+    id: 'cross-message-repeat-dim',
+    highlightElementIds: ['transcript-pane'],
+    es: {
+      title: 'Lo repetido, en gris',
+      intro: 'Si dos mensajes contienen la misma secuencia de palabras, la copia de más abajo se muestra en gris para que no la leas dos veces.',
+      sections: [{ heading: 'Qué cambió', bullets: [
+        'Compara cada mensaje con el anterior: si repite una frase (4 palabras o más), esa parte queda en gris.',
+        'Solo cambia el color — no se borra ni reordena nada, y los números siguen completos.',
+        'Funciona en la transcripción y en su traducción.',
+      ] }],
+    },
+    en: {
+      title: 'Repeats, in gray',
+      intro: 'When two messages share the same sequence of words, the later copy is shown in gray so you never read it twice.',
+      sections: [{ heading: 'What changed', bullets: [
+        'Each message is compared with the previous one: a repeated phrase (4+ words) is grayed out.',
+        'Color only — nothing is removed or reordered, and numbers stay complete.',
+        'Applies to both the transcription and its translation.',
+      ] }],
+    },
+  },
+  {
     version: '4.151.2',
     id: 'transcript-dedupe-supersede',
     highlightElementIds: ['transcript-pane'],

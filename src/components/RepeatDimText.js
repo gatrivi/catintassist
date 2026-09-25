@@ -1,5 +1,6 @@
 import React, { useMemo } from 'react';
 import { findRepeatedWordRuns, splitTextByRuns } from '../utils/repeatedWordRuns';
+import { findCrossMessageRepeatRuns } from '../utils/crossMessageRepeatRuns';
 
 /**
  * Readability net (v4.142.0) — DISPLAY-ONLY repeat dimming.
@@ -18,10 +19,18 @@ import { findRepeatedWordRuns, splitTextByRuns } from '../utils/repeatedWordRuns
  * `part.wordOffset` keeps word-indexed renderers aligned after the split.
  * Split points are at whitespace between words, so no token is ever cut.
  */
-export function RepeatDimText({ text = '', minWords, renderChunk }) {
+export function RepeatDimText({ text = '', minWords, prevText = '', renderChunk }) {
   const parts = useMemo(
-    () => splitTextByRuns(text, findRepeatedWordRuns(text, { minWords })),
-    [text, minWords],
+    () => splitTextByRuns(
+      text,
+      [
+        ...findRepeatedWordRuns(text, { minWords }),
+        // v4.152.0: word runs already shown in the PREVIOUS bubble are dimmed here
+        // (display-only, same .repeat-dim contract).
+        ...findCrossMessageRepeatRuns(prevText, text, { minWords }),
+      ],
+    ),
+    [text, minWords, prevText],
   );
 
   if (!parts.length) return null;

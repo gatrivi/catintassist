@@ -196,6 +196,7 @@ export const InteractiveText = ({
   tailPreviewText = null,
   wordConfidence = null,
   isFinal = true,
+  prevText = '', // v4.152.0: previous bubble's text — cross-message repeats gray out
 }) => {
   const copyEntities = useMemo(() => (text ? collectCopyableEntities(text, lang) : []), [text, lang]);
   const repairedText = useMemo(
@@ -413,6 +414,7 @@ export const InteractiveText = ({
       <>
         <RepeatDimText
           text={repairedText}
+          prevText={prevText}
           renderChunk={(chunk, part) =>
             renderConfidenceText(chunk, part.wordOffset, true, `rd-${part.index}`, false)}
         />
@@ -537,6 +539,8 @@ const TranslatedBubble = ({
   canEdit = true,
   correctionsRev = 0,
   continuityKey = '',
+  prevText = '', // v4.152.0: previous bubble's text (cross-message repeat dimming)
+  prevTranslationText = '', // previous bubble's translation, same purpose
 }) => {
   const { translationMood } = useSession();
   const displaySourceText = useMemo(() => {
@@ -653,6 +657,7 @@ const TranslatedBubble = ({
               tailPreviewText={null}
               wordConfidence={wordConfidence}
               isFinal={isFinal}
+              prevText={prevText}
             />
           )}
         </div>
@@ -709,7 +714,7 @@ const TranslatedBubble = ({
               null
             ) : (
               <>
-                <MemoInteractiveText text={translation} scramble={targetScramble} applyNumberWords={targetUsesNumberWords} lang={targetLang} protectionsActive={protectionsActive} />
+                <MemoInteractiveText text={translation} scramble={targetScramble} applyNumberWords={targetUsesNumberWords} lang={targetLang} protectionsActive={protectionsActive} prevText={prevTranslationText} />
                 {(isStale || engineStatus === 'translating') && (
                   <span className="bubble-stale-badge" title="Source updated — refreshing translation…" style={{ opacity: 0.45, fontSize: '0.65rem', marginLeft: '0.35rem' }}>↻</span>
                 )}
@@ -763,6 +768,8 @@ const translatedBubblePropsEqual = (prev, next) =>
   prev.persistedTranslations === next.persistedTranslations &&
   prev.onPersistTranslation === next.onPersistTranslation &&
   prev.canEdit === next.canEdit &&
+  prev.prevText === next.prevText &&
+  prev.prevTranslationText === next.prevTranslationText &&
   prev.correctionsRev === next.correctionsRev &&
   prev.continuityKey === next.continuityKey &&
   prev.languagePair?.left === next.languagePair?.left &&
@@ -1541,6 +1548,13 @@ export const TranscriptionBoard = ({
             return null;
           }
           const isSameAsPrevious = i > 0 && captions[i-1].lang === cap.lang;
+          // v4.152.0: cross-message repeat dimming — later copies of wording the
+          // previous bubble already showed are grayed (display-only).
+          const prevCap = i > 0 ? captions[i - 1] : null;
+          const prevText = isSameAsPrevious ? (prevCap?.text || '') : '';
+          const prevTranslationText = isSameAsPrevious
+            ? (Object.values(prevCap?.translations || {}).pop()?.text || '')
+            : '';
           const wordCount = countBubbleWords(cap.text);
           const tid = cap.turnId || `solo-${cap.id}`;
           const turnWordCount = turnDisplayMeta.maxCountByTurn[tid] ?? cap.turnWordCount ?? 0;
@@ -1607,6 +1621,8 @@ export const TranscriptionBoard = ({
                   canEdit={!isLive}
                   correctionsRev={correctionsRev}
                   wordConfidence={cap.wordConfidence || null}
+                  prevText={prevText}
+                  prevTranslationText={prevTranslationText}
                   {...makeEditHandlers(cap)}
                 />
               </div>
