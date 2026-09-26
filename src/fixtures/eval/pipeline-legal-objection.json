@@ -1,0 +1,40 @@
+{
+  "id": "pipeline-legal-objection",
+  "kind": "legal",
+  "lang": "en",
+  "label": "Objection calls — legal terms out of vocabulary",
+  "reference": "Objection, your Honor, calls for speculation.",
+  "terms": ["objection", "speculation"],
+  "criticalPhrases": [],
+  "expect": {
+    "maxWerDisplay": 0,
+    "maxDamage": 0,
+    "minTermAccuracy": 1
+  },
+  "events": [
+    {
+      "atMs": 0,
+      "lane": "en",
+      "payload": {
+        "type": "Results",
+        "is_final": true,
+        "speech_final": true,
+        "start": 0.1,
+        "channel": {
+          "alternatives": [
+            {
+              "transcript": "Objection, your Honor, calls for speculation.",
+              "confidence": 0.95,
+              "words": [
+                { "word": "objection", "confidence": 0.79 },
+                { "word": "your", "confidence": 0.96 },
+                { "word": "honor", "confidence": 0.94 },
+                { "word": "speculation", "confidence": 0.74 }
+              ]
+            }
+          ]
+        }
+      }
+    }
+  ]
+}

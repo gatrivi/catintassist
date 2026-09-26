@@ -1,0 +1,10 @@
+{
+  "id": "probe-dose-swap",
+  "kind": "medical",
+  "lang": "en",
+  "label": "Informational: dose numbers drifting (the correction must be exact)",
+  "reference": "Metformin 500 mg twice daily with breakfast.",
+  "hypothesis": "Metformin 50 mg twice daily with breakfast.",
+  "terms": ["metformin"],
+  "criticalPhrases": ["twice daily"]
+}

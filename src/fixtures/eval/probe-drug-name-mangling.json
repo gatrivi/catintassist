@@ -1,0 +1,10 @@
+{
+  "id": "probe-drug-name-mangling",
+  "kind": "medical",
+  "lang": "en",
+  "label": "Informational: drug names get mangled phonetically (keyterm candidates)",
+  "reference": "Give albuterol inhaler two puffs every four hours as needed.",
+  "hypothesis": "Give all but a roll inhaler two puffs every four hours as needed.",
+  "terms": ["albuterol"],
+  "criticalPhrases": ["as needed"]
+}

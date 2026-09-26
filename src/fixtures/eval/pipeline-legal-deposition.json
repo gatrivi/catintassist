@@ -1,0 +1,41 @@
+{
+  "id": "pipeline-legal-deposition",
+  "kind": "legal",
+  "lang": "en",
+  "label": "Legal formulae (perjury, exhibits) must transcribe cleanly",
+  "reference": "I swear under penalty of perjury that this statement is true and correct.",
+  "terms": ["penalty of perjury", "swear"],
+  "criticalPhrases": [],
+  "expect": {
+    "maxWerDisplay": 0,
+    "maxDamage": 0,
+    "minTermAccuracy": 1
+  },
+  "events": [
+    {
+      "atMs": 0,
+      "lane": "en",
+      "payload": {
+        "type": "Results",
+        "is_final": true,
+        "speech_final": true,
+        "start": 0.2,
+        "channel": {
+          "alternatives": [
+            {
+              "transcript": "I swear under penalty of perjury that this statement is true and correct.",
+              "confidence": 0.97,
+              "words": [
+                { "word": "i", "confidence": 0.98 },
+                { "word": "swear", "confidence": 0.83 },
+                { "word": "penalty", "confidence": 0.81 },
+                { "word": "perjury", "confidence": 0.8 },
+                { "word": "true", "confidence": 0.95 }
+              ]
+            }
+          ]
+        }
+      }
+    }
+  ]
+}

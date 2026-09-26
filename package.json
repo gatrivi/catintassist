@@ -1,6 +1,6 @@
 {
   "name": "catintassist",
-  "version": "4.153.0",
+  "version": "4.154.0",
   "private": true,
   "dependencies": {
     "@testing-library/dom": "^10.4.1",
@@ -23,8 +23,9 @@
     "build": "node scripts/build-with-local-temp.js",
     "test": "node scripts/test-in-batches.js",
     "test:watch": "react-scripts test",
-    "test:transcription": "react-scripts test --watchAll=false --testPathPattern=\"(captionEngine|fixtureReplay|applyDeepgramTranscriptPayload|sensitiveDataProtector)\"",
+    "test:transcription": "react-scripts test --watchAll=false --testPathPattern=\"(captionEngine|fixtureReplay|applyDeepgramTranscriptPayload|sensitiveDataProtector|sttEval)\"",
     "test:fixtures": "react-scripts test --watchAll=false --testPathPattern=\"fixtureReplay\"",
+    "eval:stt": "react-scripts test --watchAll=false --testPathPattern=\"sttEvalReport\"",
     "test:translation": "react-scripts test --watchAll=false --testPathPattern=\"(translationApplicator|translationFixtureReplay|translationSensitiveTokens|translationQuality)\"",
     "test:phase0-smoke": "react-scripts test --watchAll=false --testPathPattern=\"phase0SmokeChecklist\"",
     "test:critical": "react-scripts test --watchAll=false --testPathPattern=\"(deepgramDiagnostics|deepgramRuntimeKey|deepgramListenConfig|audioSelfTest|audioSourceManager|audioRoutePassthrough|routeDiagnostics|sensitiveDataProtector|fixtureReplay|phase0SmokeChecklist|translationApplicator)\"",

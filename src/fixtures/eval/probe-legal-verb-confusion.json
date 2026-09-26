@@ -1,0 +1,10 @@
+{
+  "id": "probe-legal-verb-confusion",
+  "kind": "legal",
+  "lang": "en",
+  "label": "Informational: legal terms split or homophone (keyterm candidates)",
+  "reference": "Please mark exhibit twelve into the record.",
+  "hypothesis": "Please mark exit bit twelve into the record.",
+  "terms": ["exhibit"],
+  "criticalPhrases": []
+}

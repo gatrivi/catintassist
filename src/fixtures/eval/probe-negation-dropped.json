@@ -1,0 +1,10 @@
+{
+  "id": "probe-negation-dropped",
+  "kind": "medical",
+  "lang": "en",
+  "label": "Informational: the most dangerous failure mode (negative becomes positive)",
+  "reference": "Patient denies chest pain.",
+  "hypothesis": "Patient chest pain.",
+  "terms": ["chest pain"],
+  "criticalPhrases": ["denies"]
+}

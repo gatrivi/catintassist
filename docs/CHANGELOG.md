@@ -2,6 +2,16 @@
 
 **Version source:** `src/constants/version.js` (must match `package.json` + top-right UI pill)
 
+## v4.154.0 - STT eval harness: the first transcription-quality numbers (medical + legal)
+
+- Reported: "we do mostly medical interpreting and/or legal, there are a whole bunch of things that it is a lot better if transcribed correctly." The repo had **no numeric STT metric at all** — no WER, no term/digit accuracy — so every quality claim was a guess, and the most expensive bug class (Deepgram right, app wrong) was unmeasurable.
+- Added `src/utils/sttEval.js` (pure): normalization policy, word-level Levenshtein with backtrace, `wordErrorRate`, `termAccuracy`, `digitRunAccuracy`, `criticalPhraseRecall`, `scoreEvalCase`, `summarizeEval`, `renderEvalReport`, `collectConfusions`.
+- Added `src/fixtures/eval/` (10 cases) + `src/utils/sttEvalRun.js`: cases with Deepgram-shaped `events` are replayed through the **real** live pipeline, so every case is scored twice — provider text vs the text the user reads. `damage = displayErrors − providerErrors` is the new headline metric.
+- Report: `npm run eval:stt` (prints the table; jest-based because `src/` is ESM inside a CJS package — the table builder is a pure function so a real CLI can be added later). Registered in `test:transcription`.
+- First run: **WER(display) 0.0%, damage 0.00** on all 6 gated medical/legal cases — the app currently does not damage correct provider text. The informational probes name the known failures: `albuterol → roll`, `exhibit → bit`, `500 → 50`, and a dropped `denies`.
+- Two real bugs in the metrics themselves were caught by their own tests while writing them: a consuming regex split digit runs (`555123 4567` instead of `5551234567` — fixed with a char walk), and `termAccuracy` counted present terms as misses.
+- Next (staged, in [`docs/stt-eval-plan.md`](stt-eval-plan.md)): v4.155.0 domain lexicons + `applyDomainRepair` (display-side safety net), then `keyterm` biasing + EN socket `nova-3-medical` behind one A/B run.
+
 ## v4.153.0 - CONNECT really starts Deepgram
 
 - Reported: "I press CONNECT during a call and Deepgram does not start." Four independent ways to end a press with **no audio and no message**:

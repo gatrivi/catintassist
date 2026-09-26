@@ -1,0 +1,43 @@
+{
+  "id": "pipeline-medical-dosage",
+  "kind": "medical",
+  "lang": "en",
+  "label": "Provider text is correct — our pipeline must not damage the dose",
+  "reference": "Take metoprolol 25 mg twice daily with food.",
+  "terms": ["metoprolol"],
+  "criticalPhrases": [],
+  "expect": {
+    "maxWerDisplay": 0,
+    "maxDamage": 0,
+    "minDigitRecall": 1,
+    "minTermAccuracy": 1
+  },
+  "events": [
+    {
+      "atMs": 0,
+      "lane": "en",
+      "payload": {
+        "type": "Results",
+        "is_final": true,
+        "speech_final": true,
+        "start": 1.0,
+        "channel": {
+          "alternatives": [
+            {
+              "transcript": "Take metoprolol 25 mg twice daily with food.",
+              "confidence": 0.95,
+              "words": [
+                { "word": "take", "confidence": 0.97 },
+                { "word": "metoprolol", "confidence": 0.72 },
+                { "word": "25", "confidence": 0.94 },
+                { "word": "mg", "confidence": 0.93 },
+                { "word": "twice", "confidence": 0.92 },
+                { "word": "daily", "confidence": 0.91 }
+              ]
+            }
+          ]
+        }
+      }
+    }
+  ]
+}

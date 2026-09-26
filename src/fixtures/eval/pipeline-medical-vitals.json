@@ -1,0 +1,70 @@
+{
+  "id": "pipeline-medical-vitals",
+  "kind": "medical",
+  "lang": "en",
+  "label": "Vitals and dose ranges must survive overlap pruning",
+  "reference": "Blood pressure 128 over 82, heart rate 96, oxygen saturation 94 percent.",
+  "terms": ["blood pressure", "oxygen saturation"],
+  "criticalPhrases": [],
+  "expect": {
+    "maxWerDisplay": 0,
+    "maxDamage": 0,
+    "minDigitRecall": 1,
+    "minTermAccuracy": 1
+  },
+  "events": [
+    {
+      "atMs": 0,
+      "lane": "en",
+      "payload": {
+        "type": "Results",
+        "is_final": false,
+        "speech_final": false,
+        "start": 0.5,
+        "channel": {
+          "alternatives": [
+            {
+              "transcript": "blood pressure 128 over 82 heart rate 96",
+              "confidence": 0.9,
+              "words": [
+                { "word": "blood", "confidence": 0.95 },
+                { "word": "pressure", "confidence": 0.95 },
+                { "word": "128", "confidence": 0.9 }
+              ]
+            }
+          ]
+        }
+      }
+    },
+    {
+      "atMs": 400,
+      "lane": "en",
+      "payload": {
+        "type": "Results",
+        "is_final": true,
+        "speech_final": true,
+        "start": 0.5,
+        "channel": {
+          "alternatives": [
+            {
+              "transcript": "Blood pressure 128 over 82, heart rate 96, oxygen saturation 94 percent.",
+              "confidence": 0.96,
+              "words": [
+                { "word": "blood", "confidence": 0.97 },
+                { "word": "pressure", "confidence": 0.96 },
+                { "word": "128", "confidence": 0.94 },
+                { "word": "82", "confidence": 0.93 },
+                { "word": "heart", "confidence": 0.95 },
+                { "word": "rate", "confidence": 0.95 },
+                { "word": "96", "confidence": 0.93 },
+                { "word": "oxygen", "confidence": 0.92 },
+                { "word": "saturation", "confidence": 0.9 },
+                { "word": "94", "confidence": 0.92 }
+              ]
+            }
+          ]
+        }
+      }
+    }
+  ]
+}

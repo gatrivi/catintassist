@@ -25,6 +25,35 @@ import { APP_VERSION } from '../constants/version';
 /** Newest first. Only the entry matching APP_VERSION is shown on load. */
 export const RELEASE_NOTES_CATALOG = [
   {
+    version: '4.154.0',
+    id: 'stt-eval-harness',
+    // v4.154.0 is a metrics release: nothing in the header changed, so point the
+    // post-dismiss shine at the element that tells you what you are running.
+    highlightElementIds: ['header-app-logo-btn'],
+    es: {
+      title: 'Eval de transcripción: medicina y ahora',
+      intro: 'Agregamos las primeras métricas reales de calidad de transcripción: WER, términos, dígitos y negaciones — medidas sobre el texto que realmente leés, no solo lo que devolvió Deepgram.',
+      sections: [{ heading: 'Qué cambió', bullets: [
+        'WER, precisión de términos, de dígitos y de frases críticas (negaciones) — `npm run eval:stt` imprime el reporte.',
+        'Métrica nueva “daño del pipeline”: lo que nuestra app le suma o resta al texto correcto de Deepgram. Hoy: 0.00 en los 6 casos médicos y legales.',
+        'Corpus inicial: dosis, negaciones, constantes vitales, juramento, objeción legal, y en español “niega / no”.',
+        'Los casos que fallan están a la vista (albuterol → “all but a roll”, exhibit → “exit bit”, 500 → 50, “denies” desaparecido) para corregir el orquestador y el Deepgram con nombre y apellido.',
+        'Siguiente: léxicos por dominio + keyterms (documento en docs/stt-eval-plan.md).',
+      ] }],
+    },
+    en: {
+      title: 'Transcription eval: medicine and law',
+      intro: 'The first real transcription-quality numbers: WER, term, digit and negation accuracy — measured on the text you actually read, not just what Deepgram returned.',
+      sections: [{ heading: 'What changed', bullets: [
+        'WER + term, digit and critical-phrase (negation) accuracy — `npm run eval:stt` prints the report.',
+        'New “pipeline damage” metric: what our app adds or removes to Deepgram’s correct text. Today: 0.00 across all 6 medical and legal cases.',
+        'Starter corpus: dosages, negations, vitals, the perjury oath, a legal objection, and Spanish “niega / no”.',
+        'Known failures are now visible by name (albuterol → “all but a roll”, exhibit → “exit bit”, 500 → 50, “denies” dropped) so the lexicon and Deepgram can be fixed with evidence.',
+        'Next: domain lexicons + keyterms (see docs/stt-eval-plan.md).',
+      ] }],
+    },
+  },
+  {
     version: '4.153.0',
     id: 'stt-really-starts',
     highlightElementIds: ['header-connect-btn'],
