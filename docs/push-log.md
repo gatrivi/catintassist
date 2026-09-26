@@ -96,3 +96,4 @@
 | 2026-09-25T20:11:56.621Z | 61624b5 | v4.152.0 cross-message repeat dim |
 | 2026-09-25T21:15:45.348Z | d36fc97 | v4.152.1: CONNECT route fix - one resolver decides mic/cable/tab, mic wins (v4.84 regression) |
 | 2026-09-26T00:56:14.878Z | 433e217 | v4.153.0: CONNECT really starts Deepgram (sttLive truth, parallel EN+ES sockets, no silent calls) |
+| 2026-09-26T02:41:56.484Z | 0333fad | v4.154.0: STT eval harness (WER/terms/digits/negations, damage=0.00, npm run eval:stt) |
