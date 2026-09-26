@@ -7,7 +7,8 @@
  * `damage`     = display errors − provider errors = what WE cost the user.
  */
 import { replayFixtureEvents } from './fixtureReplay';
-import { scoreEvalCase, summarizeEval } from './sttEval';
+import { scoreEvalCase, summarizeEval, KIND_MIX_WEIGHT } from './sttEval';
+import { applyDomainRepair } from './domainLexicon';
 import { EVAL_CASES } from '../fixtures/eval';
 
 /** Last final/speech_final event = what Deepgram actually committed. */
@@ -33,18 +34,32 @@ export const displayTextOf = (fixture) => {
     .join(' ');
 };
 
+/**
+ * v4.155.0: what the user WOULD read with the domain repair switch ON.
+ * Measured, not assumed — the switch ships off, so the corpus is the only
+ * place we can honestly see whether the lexicon earns its keep.
+ */
+export const repairedDisplayTextOf = (fixture) => {
+  const display = displayTextOf(fixture);
+  if (!display) return display;
+  return applyDomainRepair(display, fixture?.lang || 'en').text;
+};
+
 /** Score one corpus case (replaying the engine when the case has events). */
 export const scoreCorpusCase = (fixture) => {
   const hasEvents = Array.isArray(fixture?.events) && fixture.events.length > 0;
   const hypothesis = hasEvents ? providerTextOf(fixture) : fixture.hypothesis || '';
   const display = hasEvents ? displayTextOf(fixture) : null;
+  const repairedDisplay = hasEvents ? repairedDisplayTextOf(fixture) : null;
   return scoreEvalCase({
     id: fixture.id,
     kind: fixture.kind,
     lang: fixture.lang,
+    weight: fixture.weight ?? KIND_MIX_WEIGHT[fixture.kind] ?? 1,
     reference: fixture.reference,
     hypothesis,
     display,
+    repairedDisplay,
     terms: fixture.terms,
     criticalPhrases: fixture.criticalPhrases,
   });
@@ -92,6 +107,36 @@ export const checkEvalGates = (fixtures, scored) => {
       failures.push(
         `${fixture.id}: critical phrase recall ${(c.critical.recall * 100).toFixed(0)}% < ${(e.minCriticalRecall * 100).toFixed(0)}% (dropped: ${c.critical.dropped.join(', ') || '—'})`,
       );
+    }
+    if (e.minRepairGain != null && c.repairGain < e.minRepairGain) {
+      failures.push(
+        `${fixture.id}: repair gain ${c.repairGain} < ${e.minRepairGain} (the lexicon did not fix what this case is about)`,
+      );
+    }
+  });
+  return failures;
+};
+
+/**
+ * v4.155.0 — the two promises the domain lexicon makes, on EVERY case, forever.
+ * Not configurable per fixture on purpose: a lexicon that "sometimes" moves a
+ * digit is a lexicon that will eventually hand a patient the wrong dose.
+ *
+ *  1. repairGain >= 0 — the lexicon may not make the text worse.
+ *  2. repair never changes which digit runs are present/missing.
+ * @returns {string[]} failures, empty = healthy
+ */
+export const checkRepairSafety = (scored) => {
+  const failures = [];
+  (scored || []).forEach((c) => {
+    if (!c?.scoredRepair) return;
+    if (c.repairGain < 0) {
+      failures.push(
+        `${c.id}: repair made the text WORSE (${c.repairGain} extra words) — "${c.display}" -> "${c.repairedDisplay}"`,
+      );
+    }
+    if (c.repairChangedDigits) {
+      failures.push(`${c.id}: repair moved a digit run — a dose or vital changed`);
     }
   });
   return failures;

@@ -1,0 +1,41 @@
+{
+  "id": "pipeline-medical-discharge",
+  "kind": "medical",
+  "lang": "en",
+  "label": "Discharge instructions: frequency words and call-back number must survive",
+  "reference": "Return to the clinic in 7 days, and call 5551234567 if the fever comes back.",
+  "terms": ["fever"],
+  "criticalPhrases": ["in 7 days", "if the fever comes back"],
+  "expect": {
+    "maxWerDisplay": 0,
+    "maxDamage": 0,
+    "minDigitRecall": 1,
+    "minCriticalRecall": 1
+  },
+  "events": [
+    {
+      "atMs": 0,
+      "lane": "en",
+      "payload": {
+        "type": "Results",
+        "is_final": true,
+        "speech_final": true,
+        "start": 0.2,
+        "channel": {
+          "alternatives": [
+            {
+              "transcript": "Return to the clinic in 7 days, and call 5551234567 if the fever comes back.",
+              "confidence": 0.93,
+              "words": [
+                { "word": "7", "confidence": 0.95 },
+                { "word": "days", "confidence": 0.94 },
+                { "word": "5551234567", "confidence": 0.96 },
+                { "word": "fever", "confidence": 0.92 }
+              ]
+            }
+          ]
+        }
+      }
+    }
+  ]
+}

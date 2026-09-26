@@ -25,6 +25,37 @@ import { APP_VERSION } from '../constants/version';
 /** Newest first. Only the entry matching APP_VERSION is shown on load. */
 export const RELEASE_NOTES_CATALOG = [
   {
+    version: '4.155.1',
+    id: 'domain-lexicon-term-repair',
+    // Nothing in the header moved on purpose: the switch ships OFF, so the app
+    // looks and behaves exactly like v4.154.0 until you turn repair on.
+    highlightElementIds: ['header-app-logo-btn'],
+    es: {
+      title: 'Léxico médico: corrige palabras, nunca números',
+      intro: 'Deepgram escucha “albuterol” como “all but a roll”. Ahora hay un interruptor —apagado por defecto— que corrige esas palabras médicas y legales conocidas, sin tocar jamás una cifra.',
+      sections: [{ heading: 'Qué cambió', bullets: [
+        'Nuevo “Term repair” en Ajustes → Deepgram. Apagado por defecto: mientras esté apagado, la transcripción es exactamente la de Deepgram.',
+        'Diccionario con ~40 términos EN/ES: fármacos (albuterol, amoxicilina, metformina…), clínicos y legales (exhibit, deductible, copayment).',
+        'Nunca toca un dígito: si una corrección moviera un número, se descarta entera. Las dosis y constantes quedan intocables.',
+        'Nunca inventa un “denies” que Deepgram omitió. Eso se reporta (consola `[domain-repair] negation gap?`) para que lo decida una persona.',
+        'El reporte `npm run eval:stt` ahora pondera tu día real: ~95% médico, ~5% legal, y muestra cuánta palabra recuperó el léxico (repair +0.46).',
+        'Arreglo: la alarma “CAT VANISH” ya no grita falso cada vez que Deepgram agrega una coma (“82,” vs “82”). Antes tapaba las alarmas reales.',
+      ] }],
+    },
+    en: {
+      title: 'Medical lexicon: fixes words, never numbers',
+      intro: 'Deepgram hears “albuterol” as “all but a roll”. There is now a switch — off by default — that repairs known medical and legal words, and never touches a digit.',
+      sections: [{ heading: 'What changed', bullets: [
+        'New “Term repair” switch in Settings → Deepgram. OFF by default: while off, the transcript is exactly what Deepgram said.',
+        '~40-term EN/ES table: drugs (albuterol, amoxicillin, metformin…), clinical terms, and the legal 3% (exhibit, deductible, copayment).',
+        'It never touches a digit: if a repair would have moved a number, the whole repair is thrown away. Doses and vitals stay untouchable.',
+        'It never invents a “denies” that Deepgram dropped. That is reported (console `[domain-repair] negation gap?`) for a human to decide.',
+        '`npm run eval:stt` now weights your real day: ~95% medical, ~5% legal, and shows how many words the lexicon recovered (repair +0.46).',
+        'Fix: the “CAT VANISH” alarm no longer fires falsely every time Deepgram adds a comma (“82,” vs “82”). It was drowning out the real alarms.',
+      ] }],
+    },
+  },
+  {
     version: '4.154.0',
     id: 'stt-eval-harness',
     // v4.154.0 is a metrics release: nothing in the header changed, so point the

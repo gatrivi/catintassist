@@ -1,0 +1,60 @@
+{
+  "id": "pipeline-medical-allergies",
+  "kind": "medical",
+  "lang": "en",
+  "label": "Allergy list is a negation list — every word must survive",
+  "reference": "No known drug allergies and no history of anaphylaxis.",
+  "terms": ["anaphylaxis"],
+  "criticalPhrases": ["no known drug allergies", "no history of anaphylaxis"],
+  "expect": {
+    "maxWerDisplay": 0,
+    "maxDamage": 0,
+    "minCriticalRecall": 1,
+    "minTermAccuracy": 1
+  },
+  "events": [
+    {
+      "atMs": 0,
+      "lane": "en",
+      "payload": {
+        "type": "Results",
+        "is_final": false,
+        "speech_final": false,
+        "start": 0.3,
+        "channel": {
+          "alternatives": [
+            {
+              "transcript": "no known drug allergies and no history of",
+              "confidence": 0.9,
+              "words": [{ "word": "no", "confidence": 0.8 }]
+            }
+          ]
+        }
+      }
+    },
+    {
+      "atMs": 500,
+      "lane": "en",
+      "payload": {
+        "type": "Results",
+        "is_final": true,
+        "speech_final": true,
+        "start": 0.3,
+        "channel": {
+          "alternatives": [
+            {
+              "transcript": "No known drug allergies and no history of anaphylaxis.",
+              "confidence": 0.95,
+              "words": [
+                { "word": "no", "confidence": 0.82 },
+                { "word": "known", "confidence": 0.94 },
+                { "word": "allergies", "confidence": 0.93 },
+                { "word": "anaphylaxis", "confidence": 0.9 }
+              ]
+            }
+          ]
+        }
+      }
+    }
+  ]
+}

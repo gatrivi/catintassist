@@ -209,14 +209,20 @@ export const collectConfusions = (ops = []) => {
  * Score one case. `hypothesis` is the provider text; `display` (optional) is the
  * text the user reads after our pipeline. Omit `display` when there are no events
  * to replay.
+ *
+ * `repairedDisplay` (optional) is what the user would read WITH domain repair on
+ * (v4.155.0). It is scored against the same reference so `repairGain` answers
+ * one question: did the lexicon actually help, and did it cost anything?
  */
 export const scoreEvalCase = ({
   id,
   kind = 'general',
   lang = 'en',
+  weight = 1,
   reference = '',
   hypothesis = '',
   display = null,
+  repairedDisplay = null,
   terms = [],
   criticalPhrases = [],
 } = {}) => {
@@ -230,18 +236,36 @@ export const scoreEvalCase = ({
     hypothesis: hasDisplay ? display : hypothesis,
     phrases: criticalPhrases,
   });
+
+  // v4.155.0 — repair is measured against what the user reads WITHOUT it.
+  const hasRepaired = typeof repairedDisplay === 'string';
+  const repaired = hasRepaired ? wordErrorRate({ reference, hypothesis: repairedDisplay, lang }) : null;
+  const before = hasDisplay ? shown : raw;
+  const repairDigits = hasRepaired ? digitRunAccuracy({ reference, hypothesis: repairedDisplay }) : null;
+
   return {
     id,
     kind,
     lang,
+    weight,
     reference,
     hypothesis,
     display,
+    repairedDisplay,
     scoredDisplay: hasDisplay,
+    scoredRepair: hasRepaired,
     raw,
     displayRate: shown,
+    repairedRate: repaired,
     // Our contribution to the error. Negative = we improved on the provider.
     damage: hasDisplay ? shown.errors - raw.errors : 0,
+    // v4.155.0: words the lexicon saved. Negative = the lexicon HURT.
+    repairGain: hasRepaired ? before.errors - repaired.errors : 0,
+    // A repair that moves a digit is a bug, whatever the WER says.
+    repairChangedDigits: hasRepaired
+      ? (repairDigits?.missed || []).length !== digits.missed.length ||
+        (repairDigits?.invented || []).length !== digits.invented.length
+      : false,
     term,
     digits,
     critical,
@@ -251,20 +275,55 @@ export const scoreEvalCase = ({
 
 const mean = (xs) => (xs.length ? xs.reduce((a, b) => a + b, 0) / xs.length : 0);
 
+/**
+ * v4.155.0 — how often each kind of call actually happens, per the interpreter.
+ * The corpus is deliberately broader than the day (we still want legal covered),
+ * but the headline number must not be dominated by cases that almost never
+ * occur: roughly 95% medical, a few percent legal (bills, insurance, police).
+ * A case may override with its own `weight`.
+ */
+export const KIND_MIX_WEIGHT = { medical: 1, general: 1, legal: 0.2 };
+
+/** Weighted mean — the same metrics, but each case counts as often as it happens. */
+const weightedMean = (list, get) => {
+  const total = list.reduce((a, c) => a + (c.weight ?? 1), 0);
+  if (!total) return 0;
+  return list.reduce((a, c) => a + get(c) * (c.weight ?? 1), 0) / total;
+};
+
 /** Aggregate: overall + per domain slice + the worst confusions. */
 export const summarizeEval = (cases = []) => {
   const scored = cases.filter(Boolean);
   const slice = (list) => {
     if (!list.length) return null;
     const displayScored = list.filter((c) => c.scoredDisplay);
+    const repairScored = list.filter((c) => c.scoredRepair);
     return {
       cases: list.length,
       werRaw: mean(list.map((c) => c.raw.wer)),
       werDisplay: displayScored.length ? mean(displayScored.map((c) => c.displayRate.wer)) : null,
       damage: displayScored.length ? mean(displayScored.map((c) => c.damage)) : null,
+      repairGain: repairScored.length ? mean(repairScored.map((c) => c.repairGain)) : null,
       termAccuracy: mean(list.map((c) => c.term.accuracy)),
       digitRecall: mean(list.map((c) => c.digits.recall)),
       criticalRecall: mean(list.map((c) => c.critical.recall)),
+    };
+  };
+  /** Same numbers, weighted by how often the case happens in a real day. */
+  const weightedSlice = (list) => {
+    if (!list.length) return null;
+    const displayScored = list.filter((c) => c.scoredDisplay);
+    const repairScored = list.filter((c) => c.scoredRepair);
+    return {
+      cases: list.length,
+      weight: Number(list.reduce((a, c) => a + (c.weight ?? 1), 0).toFixed(2)),
+      werRaw: weightedMean(list, (c) => c.raw.wer),
+      werDisplay: displayScored.length ? weightedMean(displayScored, (c) => c.displayRate.wer) : null,
+      damage: displayScored.length ? weightedMean(displayScored, (c) => c.damage) : null,
+      repairGain: repairScored.length ? weightedMean(repairScored, (c) => c.repairGain) : null,
+      termAccuracy: weightedMean(list, (c) => c.term.accuracy),
+      digitRecall: weightedMean(list, (c) => c.digits.recall),
+      criticalRecall: weightedMean(list, (c) => c.critical.recall),
     };
   };
   const byKind = {};
@@ -281,6 +340,8 @@ export const summarizeEval = (cases = []) => {
   return {
     total: scored.length,
     overall: slice(scored),
+    // v4.155.0: the number that matches an actual day of interpreting.
+    mix: weightedSlice(scored),
     byKind,
     worstCases: [...scored]
       .sort((a, b) => (b.displayRate?.wer ?? b.raw.wer) - (a.displayRate?.wer ?? a.raw.wer))
@@ -304,6 +365,7 @@ export const summarizeEval = (cases = []) => {
 };
 
 const pct = (v) => (v == null ? '—' : `${(v * 100).toFixed(1)}%`);
+const num = (v) => (v == null ? '—' : `${v > 0 ? '+' : ''}${v.toFixed(2)}`);
 
 /** Markdown table for humans. Pure — a CLI can print it later. */
 export const renderEvalReport = (summary, { title = 'STT eval' } = {}) => {
@@ -312,14 +374,23 @@ export const renderEvalReport = (summary, { title = 'STT eval' } = {}) => {
     ...Object.entries(summary.byKind).map(([k, v]) => [k, v]),
   ].filter(([, v]) => v);
   const header =
-    '| slice | cases | WER raw | WER display | damage | term acc | digits | critical |\n' +
-    '|---|---|---|---|---|---|---|---|';
+    '| slice | cases | WER raw | WER display | damage | term acc | digits | critical | repair |\n' +
+    '|---|---|---|---|---|---|---|---|---|';
   const body = rows
     .map(([name, v]) => {
       const d = v.damage == null ? '—' : `${v.damage > 0 ? '+' : ''}${v.damage.toFixed(2)}`;
-      return `| ${name} | ${v.cases} | ${pct(v.werRaw)} | ${pct(v.werDisplay)} | ${d} | ${pct(v.termAccuracy)} | ${pct(v.digitRecall)} | ${pct(v.criticalRecall)} |`;
+      return `| ${name} | ${v.cases} | ${pct(v.werRaw)} | ${pct(v.werDisplay)} | ${d} | ${pct(v.termAccuracy)} | ${pct(v.digitRecall)} | ${pct(v.criticalRecall)} | ${num(v.repairGain)} |`;
     })
     .join('\n');
+
+  // v4.155.0: the row that matches an actual day (95% medical / 5% legal).
+  const mix = summary.mix
+    ? `\n\n**Real-world mix** (cases weighted by how often they happen — weight ${summary.mix.weight}): ` +
+      `WER raw ${pct(summary.mix.werRaw)}, WER display ${pct(summary.mix.werDisplay)}, ` +
+      `term acc ${pct(summary.mix.termAccuracy)}, digits ${pct(summary.mix.digitRecall)}, ` +
+      `critical ${pct(summary.mix.criticalRecall)}, repair ${num(summary.mix.repairGain)}`
+    : '';
+
   const conf =
     summary.confusions.length > 0
       ? `\n\n**Worst confusions**\n${summary.confusions.map((c) => `- ${c.pair} (${c.count})`).join('\n')}`
@@ -336,5 +407,5 @@ export const renderEvalReport = (summary, { title = 'STT eval' } = {}) => {
   const worst = summary.worstCases.length
     ? `\n\n**Worst cases**: ${summary.worstCases.map((c) => `${c.id} (${pct(c.wer)})`).join(', ')}`
     : '';
-  return `## ${title}\n\n${header}\n${body}${conf}${missed}${dropped}${invented}${worst}\n`;
+  return `## ${title}\n\n${header}\n${body}${mix}${conf}${missed}${dropped}${invented}${worst}\n`;
 };

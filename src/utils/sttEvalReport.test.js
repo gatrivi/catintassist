@@ -8,15 +8,80 @@
  * This is the file that makes "we improved transcription" a measurable claim.
  */
 import { EVAL_CASES, GATED_EVAL_CASES } from '../fixtures/eval';
-import { runEvalCorpus, checkEvalGates, displayTextOf, providerTextOf, scoreCorpusCase } from './sttEvalRun';
-import { renderEvalReport } from './sttEval';
+import {
+  runEvalCorpus,
+  checkEvalGates,
+  checkRepairSafety,
+  displayTextOf,
+  providerTextOf,
+  repairedDisplayTextOf,
+  scoreCorpusCase,
+} from './sttEvalRun';
+import { renderEvalReport, KIND_MIX_WEIGHT } from './sttEval';
 
 test('STT eval report (medical + legal)', () => {
   const { scored, summary } = runEvalCorpus();
-  const failures = checkEvalGates(EVAL_CASES, scored);
+  const failures = [...checkEvalGates(EVAL_CASES, scored), ...checkRepairSafety(scored)];
   // eslint-disable-next-line no-console
-  console.log(`\n${renderEvalReport(summary, { title: 'STT eval — v4.154.0 corpus' })}`);
+  console.log(`\n${renderEvalReport(summary, { title: 'STT eval — v4.155.0 corpus' })}`);
   expect(failures).toEqual([]);
+});
+
+test('v4.155.0 — the domain lexicon never makes the text worse, never moves a digit', () => {
+  const { scored } = runEvalCorpus();
+  expect(checkRepairSafety(scored)).toEqual([]);
+});
+
+test('v4.155.0 — the lexicon actually earns its keep on the cases it is for', () => {
+  const { scored } = runEvalCorpus();
+  const fixed = scored.filter((c) => c.scoredRepair && c.repairGain > 0);
+  expect(fixed.length).toBeGreaterThanOrEqual(2);
+  expect(fixed.map((c) => c.id).sort()).toEqual(
+    expect.arrayContaining(['pipeline-repair-drug-name', 'pipeline-repair-legal-exhibit']),
+  );
+  // and the drug name is really there afterwards
+  const drug = scored.find((c) => c.id === 'pipeline-repair-drug-name');
+  expect(drug.display).toContain('all but a roll');
+  expect(drug.repairedDisplay).toContain('albuterol');
+  expect(drug.repairGain).toBeGreaterThanOrEqual(3);
+});
+
+test('v4.155.0 — repair leaves correct text completely alone (no gratuitous edits)', () => {
+  const { scored } = runEvalCorpus();
+  scored
+    .filter((c) => c.scoredRepair)
+    .forEach((c) => {
+      if (c.repairGain === 0) expect(c.repairedDisplay).toBe(c.display);
+    });
+});
+
+test('v4.155.0 — the real-world mix weights legal as the rare slice it is', () => {
+  expect(KIND_MIX_WEIGHT.legal).toBeLessThan(KIND_MIX_WEIGHT.medical);
+  const { summary } = runEvalCorpus();
+  expect(summary.mix).toBeTruthy();
+
+  // Legal cases are deliberately numerous in the corpus (they must stay
+  // measured) but they must NOT dominate the headline number.
+  const weightOf = (kind) =>
+    EVAL_CASES.filter((c) => c.kind === kind).reduce(
+      (a, c) => a + (c.weight ?? KIND_MIX_WEIGHT[c.kind] ?? 1),
+      0,
+    );
+  const legalShare = weightOf('legal') / summary.mix.weight;
+  expect(legalShare).toBeLessThan(0.15); // it is ~3% of a real day
+  expect(renderEvalReport(summary)).toContain('Real-world mix');
+});
+
+test('a repair safety gate that cannot fail is decoration', () => {
+  // Pretend the lexicon invented a word and lost a digit at the same time.
+  const { scored } = runEvalCorpus();
+  const broken = scored.map((c) =>
+    c.scoredRepair ? { ...c, repairGain: -2, repairChangedDigits: true } : c,
+  );
+  const failures = checkRepairSafety(broken);
+  expect(failures.length).toBeGreaterThan(0);
+  expect(failures.join(' ')).toMatch(/WORSE/);
+  expect(failures.join(' ')).toMatch(/digit/);
 });
 
 test('every corpus case scores (no silent case that measures nothing)', () => {

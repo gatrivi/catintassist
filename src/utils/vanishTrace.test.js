@@ -18,6 +18,23 @@ describe('vanishTrace', () => {
     expect(lostWords('one two three', 'one three')).toEqual(['two']);
   });
 
+  test('v4.155.1: re-punctuation is not a vanish (the fake 82/96 alarm)', () => {
+    // This is the exact pair the eval replay produced: Deepgram's interim text
+    // vs its own final text. Nothing vanished — it gained words and commas.
+    const interim = 'blood pressure 128 over 82 heart rate 96';
+    const final = 'Blood pressure 128 over 82, heart rate 96, oxygen saturation 94 percent.';
+    expect(lostWords(interim, final)).toEqual([]);
+  });
+
+  test('v4.155.1: a real digit loss is still reported', () => {
+    expect(lostWords('my number is 555 123 4567 ok', 'my number is ok')).toContain('555');
+    expect(lostWords('dosis 500 mg', 'dosis mg')).toContain('500');
+  });
+
+  test('v4.155.1: phone formatting (555-123-4567 -> 5551234567) is not a vanish', () => {
+    expect(lostWords('call 555-123-4567', 'call 5551234567')).toEqual([]);
+  });
+
   test('textShortened detects shrink', () => {
     expect(textShortened('a b c', 'a b')).toBe(true);
     expect(textShortened('a b', 'a b c')).toBe(false);

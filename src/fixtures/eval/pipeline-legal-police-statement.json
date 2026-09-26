@@ -1,0 +1,41 @@
+{
+  "id": "pipeline-legal-police-statement",
+  "kind": "legal",
+  "lang": "en",
+  "label": "3% slice: police statement — what is said aloud becomes a record",
+  "reference": "I am giving this voluntary statement, and I consent to it being entered into the record.",
+  "terms": ["statement", "record"],
+  "criticalPhrases": ["voluntary statement", "consent"],
+  "expect": {
+    "maxWerDisplay": 0,
+    "maxDamage": 0,
+    "minCriticalRecall": 1,
+    "minTermAccuracy": 1
+  },
+  "events": [
+    {
+      "atMs": 0,
+      "lane": "en",
+      "payload": {
+        "type": "Results",
+        "is_final": true,
+        "speech_final": true,
+        "start": 0.3,
+        "channel": {
+          "alternatives": [
+            {
+              "transcript": "I am giving this voluntary statement, and I consent to it being entered into the record.",
+              "confidence": 0.9,
+              "words": [
+                { "word": "voluntary", "confidence": 0.93 },
+                { "word": "statement", "confidence": 0.94 },
+                { "word": "consent", "confidence": 0.88 },
+                { "word": "record", "confidence": 0.93 }
+              ]
+            }
+          ]
+        }
+      }
+    }
+  ]
+}

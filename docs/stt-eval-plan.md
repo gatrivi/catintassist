@@ -37,6 +37,8 @@ hypothesis *and* the text the user actually reads. The difference between them i
 | `termAccuracy` | critical terms present in display text | drug names, legal terms |
 | `digitRunRecall` | digit runs from the reference present in display | doses, vitals, IDs, phone |
 | `criticalPhraseRecall` | negations/critical phrases kept | "denies", "no", "negative for" — meaning flips are the dangerous ones |
+| `repairGain` (v4.155.0) | words the domain lexicon saved vs. the unrepaired text | is the lexicon worth switching on? |
+| `mix` row (v4.155.0) | the same metrics weighted by how often the case really happens | a deposition must not outvote a dose |
 
 ### Normalization policy (documented, part of the metric)
 
@@ -52,17 +54,45 @@ hypothesis *and* the text the user actually reads. The difference between them i
 
 ---
 
-## Stage 2 — v4.155.0 · domain lexicons + display-side repair
+## Stage 2 — v4.155.0/v4.155.1 · domain lexicons + display-side repair · **SHIPPED**
 
-- `src/utils/domainLexicon.js`: medical EN/ES + legal EN/ES terms, each with the
-  spellings they actually get mangled into. Seeds: the 20 terms in
-  `medicalTermLexicon.js` (whose `applyMedicalBias` is a **no-op** today), the
-  user's ✎ corrections store (`transcriptCorrections.js` — real, human-labelled
-  misrecognitions, already local), plus a curated starter list.
-- `applyDomainRepair()`: display-side safety net when the provider still misses a
-  term. Hard rules: **known terms only**, **never touches digits**, and **every
-  repair is logged** (catLog + inspector) so it is auditable and revertible.
-- Priority order: drug names → negation/meaning flips → doses & vitals → legal terms.
+- `src/utils/domainLexicon.js`: ~40 rules `{term, lang, kind, mishears[], context[]}` —
+  medical EN (drugs + clinical), medical ES, and the legal 3% (exhibit/deposition/
+  objection/affidavit/subpoena + insurance billing words). `SAFE_DOMAIN_REPAIR_RULES`
+  drops any rule containing a digit **at load time**.
+- `applyDomainRepair(text, lang) → {text, repairs[], reverted, negated[]}`.
+- `findNegationGaps(text, lang)`: **report-only**. A dropped "denies" is
+  indistinguishable from an affirmative statement, so auto-inserting it would
+  invent a diagnosis. Logged, never written.
+- `src/utils/displaySourceText.js` → `resolveDisplayText()`: the single pure
+  place that decides what a bubble shows (user ✎ > corrections store > lexicon).
+- `src/utils/domainRepairSetting.js`: the Settings → Deepgram **Term repair**
+  switch. **Ships OFF** — with it off the transcript is byte-identical to
+  v4.154.0, and that promise is a test.
+- New metric `repairGain` + gate `checkRepairSafety` on **every** case, forever:
+  the lexicon may never make the text worse and may never move a digit run.
+  (Not per-fixture configurable on purpose: a lexicon that *sometimes* moves a
+  digit eventually hands a patient the wrong dose.)
+- Harness now weights cases by how often they really happen
+  (`KIND_MIX_WEIGHT`: medical 1, legal 0.2) so a deposition cannot outvote a dose.
+
+### The house rules this file obeys (all unit-tested)
+
+| # | Rule | Enforced by |
+|---|---|---|
+| 1 | only spellings literally in the table | no fuzzy matching anywhere |
+| 2 | never touches a digit | filter at load + final digit-run equality check (`reverted`) |
+| 3 | if the right word is already there, do nothing | idempotent, no double-correct |
+| 4 | a context word must be nearby | `context[]` gate |
+| 5 | never inserts a missing negation | `findNegationGaps` returns data, never text |
+| 6 | every repair is logged | `repairs[]` → `catLog('[domain-repair]')` |
+
+### v4.155.1 — the false alarm
+
+`vanishTrace.lostWords` compared raw whitespace tokens, so Deepgram's
+re-punctuation on finalize (`82` → `82,`) reported `lost: ['82','96']` on
+**every call**. The alarm meant to catch a vanishing phone number was crying
+wolf constantly. Now words compare by letters+digits only.
 
 ## Stage 3 — provider-side, only if the harness proves the win
 

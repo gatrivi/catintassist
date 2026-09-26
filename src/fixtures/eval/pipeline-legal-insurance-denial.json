@@ -1,0 +1,40 @@
+{
+  "id": "pipeline-legal-insurance-denial",
+  "kind": "legal",
+  "lang": "en",
+  "label": "3% slice: insurance appeal — the deductible/copayment words carry the argument",
+  "reference": "Your insurer denied the claim, so the deductible still applies and the copayment is due.",
+  "terms": ["deductible", "copayment", "claim"],
+  "criticalPhrases": ["still applies"],
+  "expect": {
+    "maxWerDisplay": 0,
+    "maxDamage": 0,
+    "minTermAccuracy": 1
+  },
+  "events": [
+    {
+      "atMs": 0,
+      "lane": "en",
+      "payload": {
+        "type": "Results",
+        "is_final": true,
+        "speech_final": true,
+        "start": 0.3,
+        "channel": {
+          "alternatives": [
+            {
+              "transcript": "Your insurer denied the claim, so the deductible still applies and the copayment is due.",
+              "confidence": 0.91,
+              "words": [
+                { "word": "insurer", "confidence": 0.92 },
+                { "word": "denied", "confidence": 0.94 },
+                { "word": "deductible", "confidence": 0.9 },
+                { "word": "copayment", "confidence": 0.89 }
+              ]
+            }
+          ]
+        }
+      }
+    }
+  ]
+}

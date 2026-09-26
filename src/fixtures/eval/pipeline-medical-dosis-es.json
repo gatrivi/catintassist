@@ -1,0 +1,42 @@
+{
+  "id": "pipeline-medical-dosis-es",
+  "kind": "medical",
+  "lang": "es",
+  "label": "ES dosis: cada digito de la dosis importa mas que la ortografia",
+  "reference": "Tome una tableta de 500 miligramos dos veces al dia con la comida.",
+  "terms": ["tableta", "miligramos"],
+  "criticalPhrases": ["dos veces al dia", "con la comida"],
+  "expect": {
+    "maxWerDisplay": 0,
+    "maxDamage": 0,
+    "minDigitRecall": 1,
+    "minCriticalRecall": 1,
+    "minTermAccuracy": 1
+  },
+  "events": [
+    {
+      "atMs": 0,
+      "lane": "es",
+      "payload": {
+        "type": "Results",
+        "is_final": true,
+        "speech_final": true,
+        "start": 0.4,
+        "channel": {
+          "alternatives": [
+            {
+              "transcript": "Tome una tableta de 500 miligramos dos veces al dia con la comida.",
+              "confidence": 0.92,
+              "words": [
+                { "word": "tableta", "confidence": 0.93 },
+                { "word": "500", "confidence": 0.95 },
+                { "word": "miligramos", "confidence": 0.9 },
+                { "word": "dos", "confidence": 0.94 }
+              ]
+            }
+          ]
+        }
+      }
+    }
+  ]
+}

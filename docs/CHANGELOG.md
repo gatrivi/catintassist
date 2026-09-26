@@ -2,6 +2,16 @@
 
 **Version source:** `src/constants/version.js` (must match `package.json` + top-right UI pill)
 
+## v4.155.1 - Domain lexicon (term repair) + the false VANISH alarm
+
+- Reported: "we do mostly eng spa medical interpreting, 95 pc with 3pc legal bills insurance police etc." Two things followed from it — the corpus was measuring the wrong mix, and there was no fix for the mishearings it kept reporting.
+- Added `src/utils/domainLexicon.js`: ~40 rules `{term, lang, kind, mishears[], context[]}` — medical EN (albuterol, amoxicillin, insulin, hemoglobin…), medical ES (amoxicilina, metformina, disnea…), and the legal 3% (exhibit, deposition, objection, affidavit, subpoena + deductible/copayment/coinsurance).
+- `applyDomainRepair(text, lang) → {text, repairs[], reverted, negated[]}`, enforced by six rules, each unit-tested: known mishears only · **never touches a digit** (rules with digits are dropped at load; the final digit-run check voids the whole repair) · no double-correcting · a context word must be nearby · **never invents a missing negation** (`findNegationGaps` reports, never writes — a dropped "denies" would invent a diagnosis) · every change logged to `catLog('[domain-repair]')`.
+- Added `src/utils/domainRepairSetting.js` + **Settings → Deepgram → "Term repair"** switch. **Ships OFF**: with it off `resolveDisplayText()` is a pass-through and the bubble is byte-identical to v4.154.0 (that promise is a test, not a comment). Flipping it re-renders existing bubbles live — no reconnect.
+- Harness: new `repairGain` metric and `checkRepairSafety` gate, applied to **every** case and not per-fixture configurable — the lexicon may never make the text worse and may never move a digit run. A test proves the gate can fail.
+- Corpus re-weighted: 17 cases (medical EN/ES, the legal 3% — bills/insurance/police added, allergy + discharge-instruction cases added) and `KIND_MIX_WEIGHT` (medical 1, legal 0.2) so the headline `mix` row matches a real day instead of letting depositions dominate. `repair +0.46` overall; **damage still 0.00**.
+- v4.155.1 fix: `vanishTrace.lostWords` compared raw whitespace tokens, so Deepgram re-punctuating on finalize (`82` → `82,`) reported `lost: ['82','96']` on every call. The alarm meant to catch a vanishing phone number was crying wolf constantly — which is how a real alarm gets ignored. Words now compare by letters+digits only; a real digit loss is still reported.
+
 ## v4.154.0 - STT eval harness: the first transcription-quality numbers (medical + legal)
 
 - Reported: "we do mostly medical interpreting and/or legal, there are a whole bunch of things that it is a lot better if transcribed correctly." The repo had **no numeric STT metric at all** — no WER, no term/digit accuracy — so every quality claim was a guess, and the most expensive bug class (Deepgram right, app wrong) was unmeasurable.

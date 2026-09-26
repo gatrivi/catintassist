@@ -1,0 +1,39 @@
+{
+  "id": "pipeline-repair-legal-exhibit",
+  "kind": "legal",
+  "lang": "en",
+  "label": "3% slice: 'exhibit' heard as 'exit bit' — the lexicon covers legal too",
+  "reference": "Please mark exhibit twelve into the record.",
+  "terms": ["exhibit"],
+  "criticalPhrases": ["into the record"],
+  "expect": {
+    "maxDamage": 0,
+    "minRepairGain": 2
+  },
+  "events": [
+    {
+      "atMs": 0,
+      "lane": "en",
+      "payload": {
+        "type": "Results",
+        "is_final": true,
+        "speech_final": true,
+        "start": 0.4,
+        "channel": {
+          "alternatives": [
+            {
+              "transcript": "Please mark exit bit twelve into the record.",
+              "confidence": 0.86,
+              "words": [
+                { "word": "exit", "confidence": 0.7 },
+                { "word": "bit", "confidence": 0.68 },
+                { "word": "twelve", "confidence": 0.95 },
+                { "word": "record", "confidence": 0.94 }
+              ]
+            }
+          ]
+        }
+      }
+    }
+  ]
+}

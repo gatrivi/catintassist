@@ -10,10 +10,25 @@ const MAX = 400;
 
 const wordList = (t) => (t || '').trim().split(/\s+/).filter(Boolean);
 
+/**
+ * Compare words by their letters and digits only.
+ *
+ * v4.155.1: Deepgram re-punctuates on every finalize, so an interim "…82 heart
+ * rate 96" becomes a final "…82, heart rate 96,". Comparing raw tokens made
+ * "82," !== "82", so EVERY comma-after-a-number fired a fake
+ * `[CAT VANISH] lost: ['82','96']` — the alarm that is supposed to catch a
+ * disappearing phone number cried wolf on every single call, which is how a
+ * real alarm gets ignored.
+ */
+const wordKey = (w) => (w || '').toLowerCase().replace(/[^\p{L}\p{N}]+/gu, '');
+
 export const lostWords = (before, after) => {
   const a = wordList(before);
-  const b = new Set(wordList(after).map((w) => w.toLowerCase()));
-  return a.filter((w) => !b.has(w.toLowerCase()));
+  const b = new Set(wordList(after).map(wordKey).filter(Boolean));
+  return a.filter((w) => {
+    const key = wordKey(w);
+    return key ? !b.has(key) : true;
+  });
 };
 
 export const textShortened = (before, after) => {

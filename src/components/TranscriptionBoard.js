@@ -68,6 +68,15 @@ import {
   CORRECTION_KIND,
   CORRECTIONS_CHANGED_EVENT,
 } from '../utils/transcriptCorrections';
+// v4.155.0 — term repair (domain lexicon). OFF by default: with the switch off
+// resolveDisplayText is a pass-through and the bubble shows exactly what
+// Deepgram said.
+import { resolveDisplayText } from '../utils/displaySourceText';
+import {
+  isDomainRepairEnabled,
+  DOMAIN_REPAIR_CHANGED_EVENT,
+} from '../utils/domainRepairSetting';
+import { catLog } from '../utils/catLog';
 
 // Messages addressed TO the interpreter ("Interpreter, ..." / "Intérprete, ...") — light blue so they're never read as patient speech.
 const INTERPRETER_CUE_RE = /^\s*(interpreter|int[ée]rprete|interprete)\s*[,.:;:]/i;
@@ -538,16 +547,25 @@ const TranslatedBubble = ({
   onEditTranslation,
   canEdit = true,
   correctionsRev = 0,
+  domainRepairOn = false, // v4.155.0: term repair switch (OFF unless the operator turns it on)
   continuityKey = '',
   prevText = '', // v4.152.0: previous bubble's text (cross-message repeat dimming)
   prevTranslationText = '', // previous bubble's translation, same purpose
 }) => {
   const { translationMood } = useSession();
   const displaySourceText = useMemo(() => {
-    if (userCorrected) return text;
-    return applySttCorrections(text, lang);
+    const r = resolveDisplayText({ text, lang, userCorrected, domainRepairOn });
+    // v4.155.0: every lexicon change is logged, so after a call you can ask
+    // "did it touch anything?" and get an answer (__CAT_DUMP('[domain-repair]')).
+    if (r.repairs.length) catLog('[domain-repair]', { id, lang, repairs: r.repairs });
+    if (r.negated.length) {
+      // Report-only: a dropped "denies" changes what the patient agreed to, so
+      // it must reach a human — we never invent the word ourselves.
+      catLog('[domain-repair] negation gap?', { id, lang, gaps: r.negated });
+    }
+    return r.text;
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [text, lang, userCorrected, correctionsRev]);
+  }, [text, lang, userCorrected, correctionsRev, domainRepairOn, id]);
 
   const { translation, audioUrl, engineStatus, translationMeta, targetLang, isStale } = useTranslate(
     displaySourceText,
@@ -771,6 +789,7 @@ const translatedBubblePropsEqual = (prev, next) =>
   prev.prevText === next.prevText &&
   prev.prevTranslationText === next.prevTranslationText &&
   prev.correctionsRev === next.correctionsRev &&
+  prev.domainRepairOn === next.domainRepairOn && // v4.155.0
   prev.continuityKey === next.continuityKey &&
   prev.languagePair?.left === next.languagePair?.left &&
   prev.languagePair?.right === next.languagePair?.right;
@@ -850,6 +869,15 @@ export const TranscriptionBoard = ({
   const [popover, setPopover] = useState({ show: false, x: 0, y: 0, text: '' });
   const popoverTimerRef = useRef(null);
   const [correctionsRev, setCorrectionsRev] = useState(0);
+  // v4.155.0 — term repair switch, read live so flipping it in Settings
+  // re-renders the existing bubbles immediately (no reconnect needed).
+  const [domainRepairOn, setDomainRepairOn] = useState(isDomainRepairEnabled);
+  useEffect(() => {
+    const onChange = (e) =>
+      setDomainRepairOn(typeof e?.detail === 'boolean' ? e.detail : isDomainRepairEnabled());
+    window.addEventListener(DOMAIN_REPAIR_CHANGED_EVENT, onChange);
+    return () => window.removeEventListener(DOMAIN_REPAIR_CHANGED_EVENT, onChange);
+  }, []);
   const [correctionEditor, setCorrectionEditor] = useState(null);
   const [footerStatus, setFooterStatus] = useState('');
   const [clearLogConfirmOpen, setClearLogConfirmOpen] = useState(false);
@@ -1492,6 +1520,7 @@ export const TranscriptionBoard = ({
                   onPersistTranslation={persistCaptionTranslation}
                   canEdit={cap.isFinal !== false}
                   correctionsRev={correctionsRev}
+                  domainRepairOn={domainRepairOn}
                   wordConfidence={cap.wordConfidence || null}
                   {...makeEditHandlers(cap)}
                 />
@@ -1620,6 +1649,7 @@ export const TranscriptionBoard = ({
                   onPersistTranslation={persistCaptionTranslation}
                   canEdit={!isLive}
                   correctionsRev={correctionsRev}
+                  domainRepairOn={domainRepairOn}
                   wordConfidence={cap.wordConfidence || null}
                   prevText={prevText}
                   prevTranslationText={prevTranslationText}

@@ -45,7 +45,8 @@ Prod verification checklist:
 - [x] v4.84.1 StableTextMorph — word diff morph (not plain snap / not scramble)
 - [x] v4.84.3–4.84.8 sensitive data A–E + ES name chips — chips · date units · sentinels · spelling soften · dose/money · ES cues ([`development/sensitive-data-approach.md`](development/sensitive-data-approach.md))
 - [x] v4.154.0 **STT eval harness** — WER + term/digit/negation accuracy scored through the real pipeline, raw vs displayed (**pipeline damage**) — medical + legal corpus, `npm run eval:stt` ([`stt-eval-plan.md`](stt-eval-plan.md))
-- [ ] v4.155.0 domain lexicons + `applyDomainRepair` (display-side safety net) — [`stt-eval-plan.md`](stt-eval-plan.md) §Stage 2
+- [x] v4.155.0 **domain lexicon + `applyDomainRepair`** — ~40 EN/ES medical + legal terms; Settings → Deepgram **Term repair** switch (ships **OFF**); never touches a digit, never invents a negation; `repairGain` metric + permanent safety gate; corpus weighted to the real 95/3 mix ([`stt-eval-plan.md`](stt-eval-plan.md) §Stage 2)
+- [x] v4.155.1 `vanishTrace.lostWords` punctuation fix — the CAT VANISH alarm no longer fires on every comma Deepgram adds
 - [ ] `keyterm` biasing + EN socket `nova-3-medical` (one A/B run first) — [`stt-eval-plan.md`](stt-eval-plan.md) §Stage 3
 
 **Code:** [`useTranslate.js`](../src/hooks/useTranslate.js) · [`useDeepgram.js`](../src/hooks/useDeepgram.js) · [`sensitiveDataProtector.js`](../src/utils/sensitiveDataProtector.js) · [`translationApplicator.js`](../src/utils/translationApplicator.js)

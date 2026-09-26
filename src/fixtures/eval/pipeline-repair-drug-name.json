@@ -1,0 +1,40 @@
+{
+  "id": "pipeline-repair-drug-name",
+  "kind": "medical",
+  "lang": "en",
+  "label": "The lexicon's whole reason to exist: albuterol heard as English words",
+  "reference": "Give albuterol inhaler two puffs every four hours as needed.",
+  "terms": ["albuterol"],
+  "criticalPhrases": ["as needed"],
+  "expect": {
+    "maxDamage": 0,
+    "minRepairGain": 3
+  },
+  "events": [
+    {
+      "atMs": 0,
+      "lane": "en",
+      "payload": {
+        "type": "Results",
+        "is_final": true,
+        "speech_final": true,
+        "start": 0.5,
+        "channel": {
+          "alternatives": [
+            {
+              "transcript": "Give all but a roll inhaler two puffs every four hours as needed.",
+              "confidence": 0.88,
+              "words": [
+                { "word": "all", "confidence": 0.7 },
+                { "word": "but", "confidence": 0.7 },
+                { "word": "roll", "confidence": 0.7 },
+                { "word": "inhaler", "confidence": 0.94 },
+                { "word": "puffs", "confidence": 0.93 }
+              ]
+            }
+          ]
+        }
+      }
+    }
+  ]
+}
