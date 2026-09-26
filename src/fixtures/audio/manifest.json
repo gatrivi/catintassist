@@ -1,0 +1,211 @@
+[
+  {
+    "id": "en-01-albuterol",
+    "file": "en-01-albuterol.wav",
+    "lang": "en",
+    "kind": "medical",
+    "terms": ["albuterol"],
+    "criticalPhrases": [],
+    "note": "The one Deepgram is known to mangle. Say it slowly.",
+    "reference": "Give albuterol inhaler two puffs every four hours as needed."
+  },
+  {
+    "id": "en-02-amoxicillin",
+    "file": "en-02-amoxicillin.wav",
+    "lang": "en",
+    "kind": "medical",
+    "terms": ["amoxicillin"],
+    "reference": "The prescription is amoxicillin five hundred milligrams three times a day for seven days."
+  },
+  {
+    "id": "en-03-allergy-denial",
+    "file": "en-03-allergy-denial.wav",
+    "lang": "en",
+    "kind": "medical",
+    "terms": [],
+    "criticalPhrases": ["no known drug allergies", "no history of anaphylaxis"],
+    "note": "Negation test. A dropped 'denies' here is the dangerous one.",
+    "reference": "The patient has no known drug allergies and no history of anaphylaxis."
+  },
+  {
+    "id": "en-04-vitals",
+    "file": "en-04-vitals.wav",
+    "lang": "en",
+    "kind": "medical",
+    "terms": ["blood pressure", "oxygen saturation"],
+    "reference": "Blood pressure 128 over 82, heart rate 96, oxygen saturation 94 percent."
+  },
+  {
+    "id": "en-05-phone",
+    "file": "en-05-phone.wav",
+    "lang": "en",
+    "kind": "medical",
+    "terms": [],
+    "criticalPhrases": ["if the fever comes back"],
+    "note": "Ten digits spoken as one run. If this drifts, nothing else matters.",
+    "reference": "Return in seven days and call 5551234567 if the fever comes back."
+  },
+  {
+    "id": "en-06-pediatric",
+    "file": "en-06-pediatric.wav",
+    "lang": "en",
+    "kind": "medical",
+    "terms": [],
+    "criticalPhrases": ["every eight hours"],
+    "note": "Decimals and a derived number.",
+    "reference": "Give 0.4 milligrams per kilogram, which for 18 kilograms is 7.2 milligrams, every eight hours."
+  },
+  {
+    "id": "en-07-reconciliation",
+    "file": "en-07-reconciliation.wav",
+    "lang": "en",
+    "kind": "medical",
+    "terms": ["metformin", "lisinopril", "atorvastatin", "aspirin"],
+    "reference": "Continue Metformin 500 milligrams twice daily, Lisinopril 10 milligrams once daily, Atorvastatin 20 milligrams at bedtime, and Aspirin 81 milligrams once daily."
+  },
+  {
+    "id": "en-08-insulin",
+    "file": "en-08-insulin.wav",
+    "lang": "en",
+    "kind": "medical",
+    "terms": ["insulin"],
+    "reference": "Check the blood sugar before dinner and take the insulin as prescribed."
+  },
+  {
+    "id": "en-09-lab-results",
+    "file": "en-09-lab-results.wav",
+    "lang": "en",
+    "kind": "medical",
+    "terms": ["hemoglobin"],
+    "reference": "The hemoglobin came back at 11.2 grams per deciliter, which is a little low."
+  },
+  {
+    "id": "en-10-furosemide",
+    "file": "en-10-furosemide.wav",
+    "lang": "en",
+    "kind": "medical",
+    "terms": ["furosemide"],
+    "reference": "The furosemide dose is 40 milligrams once every morning."
+  },
+  {
+    "id": "en-11-levothyroxine",
+    "file": "en-11-levothyroxine.wav",
+    "lang": "en",
+    "kind": "medical",
+    "terms": ["levothyroxine"],
+    "reference": "Keep taking the levothyroxine 75 micrograms every morning on an empty stomach."
+  },
+  {
+    "id": "en-12-consent",
+    "file": "en-12-consent.wav",
+    "lang": "en",
+    "kind": "medical",
+    "terms": [],
+    "criticalPhrases": ["you can ask me to stop at any time"],
+    "reference": "You can ask me to stop at any time, and I will explain everything before we begin."
+  },
+  {
+    "id": "en-13-privacy",
+    "file": "en-13-privacy.wav",
+    "lang": "en",
+    "kind": "medical",
+    "terms": [],
+    "criticalPhrases": ["only the three of us"],
+    "reference": "Everything you tell me stays between us, only the three of us in this room."
+  },
+  {
+    "id": "en-14-ibuprofen",
+    "file": "en-14-ibuprofen.wav",
+    "lang": "en",
+    "kind": "medical",
+    "terms": ["ibuprofen"],
+    "reference": "For the pain you may take ibuprofen 400 milligrams with food, no more than three times a day."
+  },
+  {
+    "id": "en-15-appeal",
+    "file": "en-15-appeal.wav",
+    "lang": "en",
+    "kind": "legal",
+    "terms": ["deductible", "copayment"],
+    "reference": "Your insurer denied the claim, so the deductible still applies and the copayment is due."
+  },
+  {
+    "id": "en-16-police",
+    "file": "en-16-police.wav",
+    "lang": "en",
+    "kind": "legal",
+    "terms": [],
+    "criticalPhrases": ["voluntary statement"],
+    "reference": "I am giving this voluntary statement, and I consent to it being entered into the record."
+  },
+  {
+    "id": "en-17-billing",
+    "file": "en-17-billing.wav",
+    "lang": "en",
+    "kind": "legal",
+    "terms": [],
+    "reference": "The bill was 340 dollars, the insurer paid 210, and you owe 130 dollars."
+  },
+  {
+    "id": "en-18-dyspnea",
+    "file": "en-18-dyspnea.wav",
+    "lang": "en",
+    "kind": "medical",
+    "terms": ["dyspnea"],
+    "reference": "Are you having any dyspnea when you climb the stairs?"
+  },
+  {
+    "id": "es-01-dosis",
+    "file": "es-01-dosis.wav",
+    "lang": "es",
+    "kind": "medical",
+    "terms": ["tableta", "miligramos"],
+    "criticalPhrases": ["dos veces al día"],
+    "reference": "Tome una tableta de 500 miligramos dos veces al día con la comida."
+  },
+  {
+    "id": "es-02-niega",
+    "file": "es-02-niega.wav",
+    "lang": "es",
+    "kind": "medical",
+    "terms": [],
+    "criticalPhrases": ["niega", "no tiene dificultad respiratoria"],
+    "note": "Negation test in Spanish.",
+    "reference": "El paciente niega dolor en el pecho y no tiene dificultad respiratoria."
+  },
+  {
+    "id": "es-03-amoxicilina",
+    "file": "es-03-amoxicilina.wav",
+    "lang": "es",
+    "kind": "medical",
+    "terms": ["amoxicilina"],
+    "reference": "Le voy a dar amoxicilina 500 miligramos tres veces al día durante siete días."
+  },
+  {
+    "id": "es-04-telefono",
+    "file": "es-04-telefono.wav",
+    "lang": "es",
+    "kind": "medical",
+    "terms": [],
+    "criticalPhrases": [],
+    "note": "Ten digits as one run, in Spanish.",
+    "reference": "Si vuelve la fiebre, llame al 5551234567 antes de las cinco."
+  },
+  {
+    "id": "es-05-privacidad",
+    "file": "es-05-privacidad.wav",
+    "lang": "es",
+    "kind": "medical",
+    "terms": [],
+    "criticalPhrases": ["solamente los tres"],
+    "reference": "Todo lo que me diga queda entre nosotros, solamente los tres en esta sala."
+  },
+  {
+    "id": "es-06-seguro",
+    "file": "es-06-seguro.wav",
+    "lang": "es",
+    "kind": "legal",
+    "terms": ["deductible"],
+    "reference": "El seguro negó el reclamo, así que el deductible todavía aplica y el copago se debe pagar."
+  }
+]
