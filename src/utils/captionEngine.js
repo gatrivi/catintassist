@@ -412,6 +412,18 @@ export const reduceTranscriptEvent = (prev, event, ctx) => {
       last && now - lastStarted < 400 && !isSilentBreak && !startsAfterPeriod;
     if (!debounceNewBubble) {
       if (lastBubbleStartedRef) lastBubbleStartedRef.current = now;
+      // v4.160.0: a live tail (the remainder after a sentence split) is sealed
+      // HERE, when the turn moves on. Without this, a turn that ended mid
+      // sentence left its last words live forever: never in the sealed
+      // transcript, never translated, and the app's own trace reported them as
+      // lost ("lost: ['Yeah.']"). Found with a real call: the nurse's question and
+      // the patient's answer arrived as one payload and "Yeah. That he has"
+      // dangled at the end of the bubble. Silence after a final IS an ending.
+      if (last && last.isFinal === false && (last.text || '').trim()) {
+        const sealedPrev = { ...last, isFinal: true, tailPreviewText: null };
+        prev = [...prev.slice(0, -1), sealedPrev];
+        last = sealedPrev;
+      }
       if (isSilentBreak || !last) {
         turnWordsBaseRef.current = 0;
         currentTurnIdRef.current = `turn-${now}`;
@@ -728,11 +740,14 @@ export const reduceTranscriptEvent = (prev, event, ctx) => {
     }
 
     if (sealedAll.length > 0) {
+      // The tail is NOT lost — it becomes its own bubble below. Say so here, or
+      // the trace cries "lost: ['Yeah.']" on every turn that ends mid-sentence
+      // and the alarm that must catch a vanishing phone number gets ignored.
       flagVanish('caption_bubble_split', {
         id: originalLastId,
         turnId: current.turnId,
         before: current.text,
-        after: sealedAll.map((s) => s.text).join(' || '),
+        after: [...sealedAll.map((s) => s.text), tailText || ''].filter(Boolean).join(' || '),
         remount: true,
         force: true,
         stage: 'captionEngine.sealSplit',
@@ -782,6 +797,10 @@ export const reduceTranscriptEvent = (prev, event, ctx) => {
             tailSide === "es"
               ? `${formatted} ${current.esInterim || ""}`.trim()
               : current.esFull,
+          // The tail stays a LIVE row on purpose (v4.141.0: it reuses the live
+          // draft's id so the bubble keeps growing without remounting). It is
+          // sealed by the turn-transition path below, which is what stops its
+          // words from being stranded when the speaker simply stops talking.
           isFinal: false,
         });
       }

@@ -2,6 +2,14 @@
 
 **Version source:** `src/constants/version.js` (must match `package.json` + top-right UI pill)
 
+## v4.160.0 (in progress) - the last words of a turn were never sealed
+
+- Found by pasting a real call transcript in: nurse asks for a name and date of birth, the patient answers inside the same breath, and the bubble ended `…My last name? Okay. Yeah. That he has`. Reproduced as a test, and the app's own diagnostic confirmed it: `[CAT VANISH] caption_bubble_split → lost: ['Yeah.']`.
+- **What was wrong:** when a final payload sentence-splits, the trailing incomplete sentence becomes a LIVE row (deliberate — v4.141.0 reuses the live draft's id so the bubble grows without remounting). But **nothing ever sealed it**: the next turn simply started a new row and left the old one live forever. Those words never entered the sealed transcript, never got translated, and sat on screen as a dangling fragment.
+- **The fix is deliberately small:** on a turn transition, a live row that still holds words is sealed first. The live-tail design is untouched — the tail is still live *while the speaker keeps talking*; silence after a final is an ending.
+- `flagVanish` was also lying: the split reported the tail as `lost` words, so the alarm meant to catch a vanishing phone number fired on ordinary sentence splits. The tail is now included in the "after" text.
+- Honest limit: the app has **no diarization**, so it splits on sentence boundaries and cannot tell a nurse's question from a patient's answer. Both arrive in one payload and print as separate bubbles, which is readable but not attributed. Fixing that properly needs Deepgram `diarize` — a separate, opt-in request parameter, not a guess.
+
 ## v4.159.0 - The corpus now measures the numbers that must never drift
 
 - "if you accidentally edit a phone number out while I am reading it I am going to lose my job" — that was in the brief from the start, and the corpus did not actually test it. It does now.
