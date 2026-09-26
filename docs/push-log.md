@@ -95,3 +95,4 @@
 | 2026-09-25T18:42:03.552Z | 04cfe09 | v4.151.2 dedup: restated/reworded spans supersede in place, nothing else dropped - no duplicate transcript messages |
 | 2026-09-25T20:11:56.621Z | 61624b5 | v4.152.0 cross-message repeat dim |
 | 2026-09-25T21:15:45.348Z | d36fc97 | v4.152.1: CONNECT route fix - one resolver decides mic/cable/tab, mic wins (v4.84 regression) |
+| 2026-09-26T00:56:14.878Z | 433e217 | v4.153.0: CONNECT really starts Deepgram (sttLive truth, parallel EN+ES sockets, no silent calls) |
