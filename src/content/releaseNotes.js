@@ -25,6 +25,49 @@ import { APP_VERSION } from '../constants/version';
 /** Newest first. Only the entry matching APP_VERSION is shown on load. */
 export const RELEASE_NOTES_CATALOG = [
   {
+    version: '4.162.0',
+    id: 'goal-dial-money-safety',
+    highlightElementIds: ['goal-config-version-pill'],
+    es: {
+      title: 'La rueda de metas ya no te puede borrar el mes por accidente',
+      intro: 'Ocho arreglos en el Goal Configurator. El más grave: si vaciabas la caja «banked/mo» para reescribirla y apretabas Set, se guardaba 0 y tu mes quedaba en cero.',
+      sections: [
+        { heading: 'Lo que faltaba y ahora está', bullets: [
+          '«Set» con la caja vacía se niega y te avisa. Antes `Number(\'\')` pasaba la validación y ponía 0.',
+          '«↻ re-sum» y «Bank Goal» muestran el cambio exacto — `1000m → 300m (−700)` — y piden confirmación. Antes se escribían en un clic, y el re-sum puede BAJAR el mes.',
+          'Nuevo botón «↩ Undo it» después de cualquiera de los dos. Devuelve los números exactos de antes, y sobrevive si recargás la página.',
+          '«Cancel» era «salir de la vista» y perdías todo lo editado. Ahora el botón es «Discard»: descarta los cambios y te quedás donde estabas.',
+          'Las flechas ↑/↓ ya no borran el número que estás escribiendo. El teclado del dial invadía los campos de texto.',
+          'Escape ya no se dispara dos veces (el dial y la app lo escuchaban).',
+          'El «ARS rate» ahora es de solo lectura, con la hora del fetch y un ↻ para actualizar. Nunca se guardó, la API lo pisaba en cada recarga, y si lo vaciabas todos los $ del app daban 0.',
+        ] },
+        { heading: 'Intacto', bullets: [
+          'Ni una línea de la matemática del dial cambió: `goalAnchor.js` y `catchUpPlan.js` siguen igual, con sus 42 tests.',
+          'La rueda sigue abriendo en el compromiso que bankeaste, no en uno derivado.',
+        ] },
+      ],
+    },
+    en: {
+      title: 'The goal wheel can no longer wipe your month by accident',
+      intro: 'Eight fixes in the Goal Configurator. The worst one: clear the "banked/mo" box to retype it, press Set, and it stored 0 — your month went to zero.',
+      sections: [
+        { heading: 'What was missing and is now there', bullets: [
+          'Set on an empty box refuses and tells you why. `Number(\'\')` used to pass the check and write 0.',
+          'Both "↻ re-sum" and "Bank Goal" show the exact change — `1000m → 300m (−700)` — and ask you to confirm. They used to write in one click, and re-sum can LOWER the month.',
+          'A new "↩ Undo it" button after either one. It puts the previous numbers back exactly, and survives a page reload.',
+          '"Cancel" actually meant "leave the view" and threw away every edit. The button is now "Discard": drop the changes and stay put.',
+          '↑/↓ no longer erase the number you are typing. The dial\'s key handler was reaching into the text fields.',
+          'Escape no longer fires twice (both the dial and the app were listening).',
+          'The ARS rate is now read-only, showing when it was fetched plus a ↻ to refresh. It was never saved, the API clobbered it on every reload, and clearing it made every $ in the app read 0.',
+        ] },
+        { heading: 'Untouched', bullets: [
+          'Not one line of the dial maths changed: `goalAnchor.js` and `catchUpPlan.js` are as they were, with their 42 tests.',
+          'The wheel still opens on the commitment you banked, never a value reverse-derived from it.',
+        ] },
+      ],
+    },
+  },
+  {
     version: '4.161.0',
     id: 'settings-findable',
     highlightElementIds: ['settings-data-import'],

@@ -2,6 +2,27 @@
 
 **Version source:** `src/constants/version.js` (must match `package.json` + top-right UI pill)
 
+## v4.162.0 - the goal wheel can no longer wipe your month by accident
+
+- **The worst bug found in this pass:** clear the `banked/mo` box to retype it, press `Set`, and it wrote **0** — `Number('') === 0` passed the old `>= 0` check. Your month went to zero. `parseMinuteCorrection()` now refuses an empty, negative or junk field, and the test pins the empty case.
+- Both destructive buttons now do what the call-log paste does: **show the change, ask once, undo afterwards.** `↻ re-sum` (which can *lower* the month) and `Bank Goal` (5 stat fields at once) print `1000m → 300m (−700)` and commit on the second press. New **↩ Undo it** restores the exact previous `catintassist_stats`, and survives a reload.
+- Snapshots are taken inside `SessionContext.bankGoal` / `reconcileMonthTotal`, not in the panel, so every caller is covered. `src/utils/statUndo.js`, one level deep by design.
+- **`Cancel` was a lie** — it called `onExit`, so it left the whole view and discarded every edit. The button is now **`Discard`**: drop the changes, reset the dial to what is actually banked, stay put. The header's `← Back to work` is still the way out.
+- **The ARS rate is a live feed, not a setting.** It was an editable box that was never persisted, was clobbered by the API fetch on every reload, and made every `$` in the app read `$0` the moment you cleared it. Now read-only with the fetch time and a manual ↻ (`refreshArsRate`).
+- **↑/↓ no longer erase the number you are typing.** The dial's key handler sat on the wrapper and `step()` clears the custom override, so arrowing inside `Monthly mins` moved the dial and wiped the field. Arrow keys are now ignored while an input has focus.
+- **Escape no longer fires twice** — both the dial and `App.js` listened for it. The App comment claiming the dial stopped propagation was wrong; it does now.
+- **14 new tests**, all on paths that had zero coverage. **Zero lines of the dial maths changed** — `goalAnchor.js` and `catchUpPlan.js` keep their 42 tests.
+- Spec: [`goal-configurator.md`](goal-configurator.md)
+
+## v4.161.0 - settings you can actually find
+
+- Ten identical tabs in a strip that wrapped onto three rows was why the drawer felt like a maze. `src/utils/settingsRegistry.js` is now the single source of truth: ids, labels, hints, search words, groups, order — replacing a nested ternary whose labels fell through to `else 'Display'`.
+- **Search** matches label + hint + keywords + id, AND across terms, ranked. "minutes", "key", "theme", "colour" (es spelling), "soundboard" all land on the right panel.
+- **Four groups** (Today · Speech · Output · App), and **★ pins** with the call log pinned by default. A pinned panel leaves its group so it is listed once — which is why the panel is called "Call log" and the group "Today".
+- Opening the ⚙ with no target returns to the panel you were in, instead of dumping you on Deepgram.
+- **Settings → Goals** deep-links into the goal wheel (new `cat_open_goals_view` event). Mid-call it shows "off-call only" and says why, instead of closing the drawer on nothing.
+- Spec: [`settings-view.md`](settings-view.md)
+
 ## v4.161.0 - a fluent but INCOMPLETE translation now gets caught (real CSA call)
 
 - The interpreter pasted a CSA call where the Spanish ended `…Él ya tiene esos recursos allí` and **dropped "waiting for him"** entirely. Also `after all of this is done` → `después de todo de esto se hace` (wrong sense: "is made" not "is finished").

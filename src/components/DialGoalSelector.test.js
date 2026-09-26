@@ -10,10 +10,18 @@ jest.mock('../hooks/useProgressiveAudio', () => ({
 const baseProps = {
   ratePerMinute: 0.13,
   arsRate: 1000,
-  setArsRate: jest.fn(),
   initialGoalMinutes: 5500,
   onSave: jest.fn(),
   onCancel: jest.fn(),
+};
+
+/**
+ * v4.162.0: Bank Goal now asks first. Pressing it once arms it and shows the
+ * change; pressing again writes. Every test that expects a write must arm it.
+ */
+const bankGoal = () => {
+  fireEvent.click(screen.getByRole('button', { name: /Bank Goal|Confirm bank/ }));
+  fireEvent.click(screen.getByRole('button', { name: /Bank Goal|Confirm bank/ }));
 };
 
 describe('DialGoalSelector rehab (v4.100.0)', () => {
@@ -60,10 +68,13 @@ describe('DialGoalSelector rehab (v4.100.0)', () => {
         resyncInfo={{ sum: 1234 }}
       />,
     );
-    fireEvent.click(screen.getByRole('button', { name: /Bank Goal:/ }));
+    bankGoal();
     expect(onSave).toHaveBeenCalledWith(expect.any(Number), expect.objectContaining({ workDays: 28 }));
     fireEvent.change(screen.getByLabelText(/Banked month total/i), { target: { value: '1234' } });
+    // The Set button arms first (v4.162.0), then writes.
     fireEvent.click(screen.getByRole('button', { name: /^Set$/ }));
+    expect(onSaveMonth).not.toHaveBeenCalled();
+    fireEvent.click(screen.getByRole('button', { name: /^Confirm\?$/ }));
     expect(onSaveMonth).toHaveBeenCalledWith(1234);
     expect(screen.getByRole('button', { name: /log=1234m/ })).toBeInTheDocument();
   });
@@ -88,7 +99,7 @@ describe('DialGoalSelector rehab (v4.100.0)', () => {
   test('bank payload carries the anchor inputs (ANCHORED-GOAL)', () => {
     const onSave = jest.fn();
     render(<DialGoalSelector {...baseProps} onSave={onSave} monthlyMinutes={1000} dailyMinutes={50} />);
-    fireEvent.click(screen.getByRole('button', { name: /Bank Goal:/ }));
+    bankGoal();
     const [target, meta] = onSave.mock.calls[0];
     const left = monthBasis({ workDays: 28 }).remainingWorkdays;
     expect(target).toBe(1000 + 185 * left);          // worked + commitment × workdays left
@@ -195,5 +206,187 @@ describe('banked commitment survives a re-open (ANCHORED-GOAL follow-up)', () =>
     );
     // 6000m ÷ 22d = 273m/d → 22.75h/Wk → nearest row 25h/Wk → 300m/d
     expect(onPreview).toHaveBeenLastCalledWith({ monthlyMinutes: 300 * left(), workDays: WORKDAYS, daysPerWeek: 5 });
+  });
+});
+
+// v4.162.0 — every number in this panel is money you get paid on. These cases
+// pin the guards: nothing is written without showing the change and asking
+// once, an emptied box is not a request to zero the month, and the arrow keys
+// never eat what you are typing.
+describe('goal dial money safety (v4.162.0)', () => {
+  beforeEach(() => localStorage.clear());
+  afterEach(() => localStorage.clear());
+
+  const withMonthRow = (extra = {}) => render(
+    <DialGoalSelector
+      {...baseProps}
+      monthlyMinutes={1000}
+      dailyMinutes={50}
+      onSaveMonth={jest.fn()}
+      onResyncMonth={jest.fn()}
+      resyncInfo={{ sum: 1234 }}
+      {...extra}
+    />,
+  );
+
+  test('an EMPTIED banked/mo box refuses to write instead of zeroing the month', () => {
+    const onSaveMonth = jest.fn();
+    withMonthRow({ onSaveMonth });
+    const input = screen.getByLabelText(/Banked month total/i);
+    fireEvent.change(input, { target: { value: '' } });
+    fireEvent.click(screen.getByRole('button', { name: /^Set$/ }));
+
+    expect(onSaveMonth).not.toHaveBeenCalled();
+    expect(screen.getByText(/Type a number of minutes first/i)).toBeInTheDocument();
+  });
+
+  test('a negative or junk banked/mo value is refused too', () => {
+    const onSaveMonth = jest.fn();
+    withMonthRow({ onSaveMonth });
+    const input = screen.getByLabelText(/Banked month total/i);
+    ['-5', 'abc'].forEach((bad) => {
+      fireEvent.change(input, { target: { value: bad } });
+      fireEvent.click(screen.getByRole('button', { name: /^Set$/ }));
+      expect(onSaveMonth).not.toHaveBeenCalled();
+    });
+  });
+
+  test('Set shows the change and writes only on the second press', () => {
+    const onSaveMonth = jest.fn();
+    withMonthRow({ onSaveMonth });
+    fireEvent.change(screen.getByLabelText(/Banked month total/i), { target: { value: '5000' } });
+    fireEvent.click(screen.getByRole('button', { name: /^Set$/ }));
+
+    expect(onSaveMonth).not.toHaveBeenCalled();
+    expect(screen.getByText(/1000m → 5000m \(\+4000\)/)).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /^Confirm\?$/ })).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: /^Confirm\?$/ }));
+    expect(onSaveMonth).toHaveBeenCalledWith(5000);
+  });
+
+  test('re-sum asks before it can LOWER the month, then writes', () => {
+    const onResyncMonth = jest.fn();
+    withMonthRow({ onResyncMonth, resyncInfo: { sum: 300 } });
+    fireEvent.click(screen.getByRole('button', { name: /log=300m/ }));
+
+    expect(onResyncMonth).not.toHaveBeenCalled();
+    expect(screen.getByText(/1000m → 300m \(-700\)/)).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: /^Confirm\?$/ }));
+    expect(onResyncMonth).toHaveBeenCalledTimes(1);
+  });
+
+  test('Bank Goal shows old → new before committing five fields', () => {
+    const onSave = jest.fn();
+    render(<DialGoalSelector {...baseProps} onSave={onSave} initialGoalMinutes={5500} monthlyMinutes={1000} dailyMinutes={50} />);
+    fireEvent.click(screen.getByRole('button', { name: /Bank Goal:/ }));
+
+    expect(onSave).not.toHaveBeenCalled();
+    expect(screen.getByText(/Bank goal: 5500m →/)).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: /Confirm bank/ }));
+    expect(onSave).toHaveBeenCalledTimes(1);
+  });
+
+  test('an existing snapshot is offered as Undo when the panel opens', () => {
+    localStorage.setItem('catint_stat_undo_v1', JSON.stringify({
+      label: 're-sum month', savedAt: Date.now(), stats: { monthlyMinutes: 4242 },
+    }));
+    const onUndoStat = jest.fn(() => ({ monthlyMinutes: 4242 }));
+    withMonthRow({ onUndoStat });
+
+    expect(screen.getByText(/Last change: re-sum month/)).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: /Undo it/ }));
+    expect(onUndoStat).toHaveBeenCalledTimes(1);
+    expect(screen.getByText(/back to 4242m/)).toBeInTheDocument();
+  });
+
+  test('Undo with nothing left to restore says so instead of pretending', () => {
+    localStorage.setItem('catint_stat_undo_v1', JSON.stringify({
+      label: 're-sum month', savedAt: Date.now(), stats: { monthlyMinutes: 4242 },
+    }));
+    // The snapshot was consumed by something else between mount and click.
+    const onUndoStat = jest.fn(() => null);
+    withMonthRow({ onUndoStat });
+    fireEvent.click(screen.getByRole('button', { name: /Undo it/ }));
+    expect(onUndoStat).toHaveBeenCalledTimes(1);
+    expect(screen.getByText(/Nothing left to undo/i)).toBeInTheDocument();
+  });
+
+  // The bug this exists for: the keydown handler sat on the wrapper, so ↑/↓
+  // in the monthly field moved the dial AND cleared the typed override.
+  test('arrow keys inside the monthly field do not wipe what you are typing', () => {
+    const onPreview = jest.fn();
+    render(
+      <DialGoalSelector
+        {...baseProps}
+        monthlyMinutes={1000}
+        dailyMinutes={50}
+        onPreview={onPreview}
+      />,
+    );
+    const input = screen.getByLabelText(/Monthly goal minutes/i);
+    fireEvent.change(input, { target: { value: '9200' } });
+    const before = onPreview.mock.calls[onPreview.mock.calls.length - 1][0];
+    fireEvent.keyDown(input, { key: 'ArrowUp' });
+
+    expect(input.value).toBe('9200');
+    expect(onPreview.mock.calls[onPreview.mock.calls.length - 1][0]).toEqual(before);
+  });
+
+  test('arrow keys still move the dial when nothing is being typed', () => {
+    const onPreview = jest.fn();
+    const { container } = render(
+      <DialGoalSelector {...baseProps} monthlyMinutes={1000} dailyMinutes={50} onPreview={onPreview} />,
+    );
+    const before = container.textContent;
+    // The dial opens on the 20h/Wk row (index 0), so step DOWN to move it.
+    fireEvent.keyDown(container.querySelector('[role="dialog"]'), { key: 'ArrowDown' });
+    expect(container.textContent).not.toBe(before);
+  });
+
+  // App.js also listens for Escape to leave the goals view; without stopPropagation
+  // one keypress fired both handlers.
+  test('Escape does not also reach the window-level handler', () => {
+    const onCancel = jest.fn();
+    const onWindowEscape = jest.fn();
+    window.addEventListener('keydown', onWindowEscape);
+    const { container } = render(
+      <DialGoalSelector {...baseProps} onCancel={onCancel} monthlyMinutes={1000} dailyMinutes={50} />,
+    );
+    // stopPropagation only stops bubbling, so assert on the same-node behaviour:
+    // the dial handled it exactly once and the event did not reach window.
+    const evt = new KeyboardEvent('keydown', { key: 'Escape', bubbles: true, cancelable: true });
+    container.querySelector('[role="dialog"]').dispatchEvent(evt);
+    expect(onCancel).toHaveBeenCalledTimes(1);
+    expect(onWindowEscape).not.toHaveBeenCalled();
+    window.removeEventListener('keydown', onWindowEscape);
+  });
+
+  test('the ARS rate is read-only with a refresh, not an editable field', () => {
+    const onRefreshArs = jest.fn();
+    render(
+      <DialGoalSelector
+        {...baseProps}
+        arsRate={1042.5}
+        arsRateFetchedAt={Date.UTC(2026, 8, 26, 15, 22)}
+        onRefreshArs={onRefreshArs}
+        monthlyMinutes={1000}
+        dailyMinutes={50}
+      />,
+    );
+    expect(screen.getByText('1.043')).toBeInTheDocument(); // es-AR grouping
+    expect(screen.getByText(/live/)).toBeInTheDocument();
+    // No number input for the rate any more: it is a live feed, not a setting.
+    expect(document.querySelector('input[type="number"][step="any"]')).toBeNull();
+    fireEvent.click(screen.getByRole('button', { name: /Refresh the ARS exchange rate/ }));
+    expect(onRefreshArs).toHaveBeenCalledTimes(1);
+  });
+
+  test('the dialog is labelled and the version is on it', () => {
+    const { container } = render(<DialGoalSelector {...baseProps} monthlyMinutes={1000} dailyMinutes={50} />);
+    const dialog = container.querySelector('[role="dialog"]');
+    expect(dialog).toBeTruthy();
+    expect(dialog.getAttribute('aria-label')).toContain(APP_VERSION_LABEL);
+    expect(document.getElementById('goal-config-version-pill')).toBeTruthy();
   });
 });

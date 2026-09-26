@@ -15,6 +15,8 @@ import {
   applyUndoSnapshot,
   CALLLOG_UNDO_KEY,
 } from '../utils/callLogImport';
+// v4.162.0 — undo for the goal dial's destructive writes (re-sum / bank goal).
+import { captureStatUndo, applyStatUndo } from '../utils/statUndo';
 import { isDateInCurrentMonth, applyDayEditToStats } from '../utils/pastDayEdit';
 import { rollDaySnapshot } from '../utils/dayRoll';
 import { billableSecondsForCall } from '../utils/callBilling';
@@ -745,8 +747,11 @@ export const SessionProvider = ({ children }) => {
     return { sum, pastSum: Math.round(pastSum), today: Math.round(Number(statsNow.dailyMinutes) || 0) };
   }, []);
 
+  // v4.162.0: snapshot first, so a mis-click on either of the goal dial's two
+  // destructive buttons can be taken back (it can LOWER the month).
   const reconcileMonthTotal = useCallback(() => {
     const preview = getMonthResyncPreview();
+    captureStatUndo('re-sum month');
     setStats((prev) => {
       const newStats = { ...prev, monthlyMinutes: preview.sum };
       safeLocalStorageSet('catintassist_stats', JSON.stringify(newStats));
@@ -754,6 +759,14 @@ export const SessionProvider = ({ children }) => {
     });
     return { sum: preview.sum, applied: true };
   }, [getMonthResyncPreview]);
+
+  // v4.162.0: put the last destructive stats write back. One level deep.
+  const undoLastStatChange = useCallback(() => {
+    const restored = applyStatUndo();
+    if (!restored) return null;
+    setStats(restored);
+    return restored;
+  }, []);
 
 
   const [workSessionStartTime, setWorkSessionStartTime] = useState(() => stats.lastBreakEndTime || stats.dayStartTime || Date.now());
@@ -768,23 +781,38 @@ export const SessionProvider = ({ children }) => {
     return () => clearInterval(iv);
   }, [workSessionStartTime]);
 
+  // v4.162.0: the USD->ARS rate is a LIVE feed, not a setting. It used to be
+  // rendered as an editable box in the goal configurator, which was a trap: the
+  // number was never persisted and the fetch below clobbered it on every
+  // reload, and clearing the field made every $ in the app read $0. It is now
+  // read-only with a fetch timestamp and a manual refresh.
   const [arsRate, setArsRate] = useState(1050);
+  const [arsRateFetchedAt, setArsRateFetchedAt] = useState(null);
 
   // ----- CLOUD SYNC LOGIC (ntfy.sh zero-auth) -----
   // DELETED: Cloud sync vector was causing zero-state race conditions when empty local environments overwrote populated production environments.
   // The app now relies exclusively on synchronous localStorage to guarantee state durability per browser.
   // -------------------------------------------------
 
-  useEffect(() => {
-    fetch('https://api.exchangerate-api.com/v4/latest/USD')
-      .then(res => res.json())
-      .then(data => {
-        if (data && data.rates && data.rates.ARS) {
-          setArsRate(data.rates.ARS);
-        }
-      })
-      .catch(err => catError("[Session:fx] Failed to fetch ARS rate:", err));
+  const refreshArsRate = useCallback(async () => {
+    try {
+      const res = await fetch('https://api.exchangerate-api.com/v4/latest/USD');
+      const data = await res.json();
+      if (data && data.rates && Number.isFinite(Number(data.rates.ARS))) {
+        setArsRate(Number(data.rates.ARS));
+        setArsRateFetchedAt(Date.now());
+        return Number(data.rates.ARS);
+      }
+      return null;
+    } catch (err) {
+      catError("[Session:fx] Failed to fetch ARS rate:", err);
+      return null;
+    }
   }, []);
+
+  useEffect(() => {
+    refreshArsRate();
+  }, [refreshArsRate]);
 
   const RATE_PER_MINUTE = 0.13;
   const timerRef = useRef(null);
@@ -1460,6 +1488,9 @@ export const SessionProvider = ({ children }) => {
       now,
     });
     if (isGoalWorkDays(workDays)) setGoalWorkDays(Number(workDays));
+    // v4.162.0: five fields go out in one click — snapshot first so it can be
+    // taken back.
+    captureStatUndo('bank goal');
     setStats((prev) => {
       const next = { ...prev, goalMinutes: target, ...anchor };
       safeLocalStorageSet('catintassist_stats', JSON.stringify(next));
@@ -1519,6 +1550,8 @@ export const SessionProvider = ({ children }) => {
     RATE_PER_MINUTE,
     arsRate,
     setArsRate,
+    arsRateFetchedAt,
+    refreshArsRate,
     isBreakActive,
     breakSeconds,
     setBreakSeconds,   // exposed for TimeEditModal
@@ -1550,6 +1583,7 @@ export const SessionProvider = ({ children }) => {
     undoCallLogImport,
     getMonthResyncPreview,
     reconcileMonthTotal,
+    undoLastStatChange,
     isZombieCall,
     clearZombieState,
     translationMood,

@@ -19,8 +19,8 @@ export const GoalTrackingView = ({ onExit }) => {
   const {
     stats, updateStat, bankGoal, dailyLog,
     goalWorkDays,
-    RATE_PER_MINUTE, arsRate, setArsRate,
-    getMonthResyncPreview, reconcileMonthTotal,
+    RATE_PER_MINUTE, arsRate, arsRateFetchedAt, refreshArsRate,
+    getMonthResyncPreview, reconcileMonthTotal, undoLastStatChange,
   } = useSession();
 
   // Live (unsaved) dial selection — null until the dial reports its first preview.
@@ -181,7 +181,8 @@ export const GoalTrackingView = ({ onExit }) => {
           <DialGoalSelector
             ratePerMinute={RATE_PER_MINUTE}
             arsRate={arsRate}
-            setArsRate={setArsRate}
+            arsRateFetchedAt={arsRateFetchedAt}
+            onRefreshArs={refreshArsRate}
             initialGoalMinutes={stats.goalMinutes}
             initialWorkDays={goalWorkDays}
             monthlyMinutes={monthlyBanked}
@@ -189,8 +190,7 @@ export const GoalTrackingView = ({ onExit }) => {
             onSaveMonth={(m) => updateStat('monthlyMinutes', m)}
             onResyncMonth={() => { try { reconcileMonthTotal?.(); } catch (_) {} }}
             resyncInfo={(() => { try { return getMonthResyncPreview?.(); } catch { return null; } })()}
-            onSave={handleSave}
-            onCancel={onExit}
+            onUndoStat={() => { try { return undoLastStatChange?.() || null; } catch (_) { return null; } }}
             onPreview={setPreview}
             savedGoalSetAt={stats.goalSetAt || null}
             savedGoalBaseMinutes={stats.goalBaseMinutes || 0}
@@ -198,6 +198,8 @@ export const GoalTrackingView = ({ onExit }) => {
             // configurator lands on the row that was actually banked.
             committedPerWorkdayMinutes={stats.goalPerWorkdayMinutes || 0}
             committedWorkDays={stats.goalWorkDays || 0}
+            onSave={handleSave}
+            onCancel={onExit}
           />
         </div>
         <div className="goal-tracking-calendar">

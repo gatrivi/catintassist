@@ -50,7 +50,7 @@ flowchart LR
 ## Limits (v1)
 - Glossary = **full sentence** match only (not partial phrases in translation)
 - STT phrase fixes need source phrase **≥3 characters**
-- No Deepgram keyword bias yet — display + translate path only
+- ~~No Deepgram keyword bias yet~~ — **stale, corrected v4.162.0**: bias shipped in v4.158.0, OFF by default, words listed in Settings → Deepgram
 - Pinned snapshots are separate copies until re-pinned
 
 ## Backup (console)
@@ -66,4 +66,7 @@ importCorrections(paste);  // merge on new machine
 ## Later (Phase 2)
 - Sync to DB: [`handoff/06_auth_db.md`](../handoff/06_auth_db.md)
 - Partial glossary / fuzzy match
-- Deepgram keyword bias from STT corrections
+- Deepgram keyword bias from STT corrections — **SHIPPED v4.158.0**: your
+  corrected words feed the keyterm list (`keytermsFromCorrections()`), behind
+  its own switch, OFF by default, with the exact words listed in Settings →
+  Deepgram before anything is sent. Spec: [`../stt-eval-plan.md`](../stt-eval-plan.md)

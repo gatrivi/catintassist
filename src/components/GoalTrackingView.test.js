@@ -58,7 +58,10 @@ describe('GoalTrackingView (v4.113.0)', () => {
   test('Bank Goal writes the target + its anchor and stays in the view', () => {
     const onExit = jest.fn();
     render(<GoalTrackingView onExit={onExit} />);
+    // v4.162.0: it asks before it writes — the first press only shows the change.
     fireEvent.click(screen.getByRole('button', { name: /Bank Goal:/ }));
+    expect(mockBankGoal).not.toHaveBeenCalled();
+    fireEvent.click(screen.getByRole('button', { name: /Confirm bank/ }));
     // ANCHORED-GOAL: one call carries the target, the per-workday commitment and
     // the base, so the pace clock starts the day it is banked.
     expect(mockBankGoal).toHaveBeenCalledWith(expect.objectContaining({
@@ -70,6 +73,19 @@ describe('GoalTrackingView (v4.113.0)', () => {
     expect(onExit).not.toHaveBeenCalled();
     expect(document.getElementById('goal-saved-flash')).toBeTruthy();
     expect(document.getElementById('goal-saved-flash').textContent).toMatch(/counts from/i);
+  });
+
+  test('Discard undoes the edits and stays in the view (v4.162.0)', () => {
+    const onExit = jest.fn();
+    render(<GoalTrackingView onExit={onExit} />);
+    fireEvent.click(screen.getByRole('button', { name: /Raise weekly commitment/i }));
+    fireEvent.click(screen.getByRole('button', { name: /^Discard$/ }));
+
+    expect(onExit).not.toHaveBeenCalled();   // it used to exit the whole view
+    expect(mockBankGoal).not.toHaveBeenCalled();
+    expect(screen.getByText(/Changes discarded/i)).toBeInTheDocument();
+    // the dial is back where it started
+    expect(screen.getByRole('button', { name: /Bank Goal:/ })).toBeInTheDocument();
   });
 
   test('Back to work exits; calendar pane present with clickable today', () => {

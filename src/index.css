@@ -8128,3 +8128,54 @@ body:has(.app-container[data-call-mode="true"]) .element-hint-panel {
   padding: 0 3px;
   vertical-align: middle;
 }
+
+/* ------------------------------------------------------------------ *
+ * Goal configurator safety row (v4.162.0)
+ * "About to change X -> Y", and the one-tap way back.
+ * ------------------------------------------------------------------ */
+.dial-note {
+  font-size: 0.7rem;
+  line-height: 1.4;
+  padding: 0.4rem 0.55rem;
+  border-radius: 6px;
+  color: #6ee7b7;
+  background: rgba(16, 185, 129, 0.1);
+  border: 1px solid rgba(16, 185, 129, 0.3);
+}
+.dial-note.is-warn {
+  color: #fde68a;
+  background: rgba(245, 158, 11, 0.12);
+  border-color: rgba(251, 191, 36, 0.45);
+}
+.dial-undo {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+  font-size: 0.65rem;
+  color: rgba(255, 255, 255, 0.6);
+  border-top: 1px dashed rgba(255, 255, 255, 0.14);
+  padding-top: 0.45rem;
+}
+.dial-undo-btn {
+  margin-left: auto;
+  background: rgba(245, 158, 11, 0.14);
+  border: 1px solid rgba(251, 191, 36, 0.45);
+  color: #fde68a;
+  border-radius: 6px;
+  padding: 0.25rem 0.55rem;
+  font-size: 0.7rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+.dial-undo-btn:hover { background: rgba(245, 158, 11, 0.26); }
+.dial-back {
+  background: transparent;
+  border: none;
+  color: var(--text-muted, rgba(255, 255, 255, 0.5));
+  font-size: 0.65rem;
+  cursor: pointer;
+  padding: 0.15rem 0;
+  text-align: left;
+}
+.dial-back:hover { color: #e2e8f0; }

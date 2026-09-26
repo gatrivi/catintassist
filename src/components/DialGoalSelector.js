@@ -6,6 +6,13 @@ import {
   deriveBankTargetMinutes, perWorkdayFromTarget, anchorForCatchUp, goalSetLabel,
   savedGoalWorkDays, perWorkdayFromStats, weeklyHoursFromCommitment,
 } from '../utils/goalAnchor';
+// v4.162.0 — undo for the two destructive writes, plus the guard that stops an
+// emptied "banked/mo" box from writing 0. The snapshots themselves are taken in
+// SessionContext (bankGoal / reconcileMonthTotal), so any other caller of those
+// is covered too, not just this panel.
+import {
+  readStatUndo, parseMinuteCorrection, formatMinuteChange,
+} from '../utils/statUndo';
 
 // v4.100.0 rehab: snap uses the REAL workdays (not hardcoded 5d/wk),
 // 6.5/wk option, direct monthly input, live catch-up preview, version tag.
@@ -29,12 +36,14 @@ export const daysPerWeekOf = (workDays) => {
 };
 
 export const DialGoalSelector = ({
-  ratePerMinute, arsRate, setArsRate, initialGoalMinutes, initialWorkDays = 28,
+  ratePerMinute, arsRate, arsRateFetchedAt = null, onRefreshArs = null,
+  initialGoalMinutes, initialWorkDays = 28,
   monthlyMinutes = 0, dailyMinutes = 0,
   bankedMonthOverride = null, // when set, shows "banked" editor row value
   onSaveMonth = null, // (mins) => void — 2-click month-total correction
   onResyncMonth = null, // () => {sum, applied} — re-sum daily log
   resyncInfo = null, // {sum} — what re-sum would write (for preview)
+  onUndoStat = null, // v4.162.0: () => restoredStats | null
   onSave, onCancel, modal = false,
   // v4.113.0: live (unsaved) selection → parent view, e.g. { monthlyMinutes, workDays, daysPerWeek }.
   onPreview = null,
@@ -73,18 +82,22 @@ export const DialGoalSelector = ({
     return best;
   }, [targets]);
 
-  const [activeIndex, setActiveIndex] = useState(() => {
+  /**
+   * Which dial row the dial OPENS on — the commitment that was banked, never a
+   * value reverse-derived from the prorated month total. (Deriving it from the
+   * month turned a 35h/Wk goal banked on the 20th into "20h/Wk", and re-banking
+   * silently downgraded it.) Shared by the mount seed and by Discard.
+   */
+  const seedIndexForCommitted = useCallback(() => {
     if (!(initialGoalMinutes > 0)) return 4; // no goal yet → default 40h
-    // ANCHORED-GOAL follow-up: re-open on the COMMITMENT that was banked.
-    // Reverse-deriving it from the (prorated) month total turned a 35h/Wk
-    // commitment banked on the 20th into "20h/Wk" — re-banking silently
-    // downgraded it.
     const commitment = perWorkdayFromStats(
       { goalPerWorkdayMinutes: committedPerWorkdayMinutes, goalMinutes: initialGoalMinutes },
       { workDays: initialBasis },
     );
     return nearestTargetIndex(weeklyHoursFromCommitment(commitment, daysPerWeekOf(initialBasis)));
-  });
+  }, [initialGoalMinutes, committedPerWorkdayMinutes, initialBasis, nearestTargetIndex]);
+
+  const [activeIndex, setActiveIndex] = useState(seedIndexForCommitted);
 
   const scrollRef = useRef(null);
   const itemHeight = 44;
@@ -201,7 +214,90 @@ export const DialGoalSelector = ({
     setMonthEdit(String(bankedMonthOverride ?? Math.round(monthlyMinutes || 0)));
   }, [bankedMonthOverride, monthlyMinutes]);
 
+  // v4.162.0 — nothing is written from this panel without showing the change
+  // and asking once. Three states, one variable:
+  //   null            nothing pending
+  //   'bank'          Bank Goal is armed, waiting for Yes
+  //   'resync'        re-sum is armed, waiting for Yes
+  //   'month'         banked/mo Set is armed
+  const [armed, setArmed] = useState(null);
+  const [note, setNote] = useState(null); // { tone, text }
+  const [undoInfo, setUndoInfo] = useState(null); // { label, savedAt }
+
+  // An undo survives a reload — the mistake is usually noticed a beat later.
+  useEffect(() => {
+    const snap = readStatUndo();
+    if (snap) setUndoInfo({ label: snap.label, savedAt: snap.savedAt });
+  }, []);
+
+  const finishWrite = (label) => {
+    const snap = readStatUndo();
+    if (snap) setUndoInfo({ label: snap.label, savedAt: snap.savedAt });
+    setArmed(null);
+    setNote({ tone: 'ok', text: `${label} applied. Undo is below if it was wrong.` });
+  };
+
+  /**
+   * "banked/mo" Set. An emptied field used to write 0 and wipe the month,
+   * because Number('') === 0 passes a >= 0 check. Now it refuses.
+   */
+  const handleSetMonth = () => {
+    const v = parseMinuteCorrection(monthEdit);
+    if (v === null) {
+      setArmed(null);
+      setNote({ tone: 'warn', text: 'Type a number of minutes first — an empty box is not a request to zero the month.' });
+      return;
+    }
+    if (v === Math.round(Number(monthlyMinutes) || 0)) {
+      setNote({ tone: 'warn', text: 'That is already the banked month total.' });
+      return;
+    }
+    if (armed !== 'month') {
+      setArmed('month');
+      setNote({ tone: 'warn', text: `About to set banked month to ${formatMinuteChange(monthlyMinutes, v)} — press again to confirm.` });
+      return;
+    }
+    onSaveMonth?.(v);
+    finishWrite(`Set month ${v}m`);
+  };
+
+  const handleResync = () => {
+    const sum = resyncInfo?.sum;
+    if (!Number.isFinite(Number(sum))) {
+      setNote({ tone: 'warn', text: 'The daily log has nothing to re-sum yet.' });
+      return;
+    }
+    if (armed !== 'resync') {
+      setArmed('resync');
+      setNote({ tone: 'warn', text: `Re-sum month: ${formatMinuteChange(monthlyMinutes, sum)} — press again to confirm.` });
+      return;
+    }
+    onResyncMonth?.();
+    finishWrite(`Re-summed month to ${sum}m`);
+  };
+
+  const handleUndo = () => {
+    const restored = onUndoStat?.();
+    if (!restored) {
+      setUndoInfo(null);
+      setNote({ tone: 'warn', text: 'Nothing left to undo.' });
+      return;
+    }
+    setUndoInfo(null);
+    setArmed(null);
+    setNote({ tone: 'ok', text: `Undone — month total back to ${Math.round(restored.monthlyMinutes || 0)}m.` });
+  };
+
   const handleApply = () => {
+    const current = Math.round(Number(initialGoalMinutes) || 0);
+    if (armed !== 'bank') {
+      setArmed('bank');
+      setNote({
+        tone: 'warn',
+        text: `Bank goal: ${formatMinuteChange(current, effectiveMonthly)} on the ${daysPerWeek}/wk basis — press again to confirm.`,
+      });
+      return;
+    }
     audioEngine.playCarriageVault();
     // ANCHORED-GOAL: the month total + everything the parent needs to anchor it
     // (set date, minutes worked at bank time, per-workday commitment for next month).
@@ -213,6 +309,27 @@ export const DialGoalSelector = ({
       fullMonthMinutes: monthlyMins,
       custom: customActive,
     });
+    setArmed(null);
+    const snap = readStatUndo();
+    if (snap) setUndoInfo({ label: snap.label, savedAt: snap.savedAt });
+    setNote({ tone: 'ok', text: `Banked ${Math.round(effectiveMonthly)}m/mo. Undo is below if it was wrong.` });
+  };
+
+  /**
+   * v4.162.0 — "Discard" is not "leave". It used to call onCancel, which exits
+   * the whole goals view and throws away every edit, including the minutes you
+   * had already committed. It now resets the dial to what is actually banked
+   * and stays put.
+   */
+  const handleDiscard = () => {
+    setArmed(null);
+    setCustomMonth('');
+    setWorkDays(initialBasis);
+    setMonthEdit(String(bankedMonthOverride ?? Math.round(monthlyMinutes || 0)));
+    setActiveIndex(seedIndexForCommitted());
+    // null tells the parent to fall back to the numbers it already has banked.
+    onPreview?.(null);
+    setNote({ tone: 'ok', text: 'Changes discarded. Your banked goal is untouched.' });
   };
 
   return (
@@ -222,9 +339,21 @@ export const DialGoalSelector = ({
       tabIndex={0}
       className={`dial-goal-selector${modal ? ' dial-goal-selector--modal' : ''}`}
       onKeyDown={(e) => {
-        if (e.key === 'ArrowUp' || e.key === 'ArrowLeft') { e.preventDefault(); step(-1); }
-        if (e.key === 'ArrowDown' || e.key === 'ArrowRight') { e.preventDefault(); step(1); }
-        if (e.key === 'Escape') onCancel?.();
+        // v4.162.0: the handler sat on the wrapper, so ↑/↓ inside a number field
+        // moved the dial AND wiped what you were typing (step() clears the custom
+        // override). A number field owns its arrow keys.
+        const t = e.target;
+        const typing = t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.isContentEditable);
+        if (!typing) {
+          if (e.key === 'ArrowUp' || e.key === 'ArrowLeft') { e.preventDefault(); step(-1); }
+          if (e.key === 'ArrowDown' || e.key === 'ArrowRight') { e.preventDefault(); step(1); }
+        }
+        if (e.key === 'Escape') {
+          // Stop here: App.js also listens for Escape to leave the goals view,
+          // so without this one keypress fired both.
+          e.stopPropagation();
+          onCancel?.();
+        }
       }}
     >
       <h4 style={{ margin: 0, fontSize: '1rem', color: 'var(--text-muted)', textAlign: 'center' }}>
@@ -377,6 +506,7 @@ export const DialGoalSelector = ({
           {WORK_DAY_OPTS.map((opt) => (
             <button
               key={opt.val}
+              type="button"
               onClick={() => setWorkDays(opt.val)}
               aria-pressed={workDays === opt.val}
               style={{
@@ -425,16 +555,16 @@ export const DialGoalSelector = ({
           />
           <button
             type="button"
-            onClick={() => { const v = Number(monthEdit); if (Number.isFinite(v) && v >= 0) onSaveMonth(Math.round(v)); }}
+            onClick={handleSetMonth}
             style={{ background: '#34d399', border: 'none', color: '#022c22', borderRadius: '6px', padding: '0.3rem 0.6rem', fontSize: '0.7rem', cursor: 'pointer', fontWeight: 800 }}
-          >Set</button>
+          >{armed === 'month' ? 'Confirm?' : 'Set'}</button>
           {onResyncMonth && (
             <button
               type="button"
-              onClick={() => onResyncMonth()}
-              title={resyncInfo ? `Daily log sums to ${resyncInfo.sum}m — click to apply` : 'Re-sum month from daily log'}
+              onClick={handleResync}
+              title={resyncInfo ? `Daily log sums to ${resyncInfo.sum}m — click, then confirm` : 'Re-sum month from daily log'}
               style={{ background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.15)', color: '#e2e8f0', borderRadius: '6px', padding: '0.3rem 0.6rem', fontSize: '0.7rem', cursor: 'pointer', fontWeight: 700 }}
-            >{resyncInfo ? `↻ log=${resyncInfo.sum}m` : '↻ re-sum'}</button>
+            >{armed === 'resync' ? 'Confirm?' : resyncInfo ? `↻ log=${resyncInfo.sum}m` : '↻ re-sum'}</button>
           )}
         </div>
       )}
@@ -457,24 +587,70 @@ export const DialGoalSelector = ({
         </div>
       </div>
 
+      {/* v4.162.0: the ARS rate is a LIVE feed (SessionContext fetches it on
+          mount), never a setting. It used to be an editable box that was never
+          persisted, was clobbered by the next fetch, and made every $ in the app
+          read $0 the moment you cleared it. Read-only + a manual refresh. */}
       <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', background: 'rgba(0,0,0,0.5)', borderRadius: '6px', padding: '0.4rem 0.6rem' }}>
-        <span style={{ fontSize: '0.65rem', color: 'var(--text-muted)' }}>💱 ARS Rate</span>
-        <input
-          type="number" step="any" className="stat-input"
-          style={{ width: '80px', padding: '0.3rem', fontSize: '0.8rem' }}
-          value={arsRate}
-          onChange={(e) => setArsRate(e.target.value)}
-        />
+        <span style={{ fontSize: '0.65rem', color: 'var(--text-muted)' }}>💱 ARS rate</span>
+        <strong style={{ fontSize: '0.8rem', color: '#e2e8f0' }}>
+          {Math.round(Number(arsRate) || 0).toLocaleString('es-AR')}
+        </strong>
+        <span style={{ fontSize: '0.6rem', color: 'var(--text-muted)' }}>
+          live{arsRateFetchedAt ? ` · ${new Date(arsRateFetchedAt).toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' })}` : ''}
+        </span>
+        {onRefreshArs && (
+          <button
+            type="button"
+            onClick={onRefreshArs}
+            title="Fetch the USD→ARS rate again"
+            aria-label="Refresh the ARS exchange rate"
+            style={{ marginLeft: 'auto', background: 'transparent', border: '1px solid rgba(255,255,255,0.15)', color: '#e2e8f0', borderRadius: '6px', padding: '0.2rem 0.45rem', fontSize: '0.7rem', cursor: 'pointer' }}
+          >↻</button>
+        )}
       </div>
 
+      {/* v4.162.0: every write in this panel says what it is about to do, asks
+          once, and can be taken back afterwards. */}
+      {note && (
+        <div
+          role="status"
+          className={`dial-note${note.tone === 'warn' ? ' is-warn' : ''}`}
+        >
+          {note.text}
+        </div>
+      )}
+
+      {undoInfo && onUndoStat && (
+        <div className="dial-undo">
+          <span>Last change: {undoInfo.label}</span>
+          <button type="button" className="dial-undo-btn" onClick={handleUndo}>
+            ↩ Undo it
+          </button>
+        </div>
+      )}
+
       <div style={{ display: 'flex', gap: '0.5rem' }}>
-        <button className="btn" onClick={onCancel} style={{ flex: 1, padding: '0.5rem', fontSize: '0.85rem', background: 'rgba(255,255,255,0.1)', border: 'none' }}>
-          Cancel
+        <button
+          type="button"
+          className="btn"
+          onClick={handleDiscard}
+          style={{ flex: 1, padding: '0.5rem', fontSize: '0.85rem', background: 'rgba(255,255,255,0.1)', border: 'none' }}
+        >
+          Discard
         </button>
-        <button className="btn btn-primary" onClick={handleApply} style={{ flex: 2, padding: '0.5rem', fontSize: '0.85rem' }}>
-          Bank Goal: {Math.round(effectiveMonthly)}m/Mo
+        <button
+          type="button"
+          className="btn btn-primary"
+          onClick={handleApply}
+          style={{ flex: 2, padding: '0.5rem', fontSize: '0.85rem' }}
+        >
+          {armed === 'bank' ? 'Confirm bank?' : `Bank Goal: ${Math.round(effectiveMonthly)}m/Mo`}
         </button>
       </div>
+      {/* No second "leave" button here: the view header already has "← Back to
+          work" and Escape does the same. This panel's only job now is Discard
+          (drop the edits, stay) and Bank (commit them). */}
     </div>
   );
 };
