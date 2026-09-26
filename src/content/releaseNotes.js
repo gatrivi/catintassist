@@ -25,6 +25,45 @@ import { APP_VERSION } from '../constants/version';
 /** Newest first. Only the entry matching APP_VERSION is shown on load. */
 export const RELEASE_NOTES_CATALOG = [
   {
+    version: '4.163.0',
+    id: 'goal-dial-layout-a11y',
+    highlightElementIds: ['goal-config-version-pill'],
+    es: {
+      title: 'La rueda de metas entra y se maneja sin ratón',
+      intro: 'A 900×600 el botón de Bank Goal quedaba debajo del pliegue: tenías que scrollear para confirmar tu meta. Ahora está siempre pegado abajo. Y la rueda se maneja con el teclado.',
+      sections: [
+        { heading: 'Qué cambió', bullets: [
+          'Bank Goal y Discard están fijos al fondo del panel. A 900×600 ya no hay que scrollear para guardar la meta.',
+          'La rueda ahora es un control real: enfoca sola al abrir, así que las flechas funcionan apenas entrás. Antes había que hacer Tab a ciegas.',
+          'Home y End van al extremo, PageUp/PageDown saltan cuatro filas. Y dice en voz alta el valor: «40 horas por semana · 370 minutos por día · 7400m por mes».',
+          'La caja de ritmo y la del Pro Ladder se anuncian cuando cambian, en vez de cambiarse en silencio.',
+          'Los dos campos de números tienen etiqueta visible, no solo un nombre interno.',
+          'Si apretás 🎯 durante una llamada, ahora te dice «off-call only» en vez de no hacer nada. Corregí los cinco puntos de entrada que compartían ese silencio.',
+        ] },
+        { heading: 'Intacto', bullets: [
+          'La matemática del dial y los valores de las metas no cambian ni un número. Solo la capa de alrededor.',
+        ] },
+      ],
+    },
+    en: {
+      title: 'The goal wheel is now reachable and drivable without a mouse',
+      intro: 'At 900x600 the Bank Goal button sat below the fold: you had to scroll to save your goal. It is now pinned to the bottom. And the wheel responds to the keyboard.',
+      sections: [
+        { heading: 'What changed', bullets: [
+          'Bank Goal and Discard are pinned to the bottom of the panel. At 900x600 there is no scrolling to save a goal.',
+          'The wheel is a real control now: it takes focus when the panel opens, so the arrow keys work the moment you arrive. Before, you had to Tab there blind.',
+          'Home and End jump to the ends, PageUp/PageDown move four rows. And it speaks its value: "40 hours per week · 370 minutes a day · 7400m a month".',
+          'The pace box and the Pro Ladder card are announced when they change, instead of changing silently.',
+          'Both number fields have visible labels, not just an internal name.',
+          'Press 🎯 during a call and it now says "off-call only" instead of doing nothing. All five entry points shared that silence; fixed in one place.',
+        ] },
+        { heading: 'Untouched', bullets: [
+          'Not one goal number or line of the dial maths changed — only the layer around them.',
+        ] },
+      ],
+    },
+  },
+  {
     version: '4.162.0',
     id: 'goal-dial-money-safety',
     highlightElementIds: ['goal-config-version-pill'],

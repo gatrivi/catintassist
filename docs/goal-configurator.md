@@ -74,17 +74,52 @@ Settings → Goals (searchable, v4.161.0), the header 🎯, the condensed
 call or zombie call (`App.js:306`) — four entry points in `DashboardHeader`
 still render mid-call and do nothing.
 
-## Still open (layout + a11y pass)
+## The wheel is a slider (v4.163.0)
 
-- ~95% of the inner layout is inline styles. The outer box has classes
-  (`.dial-goal-selector`, `.goal-tracking-dial`, `.goal-pace-card`).
-- At 900×600 the pane is ~520px and the content ~600px, so the actions sit below
-  the fold in a scrolling column. Bank Goal must be reachable without scrolling.
-- The wheel rows are `<div onClick>` — no `role="slider"`, no `aria-valuenow`,
-  not keyboard reachable. `tabIndex={0}` is never focused programmatically, so
-  the arrow keys need a manual Tab first.
-- No `aria-live` on the catch-up preview or the ladder tier.
+One value, so it is a real `role="slider"`, not a pile of `<div onClick>`:
+
+- `aria-valuemin/max/now` + `aria-valuetext` = `"40 hours per week · 370 minutes a
+  day · 7400m a month"`. The row contents are not announced individually.
+- **It takes focus when the panel opens**, so the arrow keys work on arrival.
+  Before, `tabIndex={0}` existed on the wrapper but nothing focused it, so you
+  had to Tab there blind.
+- ↑↓←→ step one row, PageUp/PageDown four, Home/End the ends. The wrapper's
+  keydown handler must therefore **skip** the event when the target is the wheel
+  (`t !== wheelRef.current`) or the keys fire twice.
+- Rows stay mouse-clickable; they are decorative to a screen reader because the
+  slider already carries the value.
+
+The pace box (`.dial-catchup`) and the ladder card are `aria-live="polite"`.
+
+## Layout at 900×600 (v4.163.0)
+
+The pane is ~520px and the content ~600px, so **Bank Goal used to be below the
+fold**. `.dial-actions` is now `position: sticky; bottom: -1rem` with a gradient
+that hides the content scrolling under it. Anything added to this panel must go
+*above* that block or it will push the actions out of reach.
+
+Classes now carry the layout: `.dial-wheel`, `.dial-field`, `.dial-ladder`,
+`.dial-catchup`, `.dial-actions`, `.dial-note`, `.dial-undo`, `.dial-mini-btn`.
+Only genuinely dynamic values stay inline (the wheel's row padding, which is
+derived from `itemHeight`).
+
+## Off-call only, and it says so
+
+`onOpenGoalsView` early-returns during a call or zombie call
+(`App.js:305`). Five entry points can be pressed mid-call — the header 🎯
+(hidden there), the targets chip, the `m7` metric cell, the DAILY income card
+and the 📅. They all shared that silence, so v4.163.0 puts the message in the
+one handler they all call: a top-of-screen `.goals-blocked-notice`
+(transcript-safe — the reading column is untouched), auto-dismissing in 4s.
+
+## Still open
+
 - `catchUp` is wrapped in `try/catch → null`, so a maths error would present as
   "no preview" with no message.
 - `GoalEditor` (`HeaderWidgets.js`) is dead code; `bankedMonthOverride` is
-  declared but never passed.
+  declared but never passed by any caller.
+- The dial still reports `role="dialog"` although it is not modal (the calendar
+  beside it is interactive). It has `aria-modal` unset, which is honest, but the
+  role could arguably be `group`.
+- `bankedMonthOverride`/`dailyMinutes` remain only partly used.
+

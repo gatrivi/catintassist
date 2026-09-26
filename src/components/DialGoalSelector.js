@@ -127,6 +127,35 @@ export const DialGoalSelector = ({
     audioEngine.playTick(1);
   };
 
+  /**
+   * v4.163.0 — the wheel was a <div onClick>: unreachable by keyboard, no role,
+   * no value. It is a single-value control, so it is a SLIDER (weekly hours),
+   * which is also how it behaves: arrows step, Home/End jump to the ends,
+   * PageUp/PageDown jump four rows.
+   */
+  const onWheelKeyDown = (e) => {
+    const jump = (to) => {
+      e.preventDefault();
+      const next = Math.min(targets.length - 1, Math.max(0, to));
+      if (next !== activeIndex) { setActiveIndex(next); setCustomMonth(''); audioEngine.playTick(1); }
+    };
+    if (e.key === 'ArrowUp' || e.key === 'ArrowLeft') { e.preventDefault(); step(-1); return; }
+    if (e.key === 'ArrowDown' || e.key === 'ArrowRight') { e.preventDefault(); step(1); return; }
+    if (e.key === 'PageUp') { jump(activeIndex - 4); return; }
+    if (e.key === 'PageDown') { jump(activeIndex + 4); return; }
+    if (e.key === 'Home') { jump(0); return; }
+    if (e.key === 'End') { jump(targets.length - 1); }
+  };
+
+  // v4.163.0: the wrapper had tabIndex={0} but nothing ever focused it, so the
+  // arrow keys only worked after a manual Tab and nobody knew that. Put the
+  // focus on the wheel itself, which is the control you came here to move.
+  const wheelRef = useRef(null);
+  useEffect(() => {
+    const el = wheelRef.current;
+    if (el && typeof el.focus === 'function') el.focus({ preventScroll: true });
+  }, []);
+
   const selectedWeeklyHours = targets[activeIndex];
   const weeklyMins = selectedWeeklyHours * 60;
 
@@ -341,10 +370,11 @@ export const DialGoalSelector = ({
       onKeyDown={(e) => {
         // v4.162.0: the handler sat on the wrapper, so ↑/↓ inside a number field
         // moved the dial AND wiped what you were typing (step() clears the custom
-        // override). A number field owns its arrow keys.
+        // override). A number field — or the wheel itself, which handles its own
+        // keys — owns its arrows.
         const t = e.target;
         const typing = t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.isContentEditable);
-        if (!typing) {
+        if (!typing && t !== wheelRef.current) {
           if (e.key === 'ArrowUp' || e.key === 'ArrowLeft') { e.preventDefault(); step(-1); }
           if (e.key === 'ArrowDown' || e.key === 'ArrowRight') { e.preventDefault(); step(1); }
         }
@@ -364,7 +394,12 @@ export const DialGoalSelector = ({
           ANCHORED-GOAL: also spells out WHAT gets banked and why, so a
           mid-month goal is never a surprise number. */}
       {catchUp && (
-        <div style={{ padding: '0.5rem 0.6rem', borderRadius: '8px', textAlign: 'center', fontSize: '0.7rem', background: 'rgba(251,191,36,0.07)', border: '1px solid rgba(251,191,36,0.25)', color: '#fde68a' }}>
+        <div
+          className="dial-catchup"
+          // v4.163.0: this box is the answer to "am I doing enough", and it
+          // changed silently every time the dial moved.
+          aria-live="polite"
+        >
           {catchUp.deficitMins > 30 ? (
             <span>📉 behind {fmtHm(catchUp.deficitMins)} · today → <strong>{fmtHm(catchUp.needToday)}</strong> · then {fmtHm(catchUp.thenPerDay)}/day × {catchUp.daysAfter}d</span>
           ) : catchUp.deficitMins < -30 ? (
@@ -411,8 +446,19 @@ export const DialGoalSelector = ({
         }} />
 
         <div
-          ref={scrollRef}
+          ref={(el) => { scrollRef.current = el; wheelRef.current = el; }}
           onScroll={handleScroll}
+          onKeyDown={onWheelKeyDown}
+          // v4.163.0: one value, so a slider — not a pile of divs. The rows stay
+          // clickable for the mouse, but the value is announced once, here,
+          // instead of 17 times.
+          role="slider"
+          tabIndex={0}
+          aria-label="Weekly commitment hours"
+          aria-valuemin={targets[0]}
+          aria-valuemax={targets[targets.length - 1]}
+          aria-valuenow={selectedWeeklyHours}
+          aria-valuetext={`${selectedWeeklyHours} hours per week · ${dailyMins} minutes a day · ${Math.round(effectiveMonthly)}m a month`}
           onWheel={() => {
             isUserScrolling.current = true;
             if (scrollTimeout.current) clearTimeout(scrollTimeout.current);
@@ -445,11 +491,9 @@ export const DialGoalSelector = ({
             const walk = (y - parseFloat(el.dataset.startY)) * 1.5;
             el.scrollTop = parseFloat(el.dataset.scrollTop) - walk;
           }}
-          style={{
-            height: '100%', overflowY: 'scroll', scrollSnapType: 'y mandatory', scrollBehavior: 'smooth', userSelect: 'none',
-            paddingTop: `${itemHeight}px`, paddingBottom: `${itemHeight}px`,
-            scrollbarWidth: 'none', msOverflowStyle: 'none', touchAction: 'pan-y'
-          }}
+          className="dial-wheel"
+          // Only the row padding stays inline: it is derived from itemHeight.
+          style={{ paddingTop: `${itemHeight}px`, paddingBottom: `${itemHeight}px` }}
         >
           {targets.map((hrs, idx) => {
             const distance = Math.abs(idx - activeIndex);
@@ -526,59 +570,60 @@ export const DialGoalSelector = ({
       </div>
 
       {/* Direct monthly-minutes input — two-way with the dial. */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', background: 'rgba(0,0,0,0.5)', borderRadius: '6px', padding: '0.4rem 0.6rem' }}>
-        <span style={{ fontSize: '0.65rem', color: 'var(--text-muted)' }}>🎯 Monthly mins</span>
+      <div className="dial-field">
+        <label htmlFor="dial-monthly-mins" className="dial-field-label">🎯 Monthly mins</label>
         <input
+          id="dial-monthly-mins"
           type="number" min="0" max="30000" step="50"
           aria-label="Monthly goal minutes (direct input)"
           value={customMonth}
           onChange={(e) => setCustomMonth(e.target.value)}
           onBlur={applyCustomToDial}
           placeholder={`${dialTargetMins}m`}
-          style={{ width: '90px', padding: '0.3rem', fontSize: '0.8rem', background: 'rgba(0,0,0,0.4)', border: '1px solid rgba(139,92,246,0.4)', color: '#fff', borderRadius: '6px' }}
+          className="dial-field-input"
         />
         {customMonth !== '' && (
-          <span style={{ fontSize: '0.6rem', color: '#a855f7' }}>custom → {Math.round(Number(customMonth) || 0)}m/mo</span>
+          <span className="dial-field-note">custom → {Math.round(Number(customMonth) || 0)}m/mo</span>
         )}
       </div>
 
       {/* v4.100.0: banked month-total quick correction (goal 1). */}
       {onSaveMonth && (
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', background: 'rgba(0,0,0,0.5)', borderRadius: '6px', padding: '0.4rem 0.6rem' }}>
-          <span style={{ fontSize: '0.65rem', color: 'var(--text-muted)' }}>banked/mo</span>
+        <div className="dial-field">
+          <label htmlFor="dial-banked-month" className="dial-field-label">banked/mo</label>
           <input
+            id="dial-banked-month"
             type="number" min="0" max="30000" step="1"
             aria-label="Banked month total minutes (correction)"
             value={monthEdit}
             onChange={(e) => setMonthEdit(e.target.value)}
-            style={{ width: '90px', padding: '0.3rem', fontSize: '0.8rem', background: 'rgba(0,0,0,0.4)', border: '1px solid rgba(52,211,153,0.4)', color: '#fff', borderRadius: '6px' }}
+            className="dial-field-input is-money"
           />
-          <button
-            type="button"
-            onClick={handleSetMonth}
-            style={{ background: '#34d399', border: 'none', color: '#022c22', borderRadius: '6px', padding: '0.3rem 0.6rem', fontSize: '0.7rem', cursor: 'pointer', fontWeight: 800 }}
-          >{armed === 'month' ? 'Confirm?' : 'Set'}</button>
+          <button type="button" className="dial-mini-btn is-set" onClick={handleSetMonth}>
+            {armed === 'month' ? 'Confirm?' : 'Set'}
+          </button>
           {onResyncMonth && (
             <button
               type="button"
+              className="dial-mini-btn"
               onClick={handleResync}
               title={resyncInfo ? `Daily log sums to ${resyncInfo.sum}m — click, then confirm` : 'Re-sum month from daily log'}
-              style={{ background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.15)', color: '#e2e8f0', borderRadius: '6px', padding: '0.3rem 0.6rem', fontSize: '0.7rem', cursor: 'pointer', fontWeight: 700 }}
             >{armed === 'resync' ? 'Confirm?' : resyncInfo ? `↻ log=${resyncInfo.sum}m` : '↻ re-sum'}</button>
           )}
         </div>
       )}
 
-      <div style={{
-        padding: '0.6rem', borderRadius: '8px', textAlign: 'center', fontSize: '0.75rem',
-        background: ladderTier === 'TRAINING' ? 'rgba(148,163,184,0.1)' : ladderTier === 'FLOOR' ? 'rgba(56,189,248,0.1)' : ladderTier === 'GROWTH' ? 'rgba(168,85,247,0.1)' : 'rgba(252,211,77,0.1)',
-        border: `1px solid ${ladderColor}44`
-      }}>
-        <div style={{ fontSize: '0.8rem', fontWeight: 800, marginBottom: '0.2rem', color: ladderColor }}>
+      <div
+        className="dial-ladder"
+        data-tier={ladderTier}
+        // v4.163.0: the tier and step changed silently on every dial move.
+        aria-live="polite"
+      >
+        <div className="dial-ladder-head">
           {ladderTier === 'TRAINING' ? '🐾 Training Mode' : ladderTier === 'FLOOR' ? '🪜 Step Achiever (Floor)' : ladderTier === 'GROWTH' ? '🚀 Pacing Growth' : '👑 Legendary Hustle'}
-          <span style={{ marginLeft: '0.5rem', fontSize: '0.7rem', opacity: 0.8, color: '#fff' }}>[The Pro Ladder: Step {ladderStep}/12]</span>
+          <span className="dial-ladder-step">[The Pro Ladder: Step {ladderStep}/12]</span>
         </div>
-        <div style={{ fontSize: '0.65rem', color: 'rgba(255,255,255,0.8)' }}>
+        <div className="dial-ladder-body">
           At {selectedWeeklyHours}h/Wk × {daysPerWeek}d/wk you reach <strong style={{ color: ladderColor }}>AR${Math.round(monthlyMins * ratePerMinute * arsRate).toLocaleString('es-AR')}</strong> in a full month ({monthlyMins}m).
           <br />Expect to grind <strong style={{ color: '#fff' }}>{dailyHours}h {dailyMinsRem}m</strong> per active day
           {' '}({customActive
@@ -591,12 +636,12 @@ export const DialGoalSelector = ({
           mount), never a setting. It used to be an editable box that was never
           persisted, was clobbered by the next fetch, and made every $ in the app
           read $0 the moment you cleared it. Read-only + a manual refresh. */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', background: 'rgba(0,0,0,0.5)', borderRadius: '6px', padding: '0.4rem 0.6rem' }}>
-        <span style={{ fontSize: '0.65rem', color: 'var(--text-muted)' }}>💱 ARS rate</span>
-        <strong style={{ fontSize: '0.8rem', color: '#e2e8f0' }}>
+      <div className="dial-field">
+        <span className="dial-field-label">💱 ARS rate</span>
+        <strong className="dial-field-value">
           {Math.round(Number(arsRate) || 0).toLocaleString('es-AR')}
         </strong>
-        <span style={{ fontSize: '0.6rem', color: 'var(--text-muted)' }}>
+        <span className="dial-field-note">
           live{arsRateFetchedAt ? ` · ${new Date(arsRateFetchedAt).toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' })}` : ''}
         </span>
         {onRefreshArs && (
@@ -605,52 +650,49 @@ export const DialGoalSelector = ({
             onClick={onRefreshArs}
             title="Fetch the USD→ARS rate again"
             aria-label="Refresh the ARS exchange rate"
-            style={{ marginLeft: 'auto', background: 'transparent', border: '1px solid rgba(255,255,255,0.15)', color: '#e2e8f0', borderRadius: '6px', padding: '0.2rem 0.45rem', fontSize: '0.7rem', cursor: 'pointer' }}
+            className="dial-mini-btn is-refresh"
           >↻</button>
         )}
       </div>
 
       {/* v4.162.0: every write in this panel says what it is about to do, asks
-          once, and can be taken back afterwards. */}
-      {note && (
-        <div
-          role="status"
-          className={`dial-note${note.tone === 'warn' ? ' is-warn' : ''}`}
-        >
-          {note.text}
-        </div>
-      )}
+          once, and can be taken back afterwards.
+          v4.163.0: this block is STICKY to the bottom of the scrolling pane. At
+          900x600 the content is ~600px in a ~520px column, so Bank Goal — the
+          one control that must always be reachable — used to sit below the fold. */}
+      <div className="dial-actions">
+        <div className="dial-actions-inner">
+          {note && (
+            <div
+              role="status"
+              className={`dial-note${note.tone === 'warn' ? ' is-warn' : ''}`}
+            >
+              {note.text}
+            </div>
+          )}
 
-      {undoInfo && onUndoStat && (
-        <div className="dial-undo">
-          <span>Last change: {undoInfo.label}</span>
-          <button type="button" className="dial-undo-btn" onClick={handleUndo}>
-            ↩ Undo it
-          </button>
-        </div>
-      )}
+          {undoInfo && onUndoStat && (
+            <div className="dial-undo">
+              <span>Last change: {undoInfo.label}</span>
+              <button type="button" className="dial-undo-btn" onClick={handleUndo}>
+                ↩ Undo it
+              </button>
+            </div>
+          )}
 
-      <div style={{ display: 'flex', gap: '0.5rem' }}>
-        <button
-          type="button"
-          className="btn"
-          onClick={handleDiscard}
-          style={{ flex: 1, padding: '0.5rem', fontSize: '0.85rem', background: 'rgba(255,255,255,0.1)', border: 'none' }}
-        >
-          Discard
-        </button>
-        <button
-          type="button"
-          className="btn btn-primary"
-          onClick={handleApply}
-          style={{ flex: 2, padding: '0.5rem', fontSize: '0.85rem' }}
-        >
-          {armed === 'bank' ? 'Confirm bank?' : `Bank Goal: ${Math.round(effectiveMonthly)}m/Mo`}
-        </button>
+          <div className="dial-actions-row">
+            <button type="button" className="btn dial-discard" onClick={handleDiscard}>
+              Discard
+            </button>
+            <button type="button" className="btn btn-primary" onClick={handleApply}>
+              {armed === 'bank' ? 'Confirm bank?' : `Bank Goal: ${Math.round(effectiveMonthly)}m/Mo`}
+            </button>
+          </div>
+          {/* No second "leave" button here: the view header already has
+              "← Back to work" and Escape does the same. This panel's only job
+              now is Discard (drop the edits, stay) and Bank (commit them). */}
+        </div>
       </div>
-      {/* No second "leave" button here: the view header already has "← Back to
-          work" and Escape does the same. This panel's only job now is Discard
-          (drop the edits, stay) and Bank (commit them). */}
     </div>
   );
 };

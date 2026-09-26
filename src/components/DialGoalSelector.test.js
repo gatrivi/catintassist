@@ -390,3 +390,87 @@ describe('goal dial money safety (v4.162.0)', () => {
     expect(document.getElementById('goal-config-version-pill')).toBeTruthy();
   });
 });
+
+// v4.163.0 — the layout/a11y pass. The two that matter day to day: the wheel is
+// a real control you can drive from the keyboard, and Bank Goal is never below
+// the fold at 900x600.
+describe('goal dial layout + a11y (v4.163.0)', () => {
+  const renderDial = (extra = {}) => render(
+    <DialGoalSelector {...baseProps} monthlyMinutes={1000} dailyMinutes={50} {...extra} />,
+  );
+
+  test('the wheel is a slider that reports the current commitment', () => {
+    const { container } = renderDial();
+    const wheel = container.querySelector('[role="slider"]');
+    expect(wheel).toBeTruthy();
+    expect(wheel.getAttribute('aria-label')).toMatch(/weekly commitment/i);
+    expect(wheel.getAttribute('aria-valuemin')).toBe('20');
+    expect(wheel.getAttribute('aria-valuemax')).toBe('100');
+    // 5500m @ 6.5d/wk snaps to the 20h/Wk row
+    expect(wheel.getAttribute('aria-valuenow')).toBe('20');
+    // the value text carries the numbers you actually care about
+    expect(wheel.getAttribute('aria-valuetext')).toMatch(/hours per week/);
+    expect(wheel.getAttribute('aria-valuetext')).toMatch(/a month/);
+  });
+
+  test('the wheel takes focus on its own, so the arrow keys just work', () => {
+    const { container } = renderDial();
+    const wheel = container.querySelector('[role="slider"]');
+    expect(wheel).toBe(document.activeElement);
+    expect(wheel.getAttribute('tabindex')).toBe('0');
+  });
+
+  test('arrows, Home/End and PageUp/PageDown all drive the slider', () => {
+    const { container } = renderDial();
+    const wheel = container.querySelector('[role="slider"]');
+    const now = () => wheel.getAttribute('aria-valuenow');
+
+    fireEvent.keyDown(wheel, { key: 'ArrowDown' });
+    expect(now()).toBe('25');
+    fireEvent.keyDown(wheel, { key: 'ArrowUp' });
+    expect(now()).toBe('20');
+    fireEvent.keyDown(wheel, { key: 'PageDown' });
+    expect(now()).toBe('40'); // +4 rows
+    fireEvent.keyDown(wheel, { key: 'End' });
+    expect(now()).toBe('100');
+    fireEvent.keyDown(wheel, { key: 'Home' });
+    expect(now()).toBe('20');
+  });
+
+  test('the ◀▶ buttons and the slider never disagree', () => {
+    const { container } = renderDial();
+    const wheel = container.querySelector('[role="slider"]');
+    fireEvent.click(screen.getByRole('button', { name: /Raise weekly commitment/i }));
+    expect(wheel.getAttribute('aria-valuenow')).toBe('25');
+  });
+
+  test('the pace answer and the ladder tier are announced, not silent', () => {
+    const { container } = renderDial();
+    const live = container.querySelectorAll('[aria-live="polite"]');
+    expect(live.length).toBeGreaterThanOrEqual(2); // catch-up box + ladder card
+    expect(container.querySelector('.dial-catchup')).toBeTruthy();
+    expect(container.querySelector('.dial-ladder')).toBeTruthy();
+  });
+
+  // At 900x600 the pane is ~520px and the content ~600px: Bank Goal is the one
+  // control that must never need a scroll.
+  test('Bank Goal and Discard live in a sticky footer', () => {
+    const { container } = renderDial();
+    const footer = container.querySelector('.dial-actions');
+    expect(footer).toBeTruthy();
+    expect(footer.querySelector('.dial-discard')).toBeTruthy();
+    expect(footer.textContent).toMatch(/Bank Goal:/);
+  });
+
+  test('the number fields have real labels, not just placeholders', () => {
+    const { container } = renderDial({
+      onSaveMonth: jest.fn(), onResyncMonth: jest.fn(), resyncInfo: { sum: 10 },
+    });
+    const monthly = container.querySelector('#dial-monthly-mins');
+    const banked = container.querySelector('#dial-banked-month');
+    expect(monthly).toBeTruthy();
+    expect(banked).toBeTruthy();
+    expect(container.querySelector('label[for="dial-monthly-mins"]')).toBeTruthy();
+    expect(container.querySelector('label[for="dial-banked-month"]')).toBeTruthy();
+  });
+});

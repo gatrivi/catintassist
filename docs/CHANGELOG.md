@@ -2,6 +2,18 @@
 
 **Version source:** `src/constants/version.js` (must match `package.json` + top-right UI pill)
 
+## v4.163.0 - the goal wheel is reachable and drivable without a mouse
+
+- **Bank Goal was below the fold at 900×600.** The pane is ~520px and the content ~600px, so saving a goal meant scrolling inside a scrolling column. `.dial-actions` is now `position: sticky; bottom: -1rem` with a gradient so content scrolls *under* the buttons. Anything new added to the panel must go above that block.
+- **The wheel is a real `role="slider"`** with `aria-valuemin/max/now` and an `aria-valuetext` that says what matters: *"40 hours per week · 370 minutes a day · 7400m a month"*. It was a `<div onClick>`: unreachable by keyboard, no role, no value.
+- **It takes focus when the panel opens**, so the arrow keys work on arrival. `tabIndex={0}` existed on the wrapper but nothing ever focused it, so you had to Tab there blind. PageUp/PageDown jump four rows, Home/End the ends.
+- The wrapper's key handler now **skips events coming from the wheel** — otherwise the arrows moved it twice.
+- The pace box and the Pro Ladder card are `aria-live="polite"`; both changed silently on every dial move.
+- Both number fields have real `<label for>` instead of relying on `aria-label` alone.
+- **Mid-call 🎯 used to do nothing, in five places.** The header button, the targets chip, the `m7` metric cell, the DAILY income card and the 📅 all called `onOpenGoalsView`, which early-returned. One fix in the handler they all share: a top-of-screen `.goals-blocked-notice` saying "off-call only", auto-dismissing in 4s. Top of screen on purpose — the reading column is never covered.
+- Layout moved from inline styles to `.dial-wheel`, `.dial-field`, `.dial-ladder`, `.dial-catchup`, `.dial-actions`, `.dial-mini-btn`. Only the wheel's row padding stays inline, because it derives from `itemHeight`.
+- **7 new tests.** Not one goal value or line of the dial maths changed.
+
 ## v4.162.0 - the goal wheel can no longer wipe your month by accident
 
 - **The worst bug found in this pass:** clear the `banked/mo` box to retype it, press `Set`, and it wrote **0** — `Number('') === 0` passed the old `>= 0` check. Your month went to zero. `parseMinuteCorrection()` now refuses an empty, negative or junk field, and the test pins the empty case.

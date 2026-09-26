@@ -302,8 +302,18 @@ const Dashboard = () => {
   // v4.113.0: Goal Tracking view — off-call only (same gating as Soundboard).
   // 'goals' is transient: saveWorkspaceView ignores it, so a refresh restores scoreboard.
   // Toggle semantics (like onOpenSoundboard): clicking 🎯 again — or the cat — exits.
+  // v4.163.0: the goal wheel is off-call only, and FIVE header entry points can
+  // be pressed mid-call (the 🎯 chip, the m7 metric cell, the DAILY income card,
+  // the 📅, and Settings → Goals). They all called this and got silence. Now
+  // they all say why, in one place, instead of five times in five files.
+  const [goalsBlockedNotice, setGoalsBlockedNotice] = useState('');
+
   const onOpenGoalsView = useCallback(() => {
-    if (isActive || isZombieCall) return;
+    if (isActive || isZombieCall) {
+      setGoalsBlockedNotice('The goal wheel is off-call only — stop the call first.');
+      window.setTimeout(() => setGoalsBlockedNotice(''), 4000);
+      return;
+    }
     setWorkspaceView((prev) => {
       if (prev === GOALS_VIEW) {
         saveWorkspaceView("scoreboard");
@@ -744,8 +754,9 @@ const Dashboard = () => {
     return () => window.removeEventListener("keydown", onKey);
   }, [isSoundboardStudio, isActive, isZombieCall, exitSoundboardStudio]);
 
-  // Escape exits the Goal Tracking view when off-call. (The dial dialog and the
-  // calendar day-editor stop propagation for their own Escape handling.)
+  // Escape exits the Goal Tracking view when off-call. (The dial DOES call
+  // stopPropagation on Escape as of v4.162.0 — this comment was wrong before
+  // that, and one keypress fired both handlers.)
   useEffect(() => {
     if (!isGoalsView || isActive || isZombieCall) return;
     const onKey = (e) => {
@@ -837,6 +848,19 @@ const Dashboard = () => {
         openReason={settingsOpenReason}
         openTrigger={settingsOpenTrigger}
       />
+
+      {/* v4.163.0: mid-call only. The goal wheel cannot be opened during a call,
+          and the transcript is the wrong place to hide that message — so it sits
+          at the TOP, out of the reading column, and disappears on its own. */}
+      {goalsBlockedNotice && (isActive || isZombieCall) && (
+        <div
+          role="status"
+          className="goals-blocked-notice"
+          onClick={() => setGoalsBlockedNotice("")}
+        >
+          🎯 {goalsBlockedNotice}
+        </div>
+      )}
 
       {deepgramKeyNotice && !isActive && !isZombieCall && (
         <div
