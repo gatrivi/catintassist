@@ -556,10 +556,9 @@ body {
   opacity: 1;
 }
 
-.session-controls-left-cluster #header-lang-pair-btn,
-.session-controls-right-cluster #header-lang-pair-btn,
-.session-controls-left-cluster #header-stt-latency-btn,
-.session-controls-right-cluster #header-stt-latency-btn,
+/* v4.165.0: #header-lang-pair-btn (EN|ES) and the never-rendered
+   #header-stt-latency-btn left this group with the header. The pair moved to
+   Settings → Language; .header-text-btn is what still needs auto width. */
 .header-text-btn {
   width: auto !important;
   height: var(--btn-h) !important;
@@ -4368,30 +4367,10 @@ body:has(.app-container[data-call-mode="true"]) .element-hint-panel {
   max-height: 30px;
 }
 
-.audio-route-compact-source-toggle {
-  display: inline-flex;
-  align-items: center;
-  height: 24px;
-  border: 1px solid rgba(255,255,255,0.18);
-  border-radius: 4px;
-  overflow: hidden;
-  flex-shrink: 0;
-}
-
-.audio-route-compact-source-btn {
-  height: 22px;
-  min-width: 34px;
-  border: 0;
-  border-right: 1px solid rgba(255,255,255,0.12);
-  background: rgba(255,255,255,0.04);
-  color: rgba(226,232,240,0.8);
-  cursor: pointer;
-  font: 900 0.62rem/1 var(--font-mono);
-}
-
-.audio-route-compact-source-btn:last-child { border-right: 0; }
-.audio-route-compact-source-btn.is-active.is-tab { background: rgba(59,130,246,0.3); color: #dbeafe; }
-.audio-route-compact-source-btn.is-active.is-cable { background: rgba(245,158,11,0.26); color: #fef3c7; }
+/* v4.165.0: the TAB / VB source toggle left the header strip to free up width —
+   it lives in Settings → Audio now. Its rules went with it.
+   What stays in the strip: the Deepgram proof, the fault-only mic-restore and
+   ZAP buttons, and the Soundboard entry. */
 
 .audio-route-compact-proof__zap {
   border: 1px solid rgba(14, 165, 233, 0.65);
@@ -4805,19 +4784,8 @@ body:has(.app-container[data-call-mode="true"]) .element-hint-panel {
   text-shadow: 0 0 8px rgba(56, 189, 248, 0.18);
 }
 
-#header-lang-pair-btn {
-  touch-action: manipulation;
-  user-select: none;
-  min-width: var(--btn-h);
-  min-height: var(--btn-h);
-  flex-shrink: 0;
-}
-
-@media (max-width: 420px) {
-  #header-lang-pair-btn .lang-btn-mode {
-    display: none;
-  }
-}
+/* v4.165.0: #header-lang-pair-btn and its ≤420px .lang-btn-mode rule went with
+   the EN|ES button. The pair lives in Settings → Language. */
 
 .phone-number {
   background: rgba(254, 240, 138, 0.15);
@@ -8330,3 +8298,4 @@ body:has(.app-container[data-call-mode="true"]) .element-hint-panel {
   color: #6ee7b7;
   font-weight: 900;
 }
+

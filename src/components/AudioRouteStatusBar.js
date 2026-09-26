@@ -130,13 +130,12 @@ export const AudioRouteStatusBar = ({
     (configuredAudioSourceMode || currentSourceMode) === AUDIO_SOURCE_MODE_VIRTUAL_CABLE;
   const isTabMode = !mobileMicMode && !isCableMode;
 
-  // v4.139.0: off-call pill switcher moved to Settings → Audio. In-call compact
-  // TAB/VB rescue toggle (switchWorkSource) stays — it preserves the live stream.
-
-  const switchWorkSource = async (source) => {
-    if (source === 'virtualCable') return onSwitchToVirtualCable?.();
-    return onSwitchToTabShare?.();
-  };
+  // v4.139.0: the off-call source switcher moved to Settings → Audio.
+  // v4.165.0: the in-call compact TAB/VB rescue toggle moved there too, so this
+  // helper has no caller left. The stream-preserving handlers it wrapped
+  // (onSwitchToTabShare / onSwitchToVirtualCable) are still used by the full
+  // strip's own buttons, and Settings → Audio calls switchAudioSourceMode
+  // directly — so the capability is intact, only the duplicate is gone.
 
   useEffect(() => {
     fetchDevices({ requestMicPermissionForLabels: false });
@@ -375,23 +374,20 @@ export const AudioRouteStatusBar = ({
       <div className="audio-route-status-main">
         {compact && (
           <div className="audio-route-compact-proof" aria-label={`${tabProof?.label || sttInLabel}; Deepgram ${enOk && esOk ? 'EN and ES ready' : connectionState}`}>
-            <div className="audio-route-compact-source-toggle" role="group" aria-label="Active call STT source">
-              <button id="audio-route-active-tab-btn" type="button" className={`audio-route-compact-source-btn${isTabMode ? ' is-active is-tab' : ''}`} onClick={() => switchWorkSource('tab')} aria-pressed={isTabMode} title="TAB: choose the call tab and share audio. The current stream stays live if the picker fails.">TAB</button>
-              <button id="audio-route-active-vb-btn" type="button" className={`audio-route-compact-source-btn${isCableMode ? ' is-active is-cable' : ''}`} onClick={() => switchWorkSource('virtualCable')} aria-pressed={isCableMode} title="VB: use CABLE Output for Deepgram. The current stream stays live if cable acquisition fails.">VB</button>
-            </div>
+            {/* v4.165.0: the TAB / VB rescue toggle left this strip. It was the
+                widest thing in here and the source can already be switched from
+                Settings -> Audio (SettingsPanel.js:1051/1066), which the gear in
+                this same header row reaches mid-call. The off-call switcher was
+                moved there in v4.139.0; this was the in-call duplicate. */}
             <span className="audio-route-compact-proof__dg" title={sttSummaryHintBody}>
               <Dot state={sttState === 'idle' ? 'idle' : sttState} />
               {dgChipLabel}
             </span>
-            {!mobileMicMode && (
-              <span
-                className="audio-route-compact-proof__dg"
-                title={`Greetings go out here. CABLE Input or Voicemeeter Input. Full picker is in the I/O strip off-call.${selectedSinkId ? '' : ' NOTHING PICKED — greetings will be blocked.'}`}
-                style={selectedSinkId ? undefined : { color: '#f59e0b' }}
-              >
-                🔊 {outLabel}
-              </span>
-            )}
+            {/* v4.165.0: the "Greetings go out here / CABLE Input or
+                Voicemeeter Input" output label left too. Which device TTS and
+                greetings play through is a setup question, not a call-time one —
+                it lives in Settings -> Audio, and it only turned amber to warn
+                that nothing was picked. */}
             {(micStatus === 'muted' || micStatus === 'no-signal') && (
               <button
                 type="button"

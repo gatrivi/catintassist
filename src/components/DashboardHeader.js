@@ -383,26 +383,6 @@ const SessionControlsSticky = React.memo(({
     virtualCableFailure,
   });
 
-  const longPressRef = useRef(null);
-  const didLongPressRef = useRef(false);
-
-  const startPress = () => {
-    didLongPressRef.current = false;
-    longPressRef.current = setTimeout(() => {
-      didLongPressRef.current = true;
-      onOpenLanguageSettings?.();
-    }, 450);
-  };
-
-  const endPress = () => {
-    clearTimeout(longPressRef.current);
-  };
-
-  const handleLangClick = () => {
-    if (didLongPressRef.current) return;
-    onToggleLanguage?.();
-  };
-
   // v4.100.0: cat logo = "take me back to transcription".
   // v4.113.0: also exits the Goal Tracking view.
   // Exits Soundboard Studio if open, then scrolls the transcript into view.
@@ -419,8 +399,9 @@ const SessionControlsSticky = React.memo(({
     } catch (_) {}
   };
 
-  const langPairShort = (languagePairLabel || 'EN|ES').replace(/\s+/g, '');
-  const langBtnTitle = `STT ${langPairShort} · ${sttLanguage === 'auto' ? 'auto-detect' : sttLanguage === 'left' ? 'forcing left column' : 'forcing right column'} · Tap: cycle STT · Hold: pair settings`;
+  // v4.165.0: the long-press (450ms) EN|ES handlers and their two label strings
+  // went with the header button. The pair now changes only in Settings →
+  // Language, which owns the real pickers.
   const showBreakLabel = shouldBreakNudge && !isActive;
 
   return (
@@ -806,30 +787,13 @@ const SessionControlsSticky = React.memo(({
             </ElementHintTarget>
           )}
 
-          {onToggleLanguage && (
-            <ElementHintTarget
-              elementId="header-lang-pair-btn"
-              guideKey="language-pair"
-              heading="Language pair / STT mode"
-              body={langBtnTitle}
-              color="#94a3b8"
-            >
-              <button
-                id="header-lang-pair-btn"
-                data-guide="language-pair"
-                type="button"
-                className="header-chrome-btn header-text-btn"
-                onPointerDown={startPress}
-                onPointerUp={endPress}
-                onPointerCancel={endPress}
-                onPointerLeave={endPress}
-                onClick={handleLangClick}
-                title={langBtnTitle}
-              >
-                {langPairShort}
-              </button>
-            </ElementHintTarget>
-          )}
+          {/* v4.165.0: the EN | ES button left the header. It was the widest text
+              button in the right cluster and it duplicated Settings -> Language,
+              which has the full pair pickers. The 450ms hold already opened
+              Settings for it, so nothing is lost but the two seconds of width.
+              NOTE: this also removed the one-click STT lane switch from the
+              header. If that ever needs to be back, put it in Settings, not
+              here. */}
 
           {showEndDayButton && (
             <ElementHintTarget

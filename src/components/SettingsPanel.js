@@ -1041,8 +1041,13 @@ export default function SettingsPanel({
 
             <div>
               <div style={{ fontSize: 11, color: '#93c5fd', marginBottom: 6, fontWeight: 700 }}>
-                Audio source
+                Audio source (STT) — moved here from the header
               </div>
+              <p style={{ fontSize: 10, color: 'rgba(255,255,255,0.5)', margin: '0 0 6px', lineHeight: 1.45 }}>
+                v4.165.0: the TAB / VB buttons left the header strip to free up width. This
+                panel is now the only place to change where call audio is captured. Reachable
+                mid-call through the ⚙ in the same header row.
+              </p>
               <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
                 <button
                   type="button"

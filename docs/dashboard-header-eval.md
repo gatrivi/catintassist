@@ -62,6 +62,7 @@ is **~90px**: the 32px sticky row is not the whole header.
 | 5 | The 🎯 chip is visible mid-call but can only raise a toast | `:635` → `App.js` off-call guard |
 | 6 | The header always passes `compact` to the I/O strip, and `.audio-route-status-full` is `display:none` in compact — so **Test local, Test VB out, mic/sink/cable selects, mic meter, tab-share proof and reconnect are unreachable from the header**. The capability lives in Settings → Audio | `DashboardHeader.js:855`, `index.css:4402` |
 | 7 | `maxHeight` is set **inline from a localStorage value**, silently overriding every CSS cap (`:1145, 1154, 1163, 372, 4226`). The vertical budget is not inspectable in CSS | `DashboardHeader.js:3269` |
+| 8 | The compact audio strip and the right cluster were eating the header's horizontal budget: **TAB/VB source toggle**, the **"🔊 CABLE Input / Voicemeeter Input"** output label, and the **EN \| ES** pair button. All three now live in Settings | `AudioRouteStatusBar.js:378-394`, `:769-792` (v4.166.0) |
 
 ## Dead vs. merely-dead-looking — READ BEFORE DELETING
 

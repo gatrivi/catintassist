@@ -25,6 +25,43 @@ import { APP_VERSION } from '../constants/version';
 /** Newest first. Only the entry matching APP_VERSION is shown on load. */
 export const RELEASE_NOTES_CATALOG = [
   {
+    version: '4.166.0',
+    id: 'header-strip-slimmed',
+    highlightElementIds: ['header-app-logo-btn'],
+    es: {
+      title: 'La fila de audio pierde la mitad del ancho',
+      intro: 'La fila que va debajo de los botones tenía el selector TAB/VB, la etiqueta de por dónde salen los saludos, y el botón EN|ES. Los tres se fueron a Settings. Lo que queda es lo que no se ve en ningún otro lado.',
+      sections: [
+        { heading: 'Qué se movió', bullets: [
+          'TAB / VB → **Settings → Audio → «Audio source (STT)»**. Follow-up, pero sigue funcionando.',
+          'La etiqueta «🔊 CABLE Input / Voicemeeter Input» (por dónde salen TTS y saludos) → también a Audio. Es una cosa de setup, no de llamada.',
+          'El botón **EN | ES** → **Settings → Language**. Follow-up lo abría directo; ahora se cambia desde la llave ⚙ de al lado.',
+        ] },
+        { heading: 'Qué se queda (a propósito)', bullets: [
+          'El punto de Deepgram: es lo único que no ves en otro lugar de un vistazo, en medio de una llamada.',
+          'El botón 🎤 RESTORE y el ZAP, que solo aparecen cuando el micrófono o el audio fallan.',
+          'El botón 🎛 de Soundboard Studio y el ✎ del Greeting Editor: son la única entrada a esas vistas. Si los querés fuera, hay que ponerles otra puerta primero.',
+        ] },
+      ],
+    },
+    en: {
+      title: 'The audio row gives up half its width',
+      intro: 'The row under the buttons was carrying the TAB/VB picker, the "where do greetings go out" label, and the EN|ES button. All three moved to Settings. What remains is what you cannot see anywhere else.',
+      sections: [
+        { heading: 'What moved', bullets: [
+          'TAB / VB → **Settings → Audio → "Audio source (STT)"**. Follow-up still works.',
+          'The "🔊 CABLE Input / Voicemeeter Input" label (where TTS and greetings play out) → also Audio. That is a setup question, not a call-time one.',
+          'The **EN | ES** button → **Settings → Language**. A long press used to open it straight from the header; now you change it from the ⚙ beside it.',
+        ] },
+        { heading: 'What stays, on purpose', bullets: [
+          'The Deepgram dot: the one thing you cannot see anywhere else at a glance, mid-call.',
+          'The 🎤 RESTORE and ZAP buttons, which only appear when the mic or the audio actually fails.',
+          'The 🎛 Soundboard Studio and ✎ Greeting Editor buttons: they are the only way into those views. If you want them gone, they need a new door first.',
+        ] },
+      ],
+    },
+  },
+  {
     version: '4.165.0',
     id: 'header-eval-phase1',
     highlightElementIds: ['header-app-logo-btn'],

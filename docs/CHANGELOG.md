@@ -2,6 +2,15 @@
 
 **Version source:** `src/constants/version.js` (must match `package.json` + top-right UI pill)
 
+## v4.166.0 - the audio row gives up half its width
+
+- **TAB / VB left the header strip** → `Settings → Audio → "Audio source (STT)"`, which already owned the switcher (v4.139.0 moved the off-call half there; this was the in-call duplicate). The stream-preserving handlers are untouched, so the mid-call rescue still works from the gear in the same header row.
+- **The "🔊 CABLE Input / Voicemeeter Input" label left the strip.** It only ever said which device TTS and greetings play through — a setup question. Its one live behaviour (turning amber when nothing was picked) is a warning about a *setup* problem, so it belongs with the pickers.
+- **The `EN | ES` button left the header** → `Settings → Language`. It was the widest text button in the right cluster, and its 450ms hold already opened Settings. **Side effect worth naming:** the one-click STT lane switch is gone from the header. If that comes back, it goes in Settings, not the header.
+- **Kept on purpose:** the Deepgram health dot (the one thing not visible anywhere else mid-call), the 🎤 RESTORE and ZAP buttons (they only appear on a real mic/audio fault), and the 🎛 Soundboard Studio + ✎ Greeting Editor buttons — **those two are the only entry points to their views**, so removing them removes the capability, not just the button.
+- Deleted the CSS that went with them: `.audio-route-compact-source-toggle` / `-btn` (5 rules), `#header-lang-pair-btn` + its ≤420px `.lang-btn-mode` rule, and two `#header-stt-latency-btn` selectors that were already dead. Also removed the orphaned `switchWorkSource` helper and the header's 450ms long-press trio.
+- **The `AudioRouteStatusBar` test asserted the old contract** ("keeps TAB and VB visible in the compact active-call row"). Rewritten to pin the new one: gone from the strip, Deepgram proof and fault buttons still there. A test that pins the thing you just removed is a test that will fight you.
+
 ## v4.165.0 - the header eval, phase 1: five real bugs
 
 Full evaluation in [`dashboard-header-eval.md`](dashboard-header-eval.md) — `DashboardHeader.js` is 3,424 lines with 216 inline style objects. On-call and off-call, both states. This release is **Phase 1 only: real defects, no behaviour change.**
