@@ -100,3 +100,4 @@
 | 2026-09-26T04:35:15.972Z | e74f0b2 | v4.155.1: domain lexicon term repair (ships OFF) + false CAT VANISH alarm fix |
 | 2026-09-26T04:47:43.816Z | ff33947 | v4.156.0: negation guard (read-only, ships OFF) - flags dropped denies in the bubble rail |
 | 2026-09-26T13:52:09.414Z | f2b3a14 | v4.157.0: provider biasing built and gated OFF (nova-3-medical EN + keyterm list) - A/B run owed |
+| 2026-09-26T14:01:14.095Z | 0ba30e3 | v4.158.0: your own corrections teach Deepgram (Stage 4 loop closed, switch OFF) |

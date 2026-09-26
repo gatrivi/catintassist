@@ -16,6 +16,10 @@ import pipelineMedicalNegationEs from './pipeline-medical-negation-es.json';
 import pipelineMedicalAllergies from './pipeline-medical-allergies.json';
 import pipelineMedicalDischarge from './pipeline-medical-discharge.json';
 import pipelineMedicalDosisEs from './pipeline-medical-dosis-es.json';
+import pipelineMedicalPediatricDosing from './pipeline-medical-pediatric-dosing.json';
+import pipelineMedicalMedReconciliation from './pipeline-medical-med-reconciliation.json';
+import pipelineMedicalContactNumbers from './pipeline-medical-contact-numbers.json';
+import pipelineMedicalReconciliacionEs from './pipeline-medical-reconciliacion-es.json';
 import pipelineLegalDeposition from './pipeline-legal-deposition.json';
 import pipelineLegalObjection from './pipeline-legal-objection.json';
 import pipelineLegalInsuranceDenial from './pipeline-legal-insurance-denial.json';
@@ -41,9 +45,15 @@ export const EVAL_CASES = [
   pipelineMedicalVitals,
   pipelineMedicalAllergies,
   pipelineMedicalDischarge,
+  pipelineMedicalPediatricDosing,
+  pipelineMedicalMedReconciliation,
+  // The number shapes the interpreter says must never drift: decimals, derived
+  // doses, and long phone numbers in the same turn as clinical words.
+  pipelineMedicalContactNumbers,
   // Medical ES — the other half of every medical call.
   pipelineMedicalNegationEs,
   pipelineMedicalDosisEs,
+  pipelineMedicalReconciliacionEs,
   // The 3% slice: bills, insurance, police.
   pipelineLegalDeposition,
   pipelineLegalObjection,

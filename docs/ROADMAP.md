@@ -50,6 +50,7 @@ Prod verification checklist:
 - [x] v4.156.0 **Negation guard** — amber ⚠ in the bubble rail (zero extra height) when a negation looks dropped; READ-ONLY, own switch (ships **OFF**), independent of term repair. Recall **must** be 1.0, precision ≥80% across the corpus
 - [x] v4.157.0 **Provider biasing** — `nova-3-medical` (EN only) + keyterm list built from the lexicon, both behind switches that ship **OFF**; unbiased listen URL is byte-identical to v4.154.0 (locked by test). A/B run still owed
 - [x] v4.158.0 **Corrections → keyterms** — the operator's own ✎ corrections outrank the shipped lexicon in the keyterm list (corrected word only, no digits, ≤2 words, per-lane). Own switch, **OFF** by default, exact list shown in Settings
+- [x] v4.159.0 **Corpus covers the numbers** — pediatric weight dosing (0.4 mg/kg → 7.2 mg), 4-drug reconciliation EN/ES, two 10-digit phone numbers in a clinical sentence; all gated `minDigitRecall: 1`. 22 cases, damage 0.00
 - [ ] `keyterm` biasing + EN socket `nova-3-medical` (one A/B run first) — [`stt-eval-plan.md`](stt-eval-plan.md) §Stage 3
 
 **Code:** [`useTranslate.js`](../src/hooks/useTranslate.js) · [`useDeepgram.js`](../src/hooks/useDeepgram.js) · [`sensitiveDataProtector.js`](../src/utils/sensitiveDataProtector.js) · [`translationApplicator.js`](../src/utils/translationApplicator.js)

@@ -1,0 +1,42 @@
+{
+  "id": "pipeline-medical-pediatric-dosing",
+  "kind": "medical",
+  "lang": "en",
+  "label": "Weight-based pediatric dosing: decimals and derived numbers must survive",
+  "reference": "Give 0.4 mg per kilogram, which for 18 kilograms is 7.2 mg, every 8 hours.",
+  "terms": ["mg per kilogram"],
+  "criticalPhrases": ["every 8 hours"],
+  "expect": {
+    "maxWerDisplay": 0,
+    "maxDamage": 0,
+    "minDigitRecall": 1,
+    "minCriticalRecall": 1,
+    "minTermAccuracy": 1
+  },
+  "events": [
+    {
+      "atMs": 0,
+      "lane": "en",
+      "payload": {
+        "type": "Results",
+        "is_final": true,
+        "speech_final": true,
+        "start": 0.3,
+        "channel": {
+          "alternatives": [
+            {
+              "transcript": "Give 0.4 mg per kilogram, which for 18 kilograms is 7.2 mg, every 8 hours.",
+              "confidence": 0.94,
+              "words": [
+                { "word": "0.4", "confidence": 0.96 },
+                { "word": "18", "confidence": 0.97 },
+                { "word": "7.2", "confidence": 0.95 },
+                { "word": "hours", "confidence": 0.93 }
+              ]
+            }
+          ]
+        }
+      }
+    }
+  ]
+}

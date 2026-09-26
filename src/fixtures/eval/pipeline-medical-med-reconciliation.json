@@ -1,0 +1,45 @@
+{
+  "id": "pipeline-medical-med-reconciliation",
+  "kind": "medical",
+  "lang": "en",
+  "label": "Medication reconciliation: four drugs, four doses, one turn",
+  "reference": "Continue Metformin 500 mg twice daily, Lisinopril 10 mg once daily, Atorvastatin 20 mg at bedtime, and Aspirin 81 mg once daily.",
+  "terms": ["metformin", "lisinopril", "atorvastatin", "aspirin"],
+  "criticalPhrases": ["twice daily", "at bedtime", "once daily"],
+  "expect": {
+    "maxWerDisplay": 0,
+    "maxDamage": 0,
+    "minDigitRecall": 1,
+    "minTermAccuracy": 1
+  },
+  "events": [
+    {
+      "atMs": 0,
+      "lane": "en",
+      "payload": {
+        "type": "Results",
+        "is_final": true,
+        "speech_final": true,
+        "start": 0.2,
+        "channel": {
+          "alternatives": [
+            {
+              "transcript": "Continue Metformin 500 mg twice daily, Lisinopril 10 mg once daily, Atorvastatin 20 mg at bedtime, and Aspirin 81 mg once daily.",
+              "confidence": 0.93,
+              "words": [
+                { "word": "Metformin", "confidence": 0.95 },
+                { "word": "500", "confidence": 0.96 },
+                { "word": "Lisinopril", "confidence": 0.92 },
+                { "word": "10", "confidence": 0.95 },
+                { "word": "Atorvastatin", "confidence": 0.91 },
+                { "word": "20", "confidence": 0.95 },
+                { "word": "Aspirin", "confidence": 0.94 },
+                { "word": "81", "confidence": 0.96 }
+              ]
+            }
+          ]
+        }
+      }
+    }
+  ]
+}

@@ -2,6 +2,18 @@
 
 **Version source:** `src/constants/version.js` (must match `package.json` + top-right UI pill)
 
+## v4.159.0 - The corpus now measures the numbers that must never drift
+
+- "if you accidentally edit a phone number out while I am reading it I am going to lose my job" — that was in the brief from the start, and the corpus did not actually test it. It does now.
+- Four new medical cases, all gated `minDigitRecall: 1`:
+  - **pediatric weight dosing** — `0.4 mg/kg`, `18 kg`, `7.2 mg`: decimals AND a *derived* number in one turn;
+  - **medication reconciliation** — four drugs, four doses, one turn;
+  - **Spanish reconciliation** — drug + dose + a negation (`no hay alergias conocidas`);
+  - **contact numbers** — two 10-digit numbers in the same sentence as clinical words, the exact shape that used to be edited out.
+- They passed **first time**: number protection already holds decimals and derived doses. That is a real answer, not a new claim.
+- Corpus now 22 cases (16 medical / 6 legal, probes included). Real-world mix: WER raw 8.4%, WER display 3.5%, **damage 0.00**, term acc 86.0%, digits 94.2%, critical 88.4%, repair +0.34. Negation guard: recall 100% (2/2), precision 100% (20/20 clean lines quiet).
+- No code path changed and no switch was flipped — this release only makes the metric mean something closer to an actual day.
+
 ## v4.158.0 - Your ✎ corrections teach Deepgram (the Stage 4 loop, closed)
 
 - Stage 4's promise was "corrections → teach Deepgram, user approves each". This is that, and it turns the transcription thread from hand-curated into self-improving.

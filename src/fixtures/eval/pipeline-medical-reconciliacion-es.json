@@ -1,0 +1,42 @@
+{
+  "id": "pipeline-medical-reconciliacion-es",
+  "kind": "medical",
+  "lang": "es",
+  "label": "ES reconciliación: dos fármacos, dos dosis, una negación",
+  "reference": "Continue con metformina 500 mg dos veces al día y no hay alergias conocidas.",
+  "terms": ["metformina"],
+  "criticalPhrases": ["no hay alergias conocidas", "dos veces al día"],
+  "expect": {
+    "maxWerDisplay": 0,
+    "maxDamage": 0,
+    "minDigitRecall": 1,
+    "minCriticalRecall": 1,
+    "minTermAccuracy": 1
+  },
+  "events": [
+    {
+      "atMs": 0,
+      "lane": "es",
+      "payload": {
+        "type": "Results",
+        "is_final": true,
+        "speech_final": true,
+        "start": 0.3,
+        "channel": {
+          "alternatives": [
+            {
+              "transcript": "Continue con metformina 500 mg dos veces al día y no hay alergias conocidas.",
+              "confidence": 0.93,
+              "words": [
+                { "word": "metformina", "confidence": 0.94 },
+                { "word": "500", "confidence": 0.96 },
+                { "word": "no", "confidence": 0.85 },
+                { "word": "alergias", "confidence": 0.93 }
+              ]
+            }
+          ]
+        }
+      }
+    }
+  ]
+}

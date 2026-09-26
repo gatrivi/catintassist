@@ -25,6 +25,34 @@ import { APP_VERSION } from '../constants/version';
 /** Newest first. Only the entry matching APP_VERSION is shown on load. */
 export const RELEASE_NOTES_CATALOG = [
   {
+    version: '4.159.0',
+    id: 'corpus-numbers',
+    // Metrics-only release: no code path changed, no switch to flip.
+    highlightElementIds: ['header-app-logo-btn'],
+    es: {
+      title: 'El eval ahora mide los números que no podés perder',
+      intro: 'Agregamos al corpus los casos que más te preocupan: dosis con decimales, dosis calculadas por peso, y números de teléfono largos en la misma frase clínica.',
+      sections: [{ heading: 'Qué cambió', bullets: [
+        'Cinco casos nuevos: dosifikación pediátrica (0,4 mg/kg → 7,2 mg), reconciliación de medicamentos (4 fármacos, 4 dosis), reconciliación en español, y dos números de teléfono de 10 dígitos.',
+        'Todos con `digits` en 100% obligatorio: si un dígito se mueve, el build se pone rojo.',
+        'Resultado: 22 casos, WER real ponderado 8,4%, daño del pipeline 0,00, dígitos 94,2%.',
+        'Los casos nuevos pasaron a la primera — la protección de números aguanta decimales y dosis derivadas.',
+        'Nada cambia en una llamada: esto es solo el corpus de medición.',
+      ] }],
+    },
+    en: {
+      title: 'The eval now measures the numbers you cannot lose',
+      intro: 'The corpus now covers what worries you most: decimal doses, weight-derived doses, and long phone numbers sitting in the same sentence as clinical words.',
+      sections: [{ heading: 'What changed', bullets: [
+        'Five new cases: pediatric dosing (0.4 mg/kg → 7.2 mg), medication reconciliation (4 drugs, 4 doses), the Spanish version, and two 10-digit phone numbers.',
+        'All of them gate `digits` at 100%: if a digit moves, the build goes red.',
+        'Result: 22 cases, real-world WER 8.4%, pipeline damage 0.00, digits 94.2%.',
+        'The new cases passed first time — number protection holds decimals and derived doses.',
+        'Nothing changes during a call: this is the measurement corpus only.',
+      ] }],
+    },
+  },
+  {
     version: '4.158.0',
     id: 'corrections-teach-keyterms',
     // Switches only — with them off, nothing about a live call changes.

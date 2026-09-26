@@ -1,0 +1,41 @@
+{
+  "id": "pipeline-medical-contact-numbers",
+  "kind": "medical",
+  "lang": "en",
+  "label": "The interpreter's stated worst case: a phone number must never be edited out",
+  "reference": "My office number is 5551234567 and the clinic is 5559876543, both open until 5 PM.",
+  "terms": [],
+  "criticalPhrases": ["open until 5 PM"],
+  "expect": {
+    "maxWerDisplay": 0,
+    "maxDamage": 0,
+    "minDigitRecall": 1,
+    "minCriticalRecall": 1
+  },
+  "events": [
+    {
+      "atMs": 0,
+      "lane": "en",
+      "payload": {
+        "type": "Results",
+        "is_final": true,
+        "speech_final": true,
+        "start": 0.3,
+        "channel": {
+          "alternatives": [
+            {
+              "transcript": "My office number is 5551234567 and the clinic is 5559876543, both open until 5 PM.",
+              "confidence": 0.95,
+              "words": [
+                { "word": "5551234567", "confidence": 0.97 },
+                { "word": "5559876543", "confidence": 0.96 },
+                { "word": "5", "confidence": 0.93 },
+                { "word": "PM", "confidence": 0.94 }
+              ]
+            }
+          ]
+        }
+      }
+    }
+  ]
+}
