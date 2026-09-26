@@ -13,6 +13,8 @@ import {
 } from '../utils/transcriptCorrections';
 // v4.161.0 — off / exact / phrase, the operator's call, read per request
 import { loadGlossaryMode } from '../utils/glossaryMode';
+// v4.167.0 — FAST by default: the operator picks the translation latency ladder
+import { loadTranslationLatencyLadder } from '../utils/translationLatencyMode';
 import { catLog } from '../utils/catLog';
 import { translateWithFallback } from '../utils/translationEngines';
 import { getTranslationApiKeys } from '../utils/translationRuntimeKeys';
@@ -431,6 +433,9 @@ export const useTranslate = (
               keys,
               signal,
               acceptFn: acceptTranslation,
+              // v4.167.0: the operator's latency ladder, read per request so the
+              // setting applies to the next line with no reload.
+              ladder: loadTranslationLatencyLadder(),
             });
             if (res.text) setCached(norm, langPair, res.text);
             return res;

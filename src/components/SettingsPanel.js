@@ -80,6 +80,14 @@ import {
   loadGlossaryMode,
   saveGlossaryMode,
 } from '../utils/glossaryMode';
+// v4.167.0 — translation latency: FAST by default, operator picks.
+import {
+  TRANSLATION_LATENCY_MODES,
+  TRANSLATION_LATENCY_LABELS,
+  TRANSLATION_LATENCY_HINTS,
+  loadTranslationLatencyMode,
+  saveTranslationLatencyMode,
+} from '../utils/translationLatencyMode';
 import {
   STT_DIAGNOSTIC_SETTINGS_CHANGED_EVENT,
   readSttDiagnosticSettings,
@@ -155,6 +163,9 @@ export default function SettingsPanel({
   // v4.161.0 — the pinned glossary and how strictly it applies. The store used to
   // be invisible, which made it impossible to audit what the app was forcing.
   const [glossaryMode, setGlossaryMode] = useState(loadGlossaryMode);
+  // v4.167.0 — translation latency ladder. FAST by default: in live interpreting
+  // every second is a sentence behind.
+  const [latencyMode, setLatencyMode] = useState(loadTranslationLatencyMode);
   const [glossaryEntries, setGlossaryEntries] = useState(() => loadGlossary());
   useEffect(() => {
     const refresh = () => {
@@ -228,19 +239,27 @@ export default function SettingsPanel({
     if (open) saveLastSettingsSection(section);
   }, [open, section]);
 
+  // v4.167.0: every off-call workspace view (goal wheel, Soundboard Studio,
+  // Greeting Editor) is reached from here. Their header buttons are gone, so
+  // this is the door — and the place that can say "off-call only" honestly
+  // instead of closing the drawer on nothing.
+  const WORKSPACE_ACTIONS = {
+    'goals-view': { event: 'cat_open_goals_view', label: 'The goal wheel' },
+    'soundboard-view': { event: 'cat_open_soundboard_view', label: 'Soundboard Studio' },
+    'greeting-editor': { event: 'cat_open_greeting_editor', label: 'The Greeting Editor' },
+  };
+
   const goTo = (id) => {
     const panel = getSettingsPanel(id);
     if (!panel) return;
-    if (panel.action === 'goals-view') {
-      // The goal wheel is its own view, not a drawer section: ask the app to
-      // open it and step out of the way. It refuses to open mid-call, so say so
-      // here instead of closing the drawer on nothing.
+    const target = panel.action ? WORKSPACE_ACTIONS[panel.action] : null;
+    if (target) {
       if (isActive || isZombieCall) {
-        setNavNote('The goal wheel is off-call only — stop the call first.');
+        setNavNote(`${target.label} is off-call only — stop the call first.`);
         return;
       }
       setNavNote('');
-      window.dispatchEvent(new CustomEvent('cat_open_goals_view'));
+      window.dispatchEvent(new CustomEvent(target.event));
       onClose();
       return;
     }
@@ -256,7 +275,11 @@ export default function SettingsPanel({
   const pinnedPanels = SETTINGS_PANELS.filter((p) => pins.includes(p.id));
   // The goal wheel refuses to open during a call, so mark it instead of
   // letting the operator click a button that quietly does nothing.
-  const blockedPanels = new Set(isActive || isZombieCall ? ['goals'] : []);
+  const blockedPanels = new Set(
+    (isActive || isZombieCall)
+      ? SETTINGS_PANELS.filter((p) => p.action).map((p) => p.id)
+      : [],
+  );
 
   useEffect(() => {
     const onLatencyChange = (e) => setSttLatencyMode(e.detail || loadSttLatencyMode());
@@ -647,6 +670,32 @@ export default function SettingsPanel({
               </p>
             </div>
             <TranslationKeysForm />
+            {/* v4.167.0 — how long to wait on a translation engine before moving on */}
+            <div>
+              <div style={{ fontSize: 11, color: '#93c5fd', marginBottom: 6 }}>
+                Translation latency
+              </div>
+              <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>
+                {TRANSLATION_LATENCY_MODES.map((m) => (
+                  <button
+                    key={m}
+                    type="button"
+                    aria-pressed={latencyMode === m}
+                    onClick={() => setLatencyMode(saveTranslationLatencyMode(m))}
+                    style={{
+                      ...tabBtn,
+                      background: latencyMode === m ? 'rgba(16,185,129,0.25)' : tabBtn.background,
+                    }}
+                  >
+                    {TRANSLATION_LATENCY_LABELS[m]}
+                  </button>
+                ))}
+              </div>
+              <p style={{ fontSize: 10, color: 'rgba(255,255,255,0.5)', margin: '6px 0 0' }}>
+                {TRANSLATION_LATENCY_HINTS[latencyMode]} Applies to the next line, no reload. Lower
+                = faster, but a slow engine gets abandoned sooner.
+              </p>
+            </div>
             {/* v4.161.0 — the glossary: what is pinned, and how strictly it applies */}
             <div>
               <div style={{ fontSize: 11, color: '#93c5fd', marginBottom: 6 }}>Pinned glossary</div>

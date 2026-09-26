@@ -294,8 +294,9 @@ export const ENGINE_TIMEOUT_LADDER_MS = [1200, 2000, 4000];
 
 /** Timeout for attempt `index` of `total` — first is snappy, last is patient. */
 export const engineTimeoutForAttempt = (index, total, ladder = ENGINE_TIMEOUT_LADDER_MS) => {
-  if (index >= total - 1) return ladder[ladder.length - 1];
-  return ladder[Math.min(index, ladder.length - 1)];
+  const steps = ladder?.length ? ladder : ENGINE_TIMEOUT_LADDER_MS;
+  if (index >= total - 1) return steps[steps.length - 1];
+  return steps[Math.min(index, steps.length - 1)];
 };
 
 export const translateWithFallback = async ({
@@ -307,6 +308,7 @@ export const translateWithFallback = async ({
   acceptFn,
   onEngineFail,
   timeoutMs = 4000,
+  ladder = null, // v4.167.0: operator-picked ladder (FAST/BAL/PATIENT)
 }) => {
   const fetchers = buildFetchers(sLang, tLang, keys, signal);
   let chain = buildEngineChain(sLang, tLang, keys);
@@ -330,7 +332,10 @@ export const translateWithFallback = async ({
     tried.push(id);
     try {
       // v4.165.0: shrinking per-attempt timeout instead of one flat 4s for all.
-      const attemptTimeoutMs = engineTimeoutForAttempt(i, chain.length);
+      // v4.167.0: the operator's chosen ladder wins when provided.
+      const attemptTimeoutMs = ladder
+        ? engineTimeoutForAttempt(i, chain.length, ladder)
+        : engineTimeoutForAttempt(i, chain.length, [timeoutMs, timeoutMs, timeoutMs]);
       const timer = new Promise((_, rej) =>
         setTimeout(() => rej(new Error('timeout')), attemptTimeoutMs),
       );
