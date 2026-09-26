@@ -138,6 +138,28 @@ describe('deepgramListenConfig', () => {
       expect(es).toContain('keyterm=amoxicilina');
     });
 
+    test('v4.164.0: auto-detect never sends the invalid `language=multi`', () => {
+      // "Multilingual (auto-detect)" is a real Settings option, and `multi` is
+      // not a valid Nova-3 `language` value — it was being sent verbatim.
+      const url = buildListenUrl('multi', 'fast');
+      expect(url).not.toContain('language=multi');
+      expect(url).not.toContain('language=');
+      // everything else is still there
+      expect(url).toContain('model=nova-3-general');
+      expect(url).toContain('words=true');
+      expect(url).toContain('endpointing=150');
+    });
+
+    test('v4.164.0: the EN/ES path is byte-identical to before (auto fix must not touch it)', () => {
+      expect(buildListenUrl('en', 'fast')).toBe(
+        'wss://api.deepgram.com/v1/listen?model=nova-3-general&smart_format=true&' +
+          'numerals=true&filler_words=true&words=true&language=en&interim_results=true&' +
+          'endpointing=150',
+      );
+      expect(buildListenUrl('es', 'fast')).toContain('language=es');
+      expect(buildListenUrl('es-419', 'fast')).toContain('language=es-419');
+    });
+
     test('only the literal "1" enables a bias switch', () => {
       localStorage.setItem(STT_BIAS_MEDICAL_MODEL, 'true');
       localStorage.setItem(STT_BIAS_KEYTERM, 'yes');

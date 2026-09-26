@@ -2,17 +2,6 @@
 
 **Version source:** `src/constants/version.js` (must match `package.json` + top-right UI pill)
 
-## v4.164.0 - CONNECT self-heal, finally wired (it was written in v4.153.0 and never called)
-
-- Reported: "I press it and I have to zap it to work." Zap is a full rebuild: bump attempt id, `closeConnections()`, `clearWatchdog()`, wait 400 ms, reuse the warm stream. The first press had no equivalent — so the operator was doing by hand exactly what the app already had code for.
-- **Root cause found by reading, not guessing:** `shouldHealConnect()` was written, documented and unit-tested in v4.153.0 ("1.5 s after a press with no audio it self-heals once") and then **never called**. The build's own `no-unused-vars` warning had been saying so on every build since: `'shouldHealConnect' is defined but never used`. There was no self-heal on the first press at all.
-- Wired `armConnectHeal()` into `startRecording`: one timer per press at `CONNECT_HEAL_DELAY_MS`, which calls the existing `reconnectStreamRef` — the same rebuild Zap performs, so no new failure mode is introduced. Cleared in `closeConnections()` so a stopped stream can never be resurrected.
-- **Blast radius on a working call is zero:** a healthy press has `sttLive` true 1.5 s in and the whole path does nothing.
-- The test caught a real bug in the first draft of the wiring: `pressedAt: Date.now()` read *inside* the timer always yields `age === 0`, so the heal could never have fired. The press time is now captured when arming. Worth remembering: this is why the reproduction was written before the fix, not after.
-- `connectHeal.test.js`: a healthy press heals nothing, a dead press heals exactly once, and it never becomes a Zap loop. 1396/1396 green, build clean, and the `shouldHealConnect` unused warning is now gone.
-
-## v4.163.0 - phrase-level glossary with an OFF/EXACT/PHRASE choice
-
 ## v4.163.0 - the goal wheel is reachable and drivable without a mouse
 
 - **Bank Goal was below the fold at 900×600.** The pane is ~520px and the content ~600px, so saving a goal meant scrolling inside a scrolling column. `.dial-actions` is now `position: sticky; bottom: -1rem` with a gradient so content scrolls *under* the buttons. Anything new added to the panel must go above that block.

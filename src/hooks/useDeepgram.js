@@ -54,7 +54,6 @@ import { writeMicTestMode } from "../utils/micMode";
 import {
   isReusableStream,
   shouldHealConnect,
-  CONNECT_HEAL_DELAY_MS,
   buildConnectSummary,
   recordLastConnect,
 } from "../utils/connectEvidence";
@@ -507,52 +506,6 @@ export const useDeepgram = () => {
     watchdogTimeoutRef.current = null;
   }, []);
 
-  /**
-   * v4.164.0 — the CONNECT self-heal, finally wired.
-   *
-   * `shouldHealConnect()` was written, documented and unit-tested in v4.153.0
-   * ("1.5s after a press with no audio it self-heals once") and then NEVER
-   * CALLED — the build's own `no-unused-vars` warning said so and nobody read
-   * it. Its absence is the reported symptom: press CONNECT, nothing usable, then
-   * press Zap and it works. Zap is this exact rebuild, done by hand.
-   *
-   * Why this is safe to add rather than a guess: the decision is a pure tested
-   * function, and the whole path is INERT whenever the press worked — a healthy
-   * call has sttLive true 1.5s in and this does nothing at all. It fires once per
-   * press, never in a loop, and it is cleared whenever the stream is closed.
-   */
-  const connectHealTimerRef = useRef(null);
-  const connectHealedRef = useRef(false);
-  const connectPressedAtRef = useRef(0);
-  const clearConnectHeal = useCallback(() => {
-    if (connectHealTimerRef.current) clearTimeout(connectHealTimerRef.current);
-    connectHealTimerRef.current = null;
-  }, []);
-
-  const armConnectHeal = useCallback(() => {
-    clearConnectHeal();
-    connectHealedRef.current = false;
-    // Captured NOW, not inside the timer: shouldHealConnect measures the age of
-    // the press, so reading the clock when it fires would always yield age 0 and
-    // the heal would never happen. (The test caught exactly that.)
-    connectPressedAtRef.current = Date.now();
-    connectHealTimerRef.current = setTimeout(() => {
-      connectHealTimerRef.current = null;
-      if (connectHealedRef.current) return; // one heal per press, never a loop
-      const heal = shouldHealConnect({
-        pressedAt: connectPressedAtRef.current,
-        sttLive: sttLiveRef.current,
-        healed: connectHealedRef.current,
-        now: Date.now(),
-      });
-      if (!heal) return;
-      connectHealedRef.current = true;
-      catWarn('[Deepgram:heal] press produced no audio — rebuilding once (v4.153.0 intent)');
-      // The same rebuild Zap performs, so nothing new can go wrong here.
-      reconnectStreamRef.current?.();
-    }, CONNECT_HEAL_DELAY_MS);
-  }, [clearConnectHeal]);
-
   /** User cancelled tab picker — calm reset, not a Deepgram error. */
   const abortConnectAttempt = useCallback((message) => {
     isActiveRef.current = false;
@@ -716,10 +669,6 @@ export const useDeepgram = () => {
     } catch (_) {}
     stopToneMonitor();
     clearKeepalive();
-    // v4.164.0: sockets are gone, so a pending self-heal must not fire and
-    // resurrect a stream the operator just stopped.
-    clearConnectHeal();
-    connectHealedRef.current = true;
     if (connectFailTimerRef.current) {
       clearTimeout(connectFailTimerRef.current);
       connectFailTimerRef.current = null;
@@ -769,7 +718,7 @@ export const useDeepgram = () => {
       failureCategory: null,
       lastError: null,
     });
-  }, [clearKeepalive, stopToneMonitor, setSttLive, clearConnectHeal]);
+  }, [clearKeepalive, stopToneMonitor, setSttLive]);
 
   const isLikelyApiKeyRejected = useCallback((text) => {
     const s = (text || "").toString().toLowerCase();
@@ -2008,8 +1957,6 @@ export const useDeepgram = () => {
       connectAttemptIdRef.current += 1;
       resetConnectProgress();
       clearWatchdog();
-      // v4.164.0: one self-heal per press, if this press produced no audio.
-      armConnectHeal();
       setConnectionState("connecting");
       // Mic mode wins over persisted VB-Cable — UI 🎤 must match STT path.
       // v4.151.1: ONE resolver decides the route for every connect attempt.
@@ -2156,7 +2103,7 @@ export const useDeepgram = () => {
       syncConnectProgress({ phase: "error", lastError: msg });
       return false;
     }
-  }, [beginStream, startDeepgram, clearWatchdog, setMicTestMode, resetConnectProgress, abortConnectAttempt, armConnectHeal]);
+  }, [beginStream, startDeepgram, clearWatchdog, setMicTestMode, resetConnectProgress, abortConnectAttempt]);
 
   startRecordingRef.current = startRecording; // idle-ear wake path (v4.92.0)
 

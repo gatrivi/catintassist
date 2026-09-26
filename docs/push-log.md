@@ -107,5 +107,3 @@
 | 2026-09-26T15:52:55.028Z | 0457dec | v4.161.0 settings: search + groups + pins + Goals deep link |
 | 2026-09-26T15:57:08.983Z | 9b30496 | v4.161.0: audio eval harness - the first metric that touches a microphone (your 10 minutes) |
 | 2026-09-26T16:35:29.095Z | d080ffc | v4.162.0 goal configurator money safety (user approved over-budget push) |
-| 2026-09-26T16:49:33.101Z | af2632d | v4.163.0 goal dial layout+a11y: sticky Bank Goal, wheel is a real slider, mid-call says off-call only |
-| 2026-09-26T16:52:08.807Z | 16a0d32 | v4.163.0: phrase-level glossary with OFF/EXACT/PHRASE choice |

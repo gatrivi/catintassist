@@ -129,10 +129,18 @@ export const getDeepgramModel = (lang, { medicalModel = false } = {}) => {
 
 const langCode = (l) => (l || 'en').toString().toLowerCase().slice(0, 2);
 
-/** Documented Deepgram query params only. */
+/**
+ * Documented Deepgram query params only.
+ *
+ * v4.164.0: `language=multi` is NOT a valid value for Nova-3 — it was being sent
+ * verbatim, which is why "Multilingual (auto-detect)" never worked. Omitting
+ * `language` is how you ask Deepgram to detect it. The EN/ES path (the default
+ * pair) is untouched by this.
+ */
 export const buildListenUrl = (lang, mode = loadSttLatencyMode(), bias = {}) => {
   const { medicalModel = false, keyterm = false, userKeyterms = false } = bias || {};
   const cfg = getSttLatencyConfig(mode);
+  const isMulti = String(lang || '').toLowerCase() === 'multi';
   const params = new URLSearchParams({
     model: getDeepgramModel(lang, { medicalModel }),
     smart_format: 'true',
@@ -143,6 +151,7 @@ export const buildListenUrl = (lang, mode = loadSttLatencyMode(), bias = {}) => 
     interim_results: 'true',
     endpointing: String(cfg.endpointing),
   });
+  if (isMulti) params.delete('language'); // let Deepgram detect it
   // Appended last, and only when asked for: with the switch off the query string
   // is exactly what it has always been.
   if (keyterm) {
