@@ -9,7 +9,12 @@ import {
   saveVisibleMetrics,
   getPresetConfig,
 } from '../utils/scoreboardLayout';
-import { mergeImportedDays } from '../utils/callLogImport';
+import {
+  mergeImportedDays,
+  buildUndoSnapshot,
+  applyUndoSnapshot,
+  CALLLOG_UNDO_KEY,
+} from '../utils/callLogImport';
 import { isDateInCurrentMonth, applyDayEditToStats } from '../utils/pastDayEdit';
 import { rollDaySnapshot } from '../utils/dayRoll';
 import { billableSecondsForCall } from '../utils/callBilling';
@@ -651,6 +656,7 @@ export const SessionProvider = ({ children }) => {
   // Company call-log paste import (v4.87.0): company rows are source of truth.
   // Past days overwrite dailyLog + historyTimeline (monthly gets the delta only);
   // today is authoritative for dailyMinutes/callsToday (correction may go down).
+  // v4.160.0: snapshots the touched days first so one tap can undo the paste.
   const importCallLog = useCallback((days) => {
     if (!Array.isArray(days) || !days.length) return { days: 0, totalMins: 0, totalCalls: 0 };
     const now = new Date();
@@ -658,10 +664,15 @@ export const SessionProvider = ({ children }) => {
     const currentMonthKey = `${now.getFullYear()}-${now.getMonth()}`;
     // Single direct merge: this codebase treats synchronous localStorage as the
     // durability source, and stats/log/history all persist there on every change.
-    const out = mergeImportedDays({
+    const prev = {
       dailyLog: JSON.parse(localStorage.getItem('catintassist_daily_log') || '{}'),
       historyTimeline: JSON.parse(localStorage.getItem('catintassist_history_timeline') || '{}'),
       stats: JSON.parse(localStorage.getItem('catintassist_stats') || '{}'),
+    };
+    const out = mergeImportedDays({
+      dailyLog: prev.dailyLog,
+      historyTimeline: prev.historyTimeline,
+      stats: prev.stats,
       days,
       todayStr,
       currentMonthKey,
@@ -672,7 +683,42 @@ export const SessionProvider = ({ children }) => {
     safeLocalStorageSet('catintassist_daily_log', JSON.stringify(out.dailyLog));
     safeLocalStorageSet('catintassist_history_timeline', JSON.stringify(out.historyTimeline));
     safeLocalStorageSet('catintassist_stats', JSON.stringify(out.stats));
+    // Undo snapshot: exactly the days this paste touched + the prior stats.
+    try {
+      safeLocalStorageSet(CALLLOG_UNDO_KEY, JSON.stringify(buildUndoSnapshot({
+        dailyLog: prev.dailyLog,
+        historyTimeline: prev.historyTimeline,
+        stats: prev.stats,
+        days,
+        summary: out.summary,
+      })));
+    } catch { /* undo is best-effort; never block the import */ }
     return out.summary;
+  }, []);
+
+  // v4.160.0: reverse the last call-log paste. Returns the summary that was
+  // undone, or null if there is nothing to undo.
+  const undoCallLogImport = useCallback(() => {
+    let snapshot = null;
+    try {
+      snapshot = JSON.parse(localStorage.getItem(CALLLOG_UNDO_KEY) || 'null');
+    } catch { snapshot = null; }
+    if (!snapshot) return null;
+    const back = applyUndoSnapshot({
+      dailyLog: JSON.parse(localStorage.getItem('catintassist_daily_log') || '{}'),
+      historyTimeline: JSON.parse(localStorage.getItem('catintassist_history_timeline') || '{}'),
+      stats: JSON.parse(localStorage.getItem('catintassist_stats') || '{}'),
+      snapshot,
+    });
+    if (!back.restored) return null;
+    setDailyLog(back.dailyLog);
+    setHistoryTimeline(back.historyTimeline);
+    setStats(back.stats);
+    safeLocalStorageSet('catintassist_daily_log', JSON.stringify(back.dailyLog));
+    safeLocalStorageSet('catintassist_history_timeline', JSON.stringify(back.historyTimeline));
+    safeLocalStorageSet('catintassist_stats', JSON.stringify(back.stats));
+    try { localStorage.removeItem(CALLLOG_UNDO_KEY); } catch { /* ignore */ }
+    return snapshot.summary || null;
   }, []);
 
   // v4.100.0: month-total truth check — re-sum the daily log so a drifted
@@ -1501,6 +1547,7 @@ export const SessionProvider = ({ children }) => {
     commitDayToLog,
     editPastDay,
     importCallLog,
+    undoCallLogImport,
     getMonthResyncPreview,
     reconcileMonthTotal,
     isZombieCall,

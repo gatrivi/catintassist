@@ -25,6 +25,49 @@ import { APP_VERSION } from '../constants/version';
 /** Newest first. Only the entry matching APP_VERSION is shown on load. */
 export const RELEASE_NOTES_CATALOG = [
   {
+    version: '4.160.0',
+    id: 'calllog-preview-undo',
+    highlightElementIds: ['settings-data-import'],
+    es: {
+      title: 'El pegado de llamadas ahora te muestra el cambio antes de aplicarlo',
+      intro: 'Settings → Today es ahora la primera pestaña. Ves cuántos minutos tiene hoy la app, cuántos trae la planilla, y la diferencia — antes de escribir nada.',
+      sections: [
+        { heading: 'Qué cambió', bullets: [
+          'La herramienta que más usás está en la primera pestaña, con nombre de qué hace: «Call log — correct today\'s minutes».',
+          'Vista previa real: `84m → 23m (−61)` por día, con la fila de HOY destacada y el signo hacia arriba o hacia abajo.',
+          'Deshacer: un botón devuelve los minutos exactos que había antes del último pegado, incluso si recargás la página.',
+          'Botón «⧉ Paste from clipboard»: ya no tenés que hacer Ctrl+V a mano.',
+          'Filtro «Today only» activado por defecto, porque el error de fondo es olvidar STOP al final de una llamada.',
+          'Se confirma dos veces antes de sobreescribir, en un renglón — sin ventanas del navegador tapando los números.',
+          'El texto pegado no se borra al aplicar, y las filas que no se entendieron se listan en palabras claras.',
+        ] },
+        { heading: 'Lo que no cambia', bullets: [
+          'La planilla de la empresa sigue siendo la fuente de verdad: scoreboard, barra de progreso y total del mes se actualizan igual.',
+          'Ningún cambio en la transcripción en vivo.',
+        ] },
+      ],
+    },
+    en: {
+      title: 'The call-log paste now shows you the change before it applies',
+      intro: 'Settings → Today is now the first tab. You see how many minutes the app has for today, how many the company log has, and the difference — before anything is written.',
+      sections: [
+        { heading: 'What changed', bullets: [
+          'The control you use most is now the first tab, named for what it does: "Call log — correct today\'s minutes".',
+          'A real preview: `84m → 23m (−61)` per day, with TODAY highlighted and the direction of the change spelled out.',
+          'Undo: one button puts back the exact minutes from before the last paste, even after a page reload.',
+          'A "⧉ Paste from clipboard" button, so you no longer press Ctrl+V by hand.',
+          '"Today only" is on by default, because the underlying mistake is forgetting to hit STOP at the end of a call.',
+          'Overwrite asks twice, in a single row — no browser dialog covering the numbers.',
+          'The pasted text is kept after applying, and rows that could not be read are listed in plain words.',
+        ] },
+        { heading: 'What did not change', bullets: [
+          'The company log is still the source of truth: scoreboard, progress bar and month total update exactly as before.',
+          'Nothing changes in the live transcript.',
+        ] },
+      ],
+    },
+  },
+  {
     version: '4.159.0',
     id: 'corpus-numbers',
     // Metrics-only release: no code path changed, no switch to flip.

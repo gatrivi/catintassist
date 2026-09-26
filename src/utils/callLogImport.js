@@ -15,6 +15,9 @@ export const SHIFT_START_HOUR = 9;
 export const SHIFT_END_HOUR = 18;
 export const SHIFT_WINDOW_MINS = (SHIFT_END_HOUR - SHIFT_START_HOUR) * 60; // 540
 
+/** Undo snapshot for the last applied paste (v4.160.0). */
+export const CALLLOG_UNDO_KEY = 'catintassist_calllog_undo_v1';
+
 const splitRow = (line, delim) => {
   if (delim !== ',') return line.split('\t').map((c) => c.trim());
   // Minimal quote-aware CSV split (Pay may contain "$1,234.00").
@@ -272,5 +275,111 @@ export const mergeImportedDays = ({
     historyTimeline: nextHistory,
     stats: nextStats,
     summary: { days: days.length, totalMins, totalCalls, todayOld, todayNew },
+  };
+};
+
+/**
+ * v4.160.0 — "stored -> new" preview, per day, so the operator sees the change
+ * BEFORE applying it. Pure.
+ *
+ * Stored minutes come from two different places on purpose:
+ * - today: stats.dailyMinutes (the LIVE counter the scoreboard shows). dailyLog
+ *   is only written at endDay/rollover, so reading dailyLog[today] would always
+ *   say 0 and the diff would lie.
+ * - past days: dailyLog[dateStr].
+ *
+ * Rows are sorted today-first, then newest day first.
+ */
+export const diffDaysAgainstStored = ({
+  days = [],
+  dailyLog = {},
+  todayMinutes = 0,
+  todayStr = new Date().toDateString(),
+} = {}) => {
+  const rows = (Array.isArray(days) ? days : []).map((d) => {
+    const isToday = d.dateStr === todayStr;
+    const storedMins = isToday
+      ? Math.round(Number(todayMinutes) || 0)
+      : Math.round(Number(dailyLog?.[d.dateStr]) || 0);
+    const newMins = Math.round(Number(d.billableMins) || 0);
+    return {
+      dateStr: d.dateStr,
+      isToday,
+      billableCalls: d.billableCalls,
+      calls: d.calls,
+      billableMins: newMins,
+      offMinsEstimate: d.offMinsEstimate,
+      firstStart: d.firstStart,
+      lastEnd: d.lastEnd,
+      storedMins,
+      newMins,
+      delta: newMins - storedMins,
+      // "had stored data" = the paste would overwrite something the app counted.
+      overwrites: storedMins > 0,
+    };
+  });
+  const dayMs = (d) => new Date(d.dateStr).getTime() || 0;
+  return rows.sort((a, b) => {
+    if (a.isToday !== b.isToday) return a.isToday ? -1 : 1;
+    return dayMs(b) - dayMs(a);
+  });
+};
+
+/** Only keep the days a paste actually touched — the snapshot stays tiny. */
+export const buildUndoSnapshot = ({
+  dailyLog = {},
+  historyTimeline = {},
+  stats = {},
+  days = [],
+  summary = null,
+  savedAt = Date.now(),
+} = {}) => {
+  const prevLog = {};
+  const prevHistory = {};
+  (Array.isArray(days) ? days : []).forEach((d) => {
+    const key = d?.dateStr;
+    if (!key) return;
+    prevLog[key] = dailyLog?.[key];
+    prevHistory[key] = historyTimeline?.[key];
+  });
+  return { savedAt, touched: Object.keys(prevLog), prevLog, prevHistory, prevStats: { ...stats }, summary };
+};
+
+/**
+ * v4.160.0 — reverse one applied paste. Pure. Restores the touched days to the
+ * exact values they held before (including "was absent" -> delete the key) and
+ * puts stats back wholesale, so monthly/weekly/daily all return in one move.
+ */
+export const applyUndoSnapshot = ({ dailyLog = {}, historyTimeline = {}, stats = {}, snapshot = null } = {}) => {
+  if (!snapshot || !Array.isArray(snapshot.touched) || !snapshot.touched.length) {
+    return { dailyLog, historyTimeline, stats, restored: false };
+  }
+  const nextLog = { ...dailyLog };
+  const nextHistory = { ...historyTimeline };
+  snapshot.touched.forEach((key) => {
+    const log = snapshot.prevLog?.[key];
+    if (log == null) delete nextLog[key];
+    else nextLog[key] = log;
+    const hist = snapshot.prevHistory?.[key];
+    if (hist == null) delete nextHistory[key];
+    else nextHistory[key] = hist;
+  });
+  return {
+    dailyLog: nextLog,
+    historyTimeline: nextHistory,
+    stats: { ...snapshot.prevStats },
+    restored: true,
+  };
+};
+
+/** Human-readable "what would change" totals for the apply button. */
+export const summarizeDiff = (rows = []) => {
+  const list = Array.isArray(rows) ? rows : [];
+  return {
+    days: list.length,
+    changedDays: list.filter((r) => r.delta !== 0).length,
+    downMins: list.filter((r) => r.delta < 0).reduce((s, r) => s + r.delta, 0),
+    upMins: list.filter((r) => r.delta > 0).reduce((s, r) => s + r.delta, 0),
+    calls: list.reduce((s, r) => s + (r.billableCalls || 0), 0),
   };
 };

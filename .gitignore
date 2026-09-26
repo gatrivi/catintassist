@@ -36,3 +36,7 @@ yarn-error.log*
 *.ogg
 /todo.txt
 /agents.md
+
+# stray local run logs
+t.log
+s.log

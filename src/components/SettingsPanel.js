@@ -230,15 +230,17 @@ export default function SettingsPanel({
         </div>
 
         <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap', marginTop: 10 }}>
-          {['account', 'deepgram', 'dg-key', 'language', 'translation', 'behavior', 'data', 'layout', 'display', 'audio'].map((id) => (
+          {['today', 'account', 'deepgram', 'dg-key', 'language', 'translation', 'behavior', 'data', 'layout', 'display', 'audio'].map((id) => (
             <button
               key={id}
               type="button"
               onClick={() => setSection(id)}
               style={{ ...tabBtn, background: section === id ? 'rgba(239,68,68,0.25)' : tabBtn.background }}
             >
-              {id === 'account'
-                ? (authUser ? 'Account ✓' : 'Account')
+              {id === 'today'
+                ? 'Today'
+                : id === 'account'
+                  ? (authUser ? 'Account ✓' : 'Account')
                 : id === 'deepgram'
                   ? 'Deepgram'
                   : id === 'language'
@@ -260,6 +262,13 @@ export default function SettingsPanel({
 
         {vaultStatus === 'unlocking' && (
           <p style={{ color: '#f59e0b', fontSize: 11, marginTop: 8 }}>⏳ Decrypting key…</p>
+        )}
+
+        {section === 'today' && (
+          <div style={{ marginTop: 12 }}>
+            <div className="settings-section-head">Call log — correct today&apos;s minutes</div>
+            <CallLogImportPanel />
+          </div>
         )}
 
         {section === 'account' && (
@@ -632,13 +641,9 @@ export default function SettingsPanel({
 
         {section === 'data' && (
           <div style={{ marginTop: 12 }}>
-            <div style={{ fontSize: 11, color: '#93c5fd', marginBottom: 8 }}>
-              App backup — goals · month progress · greetings · settings
-            </div>
+            <div className="settings-section-head">App backup — goals · month progress · greetings · settings</div>
             <AppBackupPanel />
-            <div style={{ fontSize: 11, color: '#93c5fd', marginBottom: 8, marginTop: 14 }}>Company call log import</div>
-            <CallLogImportPanel />
-            <div style={{ fontSize: 11, color: '#93c5fd', marginBottom: 8, marginTop: 14 }}>Taught corrections</div>
+            <div className="settings-section-head" style={{ marginTop: 14 }}>Taught corrections</div>
             <CorrectionsBackupPanel />
             <p style={{ fontSize: 10, color: 'rgba(255,255,255,0.45)', marginTop: 14, lineHeight: 1.45 }}>
               Compliance notes: <code>docs/compliance/operational-notes.md</code>

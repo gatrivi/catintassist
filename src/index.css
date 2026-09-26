@@ -7847,3 +7847,179 @@ body:has(.app-container[data-call-mode="true"]) .element-hint-panel {
   cursor: pointer;
 }
 .mic-verify-foot { margin-top: 0.5rem; font-size: 0.6rem; color: rgba(255, 255, 255, 0.4); display: flex; gap: 0.5rem; align-items: center; flex-wrap: wrap; }
+
+/* ------------------------------------------------------------------ *
+ * Settings paste panels (v4.160.0) — the call-log correction tool.
+ * One shared button language so every settings panel looks the same.
+ * ------------------------------------------------------------------ */
+.btn {
+  font: inherit;
+  font-size: 0.72rem;
+  line-height: 1.2;
+  padding: 0.35rem 0.6rem;
+  cursor: pointer;
+  color: #e2e8f0;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 6px;
+  white-space: nowrap;
+}
+.btn:hover:not(:disabled) { background: rgba(255, 255, 255, 0.12); }
+.btn:focus-visible { outline: 2px solid #93c5fd; outline-offset: 1px; }
+.btn:disabled { opacity: 0.4; cursor: not-allowed; }
+.btn--primary {
+  color: #fff;
+  font-weight: 700;
+  background: rgba(239, 68, 68, 0.22);
+  border-color: rgba(239, 68, 68, 0.5);
+}
+.btn--primary:hover:not(:disabled) { background: rgba(239, 68, 68, 0.34); }
+.btn--danger {
+  color: #fff;
+  font-weight: 700;
+  background: rgba(220, 38, 38, 0.45);
+  border-color: rgba(248, 113, 113, 0.6);
+}
+.btn--danger:hover:not(:disabled) { background: rgba(220, 38, 38, 0.62); }
+.btn--warn {
+  color: #fde68a;
+  background: rgba(245, 158, 11, 0.14);
+  border-color: rgba(251, 191, 36, 0.45);
+}
+.btn--warn:hover:not(:disabled) { background: rgba(245, 158, 11, 0.26); }
+
+.paste-panel { display: flex; flex-direction: column; gap: 8px; }
+.paste-panel-hint {
+  margin: 0;
+  font-size: 0.7rem;
+  line-height: 1.45;
+  color: rgba(255, 255, 255, 0.62);
+}
+.paste-panel-bar { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.paste-panel-check {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 0.7rem;
+  color: #93c5fd;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.paste-panel-input {
+  display: block;
+  width: 100%;
+  box-sizing: border-box;
+  padding: 8px;
+  background: #0f172a;
+  color: #e2e8f0;
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  border-radius: 6px;
+  font-size: 0.68rem;
+  font-family: var(--font-mono, monospace);
+  resize: vertical;
+}
+.paste-panel-input:focus-visible { outline: 2px solid #93c5fd; outline-offset: 0; }
+.paste-panel-err { font-size: 0.7rem; color: #f87171; line-height: 1.4; }
+
+.paste-panel-rows { display: flex; flex-direction: column; gap: 3px; }
+.paste-row {
+  padding: 4px 6px;
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  border-left: 3px solid rgba(255, 255, 255, 0.14);
+  border-radius: 5px;
+  font-size: 0.72rem;
+  color: #e2e8f0;
+}
+.paste-row--today {
+  border-color: rgba(239, 68, 68, 0.45);
+  border-left-color: #ef4444;
+  background: rgba(239, 68, 68, 0.08);
+}
+.paste-row--same { opacity: 0.62; }
+.paste-row-head { display: flex; align-items: center; gap: 5px; flex-wrap: wrap; }
+.paste-row-today {
+  font-size: 0.58rem;
+  font-weight: 900;
+  letter-spacing: 0.06em;
+  color: #fff;
+  background: #ef4444;
+  border-radius: 3px;
+  padding: 1px 4px;
+}
+.paste-row-mut { color: rgba(255, 255, 255, 0.5); font-size: 0.66rem; }
+.paste-row-sub { display: flex; align-items: center; gap: 5px; flex-wrap: wrap; margin-top: 2px; }
+.paste-row-on { color: #6ee7b7; font-size: 0.68rem; font-weight: 700; }
+.paste-row-warn { color: #fbbf24; font-size: 0.6rem; }
+.paste-row-delta {
+  margin-left: auto;
+  font-family: var(--font-mono, monospace);
+  font-size: 0.68rem;
+  font-weight: 700;
+  padding: 1px 5px;
+  border-radius: 4px;
+  background: rgba(255, 255, 255, 0.07);
+  color: rgba(255, 255, 255, 0.7);
+  white-space: nowrap;
+}
+.paste-row-delta[data-dir='up'] { color: #86efac; background: rgba(34, 197, 94, 0.16); }
+.paste-row-delta[data-dir='down'] { color: #fca5a5; background: rgba(239, 68, 68, 0.18); }
+
+.paste-panel-skipped { font-size: 0.66rem; color: #fbbf24; }
+.paste-panel-skipped summary { cursor: pointer; }
+.paste-panel-skipped ul { margin: 4px 0 0; padding-left: 16px; }
+.paste-panel-skipped code {
+  font-size: 0.62rem;
+  color: #fde68a;
+  word-break: break-all;
+}
+
+.paste-panel-net {
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: #e2e8f0;
+  display: flex;
+  gap: 4px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+.paste-panel-net .paste-row-delta { margin-left: 0; }
+.paste-panel-status {
+  font-size: 0.7rem;
+  line-height: 1.45;
+  padding: 5px 7px;
+  border-radius: 5px;
+  border: 1px solid transparent;
+}
+.paste-panel-status.is-ok { color: #6ee7b7; background: rgba(16, 185, 129, 0.1); border-color: rgba(16, 185, 129, 0.3); }
+.paste-panel-status.is-warn { color: #fbbf24; background: rgba(245, 158, 11, 0.1); border-color: rgba(245, 158, 11, 0.3); }
+.paste-panel-actions { display: flex; align-items: center; gap: 8px; }
+.paste-panel-ver { margin-left: auto; font-size: 0.6rem; color: rgba(255, 255, 255, 0.35); }
+.paste-panel-confirm {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  font-size: 0.72rem;
+  color: #fca5a5;
+  background: rgba(239, 68, 68, 0.12);
+  border: 1px solid rgba(248, 113, 113, 0.4);
+  border-radius: 6px;
+  padding: 6px 8px;
+}
+.paste-panel-undo {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  font-size: 0.66rem;
+  color: rgba(255, 255, 255, 0.6);
+  border-top: 1px dashed rgba(255, 255, 255, 0.12);
+  padding-top: 7px;
+}
+
+.settings-section-head {
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: #93c5fd;
+  margin-bottom: 8px;
+}
