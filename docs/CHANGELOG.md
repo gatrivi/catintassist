@@ -2,6 +2,17 @@
 
 **Version source:** `src/constants/version.js` (must match `package.json` + top-right UI pill)
 
+## v4.161.0 - a fluent but INCOMPLETE translation now gets caught (real CSA call)
+
+- The interpreter pasted a CSA call where the Spanish ended `…Él ya tiene esos recursos allí` and **dropped "waiting for him"** entirely. Also `after all of this is done` → `después de todo de esto se hace` (wrong sense: "is made" not "is finished").
+- **Every existing guard passed it.** `isSuspiciouslyShort` only fires under 25% of source words, and the Spanish came back *longer* (31 words vs 26). Not blank, not passthrough, no digits lost. The safety net protected against *absence* and had nothing at all against **silent omission** — which is the more dangerous one, because a fluent translation gets trusted.
+- Added `isTruncatedTranslation(source, translation)` in `translationQuality.js`. Two signals, both required so it cannot fire alone: (A) the source dangles a modifier ("…waiting for him", "…entered into the record") and (B) the translation does not end in terminal punctuation. Plus an independent, deliberately generous 45% length floor as a second net.
+- Wired into `isTranslationStuckForRetranslate`, so a truncated line now offers the existing **↻ retranslate** button. No new UI.
+- The test file mirrors `negationGuard.test.js`: **6 must-not-fire cases against 2 must-fire**, including the same source translated *completely* (must not be punished) and both other lines from that real call. A check that cries wolf gets muted.
+- **It is a detector, not a fixer.** No heuristic can prove meaning is complete. For terms that must land every time in CSA/legal work, the durable tool already exists and is better than any heuristic: the **glossary** (v4.76.0) — the ✎ editor on a translation pins the exact wording, and `findGlossaryTranslation` replays it forever.
+
+## v4.161.0 - audio eval harness: the first metric that touches a microphone
+
 ## v4.160.0 (in progress) - the last words of a turn were never sealed
 
 - Found by pasting a real call transcript in: nurse asks for a name and date of birth, the patient answers inside the same breath, and the bubble ended `…My last name? Okay. Yeah. That he has`. Reproduced as a test, and the app's own diagnostic confirmed it: `[CAT VANISH] caption_bubble_split → lost: ['Yeah.']`.
