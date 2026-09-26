@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom';
 import { FAILURE } from '../utils/deepgramDiagnostics';
 import { getDeepgramKeyInfo } from '../utils/deepgramRuntimeKey';
 import { isSocketHealthy } from '../utils/dgStatus';
+import { isConnectedButSilent } from '../utils/connectEvidence';
 
 const mk = (done, active, failed) => {
   // Important: failure must not look like "the whole app is useless".
@@ -52,21 +53,49 @@ export const ConnectionDiagnosticsBar = ({
   const pinnedRef = useRef(false);
   const [detailsOpen, setDetailsOpen] = useState(false);
   const [detailsPos, setDetailsPos] = useState({ left: 8, top: 40 });
+
+  // v4.153.0: "connected" used to hide this bar entirely — which is exactly
+  // when the worst bug lived (sockets open, recorder silent, no text at all).
+  // A connection that never sent audio is NOT healthy and must be visible.
+  const connectedSinceRef = useRef(0);
+  const [silentWhileConnected, setSilentWhileConnected] = useState(false);
+  useEffect(() => {
+    if (isConnected) {
+      if (!connectedSinceRef.current) connectedSinceRef.current = Date.now();
+    } else {
+      connectedSinceRef.current = 0;
+      setSilentWhileConnected(false);
+    }
+  }, [isConnected]);
+  useEffect(() => {
+    const t = setInterval(() => {
+      setSilentWhileConnected(
+        isConnectedButSilent({
+          connectionState,
+          audioChunksSent: !!connectProgress?.audioChunksSent,
+          connectedSince: connectedSinceRef.current,
+        }),
+      );
+    }, 1000);
+    return () => clearInterval(t);
+  }, [isConnected, connectionState, connectProgress?.audioChunksSent]);
+
   useEffect(() => {
     // Close when we return to ready/idle: no connecting/error + no failure text.
-    const shouldStayVisible = isConnecting || isError;
+    const shouldStayVisible = isConnecting || isError || silentWhileConnected;
     if (!shouldStayVisible) {
       pinnedRef.current = false;
       setDetailsOpen(false);
     }
-  }, [isConnecting, isError]);
+  }, [isConnecting, isError, silentWhileConnected]);
 
   const catLabel = useMemo(() => {
     const cat = s.failureCategory;
     return cat ? CATEGORY_LABEL[cat] || cat : null;
   }, [s.failureCategory]);
 
-  const shouldShowAnything = !isConnected && (isConnecting || isError || hasFailureDetailsText);
+  const shouldShowAnything =
+    (silentWhileConnected || !isConnected) && (isConnecting || isError || hasFailureDetailsText || silentWhileConnected);
   if (!shouldShowAnything) return null;
 
   const step1 = keyResolved;
@@ -80,17 +109,27 @@ export const ConnectionDiagnosticsBar = ({
 
   const socketOk = step2a || step2b;
   const isFailureLike = isError;
-  const markForChip = isFailureLike
+  const markForChip = silentWhileConnected
+    ? { mark: '!', color: '#f59e0b' }
+    : isFailureLike
     ? { mark: '!', color: '#ef4444' }
     : isConnecting
       ? { mark: '>', color: '#f59e0b' }
       : { mark: '.', color: 'rgba(255,255,255,0.35)' };
-  const chipMainLabel = isFailureLike
+  const chipMainLabel = silentWhileConnected
+    ? (compact ? 'DG up, no audio' : 'Deepgram connected but no audio is flowing')
+    : isFailureLike
     ? (compact ? 'Deepgram down' : 'Deepgram down: transcription unavailable')
     : hasFailureDetailsText
       ? (compact ? 'Deepgram check' : 'Deepgram check: details available')
       : 'Connecting...';
-  const chipStateClass = isFailureLike ? ' is-failed' : isConnecting ? ' is-connecting' : '';
+  const chipStateClass = silentWhileConnected
+    ? ' is-connecting'
+    : isFailureLike
+      ? ' is-failed'
+      : isConnecting
+        ? ' is-connecting'
+        : '';
   // In compact header mode the chip must never steal layout space.
   // Full step-by-step checks live only in the hover/focus/click tooltip.
   const showInlineChecks = false;
@@ -135,13 +174,19 @@ export const ConnectionDiagnosticsBar = ({
   ];
 
 
-  const detailsTitle = failed
+  const detailsTitle = silentWhileConnected
+    ? 'Deepgram connected but no audio is flowing'
+    : failed
     ? 'Deepgram failure: transcription unavailable'
     : 'Connecting to Deepgram…';
   const detailsTitleWithCat = catLabel ? `${detailsTitle} [${catLabel}]` : detailsTitle;
 
   let actionNow = null;
-  if (failed) {
+  if (silentWhileConnected) {
+    // The nastiest one: looks connected, hears nothing.
+    actionNow =
+      'Sockets are open but no audio reached Deepgram. Check the tab still shares audio (or the mic is unmuted), then press CONNECT again (double-press re-picks the tab).';
+  } else if (failed) {
     // Keep this brutally direct so you can get back to work fast.
     if (s.failureCategory === FAILURE.AUTH) {
       actionNow = 'Fix API key / auth: paste correct Deepgram key, then try again (Zap if stuck).';
@@ -240,7 +285,7 @@ export const ConnectionDiagnosticsBar = ({
             ))}
           </div>
 
-          {failed && actionNow && (
+          {(failed || silentWhileConnected) && actionNow && (
             <div className="connection-diagnostics-details-action">
               <strong>Do this now:</strong> {actionNow}
             </div>

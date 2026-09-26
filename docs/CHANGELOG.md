@@ -2,6 +2,22 @@
 
 **Version source:** `src/constants/version.js` (must match `package.json` + top-right UI pill)
 
+## v4.153.0 - CONNECT really starts Deepgram
+
+- Reported: "I press CONNECT during a call and Deepgram does not start." Four independent ways to end a press with **no audio and no message**:
+  1. `audioAttached` was `connectionState === "connected" && …`, and idle-ear/dead pipes report `connected` with **no recorder**. CONNECT therefore took the start-the-call branch and never started Deepgram → a call that could never transcribe.
+  2. The ES socket was created **inside EN's `onopen`**, so one hung socket meant no recorder, no audio and no error for 8s. Connect retries also rebuilt only EN.
+  3. A stream was reused on `active && tracks > 0` — a share that had ended or gone fully muted was trusted, so the sockets opened onto silence.
+  4. A cancelled tab picker reset to `disconnected`, and the diagnostics bar hides itself when `connected` → the failure was completely invisible.
+- Fixes:
+  - **`sttLive`** (new signal from `useDeepgram`): true only when the sockets are open **and** a MediaRecorder is feeding them. `audioAttached = sttLive && (mic‖tab‖cable)`; idle-ear and warm-but-dead sockets are explicitly *not* live.
+  - **Parallel sockets**: EN and ES open together; a connect retry rebuilds both.
+  - **Rotten-stream guard** (`isReusableStream`): ended/muted/all-dead streams are dropped and re-acquired; a fresh stream with a dead track is refused with a plain message instead of opening sockets onto nothing.
+  - **Self-heal**: if nothing is streaming 1.5s after the press, one rebuild runs automatically (reuse path, no tab picker) — once per press, never a loop.
+  - **Evidence**: an amber `DG up, no audio` chip appears when Deepgram is connected but sent no audio for 8s, with the fix in plain words; a cancelled tab picker now shows an error + `press M (mic) then CONNECT` instead of resetting to `disconnected`.
+  - `resolveConnectIntent()` is the one place that decides what a CONNECT press does; the header and the idle-pane scoreboard share it.
+- Tests: `src/utils/connectEvidence.test.js` (24) + `src/hooks/useDeepgram.sttLive.test.js` (5, real WebSocket/MediaRecorder doubles). Full suite: 123 files green.
+
 ## v4.149.0 - speech evidence: Zap only when it can help
 
 - Reported: still stuck after v4.148.1. Two different failures look identical on the Deepgram message clock: a dead Deepgram pipe (a Zap rebuilds it) and a silent audio route — mic/tab/VB-Cable/headset stopped delivering signal (a Zap is useless). Zapping the second case burns the cooldown while nothing is fixed.

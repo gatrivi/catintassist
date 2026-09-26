@@ -94,3 +94,4 @@
 | 2026-09-25T17:53:50.148Z | 0b02f2d | v4.151.0 dedup: restated Deepgram segments supersede in place - no duplicate transcript bubbles |
 | 2026-09-25T18:42:03.552Z | 04cfe09 | v4.151.2 dedup: restated/reworded spans supersede in place, nothing else dropped - no duplicate transcript messages |
 | 2026-09-25T20:11:56.621Z | 61624b5 | v4.152.0 cross-message repeat dim |
+| 2026-09-25T21:15:45.348Z | d36fc97 | v4.152.1: CONNECT route fix - one resolver decides mic/cable/tab, mic wins (v4.84 regression) |

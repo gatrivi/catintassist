@@ -50,6 +50,12 @@ import {
   loadSttLatencyMode,
 } from "../utils/deepgramListenConfig";
 import { writeMicTestMode } from "../utils/micMode";
+import {
+  isReusableStream,
+  shouldHealConnect,
+  buildConnectSummary,
+  recordLastConnect,
+} from "../utils/connectEvidence";
 import { traceCaptionArrayDiff } from "../utils/vanishTrace";
 import { updateVadLoudFrames, shouldWakeFromVad, shouldSpeechAutoStart, IDLE_EAR_RMS_THRESHOLD } from "../utils/idleEar";
 import { createUnthrottledInterval } from "../utils/workerInterval";
@@ -208,6 +214,16 @@ export const useDeepgram = () => {
   const [tabStreamReady, setTabStreamReady] = useState(readTabStreamReady);
   const [cableStreamReady, setCableStreamReady] = useState(false);
   const [attachedAudioSourceMode, setAttachedAudioSourceMode] = useState("tab"); // 'tab' | 'mic' | 'virtualCable'
+  // v4.153.0: the ONE truth about "Deepgram is really running". True only when
+  // the sockets are open AND a MediaRecorder is actually feeding them. The old
+  // gate (connectionState === 'connected') lied: idle-ear sets 'connected' with
+  // no recorder, so CONNECT went to start-the-call and never started audio.
+  const [sttLive, setSttLiveState] = useState(false);
+  const sttLiveRef = useRef(false);
+  const setSttLive = useCallback((v) => {
+    sttLiveRef.current = v;
+    setSttLiveState(v);
+  }, []);
   const [virtualCableFailure, setVirtualCableFailure] = useState(null); // { message, suggestedActionLabel }
 
   const langModeRef = useRef("auto");
@@ -668,6 +684,7 @@ export const useDeepgram = () => {
     }
     mediaRecorderRef.current = null;
     setSttAudioRecording(false);
+    setSttLive(false); // v4.153.0: sockets are gone — nothing is live.
 
     if (socketRefEn.current) {
       socketRefEn.current.close();
@@ -700,7 +717,7 @@ export const useDeepgram = () => {
       failureCategory: null,
       lastError: null,
     });
-  }, [clearKeepalive, stopToneMonitor]);
+  }, [clearKeepalive, stopToneMonitor, setSttLive]);
 
   const isLikelyApiKeyRejected = useCallback((text) => {
     const s = (text || "").toString().toLowerCase();
@@ -752,6 +769,7 @@ export const useDeepgram = () => {
       } catch (_) {}
       socketRefEn.current = null;
       socketRefEs.current = null;
+      setSttLive(false); // v4.153.0: rebuilding — not live until audio flows.
 
       setConnectionState("error");
       setConnectionMessage(message);
@@ -773,7 +791,7 @@ export const useDeepgram = () => {
       });
       if (cat === FAILURE.AUTH || isLikelyApiKeyRejected(message)) setApiKeyRejected(true);
     },
-    [clearWatchdog, clearKeepalive, isLikelyApiKeyRejected, critLog],
+    [clearWatchdog, clearKeepalive, isLikelyApiKeyRejected, critLog, setSttLive],
   );
 
   const scheduleConnectFail = useCallback(
@@ -903,6 +921,7 @@ export const useDeepgram = () => {
       } catch (_) {}
       socketRefEn.current = null;
       socketRefEs.current = null;
+      setSttLive(false); // v4.153.0: nothing is live until the recorder runs.
 
       setConnectionState("connecting");
       setConnectionMessage("Initializing Sockets...");
@@ -1069,6 +1088,19 @@ export const useDeepgram = () => {
             mediaRecorderRef.current.start(
               getMediaRecorderTimeslice(sttLatencyModeRef.current),
             );
+            // v4.153.0: sockets open + recorder running = the ONE truth that
+            // Deepgram is really transcribing. This is what CONNECT gates on.
+            setSttLive(true);
+            recordLastConnect(
+              buildConnectSummary({
+                source: streamSourceRef.current || "none",
+                ok: true,
+                reason: "recorder streaming",
+                socketEn: "open",
+                socketEs: multiMode ? "skipped" : "open",
+                audioChunksSent: true,
+              }),
+            );
 
           }
         } catch (err) {
@@ -1140,6 +1172,15 @@ export const useDeepgram = () => {
             stream,
             { socketSide: "En", isFirst: !multiMode },
           );
+          // v4.153.0: a retry must rebuild BOTH sockets. Re-opening only EN
+          // left the ES lane dead, so the both-open gate never fired.
+          if (!multiMode) {
+            syncConnectProgress({ socketEs: "connecting" });
+            socketRefEs.current = createSocket(pair.right, stream, {
+              socketSide: "Es",
+              isFirst: false,
+            });
+          }
           armOpenStall();
         }, delayMs);
         return true;
@@ -1160,13 +1201,10 @@ export const useDeepgram = () => {
             multiMode,
             latencyMode: sttLatencyModeRef.current,
           });
-          if (isFirst && !multiMode) {
-            syncConnectProgress({ socketEs: "connecting" });
-            socketRefEs.current = createSocket(pair.right, stream, {
-              socketSide: "Es",
-              isFirst: false,
-            });
-          }
+          // v4.153.0: ES is NOT chained off EN's onopen any more. A single
+          // hung socket used to leave us with "no recorder, no audio, no
+          // error" until the 8s stall timer. Both sockets now open in parallel
+          // (bottom of startDeepgram) and tryStartStreaming waits for both.
           tryStartStreaming(stream);
         };
 
@@ -1572,6 +1610,14 @@ export const useDeepgram = () => {
         socketSide: "En",
         isFirst: true,
       });
+      if (!multiMode) {
+        // v4.153.0: parallel ES open (see the note in ws.onopen).
+        syncConnectProgress({ socketEs: "connecting" });
+        socketRefEs.current = createSocket(pair.right, stream, {
+          socketSide: "Es",
+          isFirst: false,
+        });
+      }
       armOpenStall(); // v4.103.2: hang = sockets never open → auto-retry
     },
     [
@@ -1596,6 +1642,7 @@ export const useDeepgram = () => {
       sttTrace,
       critLog,
       startCallVad,
+      setSttLive,
     ],
   );
 
@@ -1677,6 +1724,7 @@ export const useDeepgram = () => {
     if (stream?.active && stream.getAudioTracks().length > 0 && enOpen && esOk) {
       if (startRecorderOnSockets(stream)) {
         setConnectionState("connected");
+        setSttLive(true); // v4.153.0: audio is flowing again.
         setConnectionMessage("Speech detected — reconnecting…");
         sttTrace("idle ear wake: warm recorder resume");
         return;
@@ -1688,9 +1736,10 @@ export const useDeepgram = () => {
     // (e.g. the share died in a background tab and the picker needs a
     // gesture), the user still knows speech WAS heard and CONNECT is the fix.
     sttTrace("idle ear wake: cold rebuild");
+    setSttLive(false);
     setConnectionMessage("Speech detected — press CONNECT if text doesn't resume");
     startRecordingRef.current?.();
-  }, [stopIdleEar, startRecorderOnSockets]);
+  }, [stopIdleEar, startRecorderOnSockets, setSttLive]);
 
   const wakeFromIdleEarRef = useRef(wakeFromIdleEar);
   wakeFromIdleEarRef.current = wakeFromIdleEar;
@@ -1714,6 +1763,9 @@ export const useDeepgram = () => {
     setSttAudioRecording(false);
     idleEarActiveRef.current = true;
     setConnectionState("connected");
+    // v4.153.0: warm sockets + NO recorder = not live. Without this, CONNECT
+    // saw "connected" and started a call that could never transcribe.
+    setSttLive(false);
     setConnectionMessage("Idle ear — listening for speech (auto-connect on)");
     syncConnectProgress({
       phase: "ready",
@@ -1791,7 +1843,7 @@ export const useDeepgram = () => {
       critLog("warn", "idle ear VAD unavailable", { err: String(e) });
     }
     return true;
-  }, [speechAutoConnectRef, callAutopilotRef, ensureToneMonitor, stopIdleEar, syncConnectProgress, closeConnections, critLog]);
+  }, [speechAutoConnectRef, callAutopilotRef, ensureToneMonitor, stopIdleEar, syncConnectProgress, closeConnections, critLog, setSttLive]);
   // ────────────────────────────────────────────────────────────────────────
 
   const stopRecording = useCallback(() => {
@@ -1847,16 +1899,18 @@ export const useDeepgram = () => {
       connectStallRetriesRef.current = 0;
       const audioTrackCount = stream.getAudioTracks().length;
 
-      if (audioTrackCount === 0) {
-        critLog("error", "beginStream: no audio tracks", { source });
+      const audioTracks = stream.getAudioTracks();
+      // v4.153.0: a track that is present but already ended is NOT audio.
+      // Opening sockets onto it produced "connected" + zero sound, forever.
+      const deadTrack = audioTracks.find((t) => t.readyState && t.readyState !== "live");
+      if (audioTrackCount === 0 || deadTrack) {
+        const msg = deadTrack
+          ? "The audio share ended before Deepgram could start. Press CONNECT and share the tab again."
+          : "No audio track was detected. Make sure your selected tab or microphone includes audio, then press Connect again.";
+        critLog("error", "beginStream: no usable audio track", { source, deadTrack: !!deadTrack });
         setConnectionState("error");
-        setConnectionMessage(
-          "No audio track was detected. Make sure your selected tab or microphone includes audio, then press Connect again."
-        );
-        syncConnectProgress({
-          phase: "error",
-          lastError: "No audio track was detected. Make sure your selected tab or microphone includes audio, then press Connect again.",
-        });
+        setConnectionMessage(msg);
+        syncConnectProgress({ phase: "error", lastError: msg });
         stream.getTracks().forEach((t) => {
           try {
             t.stop();
@@ -1910,12 +1964,12 @@ export const useDeepgram = () => {
 
 
       // REUSE EXISTING STREAM IF AVAILABLE AND ACTIVE (same source type)
-      if (
-        streamRef.current &&
-        streamRef.current.active &&
-        streamRef.current.getAudioTracks().length > 0 &&
-        streamSourceRef.current === source
-      ) {
+      // v4.153.0: the old check trusted `active && tracks>0`. A stream can be
+      // alive and silent (share ended, all tracks muted) — reusing it opened
+      // sockets to nothing, which is how "I pressed CONNECT and got no text"
+      // used to happen silently. isReusableStream is now the only judge.
+      const reusable = isReusableStream(streamRef.current, source, streamSourceRef.current);
+      if (reusable.ok) {
         setConnectionMessage(
           source === "virtualCable"
             ? "Reusing Virtual Cable..."
@@ -1941,6 +1995,16 @@ export const useDeepgram = () => {
         }
         startDeepgram(streamRef.current);
         return true;
+      }
+      if (streamRef.current) {
+        // v4.153.0: log + drop the dead stream so nothing can reuse it again.
+        critLog("warn", "stale stream discarded", {
+          why: reusable.why,
+          wanted: source,
+          had: streamSourceRef.current,
+        });
+        streamRef.current = null;
+        streamSourceRef.current = null;
       }
 
       setConnectionMessage(
@@ -1972,8 +2036,19 @@ export const useDeepgram = () => {
 
       if (attemptedSource === "tab") {
         const tabErr = classifyTabCaptureError(err);
+        // v4.153.0: every failed tab connect leaves a one-step way out. A dead
+        // end mid-call is how you end up with NO transcription and no idea.
+        const withExit = (m) => `${m} — no tab? press M (mic) then CONNECT.`;
         if (isTabCaptureUserCancel(err)) {
-          abortConnectAttempt(tabErr.message);
+          const msg = withExit(tabErr.message);
+          // Clean the attempt up (timers, isActive) then SHOW the state — the
+          // old path reset to "disconnected", which rendered nothing at all.
+          abortConnectAttempt(msg);
+          setConnectionState("error");
+          critLog("warn", "tab capture cancelled by user", { source: attemptedSource });
+          recordLastConnect(
+            buildConnectSummary({ source: attemptedSource, ok: false, reason: msg }),
+          );
           return false;
         }
         if (!NEVER_AUTO_FALLBACK_TO_PHYSICAL_MIC && tabErr.suggestMicFallback) {
@@ -1990,9 +2065,18 @@ export const useDeepgram = () => {
             // Fall through to tab-specific message below.
           }
         }
+        const tabMsg = withExit(tabErr.message);
         setConnectionState("error");
-        setConnectionMessage(tabErr.message);
-        syncConnectProgress({ phase: "error", lastError: tabErr.message });
+        setConnectionMessage(tabMsg);
+        syncConnectProgress({ phase: "error", lastError: tabMsg });
+        recordLastConnect(
+          buildConnectSummary({
+            source: attemptedSource,
+            ok: false,
+            reason: tabMsg,
+            closeCode: err?.name || null,
+          }),
+        );
         return false;
       }
 
@@ -2080,8 +2164,19 @@ export const useDeepgram = () => {
 
       if (attemptedSource === "tab") {
         const tabErr = classifyTabCaptureError(err);
+        // v4.153.0: every failed tab connect leaves a one-step way out. A dead
+        // end mid-call is how you end up with NO transcription and no idea.
+        const withExit = (m) => `${m} — no tab? press M (mic) then CONNECT.`;
         if (isTabCaptureUserCancel(err)) {
-          abortConnectAttempt(tabErr.message);
+          const msg = withExit(tabErr.message);
+          // Clean the attempt up (timers, isActive) then SHOW the state — the
+          // old path reset to "disconnected", which rendered nothing at all.
+          abortConnectAttempt(msg);
+          setConnectionState("error");
+          critLog("warn", "tab capture cancelled by user", { source: attemptedSource });
+          recordLastConnect(
+            buildConnectSummary({ source: attemptedSource, ok: false, reason: msg }),
+          );
           return false;
         }
         if (!NEVER_AUTO_FALLBACK_TO_PHYSICAL_MIC && tabErr.suggestMicFallback) {
@@ -2098,9 +2193,18 @@ export const useDeepgram = () => {
             // Fall through to tab-specific message below.
           }
         }
+        const tabMsg = withExit(tabErr.message);
         setConnectionState("error");
-        setConnectionMessage(tabErr.message);
-        syncConnectProgress({ phase: "error", lastError: tabErr.message });
+        setConnectionMessage(tabMsg);
+        syncConnectProgress({ phase: "error", lastError: tabMsg });
+        recordLastConnect(
+          buildConnectSummary({
+            source: attemptedSource,
+            ok: false,
+            reason: tabMsg,
+            closeCode: err?.name || null,
+          }),
+        );
         return false;
       }
       if (attemptedSource === "virtualCable") {
@@ -2303,6 +2407,7 @@ export const useDeepgram = () => {
     toggleLanguage,
     connectionState,
     connectionMessage,
+    sttLive, // v4.153.0: sockets open AND audio flowing — the only real truth.
     apiKeyRejected,
     connectProgress,
     lastDataTime,

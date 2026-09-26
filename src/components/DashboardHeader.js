@@ -52,6 +52,7 @@ import { AutopilotChip } from './AutopilotGuard';
 import { getAppStatus } from '../utils/appStatus';
 import { SlotMicroValue } from './SlotMicroValue';
 import { needsUserSuppliedDeepgramKey } from '../utils/deepgramRuntimeKey';
+import { resolveConnectIntent } from '../utils/connectEvidence';
 import {
   isComponentVisible,
   shouldShowProgressStack,
@@ -1898,20 +1899,33 @@ export const DashboardHeader = ({
     // CRITICAL STT RECOVERY: a locked saved key must open its one-step fix.
     // Never start audio capture here: it wastes time and ends in an opaque
     // Deepgram failure during a live patient call.
-    if (vaultNeedsDecrypt) {
-      return () => dispatchOpenDeepgramSettings('connect', 'vault_locked');
-    }
-    if (apiKeyMissingNoVault) {
-      return () => dispatchOpenDeepgramSettings('connect', 'bundled_missing');
-    }
-    if (isZombieCall) return onRecovery;
-    if (!audioAttached) return onAttachAudio;
+    // v4.153.0: one resolver for header + idle pane (audioAttached now means
+    // "Deepgram really transcribing", not just connectionState === connected).
+    const intent = resolveConnectIntent({
+      vaultNeedsDecrypt,
+      apiKeyMissingNoVault,
+      isZombieCall,
+      audioAttached,
+    });
+    if (intent === 'open-key-unlock') return () => dispatchOpenDeepgramSettings('connect', 'vault_locked');
+    if (intent === 'open-key-settings') return () => dispatchOpenDeepgramSettings('connect', 'bundled_missing');
+    if (intent === 'recovery') return onRecovery;
+    if (intent === 'attach') return onAttachAudio;
     return onStartCall;
   })();
 
   const connectOnDouble = (() => {
-    if (isZombieCall) return onRecovery;
-    if (!audioAttached) return onAttachAudioFresh || onAttachAudio;
+    const intent = resolveConnectIntent({
+      vaultNeedsDecrypt,
+      apiKeyMissingNoVault,
+      isZombieCall,
+      audioAttached,
+      doubleTap: true,
+    });
+    if (intent === 'open-key-unlock') return () => dispatchOpenDeepgramSettings('connect', 'vault_locked');
+    if (intent === 'open-key-settings') return () => dispatchOpenDeepgramSettings('connect', 'bundled_missing');
+    if (intent === 'recovery') return onRecovery;
+    if (intent === 'attach-fresh') return onAttachAudioFresh || onAttachAudio;
     return onConnectAnotherTab;
   })();
 

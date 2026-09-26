@@ -54,6 +54,7 @@ import {
 import { getDeepgramBlockReason, getDeepgramSettingsPrompt } from "./utils/deepgramSettingsPrompt";
 import { applyThemePalette, loadThemePalette } from "./utils/themePalette";
 import { setSttActive } from "./utils/routeDiagnostics";
+import { shouldHealConnect } from "./utils/connectEvidence";
 import { isWellbeingDockEnabled } from "./utils/wellbeingDock";
 import {
   COMPONENT_IDS,
@@ -82,6 +83,7 @@ const Dashboard = () => {
     toggleLanguage,
     connectionState,
     connectionMessage,
+    sttLive,
     apiKeyRejected,
     connectProgress,
     lastDataTime,
@@ -499,10 +501,18 @@ const Dashboard = () => {
           ? "break"
           : "avail";
 
-  // Audio attached = sockets live + tab stream / mic test / virtual cable.
+  // Audio attached = Deepgram REALLY transcribing + tab stream / mic / cable.
+  // v4.153.0: `connectionState === "connected"` used to be enough. Idle-ear and
+  // dead pipes report "connected" with no recorder, so CONNECT took the
+  // start-the-call branch and the call ran mute. sttLive is the honest gate.
   const audioAttached =
-    connectionState === "connected" &&
-    (micTestMode || tabStreamReady || cableStreamReady);
+    sttLive && (micTestMode || tabStreamReady || cableStreamReady);
+
+  // v4.153.0: CONNECT self-heal. One press must always end with Deepgram live:
+  // if 1.5s after the press nothing is streaming, rebuild once (reuse path —
+  // no tab picker, no gesture needed) and never ask again for that press.
+  const connectPressedAtRef = useRef(0);
+  const connectHealedRef = useRef(false);
 
   const handleStartCall = useCallback(
     (isRecovery = false) => {
@@ -521,6 +531,8 @@ const Dashboard = () => {
       if (isBreakActive) stopBreak();
       // Arm before await — DG text can arrive before isActive React commit.
       armCaptionCapture(true);
+      connectPressedAtRef.current = Date.now();
+      connectHealedRef.current = false;
       const ok = fresh ? await startRecordingFresh() : await startRecording();
       if (ok) handleStartCall(false);
       else armCaptionCapture(false);
@@ -557,6 +569,24 @@ const Dashboard = () => {
     if (isBreakActive) stopBreak();
     await startRecordingFresh();
   }, [startRecordingFresh, isBreakActive, stopBreak, cancelHipaaDisconnectGrace]);
+
+  // v4.153.0 CONNECT self-heal — one rebuild per press, never a loop.
+  useEffect(() => {
+    if (!connectPressedAtRef.current) return undefined;
+    const t = setInterval(() => {
+      if (
+        shouldHealConnect({
+          pressedAt: connectPressedAtRef.current,
+          sttLive,
+          healed: connectHealedRef.current,
+        })
+      ) {
+        connectHealedRef.current = true; // once per press, whatever happens
+        startRecording();
+      }
+    }, 1000);
+    return () => clearInterval(t);
+  }, [sttLive, startRecording]);
 
   const AUTO_ATTACH_KEY = "catint_auto_attach_v1";
   const autoAttachAttemptedRef = useRef(false);

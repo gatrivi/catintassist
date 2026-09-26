@@ -25,6 +25,35 @@ import { APP_VERSION } from '../constants/version';
 /** Newest first. Only the entry matching APP_VERSION is shown on load. */
 export const RELEASE_NOTES_CATALOG = [
   {
+    version: '4.153.0',
+    id: 'stt-really-starts',
+    highlightElementIds: ['header-connect-btn'],
+    es: {
+      title: 'CONNECT ahora sí prende Deepgram',
+      intro: 'Corregido: si apretabas CONNECT y no llegaba nada, era porque la app creía estar conectada cuando no había audio. Ahora una sola señal manda: Deepgram abierto Y audio fluyendo.',
+      sections: [{ heading: 'Qué cambió', bullets: [
+        'CONNECT solo arranca la llamada si Deepgram está de verdad transcribiendo. Antes, el “idle ear” fingía estar conectado y la llamada pasaba en silencio.',
+        'Los dos sockets (EN y ES) abren en paralelo: antes colgar uno dejaba todo sin audio y sin aviso.',
+        'Si la pestaña dejó de compartir audio o el micrófono está muteado, se vuelve a pedir en vez de reutilizar un audio muerto.',
+        'Si 1,5 s después del CONNECT no hay audio, la app reconecta sola una vez.',
+        'Nuevo aviso ámbar “DG up, no audio” cuando Deepgram está abierto pero no entra sonido.',
+        'Si falló la pestaña, el mensaje dice cómo salir: “M (mic) yCONNECT”.',
+      ] }],
+    },
+    en: {
+      title: 'CONNECT now really starts Deepgram',
+      intro: 'Fixed: pressing CONNECT with no text used to mean the app thought it was connected while no audio flowed. One signal rules now — sockets open AND audio flowing.',
+      sections: [{ heading: 'What changed', bullets: [
+        'CONNECT only starts the call when Deepgram is really transcribing. Idle-ear used to fake “connected”, so the call ran mute.',
+        'Both language sockets (EN + ES) open in parallel — one hung socket used to mean no audio and no warning.',
+        'A tab that stopped sharing audio, or a muted mic, is re-requested instead of reused as a dead stream.',
+        'If 1.5 s after CONNECT nothing is streaming, the app rebuilds once by itself.',
+        'New amber “DG up, no audio” chip when Deepgram is open but no sound arrives.',
+        'If the tab failed, the message tells you the way out: “M (mic) then CONNECT”.',
+      ] }],
+    },
+  },
+  {
     version: '4.152.1',
     id: 'stt-route-resolver',
     highlightElementIds: ['header-connect-btn'],

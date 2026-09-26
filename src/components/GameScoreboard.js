@@ -13,6 +13,7 @@ import { ConnectionDiagnosticsBar } from './ConnectionDiagnosticsBar';
 import { StatNumber } from './StatNumber';
 import { ConnectInterpretButton } from './ConnectInterpretButton';
 import { needsUserSuppliedDeepgramKey } from '../utils/deepgramRuntimeKey';
+import { resolveConnectIntent } from '../utils/connectEvidence';
 import { computeEndgamePlan, formatEndgamePlan } from './DailyTargetsChip';
 import {
   isComponentVisible,
@@ -283,13 +284,15 @@ const DirectionalCue = ({
   }
 
   const handleSingle = () => {
-    if (isZombieCall) return onRecovery?.();
-    if (!audioAttached) return onAttachAudio?.();
+    const intent = resolveConnectIntent({ isZombieCall, audioAttached });
+    if (intent === 'recovery') return onRecovery?.();
+    if (intent === 'attach') return onAttachAudio?.();
     return onStartCall?.();
   };
   const handleDouble = () => {
-    if (isZombieCall) return onRecovery?.();
-    if (!audioAttached) return (onAttachAudioFresh || onAttachAudio)?.();
+    const intent = resolveConnectIntent({ isZombieCall, audioAttached, doubleTap: true });
+    if (intent === 'recovery') return onRecovery?.();
+    if (intent === 'attach-fresh') return (onAttachAudioFresh || onAttachAudio)?.();
     return onConnectAnotherTab?.();
   };
 
