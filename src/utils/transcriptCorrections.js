@@ -109,6 +109,106 @@ export const findGlossaryTranslation = (sourceText, sourceLang, targetLang) => {
   return store[key] || null;
 };
 
+/** Every pinned glossary entry (sentence or phrase), newest first. */
+export const loadGlossary = (sourceLang, targetLang) => {
+  const s = normalizeLang(sourceLang);
+  const t = normalizeLang(targetLang);
+  return loadCorrections()
+    .filter((e) => e.kind === CORRECTION_KIND.GLOSSARY)
+    .filter((e) => !s || normalizeLang(e.lang) === s)
+    .filter((e) => !t || normalizeLang(e.targetLang) === t);
+};
+
+const escapeReGloss = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
+/** Fold accents + lowercase, so "cánula" matches "canula". */
+const foldMatch = (s) =>
+  (s || '')
+    .toString()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase();
+
+/**
+ * A pin qualifies as a reusable PHRASE when it is:
+ *   - two or more words ("behavioral health"), or
+ *   - ONE word of at least MIN_SINGLE_PIN_CHARS characters ("disclosure").
+ *
+ * Short single words are refused on purpose: pinning "no" or "the" and having it
+ * auto-applied inside every future sentence would corrupt real ones. The
+ * operator can always pin such a word as a two-word phrase instead, or use the
+ * STT lexicon (which is a different, reviewed list).
+ */
+export const GLOSSARY_MIN_PHRASE_WORDS = 2;
+export const GLOSSARY_MIN_SINGLE_PIN_CHARS = 4;
+
+const qualifiesAsPhrase = (source) => {
+  const words = source.split(' ').filter(Boolean);
+  if (words.length >= GLOSSARY_MIN_PHRASE_WORDS) return true;
+  return words.length === 1 && words[0].replace(/[^\p{L}\p{N}]/gu, '').length >= GLOSSARY_MIN_SINGLE_PIN_CHARS;
+};
+
+/**
+ * v4.161.0 — PHRASE-level glossary.
+ *
+ * The sentence-exact lookup above only fires on one exact sentence, so in a CSA
+ * call you would re-pin every phrasing by hand. Phrase mode lets the interpreter
+ * pin a TERM once ("behavioral health" → "salud conductual") and have it apply
+ * inside every future sentence.
+ *
+ * Safety rules, because this rewrites the text the translator receives:
+ *  - LONGEST source phrase wins, so a longer pin is never chopped by a shorter
+ *    one sitting inside it;
+ *  - word-boundary matching, so "referral" cannot fire inside "referrals";
+ *  - accents folded, case ignored;
+ *  - single-word pins are ignored here (they belong to the STT lexicon, and a
+ *    one-word translation pin is far too blunt to auto-apply).
+ */
+export const applyGlossaryPhrases = (text, sourceLang, targetLang) => {
+  const raw = typeof text === 'string' ? text : '';
+  const entries = loadGlossary(sourceLang, targetLang)
+    .map((e) => ({
+      source: (e.sourceHeard || '').trim().replace(/\s+/g, ' '),
+      target: (e.corrected || '').trim(),
+    }))
+    .filter((e) => e.source && e.target && qualifiesAsPhrase(e.source))
+    // longest first: the specific pin must beat the general one
+    .sort((a, b) => b.source.length - a.source.length);
+
+  if (!entries.length) return { text: raw, applied: [] };
+
+  const applied = [];
+  let out = raw;
+  for (const { source, target } of entries) {
+    const re = new RegExp(
+      `(?<![\\p{L}\\p{N}])${escapeReGloss(foldMatch(source)).replace(/\s+/g, '[\\s\\u00a0]+')}(?![\\p{L}\\p{N}])`,
+      'giu',
+    );
+    if (!re.test(out)) continue; // lastIndex is irrelevant: re is rebuilt each pass
+    out = out.replace(re, target);
+    applied.push({ from: source, to: target });
+  }
+  return { text: out, applied };
+};
+
+/** Delete one entry by its key. Returns true when something was removed. */
+export const removeCorrection = (key) => {
+  const store = readStore();
+  if (!store[key]) return false;
+  delete store[key];
+  writeStore(store);
+  return true;
+};
+
+/** Delete every glossary entry for a language pair. Returns how many went. */
+export const clearGlossary = (sourceLang, targetLang) => {
+  const store = readStore();
+  const doomed = loadGlossary(sourceLang, targetLang).map((e) => e.key);
+  doomed.forEach((k) => delete store[k]);
+  if (doomed.length) writeStore(store);
+  return doomed.length;
+};
+
 /** Replace known misheard phrases (longest first, case-insensitive). */
 export const applySttCorrections = (text, lang) => {
   const raw = (text || '').trim();

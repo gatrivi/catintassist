@@ -65,7 +65,21 @@ import {
   KEYTERM_MAX_TERMS,
 } from '../utils/sttKeyterms';
 // v4.158.0 — the operator's own ✎ corrections, read to preview what would be sent.
-import { loadCorrections, CORRECTIONS_CHANGED_EVENT } from '../utils/transcriptCorrections';
+import {
+  loadCorrections,
+  loadGlossary,
+  removeCorrection,
+  clearGlossary,
+  CORRECTIONS_CHANGED_EVENT,
+} from '../utils/transcriptCorrections';
+// v4.161.0 — off / exact / phrase: the operator decides how strictly pins apply
+import {
+  GLOSSARY_MODES,
+  GLOSSARY_MODE_LABELS,
+  GLOSSARY_MODE_HINTS,
+  loadGlossaryMode,
+  saveGlossaryMode,
+} from '../utils/glossaryMode';
 import {
   STT_DIAGNOSTIC_SETTINGS_CHANGED_EVENT,
   readSttDiagnosticSettings,
@@ -138,8 +152,15 @@ export default function SettingsPanel({
   const [userKeytermPreview, setUserKeytermPreview] = useState(() =>
     keytermsFromCorrections(loadCorrections()),
   );
+  // v4.161.0 — the pinned glossary and how strictly it applies. The store used to
+  // be invisible, which made it impossible to audit what the app was forcing.
+  const [glossaryMode, setGlossaryMode] = useState(loadGlossaryMode);
+  const [glossaryEntries, setGlossaryEntries] = useState(() => loadGlossary());
   useEffect(() => {
-    const refresh = () => setUserKeytermPreview(keytermsFromCorrections(loadCorrections()));
+    const refresh = () => {
+      setUserKeytermPreview(keytermsFromCorrections(loadCorrections()));
+      setGlossaryEntries(loadGlossary());
+    };
     window.addEventListener(CORRECTIONS_CHANGED_EVENT, refresh);
     return () => window.removeEventListener(CORRECTIONS_CHANGED_EVENT, refresh);
   }, []);
@@ -626,6 +647,79 @@ export default function SettingsPanel({
               </p>
             </div>
             <TranslationKeysForm />
+            {/* v4.161.0 — the glossary: what is pinned, and how strictly it applies */}
+            <div>
+              <div style={{ fontSize: 11, color: '#93c5fd', marginBottom: 6 }}>Pinned glossary</div>
+              <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>
+                {GLOSSARY_MODES.map((m) => (
+                  <button
+                    key={m}
+                    type="button"
+                    aria-pressed={glossaryMode === m}
+                    onClick={() => setGlossaryMode(saveGlossaryMode(m))}
+                    style={{
+                      ...tabBtn,
+                      background: glossaryMode === m ? 'rgba(16,185,129,0.25)' : tabBtn.background,
+                    }}
+                  >
+                    {GLOSSARY_MODE_LABELS[m]}
+                  </button>
+                ))}
+                {glossaryEntries.length > 0 && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      clearGlossary();
+                      setGlossaryEntries(loadGlossary());
+                    }}
+                    style={{ ...tabBtn }}
+                    title="Delete every pinned translation for this language pair"
+                  >
+                    Clear all
+                  </button>
+                )}
+              </div>
+              <p style={{ fontSize: 10, color: 'rgba(255,255,255,0.5)', margin: '6px 0 0' }}>
+                {GLOSSARY_MODE_HINTS[glossaryMode]} Fix a translation with ✎ to pin it.
+                {glossaryMode === 'phrase'
+                  ? ' PHRASE mode applies a pinned term inside every later sentence — best for CSA/legal, where the same term returns in different wording.'
+                  : ''}
+              </p>
+              {glossaryEntries.length > 0 && (
+                <div style={{ marginTop: 6, display: 'flex', flexDirection: 'column', gap: 2 }}>
+                  {glossaryEntries.map((e) => (
+                    <div
+                      key={e.key}
+                      style={{
+                        display: 'flex',
+                        gap: 6,
+                        alignItems: 'center',
+                        fontSize: 10,
+                        color: 'rgba(255,255,255,0.75)',
+                        background: 'rgba(255,255,255,0.04)',
+                        borderRadius: 4,
+                        padding: '3px 6px',
+                      }}
+                    >
+                      <span style={{ flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                        {e.sourceHeard} → {e.corrected}
+                      </span>
+                      <button
+                        type="button"
+                        aria-label={`Delete pinned translation ${e.sourceHeard}`}
+                        onClick={() => {
+                          removeCorrection(e.key);
+                          setGlossaryEntries(loadGlossary());
+                        }}
+                        style={{ ...tabBtn, padding: '0 6px' }}
+                      >
+                        ✕
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
           </div>
         )}
 

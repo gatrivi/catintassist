@@ -5,7 +5,15 @@ import {
   isIncrementalTranscriptGrowth,
   isSentenceComplete,
 } from '../utils/translationQuality';
-import { applySttCorrections, findGlossaryTranslation, CORRECTIONS_CHANGED_EVENT } from '../utils/transcriptCorrections';
+import {
+  applySttCorrections,
+  findGlossaryTranslation,
+  applyGlossaryPhrases,
+  CORRECTIONS_CHANGED_EVENT,
+} from '../utils/transcriptCorrections';
+// v4.161.0 — off / exact / phrase, the operator's call, read per request
+import { loadGlossaryMode } from '../utils/glossaryMode';
+import { catLog } from '../utils/catLog';
 import { translateWithFallback } from '../utils/translationEngines';
 import { getTranslationApiKeys } from '../utils/translationRuntimeKeys';
 import { dedupeInFlight, withTranslationSlot } from '../utils/translationRequestQueue';
@@ -366,16 +374,36 @@ export const useTranslate = (
       const capId = captionId || `anon-${hashTranslationSource(normText)}`;
 
       const sourceForTranslate = applySttCorrections(normText, sLang);
-      const glossaryHit = findGlossaryTranslation(sourceForTranslate, sLang, tLang);
-      if (glossaryHit?.corrected) {
-        setTranslation(glossaryHit.corrected);
-        setTranslationMeta({ engineId: 'glossary', quality: 'ok', failures: [], tried: ['glossary'] });
-        setIsTranslating(false);
-        setEngineStatus('ready');
-        hasGoodTranslationRef.current = true;
-        lastTranslatedTextRef.current = normText;
-        lastWordCountRef.current = wordCount;
-        return;
+
+      // v4.161.0 — the glossary mode is the operator's call, read per request so a
+      // change in Settings applies to the next line without a reload.
+      const glossaryMode = loadGlossaryMode();
+
+      if (glossaryMode === 'phrase') {
+        // Pinned TERMS first: they change the wording the engine receives, so the
+        // engine does the rest. Never returns a full sentence the operator did
+        // not write — only the pinned fragments inside this one.
+        const { text: withPhrases, applied } = applyGlossaryPhrases(
+          sourceForTranslate,
+          sLang,
+          tLang,
+        );
+        if (applied.length) {
+          catLog('[glossary] phrase', { capId, applied });
+          sourceForTranslate = withPhrases; // eslint-disable-line no-param-reassign
+        }
+      } else if (glossaryMode === 'exact') {
+        const glossaryHit = findGlossaryTranslation(sourceForTranslate, sLang, tLang);
+        if (glossaryHit?.corrected) {
+          setTranslation(glossaryHit.corrected);
+          setTranslationMeta({ engineId: 'glossary', quality: 'ok', failures: [], tried: ['glossary'] });
+          setIsTranslating(false);
+          setEngineStatus('ready');
+          hasGoodTranslationRef.current = true;
+          lastTranslatedTextRef.current = normText;
+          lastWordCountRef.current = wordCount;
+          return;
+        }
       }
 
       setIsTranslating(true);
