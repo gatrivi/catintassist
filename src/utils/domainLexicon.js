@@ -28,6 +28,12 @@
  * is how you corrupt a transcript. Add what the eval actually reports wrong.
  */
 
+// v4.156.0: the negation detector lives in its own module (read-only feature,
+// own switch). Imported here because applyDomainRepair reports gaps alongside
+// its repairs; re-exported below so older callers keep working. No cycle: the
+// guard knows nothing about this file.
+import { findNegationGaps } from './negationGuard';
+
 const fold = (s) =>
   (s || '')
     .toString()
@@ -113,45 +119,12 @@ export const SAFE_DOMAIN_REPAIR_RULES = DOMAIN_REPAIR_RULES.filter(
     r.mishears.every((m) => m && !/\d/.test(m)),
 );
 
-/** Negation cues. If any of these is present, the bubble is not missing a negation. */
-const NEGATION_CUES = {
-  en: ['no', 'not', 'never', 'denies', 'deny', 'denied', 'without', 'negative', 'free of', 'none'],
-  es: ['no', 'niega', 'niegan', 'sin', 'nunca', 'negativo', 'negativa', 'ningun', 'ninguna', 'descarta', 'refiere'],
-};
-
 /**
- * Shapes where a dropped negation turns the meaning of the sentence.
- * We only REPORT these (rule 5): "is she allergic" and "is she not allergic"
- * are the same audio to an acoustic model, so auto-inserting "not" would invent
- * a diagnosis. A human decides.
+ * v4.156.0: the negation logic moved to its own module (src/utils/negationGuard.js)
+ * because it became a first-class, read-only feature with its own switch. It is
+ * re-exported here so existing callers keep working.
  */
-const NEGATION_RISKS = {
-  en: [
-    { re: /\b(?:is|are|was|he|she|patient)\b[^.?!]{0,24}\ballergic\b/, expect: 'no / denies / without' },
-    { re: /\bany\s+(?:chest\s+pain|difficulty\s+breathing|shortness\s+of\s+breath|fever|nausea|bleeding)\b/, expect: 'no / denies / without' },
-    { re: /\b(?:is|are)\s+(?:diabetic|hypertensive|anemic|an[aé]mic)\b/, expect: 'no / denies / without' },
-  ],
-  es: [
-    { re: /\bal[eé]rgic[oa]?\b/, expect: 'no / niega / sin' },
-    { re: /\b(?:es|son)\s+(?:diab[eé]tic|hipertens|an[eé]mic)/, expect: 'no / niega / sin' },
-    { re: /\b(?:alguna|alg[uú]n)\s+(?:dificultad\s+respiratoria|dolor|fiebre|sangrado)\b/, expect: 'ninguno / niega / sin' },
-  ],
-};
-
-/**
- * Report-only: utterances that look like a negation went missing.
- * @returns {{expect:string, snippet:string}[]}
- */
-export const findNegationGaps = (text, lang = 'en') => {
-  const code = langCode(lang);
-  const hay = fold(text);
-  if (!hay.trim()) return [];
-  const cues = NEGATION_CUES[code] || [];
-  if (cues.some((c) => hasTerm(hay, c))) return [];
-  return (NEGATION_RISKS[code] || [])
-    .filter(({ re }) => re.test(hay))
-    .map(({ re, expect }) => ({ expect, snippet: hay.match(re)[0].trim() }));
-};
+export { findNegationGaps } from './negationGuard';
 
 /** Rules for one language, longest mishearing first (so "all but the roll" wins). */
 const rulesFor = (lang, rules) =>

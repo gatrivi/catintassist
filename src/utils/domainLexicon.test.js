@@ -92,7 +92,7 @@ describe('domainLexicon v4.155.0', () => {
   });
 
   test('NEVER invents a missing negation — only reports it', () => {
-    const text = 'She is allergic to penicillin.';
+    const text = 'Patient chest pain'; // "denies" dropped by the provider
     const r = applyDomainRepair(text, 'en');
     expect(r.text).toBe(text); // unchanged, on purpose
     expect(r.negated.length).toBeGreaterThan(0);
@@ -104,7 +104,7 @@ describe('domainLexicon v4.155.0', () => {
   });
 
   test('ES negation gap is reported', () => {
-    expect(findNegationGaps('Es diabética y hipertensa.', 'es').length).toBeGreaterThan(0);
+    expect(findNegationGaps('Paciente con disnea.', 'es').length).toBeGreaterThan(0);
   });
 
   test('empty / nullish text is returned untouched', () => {

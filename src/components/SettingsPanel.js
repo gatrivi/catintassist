@@ -49,11 +49,13 @@ import {
   loadSttLatencyMode,
   saveSttLatencyMode,
 } from '../utils/deepgramListenConfig';
-// v4.155.0 — term repair switch (domain lexicon), default OFF
+// v4.155.0 / v4.156.0 — the two clinical guards (both OFF by default)
 import {
   isDomainRepairEnabled,
   setDomainRepairEnabled,
-} from '../utils/domainRepairSetting';
+  isNegationGuardEnabled,
+  setNegationGuardEnabled,
+} from '../utils/clinicalGuards';
 import {
   STT_DIAGNOSTIC_SETTINGS_CHANGED_EVENT,
   readSttDiagnosticSettings,
@@ -93,8 +95,10 @@ export default function SettingsPanel({
   const [themeStatus, setThemeStatus] = useState('');
   const [languagePair, setLanguagePair] = useState(loadLanguagePair);
   const [sttLatencyMode, setSttLatencyMode] = useState(loadSttLatencyMode);
-  // v4.155.0 — domain repair switch (OFF by default; see utils/domainRepairSetting.js)
+  // v4.155.0 — domain repair switch (OFF by default; see utils/clinicalGuards.js)
   const [domainRepairOn, setDomainRepairOn] = useState(isDomainRepairEnabled);
+  // v4.156.0 — negation guard switch (read-only warning, its own switch)
+  const [negationGuardOn, setNegationGuardOn] = useState(isNegationGuardEnabled);
   const [sttDiagnostics, setSttDiagnostics] = useState(readSttDiagnosticSettings);
   const [inspectorOn, setInspectorOn] = useState(readInspectorEnabled);
   const {
@@ -292,24 +296,39 @@ export default function SettingsPanel({
                 FAST = 100ms chunks + endpointing 150 (reconnects live audio). BAL = steadier 250ms / 300ms.
               </p>
             </div>
-            {/* v4.155.0 — domain repair switch. OFF = exactly what Deepgram said. */}
+            {/* v4.155.0 / v4.156.0 — the two clinical guards. OFF = today's behaviour. */}
             <div style={{ marginTop: 14 }}>
-              <button
-                type="button"
-                aria-pressed={domainRepairOn}
-                onClick={() => setDomainRepairOn(setDomainRepairEnabled(!domainRepairOn))}
-                style={{
-                  ...tabBtn,
-                  background: domainRepairOn ? 'rgba(34, 211, 238, 0.22)' : tabBtn.background,
-                }}
-              >
-                Term repair: {domainRepairOn ? 'ON' : 'OFF'}
-              </button>
+              <div style={{ fontSize: 11, color: '#93c5fd', marginBottom: 6 }}>Clinical guards</div>
+              <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                <button
+                  type="button"
+                  aria-pressed={domainRepairOn}
+                  onClick={() => setDomainRepairOn(setDomainRepairEnabled(!domainRepairOn))}
+                  style={{
+                    ...tabBtn,
+                    background: domainRepairOn ? 'rgba(34, 211, 238, 0.22)' : tabBtn.background,
+                  }}
+                >
+                  Term repair: {domainRepairOn ? 'ON' : 'OFF'}
+                </button>
+                <button
+                  type="button"
+                  aria-pressed={negationGuardOn}
+                  onClick={() => setNegationGuardOn(setNegationGuardEnabled(!negationGuardOn))}
+                  style={{
+                    ...tabBtn,
+                    background: negationGuardOn ? 'rgba(245, 158, 11, 0.22)' : tabBtn.background,
+                  }}
+                >
+                  Negation guard: {negationGuardOn ? 'ON' : 'OFF'}
+                </button>
+              </div>
               <p style={{ fontSize: 10, color: 'rgba(255,255,255,0.5)', margin: '6px 0 0' }}>
-                Fixes known medical/legal words Deepgram hears as plain English — “all but a roll” → albuterol,
-                “exit bit” → exhibit. It never touches a number, and it never invents a missing “denies”:
-                dropped negations are only reported, never guessed. Ships OFF on purpose — turn it on and
-                watch a call before you trust it.
+                <strong>Term repair</strong> fixes known medical/legal words Deepgram hears as plain English —
+                “all but a roll” → albuterol, “exit bit” → exhibit. It never touches a number, and it never
+                invents a missing “denies”. <strong>Negation guard</strong> only puts a ⚠ on a line whose
+                negation looks dropped (read-only, it changes no words). Both ship OFF on purpose: turn one on
+                and listen to a call before you trust it.
               </p>
             </div>
           </div>

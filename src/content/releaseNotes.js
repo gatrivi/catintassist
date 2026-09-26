@@ -25,6 +25,37 @@ import { APP_VERSION } from '../constants/version';
 /** Newest first. Only the entry matching APP_VERSION is shown on load. */
 export const RELEASE_NOTES_CATALOG = [
   {
+    version: '4.156.0',
+    id: 'negation-guard',
+    // The switch lives in Settings, not the header — the header is untouched
+    // on purpose: with both guards off the app looks and behaves as before.
+    highlightElementIds: ['header-app-logo-btn'],
+    es: {
+      title: 'Guarda de negaciones: marca la línea, nunca la inventa',
+      intro: 'Cuando Deepgram pierde un “niega”, la transcripción dice lo contrario de lo que dijo el paciente. Ahora una ⚠ ámbar en la burbuja te avisa — y la app sigue sin escribir esa palabra nunca.',
+      sections: [{ heading: 'Qué cambió', bullets: [
+        'Nuevo “Negation guard” en Ajustes → Deepgram, apagado por defecto. Es de solo lectura: no cambia ni una palabra.',
+        'La ⚠ aparece en el riel de la burbuja, en la misma línea del contador de palabras — cero espacio vertical robado a la transcripción.',
+        'Al pasar el mouse te dice qué se esperaba (“no / denies / without”).',
+        'Deliberadamente NO avisa en frases normales como “he is allergic to penicillin”: una alarma que grita siempre acaba silenciada. Las pruebas tienen más frases de “no debe avisar” que de “debe avisar”.',
+        'La app jamás inventa un “denies” que se perdió: adivinar una negación sería inventar un diagnóstico.',
+        'Métrica nueva en `npm run eval:stt`: recall 100% (2/2) y precision 100% (16/16 líneas limpias en silencio).',
+      ] }],
+    },
+    en: {
+      title: 'Negation guard: flags the line, never invents it',
+      intro: 'When Deepgram loses a “denies”, the transcript says the opposite of what the patient said. An amber ⚠ on the bubble now tells you — and the app still never writes that word.',
+      sections: [{ heading: 'What changed', bullets: [
+        'New “Negation guard” in Settings → Deepgram, off by default. Read-only: it changes not one word.',
+        'The ⚠ sits in the bubble rail, on the same line as the word count — zero vertical space taken from the transcript.',
+        'Hover it to see what was expected (“no / denies / without”).',
+        'It deliberately does NOT flag ordinary sentences like “he is allergic to penicillin”: an alarm that always fires ends up muted. The tests carry more must-not-warn sentences than must-warn ones.',
+        'The app will never invent a lost “denies” — guessing a negation means inventing a diagnosis.',
+        'New metric in `npm run eval:stt`: recall 100% (2/2), precision 100% (16/16 clean lines stayed quiet).',
+      ] }],
+    },
+  },
+  {
     version: '4.155.1',
     id: 'domain-lexicon-term-repair',
     // Nothing in the header moved on purpose: the switch ships OFF, so the app

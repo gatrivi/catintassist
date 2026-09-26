@@ -1,0 +1,10 @@
+{
+  "id": "probe-negation-dropped-es",
+  "kind": "medical",
+  "lang": "es",
+  "label": "Informational: 'niega' perdido deja el texto diciendo lo contrario",
+  "reference": "El paciente niega dolor en el pecho.",
+  "hypothesis": "El paciente dolor en el pecho.",
+  "terms": ["dolor"],
+  "criticalPhrases": ["niega"]
+}

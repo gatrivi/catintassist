@@ -2,6 +2,17 @@
 
 **Version source:** `src/constants/version.js` (must match `package.json` + top-right UI pill)
 
+## v4.156.0 - Negation guard: flags the dropped "denies", never invents it
+
+- Shipped v4.155.0's negation detection was real but **invisible** — console-only. The one error class that can change what a patient agreed to had no on-screen signal at all.
+- Added `src/utils/negationGuard.js`: `findNegationGaps()` (READ-ONLY, returns `{expect, snippet}` and never touches the text), `hasNegationCue()`, and `NEGATION_GAP_TITLE`. Split out of `domainLexicon.js` because it is now a first-class feature with its own switch.
+- **Precision over recall, deliberately.** "He is allergic to penicillin" is a NORMAL affirmative a patient says all day, so the guard does **not** flag it — only DEGENERATE shapes ("patient chest pain", "any chest pain"). An alarm that fires constantly gets muted, and then it cannot catch the real thing; that is the v4.155.1 VANISH lesson applied to a brand-new alarm. `negationGuard.test.js` therefore carries **more must-not-warn sentences than must-warn ones**.
+- `clinicalGuards.js` (renamed from `domainRepairSetting.js`): both clinical switches in one place, built by one `makeGuard` helper so they cannot drift. **Term repair** and **Negation guard** are independent by design — the safe half must not hide behind the risky half. Both default OFF.
+- UI: amber ⚠ in the bubble rail, rendered **on the same line as the word count** so it costs the layout zero height (the 80/20 viewport rule). Tooltip says what was expected. `SettingsPanel.test.js` unaffected; a human-fixed bubble (✎) is never flagged.
+- Harness: `checkNegationGuard()` scores recall and precision across the whole corpus, returns `offenders[]` (MISSED / FALSE POSITIVE with the exact text) so a regression names the sentence. Gated: **recall must be 1.0**, precision ≥ 80%. A test proves the gate can fail. Corpus gained `probe-negation-dropped-es`.
+- Measured: **recall 100% (2/2 dropped negations caught), precision 100% (16/16 clean lines silent)**.
+- 1253/1253 tests green, build clean.
+
 ## v4.155.1 - Domain lexicon (term repair) + the false VANISH alarm
 
 - Reported: "we do mostly eng spa medical interpreting, 95 pc with 3pc legal bills insurance police etc." Two things followed from it — the corpus was measuring the wrong mix, and there was no fix for the mishearings it kept reporting.

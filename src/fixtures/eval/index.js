@@ -24,6 +24,7 @@ import pipelineRepairDrugName from './pipeline-repair-drug-name.json';
 import pipelineRepairLegalExhibit from './pipeline-repair-legal-exhibit.json';
 import probeDrugName from './probe-drug-name-mangling.json';
 import probeNegationDropped from './probe-negation-dropped.json';
+import probeNegationDroppedEs from './probe-negation-dropped-es.json';
 import probeLegalVerb from './probe-legal-verb-confusion.json';
 import probeDoseSwap from './probe-dose-swap.json';
 
@@ -54,6 +55,7 @@ export const EVAL_CASES = [
   // Informational text probes of known failure shapes (never gated).
   probeDrugName,
   probeNegationDropped,
+  probeNegationDroppedEs,
   probeLegalVerb,
   probeDoseSwap,
 ];

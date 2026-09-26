@@ -72,10 +72,13 @@ import {
 // resolveDisplayText is a pass-through and the bubble shows exactly what
 // Deepgram said.
 import { resolveDisplayText } from '../utils/displaySourceText';
+import { NEGATION_GAP_TITLE } from '../utils/negationGuard';
 import {
   isDomainRepairEnabled,
   DOMAIN_REPAIR_CHANGED_EVENT,
-} from '../utils/domainRepairSetting';
+  isNegationGuardEnabled,
+  NEGATION_GUARD_CHANGED_EVENT,
+} from '../utils/clinicalGuards';
 import { catLog } from '../utils/catLog';
 
 // Messages addressed TO the interpreter ("Interpreter, ..." / "Intérprete, ...") — light blue so they're never read as patient speech.
@@ -459,6 +462,7 @@ const BubbleRail = ({
   canPlay,
   onPlayClick,
   translationFallback = false,
+  negationGaps = [], // v4.156.0: read-only warning, costs zero vertical space
 }) => {
   const steps = ['translating', 'processing', 'ready'];
   const currentIndex = steps.indexOf(engineStatus === 'buffering' ? 'processing' : engineStatus);
@@ -488,9 +492,25 @@ const BubbleRail = ({
           />
         ))}
       </svg>
-      {showWc && (
-        <span className="bubble-rail-wc" style={{ color: wcColor }} title={`${wc} words`}>
-          {wc > 99 ? '99' : wc}
+      {/* v4.156.0: the ⚠ shares the word-count line, so the marker costs the
+          layout ZERO extra height — transcription keeps the viewport. */}
+      {(negationGaps.length > 0 || showWc) && (
+        <span className="bubble-rail-meta">
+          {negationGaps.length > 0 && (
+            <span
+              className="bubble-rail-negation"
+              title={`${NEGATION_GAP_TITLE} Expected: ${negationGaps.map((g) => g.expect).join(' / ')}`}
+              aria-label={NEGATION_GAP_TITLE}
+              role="img"
+            >
+              ⚠
+            </span>
+          )}
+          {showWc && (
+            <span className="bubble-rail-wc" style={{ color: wcColor }} title={`${wc} words`}>
+              {wc > 99 ? '99' : wc}
+            </span>
+          )}
         </span>
       )}
       <button
@@ -548,22 +568,23 @@ const TranslatedBubble = ({
   canEdit = true,
   correctionsRev = 0,
   domainRepairOn = false, // v4.155.0: term repair switch (OFF unless the operator turns it on)
+  negationGuardOn = false, // v4.156.0: read-only negation warning (own switch)
   continuityKey = '',
   prevText = '', // v4.152.0: previous bubble's text (cross-message repeat dimming)
   prevTranslationText = '', // previous bubble's translation, same purpose
 }) => {
   const { translationMood } = useSession();
-  const displaySourceText = useMemo(() => {
+  const { text: displaySourceText, negated: negationGaps } = useMemo(() => {
     const r = resolveDisplayText({ text, lang, userCorrected, domainRepairOn });
-    // v4.155.0: every lexicon change is logged, so after a call you can ask
+    // v4.156.0: every lexicon change is logged, so after a call you can ask
     // "did it touch anything?" and get an answer (__CAT_DUMP('[domain-repair]')).
     if (r.repairs.length) catLog('[domain-repair]', { id, lang, repairs: r.repairs });
     if (r.negated.length) {
-      // Report-only: a dropped "denies" changes what the patient agreed to, so
-      // it must reach a human — we never invent the word ourselves.
+      // READ-ONLY: a dropped "denies" changes what the patient agreed to, so it
+      // must reach a human — we never invent the word ourselves.
       catLog('[domain-repair] negation gap?', { id, lang, gaps: r.negated });
     }
-    return r.text;
+    return { text: r.text, negated: r.negated };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [text, lang, userCorrected, correctionsRev, domainRepairOn, id]);
 
@@ -716,6 +737,7 @@ const TranslatedBubble = ({
             canPlay={Boolean(translation && audioUrl)}
             onPlayClick={() => (isThisPlaying ? stopTTS() : playTTS(translation, targetLang, audioUrl))}
             translationFallback={translationIsSourceFallback}
+            negationGaps={negationGuardOn ? negationGaps : []}
           />
         )}
       </div>
@@ -790,6 +812,7 @@ const translatedBubblePropsEqual = (prev, next) =>
   prev.prevTranslationText === next.prevTranslationText &&
   prev.correctionsRev === next.correctionsRev &&
   prev.domainRepairOn === next.domainRepairOn && // v4.155.0
+  prev.negationGuardOn === next.negationGuardOn && // v4.156.0
   prev.continuityKey === next.continuityKey &&
   prev.languagePair?.left === next.languagePair?.left &&
   prev.languagePair?.right === next.languagePair?.right;
@@ -877,6 +900,16 @@ export const TranscriptionBoard = ({
       setDomainRepairOn(typeof e?.detail === 'boolean' ? e.detail : isDomainRepairEnabled());
     window.addEventListener(DOMAIN_REPAIR_CHANGED_EVENT, onChange);
     return () => window.removeEventListener(DOMAIN_REPAIR_CHANGED_EVENT, onChange);
+  }, []);
+
+  // v4.156.0 — negation guard switch. Read-only, and deliberately independent
+  // of the repair switch: the safe half must not hide behind the risky half.
+  const [negationGuardOn, setNegationGuardOn] = useState(isNegationGuardEnabled);
+  useEffect(() => {
+    const onChange = (e) =>
+      setNegationGuardOn(typeof e?.detail === 'boolean' ? e.detail : isNegationGuardEnabled());
+    window.addEventListener(NEGATION_GUARD_CHANGED_EVENT, onChange);
+    return () => window.removeEventListener(NEGATION_GUARD_CHANGED_EVENT, onChange);
   }, []);
   const [correctionEditor, setCorrectionEditor] = useState(null);
   const [footerStatus, setFooterStatus] = useState('');
@@ -1521,6 +1554,7 @@ export const TranscriptionBoard = ({
                   canEdit={cap.isFinal !== false}
                   correctionsRev={correctionsRev}
                   domainRepairOn={domainRepairOn}
+                  negationGuardOn={negationGuardOn}
                   wordConfidence={cap.wordConfidence || null}
                   {...makeEditHandlers(cap)}
                 />
@@ -1650,6 +1684,7 @@ export const TranscriptionBoard = ({
                   canEdit={!isLive}
                   correctionsRev={correctionsRev}
                   domainRepairOn={domainRepairOn}
+                  negationGuardOn={negationGuardOn}
                   wordConfidence={cap.wordConfidence || null}
                   prevText={prevText}
                   prevTranslationText={prevTranslationText}

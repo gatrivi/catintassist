@@ -9,6 +9,7 @@
 import { replayFixtureEvents } from './fixtureReplay';
 import { scoreEvalCase, summarizeEval, KIND_MIX_WEIGHT } from './sttEval';
 import { applyDomainRepair } from './domainLexicon';
+import { findNegationGaps, hasNegationCue } from './negationGuard';
 import { EVAL_CASES } from '../fixtures/eval';
 
 /** Last final/speech_final event = what Deepgram actually committed. */
@@ -115,6 +116,76 @@ export const checkEvalGates = (fixtures, scored) => {
     }
   });
   return failures;
+};
+
+/**
+ * v4.156.0 — negation guard coverage.
+ *
+ * Two questions, and they pull in opposite directions:
+ *  - CATCH: when the reference HAS a negation and the hypothesis dropped it, did
+ *    the guard notice? (recall — missing one can hurt a patient)
+ *  - QUIET: when the line kept its negation, did the guard stay silent?
+ *    (precision — an alarm that cries wolf gets muted, and then it is useless.
+ *    That is the v4.155.1 VANISH lesson, applied to a brand-new alarm.)
+ *
+ * False positives are gated as a RATIO, not at zero: a guard with zero recall is
+ * worthless, and a rare false positive is still worth having.
+ */
+export const checkNegationGuard = (scored) => {
+  const failures = [];
+  let caught = 0;
+  let expected = 0;
+  let falsePositives = 0;
+  let quiet = 0;
+  let shouldBeQuiet = 0;
+  const offenders = [];
+
+  (scored || []).forEach((c) => {
+    if (!c) return;
+    const shown = c.display ?? c.hypothesis ?? '';
+    if (!shown) return;
+    const gaps = findNegationGaps(shown, c.lang);
+    // A case "should warn" when the correct text carries a negation and the
+    // transcript we show lost it. The guard has to notice on its own.
+    const dropped =
+      hasNegationCue(c.reference || '', c.lang) && !hasNegationCue(shown, c.lang);
+    if (dropped) {
+      expected += 1;
+      if (gaps.length) caught += 1;
+      else offenders.push(`MISSED ${c.id}: "${shown}"`);
+    } else {
+      shouldBeQuiet += 1;
+      if (!gaps.length) quiet += 1;
+      else {
+        falsePositives += 1;
+        offenders.push(`FALSE POSITIVE ${c.id}: "${shown}"`);
+      }
+    }
+  });
+
+  const recall = expected ? caught / expected : 1;
+  const precision = shouldBeQuiet ? quiet / shouldBeQuiet : 1;
+  if (recall < 1) {
+    failures.push(
+      `negation guard missed ${expected - caught}/${expected} dropped negation(s) in the corpus`,
+    );
+  }
+  if (precision < 0.8) {
+    failures.push(
+      `negation guard cried wolf: ${falsePositives}/${shouldBeQuiet} clean lines flagged (${(precision * 100).toFixed(0)}% precision)`,
+    );
+  }
+  return {
+    failures,
+    recall,
+    precision,
+    caught,
+    expected,
+    falsePositives,
+    quiet,
+    shouldBeQuiet,
+    offenders,
+  };
 };
 
 /**

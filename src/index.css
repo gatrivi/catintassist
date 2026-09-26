@@ -6153,6 +6153,26 @@ body:has(.app-container[data-call-mode="true"]) .element-hint-panel {
   display: block;
 }
 
+/* v4.156.0 — negation guard marker. Shares the word-count line, so it adds
+   ZERO height to the bubble: transcription keeps the viewport. Amber = "look
+   again", never a blocking banner. */
+.bubble-rail-meta {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 1px;
+  height: 0.7rem;
+  line-height: 1;
+}
+
+.bubble-rail-negation {
+  color: #f59e0b;
+  font-size: 0.62rem;
+  line-height: 1;
+  cursor: help;
+  text-shadow: 0 0 4px rgba(245, 158, 11, 0.55);
+}
+
 .bubble-rail-wc {
   flex: 0 0 3ch;
   min-width: 3ch;

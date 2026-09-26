@@ -94,6 +94,34 @@ re-punctuation on finalize (`82` → `82,`) reported `lost: ['82','96']` on
 **every call**. The alarm meant to catch a vanishing phone number was crying
 wolf constantly. Now words compare by letters+digits only.
 
+## v4.156.0 — negation guard (the visible half) · **SHIPPED**
+
+v4.155.0 detected dropped negations but only wrote them to the console. The one
+error class that can change what a patient agreed to had **no signal on screen**.
+
+- `src/utils/negationGuard.js` (split out of the lexicon): `findNegationGaps()`
+  is **read-only** — it returns `{expect, snippet}` and never edits a word. Plus
+  `hasNegationCue()` and the tooltip text.
+- **Precision over recall, on purpose.** "He is allergic to penicillin" is a
+  normal affirmative; flagging it would fire all day and get muted. Only
+  *degenerate* shapes warn: a complaint glued to the subject ("patient chest
+  pain") or a bare "any …". The test file therefore carries **more
+  must-not-warn sentences than must-warn ones**.
+- `clinicalGuards.js` holds both switches, built by one `makeGuard` helper.
+  They are independent: the read-only guard must not hide behind the rewrite.
+- UI: amber ⚠ in the bubble rail **on the word-count line** — zero extra height.
+- Harness: `checkNegationGuard()` returns recall, precision and `offenders[]`
+  (MISSED / FALSE POSITIVE with the offending text). Gated: **recall 1.0**,
+  precision ≥ 80%. Today: recall 2/2, precision 16/16 clean lines.
+
+### The honest limit
+
+This guard catches *degenerate* dropped negations, not every possible one. "She
+is not diabetic" misheard as "she diabetic" is the same audio and leaves a
+perfectly well-formed sentence — nothing in the text betrays it. That is where
+the ✎ correction loop and the corpus probe remain the backstop, and where
+provider-side work (Stage 3) is the only real fix.
+
 ## Stage 3 — provider-side, only if the harness proves the win
 
 - `keyterm` biasing on both sockets (Deepgram supports it on `nova-3`; 500-token

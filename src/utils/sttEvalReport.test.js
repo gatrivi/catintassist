@@ -12,6 +12,7 @@ import {
   runEvalCorpus,
   checkEvalGates,
   checkRepairSafety,
+  checkNegationGuard,
   displayTextOf,
   providerTextOf,
   repairedDisplayTextOf,
@@ -21,10 +22,45 @@ import { renderEvalReport, KIND_MIX_WEIGHT } from './sttEval';
 
 test('STT eval report (medical + legal)', () => {
   const { scored, summary } = runEvalCorpus();
-  const failures = [...checkEvalGates(EVAL_CASES, scored), ...checkRepairSafety(scored)];
+  const guard = checkNegationGuard(scored);
+  const failures = [
+    ...checkEvalGates(EVAL_CASES, scored),
+    ...checkRepairSafety(scored),
+    ...guard.failures,
+  ];
   // eslint-disable-next-line no-console
-  console.log(`\n${renderEvalReport(summary, { title: 'STT eval — v4.155.0 corpus' })}`);
+  console.log(
+    `\n${renderEvalReport(summary, { title: 'STT eval — v4.156.0 corpus' })}\n` +
+      `**Negation guard**: recall ${(guard.recall * 100).toFixed(0)}% ` +
+      `(${guard.caught}/${guard.expected}), precision ${(guard.precision * 100).toFixed(0)}% ` +
+      `(${guard.quiet}/${guard.shouldBeQuiet} clean lines stayed quiet)` +
+      (guard.offenders.length ? `\n- ${guard.offenders.join('\n- ')}` : '') +
+      '\n',
+  );
   expect(failures).toEqual([]);
+});
+
+test('v4.156.0 — the negation guard catches every dropped negation in the corpus', () => {
+  const { scored } = runEvalCorpus();
+  const { recall, expected, caught } = checkNegationGuard(scored);
+  expect(expected).toBeGreaterThan(0);
+  expect({ recall, caught, expected }).toMatchObject({ recall: 1, caught: expected });
+});
+
+test('v4.156.0 — the guard does not cry wolf on clean lines', () => {
+  const { scored } = runEvalCorpus();
+  const { precision, falsePositives, shouldBeQuiet } = checkNegationGuard(scored);
+  expect(shouldBeQuiet).toBeGreaterThan(5);
+  expect(precision).toBeGreaterThanOrEqual(0.8);
+  // A brand-new alarm must be quieter than this to survive contact with a call.
+  expect(falsePositives).toBe(0);
+});
+
+test('v4.156.0 — a guard that cannot fail is decoration', () => {
+  const { scored } = runEvalCorpus();
+  // Pretend the guard is deaf: a corpus where a dropped negation goes unnoticed.
+  const deaf = scored.map((c) => ({ ...c, display: 'the nurse checked the blood pressure' }));
+  expect(checkNegationGuard(deaf).failures.join(' ')).toMatch(/missed \d+\/\d+/);
 });
 
 test('v4.155.0 — the domain lexicon never makes the text worse, never moves a digit', () => {

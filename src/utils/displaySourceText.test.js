@@ -40,12 +40,45 @@ describe('resolveDisplayText v4.155.0', () => {
 
   test('a dropped negation is reported, never written into the text', () => {
     const r = resolveDisplayText({
-      text: 'She is allergic to penicillin.',
+      text: 'Patient chest pain',
       lang: 'en',
       domainRepairOn: true,
     });
-    expect(r.text).toBe('She is allergic to penicillin.');
+    expect(r.text).toBe('Patient chest pain'); // untouched, on purpose
     expect(r.negated.length).toBeGreaterThan(0);
+  });
+
+  test('an ordinary affirmative is NOT treated as a dropped negation', () => {
+    // "He is allergic to penicillin" is a normal sentence a patient says all day.
+    // Flagging it would fire constantly, and a guard that fires constantly gets
+    // muted — see negationGuard.test.js for the full precision set.
+    expect(
+      resolveDisplayText({ text: 'He is allergic to penicillin', lang: 'en', domainRepairOn: true })
+        .negated,
+    ).toEqual([]);
+  });
+
+  test('v4.156.0 — the guard works with the repair switch OFF (they are independent)', () => {
+    // The safe half must not hide behind the risky half: with everything off,
+    // the text is untouched AND the warning is still computed.
+    const r = resolveDisplayText({ text: 'Patient chest pain', lang: 'en', domainRepairOn: false });
+    expect(r.text).toBe('Patient chest pain');
+    expect(r.negated.length).toBeGreaterThan(0);
+  });
+
+  test('v4.156.0 — a human-fixed bubble is never flagged', () => {
+    const r = resolveDisplayText({
+      text: 'Patient chest pain',
+      lang: 'en',
+      userCorrected: true,
+      domainRepairOn: true,
+    });
+    expect(r.negated).toEqual([]); // the human vouches for it
+  });
+
+  test('v4.156.0 — a clean line reports nothing', () => {
+    expect(resolveDisplayText({ text: 'Take one tablet twice daily', lang: 'en' }).negated).toEqual([]);
+    expect(resolveDisplayText({ text: 'Tome una tableta', lang: 'es' }).negated).toEqual([]);
   });
 
   test('empty / missing text is safe', () => {
