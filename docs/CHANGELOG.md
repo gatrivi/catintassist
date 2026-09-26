@@ -2,6 +2,18 @@
 
 **Version source:** `src/constants/version.js` (must match `package.json` + top-right UI pill)
 
+## v4.165.0 - the header eval, phase 1: five real bugs
+
+Full evaluation in [`dashboard-header-eval.md`](dashboard-header-eval.md) — `DashboardHeader.js` is 3,424 lines with 216 inline style objects. On-call and off-call, both states. This release is **Phase 1 only: real defects, no behaviour change.**
+
+- **Greeting Editor had the whole scoreboard drawn above it.** `headerMinimal` (`:900`) covered only `soundboard` and `goals`, so the full scoreboard + progress stack rendered in the Greeting Editor view — and at ≤900px the header is capped at 88px with `overflow:hidden`, so that content was unreachable rather than scrollable. All three workspace views now hide the body.
+- **`#daily-targets-chip` was mounted twice in meter-only mode** — once in `.session-controls-center` (CSS-hidden at `index.css:320`) and once in the meter row. Same DOM id twice, two `ResizeObserver`s. The center copy is no longer mounted when `meterOnly`.
+- **The number pills promised a copy and did nothing.** `.metric-pill` has carried `cursor: copy` since long before anything listened. New `CopyPill`: real clipboard write, ✓ flash, and `role="button"` + `tabIndex` + Enter/Space so it is not mouse-only. The log-off pill — the "what time should I leave" number — is the most useful one. Empty placeholders get `cursor: default` instead of lying.
+- **The grab-bar height was inline, so the budget was unreadable.** `maxHeight` came straight from localStorage and silently beat every CSS cap. Now `--scoreboard-max-vh`, consumed at `index.css:1163`. Behaviour is identical: the dead `260px` term in that rule never applied, and restoring it would have quietly capped the grab bar's range — a product decision, not a bug fix.
+- **Fixed a regression I introduced in v4.163.0:** `.goals-blocked-notice` was `top: 40px`, which is *inside* the ~90px call-compact header, at `z-index: 99992` against the header's `100` — so my "goal wheel is off-call only" notice painted over the button bar mid-call. Now `bottom: 44px`, clear of the on-call soundboard strip.
+- **10 new tests.** Nothing in the eval was deleted: cutting the retired-tooltip layer is Phase 2, and the progress-bar `title` tooltips (the ones that actually work) stay either way.
+- **The 80% rule is documented as a guideline, not a gate.** Capping hides controls rather than creating space, and the 12-cell grid alone is 134–144px. Space comes back by deleting the half of the header's components that are unused — which is Phase 2.
+
 ## v4.163.0 - the goal wheel is reachable and drivable without a mouse
 
 - **Bank Goal was below the fold at 900×600.** The pane is ~520px and the content ~600px, so saving a goal meant scrolling inside a scrolling column. `.dial-actions` is now `position: sticky; bottom: -1rem` with a gradient so content scrolls *under* the buttons. Anything new added to the panel must go above that block.

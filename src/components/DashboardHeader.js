@@ -142,6 +142,40 @@ const StickyTargetsChip = ({ dailyMinutes, monthlyMinutes, workDays, breakMinute
   <DailyTargetsChip dailyMinutes={dailyMinutes} monthlyMinutes={monthlyMinutes} workDays={workDays} breakMinutes={breakMinutes} ratePerMinute={ratePerMinute} goalMinutes={goalMinutes} goalSetAt={goalSetAt} goalBaseMinutes={goalBaseMinutes} onOpenGoalsView={onOpenGoalsView} />
 );
 
+/**
+ * v4.164.0 — a scoreboard pill that shows a NUMBER and can be clicked to copy it.
+ *
+ * These pills have carried `cursor: copy` (index.css, .metric-pill) since long
+ * before anything was listening, so the pointer promised a copy that never
+ * happened. The operator's rule is "all numbers click to auto copy", so this
+ * makes the promise true rather than removing the cursor.
+ *
+ * Keyboard reachable on purpose: these are divs, so they need role + tabIndex +
+ * Enter/Space or they are mouse-only.
+ */
+const CopyPill = ({ id, title, copyText, copied, onCopy, style, children }) => {
+  const value = String(copyText ?? '').trim();
+  const activate = () => { if (value) onCopy(id, value); };
+  return (
+    <div
+      id={id}
+      className="metric-pill compact-pill is-copyable"
+      role="button"
+      tabIndex={0}
+      aria-label={`${title || id}: ${value}. Click to copy.`}
+      title={`${title || id} — click to copy`}
+      onClick={activate}
+      onKeyDown={(e) => {
+        if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); activate(); }
+      }}
+      style={style}
+    >
+      {children}
+      {copied === id && <span className="pill-copied-flag" aria-hidden="true">✓</span>}
+    </div>
+  );
+};
+
 const StateIndicators = ({ state, breakMinutes, isZombie, silenceCount }) => {  const showSilenceTimer = silenceCount > 30;
   if (state === 'call') {
     return (
@@ -632,7 +666,13 @@ const SessionControlsSticky = React.memo(({
               <MicroBarTimer showConnecting={showConnecting} connectionMessage={connectionMessage} sessionSeconds={sessionSeconds} />
             </div>
             )}
-              <StickyTargetsChip dailyMinutes={dailyMinutes} monthlyMinutes={monthlyMinutes} workDays={workDays} breakMinutes={breakMinutes} ratePerMinute={ratePerMinute} goalMinutes={goalMinutes} goalSetAt={goalSetAt} goalBaseMinutes={goalBaseMinutes} onOpenGoalsView={onOpenGoalsView} />
+              {/* v4.164.0: in meter-only mode .session-controls-center is
+                  display:none (index.css:320) and the meter row renders its own
+                  chip. Mounting both put the same #daily-targets-chip id in the
+                  DOM twice, with two independent ResizeObserver fits. */}
+              {!meterOnly && (
+                <StickyTargetsChip dailyMinutes={dailyMinutes} monthlyMinutes={monthlyMinutes} workDays={workDays} breakMinutes={breakMinutes} ratePerMinute={ratePerMinute} goalMinutes={goalMinutes} goalSetAt={goalSetAt} goalBaseMinutes={goalBaseMinutes} onOpenGoalsView={onOpenGoalsView} />
+              )}
             </div>
           ) : (
             <>
@@ -897,7 +937,15 @@ export const DashboardHeader = ({
 }) => {
   const { isActive, sessionSeconds, sessionEarnings, stats, updateStat, stopSession, endDay, RATE_PER_MINUTE, arsRate, setArsRate, isBreakActive, breakSeconds, startBreak, stopBreak, availSeconds, isEditingScoreboard, setIsEditingScoreboard, visibleCards, toggleCard, visibleMetrics, toggleMetric, scoreboardPreset, applyScoreboardPreset, isNotesOpen, setIsNotesOpen, isToolbarVisible, setIsToolbarVisible, goalWorkDays, isZombieCall, isScoreboardHelpVisible, setIsScoreboardHelpVisible, isHold, setIsHold, holdSeconds, dailyTimeline, historyTimeline, dailyLog, lastActivityTime, lastEnglishActivityTime, isCallDetectionEnabled, setIsCallDetectionEnabled, callFocusMode, setCallFocusMode, minutesSinceLastBreak, vaultStatus, getMonthResyncPreview, reconcileMonthTotal, lastCallSeconds, lastCallEndedAt } = useSession();
 
-  const headerMinimal = !isActive && (offCallWorkspace === 'soundboard' || offCallWorkspace === 'goals');
+  // v4.164.0: greeting-editor was missing here, so the Greeting Editor view got
+  // the FULL scoreboard + progress stack rendered above it — and at <=900px the
+  // header is capped at 88px with overflow:hidden, so that content was
+  // unreachable rather than scrollable. All three workspace views hide the body.
+  const headerMinimal = !isActive && (
+    offCallWorkspace === 'soundboard'
+    || offCallWorkspace === 'goals'
+    || offCallWorkspace === 'greeting-editor'
+  );
   const offCallScoreboardView = !isActive && offCallWorkspace === 'scoreboard';
   const studioView = offCallWorkspace === 'soundboard' ? 'soundboard' : 'scoreboard';
 
@@ -1033,6 +1081,22 @@ export const DashboardHeader = ({
   const [callModeExpanded, setCallModeExpanded] = useState(false); // User can pin full header during calls
   // v4.88.5: 3rd HUD mode during calls — meter-only (goal meter as extra-compact HUD)
   const [hudMeterOnly, setHudMeterOnly] = useState(() => localStorage.getItem('catint_hud_meter_only_v1') === '1');
+  // v4.164.0 — which pill was just copied, so it can flash a ✓. One id at a
+  // time: copying a second pill replaces the first, which is what you want.
+  const [copiedPill, setCopiedPill] = useState(null);
+  const copyPill = useCallback((id, value) => {
+    const text = String(value ?? '').trim();
+    if (!text) return;
+    const done = () => setCopiedPill(id);
+    try {
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(text).then(done, () => {});
+        return;
+      }
+    } catch (_) { /* fall through */ }
+    // No clipboard (insecure context / denied): the number is on screen anyway,
+    // so do not pretend the copy worked.
+  }, []);
   const [offCallMetricsExpanded, setOffCallMetricsExpanded] = useState(() => {
     try {
       return localStorage.getItem(OFF_CALL_METRICS_EXPANDED_KEY) === 'true';
@@ -2444,13 +2508,22 @@ export const DashboardHeader = ({
               </div>
             </div>
             <div id="left-pills-row" style={{ display: 'flex', gap: '0.3rem', alignItems: 'center' }}>
-               <div id="pill-shift" className="metric-pill compact-pill" title="SHIFT" style={{ padding: '0.1rem 0.3rem' }}>
+               <CopyPill
+                 id="pill-shift"
+                 title="SHIFT"
+                 copyText={formatHoursMins(shiftElapsedMins)}
+                 copied={copiedPill}
+                 onCopy={copyPill}
+                 style={{ padding: '0.1rem 0.3rem' }}
+               >
                  <span style={{ fontSize: '0.55rem' }}>🏃{formatHoursMins(shiftElapsedMins)}</span>
-               </div>
-               <div
+               </CopyPill>
+               <CopyPill
                  id="pill-logoff"
-                 className="metric-pill compact-pill"
                  title="LOG OFF"
+                 copyText={getCompensatedLogOff()}
+                 copied={copiedPill}
+                 onCopy={copyPill}
                  style={{
                    position: 'relative',
                    overflow: 'hidden',
@@ -2480,7 +2553,7 @@ export const DashboardHeader = ({
                  <span style={{ position: 'relative', zIndex: 1, color: '#fcd34d', fontSize: '0.55rem' }}>
                    🚪{getCompensatedLogOff()}
                  </span>
-               </div>
+               </CopyPill>
             </div>
           </div>
 
@@ -2490,11 +2563,18 @@ export const DashboardHeader = ({
             {/* Rate Pills */}
             <div id="right-pills-vertical" style={{ display: 'flex', flexDirection: 'row', flexWrap: 'wrap', gap: '0.2rem', alignItems: 'center' }}>
               {callsToday > 0 ? (
-                <div id="pill-call-rate" className="metric-pill compact-pill" title={`CALL METRICS: You've taken ${callsToday} calls today. Your average call duration is ${avgCallMins} minutes per call.`} style={{ background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.2)', padding: '0.05rem 0.15rem' }}>
+                <CopyPill
+                  id="pill-call-rate"
+                  title="CALL METRICS"
+                  copyText={`${callsToday} calls today, average ${avgCallMins} min per call`}
+                  copied={copiedPill}
+                  onCopy={copyPill}
+                  style={{ background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.2)', padding: '0.05rem 0.15rem' }}
+                >
                   <span style={{ fontSize: '0.55rem', color: '#93c5fd', fontWeight: 700 }}>📞{callsToday}×{avgCallMins}m</span>
-                </div>
+                </CopyPill>
               ) : (
-                <div id="pill-no-calls" className="metric-pill compact-pill" style={{ opacity: 0.2, padding: '0.05rem 0.15rem' }}>
+                <div id="pill-no-calls" className="metric-pill compact-pill" style={{ opacity: 0.2, padding: '0.05rem 0.15rem', cursor: 'default' }}>
                   <span style={{ fontSize: '0.55rem' }}>📞 –</span>
                 </div>
               )}
@@ -2508,8 +2588,8 @@ export const DashboardHeader = ({
                   </span>
                 </div>
               ) : (
-                <div id="pill-no-rate" className="metric-pill compact-pill" style={{ opacity: 0.2, padding: '0.05rem 0.15rem' }}>
-                  <span style={{ fontSize: '0.55rem' }}>⚡ –</span>
+                <div id="pill-no-rate" className="metric-pill compact-pill" style={{ opacity: 0.2, padding: '0.05rem 0.15rem', cursor: 'default' }}>
+                  <span style={{ fontSize: '0.55rem' }}>? -</span>
                 </div>
               )}
             </div>
@@ -3266,7 +3346,12 @@ ${isInDeficit ? `⚠️ DEFICIT: Behind pace by ${Math.round(monthlyDeficitMins)
         scoreboard inline metrics strip. 3884ce5 pushed the chip into that
         trailing slot — it then measured the whole audio line and overlapped
         the TAB/VB proof. Chip never returns to `trailingSlot`. */}
-    <header className={`dashboard-header glass-panel${headerMinimal ? ' dashboard-header--minimal' : ''}${headerCallCompact ? ' dashboard-header--call-compact' : ''}${isActive && callModeExpanded ? ' dashboard-header--call-expanded' : ''}${offCallScoreboardView ? ' dashboard-header--off-call-scoreboard' : ''}${offCallScoreboardView && offCallMetricsExpanded ? ' dashboard-header--metrics-expanded' : ''}${meterOnlyMode ? ' dashboard-header--meter-only' : ''}`} style={{ position: 'relative', zIndex: 100, ...(offCallScoreboardView && offCallMetricsExpanded ? { maxHeight: `${scoreboardMaxVh}vh` } : {}) }}>
+    <header className={`dashboard-header glass-panel${headerMinimal ? ' dashboard-header--minimal' : ''}${headerCallCompact ? ' dashboard-header--call-compact' : ''}${isActive && callModeExpanded ? ' dashboard-header--call-expanded' : ''}${offCallScoreboardView ? ' dashboard-header--off-call-scoreboard' : ''}${offCallScoreboardView && offCallMetricsExpanded ? ' dashboard-header--metrics-expanded' : ''}${meterOnlyMode ? ' dashboard-header--meter-only' : ''}`}
+      // v4.164.0: the grab-bar height used to land here as an inline maxHeight,
+      // which silently beat every CSS cap (index.css:372, 1145, 1154, 1163, 4232)
+      // and made the vertical budget unreadable in the stylesheet. It is a custom
+      // property now; the rule that consumes it lives at index.css:1163.
+      style={{ position: 'relative', zIndex: 100, '--scoreboard-max-vh': String(scoreboardMaxVh) }}>
       <SessionControlsSticky
         isActive={isActive}
         isBreakActive={isBreakActive}

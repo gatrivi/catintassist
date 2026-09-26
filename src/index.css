@@ -1159,8 +1159,14 @@ body {
 
 .app-container[data-off-call-view="scoreboard"] > .dashboard-header.dashboard-header--off-call-scoreboard.dashboard-header--metrics-expanded {
   flex: 0 0 auto;
-  /* Expanded means detail inside a scrollable scoreboard, never a takeover. */
-  max-height: min(38vh, 260px);
+  /* Expanded means detail inside a scrollable scoreboard, never a takeover.
+     v4.164.0: --scoreboard-max-vh is set by the grab bar (DashboardHeader.js:1059)
+     and used to be an inline maxHeight that silently beat this rule. It is a
+     custom property now, so the whole budget is readable here.
+     Behaviour is unchanged: the old inline won whenever this class was present,
+     so the 260px term below it was dead. Restoring it would quietly cap the
+     grab bar's range — that is a product decision, not a bug fix, so it waits. */
+  max-height: var(--scoreboard-max-vh, 38) * 1vh;
   overflow-y: auto;
   overflow-x: hidden;
 }
@@ -8290,12 +8296,15 @@ body:has(.app-container[data-call-mode="true"]) .element-hint-panel {
 }
 .dial-actions-row .btn-primary { flex: 2; }
 
-/* v4.163.0 — "the goal wheel is off-call only", shown mid-call. Top of the
-   screen on purpose: the transcript owns the middle, and this is not about the
-   patient. Auto-dismisses; tap to close. */
+/* v4.163.0 — "the goal wheel is off-call only", shown mid-call.
+   v4.164.0: this was anchored at top:40px, which is INSIDE the ~90px
+   call-compact header, so it painted over the sticky row (z-index 99992 beats
+   the header's 100) exactly when the transcript matters most. Anchored to the
+   bottom instead, clear of the on-call soundboard strip (bottom:6px, ~36px
+   tall) — the same place the other transient notices already live. */
 .goals-blocked-notice {
   position: fixed;
-  top: 40px;
+  bottom: 44px;
   left: 50%;
   transform: translateX(-50%);
   z-index: 99992;
@@ -8308,4 +8317,16 @@ body:has(.app-container[data-call-mode="true"]) .element-hint-panel {
   border: 1px solid rgba(245, 158, 11, 0.45);
   border-radius: 8px;
   cursor: pointer;
+}
+
+/* v4.164.0 — pills that carry a number and really do copy it now.
+   .metric-pill has said cursor:copy for a long time with nothing listening. */
+.metric-pill.is-copyable { cursor: copy; }
+.metric-pill.is-copyable:hover { border-color: rgba(255, 255, 255, 0.35); }
+.metric-pill.is-copyable:focus-visible { outline: 2px solid #93c5fd; outline-offset: 1px; }
+.pill-copied-flag {
+  margin-left: 3px;
+  font-size: 0.5rem;
+  color: #6ee7b7;
+  font-weight: 900;
 }

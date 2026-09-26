@@ -225,3 +225,119 @@ describe('MIC VERIFY chip placement (v4.132.0)', () => {
     expect(bar.querySelector('.mic-verify-chip')).not.toBeNull();
   });
 });
+
+// v4.164.0 — the header eval (docs/dashboard-header-eval.md). These are the
+// fixes from that pass: each one is a real defect, and each gets a test so it
+// cannot come back.
+describe('header eval fixes (v4.164.0)', () => {
+  let writeText;
+
+  beforeEach(() => {
+    localStorage.clear();
+    mockSession.isActive = false;
+    mockSession.stats.callsToday = 0;
+    writeText = jest.fn().mockResolvedValue(undefined);
+    Object.defineProperty(window.navigator, 'clipboard', { value: { writeText }, configurable: true });
+  });
+  afterEach(() => {
+    localStorage.clear();
+    mockSession.isActive = false;
+  });
+
+  // The Greeting Editor had no scoreboard of its own, so the headerMinimal guard
+  // let the full scoreboard + progress stack render above it — and at <=900px
+  // that is 88px of clipped, unreachable content. Every workspace view hides it.
+  test.each(['soundboard', 'goals', 'greeting-editor'])(
+    'workspace view (%s) hides the scoreboard body instead of clipping it',
+    (workspace) => {
+      const { container } = renderOffCall(workspace);
+      const header = container.querySelector('.dashboard-header');
+      expect(header.className).toContain('dashboard-header--minimal');
+      // No scoreboard body at all, so nothing can be clipped away.
+      expect(container.querySelector('.condensed-header-card')).toBeNull();
+      expect(container.querySelector('.header-progress-stack')).toBeNull();
+      // The sticky row is what should remain.
+      expect(container.querySelector('.session-controls-sticky-row')).not.toBeNull();
+    },
+  );
+
+  // In meter-only mode the center column is display:none and the meter row
+  // renders its own chip. Mounting both put #daily-targets-chip in the DOM twice.
+  test('meter-only mode mounts the targets chip exactly once', () => {
+    localStorage.setItem('catint_hud_meter_only_v1', '1');
+    mockSession.isActive = true;
+    const { container } = render(<DashboardHeader connectionState="idle" />);
+
+    expect(document.querySelectorAll('#daily-targets-chip')).toHaveLength(1);
+    // ...and it is the meter row's copy, not the hidden center-column one.
+    const meter = container.querySelector('#compact-call-goal-meter');
+    expect(meter).not.toBeNull();
+    expect(meter.querySelector('#daily-targets-chip')).not.toBeNull();
+  });
+
+  test('normal in-call mode still has exactly one chip (in the center column)', () => {
+    mockSession.isActive = true;
+    const { container } = render(<DashboardHeader connectionState="idle" />);
+
+    expect(document.querySelectorAll('#daily-targets-chip')).toHaveLength(1);
+    expect(container.querySelector('.session-controls-center #daily-targets-chip')).not.toBeNull();
+  });
+
+  // .metric-pill has carried cursor:copy for a long time with nothing listening.
+  // NOTE where these live: the condensed toolbar is skipped when
+  // offCallScoreboardView (DashboardHeader.js:~2428) and the whole body is
+  // hidden on the minimal views — so the pills are currently reachable only in
+  // the in-call expanded header. That is the eval's "off-call toolbar has no
+  // entry point" finding, and it is deliberately still open.
+  test('the shift and log-off pills really copy their number now', async () => {
+    mockSession.isActive = true;
+    render(<DashboardHeader connectionState="idle" />);
+    fireEvent.click(document.getElementById('header-expand-btn'));
+
+    const shift = document.getElementById('pill-shift');
+    const logoff = document.getElementById('pill-logoff');
+    expect(shift).not.toBeNull();
+    expect(logoff).not.toBeNull();
+    // Keyboard reachable, not mouse-only.
+    expect(shift.getAttribute('role')).toBe('button');
+    expect(shift.getAttribute('tabindex')).toBe('0');
+    expect(shift.getAttribute('title')).toMatch(/click to copy/i);
+
+    fireEvent.click(shift);
+    expect(writeText).toHaveBeenCalledTimes(1);
+    const [copiedShift] = writeText.mock.calls[0];
+    expect(String(copiedShift).trim().length).toBeGreaterThan(0);
+
+    fireEvent.keyDown(logoff, { key: 'Enter' });
+    expect(writeText).toHaveBeenCalledTimes(2);
+    const [copiedLogoff] = writeText.mock.calls[1];
+    expect(String(copiedLogoff).trim().length).toBeGreaterThan(0);
+    // Log-off is the "what time should I stay" number — it must be copyable.
+    expect(String(copiedLogoff)).toMatch(/\d/);
+  });
+
+  test('a pill with no number is not advertised as copyable', () => {
+    mockSession.isActive = true;
+    mockSession.stats.callsToday = 0;
+    render(<DashboardHeader connectionState="idle" />);
+    fireEvent.click(document.getElementById('header-expand-btn'));
+
+    // The empty placeholder must not promise a copy it cannot do.
+    const empty = document.getElementById('pill-no-calls');
+    expect(empty).not.toBeNull();
+    expect(empty.getAttribute('role')).toBeNull();
+    expect(empty.style.cursor).toBe('default');
+  });
+
+  // The grab bar used to write maxHeight inline from localStorage, silently
+  // beating every CSS cap. It is a custom property now, so the budget is
+  // inspectable in the stylesheet.
+  test('the grab-bar height is a CSS custom property, not an inline maxHeight', () => {
+    localStorage.setItem('catint_scoreboard_max_vh', '55');
+    const { container } = renderOffCall('scoreboard');
+    const header = container.querySelector('.dashboard-header');
+
+    expect(header.style.getPropertyValue('--scoreboard-max-vh')).toBe('55');
+    expect(header.style.maxHeight).toBe('');
+  });
+});

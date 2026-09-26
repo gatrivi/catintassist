@@ -25,6 +25,43 @@ import { APP_VERSION } from '../constants/version';
 /** Newest first. Only the entry matching APP_VERSION is shown on load. */
 export const RELEASE_NOTES_CATALOG = [
   {
+    version: '4.165.0',
+    id: 'header-eval-phase1',
+    highlightElementIds: ['header-app-logo-btn'],
+    es: {
+      title: 'La barra de arriba: cinco errores reales, encontrados y documentados',
+      intro: 'Hice la evaluación completa del header (3.424 líneas) en ambos estados, con y sin llamada. La eval está en docs/dashboard-header-eval.md. Esta versión arregla solo los bugs, sin cambiarte nada de comportamiento.',
+      sections: [
+        { heading: 'Corregido', bullets: [
+          'Greeting Editor ya no tiene el scoreboard entero dibujado encima. Estaba ahí porque faltaba en la lista de «vistas sin cuerpo», y a 900×600 quedaba cortado y sin forma de llegar.',
+          'El chip de metas (💵⏱☕) ya no se monta dos veces en modo medidor. Era el mismo id duplicado en el DOM, con dos medidores de tamaño corriendo.',
+          'Las pastillas de números ahora copian de verdad. Tenían el cursor de «copiar» desde hace mucho y no había nada escuchando: ahora hacen clic o Enter y muestran ✓. La de «salir» (la hora en que deberías irte) es la más útil.',
+          'La altura del scoreboard se define con una variable de CSS, no inline. Antes pisaba en silencio todos los límites de altura del stylesheet.',
+          'Arreglé un error mío: el aviso «el dial de metas es fuera de llamada» se dibujaba ENCIMA de la barra de botones durante la llamada. Ahora sale abajo, donde no tapa nada.',
+        ] },
+        { heading: 'Nota sobre el espacio', bullets: [
+          'La regla de 80% queda documentada como GUÍA, no como límite. La forma de recuperar espacio no es achicar el contenedor: es borrar la mitad de los componentes que no usás.',
+        ] },
+      ],
+    },
+    en: {
+      title: 'The top bar: five real bugs, found and documented',
+      intro: 'I did a full evaluation of the header (3,424 lines) in both states, on-call and off. The eval lives in docs/dashboard-header-eval.md. This release fixes only the bugs, with no behaviour change.',
+      sections: [
+        { heading: 'Fixed', bullets: [
+          'The Greeting Editor no longer has the entire scoreboard drawn above it. It was there because it was missing from the "views with no body" list, and at 900x600 it ended up clipped with no way to reach it.',
+          'The targets chip (💵⏱☕) is no longer mounted twice in meter-only mode. Same id twice in the DOM, with two size observers running.',
+          'The number pills actually copy now. They have carried a "copy" cursor for a long time with nothing listening: now click or Enter copies and shows ✓. The log-off pill (the time you should leave) is the most useful one.',
+          'The scoreboard height is now a CSS variable instead of inline. It used to silently beat every height limit in the stylesheet.',
+          'I fixed a bug of my own: the "goal wheel is off-call only" notice was painting ON TOP of the button bar during a call. It is at the bottom now, where it covers nothing.',
+        ] },
+        { heading: 'On space', bullets: [
+          'The 80% rule is documented as a GUIDE, not a limit. Space comes back by deleting the half of the components you do not use, not by shrinking the container.',
+        ] },
+      ],
+    },
+  },
+  {
     version: '4.163.0',
     id: 'goal-dial-layout-a11y',
     highlightElementIds: ['goal-config-version-pill'],
