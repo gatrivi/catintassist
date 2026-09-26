@@ -71,6 +71,18 @@ import {
   readSttDiagnosticSettings,
   setSttDiagnosticSettings,
 } from '../utils/sttDiagnosticTrace';
+// v4.161.0 — one source of truth for the panel list, labels, search + pins.
+import {
+  SETTINGS_PANELS,
+  groupSettingsPanels,
+  searchSettingsPanels,
+  loadSettingsPins,
+  toggleSettingsPin,
+  loadLastSettingsSection,
+  saveLastSettingsSection,
+  isSettingsPanel,
+  getSettingsPanel,
+} from '../utils/settingsRegistry';
 import {
   INSPECTOR_CHANGED_EVENT,
   readInspectorEnabled,
@@ -83,7 +95,7 @@ const MOOD_LABELS = { auto: 'Trans Auto', default: 'Default', fast: 'Fast', chil
 export default function SettingsPanel({
   open,
   onClose,
-  initialSection = 'deepgram',
+  initialSection = null,
   openReason = null,
   openTrigger = 'general',
 }) {
@@ -97,8 +109,18 @@ export default function SettingsPanel({
     vaultStatus,
     autoAttachEnabled,
     setAutoAttachEnabled,
+    isActive,
+    isZombieCall,
   } = useSession();
-  const [section, setSection] = useState(initialSection);
+  // v4.161.0: no explicit target (plain gear) => return to the last panel used.
+  const firstSection = () =>
+    (isSettingsPanel(initialSection) && initialSection)
+    || loadLastSettingsSection()
+    || 'deepgram';
+  const [section, setSection] = useState(firstSection);
+  const [query, setQuery] = useState('');
+  const [pins, setPins] = useState(loadSettingsPins);
+  const [navNote, setNavNote] = useState('');
   const [personalDock, setPersonalDock] = useState(isWellbeingDockEnabled);
   const [componentVisibility, setComponentVisibility] = useState(loadComponentVisibility);
   const [themePalette, setThemePalette] = useState(loadThemePalette);
@@ -173,8 +195,47 @@ export default function SettingsPanel({
   };
 
   useEffect(() => {
-    if (open) setSection(initialSection);
+    if (open) {
+      setSection(firstSection());
+      setQuery('');
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, initialSection]);
+
+  // Remember where the operator was, so the gear never dumps them on Deepgram.
+  useEffect(() => {
+    if (open) saveLastSettingsSection(section);
+  }, [open, section]);
+
+  const goTo = (id) => {
+    const panel = getSettingsPanel(id);
+    if (!panel) return;
+    if (panel.action === 'goals-view') {
+      // The goal wheel is its own view, not a drawer section: ask the app to
+      // open it and step out of the way. It refuses to open mid-call, so say so
+      // here instead of closing the drawer on nothing.
+      if (isActive || isZombieCall) {
+        setNavNote('The goal wheel is off-call only — stop the call first.');
+        return;
+      }
+      setNavNote('');
+      window.dispatchEvent(new CustomEvent('cat_open_goals_view'));
+      onClose();
+      return;
+    }
+    if (isSettingsPanel(id)) setSection(id);
+  };
+
+  const togglePin = (id) => setPins(toggleSettingsPin(id));
+
+  const searching = query.trim().length > 0;
+  const results = searching ? searchSettingsPanels(query) : [];
+  // A pinned panel lives in the pinned strip only — never twice on one screen.
+  const grouped = groupSettingsPanels(SETTINGS_PANELS.filter((p) => !pins.includes(p.id)));
+  const pinnedPanels = SETTINGS_PANELS.filter((p) => pins.includes(p.id));
+  // The goal wheel refuses to open during a call, so mark it instead of
+  // letting the operator click a button that quietly does nothing.
+  const blockedPanels = new Set(isActive || isZombieCall ? ['goals'] : []);
 
   useEffect(() => {
     const onLatencyChange = (e) => setSttLatencyMode(e.detail || loadSttLatencyMode());
@@ -229,36 +290,80 @@ export default function SettingsPanel({
           <button type="button" onClick={onClose} style={tabBtn}>✕</button>
         </div>
 
-        <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap', marginTop: 10 }}>
-          {['today', 'account', 'deepgram', 'dg-key', 'language', 'translation', 'behavior', 'data', 'layout', 'display', 'audio'].map((id) => (
-            <button
-              key={id}
-              type="button"
-              onClick={() => setSection(id)}
-              style={{ ...tabBtn, background: section === id ? 'rgba(239,68,68,0.25)' : tabBtn.background }}
-            >
-              {id === 'today'
-                ? 'Today'
-                : id === 'account'
-                  ? (authUser ? 'Account ✓' : 'Account')
-                : id === 'deepgram'
-                  ? 'Deepgram'
-                  : id === 'language'
-                    ? 'Language'
-                    : id === 'translation'
-                      ? 'Translation'
-                      : id === 'behavior'
-                        ? 'Behavior'
-                        : id === 'data'
-                          ? 'Data'
-                          : id === 'layout'
-                          ? 'Layout'
-                          : id === 'audio'
-                            ? 'Audio'
-                            : 'Display'}
-            </button>
-          ))}
+        <div className="settings-search">
+          <input
+            type="search"
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            placeholder="Search settings…"
+            aria-label="Search settings"
+            className="settings-search-input"
+          />
+          {query && (
+            <button type="button" className="btn" onClick={() => setQuery('')}>✕</button>
+          )}
         </div>
+
+        {navNote && <div className="settings-nav-note" role="status">{navNote}</div>}
+
+        {searching ? (
+          <div className="settings-nav" role="listbox" aria-label="Settings results">
+            {results.length === 0 && (
+              <p className="settings-nav-empty">
+                Nothing matches “{query}”. Try: call log · minutes · goal · key · theme · language.
+              </p>
+            )}
+            {results.map((p) => (
+              <SettingsNavButton
+                key={p.id}
+                panel={p}
+                active={section === p.id}
+                pinned={pins.includes(p.id)}
+                onSelect={goTo}
+                onTogglePin={togglePin}
+                accountSignedIn={!!authUser}
+                blocked={blockedPanels.has(p.id)}
+              />
+            ))}
+          </div>
+        ) : (
+          <div className="settings-nav">
+            {pinnedPanels.length > 0 && (
+              <div className="settings-nav-group">
+                <div className="settings-nav-group-label">★ Pinned</div>
+                {pinnedPanels.map((p) => (
+                  <SettingsNavButton
+                    key={`pin-${p.id}`}
+                    panel={p}
+                    active={section === p.id}
+                    pinned
+                    onSelect={goTo}
+                    onTogglePin={togglePin}
+                    accountSignedIn={!!authUser}
+                    blocked={blockedPanels.has(p.id)}
+                  />
+                ))}
+              </div>
+            )}
+            {grouped.map((g) => (
+              <div className="settings-nav-group" key={g.id}>
+                <div className="settings-nav-group-label">{g.label}</div>
+                {g.panels.map((p) => (
+                  <SettingsNavButton
+                    key={p.id}
+                    panel={p}
+                    active={section === p.id}
+                    pinned={pins.includes(p.id)}
+                    onSelect={goTo}
+                    onTogglePin={togglePin}
+                    accountSignedIn={!!authUser}
+                    blocked={blockedPanels.has(p.id)}
+                  />
+                ))}
+              </div>
+            ))}
+          </div>
+        )}
 
         {vaultStatus === 'unlocking' && (
           <p style={{ color: '#f59e0b', fontSize: 11, marginTop: 8 }}>⏳ Decrypting key…</p>
@@ -1050,3 +1155,38 @@ const devHintStyle = {
   marginTop: 3,
   lineHeight: 1.45,
 };
+
+/**
+ * v4.161.0 — one row in the settings nav: the panel name, what it is for, and
+ * the pin toggle. Split out because the same row is rendered in the pinned
+ * strip, inside a group, and in the search results.
+ */
+function SettingsNavButton({ panel, active, pinned, onSelect, onTogglePin, accountSignedIn, blocked }) {
+  const label = panel.id === 'account' && accountSignedIn ? 'Account ✓' : panel.label;
+  return (
+    <div className={`settings-nav-row${active ? ' is-active' : ''}${blocked ? ' is-blocked' : ''}`}>
+      <button
+        type="button"
+        className="settings-nav-btn"
+        aria-current={active ? 'true' : undefined}
+        onClick={() => onSelect(panel.id)}
+      >
+        <span className="settings-nav-name">
+          {label}
+          {blocked && <span className="settings-nav-flag">off-call only</span>}
+        </span>
+        <span className="settings-nav-hint">{panel.hint}</span>
+      </button>
+      <button
+        type="button"
+        className="settings-nav-pin"
+        aria-pressed={pinned}
+        aria-label={`${pinned ? 'Unpin' : 'Pin'} ${label}`}
+        title={pinned ? `Unpin ${label}` : `Pin ${label} to the top`}
+        onClick={() => onTogglePin(panel.id)}
+      >
+        {pinned ? '★' : '☆'}
+      </button>
+    </div>
+  );
+}

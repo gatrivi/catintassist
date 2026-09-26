@@ -166,7 +166,9 @@ const Dashboard = () => {
   );
 
   const [settingsOpen, setSettingsOpen] = useState(false);
-  const [settingsSection, setSettingsSection] = useState("deepgram");
+  // v4.161.0: null = no explicit target, so SettingsPanel reopens the last
+  // panel the operator used instead of snapping back to Deepgram every time.
+  const [settingsSection, setSettingsSection] = useState(null);
   const [settingsOpenReason, setSettingsOpenReason] = useState(null);
   const [settingsOpenTrigger, setSettingsOpenTrigger] = useState("general");
   const [deepgramKeyNotice, setDeepgramKeyNotice] = useState("");
@@ -219,7 +221,10 @@ const Dashboard = () => {
   useEffect(() => {
     const onRuntime = () => setRuntimeKeyTick((t) => t + 1);
     const applySettingsOpen = (detail = {}) => {
-      setSettingsSection(detail.section || "deepgram");
+      // v4.161.0: `panel` is a deep link to one panel; `section` is the older
+      // name for the same thing. No target at all => SettingsPanel restores the
+      // last panel the operator used instead of snapping back to Deepgram.
+      setSettingsSection(detail.panel || detail.section || null);
       setSettingsOpenReason(detail.reason || null);
       setSettingsOpenTrigger(detail.trigger || "general");
       setSettingsOpen(true);
@@ -312,6 +317,22 @@ const Dashboard = () => {
     if (isActive || isZombieCall) return;
     saveWorkspaceView("scoreboard");
     setWorkspaceView("scoreboard");
+  }, [isActive, isZombieCall]);
+
+  // v4.161.0 — deep link into the goal wheel. Settings → Goals (or any other
+  // caller) dispatches this instead of reaching into state. Only ever OPENS the
+  // view, never toggles it shut, so a stale click cannot bounce the operator out.
+  useEffect(() => {
+    const onOpenGoals = () => {
+      if (isActive || isZombieCall) return;
+      setWorkspaceView((prev) => {
+        if (prev === GOALS_VIEW) return prev; // already open — never bounce out
+        saveWorkspaceView("scoreboard");
+        return GOALS_VIEW;
+      });
+    };
+    window.addEventListener("cat_open_goals_view", onOpenGoals);
+    return () => window.removeEventListener("cat_open_goals_view", onOpenGoals);
   }, [isActive, isZombieCall]);
 
   // v4.114.0: Greeting Editor view — focused per-greeting workspace, off-call

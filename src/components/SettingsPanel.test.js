@@ -8,12 +8,15 @@ import SettingsPanel from './SettingsPanel';
 // header-side assertions (chip gone off-call, kept on-call) live in
 // DashboardHeader.test.js.
 //
-// Only the Audio section is rendered (initialSection='audio'), so the heavy
+// Only the section under test is rendered (initialSection='audio'), so the heavy
 // panels of the other tabs are imported but never mounted. The contexts below
 // are mocked so no provider tree is needed.
 
-jest.mock('../contexts/SessionContext', () => ({
-  useSession: () => ({
+let mockSessionState = {};
+// v4.161.0 — the drawer grew a real nav (search / groups / pins / deep links),
+// so the session stub has to be drivable: in-call, off-call, and "signed in".
+const setSession = (over = {}) => {
+  mockSessionState = {
     translationMood: 'auto',
     setTranslationMood: jest.fn(),
     speechAutoConnect: false,
@@ -23,7 +26,15 @@ jest.mock('../contexts/SessionContext', () => ({
     vaultStatus: 'idle',
     autoAttachEnabled: false,
     setAutoAttachEnabled: jest.fn(),
-  }),
+    isActive: false,
+    isZombieCall: false,
+    ...over,
+  };
+};
+setSession();
+
+jest.mock('../contexts/SessionContext', () => ({
+  useSession: () => mockSessionState,
 }));
 
 jest.mock('../contexts/AudioSettingsContext', () => ({
@@ -53,7 +64,6 @@ jest.mock('../hooks/useAudioSource', () => ({
 
 jest.mock('../hooks/useTTS', () => ({ useTTS: () => ({ playTTS: jest.fn() }) }));
 jest.mock('../contexts/AuthContext', () => ({ useAuth: () => ({ user: null }) }));
-
 const renderAudioSection = () =>
   render(<SettingsPanel open onClose={jest.fn()} initialSection="audio" />);
 
@@ -134,5 +144,128 @@ describe('SettingsPanel -> Deepgram: guards + provider biasing (v4.157.0)', () =
   test('the cost warning is on the panel, not hidden in a doc', () => {
     renderDeepgramSection();
     expect(screen.getByText(/2x the EN price/i)).toBeInTheDocument();
+  });
+});
+
+// v4.161.0 — "I get lost in them hard to find what I want". The nav is now a
+// registry: grouped, searchable, pinnable, and it reopens where you left off.
+describe('SettingsPanel -> navigation (v4.161.0)', () => {
+  beforeEach(() => {
+    localStorage.clear();
+    setSession();
+  });
+  afterEach(() => localStorage.clear());
+
+  const renderNav = () => render(<SettingsPanel open onClose={jest.fn()} />);
+
+  test('panels are grouped and each row says what it is for', () => {
+    renderNav();
+    ['Today', 'Speech', 'Output', 'App'].forEach((g) => {
+      expect(screen.getByText(g)).toBeInTheDocument();
+    });
+    expect(screen.getByText('Correct the day from the company call log')).toBeInTheDocument();
+    expect(screen.getByText('STT model, latency, clinical guards, keyterms')).toBeInTheDocument();
+  });
+
+  test('a pinned panel is listed once, not twice on one screen', () => {
+    renderNav();
+    // "Today" is pinned by default and also belongs to the Today group.
+    expect(screen.getAllByText('Correct the day from the company call log')).toHaveLength(1);
+    expect(screen.getAllByRole('button', { name: 'Unpin Call log' })).toHaveLength(1);
+    // It lives in the pinned strip, so it is not repeated under its group.
+    expect(screen.getAllByText('Call log')).toHaveLength(1);
+  });
+
+  test('search finds the call-log panel from the words the operator uses', () => {
+    renderNav();
+    fireEvent.change(screen.getByLabelText('Search settings'), { target: { value: 'minutes' } });
+
+    const results = document.querySelectorAll('.settings-nav-btn');
+    expect(results).toHaveLength(1);
+    expect(results[0].textContent).toContain('Call log');
+    // Groups collapse while searching so the answer is not buried.
+    expect(screen.queryByText('Speech')).toBeNull();
+  });
+
+  test('a search with no answer says so instead of showing an empty drawer', () => {
+    renderNav();
+    fireEvent.change(screen.getByLabelText('Search settings'), { target: { value: 'zzzqqq' } });
+    expect(screen.getByText(/Nothing matches/i)).toBeInTheDocument();
+  });
+
+  test('picking a search result opens that panel', () => {
+    renderNav();
+    fireEvent.change(screen.getByLabelText('Search settings'), { target: { value: 'theme' } });
+    fireEvent.click(screen.getByText('Theme, colours, what is visible').closest('button'));
+    expect(screen.getByText(/Theme palette/)).toBeInTheDocument();
+  });
+
+  test('the daily tool is pinned by default and a pin can be added', () => {
+    const { unmount } = renderNav();
+    expect(screen.getByRole('button', { name: 'Unpin Call log' })).toHaveAttribute('aria-pressed', 'true');
+
+    fireEvent.click(screen.getByRole('button', { name: 'Pin Audio' }));
+    expect(screen.getByRole('button', { name: 'Unpin Audio' })).toHaveAttribute('aria-pressed', 'true');
+    // survives a reload — the pin is read back from storage
+    unmount();
+    renderNav();
+    expect(screen.getByRole('button', { name: 'Unpin Audio' })).toBeInTheDocument();
+  });
+
+  test('reopening with no target returns to the last panel used, not Deepgram', () => {
+    const { unmount } = renderNav();
+    fireEvent.click(screen.getByText('Theme, colours, what is visible').closest('button'));
+    expect(screen.getByText(/Theme palette/)).toBeInTheDocument();
+    unmount();
+
+    render(<SettingsPanel open onClose={jest.fn()} />);
+    expect(screen.getByText(/Theme palette/)).toBeInTheDocument();
+  });
+
+  test('an explicit target still wins over the remembered panel', () => {
+    localStorage.setItem('catint_settings_last_section_v1', '"display"');
+    render(<SettingsPanel open onClose={jest.fn()} initialSection="language" />);
+    expect(screen.getByText(/Left column \(patient\)/)).toBeInTheDocument();
+  });
+
+  // The goal wheel is the feature the operator loves, and until now it was
+  // reachable only from a handful of header buttons. Settings is the one place
+  // they go looking, so it has to live here too.
+  test('Goals is findable by the words an operator uses for it', () => {
+    renderNav();
+    ['goal', 'target', 'how much do i need'].forEach((q) => {
+      fireEvent.change(screen.getByLabelText('Search settings'), { target: { value: q } });
+      const first = document.querySelector('.settings-nav-btn');
+      expect(first?.textContent).toContain('Goals');
+    });
+  });
+
+  test('Goals deep-links into the wheel and closes the drawer', () => {
+    const onClose = jest.fn();
+    const onOpen = jest.fn();
+    window.addEventListener('cat_open_goals_view', onOpen);
+    render(<SettingsPanel open onClose={onClose} />);
+
+    fireEvent.click(screen.getByText('Set how much you need per day / week / month').closest('button'));
+
+    expect(onOpen).toHaveBeenCalledTimes(1);
+    expect(onClose).toHaveBeenCalledTimes(1);
+    window.removeEventListener('cat_open_goals_view', onOpen);
+  });
+
+  test('mid-call, Goals says it is off-call only instead of doing nothing', () => {
+    setSession({ isActive: true });
+    const onClose = jest.fn();
+    const onOpen = jest.fn();
+    window.addEventListener('cat_open_goals_view', onOpen);
+    render(<SettingsPanel open onClose={onClose} />);
+
+    expect(screen.getByText('off-call only')).toBeInTheDocument();
+    fireEvent.click(screen.getByText('Set how much you need per day / week / month').closest('button'));
+
+    expect(onOpen).not.toHaveBeenCalled();
+    expect(onClose).not.toHaveBeenCalled();
+    expect(screen.getByText(/The goal wheel is off-call only/i)).toBeInTheDocument();
+    window.removeEventListener('cat_open_goals_view', onOpen);
   });
 });

@@ -25,6 +25,45 @@ import { APP_VERSION } from '../constants/version';
 /** Newest first. Only the entry matching APP_VERSION is shown on load. */
 export const RELEASE_NOTES_CATALOG = [
   {
+    version: '4.161.0',
+    id: 'settings-findable',
+    highlightElementIds: ['settings-data-import'],
+    es: {
+      title: 'Los settings ahora se buscan, se agrupan y se recuerdan',
+      intro: 'Diez pestañas iguales en una tira que se enrollaba era la causa de perderse. Ahora hay buscador, cuatro grupos, favoritos, y la rueda de metas se abre desde acá.',
+      sections: [
+        { heading: 'Qué cambió', bullets: [
+          'Buscador arriba de todo: escribís «minutos», «llaves», «tema», «idioma» y aparece el panel, con una línea que dice para qué sirve.',
+          'Cuatro grupos — Hoy · Habla · Salida · App — en vez de diez pestañas del mismo color.',
+          '★ para fijar un panel arriba. «Call log» viene fijado de fábrica: es el que más usás.',
+          'Un panel fijado aparece una sola vez, nunca repetido en su grupo.',
+          'La rueda de metas (🎯) entra a Settings → Goals. Se llama «Goals» porque es el nombre con el que todos lo buscan — también aparece buscando «cuánto me falta», «objetivo», «dinero».',
+          'Abrir el ⚙ sin destino ya no te tira a Deepgram: vuelve al panel donde estabas.',
+        ] },
+        { heading: 'Detalle', bullets: [
+          'En llamada, «Goals» muestra «off-call only» y explica por qué, en vez de un botón que no hace nada.',
+        ] },
+      ],
+    },
+    en: {
+      title: 'Settings is now searchable, grouped, and remembers where you were',
+      intro: 'Ten identical tabs in a strip that wrapped onto three rows is why you got lost. Now there is a search box, four groups, pins, and the goal wheel is reachable from here.',
+      sections: [
+        { heading: 'What changed', bullets: [
+          'A search box at the top: type "minutes", "key", "theme", "language" and the panel appears, with one line saying what it is for.',
+          'Four groups — Today · Speech · Output · App — instead of ten same-coloured tabs.',
+          '★ pins a panel to the top. "Call log" ships pinned: it is the one you use most.',
+          'A pinned panel is listed once, never repeated inside its own group.',
+          'The goal wheel (🎯) is now Settings → Goals. It is called "Goals" because that is what everyone searches for — it also shows up for "how much do i need", "target", "money".',
+          'Opening the ⚙ with no destination no longer dumps you on Deepgram: it returns to the panel you were in.',
+        ] },
+        { heading: 'Details', bullets: [
+          'During a call, "Goals" shows "off-call only" and says why, instead of a button that quietly does nothing.',
+        ] },
+      ],
+    },
+  },
+  {
     version: '4.160.0',
     id: 'calllog-preview-undo',
     highlightElementIds: ['settings-data-import'],
