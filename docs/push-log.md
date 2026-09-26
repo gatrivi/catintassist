@@ -106,3 +106,4 @@
 | 2026-09-26T15:22:52.362Z | 8cc4726 | v4.160.0: seal the last words of a turn - they were never sealed (found with a real call) |
 | 2026-09-26T15:52:55.028Z | 0457dec | v4.161.0 settings: search + groups + pins + Goals deep link |
 | 2026-09-26T15:57:08.983Z | 9b30496 | v4.161.0: audio eval harness - the first metric that touches a microphone (your 10 minutes) |
+| 2026-09-26T16:35:29.095Z | d080ffc | v4.162.0 goal configurator money safety (user approved over-budget push) |
