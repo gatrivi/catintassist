@@ -14,7 +14,9 @@ import {
   saveSttBias,
   STT_BIAS_MEDICAL_MODEL,
   STT_BIAS_KEYTERM,
+  STT_BIAS_USER_KEYTERMS,
 } from './deepgramListenConfig';
+import { clearCorrections, saveCorrection } from './transcriptCorrections';
 
 describe('deepgramListenConfig', () => {
   beforeEach(() => {
@@ -99,8 +101,8 @@ describe('deepgramListenConfig', () => {
       );
     });
 
-    test('both switches are OFF by default', () => {
-      expect(readSttBias()).toEqual({ medicalModel: false, keyterm: false });
+    test('every switch starts OFF', () => {
+      expect(readSttBias()).toEqual({ medicalModel: false, keyterm: false, userKeyterms: false });
     });
 
     test('medical model: EN only, never ES (the app is a two-lane EN/ES structure)', () => {
@@ -139,25 +141,71 @@ describe('deepgramListenConfig', () => {
     test('only the literal "1" enables a bias switch', () => {
       localStorage.setItem(STT_BIAS_MEDICAL_MODEL, 'true');
       localStorage.setItem(STT_BIAS_KEYTERM, 'yes');
-      expect(readSttBias()).toEqual({ medicalModel: false, keyterm: false });
+      localStorage.setItem(STT_BIAS_USER_KEYTERMS, 'on');
+      expect(readSttBias()).toEqual({ medicalModel: false, keyterm: false, userKeyterms: false });
     });
 
     test('saveSttBias round-trips and always returns the truth', () => {
-      expect(saveSttBias({ medicalModel: true, keyterm: true })).toEqual({
+      expect(saveSttBias({ medicalModel: true, keyterm: true, userKeyterms: true })).toEqual({
         medicalModel: true,
         keyterm: true,
+        userKeyterms: true,
       });
-      expect(readSttBias()).toEqual({ medicalModel: true, keyterm: true });
-      // partial save must not leave a stale switch on
-      expect(saveSttBias({ keyterm: true })).toEqual({ medicalModel: false, keyterm: true });
+      expect(readSttBias()).toEqual({ medicalModel: true, keyterm: true, userKeyterms: true });
+      // a partial save must not leave a stale switch on
+      expect(saveSttBias({ keyterm: true })).toEqual({
+        medicalModel: false,
+        keyterm: true,
+        userKeyterms: false,
+      });
     });
 
     test('a broken storage means NO bias (never silently spend 2x)', () => {
       const spy = jest.spyOn(Storage.prototype, 'getItem').mockImplementation(() => {
         throw new Error('no storage');
       });
-      expect(readSttBias()).toEqual({ medicalModel: false, keyterm: false });
+      expect(readSttBias()).toEqual({ medicalModel: false, keyterm: false, userKeyterms: false });
       spy.mockRestore();
+    });
+
+    // ── v4.158.0: user corrections, and the promise that they stay home ────
+    describe('user corrections as keyterms (v4.158.0)', () => {
+      const corr = (corrected, lang = 'en') => ({ sourceHeard: 'xx', corrected, lang, createdAt: 1 });
+
+      beforeEach(() => {
+        localStorage.clear();
+        clearCorrections();
+      });
+
+      test('nothing the user typed leaves the machine unless they say so', () => {
+        saveCorrection({ sourceHeard: 'mid vail', corrected: 'Midvale', lang: 'en' });
+        // keyterm ON, user corrections OFF -> lexicon only
+        const off = buildListenUrl('en', 'fast', { keyterm: true, userKeyterms: false });
+        expect(off).toContain('keyterm=albuterol');
+        expect(off).not.toContain('Midvale');
+        // both ON -> the correction leads the list
+        const on = buildListenUrl('en', 'fast', { keyterm: true, userKeyterms: true });
+        expect(on).toContain('keyterm=Midvale');
+      });
+
+      test('user keyterms without keyterm bias send nothing at all', () => {
+        saveCorrection({ sourceHeed: 'mid vail', corrected: 'Midvale', lang: 'en' });
+        const url = buildListenUrl('en', 'fast', { userKeyterms: true });
+        expect(url).toBe(buildListenUrl('en', 'fast'));
+        expect(url).not.toContain('keyterm=');
+      });
+
+      test('the ES socket never receives the English correction', () => {
+        saveCorrection({ sourceHeard: 'mid vail', corrected: 'Midvale', lang: 'en' });
+        const es = buildListenUrl('es', 'fast', { keyterm: true, userKeyterms: true });
+        expect(es).not.toContain('Midvale');
+      });
+
+      test('a dose typed as a correction still never leaves the machine', () => {
+        saveCorrection({ sourceHeard: 'five hundred', corrected: '500 mg', lang: 'en' });
+        const url = buildListenUrl('en', 'fast', { keyterm: true, userKeyterms: true });
+        expect(url).not.toContain('500');
+      });
     });
   });
 });

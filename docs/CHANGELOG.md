@@ -2,6 +2,19 @@
 
 **Version source:** `src/constants/version.js` (must match `package.json` + top-right UI pill)
 
+## v4.158.0 - Your ✎ corrections teach Deepgram (the Stage 4 loop, closed)
+
+- Stage 4's promise was "corrections → teach Deepgram, user approves each". This is that, and it turns the transcription thread from hand-curated into self-improving.
+- `keytermsFromCorrections(corrections)` in `src/utils/sttKeyterms.js`: a correction is the only ground truth this app owns — a human heard "all but a roll" and typed *albuterol*. Those words now **outrank the shipped lexicon** in the keyterm list, ranked by how often they were fixed.
+- Four safety rules, because this is the one list that leaves the machine and is built from something the user *typed*:
+  - only the **corrected** text is sent — sending "all but a roll" as a keyterm would teach Deepgram the error;
+  - **digits are refused** — a correction containing a digit is a dose, and a dose is never a keyterm;
+  - a whole-sentence correction is not a vocabulary item (≤2 words, ≤40 chars);
+  - terms stay in **their own lane** — an English correction never reaches the ES socket.
+- Third switch, `catint_stt_user_keyterms_v1`, **OFF by default**, and it only does anything when *Keyterm bias* is also on. Settings shows the exact words that would be sent, live, so nothing the operator typed leaves without them seeing it first.
+- 21 keyterm tests + 4 URL-level privacy tests (correction absent when the switch is off, ES socket never receives the EN term, a dose never leaves). 1290/1290 green (one pre-existing `GreetingsPanel` timing flake under parallel load; 11/11 in isolation).
+- **Still owed:** the A/B. Nothing here changes what a call sounds like until a switch is flipped.
+
 ## v4.157.0 - Provider biasing: built, gated, and OFF (Stage 3 scaffolding)
 
 - Stage 3 of [`docs/stt-eval-plan.md`](stt-eval-plan.md) was code-shaped but unimplemented. This ships the whole thing **behind switches that default OFF**, so the A/B costs nothing until it is deliberately run — and the app cannot accidentally start billing 2x.

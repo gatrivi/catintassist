@@ -9,6 +9,7 @@
 import {
   buildKeyterms,
   keytermTokenCost,
+  keytermsFromCorrections,
   KEYTERM_MAX_TERMS,
   KEYTERM_TOKEN_BUDGET,
 } from './sttKeyterms';
@@ -79,5 +80,88 @@ describe('sttKeyterms v4.157.0', () => {
     expect(buildKeyterms('zz')).toEqual([]);
     // A missing lane means "EN" everywhere else in the app, so keep that.
     expect(buildKeyterms(null).length).toBeGreaterThan(0);
+  });
+
+  // ── v4.158.0: the operator's own corrections feed the list ───────────────
+  describe('keyterms from ✎ corrections (v4.158.0)', () => {
+    const corr = (corrected, lang = 'en', createdAt = 1, sourceHeard = 'xx') => ({
+      sourceHeard,
+      corrected,
+      lang,
+      createdAt,
+    });
+
+    test('a corrected word becomes a keyterm', () => {
+      expect(keytermsFromCorrections([corr('Albuterol')])).toEqual(['Albuterol']);
+    });
+
+    test('only the CORRECTED text goes out, never the mishearing', () => {
+      // Sending "all but a roll" as a keyterm would teach Deepgram the error.
+      const list = keytermsFromCorrections([
+        corr('Albuterol', 'en', 1, 'all but a roll inhaler'),
+      ]);
+      expect(list).toEqual(['Albuterol']);
+      expect(list.join(' ')).not.toContain('all but a roll');
+    });
+
+    test('a dose is never a keyterm (digits are refused)', () => {
+      expect(keytermsFromCorrections([corr('500 mg')])).toEqual([]);
+      expect(keytermsFromCorrections([corr('Warfarin 5mg daily')])).toEqual([]);
+    });
+
+    test('a whole sentence is not a vocabulary item', () => {
+      expect(keytermsFromCorrections([corr('the patient denies chest pain today')])).toEqual([]);
+    });
+
+    test('a two-word name is allowed (a real drug name shape)', () => {
+      expect(keytermsFromCorrections([corr('sodium chloride')])).toEqual(['sodium chloride']);
+    });
+
+    test('frequently fixed words rank first — that is where the pain is', () => {
+      const list = keytermsFromCorrections([
+        corr('Warfarin', 'en', 5),
+        corr('Albuterol', 'en', 5),
+        corr('Albuterol', 'en', 6),
+        corr('Albuterol', 'en', 7),
+      ]);
+      expect(list[0]).toBe('Albuterol');
+    });
+
+    test('respects the cap', () => {
+      const many = Array.from({ length: 30 }, (_, i) => corr(`drug${'x'.repeat(i)}`));
+      expect(keytermsFromCorrections(many, { max: 5 })).toHaveLength(5);
+    });
+
+    test('empty / junk input is safe', () => {
+      expect(keytermsFromCorrections()).toEqual([]);
+      expect(keytermsFromCorrections([])).toEqual([]);
+      expect(keytermsFromCorrections([{}, { corrected: '' }])).toEqual([]);
+    });
+
+    test('corrections rank ABOVE the shipped lexicon, per lane', () => {
+      const merged = buildKeyterms('en', { corrections: [corr('Midvale')] });
+      expect(merged[0]).toBe('Midvale'); // human outranks shipped list
+      // and without the switch the list is unchanged
+      expect(buildKeyterms('en')[0]).not.toBe('Midvale');
+    });
+
+    test('a correction only reaches its own lane', () => {
+      const en = buildKeyterms('en', { corrections: [corr('Midvale', 'en')] });
+      const es = buildKeyterms('es', { corrections: [corr('Midvale', 'en')] });
+      expect(en).toContain('Midvale');
+      expect(es).not.toContain('Midvale');
+    });
+
+    test('a correction already in the lexicon is not duplicated', () => {
+      const list = buildKeyterms('en', { corrections: [corr('Albuterol')] });
+      expect(list.filter((t) => t.toLowerCase() === 'albuterol')).toHaveLength(1);
+    });
+
+    test('the merged list still respects the cap and the token budget', () => {
+      const many = Array.from({ length: 40 }, (_, i) => corr(`customterm${i}`));
+      const list = buildKeyterms('en', { corrections: many });
+      expect(list.length).toBeLessThanOrEqual(KEYTERM_MAX_TERMS);
+      expect(keytermTokenCost(list)).toBeLessThanOrEqual(KEYTERM_TOKEN_BUDGET);
+    });
   });
 });

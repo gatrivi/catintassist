@@ -58,7 +58,14 @@ import {
 } from '../utils/clinicalGuards';
 // v4.157.0 — provider biasing. OFF by default; the medical model costs ~2x EN.
 import { readSttBias, saveSttBias } from '../utils/deepgramListenConfig';
-import { buildKeyterms, keytermTokenCost, KEYTERM_MAX_TERMS } from '../utils/sttKeyterms';
+import {
+  buildKeyterms,
+  keytermTokenCost,
+  keytermsFromCorrections,
+  KEYTERM_MAX_TERMS,
+} from '../utils/sttKeyterms';
+// v4.158.0 — the operator's own ✎ corrections, read to preview what would be sent.
+import { loadCorrections, CORRECTIONS_CHANGED_EVENT } from '../utils/transcriptCorrections';
 import {
   STT_DIAGNOSTIC_SETTINGS_CHANGED_EVENT,
   readSttDiagnosticSettings,
@@ -104,6 +111,16 @@ export default function SettingsPanel({
   const [negationGuardOn, setNegationGuardOn] = useState(isNegationGuardEnabled);
   // v4.157.0 — provider biasing (the only switches that change what Deepgram bills)
   const [sttBias, setSttBias] = useState(readSttBias);
+  // v4.158.0 — which of the operator's own ✎ corrections would become keyterms.
+  // Shown on the panel so nothing they typed is ever sent without them seeing it.
+  const [userKeytermPreview, setUserKeytermPreview] = useState(() =>
+    keytermsFromCorrections(loadCorrections()),
+  );
+  useEffect(() => {
+    const refresh = () => setUserKeytermPreview(keytermsFromCorrections(loadCorrections()));
+    window.addEventListener(CORRECTIONS_CHANGED_EVENT, refresh);
+    return () => window.removeEventListener(CORRECTIONS_CHANGED_EVENT, refresh);
+  }, []);
   const [sttDiagnostics, setSttDiagnostics] = useState(readSttDiagnosticSettings);
   const [inspectorOn, setInspectorOn] = useState(readInspectorEnabled);
   const {
@@ -364,14 +381,35 @@ export default function SettingsPanel({
                 >
                   Keyterm bias: {sttBias.keyterm ? 'ON' : 'OFF'}
                 </button>
+                {/* v4.158.0: the only switch that would send something the user TYPED. */}
+                <button
+                  type="button"
+                  aria-pressed={sttBias.userKeyterms}
+                  onClick={() =>
+                    setSttBias(saveSttBias({ ...sttBias, userKeyterms: !sttBias.userKeyterms }))
+                  }
+                  style={{
+                    ...tabBtn,
+                    background: sttBias.userKeyterms ? 'rgba(34, 211, 238, 0.22)' : tabBtn.background,
+                  }}
+                >
+                  My corrections as terms: {sttBias.userKeyterms ? 'ON' : 'OFF'}
+                </button>
               </div>
               <p style={{ fontSize: 10, color: 'rgba(255,255,255,0.5)', margin: '6px 0 0' }}>
                 <strong>Medical model</strong> sends the English socket to <code>nova-3-medical</code> — roughly
                 2x the EN price. <strong>Keyterm bias</strong> sends {buildKeyterms('en').length}/
                 {KEYTERM_MAX_TERMS} terms ({keytermTokenCost(buildKeyterms('en'))} tokens), built only from
-                words we have already seen mangled, medical first. Both apply on the next CONNECT. Off by
-                default: run one call and compare before keeping either on.
+                words we have already seen mangled, medical first. <strong>My corrections as terms</strong> adds
+                the words you fixed with ✎ ({userKeytermPreview.length} ready) — that is the one setting that
+                would send something you typed, so it stays off until you turn it on. Both apply on the next
+                CONNECT. Off by default: run one call and compare before keeping any on.
               </p>
+              {userKeytermPreview.length > 0 && (
+                <p style={{ fontSize: 10, color: '#93c5fd', margin: '4px 0 0' }}>
+                  From your ✎ corrections: {userKeytermPreview.join(', ')}
+                </p>
+              )}
             </div>
           </div>
         )}

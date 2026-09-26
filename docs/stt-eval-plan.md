@@ -150,12 +150,26 @@ Code is in place and gated; the measurement is not.
   killing the EN socket. That comment may be the wrong culprit. **Untouched on
   purpose** — a socket-stability risk needs a live run, not a guess.
 
-## Stage 4 — later, needs explicit OK
+## Stage 4 — corrections → keyterms · **v4.158.0 SHIPPED (off by default)**
 
-- Corrections → "teach Deepgram" candidate list (user approves each; only the
-  single word leaves the machine, never the sentence).
-- A ~40-sentence self-recorded audio set (one-time 10 min, no PHI) for true audio
-  WER and future model A/Bs.
+- `keytermsFromCorrections()` feeds the operator's own ✎ corrections into the
+  keyterm list, ranked by how often each word was fixed. The human outranks the
+  shipped lexicon, because a human actually heard it.
+- Guards: only the **corrected** word goes out; digits are refused (a dose is not
+  a vocabulary item); ≤2 words; per-lane only.
+- Its own switch (`My corrections as terms`), off by default, and inert unless
+  *Keyterm bias* is also on. Settings displays the exact list that would be sent.
+- **Remaining:** the user is the approver in the loop already — they typed it. No
+  per-term approval UI is planned; the on-panel list is the review.
+
+## Stage 5 — the corpus of real audio (needs you, needs 10 minutes)
+
+- Everything measured so far is text-level: provider text vs displayed text, with
+  the provider text supplied by fixtures. No number here measures a *mic*.
+- One-time ~10 min of self-recorded scripted sentences (no PHI, no patients) and
+  the harness can score real audio WER — which is the only way to settle the
+  `nova-3-medical` / `keyterm` / `filler_words` questions with evidence instead of
+  a comment.
 
 ---
 

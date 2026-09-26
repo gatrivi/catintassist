@@ -25,6 +25,36 @@ import { APP_VERSION } from '../constants/version';
 /** Newest first. Only the entry matching APP_VERSION is shown on load. */
 export const RELEASE_NOTES_CATALOG = [
   {
+    version: '4.158.0',
+    id: 'corrections-teach-keyterms',
+    // Switches only — with them off, nothing about a live call changes.
+    highlightElementIds: ['header-app-logo-btn'],
+    es: {
+      title: 'Tus correcciones le enseñan a Deepgram',
+      intro: 'Cuando corregís una palabra con ✎, la app guarda la forma correcta. Ahora esa palabra puede pasar a la lista de “términos” que se le manda a Deepgram — apagado, y con los términos a la vista.',
+      sections: [{ heading: 'Qué cambió', bullets: [
+        '“My corrections as terms” agrega al listado de keyterms las palabras que vos corregiste. Es la señal más fuerte que tenemos: un humano escuchó y escribió la palabra correcta.',
+        'Solo sale la palabra CORRECTA, nunca lo que se escuchó mal: mandar “all but a roll” como término le enseñaría el error a Deepgram.',
+        'Una dosis nunca es un término: si la corrección tiene dígitos, se descarta.',
+        'Apagado por defecto, y la lista exacta se muestra en el panel — nada de lo que escribiste se manda sin que lo veas.',
+        'Los términos de tu idioma solo van a su socket: una corrección en inglés nunca llega al socket en español.',
+        'Hace falta encender “Keyterm bias” además de este para que algo salga.',
+      ] }],
+    },
+    en: {
+      title: 'Your corrections teach Deepgram',
+      intro: 'When you fix a word with ✎, the app stores the right form. That word can now join the keyterm list sent to Deepgram — switched off, and with the exact words shown on the panel.',
+      sections: [{ heading: 'What changed', bullets: [
+        '“My corrections as terms” adds the words you fixed to the keyterm list. It is the strongest signal available: a human listened and typed the right word.',
+        'Only the CORRECTED text is sent, never the mishearing — sending “all but a roll” as a keyterm would teach Deepgram the error.',
+        'A dose is never a keyterm: a correction containing digits is discarded.',
+        'Off by default, and the exact list is shown on the panel — nothing you typed is sent without you seeing it.',
+        'Terms stay in their own lane: an English correction never reaches the Spanish socket.',
+        '“Keyterm bias” must be on as well before anything is sent at all.',
+      ] }],
+    },
+  },
+  {
     version: '4.157.0',
     id: 'provider-biasing',
     // Switches only — nothing in the call path changes while they are OFF.

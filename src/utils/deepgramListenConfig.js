@@ -1,5 +1,6 @@
 /** Deepgram listen WS tuning — fast default for live interpret. v4.80.2 */
 import { buildKeyterms } from './sttKeyterms';
+import { loadCorrections } from './transcriptCorrections';
 
 export const STT_LATENCY_STORAGE_KEY = 'catint_stt_latency_v1';
 export const STT_LATENCY_CHANGED_EVENT = 'catint_stt_latency_changed';
@@ -82,6 +83,10 @@ export const getInterimFlushMs = (mode) => getSttLatencyConfig(mode).interimFlus
  */
 export const STT_BIAS_MEDICAL_MODEL = 'catint_stt_medical_model_v1';
 export const STT_BIAS_KEYTERM = 'catint_stt_keyterm_v1';
+// v4.158.0 — feed the operator's own ✎ corrections into the keyterm list. Its own
+// switch, because this is the only one that would send something the user TYPED
+// to a third party. It stays off until they say so.
+export const STT_BIAS_USER_KEYTERMS = 'catint_stt_user_keyterms_v1';
 
 const readFlag = (key) => {
   try {
@@ -91,17 +96,19 @@ const readFlag = (key) => {
   }
 };
 
-/** Read both bias switches at call time — a socket is built on CONNECT, so the
+/** Read every bias switch at call time — a socket is built on CONNECT, so the
  *  value in effect at that moment is the one that matters. No re-render needed. */
 export const readSttBias = () => ({
   medicalModel: readFlag(STT_BIAS_MEDICAL_MODEL),
   keyterm: readFlag(STT_BIAS_KEYTERM),
+  userKeyterms: readFlag(STT_BIAS_USER_KEYTERMS),
 });
 
 export const saveSttBias = (next = {}) => {
   try {
     localStorage.setItem(STT_BIAS_MEDICAL_MODEL, next.medicalModel ? '1' : '0');
     localStorage.setItem(STT_BIAS_KEYTERM, next.keyterm ? '1' : '0');
+    localStorage.setItem(STT_BIAS_USER_KEYTERMS, next.userKeyterms ? '1' : '0');
   } catch {
     /* private mode: the session simply runs unbiased */
   }
@@ -124,7 +131,7 @@ const langCode = (l) => (l || 'en').toString().toLowerCase().slice(0, 2);
 
 /** Documented Deepgram query params only. */
 export const buildListenUrl = (lang, mode = loadSttLatencyMode(), bias = {}) => {
-  const { medicalModel = false, keyterm = false } = bias || {};
+  const { medicalModel = false, keyterm = false, userKeyterms = false } = bias || {};
   const cfg = getSttLatencyConfig(mode);
   const params = new URLSearchParams({
     model: getDeepgramModel(lang, { medicalModel }),
@@ -139,7 +146,10 @@ export const buildListenUrl = (lang, mode = loadSttLatencyMode(), bias = {}) => 
   // Appended last, and only when asked for: with the switch off the query string
   // is exactly what it has always been.
   if (keyterm) {
-    buildKeyterms(lang).forEach((term) => params.append('keyterm', term));
+    // v4.158.0: the operator's own corrections are the best signal we have, but
+    // they only leave the machine when their own switch says so.
+    const corrections = userKeyterms ? loadCorrections() : [];
+    buildKeyterms(lang, { corrections }).forEach((term) => params.append('keyterm', term));
   }
   return `wss://api.deepgram.com/v1/listen?${params.toString()}`;
 };
