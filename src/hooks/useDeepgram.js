@@ -48,6 +48,7 @@ import {
   getMediaRecorderOptions,
   getMediaRecorderTimeslice,
   loadSttLatencyMode,
+  readSttBias, // v4.157.0: opt-in provider biasing (both switches OFF by default)
 } from "../utils/deepgramListenConfig";
 import { writeMicTestMode } from "../utils/micMode";
 import {
@@ -1187,8 +1188,13 @@ export const useDeepgram = () => {
       };
 
       const createSocket = (lang, stream, { socketSide = "En", isFirst = false } = {}) => {
-        const url = buildListenUrl(lang, sttLatencyModeRef.current);
-        catLog("[Deepgram:open] OPENING SOCKET", { lang, socketSide, url });
+        // v4.157.0: provider biasing is opt-in and read at CONNECT time, so the
+        // switch in Settings applies to the next call without a reload. With
+        // both switches off this returns {} and the URL is byte-identical to
+        // v4.154.0 (locked by a test in deepgramListenConfig.test.js).
+        const sttBias = readSttBias();
+        const url = buildListenUrl(lang, sttLatencyModeRef.current, sttBias);
+        catLog("[Deepgram:open] OPENING SOCKET", { lang, socketSide, url, sttBias });
         const ws = new WebSocket(url, ["token", API_KEY]);
         const sk = socketSide === "En" ? "socketEn" : "socketEs";
         const skClose = socketSide === "En" ? "socketEnClose" : "socketEsClose";

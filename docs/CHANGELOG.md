@@ -2,6 +2,17 @@
 
 **Version source:** `src/constants/version.js` (must match `package.json` + top-right UI pill)
 
+## v4.157.0 - Provider biasing: built, gated, and OFF (Stage 3 scaffolding)
+
+- Stage 3 of [`docs/stt-eval-plan.md`](stt-eval-plan.md) was code-shaped but unimplemented. This ships the whole thing **behind switches that default OFF**, so the A/B costs nothing until it is deliberately run — and the app cannot accidentally start billing 2x.
+- `src/utils/sttKeyterms.js`: `buildKeyterms(lang)` builds the list **from the domain lexicon**, i.e. only from words already *proven* mangled. We never bias toward a word we merely expect to be common — force-fitting invented terms is Deepgram's documented failure mode, and the eval already reports it as `INVENTED terms`. Capped at 30 terms / 500 tokens (Deepgram's guidance is 20–50, hard cap 500), medical kinds first so a deposition cannot crowd out a dose. An **unknown lane gets an empty list** — never English terms force-fitted into a foreign stream.
+- `deepgramListenConfig.js`: `getDeepgramModel(lang, {medicalModel})` (EN-only; ES stays `nova-3-general` because the app is a two-lane EN/ES structure) and `buildListenUrl(lang, mode, bias)`. `readSttBias()` / `saveSttBias()` in the same file, no new storage module.
+- **The promise, as a test:** with both switches off, `buildListenUrl('en','fast')` returns the exact v4.154.0 string, character for character. A broken/absent storage means *no bias* — never a silent 2x.
+- `useDeepgram.js` reads the switches at CONNECT time (next call, no reload) and logs the bias alongside the URL.
+- Settings → Deepgram gains a **Provider biasing** group: *Medical model (EN)* (red) and *Keyterm bias*, each with the cost and the term count stated on the panel rather than buried in a doc. `SettingsPanel.test.js` now renders the real Deepgram section and asserts all four transcription switches start OFF and flip independently.
+- **Still owed — the actual A/B:** one test call per switch, then `npm run eval:stt` to compare WER/terms/digits and watch for `INVENTED terms`. Until then these stay off. The unresolved `filler_words=true`-on-Nova-3 question from Stage 3 is untouched on purpose — it is a socket-stability risk and needs a live run, not a guess.
+- 1271/1271 tests green, build clean.
+
 ## v4.156.0 - Negation guard: flags the dropped "denies", never invents it
 
 - Shipped v4.155.0's negation detection was real but **invisible** — console-only. The one error class that can change what a patient agreed to had no on-screen signal at all.

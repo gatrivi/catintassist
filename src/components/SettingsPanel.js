@@ -56,6 +56,9 @@ import {
   isNegationGuardEnabled,
   setNegationGuardEnabled,
 } from '../utils/clinicalGuards';
+// v4.157.0 — provider biasing. OFF by default; the medical model costs ~2x EN.
+import { readSttBias, saveSttBias } from '../utils/deepgramListenConfig';
+import { buildKeyterms, keytermTokenCost, KEYTERM_MAX_TERMS } from '../utils/sttKeyterms';
 import {
   STT_DIAGNOSTIC_SETTINGS_CHANGED_EVENT,
   readSttDiagnosticSettings,
@@ -99,6 +102,8 @@ export default function SettingsPanel({
   const [domainRepairOn, setDomainRepairOn] = useState(isDomainRepairEnabled);
   // v4.156.0 — negation guard switch (read-only warning, its own switch)
   const [negationGuardOn, setNegationGuardOn] = useState(isNegationGuardEnabled);
+  // v4.157.0 — provider biasing (the only switches that change what Deepgram bills)
+  const [sttBias, setSttBias] = useState(readSttBias);
   const [sttDiagnostics, setSttDiagnostics] = useState(readSttDiagnosticSettings);
   const [inspectorOn, setInspectorOn] = useState(readInspectorEnabled);
   const {
@@ -329,6 +334,43 @@ export default function SettingsPanel({
                 invents a missing “denies”. <strong>Negation guard</strong> only puts a ⚠ on a line whose
                 negation looks dropped (read-only, it changes no words). Both ship OFF on purpose: turn one on
                 and listen to a call before you trust it.
+              </p>
+            </div>
+            {/* v4.157.0 — provider biasing. The only switches here that change the bill. */}
+            <div style={{ marginTop: 14 }}>
+              <div style={{ fontSize: 11, color: '#93c5fd', marginBottom: 6 }}>Provider biasing</div>
+              <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                <button
+                  type="button"
+                  aria-pressed={sttBias.medicalModel}
+                  onClick={() =>
+                    setSttBias(saveSttBias({ ...sttBias, medicalModel: !sttBias.medicalModel }))
+                  }
+                  style={{
+                    ...tabBtn,
+                    background: sttBias.medicalModel ? 'rgba(239, 68, 68, 0.22)' : tabBtn.background,
+                  }}
+                >
+                  Medical model (EN): {sttBias.medicalModel ? 'ON' : 'OFF'}
+                </button>
+                <button
+                  type="button"
+                  aria-pressed={sttBias.keyterm}
+                  onClick={() => setSttBias(saveSttBias({ ...sttBias, keyterm: !sttBias.keyterm }))}
+                  style={{
+                    ...tabBtn,
+                    background: sttBias.keyterm ? 'rgba(34, 211, 238, 0.22)' : tabBtn.background,
+                  }}
+                >
+                  Keyterm bias: {sttBias.keyterm ? 'ON' : 'OFF'}
+                </button>
+              </div>
+              <p style={{ fontSize: 10, color: 'rgba(255,255,255,0.5)', margin: '6px 0 0' }}>
+                <strong>Medical model</strong> sends the English socket to <code>nova-3-medical</code> — roughly
+                2x the EN price. <strong>Keyterm bias</strong> sends {buildKeyterms('en').length}/
+                {KEYTERM_MAX_TERMS} terms ({keytermTokenCost(buildKeyterms('en'))} tokens), built only from
+                words we have already seen mangled, medical first. Both apply on the next CONNECT. Off by
+                default: run one call and compare before keeping either on.
               </p>
             </div>
           </div>

@@ -122,17 +122,33 @@ perfectly well-formed sentence — nothing in the text betrays it. That is where
 the ✎ correction loop and the corpus probe remain the backstop, and where
 provider-side work (Stage 3) is the only real fix.
 
-## Stage 3 — provider-side, only if the harness proves the win
+## Stage 3 — provider-side · **v4.157.0 SHIPPED (switches OFF) · A/B still owed**
 
-- `keyterm` biasing on both sockets (Deepgram supports it on `nova-3`; 500-token
-  hard cap, Deepgram's own guidance is 20–50 terms; force-fitting is a documented
-  failure mode, so the list stays short and high-precision). Opt-in toggle.
-- EN socket → `nova-3-medical` (**English only** — the app's EN/ES two-lane
-  structure fits exactly; ES stays `nova-3-general`). ~2x EN cost while testing.
+Code is in place and gated; the measurement is not.
+
+- **Medical model (EN)** — `getDeepgramModel(lang, {medicalModel})` sends the EN
+  socket to `nova-3-medical`. ES stays `nova-3-general`: the app's two-lane
+  EN/ES structure fits this exactly. ~2x EN cost.
+- **Keyterm bias** — `buildKeyterms(lang)` in `src/utils/sttKeyterms.js`. The list
+  comes **from the domain lexicon**, so it only ever contains words already proven
+  mangled. Capped 30 terms / 500 tokens, medical first. Unknown lane → empty list.
+- Both default OFF and are read at CONNECT time. With both off the listen URL is
+  byte-identical to v4.154.0 (locked by a test).
+- Force-fitting watch: the eval already reports `INVENTED terms` (a term that
+  appears when the reference has none). **If the A/B shows invented terms, the
+  list is too long or too greedy — cut it, do not tune the weights.**
+
+### The run that is still owed
+
+1. Baseline call, both switches off. Keep the transcript.
+2. Keyterm bias ON, one call. Compare drug names; check for invented terms.
+3. Medical model ON, one call. Compare WER/digits; watch socket stability + latency.
+4. One number decides: keep the winner, stop measuring.
+
 - Re-test `filler_words=true`: it is not documented for Nova-3 (Deepgram lists it
   as a Nova-2 feature), and the code comment blames "medical + filler_words" for
-  killing the EN socket. That comment may be the wrong culprit.
-- Before/after report from the same corpus + live probe (latency, socket health).
+  killing the EN socket. That comment may be the wrong culprit. **Untouched on
+  purpose** — a socket-stability risk needs a live run, not a guess.
 
 ## Stage 4 — later, needs explicit OK
 

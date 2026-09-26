@@ -25,6 +25,34 @@ import { APP_VERSION } from '../constants/version';
 /** Newest first. Only the entry matching APP_VERSION is shown on load. */
 export const RELEASE_NOTES_CATALOG = [
   {
+    version: '4.157.0',
+    id: 'provider-biasing',
+    // Switches only — nothing in the call path changes while they are OFF.
+    highlightElementIds: ['header-app-logo-btn'],
+    es: {
+      title: 'Sesgo de proveedor: las herramientas están listas, apagadas',
+      intro: 'Deepgram puede escuchar mejor los nombres de fármacos. Eso cuesta dinero, así que queda detrás de dos interruptores apagados hasta que vos decidas.',
+      sections: [{ heading: 'Qué cambió', bullets: [
+        '“Medical model (EN)” manda el socket de inglés a `nova-3-medical` — alrededor de 2x el precio del inglés. El español sigue en general.',
+        '“Keyterm bias” manda una lista corta de términos que ya sabemos que Deepgram escucha mal (albuterol, amoxicilina…), médicos primero. La lista sale del léxico, no de una suposición.',
+        'Apagados por defecto: con los dos apagados, la URL que se manda a Deepgram es EXACTAMENTE la misma de siempre, carácter por carácter (hay un test que lo fija).',
+        'Se aplican en el próximo CONNECT, sin recargar.',
+        'Todavía falta la corrida: encendelos, hacé una llamada de prueba, y después corré `npm run eval:stt` para comparar. La app no lo prende solo por vos.',
+      ] }],
+    },
+    en: {
+      title: 'Provider biasing: the tools are ready, switched off',
+      intro: 'Deepgram can be told to listen better for drug names. That costs money, so it sits behind two switches that stay off until you say otherwise.',
+      sections: [{ heading: 'What changed', bullets: [
+        '“Medical model (EN)” sends the English socket to `nova-3-medical` — roughly 2x the EN price. Spanish stays on general.',
+        '“Keyterm bias” sends a short list of terms we already know Deepgram mangles (albuterol, amoxicilina…), medical first. The list comes from the lexicon, not from a guess.',
+        'Off by default: with both off, the URL sent to Deepgram is EXACTLY the one it has always been, character for character (a test locks that).',
+        'They apply on the next CONNECT, no reload needed.',
+        'The A/B run is still owed: turn one on, make a test call, then run `npm run eval:stt` to compare. The app will not switch it on for you.',
+      ] }],
+    },
+  },
+  {
     version: '4.156.0',
     id: 'negation-guard',
     // The switch lives in Settings, not the header — the header is untouched

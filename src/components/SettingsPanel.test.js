@@ -57,6 +57,9 @@ jest.mock('../contexts/AuthContext', () => ({ useAuth: () => ({ user: null }) })
 const renderAudioSection = () =>
   render(<SettingsPanel open onClose={jest.fn()} initialSection="audio" />);
 
+const renderDeepgramSection = () =>
+  render(<SettingsPanel open onClose={jest.fn()} initialSection="deepgram" />);
+
 const seedMicVerdict = () => {
   localStorage.setItem(
     'CATINTASSIST_MIC_VERIFY_LAST',
@@ -98,5 +101,38 @@ describe('SettingsPanel → Audio: MIC VERIFY chip (v4.132.0)', () => {
 
     expect(screen.getByRole('button', { name: /Trace: ON/i })).toHaveAttribute('aria-pressed', 'true');
     expect(screen.getByRole('button', { name: /Last 60s audio: ON/i })).toHaveAttribute('aria-pressed', 'true');
+  });
+});
+
+// v4.157.0 — the four transcription safety switches, all OFF until the operator
+// says otherwise. The "off = today's behaviour" promise lives here, in the place
+// the operator actually touches.
+describe('SettingsPanel -> Deepgram: guards + provider biasing (v4.157.0)', () => {
+  afterEach(() => localStorage.clear());
+
+  test('every switch starts OFF', () => {
+    renderDeepgramSection();
+    expect(screen.getByRole('button', { name: /Term repair: OFF/i })).toHaveAttribute('aria-pressed', 'false');
+    expect(screen.getByRole('button', { name: /Negation guard: OFF/i })).toHaveAttribute('aria-pressed', 'false');
+    expect(screen.getByRole('button', { name: /Medical model \(EN\): OFF/i })).toHaveAttribute('aria-pressed', 'false');
+    expect(screen.getByRole('button', { name: /Keyterm bias: OFF/i })).toHaveAttribute('aria-pressed', 'false');
+  });
+
+  test('each switch flips on its own and persists', () => {
+    renderDeepgramSection();
+
+    fireEvent.click(screen.getByRole('button', { name: /Term repair: OFF/i }));
+    expect(screen.getByRole('button', { name: /Term repair: ON/i })).toHaveAttribute('aria-pressed', 'true');
+    // the safe read-only guard must not have come along for the ride
+    expect(screen.getByRole('button', { name: /Negation guard: OFF/i })).toHaveAttribute('aria-pressed', 'false');
+
+    fireEvent.click(screen.getByRole('button', { name: /Keyterm bias: OFF/i }));
+    expect(screen.getByRole('button', { name: /Keyterm bias: ON/i })).toHaveAttribute('aria-pressed', 'true');
+    expect(screen.getByRole('button', { name: /Medical model \(EN\): OFF/i })).toHaveAttribute('aria-pressed', 'false');
+  });
+
+  test('the cost warning is on the panel, not hidden in a doc', () => {
+    renderDeepgramSection();
+    expect(screen.getByText(/2x the EN price/i)).toBeInTheDocument();
   });
 });
