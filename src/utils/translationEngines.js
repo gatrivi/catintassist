@@ -48,19 +48,27 @@ const GATEWAY_ENGINE = 'gateway';
 const FREE_ENGINE_BLACKLIST_MS = 10 * 60 * 1000; // 10m — network blips
 const RATE_LIMIT_BLACKLIST_MS = 30 * 60 * 1000; // 30m — don't hammer 429 APIs
 const SERVER_ERROR_BLACKLIST_MS = 90 * 1000; // 90s — dead gateway, retry soon but don't hammer per segment
+// v4.165.0: a hanging engine used to be retried on EVERY segment (timeouts were
+// never blacklisted), so one dead endpoint cost 4s per bubble, all day — the
+// reported "4-6s behind". 90s is long enough to stop the bleeding, short enough
+// that a recovered engine returns on its own.
+const TIMEOUT_BLACKLIST_MS = 90 * 1000;
 
 export const blacklistEngine = (id, ttlMs, reason = 'error') => {
   const rateLimited = reason === 'rate_limit';
   const serverDown = reason === 'server_error';
+  const timedOut = reason === 'timeout';
   const effectiveTtl =
     ttlMs ??
     (rateLimited
       ? RATE_LIMIT_BLACKLIST_MS
       : serverDown
         ? SERVER_ERROR_BLACKLIST_MS
-        : id === LOCAL_TRANSLATE_ENGINE
-          ? FREE_ENGINE_BLACKLIST_MS
-          : BLACKBOX_TTL);
+        : timedOut
+          ? TIMEOUT_BLACKLIST_MS
+          : id === LOCAL_TRANSLATE_ENGINE
+            ? FREE_ENGINE_BLACKLIST_MS
+            : BLACKBOX_TTL);
   BLACKBOX[id] = Date.now();
   BLACKBOX_TTLS[id] = effectiveTtl;
   BLACKBOX_REASONS[id] = reason;
@@ -270,6 +278,26 @@ export const buildEngineChain = (sLang, tLang, keys, { forceFree = false } = {})
 
 const FAILED = { text: '', engineId: null, quality: 'failed', failures: [], tried: [] };
 
+/**
+ * v4.165.0 — the latency ladder.
+ *
+ * The chain is serial, so every engine that does not answer costs you its FULL
+ * timeout before the next one is tried. With a 4s timeout that meant a single dead
+ * endpoint put the translation 4-6s behind — unusable while interpreting.
+ *
+ * Real engines answer in 200-900ms, so a first attempt that has not answered by
+ * 1200ms is not going to win, and waiting longer only makes the bubble later.
+ * The LAST engine keeps the full budget, so quality is never traded away for
+ * speed: we only stop waiting on engines that were already going to blow it.
+ */
+export const ENGINE_TIMEOUT_LADDER_MS = [1200, 2000, 4000];
+
+/** Timeout for attempt `index` of `total` — first is snappy, last is patient. */
+export const engineTimeoutForAttempt = (index, total, ladder = ENGINE_TIMEOUT_LADDER_MS) => {
+  if (index >= total - 1) return ladder[ladder.length - 1];
+  return ladder[Math.min(index, ladder.length - 1)];
+};
+
 export const translateWithFallback = async ({
   text,
   sLang,
@@ -301,8 +329,10 @@ export const translateWithFallback = async ({
     }
     tried.push(id);
     try {
+      // v4.165.0: shrinking per-attempt timeout instead of one flat 4s for all.
+      const attemptTimeoutMs = engineTimeoutForAttempt(i, chain.length);
       const timer = new Promise((_, rej) =>
-        setTimeout(() => rej(new Error('timeout')), timeoutMs),
+        setTimeout(() => rej(new Error('timeout')), attemptTimeoutMs),
       );
       const raw = await Promise.race([fetchers[id](text), timer]);
       const clean = sanitizeEngineResponse(String(raw || ''));
@@ -333,7 +363,11 @@ export const translateWithFallback = async ({
         isRateLimitError(e) ||
         isBrowserFetchError(e) ||
         reason === 'unauthorized' ||
-        reason === 'server_error'
+        reason === 'server_error' ||
+        // v4.165.0: a timeout MUST be remembered. Without this the same hanging
+        // engine was retried on every single segment, so the app paid the full
+        // timeout again for every bubble, all day. That was the 4-6s lag.
+        reason === 'timeout'
       ) {
         blacklistEngine(id, undefined, reason);
       }
