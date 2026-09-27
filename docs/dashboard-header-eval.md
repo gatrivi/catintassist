@@ -58,7 +58,7 @@ is **~90px**: the 32px sticky row is not the whole header.
 | 1 | `headerMinimal` omits `greeting-editor`, so the full scoreboard + progress stack render above the Greeting Editor — and at ≤900px the header is capped at **88px with `overflow:hidden`**, so that content is unreachable, not scrollable | `DashboardHeader.js:900`, `index.css:4232` |
 | 2 | `#daily-targets-chip` is rendered **twice** in meter-only mode: once inside `.session-controls-center` (CSS-hidden at `index.css:320`) and once visible in the meter row. Duplicate DOM id + two `ResizeObserver`s | `DashboardHeader.js:635`, `:3385` |
 | 3 | `.metric-pill` sets `cursor: copy` but has **no click handler** — 5 pills | `index.css:5279`; pills at `:2447, 2450, 2493, 2497, 2511` |
-| 4 | The off-call condensed toolbar is skipped when `offCallScoreboardView`, so **Min/Std/Full, Notes, Tools, Help, Edit-grid, Call detection and Call Focus have no entry point** in the default off-call view | `:2428` |
+| 4 | The off-call condensed toolbar was skipped when `offCallScoreboardView`, so **Min/Std/Full, Notes, Tools, Help, Edit-grid, Call detection and Call Focus had no entry point** in the default off-call view | `:2428` — **FIXED v4.168.0** |
 | 5 | The 🎯 chip is visible mid-call but can only raise a toast | `:635` → `App.js` off-call guard |
 | 6 | The header always passes `compact` to the I/O strip, and `.audio-route-status-full` is `display:none` in compact — so **Test local, Test VB out, mic/sink/cable selects, mic meter, tab-share proof and reconnect are unreachable from the header**. The capability lives in Settings → Audio | `DashboardHeader.js:855`, `index.css:4402` |
 | 7 | `maxHeight` is set **inline from a localStorage value**, silently overriding every CSS cap (`:1145, 1154, 1163, 372, 4226`). The vertical budget is not inspectable in CSS | `DashboardHeader.js:3269` |
@@ -149,17 +149,13 @@ control.** No zombie-call test, no `callFocusMode` / `isCollapsed` /
 
 ### Still open after Phase 1
 
-**The pills, the condensed toolbar and the income dashboard are now reachable
-only in the in-call expanded header.** Finding #4 is not an oversight in the copy
-fix — it is the underlying problem, and it is deferred by choice:
+**v4.168.0 closed finding #4.** The pills, the condensed toolbar and the income
+dashboard were reachable only in the in-call expanded header. The toolbar is now
+extracted as `renderCondensedToolbar()` and rendered in the off-call collapsed
+body too, so Min/Std/Full, Notes, Tools, Help, Edit-grid, Call detection, Call
+Focus and the pills all have a home off-call. Cost: the off-call header goes
+83px → ~113px against a cap that was already 132px, so nothing needed capping
+and transcription stays ~81%.
 
-- `renderWorkspaceBody` is gated by `!headerMinimal`, so the three workspace
-  views render no body at all.
-- The condensed toolbar is gated by `!offCallScoreboardView`, so the default
-  off-call view has no toolbar.
-- The income dashboard needs Settings → `expanded_income_cards`.
-
-So off-call there is currently **one way** to reach Min/Std/Full, Notes, Tools,
-Help, Edit-grid, Call detection, Call Focus — or none. Restoring that is the
-next decision, not a silent side effect of this pass.
+Still open, unchanged:
 

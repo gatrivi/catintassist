@@ -111,3 +111,4 @@
 | 2026-09-26T20:47:42.987Z | 61de5f1 | v4.166.0 slim the audio strip: TAB/VB + output label + EN/ES moved to Settings |
 | 2026-09-26T21:29:02.848Z | c6dbe36 | fix: translation 4-6s behind - timeouts are now remembered and the ladder fails fast |
 | 2026-09-26T21:40:57.981Z | 5188029 | v4.167.0: translation latency is yours to pick - FAST by default (0.7s) |
+| 2026-09-27T16:54:24.264Z | ec9bb07 | v4.167.0 Settings->Studio door for Soundboard + Greeting Editor; audio strip down to the Deepgram proof |

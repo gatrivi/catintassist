@@ -25,6 +25,41 @@ import { APP_VERSION } from '../constants/version';
 /** Newest first. Only the entry matching APP_VERSION is shown on load. */
 export const RELEASE_NOTES_CATALOG = [
   {
+    version: '4.168.0',
+    id: 'toolbar-back-off-call',
+    highlightElementIds: ['header-app-logo-btn'],
+    es: {
+      title: 'La fila de controles vuelve a estar disponible sin llamada',
+      intro: 'Min/Std/Full, Notes, Tools, Help, Edit Grid, Call Detection, Call Focus y las pastillas de números estaban SOLO en la cabecera de llamada. Ahora también están en la pantalla de scoreboard, que es donde los mirás.',
+      sections: [
+        { heading: 'Qué volvió', bullets: [
+          'La fila de controles completa, off-call, en el scoreboard colapsado (tu pantalla de reposo).',
+          'Las pastillas: **turno**, **salir** y **calls**. La hora de salir ahora se copia con un clic, sin llamada en curso.',
+          'Min / Std / Full para cambiar el layout del scoreboard, igual que durante una llamada.',
+        ] },
+        { heading: 'Lo que cuesta', bullets: [
+          'La cabecera pasa de 83px a ~113px en 600px de alto. El límite que ya tenía es 132px, así que entra sin tocar ningún tope: la transcripción queda en ~81%.',
+          'No vuelve el “scoreboard de una línea” de la v4.99.2. Esa versión vació esta parte persiguiendo un error de CONTABILIDAD (893m de tiempo off-call fantasma), no de layout — el arreglo de facturación sigue intacto.',
+        ] },
+      ],
+    },
+    en: {
+      title: 'The control row is back on the off-call screen',
+      intro: 'Min/Std/Full, Notes, Tools, Help, Edit Grid, Call Detection, Call Focus and the number pills were only on the in-call header. They are now on the scoreboard screen too, which is where you actually look.',
+      sections: [
+        { heading: 'What is back', bullets: [
+          'The whole control row, off-call, on the collapsed scoreboard (your idle screen).',
+          'The pills: **shift**, **log-off** and **calls**. The log-off time is now one click to copy, with no call running.',
+          'Min / Std / Full to change the scoreboard layout, same as during a call.',
+        ] },
+        { heading: 'What it costs', bullets: [
+          'The header goes from 83px to ~113px at 600px tall. The cap it already had is 132px, so this fits without touching any limit: transcription stays at ~81%.',
+          'The v4.99.2 "one-line scoreboard" look does not come back. That release emptied this area chasing a BILLING bug (893m of phantom off-call time), not a layout one — the billing fix is untouched.',
+        ] },
+      ],
+    },
+  },
+  {
     version: '4.167.0',
     id: 'studios-have-a-door',
     highlightElementIds: ['header-app-logo-btn'],

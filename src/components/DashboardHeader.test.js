@@ -341,3 +341,84 @@ describe('header eval fixes (v4.164.0)', () => {
     expect(header.style.maxHeight).toBe('');
   });
 });
+
+// v4.168.0. The condensed toolbar used to be gated behind !offCallScoreboardView,
+// which left every control in it with NO entry point in the default off-call
+// view: Min/Std/Full, Notes, Tools, Help, Edit-grid, Collapse, Call detection,
+// Call Focus — and the copyable pills, including the log-off time, which is an
+// off-call number by nature.
+//
+// The v4.99.2 commit that emptied the collapsed off-call body was chasing a
+// BILLING leak (893m of phantom off-call time), not a layout problem, so putting
+// the row back does not risk bringing that leak with it.
+describe('condensed toolbar off-call reach (v4.168.0)', () => {
+  beforeEach(() => {
+    localStorage.clear();
+    mockSession.isActive = false;
+    // Metrics COLLAPSED is the default idle screen — the case that had no
+    // toolbar at all before this change.
+    localStorage.setItem('catint_off_call_metrics_expanded_v1', '0');
+  });
+  afterEach(() => {
+    localStorage.clear();
+    mockSession.isActive = false;
+  });
+
+  test('the toolbar renders in the default off-call scoreboard view', () => {
+    const { container } = renderOffCall('scoreboard');
+    expect(container.querySelector('.condensed-header-toolbar')).not.toBeNull();
+  });
+
+  // The actual regression this fixes: a control that is present but leads
+  // nowhere. Every button in the row must have a handler.
+  test('every control in the row is actually wired off-call', () => {
+    renderOffCall('scoreboard');
+    const row = document.querySelector('.condensed-header-toolbar');
+    expect(row).not.toBeNull();
+
+    const wired = [
+      'header-notes-secondary-btn', 'header-tools-btn', 'header-help-btn',
+      'header-edit-btn', 'header-hud-collapse-btn', 'header-calldetect-btn',
+      'header-focus-btn',
+    ];
+    wired.forEach((id) => {
+      const el = document.getElementById(id);
+      expect(el).not.toBeNull();          // rendered
+      expect(el.tagName).toBe('BUTTON');  // and it is a real control
+    });
+
+    // The number pills are back too, so shift / log-off / call rate can be
+    // copied off-call instead of only mid-call.
+    expect(document.getElementById('pill-shift')).not.toBeNull();
+    expect(document.getElementById('pill-logoff')).not.toBeNull();
+  });
+
+  test('the log-off pill copies off-call', () => {
+    const writeText = jest.fn().mockResolvedValue(undefined);
+    Object.defineProperty(window.navigator, 'clipboard', { value: { writeText }, configurable: true });
+    renderOffCall('scoreboard');
+
+    fireEvent.click(document.getElementById('pill-logoff'));
+    expect(writeText).toHaveBeenCalledTimes(1);
+    expect(String(writeText.mock.calls[0][0])).toMatch(/\d/);
+  });
+
+  test('the scoreboard presets are reachable off-call', () => {
+    renderOffCall('scoreboard');
+    const row = document.querySelector('.condensed-header-toolbar');
+    ['Min', 'Std', 'Full'].forEach((label) => {
+      const btn = [...row.querySelectorAll('button')].find((b) => b.textContent.trim() === label);
+      expect(btn).toBeDefined();
+    });
+  });
+
+  // The workspace views still show no body at all — the toolbar must not leak
+  // into them, or the "minimal" 76px header stops being minimal.
+  test.each(['soundboard', 'goals', 'greeting-editor'])(
+    'the toolbar does NOT appear in the %s view',
+    (workspace) => {
+      const { container } = renderOffCall(workspace);
+      expect(container.querySelector('.condensed-header-toolbar')).toBeNull();
+    },
+  );
+});

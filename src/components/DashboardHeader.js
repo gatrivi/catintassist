@@ -2085,7 +2085,291 @@ export const DashboardHeader = ({
 
   // v4.99.2: collapsed off-call body is empty — its summary/Less moved into the
   // chips row via trailingSlot (renderInlineMetricsStrip).
-  const renderOffCallCollapsedBody = () => null;
+  /**
+   * The slim control row under the scoreboard: Min/Std/Full, Notes, Tools,
+   * Help, Edit-grid, Collapse, Call detection, Call Focus, plus the number
+   * pills (shift, log-off, call rate).
+   *
+   * v4.168.0: extracted so the off-call scoreboard view can render it too. It
+   * was gated behind !offCallScoreboardView, which left every control here
+   * with NO entry point in the default off-call view - the pills included, and
+   * the log-off time is an off-call number by nature.
+   */
+  const renderCondensedToolbar = () => (
+      <div className="condensed-header-toolbar">
+      <div id="controls-left-col" style={{ display: 'flex', flexDirection: 'row', flexWrap: 'wrap', gap: '0.35rem', alignItems: 'center' }}>
+        <div id="connection-controls-horizontal" className={`${isActive ? 'active-working-state' : ''}`} style={{ display: 'flex', flexDirection: 'row', gap: '0.35rem', alignItems: 'center' }}>
+          <StateIndicators 
+            state={isActive ? 'call' : isBreakActive ? 'break' : 'avail'} 
+            breakMinutes={stats.dailyBreakMinutes || 0} 
+            isZombie={isZombieCall} 
+            silenceCount={silenceCount}
+          />
+          <div style={{ fontSize: '0.6rem', fontWeight: 900, color: 'rgba(255,255,255,0.4)', background: 'rgba(255,255,255,0.05)', padding: '2px 4px', borderRadius: '3px' }}>
+            ⏳{Math.floor(minutesSinceLastBreak)}m
+          </div>
+          <div id="header-edit-tools-mini" style={{ display: 'flex', gap: '2px' }}>
+            <button className="edit-btn-tiny" onClick={() => setTimeEditMode('call')} title="Edit call time">📞</button>
+            <button className="edit-btn-tiny" onClick={() => setTimeEditMode('break')} title="Edit break time">☕</button>
+          </div>
+        </div>
+        <div id="left-pills-row" style={{ display: 'flex', gap: '0.3rem', alignItems: 'center' }}>
+           <CopyPill
+             id="pill-shift"
+             title="SHIFT"
+             copyText={formatHoursMins(shiftElapsedMins)}
+             copied={copiedPill}
+             onCopy={copyPill}
+             style={{ padding: '0.1rem 0.3rem' }}
+           >
+             <span style={{ fontSize: '0.55rem' }}>🏃{formatHoursMins(shiftElapsedMins)}</span>
+           </CopyPill>
+           <CopyPill
+             id="pill-logoff"
+             title="LOG OFF"
+             copyText={getCompensatedLogOff()}
+             copied={copiedPill}
+             onCopy={copyPill}
+             style={{
+               position: 'relative',
+               overflow: 'hidden',
+               background: 'rgba(245,158,11,0.08)',
+               border: '1px solid rgba(245,158,11,0.2)',
+               padding: '0.1rem 0.3rem',
+               boxShadow: shouldLogoffShine ? '0 0 14px rgba(245,158,11,0.45)' : undefined,
+               animation: shouldLogoffShine ? 'shineSweep 3s linear infinite' : undefined,
+               backgroundImage: shouldLogoffShine ? 'linear-gradient(90deg, rgba(245,158,11,0.10), rgba(245,158,11,0.22), rgba(245,158,11,0.10))' : undefined,
+               backgroundSize: shouldLogoffShine ? '200% 100%' : undefined,
+               backgroundPosition: '0% 0%',
+             }}
+           >
+             <div
+               aria-hidden="true"
+               style={{
+                 position: 'absolute',
+                 left: 0,
+                 top: 0,
+                 bottom: 0,
+                 width: `${Math.round(logoffGlowProgress * 100)}%`,
+                 background: 'rgba(245,158,11,0.22)',
+                 transition: 'width 0.8s ease',
+                 pointerEvents: 'none',
+               }}
+             />
+             <span style={{ position: 'relative', zIndex: 1, color: '#fcd34d', fontSize: '0.55rem' }}>
+               🚪{getCompensatedLogOff()}
+             </span>
+           </CopyPill>
+        </div>
+      </div>
+
+      <div id="controls-right-col" style={{ display: 'flex', flexDirection: 'row', flexWrap: 'wrap', gap: '0.25rem', alignItems: 'center', justifyContent: 'flex-end', ...helpStyle }}>
+        <HelpLabel text="Tools & Rates" />
+        
+        {/* Rate Pills */}
+        <div id="right-pills-vertical" style={{ display: 'flex', flexDirection: 'row', flexWrap: 'wrap', gap: '0.2rem', alignItems: 'center' }}>
+          {callsToday > 0 ? (
+            <CopyPill
+              id="pill-call-rate"
+              title="CALL METRICS"
+              copyText={`${callsToday} calls today, average ${avgCallMins} min per call`}
+              copied={copiedPill}
+              onCopy={copyPill}
+              style={{ background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.2)', padding: '0.05rem 0.15rem' }}
+            >
+              <span style={{ fontSize: '0.55rem', color: '#93c5fd', fontWeight: 700 }}>📞{callsToday}×{avgCallMins}m</span>
+            </CopyPill>
+          ) : (
+            <div id="pill-no-calls" className="metric-pill compact-pill" style={{ opacity: 0.2, padding: '0.05rem 0.15rem', cursor: 'default' }}>
+              <span style={{ fontSize: '0.55rem' }}>📞 –</span>
+            </div>
+          )}
+          {effectiveRateArsHr ? (
+            <div id="pill-eff-rate" className="metric-pill compact-pill" 
+              onClick={() => setRateView(prev => prev === 'effective' ? 'active' : 'effective')}
+              title={rateView === 'effective' ? "EFFECTIVE RATE: Hourly wage including dead time. Click to see ACTIVE RATE." : "ACTIVE RATE: Hourly wage during actual calls (Max Rate). Click to see EFFECTIVE RATE."} 
+              style={{ background: rateView === 'effective' ? 'rgba(139,92,246,0.08)' : 'rgba(16,185,129,0.08)', border: rateOf(rateView) ? `1px solid ${rateView === 'effective' ? 'rgba(139,92,246,0.2)' : 'rgba(16,185,129,0.2)'}` : 'none', padding: '0.05rem 0.15rem', cursor: 'pointer' }}>
+              <span style={{ fontSize: '0.55rem', color: rateView === 'effective' ? '#c4b5fd' : '#10b981', fontWeight: 700 }}>
+                {rateView === 'effective' ? '⚡' : '🔥'}${Math.round(rateOf(rateView) / 1000)}k/h
+              </span>
+            </div>
+          ) : (
+            <div id="pill-no-rate" className="metric-pill compact-pill" style={{ opacity: 0.2, padding: '0.05rem 0.15rem', cursor: 'default' }}>
+              <span style={{ fontSize: '0.55rem' }}>? -</span>
+            </div>
+          )}
+        </div>
+
+        {/* Utility Tool Buttons - Consolidated Row */}
+        <div id="right-tool-vertical" style={{ display: 'flex', flexDirection: 'row', flexWrap: 'wrap', gap: '2px', marginTop: 'auto', justifyContent: 'center', alignItems: 'center' }}>
+            {Object.entries(PRESET_LABELS).map(([id, label]) => (
+              <button
+                key={id}
+                type="button"
+                className="btn-icon tiny-btn btn-text"
+                onClick={() => applyScoreboardPreset(id)}
+                style={{
+                  fontSize: '0.45rem', fontWeight: 800,
+                  opacity: scoreboardPreset === id ? 1 : 0.4,
+                  background: scoreboardPreset === id ? 'rgba(239,68,68,0.2)' : 'transparent',
+                }}
+                title={`Scoreboard: ${label}`}
+              >
+                {id === 'minimal' ? 'Min' : id === 'standard' ? 'Std' : 'Full'}
+              </button>
+            ))}
+            <button id="header-notes-secondary-btn" className="btn-icon tiny-btn" onClick={toggleQuickNotes} style={{ opacity: isNotesOpen ? 1 : 0.3 }} title="Notes"><NotesIcon size={14} /></button>
+            <button id="header-tools-btn" className="btn-icon tiny-btn" onClick={toggleToolbar} style={{ opacity: isToolbarVisible ? 1 : 0.3, background: isToolbarVisible ? 'rgba(239,68,68,0.15)' : 'transparent' }} title="Show tools (notes + background)"><ToolsIcon size={14} /></button>
+            <button id="header-help-btn" className="btn-icon tiny-btn" onClick={() => setIsScoreboardHelpVisible(!isScoreboardHelpVisible)} style={{ opacity: isScoreboardHelpVisible ? 1 : 0.3, background: isScoreboardHelpVisible ? 'rgba(239,68,68,0.15)' : 'transparent' }} title="Scoreboard help labels"><HelpIcon size={14} /></button>
+            <button id="header-edit-btn" className="btn-icon tiny-btn" onClick={() => { if(isCollapsed) setIsCollapsed(false); setIsEditingScoreboard(!isEditingScoreboard); }} style={{ opacity: isEditingScoreboard ? 1 : 0.3 }} title="Edit Grid"><EditIcon size={14} /></button>
+            <button id="header-hud-collapse-btn" className="btn-icon tiny-btn" onClick={() => setIsCollapsed(!isCollapsed)} title={isCollapsed ? "Expand HUD" : "Collapse HUD"}>{isCollapsed ? <ChevronUpIcon size={14} /> : <ChevronDownIcon size={14} />}</button>
+            <button id="header-calldetect-btn" className="btn-icon tiny-btn" onClick={() => setIsCallDetectionEnabled(!isCallDetectionEnabled)} style={{ opacity: isCallDetectionEnabled ? 1 : 0.3, background: isCallDetectionEnabled ? 'rgba(16,185,129,0.1)' : 'transparent' }} title="Call Detection">{isCallDetectionEnabled ? <SignalIcon size={14} /> : <SignalOffIcon size={14} />}</button>
+            <button id="header-focus-btn" className="btn-icon tiny-btn" onClick={() => setCallFocusMode(!callFocusMode)} style={{ opacity: callFocusMode ? 1 : 0.3, background: callFocusMode ? 'rgba(16,185,129,0.1)' : 'transparent' }} title="Call Focus: auto-hide sidebars during calls">{callFocusMode ? <FocusIcon size={14} /> : <FocusOffIcon size={14} />}</button>
+        </div>
+      </div>
+      </div>
+  );
+
+  // v4.99.2 emptied the collapsed off-call body because its summary/Less moved
+  // into the chips row. v4.168.0 puts the control row back: the header was 83px
+  // against a 132px cap (22vh) and the toolbar is ~30px, so this lands at
+  // ~113px - still inside the existing cap. No new cap, no CSS budget change.
+  const renderOffCallCollapsedBody = () => (
+    <div className="dashboard-header-fill scoreboard-workspace scoreboard-workspace--header">
+      <div className="condensed-header-toolbar">
+      <div id="controls-left-col" style={{ display: 'flex', flexDirection: 'row', flexWrap: 'wrap', gap: '0.35rem', alignItems: 'center' }}>
+        <div id="connection-controls-horizontal" className={`${isActive ? 'active-working-state' : ''}`} style={{ display: 'flex', flexDirection: 'row', gap: '0.35rem', alignItems: 'center' }}>
+          <StateIndicators 
+            state={isActive ? 'call' : isBreakActive ? 'break' : 'avail'} 
+            breakMinutes={stats.dailyBreakMinutes || 0} 
+            isZombie={isZombieCall} 
+            silenceCount={silenceCount}
+          />
+          <div style={{ fontSize: '0.6rem', fontWeight: 900, color: 'rgba(255,255,255,0.4)', background: 'rgba(255,255,255,0.05)', padding: '2px 4px', borderRadius: '3px' }}>
+            ⏳{Math.floor(minutesSinceLastBreak)}m
+          </div>
+          <div id="header-edit-tools-mini" style={{ display: 'flex', gap: '2px' }}>
+            <button className="edit-btn-tiny" onClick={() => setTimeEditMode('call')} title="Edit call time">📞</button>
+            <button className="edit-btn-tiny" onClick={() => setTimeEditMode('break')} title="Edit break time">☕</button>
+          </div>
+        </div>
+        <div id="left-pills-row" style={{ display: 'flex', gap: '0.3rem', alignItems: 'center' }}>
+           <CopyPill
+             id="pill-shift"
+             title="SHIFT"
+             copyText={formatHoursMins(shiftElapsedMins)}
+             copied={copiedPill}
+             onCopy={copyPill}
+             style={{ padding: '0.1rem 0.3rem' }}
+           >
+             <span style={{ fontSize: '0.55rem' }}>🏃{formatHoursMins(shiftElapsedMins)}</span>
+           </CopyPill>
+           <CopyPill
+             id="pill-logoff"
+             title="LOG OFF"
+             copyText={getCompensatedLogOff()}
+             copied={copiedPill}
+             onCopy={copyPill}
+             style={{
+               position: 'relative',
+               overflow: 'hidden',
+               background: 'rgba(245,158,11,0.08)',
+               border: '1px solid rgba(245,158,11,0.2)',
+               padding: '0.1rem 0.3rem',
+               boxShadow: shouldLogoffShine ? '0 0 14px rgba(245,158,11,0.45)' : undefined,
+               animation: shouldLogoffShine ? 'shineSweep 3s linear infinite' : undefined,
+               backgroundImage: shouldLogoffShine ? 'linear-gradient(90deg, rgba(245,158,11,0.10), rgba(245,158,11,0.22), rgba(245,158,11,0.10))' : undefined,
+               backgroundSize: shouldLogoffShine ? '200% 100%' : undefined,
+               backgroundPosition: '0% 0%',
+             }}
+           >
+             <div
+               aria-hidden="true"
+               style={{
+                 position: 'absolute',
+                 left: 0,
+                 top: 0,
+                 bottom: 0,
+                 width: `${Math.round(logoffGlowProgress * 100)}%`,
+                 background: 'rgba(245,158,11,0.22)',
+                 transition: 'width 0.8s ease',
+                 pointerEvents: 'none',
+               }}
+             />
+             <span style={{ position: 'relative', zIndex: 1, color: '#fcd34d', fontSize: '0.55rem' }}>
+               🚪{getCompensatedLogOff()}
+             </span>
+           </CopyPill>
+        </div>
+      </div>
+
+      <div id="controls-right-col" style={{ display: 'flex', flexDirection: 'row', flexWrap: 'wrap', gap: '0.25rem', alignItems: 'center', justifyContent: 'flex-end', ...helpStyle }}>
+        <HelpLabel text="Tools & Rates" />
+        
+        {/* Rate Pills */}
+        <div id="right-pills-vertical" style={{ display: 'flex', flexDirection: 'row', flexWrap: 'wrap', gap: '0.2rem', alignItems: 'center' }}>
+          {callsToday > 0 ? (
+            <CopyPill
+              id="pill-call-rate"
+              title="CALL METRICS"
+              copyText={`${callsToday} calls today, average ${avgCallMins} min per call`}
+              copied={copiedPill}
+              onCopy={copyPill}
+              style={{ background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.2)', padding: '0.05rem 0.15rem' }}
+            >
+              <span style={{ fontSize: '0.55rem', color: '#93c5fd', fontWeight: 700 }}>📞{callsToday}×{avgCallMins}m</span>
+            </CopyPill>
+          ) : (
+            <div id="pill-no-calls" className="metric-pill compact-pill" style={{ opacity: 0.2, padding: '0.05rem 0.15rem', cursor: 'default' }}>
+              <span style={{ fontSize: '0.55rem' }}>📞 –</span>
+            </div>
+          )}
+          {effectiveRateArsHr ? (
+            <div id="pill-eff-rate" className="metric-pill compact-pill" 
+              onClick={() => setRateView(prev => prev === 'effective' ? 'active' : 'effective')}
+              title={rateView === 'effective' ? "EFFECTIVE RATE: Hourly wage including dead time. Click to see ACTIVE RATE." : "ACTIVE RATE: Hourly wage during actual calls (Max Rate). Click to see EFFECTIVE RATE."} 
+              style={{ background: rateView === 'effective' ? 'rgba(139,92,246,0.08)' : 'rgba(16,185,129,0.08)', border: rateOf(rateView) ? `1px solid ${rateView === 'effective' ? 'rgba(139,92,246,0.2)' : 'rgba(16,185,129,0.2)'}` : 'none', padding: '0.05rem 0.15rem', cursor: 'pointer' }}>
+              <span style={{ fontSize: '0.55rem', color: rateView === 'effective' ? '#c4b5fd' : '#10b981', fontWeight: 700 }}>
+                {rateView === 'effective' ? '⚡' : '🔥'}${Math.round(rateOf(rateView) / 1000)}k/h
+              </span>
+            </div>
+          ) : (
+            <div id="pill-no-rate" className="metric-pill compact-pill" style={{ opacity: 0.2, padding: '0.05rem 0.15rem', cursor: 'default' }}>
+              <span style={{ fontSize: '0.55rem' }}>? -</span>
+            </div>
+          )}
+        </div>
+
+        {/* Utility Tool Buttons - Consolidated Row */}
+        <div id="right-tool-vertical" style={{ display: 'flex', flexDirection: 'row', flexWrap: 'wrap', gap: '2px', marginTop: 'auto', justifyContent: 'center', alignItems: 'center' }}>
+            {Object.entries(PRESET_LABELS).map(([id, label]) => (
+              <button
+                key={id}
+                type="button"
+                className="btn-icon tiny-btn btn-text"
+                onClick={() => applyScoreboardPreset(id)}
+                style={{
+                  fontSize: '0.45rem', fontWeight: 800,
+                  opacity: scoreboardPreset === id ? 1 : 0.4,
+                  background: scoreboardPreset === id ? 'rgba(239,68,68,0.2)' : 'transparent',
+                }}
+                title={`Scoreboard: ${label}`}
+              >
+                {id === 'minimal' ? 'Min' : id === 'standard' ? 'Std' : 'Full'}
+              </button>
+            ))}
+            <button id="header-notes-secondary-btn" className="btn-icon tiny-btn" onClick={toggleQuickNotes} style={{ opacity: isNotesOpen ? 1 : 0.3 }} title="Notes"><NotesIcon size={14} /></button>
+            <button id="header-tools-btn" className="btn-icon tiny-btn" onClick={toggleToolbar} style={{ opacity: isToolbarVisible ? 1 : 0.3, background: isToolbarVisible ? 'rgba(239,68,68,0.15)' : 'transparent' }} title="Show tools (notes + background)"><ToolsIcon size={14} /></button>
+            <button id="header-help-btn" className="btn-icon tiny-btn" onClick={() => setIsScoreboardHelpVisible(!isScoreboardHelpVisible)} style={{ opacity: isScoreboardHelpVisible ? 1 : 0.3, background: isScoreboardHelpVisible ? 'rgba(239,68,68,0.15)' : 'transparent' }} title="Scoreboard help labels"><HelpIcon size={14} /></button>
+            <button id="header-edit-btn" className="btn-icon tiny-btn" onClick={() => { if(isCollapsed) setIsCollapsed(false); setIsEditingScoreboard(!isEditingScoreboard); }} style={{ opacity: isEditingScoreboard ? 1 : 0.3 }} title="Edit Grid"><EditIcon size={14} /></button>
+            <button id="header-hud-collapse-btn" className="btn-icon tiny-btn" onClick={() => setIsCollapsed(!isCollapsed)} title={isCollapsed ? "Expand HUD" : "Collapse HUD"}>{isCollapsed ? <ChevronUpIcon size={14} /> : <ChevronDownIcon size={14} />}</button>
+            <button id="header-calldetect-btn" className="btn-icon tiny-btn" onClick={() => setIsCallDetectionEnabled(!isCallDetectionEnabled)} style={{ opacity: isCallDetectionEnabled ? 1 : 0.3, background: isCallDetectionEnabled ? 'rgba(16,185,129,0.1)' : 'transparent' }} title="Call Detection">{isCallDetectionEnabled ? <SignalIcon size={14} /> : <SignalOffIcon size={14} />}</button>
+            <button id="header-focus-btn" className="btn-icon tiny-btn" onClick={() => setCallFocusMode(!callFocusMode)} style={{ opacity: callFocusMode ? 1 : 0.3, background: callFocusMode ? 'rgba(16,185,129,0.1)' : 'transparent' }} title="Call Focus: auto-hide sidebars during calls">{callFocusMode ? <FocusIcon size={14} /> : <FocusOffIcon size={14} />}</button>
+        </div>
+      </div>
+      </div>
+    </div>
+  );
 
   const renderWorkspaceBody = () => (
       <div className={`dashboard-header-fill${offCallScoreboardView ? ' scoreboard-workspace scoreboard-workspace--header' : ''}`} data-guide={offCallScoreboardView ? 'scoreboard' : undefined}>
@@ -2458,141 +2742,12 @@ export const DashboardHeader = ({
             </div>
           </div>
 
-          {/* Slim toolbar under scoreboard — hidden in portaled pane (sticky header owns controls) */}
-          {!offCallScoreboardView && (
-          <div className="condensed-header-toolbar">
-          <div id="controls-left-col" style={{ display: 'flex', flexDirection: 'row', flexWrap: 'wrap', gap: '0.35rem', alignItems: 'center' }}>
-            <div id="connection-controls-horizontal" className={`${isActive ? 'active-working-state' : ''}`} style={{ display: 'flex', flexDirection: 'row', gap: '0.35rem', alignItems: 'center' }}>
-              <StateIndicators 
-                state={isActive ? 'call' : isBreakActive ? 'break' : 'avail'} 
-                breakMinutes={stats.dailyBreakMinutes || 0} 
-                isZombie={isZombieCall} 
-                silenceCount={silenceCount}
-              />
-              <div style={{ fontSize: '0.6rem', fontWeight: 900, color: 'rgba(255,255,255,0.4)', background: 'rgba(255,255,255,0.05)', padding: '2px 4px', borderRadius: '3px' }}>
-                ⏳{Math.floor(minutesSinceLastBreak)}m
-              </div>
-              <div id="header-edit-tools-mini" style={{ display: 'flex', gap: '2px' }}>
-                <button className="edit-btn-tiny" onClick={() => setTimeEditMode('call')} title="Edit call time">📞</button>
-                <button className="edit-btn-tiny" onClick={() => setTimeEditMode('break')} title="Edit break time">☕</button>
-              </div>
-            </div>
-            <div id="left-pills-row" style={{ display: 'flex', gap: '0.3rem', alignItems: 'center' }}>
-               <CopyPill
-                 id="pill-shift"
-                 title="SHIFT"
-                 copyText={formatHoursMins(shiftElapsedMins)}
-                 copied={copiedPill}
-                 onCopy={copyPill}
-                 style={{ padding: '0.1rem 0.3rem' }}
-               >
-                 <span style={{ fontSize: '0.55rem' }}>🏃{formatHoursMins(shiftElapsedMins)}</span>
-               </CopyPill>
-               <CopyPill
-                 id="pill-logoff"
-                 title="LOG OFF"
-                 copyText={getCompensatedLogOff()}
-                 copied={copiedPill}
-                 onCopy={copyPill}
-                 style={{
-                   position: 'relative',
-                   overflow: 'hidden',
-                   background: 'rgba(245,158,11,0.08)',
-                   border: '1px solid rgba(245,158,11,0.2)',
-                   padding: '0.1rem 0.3rem',
-                   boxShadow: shouldLogoffShine ? '0 0 14px rgba(245,158,11,0.45)' : undefined,
-                   animation: shouldLogoffShine ? 'shineSweep 3s linear infinite' : undefined,
-                   backgroundImage: shouldLogoffShine ? 'linear-gradient(90deg, rgba(245,158,11,0.10), rgba(245,158,11,0.22), rgba(245,158,11,0.10))' : undefined,
-                   backgroundSize: shouldLogoffShine ? '200% 100%' : undefined,
-                   backgroundPosition: '0% 0%',
-                 }}
-               >
-                 <div
-                   aria-hidden="true"
-                   style={{
-                     position: 'absolute',
-                     left: 0,
-                     top: 0,
-                     bottom: 0,
-                     width: `${Math.round(logoffGlowProgress * 100)}%`,
-                     background: 'rgba(245,158,11,0.22)',
-                     transition: 'width 0.8s ease',
-                     pointerEvents: 'none',
-                   }}
-                 />
-                 <span style={{ position: 'relative', zIndex: 1, color: '#fcd34d', fontSize: '0.55rem' }}>
-                   🚪{getCompensatedLogOff()}
-                 </span>
-               </CopyPill>
-            </div>
-          </div>
-
-          <div id="controls-right-col" style={{ display: 'flex', flexDirection: 'row', flexWrap: 'wrap', gap: '0.25rem', alignItems: 'center', justifyContent: 'flex-end', ...helpStyle }}>
-            <HelpLabel text="Tools & Rates" />
-            
-            {/* Rate Pills */}
-            <div id="right-pills-vertical" style={{ display: 'flex', flexDirection: 'row', flexWrap: 'wrap', gap: '0.2rem', alignItems: 'center' }}>
-              {callsToday > 0 ? (
-                <CopyPill
-                  id="pill-call-rate"
-                  title="CALL METRICS"
-                  copyText={`${callsToday} calls today, average ${avgCallMins} min per call`}
-                  copied={copiedPill}
-                  onCopy={copyPill}
-                  style={{ background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.2)', padding: '0.05rem 0.15rem' }}
-                >
-                  <span style={{ fontSize: '0.55rem', color: '#93c5fd', fontWeight: 700 }}>📞{callsToday}×{avgCallMins}m</span>
-                </CopyPill>
-              ) : (
-                <div id="pill-no-calls" className="metric-pill compact-pill" style={{ opacity: 0.2, padding: '0.05rem 0.15rem', cursor: 'default' }}>
-                  <span style={{ fontSize: '0.55rem' }}>📞 –</span>
-                </div>
-              )}
-              {effectiveRateArsHr ? (
-                <div id="pill-eff-rate" className="metric-pill compact-pill" 
-                  onClick={() => setRateView(prev => prev === 'effective' ? 'active' : 'effective')}
-                  title={rateView === 'effective' ? "EFFECTIVE RATE: Hourly wage including dead time. Click to see ACTIVE RATE." : "ACTIVE RATE: Hourly wage during actual calls (Max Rate). Click to see EFFECTIVE RATE."} 
-                  style={{ background: rateView === 'effective' ? 'rgba(139,92,246,0.08)' : 'rgba(16,185,129,0.08)', border: rateOf(rateView) ? `1px solid ${rateView === 'effective' ? 'rgba(139,92,246,0.2)' : 'rgba(16,185,129,0.2)'}` : 'none', padding: '0.05rem 0.15rem', cursor: 'pointer' }}>
-                  <span style={{ fontSize: '0.55rem', color: rateView === 'effective' ? '#c4b5fd' : '#10b981', fontWeight: 700 }}>
-                    {rateView === 'effective' ? '⚡' : '🔥'}${Math.round(rateOf(rateView) / 1000)}k/h
-                  </span>
-                </div>
-              ) : (
-                <div id="pill-no-rate" className="metric-pill compact-pill" style={{ opacity: 0.2, padding: '0.05rem 0.15rem', cursor: 'default' }}>
-                  <span style={{ fontSize: '0.55rem' }}>? -</span>
-                </div>
-              )}
-            </div>
-
-            {/* Utility Tool Buttons - Consolidated Row */}
-            <div id="right-tool-vertical" style={{ display: 'flex', flexDirection: 'row', flexWrap: 'wrap', gap: '2px', marginTop: 'auto', justifyContent: 'center', alignItems: 'center' }}>
-                {Object.entries(PRESET_LABELS).map(([id, label]) => (
-                  <button
-                    key={id}
-                    type="button"
-                    className="btn-icon tiny-btn btn-text"
-                    onClick={() => applyScoreboardPreset(id)}
-                    style={{
-                      fontSize: '0.45rem', fontWeight: 800,
-                      opacity: scoreboardPreset === id ? 1 : 0.4,
-                      background: scoreboardPreset === id ? 'rgba(239,68,68,0.2)' : 'transparent',
-                    }}
-                    title={`Scoreboard: ${label}`}
-                  >
-                    {id === 'minimal' ? 'Min' : id === 'standard' ? 'Std' : 'Full'}
-                  </button>
-                ))}
-                <button id="header-notes-secondary-btn" className="btn-icon tiny-btn" onClick={toggleQuickNotes} style={{ opacity: isNotesOpen ? 1 : 0.3 }} title="Notes"><NotesIcon size={14} /></button>
-                <button id="header-tools-btn" className="btn-icon tiny-btn" onClick={toggleToolbar} style={{ opacity: isToolbarVisible ? 1 : 0.3, background: isToolbarVisible ? 'rgba(239,68,68,0.15)' : 'transparent' }} title="Show tools (notes + background)"><ToolsIcon size={14} /></button>
-                <button id="header-help-btn" className="btn-icon tiny-btn" onClick={() => setIsScoreboardHelpVisible(!isScoreboardHelpVisible)} style={{ opacity: isScoreboardHelpVisible ? 1 : 0.3, background: isScoreboardHelpVisible ? 'rgba(239,68,68,0.15)' : 'transparent' }} title="Scoreboard help labels"><HelpIcon size={14} /></button>
-                <button id="header-edit-btn" className="btn-icon tiny-btn" onClick={() => { if(isCollapsed) setIsCollapsed(false); setIsEditingScoreboard(!isEditingScoreboard); }} style={{ opacity: isEditingScoreboard ? 1 : 0.3 }} title="Edit Grid"><EditIcon size={14} /></button>
-                <button id="header-hud-collapse-btn" className="btn-icon tiny-btn" onClick={() => setIsCollapsed(!isCollapsed)} title={isCollapsed ? "Expand HUD" : "Collapse HUD"}>{isCollapsed ? <ChevronUpIcon size={14} /> : <ChevronDownIcon size={14} />}</button>
-                <button id="header-calldetect-btn" className="btn-icon tiny-btn" onClick={() => setIsCallDetectionEnabled(!isCallDetectionEnabled)} style={{ opacity: isCallDetectionEnabled ? 1 : 0.3, background: isCallDetectionEnabled ? 'rgba(16,185,129,0.1)' : 'transparent' }} title="Call Detection">{isCallDetectionEnabled ? <SignalIcon size={14} /> : <SignalOffIcon size={14} />}</button>
-                <button id="header-focus-btn" className="btn-icon tiny-btn" onClick={() => setCallFocusMode(!callFocusMode)} style={{ opacity: callFocusMode ? 1 : 0.3, background: callFocusMode ? 'rgba(16,185,129,0.1)' : 'transparent' }} title="Call Focus: auto-hide sidebars during calls">{callFocusMode ? <FocusIcon size={14} /> : <FocusOffIcon size={14} />}</button>
-            </div>
-          </div>
-          </div>
-          )}
+          {/* v4.168.0: the toolbar renders in the off-call scoreboard view too, so
+              Min/Std/Full, Notes, Tools, Help, Edit-grid, Call detection, Call
+              Focus and the copyable pills are reachable where you look at the
+              scoreboard. Extracted to renderCondensedToolbar() so both callers
+              share one copy. */}
+          {renderCondensedToolbar()}
         </div>
       )}
 

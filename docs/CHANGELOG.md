@@ -2,6 +2,15 @@
 
 **Version source:** `src/constants/version.js` (must match `package.json` + top-right UI pill)
 
+## v4.168.0 - the control row is back on the off-call screen
+
+- **`.condensed-header-toolbar` renders in the default off-call scoreboard view.** It was gated behind `!offCallScoreboardView`, so Min/Std/Full, Notes, Tools, Help, Edit-grid, Collapse, Call detection, Call Focus — and the copyable pills — had **no entry point at all** off-call. That was the last open item from the header eval.
+- **The pills came back with it**: shift, log-off and call rate. The log-off time is the "what time should I leave" number and it is an off-call number by nature; it is now one click to copy with nothing running.
+- Extracted to `renderCondensedToolbar()` so the collapsed off-call body and the in-call expanded body share one copy. The off-call body is no longer the `() => null` it has been since v4.99.2.
+- **Cost: 83px → ~113px** at 600px tall, against a cap that was already **132px** (`22vh`). No new cap, no CSS budget change, transcription lands at ~81%.
+- ⚠️ **v4.99.2 deliberately emptied that body** as part of a *"one-line scoreboard"* redesign. Checked before reversing it: what that release was actually chasing was a **billing** leak (893m of phantom off-call time, fixed in the same release by the banking changes), not a layout problem. So this does not risk bringing the leak back — but the one-line look is gone by choice, not by accident.
+- **6 new tests**, including the one that matters: *every control in the row is actually wired off-call* (rendered, a real `<button>`, and the pills present). A control that is present but leads nowhere is the exact failure this fixes, so it gets a regression case. Plus: the toolbar must NOT leak into the three minimal workspace views, or the 76px header stops being minimal.
+
 ## v4.167.0 - the studios get a door, and the audio row gets thinner
 
 - **Settings → Studio** is a new group, first in the list: **Goals**, **Soundboard**, **Greeting editor**. All three are `notSection` panels with an `action`, so they leave the drawer rather than rendering a body, and the remembered-section restore can never reopen onto a blank one.
