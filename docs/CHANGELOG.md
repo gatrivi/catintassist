@@ -2,6 +2,22 @@
 
 **Version source:** `src/constants/version.js` (must match `package.json` + top-right UI pill)
 
+## v4.169.0 - two failures you were eating in silence, now visible
+
+From a real CSA call. Full record: [`incident-2026-09-27-csa-call.md`](incident-2026-09-27-csa-call.md). **This release reports; it does not repair.** The causes are still open — but neither can now eat an interpreter's trust without saying so.
+
+- **Per-socket STT health** replaces the two bare confidence percentages. The rail now reads `EN 412w · 2m ago` / `ES silent 2m14s`, and a red **`⚠ ES socket silent — the EN socket is transcribing everything.`** appears when one socket starves. That call was transcribed end-to-end by the EN socket while the ES one returned nothing, and every bubble was stamped `en` — the operator read Spanish labelled English.
+  - The counters are **cumulative**, because `lastSocketEnConfidence` is a last-message value that a single Zap resets to `null` — which renders `--`, indistinguishable from "not connected yet".
+  - A socket that has never spoken reads `no words`, **not** `silent`, so it cannot cry wolf on every call.
+  - Escalation ladder asserted by test: the quiet hint must sit *below* the alert threshold. A first pass had 45s vs 30s, which made the early warning unreachable dead code.
+- **Translation-surplus warning**: an amber ⚠ on the bubble rail when a translation is longer than its source can be. On that call an 8-word English bubble displayed 24 words of Spanish containing two clauses nobody said. Shares the word-count line, so **zero** added height — the same trick as the negation guard.
+  - Direction-aware ceiling (EN→ES grows legitimately, ES→EN compresses).
+  - Independent second signal required: the surplus must be *structural* (extra clause boundaries) or extreme, so a long source of doses cannot trip it.
+  - `isTruncatedTranslation` structurally cannot see this class: it catches drops, and requires terminal punctuation on the source — which an unterminated live caption, the exact shape that overruns, never has.
+- **`damage 0.00` was not evidence of anything here.** `damage` is display-WER minus provider-WER; nothing was re-transcribed, the text was only misfiled and mis-attached. It cannot see this failure by construction.
+- **34 new tests** across 4 files, including the first `TranscriptionBoard` render tests — a warning that never renders is worth nothing, so `TranslatedBubble` is now exported and the flags are asserted in the real rail.
+- Three bugs caught by those tests before shipping, all mine: the unreachable early-warning branch, the inverted escalation thresholds, and an empty ⚠ rendering on every clean translation because I tested the result object for truthiness instead of `.suspect`.
+
 ## v4.168.0 - the control row is back on the off-call screen
 
 - **`.condensed-header-toolbar` renders in the default off-call scoreboard view.** It was gated behind `!offCallScoreboardView`, so Min/Std/Full, Notes, Tools, Help, Edit-grid, Collapse, Call detection, Call Focus — and the copyable pills — had **no entry point at all** off-call. That was the last open item from the header eval.

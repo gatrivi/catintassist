@@ -16,6 +16,10 @@ import {
 import { formatTranscriptForDisplay, collectCopyableEntities, bubbleTimestampLabel } from '../utils/transcriptFormat';
 import { composeCaptionTranslation } from '../utils/translationApplicator';
 import { reattachLabelForMode, resolveIdleAudioMode } from '../utils/offCallIdleMessages';
+// v4.169.0: per-socket STT health — the ES socket can go silent while the app
+// keeps stamping every bubble with the EN socket's language, and that has to be
+// visible, not inferred from two confidence percentages.
+import { buildSocketHealth } from '../utils/socketHealth';
 import { ScrambleText } from './ScrambleText';
 import { RepeatDimText } from './RepeatDimText';
 import { StableLiveTranscriptText } from './StableLiveTranscriptText';
@@ -73,6 +77,9 @@ import {
 // Deepgram said.
 import { resolveDisplayText } from '../utils/displaySourceText';
 import { NEGATION_GAP_TITLE } from '../utils/negationGuard';
+// v4.169.0: a translation longer than its source can be is reporting content
+// that was never said. Reported, never rewritten.
+import { translationSurplus, describeSurplus } from '../utils/translationSurplus';
 import {
   isDomainRepairEnabled,
   DOMAIN_REPAIR_CHANGED_EVENT,
@@ -463,6 +470,10 @@ const BubbleRail = ({
   onPlayClick,
   translationFallback = false,
   negationGaps = [], // v4.156.0: read-only warning, costs zero vertical space
+  // v4.169.0: surplus info for THIS bubble. Read-only, like the negation flag —
+  // it tells the operator the translation may not be this line's, and never
+  // guesses which part is wrong.
+  translationSurplusInfo = null,
 }) => {
   const steps = ['translating', 'processing', 'ready'];
   const currentIndex = steps.indexOf(engineStatus === 'buffering' ? 'processing' : engineStatus);
@@ -494,8 +505,26 @@ const BubbleRail = ({
       </svg>
       {/* v4.156.0: the ⚠ shares the word-count line, so the marker costs the
           layout ZERO extra height — transcription keeps the viewport. */}
-      {(negationGaps.length > 0 || showWc) && (
+      {(negationGaps.length > 0 || translationSurplusInfo?.suspect || showWc) && (
         <span className="bubble-rail-meta">
+          {/* v4.169.0: the translation may not belong to this line. Same
+              zero-height trick as the negation flag — it shares the word-count
+              line, so transcription keeps the viewport. This REPORTS; it never
+              rewrites. On a real call an 8-word English bubble carried 24 words
+              of Spanish containing two clauses nobody said.
+              `.suspect`, not truthiness: translationSurplus() always returns an
+              object, so testing the object rendered an empty ⚠ on every clean
+              translation. */}
+          {translationSurplusInfo?.suspect && (
+            <span
+              className="bubble-rail-surplus"
+              title={describeSurplus(translationSurplusInfo)}
+              aria-label={describeSurplus(translationSurplusInfo)}
+              role="img"
+            >
+              ⚠
+            </span>
+          )}
           {negationGaps.length > 0 && (
             <span
               className="bubble-rail-negation"
@@ -535,7 +564,13 @@ const BubbleRail = ({
   );
 };
 
-const TranslatedBubble = ({
+/**
+ * Exported for tests (v4.169.0). The two read-only warnings added in this
+ * release — the per-socket health line and the translation-surplus flag — are
+ * only worth anything if they actually render, and a component that cannot be
+ * rendered in a test is a component whose warnings silently stop working.
+ */
+export const TranslatedBubble = ({
   id,
   text,
   lang,
@@ -618,6 +653,16 @@ const TranslatedBubble = ({
     translationMeta,
   );
   const isTranslationMissing = engineStatus === 'ready' && !translation?.trim();
+
+  // v4.169.0: a translation that is far longer than its source is reporting
+  // content the speaker never said. On a real call an 8-word English bubble
+  // carried 24 words of Spanish with two clauses nobody uttered — and the
+  // operator had no way to know. REPORT ONLY: this decides nothing, rewrites
+  // nothing, and is deliberately allowed to miss far more than it fires.
+  const translationSurplusInfo = useMemo(
+    () => (translation ? translationSurplus(displaySourceText || text, translation, lang) : null),
+    [translation, displaySourceText, text, lang],
+  );
 
   // UX: if a message is clearly "untranslated", we should just try again,
   // and only show a ↻ button as a fallback.
@@ -738,6 +783,7 @@ const TranslatedBubble = ({
             onPlayClick={() => (isThisPlaying ? stopTTS() : playTTS(translation, targetLang, audioUrl))}
             translationFallback={translationIsSourceFallback}
             negationGaps={negationGuardOn ? negationGaps : []}
+            translationSurplusInfo={translationSurplusInfo}
           />
         )}
       </div>
@@ -1177,6 +1223,21 @@ export const TranscriptionBoard = ({
       ? enConfidence >= esConfidence ? 'en' : 'es'
       : enConfidence !== null ? 'en' : esConfidence !== null ? 'es' : null;
   const emptyReplyStreak = connectProgress?.emptyTranscriptStreak || 0;
+  // v4.169.0: the line that would have saved the call. One socket transcribing
+  // a whole conversation while the other returns nothing is a SILENT failure —
+  // every bubble still gets stamped with the working socket's language, so the
+  // operator reads Spanish labelled English. Say it in words, in the rail.
+  const socketHealth = buildSocketHealth({
+    now: sttNow,
+    en: {
+      words: connectProgress?.socketEnWords || 0,
+      lastTextAt: connectProgress?.socketEnLastTextAt || 0,
+    },
+    es: {
+      words: connectProgress?.socketEsWords || 0,
+      lastTextAt: connectProgress?.socketEsLastTextAt || 0,
+    },
+  });
   const repeatedEmptyReply =
     emptyReplyStreak >= 3 &&
     (connectProgress?.lastEmptyTranscriptAt || 0) > (connectProgress?.lastTranscriptStringAt || 0);
@@ -1733,6 +1794,19 @@ export const TranscriptionBoard = ({
 
       {showSttSoundbar && (
         <div className={`stt-process-rail stt-process-rail--bottom${audioHot ? ' is-audio-hot' : ''}`} aria-live="polite">
+          {/* v4.169.0: the failure that cost a real call. One socket goes silent,
+              the other transcribes everything, and every bubble gets stamped
+              with the working socket's language — so the operator reads Spanish
+              labelled English. First child of the rail, in words, no scrolling
+              and no extra row: this is not a tooltip. */}
+          {socketHealth.alert && (
+            <span className="stt-socket-alert" role="status">
+              ⚠ {socketHealth.alert.text}
+            </span>
+          )}
+          {!socketHealth.alert && socketHealth.quiet && (
+            <span className="stt-socket-quiet">· {socketHealth.quiet.text}</span>
+          )}
           <div className="stt-sound-wave" title={audioHot ? 'Audio chunks are reaching the app and being sent to Deepgram' : 'Waiting for speech'}>
             {Array.from({ length: 14 }).map((_, i) => <span key={i} style={{ '--bar-i': i }} />)}
           </div>
@@ -1746,17 +1820,21 @@ export const TranscriptionBoard = ({
               {step.label}
             </span>
           ))}
+          {/* v4.169.0: per-socket HEALTH, not two bare confidence numbers.
+              On a real call one socket transcribed everything while the other
+              returned nothing, and "EN 65% / ES 0%" reads like two numbers
+              rather than "one side is dead". These say it in words. */}
           <span
-            className={`stt-lane stt-lane--en${enRecent ? ' is-recent' : ''}${sttWinner === 'en' ? ' is-winner' : ''}`}
-            title={connectProgress?.lastSocketEnHadText ? 'EN socket returned text' : 'EN socket returned no text'}
+            className={`stt-lane stt-lane--en${enRecent ? ' is-recent' : ''}${sttWinner === 'en' ? ' is-winner' : ''}${socketHealth.alert?.side === 'en' ? ' is-starved' : ''}`}
+            title={socketHealth.en.title}
           >
-            EN {enConfidence === null ? '--' : `${Math.round(enConfidence * 100)}%`}
+            EN {socketHealth.en.label}
           </span>
           <span
-            className={`stt-lane stt-lane--es${esRecent ? ' is-recent' : ''}${sttWinner === 'es' ? ' is-winner' : ''}`}
-            title={connectProgress?.lastSocketEsHadText ? 'ES socket returned text' : 'ES socket returned no text'}
+            className={`stt-lane stt-lane--es${esRecent ? ' is-recent' : ''}${sttWinner === 'es' ? ' is-winner' : ''}${socketHealth.alert?.side === 'es' ? ' is-starved' : ''}`}
+            title={socketHealth.es.title}
           >
-            ES {esConfidence === null ? '--' : `${Math.round(esConfidence * 100)}%`}
+            ES {socketHealth.es.label}
           </span>
           <span className="stt-process-confidence">
             w{connectProgress?.lastWordConfidenceCount || 0}

@@ -25,6 +25,45 @@ import { APP_VERSION } from '../constants/version';
 /** Newest first. Only the entry matching APP_VERSION is shown on load. */
 export const RELEASE_NOTES_CATALOG = [
   {
+    version: '4.169.0',
+    id: 'make-the-failure-visible',
+    highlightElementIds: ['header-app-logo-btn'],
+    es: {
+      title: 'Dos fallas que te estás comiendo en silencio, ahora visibles',
+      intro: 'En una llamada real, UN solo socket de Deepgram transcribió toda la conversación mientras el otro no devolvía nada — y cada burbuja quedó marcada con el idioma del que sí funcionaba. Leíste español etiquetado como inglés. Nada en pantalla lo decía.',
+      sections: [
+        { heading: 'Ahora lo vas a ver', bullets: [
+          'La barra de sonido dice la SALUD de cada socket, en palabras: «EN 412w · 2m ago» y «ES silent 2m14s». Antes eran dos porcentajes que parecían dos números, no «un lado está muerto».',
+          'Si un socket se queda mudo mientras el otro trabaja, aparece en rojo: **«⚠ ES socket silent — the EN socket is transcribing everything.»**',
+          'Y antes de que llegue a ese punto: «EN is carrying the call (500w vs 0w)». La advertencia temprana.',
+          'Nuevo ⚠ ámbar en cada burbuja cuando la traducción es más larga de lo que la fuente puede ser. En esa llamada, una burbuja de 8 palabras en inglés mostraba 24 palabras de español con dos frases que nadie dijo.',
+        ] },
+        { heading: 'Lo que NO hace', bullets: [
+          'No arregla nada todavía: **avisa**. Escribí la frase, no la adivina, y no toca ni una palabra de lo que se dijo. Exactamente como la guarda de negaciones.',
+          'Por diseño, casi nunca se equivoca: es mejor que te haga mirar de más a que te deje leer en confianza algo que no dijeron.',
+          'Tampoco arregla elmétricas de evaluación: `damage` mide texto cambiado contra texto del proveedor, y aquí no se cambió nada — solo se archivó mal. No puede verlo por construcción.',
+        ] },
+      ],
+    },
+    en: {
+      title: 'Two failures you were eating in silence, now visible',
+      intro: 'On a real call, ONE Deepgram socket transcribed the entire conversation while the other returned nothing — and every bubble was stamped with the language of the one that worked. You were reading Spanish labelled English. Nothing on screen said so.',
+      sections: [
+        { heading: 'What you will now see', bullets: [
+          'The sound rail reports each socket\'s HEALTH in words: "EN 412w · 2m ago" and "ES silent 2m14s". They used to be two percentages, which read as two numbers rather than "one side is dead".',
+          'If a socket goes quiet while the other works, it turns red: **"⚠ ES socket silent — the EN socket is transcribing everything."**',
+          'And before it gets that bad: "EN is carrying the call (500w vs 0w)" — the early warning.',
+          'A new amber ⚠ on any bubble whose translation is longer than its source can be. On that call, an 8-word English bubble was displaying 24 words of Spanish containing two clauses nobody said.',
+        ] },
+        { heading: 'What it does NOT do', bullets: [
+          'It does not fix anything yet: it **reports**. It writes the sentence, it does not guess one, and it does not touch a single spoken word. Exactly like the negation guard.',
+          'By design it is almost never wrong: better that it makes you glance twice than that it lets you read something nobody said with confidence.',
+          'It also does not fix the eval\'s blindness. `damage` measures changed text against provider text, and here nothing changed — it was only misfiled. It cannot see this by construction.',
+        ] },
+      ],
+    },
+  },
+  {
     version: '4.168.0',
     id: 'toolbar-back-off-call',
     highlightElementIds: ['header-app-logo-btn'],

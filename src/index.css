@@ -8267,3 +8267,62 @@ body:has(.app-container[data-call-mode="true"]) .element-hint-panel {
   font-weight: 900;
 }
 
+
+/* ------------------------------------------------------------------ *
+ * Per-socket STT health (v4.169.0).
+ * A socket can go silent while the other keeps transcribing, and every
+ * bubble then gets stamped with the WORKING socket's language. That is a
+ * silent failure: the operator reads Spanish labelled English. It has to be
+ * said in words, in the rail, with no scrolling.
+ * ------------------------------------------------------------------ */
+.stt-lane {
+  min-width: 8.5ch;            /* was 5.7ch — "silent 2m" does not fit in 5.7 */
+  font-variant-numeric: tabular-nums;
+}
+.stt-lane.is-starved {
+  color: #fca5a5;
+  background: rgba(239, 68, 68, 0.16);
+  border-color: rgba(248, 113, 113, 0.5);
+  animation: sttSocketStarved 2s ease-in-out infinite;
+}
+@keyframes sttSocketStarved {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.55; }
+}
+
+.stt-socket-alert {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.1rem 0.4rem;
+  margin-right: 0.35rem;
+  border-radius: 4px;
+  font-size: 0.62rem;
+  font-weight: 800;
+  line-height: 1.2;
+  color: #fecaca;
+  background: rgba(239, 68, 68, 0.2);
+  border: 1px solid rgba(248, 113, 113, 0.55);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 46ch;
+}
+.stt-socket-quiet {
+  display: inline-flex;
+  align-items: center;
+  margin-right: 0.3rem;
+  font-size: 0.58rem;
+  color: rgba(251, 191, 36, 0.8);
+  white-space: nowrap;
+}
+
+/* v4.169.0 — "this translation may not match this line". Shares the
+   word-count line, so it costs ZERO vertical space, exactly like the negation
+   flag. Amber, because it is a warning about a possibility, not a fact. */
+.bubble-rail-surplus {
+  color: #fbbf24;
+  font-size: 0.62rem;
+  line-height: 1;
+  cursor: help;
+}
+.bubble-rail-surplus:hover { color: #fde68a; }

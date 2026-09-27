@@ -200,6 +200,13 @@ export const useDeepgram = () => {
     lastSocketEsConfidence: null,
     lastSocketEnHadText: false,
     lastSocketEsHadText: false,
+    // v4.169.0: cumulative per-socket counters (see socketHealth.js). These
+    // answer "is this socket actually working?" across the call, which the
+    // last-message confidence cannot: one Zap resets it to null.
+    socketEnWords: 0,
+    socketEsWords: 0,
+    socketEnLastTextAt: 0,
+    socketEsLastTextAt: 0,
     transcriptReceived: false,
     lastCloseCode: null,
     lastCloseReason: null,
@@ -327,6 +334,13 @@ export const useDeepgram = () => {
     lastSocketEsConfidence: null,
     lastSocketEnHadText: false,
     lastSocketEsHadText: false,
+    // v4.169.0: cumulative per-socket counters (see socketHealth.js). These
+    // answer "is this socket actually working?" across the call, which the
+    // last-message confidence cannot: one Zap resets it to null.
+    socketEnWords: 0,
+    socketEsWords: 0,
+    socketEnLastTextAt: 0,
+    socketEsLastTextAt: 0,
     transcriptReceived: false,
     lastCloseCode: null,
     lastCloseReason: null,
@@ -463,6 +477,13 @@ export const useDeepgram = () => {
       lastSocketEsConfidence: null,
       lastSocketEnHadText: false,
       lastSocketEsHadText: false,
+      // v4.169.0: a reconnect clears the cumulative counters too, because
+      // "is this socket working" is a question about the CURRENT stream. Word
+      // counts from a dead socket would otherwise keep the health line green.
+      socketEnWords: 0,
+      socketEsWords: 0,
+      socketEnLastTextAt: 0,
+      socketEsLastTextAt: 0,
       transcriptReceived: false,
       lastCloseCode: null,
       lastCloseReason: null,
@@ -1276,14 +1297,26 @@ export const useDeepgram = () => {
           }
           const alt = receivedAlt;
           const transcript = alt?.transcript;
+          // v4.169.0: count words and stamp "last text at" per socket, so the
+          // health line can say "ES silent 2m" instead of leaving the operator
+          // to read two bare confidence percentages and guess. Counted from
+          // the provider's own word list when present, else from the text.
+          const socketWords = Array.isArray(alt?.words) && alt.words.length
+            ? alt.words.length
+            : (transcript?.trim() ? transcript.trim().split(/\s+/).length : 0);
+          const socketLastTextAt = transcript?.trim() ? dgMessageAt : 0;
           const socketConfidencePatch = socketSide === "En"
             ? {
                 lastSocketEnConfidence: alt?.confidence ?? 0,
                 lastSocketEnHadText: Boolean(transcript?.trim()),
+                socketEnWords: (connectFlagsRef.current.socketEnWords || 0) + socketWords,
+                socketEnLastTextAt: socketLastTextAt || (connectFlagsRef.current.socketEnLastTextAt || 0),
               }
             : {
                 lastSocketEsConfidence: alt?.confidence ?? 0,
                 lastSocketEsHadText: Boolean(transcript?.trim()),
+                socketEsWords: (connectFlagsRef.current.socketEsWords || 0) + socketWords,
+                socketEsLastTextAt: socketLastTextAt || (connectFlagsRef.current.socketEsLastTextAt || 0),
               };
           if (!transcript || transcript.trim().length === 0) {
             updateSttEvent(diagnosticEvent?.id, { status: STT_EVENT_STATUS.EMPTY });
