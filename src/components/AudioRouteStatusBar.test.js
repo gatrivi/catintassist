@@ -71,4 +71,23 @@ describe('AudioRouteStatusBar compact strip (v4.165.0)', () => {
     // The ZAP button is conditional on a real stall, and stays in the strip.
     expect(container.querySelector('#audio-route-zap-btn')).not.toBeNull();
   });
+
+  // v4.167.0: these two buttons were this row's LAST two occupants, and they
+  // were the only doors to those views anywhere in the app. They left so the
+  // row could give up its width; Settings -> Studio is the door now (see
+  // SettingsPanel.test.js for the other half of that contract). These asserts
+  // are what catch them creeping back.
+  test('the Soundboard and Greeting Editor buttons are gone from the strip', () => {
+    const { container } = renderCompact();
+    expect(document.getElementById('audio-route-soundboard-btn')).toBeNull();
+    expect(document.getElementById('audio-route-greeting-editor-btn')).toBeNull();
+    expect(document.querySelector('.audio-route-soundboard-btn')).toBeNull();
+    // Scope to the COMPACT proof: the hidden full strip legitimately keeps its
+    // own buttons (it is where the device pickers and audio tests live). In the
+    // default state the compact proof now has NO buttons at all — the only ones
+    // it can grow are the fault-only mic-restore and ZAP.
+    const compact = container.querySelector('.audio-route-compact-proof');
+    expect(compact).not.toBeNull();
+    expect(compact.querySelector('button')).toBeNull();
+  });
 });

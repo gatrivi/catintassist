@@ -13,6 +13,11 @@
  */
 
 export const SETTINGS_GROUPS = [
+  // v4.167.0: the three workspace views (goal wheel, Soundboard Studio, Greeting
+  // Editor) are off-call studios, not settings. They live in their own group so
+  // "what I open to work" is separate from "what I configure". It is FIRST so
+  // the goal wheel — used daily — stays at the top of the list.
+  { id: 'studio', label: 'Studio' },
   { id: 'today', label: 'Today' },
   { id: 'speech', label: 'Speech' },
   { id: 'output', label: 'Output' },
@@ -23,12 +28,33 @@ export const SETTINGS_GROUPS = [
 export const SETTINGS_PANELS = [
   {
     id: 'goals',
-    group: 'today',
+    group: 'studio',
     label: 'Goals',
     hint: 'Set how much you need per day / week / month',
-    keywords: 'goal goals target how much do i need per day week month pace weekly monthly money daily commitment bank ladder pro hours worked',
-    // Navigates out of the drawer to the goal wheel instead of rendering a body.
+    keywords: 'goal goals target how much do i need per day week month pace weekly monthly money daily commitment bank ladder pro hours worked dial wheel',
+    // Navigates out of the drawer instead of rendering a body.
     action: 'goals-view',
+    notSection: true,
+  },
+  {
+    id: 'soundboard',
+    group: 'studio',
+    label: 'Soundboard',
+    hint: 'Record greetings: quality check, hear it, caller path',
+    keywords: 'soundboard studio greetings greeting hello record audio clip voice prerecorded health check route test callers path script',
+    // v4.167.0: this was the header's 🎛 button — the only way in. It moved here
+    // so the header row could give up the width.
+    action: 'soundboard-view',
+    notSection: true,
+  },
+  {
+    id: 'greetings',
+    group: 'studio',
+    label: 'Greeting editor',
+    hint: 'One greeting at a time — script, waveform, caller test',
+    keywords: 'greeting greetings editor script waveform health bar caller test clip audio trim take',
+    // v4.167.0: was the header's ✎ button, also the only way in.
+    action: 'greeting-editor',
     notSection: true,
   },
   {

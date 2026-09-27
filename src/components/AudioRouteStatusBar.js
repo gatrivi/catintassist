@@ -84,11 +84,11 @@ export const AudioRouteStatusBar = ({
   onSwitchToVirtualCable,
   onTestLocal,
   onTestRoute,
-  onOpenSoundboard,
-  soundboardOpen = false,
-  /** v4.114.0: ✎ opens the focused Greeting Editor view. */
-  onOpenGreetingEditor,
-  greetingEditorOpen = false,
+  // v4.167.0: onOpenSoundboard / soundboardOpen / onOpenGreetingEditor /
+  // greetingEditorOpen are GONE from this component. They were the header's only
+  // doors to the Soundboard Studio and the Greeting Editor, and this row had to
+  // give up its width. Both views are opened from Settings → Studio now, via
+  // the cat_open_soundboard_view / cat_open_greeting_editor events.
   compact = false,
   /** v4.99.2: optional node rendered at the right end of the chips row
       (off-call scoreboard merges the metrics strip into this single line). */
@@ -417,49 +417,6 @@ export const AudioRouteStatusBar = ({
               >
                 ZAP
               </button>
-            )}
-            {/* v4.103.0: Soundboard entry lives on the always-visible chips line.
-                It used to sit inside the hidden full strip — unreachable off-call. */}
-            {onOpenSoundboard && !isActive && (
-              <ElementHintTarget
-                elementId="audio-route-soundboard-btn"
-                heading="Soundboard Studio"
-                body={soundboardOpen ? 'Hide Soundboard Studio panel.' : 'Off-call: 3-step greeting checklist (quality → hear → caller path).'}
-                color="#a855f7"
-              >
-                <button
-                  id="audio-route-soundboard-btn"
-                  type="button"
-                  className={`audio-route-soundboard-btn${soundboardOpen ? ' is-open' : ''}`}
-                  onClick={onOpenSoundboard}
-                  aria-pressed={soundboardOpen}
-                  aria-label={soundboardOpen ? 'Hide Soundboard Studio' : 'Soundboard Studio - record greetings, health check, route test'}
-                  title={soundboardOpen ? 'Hide Soundboard Studio' : 'Soundboard Studio - record greetings, health check, route test'}
-                >
-                  <span aria-hidden="true" style={{ fontSize: '0.8rem', lineHeight: 1 }}>🎛</span>
-                </button>
-              </ElementHintTarget>
-            )}
-            {/* v4.114.0: focused Greeting Editor view entry. */}
-            {onOpenGreetingEditor && !isActive && (
-              <ElementHintTarget
-                elementId="audio-route-greeting-editor-btn"
-                heading="Greeting Editor"
-                body={greetingEditorOpen ? 'Already open — the focused per-greeting editor view.' : 'One greeting at a time: script, waveform, health bar, caller test.'}
-                color="#22d3ee"
-              >
-                <button
-                  id="audio-route-greeting-editor-btn"
-                  type="button"
-                  className={`audio-route-soundboard-btn${greetingEditorOpen ? ' is-open' : ''}`}
-                  onClick={() => onOpenGreetingEditor()}
-                  aria-pressed={greetingEditorOpen}
-                  aria-label="Greeting Editor - focused one-greeting workspace (waveform, health, caller test)"
-                  title="Greeting Editor - focused one-greeting workspace (waveform, health, caller test)"
-                >
-                  <span aria-hidden="true" style={{ fontSize: '0.8rem', lineHeight: 1 }}>✎</span>
-                </button>
-              </ElementHintTarget>
             )}
           </div>
         )}

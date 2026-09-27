@@ -23,7 +23,8 @@ section come for free.
 - **Search** matches label + hint + keywords + id, AND across terms, ranked
   (label prefix > label > hint > keyword). While searching, groups collapse so
   the answer is not buried.
-- **Groups:** Today · Speech · Output · App. A group with no panels drops out.
+- Groups: **Studio · Today · Speech · Output · App**. A group with no panels
+  drops out. Studio is first and holds the three off-call studios.
 - **Pins:** ★ on any row, persisted in `catint_settings_pins_v1`.
   `DEFAULT_PINS = ['today']`. **A pinned panel is removed from its group**, so it
   is never listed twice. Two identical labels on one screen is how you get lost
@@ -51,14 +52,31 @@ mistake this tool exists to fix.
 
 ## Navigating panels (not sections)
 
-A registry entry with `notSection: true` has an `action` instead of a body. The
-only one is `goals` → `action: 'goals-view'`, which dispatches
-`cat_open_goals_view` and closes the drawer. `App.js` handles it and opens the
-goal wheel; it refuses during a call or a zombie call, and the drawer says
-"off-call only" rather than closing on nothing.
+A registry entry with `notSection: true` has an `action` instead of a body. There
+are three, and they are the off-call **studios** — the goal wheel, the Soundboard
+Studio and the Greeting Editor. They are grouped first in the list as **Studio**
+so "what I open to work" is separate from "what I configure".
+
+`SettingsPanel.js` maps the action to a window event and dispatches it:
+
+| action | event | opens |
+|---|---|---|
+| `goals-view` | `cat_open_goals_view` | the goal wheel (dial + calendar) |
+| `soundboard-view` | `cat_open_soundboard_view` | Soundboard Studio — record greetings, health check, route test |
+| `greeting-editor` | `cat_open_greeting_editor` | the focused Greeting Editor (script, waveform, caller test) |
+
+All three are off-call. `App.js` handles the events and refuses during a call or
+a zombie call, and the drawer says "off-call only — stop the call first" rather
+than closing on nothing. `blockedPanels` marks all of them in the nav so the
+state is visible before the click.
 
 `isSettingsPanel()` only accepts real sections, so a navigating panel can never
 be remembered as the last section (that would reopen onto a blank body).
+
+**The Soundboard and Greeting Editor used to be reached only from the header
+strip** (v4.166.0 removed those buttons to free the row's width). If you ever
+remove a studio from the registry, check `AudioRouteStatusBar` first — before
+v4.167.0 those two buttons were the only door in the app.
 
 ## Adding a setting
 

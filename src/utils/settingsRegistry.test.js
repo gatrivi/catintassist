@@ -3,6 +3,7 @@ import {
   SETTINGS_PANELS,
   DEFAULT_PINS,
   isSettingsPanel,
+  getSettingsPanel,
   groupSettingsPanels,
   searchSettingsPanels,
   loadSettingsPins,
@@ -30,23 +31,40 @@ describe('settingsRegistry (v4.161.0)', () => {
 
   test('grouping keeps registry order and never returns an empty group', () => {
     const groups = groupSettingsPanels();
-    expect(groups.map((g) => g.id)).toEqual(['today', 'speech', 'output', 'app']);
+    // v4.167.0: a Studio group leads, holding the three off-call workspace
+    // views, so Goals stays the first thing in the list while the Soundboard
+    // and Greeting Editor join it.
+    expect(groups.map((g) => g.id)).toEqual(['studio', 'today', 'speech', 'output', 'app']);
     groups.forEach((g) => expect(g.panels.length).toBeGreaterThan(0));
-    // The two controls the operator reaches for daily lead the first group.
-    expect(groups[0].panels.map((p) => p.id)).toEqual(['goals', 'today', 'data']);
+    expect(groups[0].panels.map((p) => p.id)).toEqual(['goals', 'soundboard', 'greetings']);
+    expect(groups[1].panels.map((p) => p.id)).toEqual(['today', 'data']);
   });
 
-  test('a navigating panel is never treated as a drawer section', () => {
-    // "goals" leaves the drawer for the goal wheel. If it counted as a section,
-    // the remembered-section restore would reopen onto a blank panel.
-    expect(isSettingsPanel('goals')).toBe(false);
-    expect(isSettingsPanel('today')).toBe(true);
-    const goals = SETTINGS_PANELS.find((p) => p.id === 'goals');
-    expect(goals.action).toBe('goals-view');
-    saveLastSettingsSection('goals');
-    expect(loadLastSettingsSection()).toBeNull(); // nothing to remember
+  // v4.167.0: all three studios are reached by leaving the drawer, so all three
+  // must be excluded from section handling — otherwise the remembered-section
+  // restore would reopen onto a blank panel.
+  test.each(['goals', 'soundboard', 'greetings'])(
+    'the %s studio is a navigating panel, not a drawer section',
+    (id) => {
+      expect(isSettingsPanel(id)).toBe(false);
+      expect(getSettingsPanel(id).action).toBeTruthy();
+      saveLastSettingsSection(id);
+      expect(loadLastSettingsSection()).toBeNull(); // nothing to remember
+    },
+  );
+
+  test('the studios are findable by every word an operator uses for them', () => {
+    const has = (q, id) => expect(searchSettingsPanels(q).map((p) => p.id)).toContain(id);
+    ['soundboard', 'greeting', 'record greetings', 'health check', 'caller path']
+      .forEach((q) => has(q, 'soundboard'));
+    ['greeting editor', 'greetings', 'script', 'waveform', 'trim']
+      .forEach((q) => has(q, 'greetings'));
+    ['goal', 'target', 'how much do i need', 'money', 'pace', 'monthly target']
+      .forEach((q) => has(q, 'goals'));
   });
 
+  // The Studio group took 'soundboard' out of the Audio keywords, so search has
+  // to keep finding the right panel for each everyday word.
   test('search finds panels by the words an operator would type', () => {
     const ids = (q) => searchSettingsPanels(q).map((p) => p.id);
     expect(ids('call log')[0]).toBe('today');
@@ -56,7 +74,7 @@ describe('settingsRegistry (v4.161.0)', () => {
     expect(ids('theme')).toContain('display');
     expect(ids('colour')).toContain('display'); // es spelling
     expect(ids('language')).toContain('language');
-    expect(ids('soundboard')).toContain('audio');
+    expect(ids('soundboard')).toContain('soundboard');
     expect(ids('corrections')).toContain('data');
     expect(ids('zzz')).toEqual([]);
     expect(searchSettingsPanels('')).toHaveLength(SETTINGS_PANELS.length);

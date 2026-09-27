@@ -337,11 +337,15 @@ const SessionControlsSticky = React.memo(({
   tabStreamReady = false,
   cableStreamReady = false,
   lastDataTime = 0,
+  // v4.167.0: the Soundboard 🎛 and Greeting Editor ✎ buttons are gone from the
+  // strip — they were the only doors to those views, and both now open from
+  // Settings → Studio. These two props STAY because the cat logo below still
+  // uses them to close the studio, which is a "back to work" affordance rather
+  // than an entrance. onOpenGreetingEditor / greetingEditorOpen / onToggleLanguage
+  // are gone entirely (the editor opened from Settings, EN|ES from Settings →
+  // Language).
   onOpenSoundboard,
   soundboardOpen = false,
-  // v4.114.0: ✎ opens the focused Greeting Editor VIEW
-  onOpenGreetingEditor,
-  greetingEditorOpen = false,
   // v4.113.0: HUD goal button opens the Goal Tracking VIEW (dial + calendar)
   onOpenGoalsView,
   goalsOpen = false,
@@ -817,7 +821,13 @@ const SessionControlsSticky = React.memo(({
           <SettingsButton />
         </div>
       </div>
-      {/* Always visible: TAB/VB source switch + Deepgram proof during a call. */}
+      {/* Always visible: the Deepgram proof during a call (the TAB/VB switch and
+          the "where do greetings go out" label moved to Settings in v4.166.0).
+          v4.167.0: the Soundboard 🎛 and Greeting Editor ✎ props are no longer
+          passed down. Those two buttons were this row's last two occupants and
+          they were the only doors to those views; both now open from Settings →
+          Studio. The cat logo below still closes the studio, because that is a
+          "back to work" affordance, not an entrance. */}
       {
         <AudioRouteStatusBar
           micTestMode={micTestMode}
@@ -852,10 +862,6 @@ const SessionControlsSticky = React.memo(({
             }
             await playTestToneSink(sinkId);
           }}
-          onOpenSoundboard={!isActive ? onOpenSoundboard : undefined}
-          soundboardOpen={soundboardOpen}
-          onOpenGreetingEditor={!isActive ? onOpenGreetingEditor : undefined}
-          greetingEditorOpen={greetingEditorOpen}
           compact
           trailing={trailingSlot}
         />
@@ -3390,7 +3396,6 @@ ${isInDeficit ? `⚠️ DEFICIT: Behind pace by ${Math.round(monthlyDeficitMins)
         onOpenGoalsView={onOpenGoalsView}
         goalsOpen={goalsOpen}
         sttLanguage={sttLanguage}
-        onToggleLanguage={onToggleLanguage}
         configuredAudioSourceMode={configuredAudioSourceMode}
         attachedAudioSourceMode={attachedAudioSourceMode}
         virtualCableFailure={virtualCableFailure}

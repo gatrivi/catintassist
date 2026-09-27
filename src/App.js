@@ -306,12 +306,18 @@ const Dashboard = () => {
   // be pressed mid-call (the 🎯 chip, the m7 metric cell, the DAILY income card,
   // the 📅, and Settings → Goals). They all called this and got silence. Now
   // they all say why, in one place, instead of five times in five files.
-  const [goalsBlockedNotice, setGoalsBlockedNotice] = useState('');
+  // v4.167.0: generalised — the Soundboard and Greeting Editor are off-call too,
+  // and their header buttons are gone, so Settings is their only door.
+  const [workspaceBlockedNotice, setWorkspaceBlockedNotice] = useState('');
+
+  const sayWorkspaceBlocked = useCallback((what) => {
+    setWorkspaceBlockedNotice(`${what} is off-call only — stop the call first.`);
+    window.setTimeout(() => setWorkspaceBlockedNotice(''), 4000);
+  }, []);
 
   const onOpenGoalsView = useCallback(() => {
     if (isActive || isZombieCall) {
-      setGoalsBlockedNotice('The goal wheel is off-call only — stop the call first.');
-      window.setTimeout(() => setGoalsBlockedNotice(''), 4000);
+      sayWorkspaceBlocked('The goal wheel');
       return;
     }
     setWorkspaceView((prev) => {
@@ -321,7 +327,25 @@ const Dashboard = () => {
       }
       return GOALS_VIEW;
     });
-  }, [isActive, isZombieCall]);
+  }, [isActive, isZombieCall, sayWorkspaceBlocked]);
+
+  // v4.167.0: the Soundboard Studio's door. Its header button (🎛) was the only
+  // way in, and v4.166.0 thinned that row to free up header width — so Settings
+  // → Studio is the new way in. Same shape as cat_open_goals_view: OPENS the
+  // view, never toggles it shut, so a stale click cannot bounce the operator out.
+  useEffect(() => {
+    const onOpenStudio = () => {
+      if (isActive || isZombieCall) {
+        sayWorkspaceBlocked('Soundboard Studio');
+        return;
+      }
+      markStudioHintSeen();
+      setShowStudioHint(false);
+      setWorkspaceView((prev) => (prev === "soundboard" ? prev : "soundboard"));
+    };
+    window.addEventListener("cat_open_soundboard_view", onOpenStudio);
+    return () => window.removeEventListener("cat_open_soundboard_view", onOpenStudio);
+  }, [isActive, isZombieCall, sayWorkspaceBlocked]);
 
   const exitGoalsView = useCallback(() => {
     if (isActive || isZombieCall) return;
@@ -363,11 +387,20 @@ const Dashboard = () => {
   }, [isActive, isZombieCall]);
 
   // Studio ↔ Editor: GreetingsPanel dispatches this to open a clip in the editor.
+  // v4.167.0: with detail.clipKey it is "open THIS greeting" (from the studio).
+  // Without one it is the generic door — which is what Settings → Studio now
+  // uses, since the header's ✎ button is gone.
   useEffect(() => {
-    const onOpen = (e) => onOpenGreetingEditor(e.detail?.clipKey || null);
+    const onOpen = (e) => {
+      if (isActive || isZombieCall) {
+        sayWorkspaceBlocked('The Greeting Editor');
+        return;
+      }
+      onOpenGreetingEditor(e.detail?.clipKey || null);
+    };
     window.addEventListener("cat_open_greeting_editor", onOpen);
     return () => window.removeEventListener("cat_open_greeting_editor", onOpen);
-  }, [onOpenGreetingEditor]);
+  }, [onOpenGreetingEditor, isActive, isZombieCall, sayWorkspaceBlocked]);
 
   const prepareGuideView = useCallback((action = {}) => {
     if (!action) return;
@@ -849,16 +882,17 @@ const Dashboard = () => {
         openTrigger={settingsOpenTrigger}
       />
 
-      {/* v4.163.0: mid-call only. The goal wheel cannot be opened during a call,
-          and the transcript is the wrong place to hide that message — so it sits
-          at the TOP, out of the reading column, and disappears on its own. */}
-      {goalsBlockedNotice && (isActive || isZombieCall) && (
+      {/* v4.163.0: mid-call only, and bottom-anchored since v4.165.0 (it was
+          painted over the sticky row at the top). v4.167.0: generalised to every
+          off-call workspace view, because the goal wheel, Soundboard Studio and
+          the Greeting Editor are all off-call and all say this one line. */}
+      {workspaceBlockedNotice && (isActive || isZombieCall) && (
         <div
           role="status"
           className="goals-blocked-notice"
-          onClick={() => setGoalsBlockedNotice("")}
+          onClick={() => setWorkspaceBlockedNotice("")}
         >
-          🎯 {goalsBlockedNotice}
+          {workspaceBlockedNotice}
         </div>
       )}
 

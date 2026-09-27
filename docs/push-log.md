@@ -108,3 +108,6 @@
 | 2026-09-26T15:57:08.983Z | 9b30496 | v4.161.0: audio eval harness - the first metric that touches a microphone (your 10 minutes) |
 | 2026-09-26T16:35:29.095Z | d080ffc | v4.162.0 goal configurator money safety (user approved over-budget push) |
 | 2026-09-26T17:53:41.126Z | 7508961 | v4.165.0 header eval phase 1: 5 real bugs (Greeting Editor scoreboard, dup chip id, pill copy, CSS var height, my notice overlap) + eval doc |
+| 2026-09-26T20:47:42.987Z | 61de5f1 | v4.166.0 slim the audio strip: TAB/VB + output label + EN/ES moved to Settings |
+| 2026-09-26T21:29:02.848Z | c6dbe36 | fix: translation 4-6s behind - timeouts are now remembered and the ladder fails fast |
+| 2026-09-26T21:40:57.981Z | 5188029 | v4.167.0: translation latency is yours to pick - FAST by default (0.7s) |

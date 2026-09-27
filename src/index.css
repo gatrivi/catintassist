@@ -3352,43 +3352,11 @@ body {
   flex-shrink: 0;
 }
 
-.audio-route-soundboard-btn {
-  background: var(--btn-chrome-bg);
-  border: 1px solid var(--btn-chrome-border);
-  border-radius: var(--btn-radius);
-  color: var(--btn-chrome-text);
-  cursor: pointer;
-  font-size: var(--btn-font-size);
-  font-weight: 900;
-  /* v4.129.0: BREAK-size icon square (26px) — was 12ch text pill. */
-  width: var(--btn-icon) !important;
-  min-width: var(--btn-icon) !important;
-  max-width: var(--btn-icon) !important;
-  padding: 0 !important;
-  min-height: var(--btn-h);
-  height: var(--btn-h);
-  justify-content: center;
-  display: inline-flex;
-  align-items: center;
-  white-space: nowrap;
-  flex-shrink: 0;
-  box-sizing: border-box;
-  overflow: hidden;
-}
+/* v4.167.0: .audio-route-soundboard-btn and its :hover / .is-open rules are
+   gone. The Soundboard and Greeting Editor buttons were the last two occupants
+   of the header strip and the only doors to those views; both now open from
+   Settings -> Studio, which renders its own .btn classes. */
 
-.audio-route-soundboard-btn:hover {
-  background: var(--btn-chrome-hover);
-  color: rgba(255, 255, 255, 0.92);
-}
-
-.audio-route-soundboard-btn.is-open {
-  background: var(--btn-live-bg);
-  border-color: var(--btn-live-border);
-  color: var(--btn-live-text);
-  box-shadow: 0 0 8px rgba(16, 185, 129, 0.25);
-}
-
-.audio-route-soundboard-btn.is-disabled,
 .audio-route-disabled-control:disabled {
   opacity: 0.32;
   filter: grayscale(1);

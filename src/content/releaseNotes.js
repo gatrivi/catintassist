@@ -25,6 +25,41 @@ import { APP_VERSION } from '../constants/version';
 /** Newest first. Only the entry matching APP_VERSION is shown on load. */
 export const RELEASE_NOTES_CATALOG = [
   {
+    version: '4.167.0',
+    id: 'studios-have-a-door',
+    highlightElementIds: ['header-app-logo-btn'],
+    es: {
+      title: 'Soundboard y Greeting Editor se abren desde Settings',
+      intro: 'Esos dos botones eran la única puerta a sus vistas, y la fila de audio necesitaba el ancho. Ahora hay un grupo Studio en Settings que los abre — y les avisa si apretás durante una llamada.',
+      sections: [
+        { heading: 'Qué cambió', bullets: [
+          'Nuevo grupo **Studio** en Settings, primero en la lista: **Goals**, **Soundboard** y **Greeting editor**. Los tres se abren desde ahí, con el buscador incluido (escribís «greeting», «health check», «waveform» y aparece).',
+          'Los botones 🎛 y ✎ salieron de la fila de audio. Con ellos, la fila ya solo tiene el punto de Deepgram y los botones de rescate que aparecen si el audio falla.',
+          'El aviso «off-call only» ahora sirve para los tres: durante una llamada no te cierra los settings en silencio, te dice cuál es.',
+          'El gato sigue cerrando el Soundboard, porque eso es «volver al trabajo», no una entrada.',
+        ] },
+        { heading: 'Intacto', bullets: [
+          'El Soundboard y el editor no cambió ni una línea: solo cambió dónde se los abre.',
+        ] },
+      ],
+    },
+    en: {
+      title: 'Soundboard and Greeting Editor now open from Settings',
+      intro: 'Those two buttons were the only door to their views, and the audio row needed the width. There is now a Studio group in Settings that opens them — and tells you why if you press during a call.',
+      sections: [
+        { heading: 'What changed', bullets: [
+          'A new **Studio** group in Settings, first in the list: **Goals**, **Soundboard** and **Greeting editor**. All three open from there, search included (type "greeting", "health check", "waveform" and it appears).',
+          'The 🎛 and ✎ buttons left the audio row. With them gone, that row holds only the Deepgram dot and the rescue buttons that appear if the audio actually fails.',
+          'The "off-call only" notice now serves all three: during a call it no longer closes Settings on nothing, it names which one it was.',
+          'The cat still closes the Soundboard, because that is "back to work", not an entrance.',
+        ] },
+        { heading: 'Untouched', bullets: [
+          'Not one line of the Soundboard or the editor changed — only where you open them.',
+        ] },
+      ],
+    },
+  },
+  {
     version: '4.166.0',
     id: 'header-strip-slimmed',
     highlightElementIds: ['header-app-logo-btn'],

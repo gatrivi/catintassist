@@ -253,19 +253,53 @@ describe('SettingsPanel -> navigation (v4.161.0)', () => {
     window.removeEventListener('cat_open_goals_view', onOpen);
   });
 
-  test('mid-call, Goals says it is off-call only instead of doing nothing', () => {
-    setSession({ isActive: true });
+  // v4.167.0: the Soundboard and Greeting Editor lost their header buttons in
+  // v4.166.0, so Settings -> Studio is now the ONLY door to both. Two things
+  // must hold: the door works off-call, and mid-call it says why instead of
+  // closing the drawer on nothing.
+  test.each([
+    ['Soundboard', 'cat_open_soundboard_view', 'Record greetings: quality check, hear it, caller path'],
+    ['Greeting editor', 'cat_open_greeting_editor', 'One greeting at a time — script, waveform, caller test'],
+  ])('%s opens from Settings and closes the drawer', (_label, eventName, hint) => {
     const onClose = jest.fn();
     const onOpen = jest.fn();
-    window.addEventListener('cat_open_goals_view', onOpen);
+    window.addEventListener(eventName, onOpen);
     render(<SettingsPanel open onClose={onClose} />);
 
-    expect(screen.getByText('off-call only')).toBeInTheDocument();
-    fireEvent.click(screen.getByText('Set how much you need per day / week / month').closest('button'));
+    fireEvent.click(screen.getByText(hint).closest('button'));
 
-    expect(onOpen).not.toHaveBeenCalled();
-    expect(onClose).not.toHaveBeenCalled();
+    expect(onOpen).toHaveBeenCalledTimes(1);
+    expect(onClose).toHaveBeenCalledTimes(1);
+    window.removeEventListener(eventName, onOpen);
+  });
+
+  test('mid-call, all three studios say off-call only and none of them open', () => {
+    setSession({ isActive: true });
+    const onClose = jest.fn();
+    const goals = jest.fn();
+    const studio = jest.fn();
+    const editor = jest.fn();
+    window.addEventListener('cat_open_goals_view', goals);
+    window.addEventListener('cat_open_soundboard_view', studio);
+    window.addEventListener('cat_open_greeting_editor', editor);
+    render(<SettingsPanel open onClose={onClose} />);
+
+    // All three are flagged, not just the goal wheel.
+    expect(screen.getAllByText('off-call only')).toHaveLength(3);
+
+    fireEvent.click(screen.getByText('Set how much you need per day / week / month').closest('button'));
     expect(screen.getByText(/The goal wheel is off-call only/i)).toBeInTheDocument();
-    window.removeEventListener('cat_open_goals_view', onOpen);
+    fireEvent.click(screen.getByText('Record greetings: quality check, hear it, caller path').closest('button'));
+    expect(screen.getByText(/Soundboard Studio is off-call only/i)).toBeInTheDocument();
+    fireEvent.click(screen.getByText('One greeting at a time — script, waveform, caller test').closest('button'));
+    expect(screen.getByText(/The Greeting Editor is off-call only/i)).toBeInTheDocument();
+
+    expect(goals).not.toHaveBeenCalled();
+    expect(studio).not.toHaveBeenCalled();
+    expect(editor).not.toHaveBeenCalled();
+    expect(onClose).not.toHaveBeenCalled();
+    window.removeEventListener('cat_open_goals_view', goals);
+    window.removeEventListener('cat_open_soundboard_view', studio);
+    window.removeEventListener('cat_open_greeting_editor', editor);
   });
 });

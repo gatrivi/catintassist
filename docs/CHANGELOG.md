@@ -2,6 +2,17 @@
 
 **Version source:** `src/constants/version.js` (must match `package.json` + top-right UI pill)
 
+## v4.167.0 - the studios get a door, and the audio row gets thinner
+
+- **Settings → Studio** is a new group, first in the list: **Goals**, **Soundboard**, **Greeting editor**. All three are `notSection` panels with an `action`, so they leave the drawer rather than rendering a body, and the remembered-section restore can never reopen onto a blank one.
+- **The 🎛 and ✎ buttons left the header strip.** They were the *only* doors to those views anywhere in the app, so this was not a removal — it was a move. Both now open from Settings, search included ("greeting", "health check", "waveform", "record greetings").
+- **The "off-call only" notice is generalised.** All three studios refuse to open during a call, and all three now say which one it was instead of closing the drawer on nothing. `goalsBlockedNotice` → `workspaceBlockedNotice` + `sayWorkspaceBlocked()`.
+- **The cat logo still closes the Soundboard** — `onOpenSoundboard`/`soundboardOpen` stay in `SessionControlsSticky` for exactly that. It's a "back to work" affordance, not an entrance. The `onOpenGreetingEditor`/`greetingEditorOpen`/`onToggleLanguage` props are gone entirely.
+- The compact audio strip now holds only the Deepgram proof, plus the mic-restore and ZAP buttons that appear **only on a real fault**. In its default state it renders no buttons at all.
+- Deleted: 43 lines of JSX (the two buttons), 4 `.audio-route-soundboard-btn` CSS rules, and the `AudioRouteStatusBar` props behind them. The `.audio-route-disabled-control:disabled` half of the last rule was kept — that class is still used by the mic row.
+- **7 new tests** across the three affected suites, split so each pins one half of the contract: Settings says the door works and says off-call; the strip asserts the buttons are gone.
+- ⚠️ **Two old release notes reference `#audio-route-soundboard-btn`** in `highlightElementIds` (v4.153.0-era and another). Nothing renders that id now, so their post-dismiss highlight would silently do nothing. Harmless — only the entry matching `APP_VERSION` is ever shown — but it is stale.
+
 ## v4.166.0 - the audio row gives up half its width
 
 - **TAB / VB left the header strip** → `Settings → Audio → "Audio source (STT)"`, which already owned the switcher (v4.139.0 moved the off-call half there; this was the in-call duplicate). The stream-preserving handlers are untouched, so the mid-call rescue still works from the gear in the same header row.
