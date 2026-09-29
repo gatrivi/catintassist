@@ -114,3 +114,4 @@
 | 2026-09-27T16:54:24.264Z | ec9bb07 | v4.167.0 Settings->Studio door for Soundboard + Greeting Editor; audio strip down to the Deepgram proof |
 | 2026-09-27T18:37:04.907Z | 6d0b674 | v4.168.0 condensed toolbar back off-call: Min/Std/Full, Notes, Tools, Help, Edit, Call detection, Focus + copyable pills |
 | 2026-09-27T20:47:26.876Z | 5984914 | v4.169.0 make the failure visible: per-socket health + translation-surplus warning (CSA call incident) |
+| 2026-09-29T03:11:39.003Z | 6aabc36 | v4.170.0 connect self-heal: CloseStream+1000, ear kill, recorder rebuild, attempt-scoped fail |
