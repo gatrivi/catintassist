@@ -2,9 +2,15 @@
  * On-call quick-fire soundboard strip — compact thumbnail gallery.
  * Fires pre-recorded clips via passthrough routing during active calls.
  */
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import { ACTIONS } from './GreetingsPanel';
-import { loadFile } from '../utils/storage';
+import { loadFile, SOUNDBOARD_CHANGED_EVENT } from '../utils/storage';
+import {
+  readGalleryPicks,
+  writeGalleryPicks,
+  toggleGalleryPick,
+  MAX_GALLERY,
+} from '../utils/oncallGallery';
 import { useAudioSettings } from '../contexts/AudioSettingsContext';
 import {
   loadManualCallOk,
@@ -31,6 +37,20 @@ export const ON_CALL_SLOTS = [
   { actionId: 'intake', label: 'Intake' },
 ];
 
+/**
+ * v4.171.0: short names for the original seven, so a 36px tile still reads at a
+ * glance. Greetings you add yourself fall back to their full ACTIONS label.
+ */
+export const GALLERY_LABELS = ON_CALL_SLOTS.reduce(
+  (acc, s) => (s.label ? { ...acc, [s.actionId]: s.label } : acc),
+  {}
+);
+
+export const isKnownActionId = (id) => ACTIONS.some((a) => a.id === id);
+
+/** What a tile shows, in one place: the short override, else the real label. */
+export const slotLabelFor = (actionId) => GALLERY_LABELS[actionId] || ACTIONS.find((a) => a.id === actionId)?.label || actionId;
+
 /** v4.131.0: the slot name shown in the collapsed pill. */
 export const SLOT_LABEL = { morning: 'Morning', afternoon: 'Afternoon', evening: 'Evening' };
 
@@ -44,6 +64,22 @@ export const SLOT_PICKS = [
 
 const resolveClipKey = (slot, timeOfDay) =>
   slot.dynamic ? `${slot.actionId}_${timeOfDay}` : slot.actionId;
+
+/** v4.171.0: a pick becomes a slot — only `dynamic` differs per greeting. */
+const slotFromActionId = (actionId) => ({
+  actionId,
+  dynamic: !!ACTIONS.find((a) => a.id === actionId)?.dynamic,
+});
+
+/**
+ * Every clip key the strip holds in memory. ALL greetings, not just the picked
+ * ones — the picker has to tell a recorded greeting from an unrecorded one
+ * before you add it. ~84 IndexedDB reads once per scan: local, sub-millisecond.
+ */
+export const galleryScanKeys = () => ACTIONS.flatMap((a) =>
+  a.dynamic ? TIME_SLOTS.map((t) => `${a.id}_${t}`) : [a.id]);
+
+export const GALLERY_THUMB_KEYS = () => ACTIONS.map((a) => `thumb_${a.id}`);
 
 /** v4.95.3: preferred slot key, else any saved variant — same rule for tiles and firing. */
 const resolveFireKey = (slot, timeOfDay, blobs) => {
@@ -65,7 +101,7 @@ const readThumbSize = () => {
   }
 };
 
-export function OnCallSoundboardStrip({ micTestMode = false, collapsed: collapsedProp, onToggleCollapse }) {
+export function OnCallSoundboardStrip({ micTestMode = false, collapsed: collapsedProp, onToggleCollapse, onOpenGreetingEditor }) {
   const {
     selectedSinkId,
     selectedMicId,
@@ -104,6 +140,18 @@ export function OnCallSoundboardStrip({ micTestMode = false, collapsed: collapse
   // v4.128.0: caller fires are sink-only by default — a parallel local copy
   // plus the old A1→cable loop made every greeting sound twice.
   const [monitor, setMonitor] = useState(readCallerMonitor);
+  // v4.171.0: your gallery, your order. The picker edits this in place, so the
+  // seven that used to be hardcoded are only a first-run default.
+  const [picks, setPicks] = useState(() => readGalleryPicks(isKnownActionId));
+  const [pickMode, setPickMode] = useState(false);
+  // v4.171.0: a gate refusal that would only flash for 3.5s is indistinguishable
+  // from a dead button on a live call, so refusals park here until answered.
+  const [blockInfo, setBlockInfo] = useState(null);
+  // v4.171.0: bumped whenever a clip is recorded or deleted anywhere, so the
+  // in-memory copy the tiles fire from can never lag the audio.
+  const [scanTick, setScanTick] = useState(0);
+
+  const gallerySlots = useMemo(() => picks.map(slotFromActionId), [picks]);
 
   const audioRefLocal = useRef(new Audio());
   const audioRefSink = useRef(new Audio());
@@ -140,27 +188,31 @@ export function OnCallSoundboardStrip({ micTestMode = false, collapsed: collapse
     };
   }, []);
 
+  // v4.171.0: any recording or delete anywhere in the app re-scans the gallery.
+  useEffect(() => {
+    const bump = () => setScanTick((n) => n + 1);
+    window.addEventListener(SOUNDBOARD_CHANGED_EVENT, bump);
+    return () => window.removeEventListener(SOUNDBOARD_CHANGED_EVENT, bump);
+  }, []);
+
   useEffect(() => {
     let cancelled = false;
     (async () => {
       const state = {};
       const thumbState = {};
       const urls = [];
-      for (const slot of ON_CALL_SLOTS) {
-        // v4.131.0: dynamic greetings load every time-of-day variant, so the
-        // nearest-slot fallback and its pill cue work off their own slot too.
-        const keys = slot.dynamic
-          ? TIME_SLOTS.map((t) => `${slot.actionId}_${t}`)
-          : [slot.actionId];
-        for (const key of keys) {
-          const b = await loadFile(key);
-          if (b && !cancelled) state[key] = b;
-        }
-        const thumbBlob = await loadFile(`thumb_${slot.actionId}`);
+      // v4.131.0: dynamic greetings load every time-of-day variant, so the
+      // nearest-slot fallback and its pill cue work off their own slot too.
+      for (const key of galleryScanKeys()) {
+        const b = await loadFile(key);
+        if (b && !cancelled) state[key] = b;
+      }
+      for (const key of GALLERY_THUMB_KEYS()) {
+        const thumbBlob = await loadFile(key);
         if (thumbBlob && !cancelled) {
           const url = URL.createObjectURL(thumbBlob);
           urls.push(url);
-          thumbState[slot.actionId] = url;
+          thumbState[key.slice('thumb_'.length)] = url;
         }
       }
       if (!cancelled) {
@@ -178,7 +230,7 @@ export function OnCallSoundboardStrip({ micTestMode = false, collapsed: collapse
       thumbUrlsRef.current.forEach((u) => URL.revokeObjectURL(u));
       thumbUrlsRef.current = [];
     };
-  }, [timeOfDay]);
+  }, [timeOfDay, scanTick]);
 
   const flashNotice = (msg) => {
     setNotice(msg);
@@ -219,7 +271,14 @@ export function OnCallSoundboardStrip({ micTestMode = false, collapsed: collapse
     const key = resolveFireKey(slot, timeOfDay, blobs);
     const blob = blobs[key];
     if (!blob) {
-      flashNotice(`No clip: ${slot.label || key}`);
+      // v4.171.0: this tile used to be `disabled`, so a tap did nothing at all.
+      // Say which slot is empty instead — it never reaches a play path.
+      const label = slotLabelFor(slot.actionId);
+      flashNotice(
+        slot.dynamic
+          ? `No ${label} recording for the ${SLOT_LABEL[timeOfDay]} slot — pick AM/PM/Eve, or record it in the Greeting Editor`
+          : `No ${label} recording yet — record it in the Greeting Editor`
+      );
       return;
     }
 
@@ -228,6 +287,7 @@ export function OnCallSoundboardStrip({ micTestMode = false, collapsed: collapse
       return;
     }
     clearPlay();
+    setBlockInfo(null);
 
     const attempt = ++playbackAttemptRef.current;
     if (micTestMode) {
@@ -257,10 +317,18 @@ export function OnCallSoundboardStrip({ micTestMode = false, collapsed: collapse
     const score = healthScores[key];
     const healthOk = score !== undefined && score >= CALL_ROUTE_MIN_SCORE;
     const callOk = isManualCallOk(manualCallOk, key, selectedSinkId, selectedMicId);
+    const label = slotLabelFor(slot.actionId);
     // v4.103.0 user agency: weak legibility warns but never blocks — the
     // interpreter decides. CALL OK (proven route) stays a hard gate.
     if (!callOk) {
-      flashNotice('📡 CALL OK required — test off-call first');
+      // v4.171.0: re-recording a family wipes its CALL OK, so this is the most
+      // common "dead button" on a live call. Park it with a way out.
+      setBlockInfo({
+        key,
+        text: `${label} is not verified for this route (CALL OK)`,
+        fix: onOpenGreetingEditor ? 'Test it' : null,
+        hint: onOpenGreetingEditor ? null : 'off-call only',
+      });
       return;
     }
     if (!healthOk) {
@@ -272,7 +340,12 @@ export function OnCallSoundboardStrip({ micTestMode = false, collapsed: collapse
     }
 
     if (!selectedSinkId) {
-      flashNotice('⚠️ Pick VB out (CABLE Input / Voicemeeter Input) in header Speaker');
+      setBlockInfo({
+        key,
+        text: `${label} cannot play — no caller output picked`,
+        fix: null,
+        hint: 'Pick VB out (CABLE Input) in header Speaker',
+      });
       return;
     }
 
@@ -366,6 +439,19 @@ export function OnCallSoundboardStrip({ micTestMode = false, collapsed: collapse
     writeCallerMonitor(next);
   };
 
+  // v4.171.0: one writer for the gallery list — the picker edits the state, the
+  // persistence, the re-scan and the notice all hang off this single call.
+  const togglePick = (actionId) => {
+    const result = toggleGalleryPick(picks, actionId, isKnownActionId);
+    if (result.full) {
+      flashNotice(`Max ${MAX_GALLERY} greetings on the strip — drop one first`);
+      return;
+    }
+    setPicks(result.picks);
+    writeGalleryPicks(result.picks, isKnownActionId);
+    if (result.added) setNotice('');
+  };
+
   // v4.131.1: manual slot pick. Persist first (so every caller of workTime obeys
   // it), then switch this strip on the SAME click — tiles and pill move together.
   // `null` clears the key and hands control back to the work clock.
@@ -377,16 +463,14 @@ export function OnCallSoundboardStrip({ micTestMode = false, collapsed: collapse
   };
 
   const playingSlot = playingKey
-    ? ON_CALL_SLOTS.find((s) => resolveClipKey(s, timeOfDay) === playingKey)
+    ? gallerySlots.find((s) => resolveClipKey(s, timeOfDay) === playingKey)
     : null;
-  const playingLabel = playingSlot
-    ? (playingSlot.label || ACTIONS.find((a) => a.id === playingSlot.actionId)?.label || playingKey)
-    : null;
+  const playingLabel = playingSlot ? slotLabelFor(playingSlot.actionId) : null;
 
   // v4.131.0 pill cues: which recording the two dynamic greetings would fire,
   // and whether any of them has no recording at all.
   const langOf = (actionId) => (ACTIONS.find((a) => a.id === actionId)?.lang || '').toUpperCase();
-  const greetingSlots = ON_CALL_SLOTS.filter((s) => s.dynamic);
+  const greetingSlots = gallerySlots.filter((s) => s.dynamic);
   const greetingCues = greetingSlots.map((slot) => {
     const key = resolveFireKey(slot, timeOfDay, blobs);
     return { slot, has: !!blobs[key], variant: key.slice(slot.actionId.length + 1) };
@@ -506,59 +590,122 @@ export function OnCallSoundboardStrip({ micTestMode = false, collapsed: collapse
             />
             Monitor
           </label>
-          <div className="on-call-sb-gallery">
-            {ON_CALL_SLOTS.map((slot) => {
-              const key = resolveFireKey(slot, timeOfDay, blobs);
-              const has = !!blobs[key];
-              const action = ACTIONS.find((a) => a.id === slot.actionId);
-              const label = slot.label || action?.label || slot.actionId;
-              const lang = action?.lang;
-              const thumbUrl = thumbs[slot.actionId];
-              const isPlaying = playingKey === key;
-              // v4.110.0: cue when a fallback time-of-day recording is used
-              const variantUsed = slot.dynamic && key !== resolveClipKey(slot, timeOfDay)
-                ? key.slice(slot.actionId.length + 1)
-                : null;
-              const blocked = has && !micTestMode && (
-                healthScores[key] === undefined ||
-                healthScores[key] < CALL_ROUTE_MIN_SCORE ||
-                !isManualCallOk(manualCallOk, key, selectedSinkId, selectedMicId)
-              );
-              return (
-                <button
-                  key={key}
-                  type="button"
-                  className={`on-call-sb-tile${isPlaying ? ' is-playing' : ''}${!has ? ' is-missing' : ''}${blocked ? ' is-blocked' : ''}${thumbUrl ? ' has-thumb' : ''}`}
-                  disabled={!has}
-                  onClick={() => fireClip(slot)}
-                  style={thumbUrl ? { backgroundImage: `url(${thumbUrl})` } : undefined}
-                  title={
-                    !has
-                      ? 'Record in Soundboard Studio'
-                      : micTestMode
-                        ? 'Play on your speakers/headphones'
-                        : blocked
-                          ? 'Health or CALL OK gate — test off-call'
-                          : `Fire ${label} to patient path`
-                  }
-                >
-                  {isPlaying && (
-                    <span className="on-call-sb-tile-progress" style={{ width: `${playbackProgress * 100}%` }} />
-                  )}
-                  {lang && <span className={`on-call-sb-lang lang-${lang}`}>{lang.toUpperCase()}</span>}
-                  {variantUsed && (
-                    <span className="on-call-sb-variant" title={`Using the ${variantUsed} recording`}>
-                      {VARIANT_ICON[variantUsed]}
+          {!pickMode && (
+            <div className="on-call-sb-gallery">
+              {gallerySlots.map((slot) => {
+                const key = resolveFireKey(slot, timeOfDay, blobs);
+                const has = !!blobs[key];
+                const action = ACTIONS.find((a) => a.id === slot.actionId);
+                const label = slotLabelFor(slot.actionId);
+                const lang = action?.lang;
+                const thumbUrl = thumbs[slot.actionId];
+                const isPlaying = playingKey === key;
+                // v4.110.0: cue when a fallback time-of-day recording is used
+                const variantUsed = slot.dynamic && key !== resolveClipKey(slot, timeOfDay)
+                  ? key.slice(slot.actionId.length + 1)
+                  : null;
+                const blocked = has && !micTestMode && (
+                  healthScores[key] === undefined ||
+                  healthScores[key] < CALL_ROUTE_MIN_SCORE ||
+                  !isManualCallOk(manualCallOk, key, selectedSinkId, selectedMicId)
+                );
+                return (
+                  <button
+                    key={key}
+                    type="button"
+                    className={`on-call-sb-tile${isPlaying ? ' is-playing' : ''}${!has ? ' is-missing' : ''}${blocked ? ' is-blocked' : ''}${thumbUrl ? ' has-thumb' : ''}`}
+                    // v4.171.0: aria-disabled, not disabled — the tap still
+                    // explains itself instead of vanishing. No play path here.
+                    aria-disabled={!has}
+                    onClick={() => fireClip(slot)}
+                    style={thumbUrl ? { backgroundImage: `url(${thumbUrl})` } : undefined}
+                    title={
+                      !has
+                        ? `No ${label} recording for the ${SLOT_LABEL[timeOfDay]} slot — tap for options`
+                        : micTestMode
+                          ? 'Play on your speakers/headphones'
+                          : blocked
+                            ? 'Health or CALL OK gate — test off-call'
+                            : `Fire ${label} to patient path`
+                    }
+                  >
+                    {isPlaying && (
+                      <span className="on-call-sb-tile-progress" style={{ width: `${playbackProgress * 100}%` }} />
+                    )}
+                    {lang && <span className={`on-call-sb-lang lang-${lang}`}>{lang.toUpperCase()}</span>}
+                    {!has && <span className="on-call-sb-tile-empty" title="Not recorded for this slot">○</span>}
+                    {variantUsed && (
+                      <span className="on-call-sb-variant" title={`Using the ${variantUsed} recording`}>
+                        {VARIANT_ICON[variantUsed]}
+                      </span>
+                    )}
+                    <span className="on-call-sb-tile-chrome">
+                      <span className="on-call-sb-tile-label">{isPlaying ? '⏹' : label}</span>
                     </span>
-                  )}
-                  <span className="on-call-sb-tile-chrome">
-                    <span className="on-call-sb-tile-label">{isPlaying ? '⏹' : label}</span>
-                  </span>
-                </button>
-              );
-            })}
-          </div>
+                  </button>
+                );
+              })}
+              <button
+                type="button"
+                className="on-call-sb-tile on-call-sb-pick-btn"
+                onClick={() => setPickMode(true)}
+                title="Choose which greetings sit here (up to 8)"
+              >
+                <span className="on-call-sb-tile-chrome">
+                  <span className="on-call-sb-tile-label">⚙</span>
+                </span>
+              </button>
+            </div>
+          )}
+          {/* v4.171.0: the picker. All 24 greetings, not the seven that used to
+              be hardcoded. Lives inside the strip so it is reachable mid-call
+              without leaving the call UI. */}
+          {pickMode && (
+            <div className="on-call-sb-picker" role="dialog" aria-label="Choose on-call greetings">
+              <div className="on-call-sb-picker-head">
+                <span title="Tap to add or drop. To move one, drop it and add it again in the spot you want.">
+                  {picks.length}/{MAX_GALLERY} on the strip
+                </span>
+                <button type="button" onClick={() => setPickMode(false)}>Done</button>
+              </div>
+              <div className="on-call-sb-picker-grid">
+                {ACTIONS.map((action) => {
+                  const on = picks.includes(action.id);
+                  // The scan loaded every greeting, so "recorded" is knowable
+                  // before you add it — not only for what is already on the row.
+                  const recorded = !!blobs[resolveFireKey(slotFromActionId(action.id), timeOfDay, blobs)];
+                  return (
+                    <button
+                      key={action.id}
+                      type="button"
+                      className={`on-call-sb-chip${on ? ' is-on' : ''}${recorded ? '' : ' is-unrecorded'}`}
+                      aria-pressed={on}
+                      onClick={() => togglePick(action.id)}
+                      title={recorded ? action.label : `${action.label} — nothing recorded for ${SLOT_LABEL[timeOfDay]}`}
+                    >
+                      {on ? `${picks.indexOf(action.id) + 1}. ` : ''}{slotLabelFor(action.id)}
+                      {action.lang && <span className={`on-call-sb-lang lang-${action.lang}`}>{action.lang.toUpperCase()}</span>}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          )}
         </>
+      )}
+      {blockInfo && (
+        <span className="on-call-sb-block" role="status">
+          🔒 {blockInfo.text}
+          {blockInfo.hint && <span className="on-call-sb-block-hint"> · {blockInfo.hint}</span>}
+          {blockInfo.fix && (
+            <button type="button" className="on-call-sb-block-fix" onClick={() => onOpenGreetingEditor(blockInfo.key)}>
+              {blockInfo.fix}
+            </button>
+          )}
+          <button type="button" className="on-call-sb-block-dismiss" onClick={() => setBlockInfo(null)} aria-label="Dismiss">
+            ✕
+          </button>
+        </span>
       )}
       {notice && <span className="on-call-sb-notice">{notice}</span>}
     </div>

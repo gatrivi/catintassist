@@ -16,9 +16,21 @@ export const normalizeStoredBlob = (value, fallbackType = 'application/octet-str
   return null;
 };
 
+/**
+ * v4.171.0: the on-call strip keeps a copy of every clip in memory, so it has to
+ * be told when the audio underneath it changes. Fired from the one place all
+ * recording paths (Studio, Greeting Editor, backup import) already pass through.
+ */
+export const SOUNDBOARD_CHANGED_EVENT = 'catint_soundboard_changed';
+const announceSoundboardChange = () => {
+  if (typeof window === 'undefined') return;
+  window.dispatchEvent(new Event(SOUNDBOARD_CHANGED_EVENT));
+};
+
 export const saveFile = async (key, fileOrBlob) => {
   try {
     await set(key, fileOrBlob);
+    announceSoundboardChange();
     return true;
   } catch (err) {
     catError(`[Storage:save] Failed to save ${key} to IndexedDB:`, err);
@@ -53,6 +65,7 @@ export const loadRawValue = async (key) => {
 export const deleteFile = async (key) => {
   try {
     await del(key);
+    announceSoundboardChange();
     return true;
   } catch (err) {
     catError(`[Storage:delete] Failed to delete ${key} from IndexedDB:`, err);
@@ -123,10 +136,12 @@ export const importStorageBackup = async (payload) => {
   let count = 0;
   for (const [key, item] of Object.entries(payload.items)) {
     if (!item?.data) continue;
-    const blob = new Blob([new Uint8Array(item.data)], { type: item.type || 'application/octet-stream' });
+    const blob = new Blob([Uint8Array.from(item.data)], { type: item.type || 'application/octet-stream' });
     await set(key, blob);
     count += 1;
   }
+  // v4.171.0: a restored backup is new audio — the on-call strip must re-scan.
+  announceSoundboardChange();
   return count;
 };
 

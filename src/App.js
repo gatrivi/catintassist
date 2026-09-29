@@ -837,7 +837,7 @@ const Dashboard = () => {
             Notes only need ~half the column. */}
         {withSoundboardDock && (
           <div className="glass-panel tools-soundboard-dock" data-guide="soundboard-dock" id="soundboard-dock">
-            <OnCallSoundboardStrip micTestMode={micTestMode} collapsed={false} />
+            <OnCallSoundboardStrip micTestMode={micTestMode} collapsed={false} onOpenGreetingEditor={isActive ? null : onOpenGreetingEditor} />
           </div>
         )}
         <div
@@ -1113,7 +1113,7 @@ const Dashboard = () => {
         <main id="main-transcript" className={`main-content ${isNotesOpen ? "notes-open" : ""}`}>
           {/* v4.110.0: fallback strip only when notes are closed — with notes
               open, greetings live in the rail dock instead of a full-width row. */}
-          {isActive && !isNotesOpen && <OnCallSoundboardStrip micTestMode={micTestMode} />}
+          {isActive && !isNotesOpen && <OnCallSoundboardStrip micTestMode={micTestMode} onOpenGreetingEditor={null} />}
           <div className="transcription-pane" data-guide="transcript">
             {/* v4.88.0: hold time becomes study time — cards fade in over the transcript */}
             {/* v4.89.1: click outside the card (or just speak) resumes the call */}

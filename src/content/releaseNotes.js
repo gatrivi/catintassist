@@ -25,6 +25,57 @@ import { APP_VERSION } from '../constants/version';
 /** Newest first. Only the entry matching APP_VERSION is shown on load. */
 export const RELEASE_NOTES_CATALOG = [
   {
+    version: '4.171.0',
+    id: 'you-pick-the-gallery',
+    highlightElementIds: ['soundboard-dock'],
+    es: {
+      title: 'Vos elegís los saludos de la tira',
+      intro: 'La tira de saludos tenía 7 botones fijos y nada más. Grababas un saludo nuevo y no aparecía en ningún lado — ni aunque le dieras mil vueltas. Ahora la armás vos.',
+      sections: [
+        { heading: 'Por qué no aparecían', bullets: [
+          'La lista de la tira estaba escrita en el código: 7 de los 24 saludos. Los otros 17 existían, se podían grabar, pero **era imposible** mostrarlos en vivo.',
+          'El botón sin grabación estaba `disabled`: le dabas y no pasaba nada en absoluto. Sin una sola palabra de explicación.',
+          'La tira cargaba los audios **una sola vez** al abrir. Grababas algo y la tira seguía con la copia vieja hasta que recargabas la página.',
+          'Al regrabar un saludo se borra el «CALL OK» de toda esa familia, y el botón se negaba a sonar con un cartelito de 3 segundos que en una llamada real no reaches ni a leer.',
+        ] },
+        { heading: 'Qué hace ahora', bullets: [
+          'Botón **⚙** al final de la fila: abrís el selector y armás la tira a tu gusto, hasta **8** saludos. Los que elegís quedan numerados en el orden en que los agregaste, y se guardan para la próxima vez. Para mover uno: lo sacás y lo volvés a agregar en el lugar que querés.',
+          'El selector muestra **los 24** saludos. Los que no grabaste salen con borde punteado, para que puedas acomodar la fila antes de grabar.',
+          'La tira se relee sola: grabás, borrás o importás un backup y aparece al instante, sin recargar.',
+          'Un botón sin grabación ahora **te dice qué slot falta** (Mañana / Tarde / Noche) en vez de hacerse el muerto. No suena nunca, pero tampoco traga el error.',
+          'Cuando un saludo está bloqueado (falta CALL OK o falta elegir la salida del paciente) queda un cartel **🔒 que no se borra solo**, con un botón **Test it** que te lleva al Greeting Editor. En plena llamada dice «off-call only» en vez de mostrarte un botón muerto.',
+        ] },
+        { heading: 'Qué NO cambia', bullets: [
+          'La fila es siempre de una sola línea: si no entran los 8, corrés la fila con el dedo. La transcripción no pierde ni un píxel de alto.',
+          'Las reglas de seguridad siguen igual de duras: un saludo sin verificar **no** suena en la llamada. Cambiamos el silencio por una explicación, no la barrera.',
+        ] },
+      ],
+    },
+    en: {
+      title: 'You pick the greetings on the strip',
+      intro: 'The greeting strip had 7 fixed buttons and no way to change them. You recorded a new greeting and it went nowhere — no amount of pressing would surface it. Now you build the row yourself.',
+      sections: [
+        { heading: 'Why nothing showed up', bullets: [
+          'The row was written in the code: 7 of your 24 greetings. The other 17 could be recorded but were **impossible** to fire on a live call.',
+          'A tile with no recording was `disabled`: you tapped it and absolutely nothing happened. Not one word of explanation.',
+          'The strip loaded its audio **once**, on open. You recorded something and it kept playing the stale copy until you refreshed the page.',
+          'Re-recording a greeting wipes that whole family\'s CALL OK, and the tile then refused to play behind a 3-second flash you cannot read on a live call.',
+        ] },
+        { heading: 'What it does now', bullets: [
+          'A **⚙** button at the end of the row opens the picker: build the strip yourself, up to **8** greetings. The ones you keep are numbered in the order you tapped them, and they are saved for next time. To move one, drop it and add it again where you want it.',
+          'The picker lists **all 24**. Ones you have not recorded are dashed, so you can lay out the row before you record.',
+          'The strip re-scans itself: record, delete or import a backup and it appears immediately, no refresh.',
+          'A tile with no recording now **names the empty slot** (Morning / Afternoon / Evening) instead of going quiet. It never plays — but it never swallows the error either.',
+          'When a greeting is blocked (no CALL OK, or no caller output picked) you get a **🔒 chip that stays** until you dismiss it, with a **Test it** button that opens the Greeting Editor. Mid-call it says "off-call only" instead of showing a dead button.',
+        ] },
+        { heading: 'What did NOT change', bullets: [
+          'The row is always one line: if the 8 do not fit you scroll it with a finger. The transcript loses no height at all.',
+          'The safety rules are exactly as hard: an unverified greeting still **will not** reach a patient. We swapped silence for an explanation, not the barrier.',
+        ] },
+      ],
+    },
+  },
+  {
     version: '4.170.0',
     id: 'connect-stops-needing-zap',
     highlightElementIds: ['audio-route-zap-btn'],

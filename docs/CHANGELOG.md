@@ -2,6 +2,18 @@
 
 **Version source:** `src/constants/version.js` (must match `package.json` + top-right UI pill)
 
+## v4.171.0 - you pick the greetings on the strip
+
+The on-call gallery was a hardcoded list of 7, so **17 of your 24 recorded greetings were impossible to fire on a call** — no setting, no trick, just a constant in the source. Recording a new one did nothing visible, and the "nothing happens" you hit had three separate causes that all looked identical.
+
+- **The strip is yours now.** A `⚙` tile at the end of the row opens a picker listing **all 24** greetings. Tap to add or drop, up to `MAX_GALLERY = 8`, numbered in the order you added them, persisted to `catint_oncall_gallery_v1`. First run seeds the original seven, so nothing you already had moves. `src/utils/oncallGallery.js` is dependency-free (the caller validates ids against `ACTIONS`) so it cannot form an import cycle.
+- **A tile with no recording was `disabled`** → the tap fired no handler and said nothing. Now `aria-disabled` + an on-click that **names the empty slot** ("No Opener – Client recording for the Afternoon slot"). Still no play path, so it cannot misfire; it just stops swallowing the error. A `○` marker makes the gap visible at a glance.
+- **The strip loaded its audio once**, on mount (`useEffect` deps `[timeOfDay]`), so a new recording stayed invisible until a refresh. `saveFile`/`deleteFile`/`importStorageBackup` now fire `catint_soundboard_changed` from the single choke point every recording path already uses, and the scan re-runs on it.
+- **The scan reads all 24 greetings, not just the picked ones** (~84 IndexedDB reads, local and sub-ms). Without this the picker could only mark *already-picked* clips as recorded, so you could never lay out a row before recording it.
+- **A 3.5s flash is indistinguishable from a dead button on a live call.** Gate refusals (no CALL OK, no caller output) now park a persistent `🔒` chip with a **Test it** button → `onOpenGreetingEditor` (`App.js`, passed `null` mid-call so the button says "off-call only" rather than being dead). The barrier is unchanged — an unverified greeting still will not reach a patient; only the silence is gone.
+- **Nothing here changes routing, health scoring, the gates or the editor.** One row, one line: the row scrolls sideways, the dock height never changes, the transcript keeps its 80%.
+- **9 new strip tests + 11 new util tests.** Two caught real bugs in my own first draft: `writeGalleryPicks` persisted unknown ids, and `toggleGalleryPick` would add an id the caller never validated.
+
 ## v4.170.0 - CONNECT finally connects
 
 Five different failures shared one symptom ("stuck / quiet / disconnected") and one manual fix: press ZAP, ~5× per call. They are now five separate self-heals.
