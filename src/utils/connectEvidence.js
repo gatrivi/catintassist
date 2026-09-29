@@ -55,14 +55,24 @@ export const isReusableStream = (stream, source, currentSource) => {
  * CONNECT self-heal: after a press, if Deepgram is still not live, ask once
  * for a rebuild. Returns true only while inside the healing window, so we
  * never loop (one heal per press).
+ *
+ * v4.170.0: the heal used to fire 1.5s after the press, while the sockets of
+ * that same press were still mid-handshake (DG routinely takes 2-4s). The
+ * second CONNECT replaced sockets that were never closed, so each press
+ * leaked a pair of live streams onto the account — past the concurrent-stream
+ * cap Deepgram answers the NEW pair with silence, which is exactly the
+ * "stuck / quiet / press ZAP again" loop. Now the heal waits for the attempt
+ * to stop working on its own: while phase is 'connecting' that attempt owns
+ * its stall timers (openStall + 3 retries + the 12s watchdog).
  */
-export const CONNECT_HEAL_DELAY_MS = 1500;
-export const CONNECT_HEAL_WINDOW_MS = 6000;
+export const CONNECT_HEAL_DELAY_MS = 6000;
+export const CONNECT_HEAL_WINDOW_MS = 30000;
 
 export const shouldHealConnect = ({
   pressedAt = 0,
   sttLive = false,
   healed = false,
+  phase = 'idle',
   now = Date.now(),
   delayMs = CONNECT_HEAL_DELAY_MS,
   windowMs = CONNECT_HEAL_WINDOW_MS,
@@ -70,6 +80,7 @@ export const shouldHealConnect = ({
   if (sttLive) return false;
   if (healed) return false;
   if (!pressedAt) return false;
+  if (phase === 'connecting') return false;
   const age = now - pressedAt;
   if (age < delayMs) return false;
   return age <= windowMs;

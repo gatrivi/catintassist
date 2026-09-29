@@ -635,6 +635,13 @@ const Dashboard = () => {
   }, [startRecordingFresh, isBreakActive, stopBreak, cancelHipaaDisconnectGrace]);
 
   // v4.153.0 CONNECT self-heal — one rebuild per press, never a loop.
+  // v4.170.0: it must not fire while the press is still WORKING. The old
+  // 1.5s timer went off in the middle of the DG handshake (2-4s is normal),
+  // so one press opened two socket pairs and the first pair was never closed.
+  // Leaked streams count against the account's concurrent-stream cap, and past
+  // that cap Deepgram answers the NEW sockets with silence — the exact
+  // "stuck / quiet / ZAP again" loop. `phase === 'connecting'` means that
+  // attempt still owns its own stall timers, so wait for it to settle.
   useEffect(() => {
     if (!connectPressedAtRef.current) return undefined;
     const t = setInterval(() => {
@@ -643,6 +650,7 @@ const Dashboard = () => {
           pressedAt: connectPressedAtRef.current,
           sttLive,
           healed: connectHealedRef.current,
+          phase: connectProgress?.phase,
         })
       ) {
         connectHealedRef.current = true; // once per press, whatever happens
@@ -650,7 +658,7 @@ const Dashboard = () => {
       }
     }, 1000);
     return () => clearInterval(t);
-  }, [sttLive, startRecording]);
+  }, [sttLive, startRecording, connectProgress]);
 
   const AUTO_ATTACH_KEY = "catint_auto_attach_v1";
   const autoAttachAttemptedRef = useRef(false);

@@ -87,8 +87,27 @@ describe('connectStallVerdict — 12s watchdog (v4.148.0)', () => {
     expect(connectStallVerdict({ audioChunksSent: false, transcriptReceived: true })).toBe('ok');
   });
 
-  it('fails with the no-audio guidance when audio never reached Deepgram', () => {
+  it('fails with the no-audio guidance when audio never reached Deepgram and no rebuild is left', () => {
     expect(connectStallVerdict({ audioChunksSent: false, gotDgMessage: false })).toBe('fail-no-audio');
+    expect(
+      connectStallVerdict({ audioChunksSent: false, gotDgMessage: false, recorderRetriesLeft: 0 })
+    ).toBe('fail-no-audio');
+  });
+
+  // v4.170.0: Chrome's getDisplayMedia track often yields a MediaRecorder that
+  // starts and never emits. Rebuilding the SOCKETS cannot fix that, so the
+  // watchdog rebuilds the recorder first instead of throwing a red TIMEOUT the
+  // operator had to clear by pressing ZAP repeatedly.
+  it('rebuilds the recorder first when the sockets are open but audio never started', () => {
+    expect(
+      connectStallVerdict({ audioChunksSent: false, gotDgMessage: false, recorderRetriesLeft: 1 })
+    ).toBe('recorder-rebuild');
+  });
+
+  it('never rebuilds the recorder once Deepgram has proven alive', () => {
+    expect(
+      connectStallVerdict({ audioChunksSent: false, gotDgMessage: true, recorderRetriesLeft: 1 })
+    ).toBe('ok');
   });
 
   it('reconnects while budget remains when audio flows but Deepgram is mute', () => {

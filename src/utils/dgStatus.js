@@ -99,25 +99,66 @@ export function shouldAutoZap({
 }
 
 /**
+ * v4.170.0 — mid-call silent-recorder recovery. shouldAutoZap() refuses to Zap
+ * unless the recorder is still emitting audio (audioProgressAgeMs ≤15s), which
+ * is right: rebuilding sockets cannot fix a recorder that stopped producing
+ * chunks. But nothing else covered that case, so a MediaRecorder that died
+ * mid-call (Chrome does this on getDisplayMedia tracks, and on a wake from the
+ * idle ear) stayed 'connected' and silent for the rest of the call — the
+ * operator's only fix was manual ZAP, several times.
+ *
+ * MediaRecorder emits chunks on SILENCE too (it encodes it), so audio going
+ * quiet for 10s+ while we believe we are live is a dead recorder, not dead
+ * air. Rebuild the recorder on the already-open sockets: no socket churn, no
+ * transcript loss, no user press.
+ */
+export const RECORDER_REBUILD_SILENCE_MS = 10000;
+export const RECORDER_REBUILD_COOLDOWN_MS = 30000;
+export const RECORDER_REBUILD_MAX = 3;
+
+export function shouldRebuildRecorder({
+  audioProgressAgeMs,
+  sinceLastRebuildMs = Infinity,
+  rebuilds = 0,
+}) {
+  if (rebuilds >= RECORDER_REBUILD_MAX) return false;
+  if (sinceLastRebuildMs < RECORDER_REBUILD_COOLDOWN_MS) return false;
+  return audioProgressAgeMs != null && audioProgressAgeMs >= RECORDER_REBUILD_SILENCE_MS;
+}
+
+/**
  * v4.148.0 — verdict for the 12s connect watchdog. The old watchdog stood down
  * the moment audio was being sent, so "Deepgram accepted the socket but never
  * sent ANYTHING (not even startup Metadata)" sat 'connected' until the 60s red
  * chip and a manual Zap — the first minute of a call lost. Audio flowing +
  * zero Deepgram messages back = dead pipe; recover within 12s instead.
  *
+ * v4.170.0 — the mirror failure: sockets open, Deepgram silent, and OUR
+ * recorder never emitted a single chunk. Chrome does this with getDisplayMedia
+ * (hidden/occluded shared tab, or a MediaRecorder that starts and stays idle).
+ * A socket Zap cannot fix that — rebuilding the recorder on the SAME open
+ * sockets can, so it is tried before the red TIMEOUT the operator used to
+ * clear by pressing ZAP five times.
+ *
  * Returns:
- *   'ok'             — Deepgram proved alive (any message) or text already flowed.
- *   'fail-no-audio'  — audio never reached Deepgram (existing TIMEOUT guidance).
- *   'stall-reconnect'— audio sent, Deepgram mute, retries left → auto reconnect.
- *   'fail-silent'    — same stall but retry budget spent → hard fail.
+ *   'ok'               — Deepgram proved alive (any message) or text already flowed.
+ *   'recorder-rebuild' — sockets open, no audio ever left us, rebuild budget left.
+ *   'fail-no-audio'    — audio never reached Deepgram and a rebuild won't help.
+ *   'stall-reconnect'  — audio sent, Deepgram mute, retries left → auto reconnect.
+ *   'fail-silent'      — same stall but retry budget spent → hard fail.
  */
+export const CONNECT_RECORDER_MAX_RETRIES = 1;
+
 export function connectStallVerdict({
   audioChunksSent = false,
   transcriptReceived = false,
   gotDgMessage = false,
   retriesLeft = 0,
+  recorderRetriesLeft = 0,
 } = {}) {
   if (transcriptReceived || gotDgMessage) return 'ok';
-  if (!audioChunksSent) return 'fail-no-audio';
+  if (!audioChunksSent) {
+    return recorderRetriesLeft > 0 ? 'recorder-rebuild' : 'fail-no-audio';
+  }
   return retriesLeft > 0 ? 'stall-reconnect' : 'fail-silent';
 }

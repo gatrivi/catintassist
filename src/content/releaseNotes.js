@@ -25,6 +25,57 @@ import { APP_VERSION } from '../constants/version';
 /** Newest first. Only the entry matching APP_VERSION is shown on load. */
 export const RELEASE_NOTES_CATALOG = [
   {
+    version: '4.170.0',
+    id: 'connect-stops-needing-zap',
+    highlightElementIds: ['audio-route-zap-btn'],
+    es: {
+      title: 'CONNECT por fin hace CONNECT — menos ZAP',
+      intro: 'Cuatro cosas distintas se veían iguales («stuck», «quiet», «disconnected») y todas terminaban en el mismo ZAP manual. Ahora cada una se arregla sola.',
+      sections: [
+        { heading: 'Qué estaba pasando', bullets: [
+          'Le decíamos adiós mal a los sockets viejos. Deepgram los sigue contando como **stream vivo ~10s** después; a las pocas presiones pasabas el tope de streams concurrentes y Deepgram le respondía SILENCIO a los nuevos. Eso era el «conecta y no sale nada».',
+          'El oído (idle ear) sobrevivía al nuevo CONNECT y, 4s después, veía «los dos sockets murieron» y tiraba toda la app a DISCONNECTED mientras tu intento nuevo estaba todavía en handshake.',
+          'Si el grabador de Chrome nacía mudo (pasa con pestañas compartidas), la app tiraba TIMEOUT rojo — y un ZAP de sockets no arregla un grabador muerto.',
+          'El auto-arreglo «sanaba» a los 1,5s, justo en medio del handshake (2-4s es normal): una presión abría DOS pares de sockets y el primero se quedaba vivo, sin cerrar.',
+        ] },
+        { heading: 'Qué hace ahora', bullets: [
+          'Cada socket que soltamos manda `CloseStream` y se cierra con código limpio: Deepgram libera el stream al instante, no a los 10s.',
+          'El oído se apaga ANTES de abrir sockets nuevos.',
+          '12s sin audio nuestro = reconstruye el GRABADOR sobre los mismos sockets (sin perder texto, sin churn). Y en plena llamada, 10s sin un solo chunk hace lo mismo, hasta 3 veces.',
+          'El auto-arreglo espera a que el intento se rinda solo; mientras dice «connecting», no lo interrumpe.',
+          'El presupuesto de auto-recuperación se recarga en CADA presión: antes se gastaba una vez y la app se negaba a curarse dos veces en la misma llamada.',
+        ] },
+        { heading: 'Qué NO hace', bullets: [
+          'No abre más sockets ni más minutos: los mismos 2 por llamada, solo que ahora se liberan al soltarlos.',
+          'Si de verdad no hay audio (pestaña sin «Compartir audio» tildada), sigue diciendo el porqué en vez de reconectar para no gastar nada.',
+        ] },
+      ],
+    },
+    en: {
+      title: 'CONNECT finally connects — far fewer ZAPs',
+      intro: 'Four different failures all looked the same ("stuck", "quiet", "disconnected") and all ended in the same manual ZAP. Each one now fixes itself.',
+      sections: [
+        { heading: 'What was happening', bullets: [
+          'We dropped old sockets without saying goodbye. Deepgram keeps counting them as a **live stream for ~10s**, so after a few presses you passed the concurrent-stream cap and Deepgram answered the NEW sockets with silence. That was "I connected and nothing appears".',
+          'The idle ear survived a new CONNECT, then 4s later saw "both sockets dead" and reset the whole app to DISCONNECTED while your fresh attempt was still handshaking.',
+          'If Chrome\'s recorder was born mute (common with shared tabs) the app threw a red TIMEOUT — and a socket ZAP cannot fix a dead recorder.',
+          'The self-heal fired at 1.5s, right in the middle of the handshake (2-4s is normal): one press opened TWO socket pairs and the first pair stayed open, unclosed.',
+        ] },
+        { heading: 'What it does now', bullets: [
+          'Every socket we release sends `CloseStream` and closes cleanly: Deepgram frees the stream immediately, not 10s later.',
+          'The ear is shut down BEFORE new sockets open.',
+          '12s with no audio from us = rebuild the RECORDER on the same sockets (no text loss, no churn). Mid-call, 10s with zero chunks does the same, up to 3 times.',
+          'The self-heal waits until the attempt gives up on its own; while it says "connecting", it does not interrupt it.',
+          'The self-heal budget refills on EVERY press: it used to be spent once and the app then refused to heal twice in one call.',
+        ] },
+        { heading: 'What it does NOT do', bullets: [
+          'No extra sockets, no extra minutes: the same 2 per call, just freed when released.',
+          'If there is genuinely no audio (tab shared without "Share audio"), it still says why instead of reconnecting and burning nothing.',
+        ] },
+      ],
+    },
+  },
+  {
     version: '4.169.0',
     id: 'make-the-failure-visible',
     highlightElementIds: ['header-app-logo-btn'],

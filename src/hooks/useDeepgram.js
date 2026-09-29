@@ -53,7 +53,6 @@ import {
 import { writeMicTestMode } from "../utils/micMode";
 import {
   isReusableStream,
-  shouldHealConnect,
   buildConnectSummary,
   recordLastConnect,
 } from "../utils/connectEvidence";
@@ -81,7 +80,9 @@ import { isEnglishDoctorSentence } from "../utils/holdState";
 import {
   connectStallVerdict,
   shouldAutoZap,
+  shouldRebuildRecorder,
   CONNECT_STALL_MAX_RETRIES,
+  CONNECT_RECORDER_MAX_RETRIES,
 } from "../utils/dgStatus";
 import { analyzeToneFrame, createToneTracker } from "../utils/toneWatch";
 import {
@@ -254,6 +255,20 @@ export const useDeepgram = () => {
   // 60s red chip + manual Zap (first minute of intake lost).
   const dgMessageSeenRef = useRef(false);
   const connectStallRetriesRef = useRef(0);
+  // v4.170.0: mirror-failure budget — the recorder never emitted a chunk, so
+  // the fix is a new MediaRecorder, not a new socket. Both stall budgets are
+  // refilled only on an EXPLICIT press (startRecording / startRecordingFresh),
+  // never in reconnectStream: the watchdog's auto-recovery also calls that,
+  // and a reset there lets it re-spawn itself every 12s for the whole call.
+  // What was missing: the REUSE path (CONNECT on a live stream) never got a
+  // fresh budget either, so a stall burned early left the app refusing to
+  // self-heal again — "ZAP it five times every call".
+  const connectRecorderRetriesRef = useRef(0);
+  // Bridges startRecorderOnSockets (defined below startDeepgram) into the
+  // connect watchdog, which must be able to rebuild a silent recorder.
+  const startRecorderOnSocketsRef = useRef(null);
+  const lastRecorderRebuildAtRef = useRef(0);
+  const recorderRebuildsRef = useRef(0);
   // v4.149.0: outgoing-audio speech evidence — last time the stream was
   // actually LOUD locally (RMS). Separates a dead Deepgram pipe (Zap fixes)
   // from a silent mic/tab/headset route (Zap useless). Local-only analyser.
@@ -499,6 +514,25 @@ export const useDeepgram = () => {
       return false;
     }
   };
+  /**
+   * v4.170.0: Deepgram counts a stream as ALIVE for ~10s after the browser
+   * drops the socket. Every CONNECT press opens 2 streams (EN+ES), so a few
+   * presses on a flaky network stack up to the account's concurrent-stream cap
+   * — Deepgram then answers the NEW sockets with silence or a 1008 close.
+   * That is the "press CONNECT → stuck/quiet → ZAP again" loop: it only
+   * cleared once the orphan streams expired on their own.
+   * Say goodbye properly. One JSON frame, then close.
+   */
+  const CLOSE_STREAM_FRAME = JSON.stringify({ type: "CloseStream" });
+  const closeSocket = useCallback((ws) => {
+    if (!ws) return;
+    try {
+      if (ws.readyState === 1) ws.send(CLOSE_STREAM_FRAME);
+    } catch (_) {}
+    try {
+      ws.close(1000, "client shutdown");
+    } catch (_) {}
+  }, []);
 
   const clearKeepalive = useCallback(() => {
     if (keepaliveIntervalRef.current) {
@@ -506,6 +540,7 @@ export const useDeepgram = () => {
       keepaliveIntervalRef.current = null;
     }
   }, []);
+
 
   const startKeepalive = useCallback(() => {
     clearKeepalive();
@@ -708,14 +743,10 @@ export const useDeepgram = () => {
     setSttAudioRecording(false);
     setSttLive(false); // v4.153.0: sockets are gone — nothing is live.
 
-    if (socketRefEn.current) {
-      socketRefEn.current.close();
-      socketRefEn.current = null;
-    }
-    if (socketRefEs.current) {
-      socketRefEs.current.close();
-      socketRefEs.current = null;
-    }
+    closeSocket(socketRefEn.current);
+    socketRefEn.current = null;
+    closeSocket(socketRefEs.current);
+    socketRefEs.current = null;
     setConnectionState("disconnected");
     setConnectionMessage("Disconnected");
     setApiKeyRejected(false);
@@ -739,7 +770,7 @@ export const useDeepgram = () => {
       failureCategory: null,
       lastError: null,
     });
-  }, [clearKeepalive, stopToneMonitor, setSttLive]);
+  }, [clearKeepalive, stopToneMonitor, setSttLive, closeSocket]);
 
   const isLikelyApiKeyRejected = useCallback((text) => {
     const s = (text || "").toString().toLowerCase();
@@ -775,21 +806,9 @@ export const useDeepgram = () => {
         clearTimeout(connectFailTimerRef.current);
         connectFailTimerRef.current = null;
       }
-      try {
-        if (overrideTimeoutRef.current) clearTimeout(overrideTimeoutRef.current);
-      } catch {}
-
-      try {
-        if (mediaRecorderRef.current?.state !== "inactive") mediaRecorderRef.current.stop();
-      } catch (_) {}
-      mediaRecorderRef.current = null;
-      try {
-        socketRefEn.current?.close();
-      } catch (_) {}
-      try {
-        socketRefEs.current?.close();
-      } catch (_) {}
+      closeSocket(socketRefEn.current);
       socketRefEn.current = null;
+      closeSocket(socketRefEs.current);
       socketRefEs.current = null;
       setSttLive(false); // v4.153.0: rebuilding — not live until audio flows.
 
@@ -813,14 +832,20 @@ export const useDeepgram = () => {
       });
       if (cat === FAILURE.AUTH || isLikelyApiKeyRejected(message)) setApiKeyRejected(true);
     },
-    [clearWatchdog, clearKeepalive, isLikelyApiKeyRejected, critLog, setSttLive],
+    [clearWatchdog, clearKeepalive, isLikelyApiKeyRejected, critLog, setSttLive, closeSocket],
   );
 
   const scheduleConnectFail = useCallback(
     (lang, code, reason, socketSide = "En") => {
       if (connectFailTimerRef.current) return;
+      // v4.170.0: attempt-scoped. The timer is a single global slot and the
+      // reuse path (CONNECT on a live stream) does not run closeConnections(),
+      // so a close from press N could fail press N+1 120ms into a handshake
+      // that was about to succeed — a red error while the sockets were fine.
+      const attemptId = connectAttemptIdRef.current;
       connectFailTimerRef.current = setTimeout(() => {
         connectFailTimerRef.current = null;
+        if (attemptId !== connectAttemptIdRef.current) return;
         if (connectFlagsRef.current.phase !== "connecting") return;
         const keyInfo = getDeepgramKeyInfo();
         const diag = classifyDeepgramClose(code, reason);
@@ -927,7 +952,19 @@ export const useDeepgram = () => {
       setSttAudioRecording(false);
       lastDiagnosticAudioChunkAtRef.current = 0;
 
-      // ponytail: tear down stale sockets/recorder before opening new ones (reuse-stream path).
+      // v4.170.0: this reuse path used to close the warm idle-ear sockets and
+      // leave the ear itself alive. Its 4s KeepAlive then saw "both sockets
+      // dead", called closeConnections() and reset the whole app to
+      // `disconnected` while these brand-new sockets were mid-handshake — the
+      // chip saying DISCONNECTED seconds after a CONNECT press. Tear the ear
+      // down first, and say CloseStream so Deepgram frees the old streams
+      // instead of counting them against the concurrency cap for ~10s.
+      try {
+        stopIdleEarRef.current?.();
+      } catch (_) {}
+      try {
+        stopCallVadRef.current?.();
+      } catch (_) {}
       clearKeepalive();
       try {
         if (mediaRecorderRef.current?.state !== "inactive") {
@@ -935,13 +972,9 @@ export const useDeepgram = () => {
         }
       } catch (_) {}
       mediaRecorderRef.current = null;
-      try {
-        socketRefEn.current?.close();
-      } catch (_) {}
-      try {
-        socketRefEs.current?.close();
-      } catch (_) {}
+      closeSocket(socketRefEn.current);
       socketRefEn.current = null;
+      closeSocket(socketRefEs.current);
       socketRefEs.current = null;
       setSttLive(false); // v4.153.0: nothing is live until the recorder runs.
 
@@ -980,7 +1013,15 @@ export const useDeepgram = () => {
         startKeepalive();
         const attemptId = connectAttemptIdRef.current;
         clearWatchdog();
-        watchdogTimeoutRef.current = setTimeout(() => {
+        // v4.170.0: the watchdog is now re-armable, because a stall can have
+        // two different causes with two different fixes:
+        //   audio flowing, Deepgram mute  → rebuild the SOCKETS
+        //   sockets open, no audio at all → rebuild the RECORDER (Chrome's
+        //     getDisplayMedia track often yields a MediaRecorder that starts
+        //     and never emits; a socket Zap cannot fix that, and this is the
+        //     case that used to end in a red TIMEOUT the operator cleared by
+        //     pressing ZAP repeatedly).
+        const evaluateStall = () => {
           if (connectAttemptIdRef.current !== attemptId) return;
           const flags = connectFlagsRef.current;
           const verdict = connectStallVerdict({
@@ -988,6 +1029,8 @@ export const useDeepgram = () => {
             transcriptReceived: flags.transcriptReceived,
             gotDgMessage: dgMessageSeenRef.current,
             retriesLeft: CONNECT_STALL_MAX_RETRIES - connectStallRetriesRef.current,
+            recorderRetriesLeft:
+              CONNECT_RECORDER_MAX_RETRIES - connectRecorderRetriesRef.current,
           });
           if (verdict === "ok") return;
           if (verdict === "stall-reconnect") {
@@ -1001,13 +1044,38 @@ export const useDeepgram = () => {
             reconnectStreamRef.current?.();
             return;
           }
+          if (verdict === "recorder-rebuild") {
+            connectRecorderRetriesRef.current += 1;
+            setConnectionMessage("No audio from the share — restarting audio…");
+            catWarn(
+              "[Deepgram:stall] sockets open, zero audio chunks — rebuilding MediaRecorder on the live sockets",
+            );
+            const rebuilt = startRecorderOnSocketsRef.current?.(stream);
+            if (rebuilt) {
+              setSttLive(true);
+              setSttAudioRecording(true);
+              // Give the rebuilt recorder the same window, then fail for real.
+              armWatchdog();
+              return;
+            }
+            failConnection(
+              "TIMEOUT: Sockets open but no audio reached Deepgram. Check Share audio on tab, unmute call, or try mic mode.",
+              { failureCategory: FAILURE.AUDIO },
+            );
+            return;
+          }
           failConnection(
             verdict === "fail-silent"
               ? "TIMEOUT: Deepgram never responded to audio. Check network/VPN, then press CONNECT."
               : "TIMEOUT: Sockets open but no audio reached Deepgram. Check Share audio on tab, unmute call, or try mic mode.",
             { failureCategory: FAILURE.TIMEOUT },
           );
-        }, 12000);
+        };
+        function armWatchdog() {
+          clearWatchdog();
+          watchdogTimeoutRef.current = setTimeout(evaluateStall, 12000);
+        }
+        armWatchdog();
 
         setConnectionState("connected");
         setConnectionMessage("Live");
@@ -1184,9 +1252,9 @@ export const useDeepgram = () => {
           retryPending = false;
           if (connectAttemptIdRef.current !== myAttemptId) return;
           if (connectFlagsRef.current.phase !== "connecting") return;
-          try { socketRefEn.current?.close(); } catch (_) {}
-          try { socketRefEs.current?.close(); } catch (_) {}
+          closeSocket(socketRefEn.current);
           socketRefEn.current = null;
+          closeSocket(socketRefEs.current);
           socketRefEs.current = null;
           clearOpenStall();
           socketRefEn.current = createSocket(
@@ -1682,6 +1750,7 @@ export const useDeepgram = () => {
       critLog,
       startCallVad,
       setSttLive,
+      closeSocket,
     ],
   );
 
@@ -1751,6 +1820,7 @@ export const useDeepgram = () => {
       return false;
     }
   }, [syncConnectProgress]);
+  startRecorderOnSocketsRef.current = startRecorderOnSockets;
 
   /** VAD heard speech → resume audio into warm sockets (or full reconnect). */
   const wakeFromIdleEar = useCallback(() => {
@@ -1988,6 +2058,12 @@ export const useDeepgram = () => {
   const startRecording = useCallback(async () => {
     try {
       connectAttemptIdRef.current += 1;
+      // v4.170.0: an explicit press always gets a FULL self-heal budget. The
+      // budgets used to be refilled only in beginStream (brand-new stream), so
+      // reusing a live tab — the normal second CONNECT of a session — kept a
+      // budget burned by the first attempt and silently refused to recover.
+      connectStallRetriesRef.current = 0;
+      connectRecorderRetriesRef.current = 0;
       resetConnectProgress();
       clearWatchdog();
       setConnectionState("connecting");
@@ -2144,6 +2220,8 @@ export const useDeepgram = () => {
   const startRecordingFresh = useCallback(async () => {
     try {
       connectAttemptIdRef.current += 1;
+      connectStallRetriesRef.current = 0;
+      connectRecorderRetriesRef.current = 0;
       clearWatchdog();
       // v4.151.1: ONE resolver decides the route for every connect attempt.
       // Mic mode must win here (v4.84 regression: it did not, so CONNECT
@@ -2336,6 +2414,11 @@ export const useDeepgram = () => {
     connectAttemptIdRef.current += 1;
     clearWatchdog();
     reconnectAttemptsRef.current = 0; // Reset manual attempts
+    // v4.170.0: a rebuilt pipeline owns a brand-new recorder, so the mid-call
+    // rebuild cap (3 per connection) restarts here — otherwise one long day of
+    // calls would exhaust it and a later dead recorder would go unrecovered.
+    recorderRebuildsRef.current = 0;
+    lastRecorderRebuildAtRef.current = 0;
     closeConnections();
     resetConnectProgress();
     setConnectionState("connecting");
@@ -2382,11 +2465,42 @@ export const useDeepgram = () => {
     if (!isActive || connectionState !== "connected") return undefined;
     const t = setInterval(() => {
       const now = Date.now();
-      const lastMsgAt = connectFlagsRef.current.lastDeepgramMessageAt || 0;
+      const flags = connectFlagsRef.current;
+      const lastMsgAt = flags.lastDeepgramMessageAt || 0;
+      const audioProgressAgeMs = now - (lastAudioProgressAtRef.current || 0);
+      // v4.170.0: the recorder died mid-call. shouldAutoZap() below correctly
+      // refuses to Zap (a socket rebuild cannot fix it), so this case used to
+      // sit 'connected' and silent until the operator ZAPed by hand. A
+      // MediaRecorder encodes silence too, so 10s with no chunk while we
+      // believe we are live = dead recorder. Rebuild it onto the SAME sockets.
+      if (
+        flags.audioChunksSent &&
+        lastAudioProgressAtRef.current > 0 &&
+        shouldRebuildRecorder({
+          audioProgressAgeMs,
+          sinceLastRebuildMs: now - lastRecorderRebuildAtRef.current,
+          rebuilds: recorderRebuildsRef.current,
+        })
+      ) {
+        lastRecorderRebuildAtRef.current = now;
+        recorderRebuildsRef.current += 1;
+        critLog("warn", "rebuilding MediaRecorder: no audio chunk 10s+ mid-call", {
+          attempt: recorderRebuildsRef.current,
+          audioProgressAgeMs,
+        });
+        const rebuilt =
+          streamRef.current && startRecorderOnSocketsRef.current?.(streamRef.current);
+        if (rebuilt) {
+          lastAudioProgressAtRef.current = now;
+          setSttLive(true);
+          setSttAudioRecording(true);
+          setConnectionMessage("Audio capture restarted — keep talking");
+        }
+      }
       if (
         !shouldAutoZap({
           msgAgeMs: lastMsgAt ? now - lastMsgAt : Infinity,
-          audioProgressAgeMs: now - (lastAudioProgressAtRef.current || 0),
+          audioProgressAgeMs,
           sinceLastZapMs: now - lastAutoZapAtRef.current,
           speakingAgeMs: lastLoudAudioAtRef.current
             ? now - lastLoudAudioAtRef.current

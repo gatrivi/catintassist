@@ -2,6 +2,18 @@
 
 **Version source:** `src/constants/version.js` (must match `package.json` + top-right UI pill)
 
+## v4.170.0 - CONNECT finally connects
+
+Five different failures shared one symptom ("stuck / quiet / disconnected") and one manual fix: press ZAP, ~5× per call. They are now five separate self-heals.
+
+- **Every socket we release says goodbye.** `closeSocket()` sends `{"type":"CloseStream"}` and closes with code 1000. A bare `close()` leaves Deepgram counting that stream as **live for ~10s**, so a few stacked presses pass the concurrency cap and Deepgram answers the NEW sockets with silence — the literal "I connected and nothing appears". All release sites (`closeConnections`, `failConnection`, `retryOpenSockets`, `startDeepgram` teardown) go through the helper.
+- **The idle ear is shut down inside `startDeepgram`'s reuse path.** Its 4s KeepAlive saw "both sockets dead" (the new pair was still mid-handshake) and called `closeConnections()`, painting `Disconnected` over an attempt that was about to succeed.
+- **A dead recorder is rebuilt, not Zapped.** `shouldAutoZap()` rightly refuses to Zap when audio stopped flowing (the sockets are fine), so nothing recovered it: 12s with zero chunks at connect, or 10s mid-call, now rebuilds the MediaRecorder on the SAME sockets — no socket churn, no lost text. Cap 3 per connection, 30s cooldown. Budgets refill on every explicit press and every manual ZAP — deliberately NOT inside `reconnectStream`'s own auto-recovery path, or the watchdog would loop every 12s.
+- **The self-heal no longer interrupts the handshake.** `shouldHealConnect` takes `phase` and stands down while `phase === 'connecting'`; delay 1.5s → 6s, window 6s → 30s. One press used to open TWO socket pairs and leave the first one open.
+- **`scheduleConnectFail` is attempt-scoped.** One global 120ms timer, and the reuse path never runs `closeConnections()`, so a close from press N could fail press N+1 120ms into an otherwise healthy handshake.
+- **5 new tests** in `src/hooks/useDeepgram.connect.test.js` (fake timers; hand-driven WebSocket/MediaRecorder doubles): ear-vs-press survival, no orphaned live stream left on the account, connect-mute → recorder rebuild, mid-call recorder death → rebuild without Zapping sockets, stale close ≠ new failure. Asserted on observable state (`sttLive`, `connectionState`, socket `readyState`) — never on log strings. Mutation-checked: deleting the attempt guard fails the suite.
+- Full suite 142 suites / 1470 tests green; production build +1.94 kB gzip.
+
 ## v4.169.0 - two failures you were eating in silence, now visible
 
 From a real CSA call. Full record: [`incident-2026-09-27-csa-call.md`](incident-2026-09-27-csa-call.md). **This release reports; it does not repair.** The causes are still open — but neither can now eat an interpreter's trust without saying so.

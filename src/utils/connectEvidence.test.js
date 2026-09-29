@@ -57,26 +57,35 @@ describe('isReusableStream', () => {
 });
 
 describe('shouldHealConnect', () => {
-  const base = { pressedAt: 1_000_000, healed: false };
+  // v4.170.0: the heal waits for the attempt to stop working on its own. The
+  // old 1.5s version fired mid-handshake, so one press opened two socket pairs
+  // and leaked the first onto the account's concurrent-stream cap — which is
+  // how CONNECT started answering silence.
+  const base = { pressedAt: 1_000_000, healed: false, phase: 'idle' };
 
   test('does nothing before the delay', () => {
-    expect(shouldHealConnect({ ...base, now: 1_000_500 })).toBe(false);
+    expect(shouldHealConnect({ ...base, now: 1_002_000 })).toBe(false);
   });
 
-  test('heals once inside the window when nothing is live', () => {
-    expect(shouldHealConnect({ ...base, now: 1_002_000 })).toBe(true);
+  test('never interrupts a press that is still handshaking', () => {
+    expect(shouldHealConnect({ ...base, phase: 'connecting', now: 1_020_000 })).toBe(false);
+  });
+
+  test('heals once the attempt settled without going live', () => {
+    expect(shouldHealConnect({ ...base, now: 1_008_000 })).toBe(true);
+    expect(shouldHealConnect({ ...base, phase: 'error', now: 1_008_000 })).toBe(true);
   });
 
   test('never heals twice for one press', () => {
-    expect(shouldHealConnect({ ...base, healed: true, now: 1_002_000 })).toBe(false);
+    expect(shouldHealConnect({ ...base, healed: true, now: 1_008_000 })).toBe(false);
   });
 
   test('never heals a live pipeline', () => {
-    expect(shouldHealConnect({ ...base, sttLive: true, now: 1_002_000 })).toBe(false);
+    expect(shouldHealConnect({ ...base, sttLive: true, now: 1_008_000 })).toBe(false);
   });
 
   test('gives up after the window (no connect/rebuild loop)', () => {
-    expect(shouldHealConnect({ ...base, now: 1_030_000 })).toBe(false);
+    expect(shouldHealConnect({ ...base, now: 1_031_000 })).toBe(false);
   });
 
   test('nothing to heal without a press', () => {

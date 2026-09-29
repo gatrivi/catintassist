@@ -113,3 +113,4 @@
 | 2026-09-26T21:40:57.981Z | 5188029 | v4.167.0: translation latency is yours to pick - FAST by default (0.7s) |
 | 2026-09-27T16:54:24.264Z | ec9bb07 | v4.167.0 Settings->Studio door for Soundboard + Greeting Editor; audio strip down to the Deepgram proof |
 | 2026-09-27T18:37:04.907Z | 6d0b674 | v4.168.0 condensed toolbar back off-call: Min/Std/Full, Notes, Tools, Help, Edit, Call detection, Focus + copyable pills |
+| 2026-09-27T20:47:26.876Z | 5984914 | v4.169.0 make the failure visible: per-socket health + translation-surplus warning (CSA call incident) |
