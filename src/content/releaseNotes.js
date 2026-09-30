@@ -25,6 +25,55 @@ import { APP_VERSION } from '../constants/version';
 /** Newest first. Only the entry matching APP_VERSION is shown on load. */
 export const RELEASE_NOTES_CATALOG = [
   {
+    version: '4.173.0',
+    id: 'money-stops-dying',
+    highlightElementIds: ['settings-digit-rewrites'],
+    es: {
+      title: 'Los precios ya no mueren',
+      intro: 'En una llamada de presupuesto dental, la app te estaba convirtiendo los precios en horario y en número de seguridad social. "one fifty" salía 1:50. Una lista de tres precios salía 150-25-0350. Esto es un arreglo de emergencia: ahora un precio es un número, y se escribe como un número.',
+      sections: [
+        { heading: 'Qué estaba pasando', bullets: [
+          'La app agrupa dígitos beautiful para que un teléfono se lea bien, pero no distinguía un precio de una hora. **"one fifty" → 1:50** y **"two twenty five" → 2:25**: precios convertidos en horario.',
+          'Cualquier grupo de 9 o 10 dígitos se volvía un SSN o un teléfono. **"150, 250, 350" → 150-25-0350**: un presupuesto dental con número de seguridad social.',
+          'Y si habías dado tu teléfono 45 segundos antes, el grupo se guioneaba sin preguntar.',
+          'Lo peor: el medidor decía **damage 0.00** mientras pasaba. Miraba el motor de subtítulos, no la pantalla — y **no había ni un solo caso de dinero** en 23 pruebas.',
+        ] },
+        { heading: 'Qué hace ahora', bullets: [
+          'El dinero se dobla **primero**, antes de que nada lo toque: "one fifty" → **150**, "two twenty five" → **225**, "one thousand two hundred" → **1200**. Sin signo de dólar inventado: solo el número que se dijo.',
+          'Un precio **nunca** se convierte en hora, y una lista de precios **nunca** se convierte en SSN ni en teléfono.',
+          'Una hora de verdad sigue siendo hora: "at 3 30" → 3:30. Si no hay ninguna pista de hora, los dígitos se quedanquietos en vez de adivinar.',
+          'Un teléfono real en una llamada de factura **sigue** formateándose: si te lo están pidiendo, la petición gana.',
+        ] },
+        { heading: 'Tu botón de pánico', bullets: [
+          '**Ajustes → Deepgram → Numbers → Format numbers: RAW** deja el texto tal como lo dijo Deepgram: no se reescribe nada, así que nada se puede adivinar mal. Los números siguen resaltados y se siguen copiando con un clic.',
+          'Está en **ON** por defecto. Si una llamada te está dando precios y un número se ve raro, RAW es la salida rápida.',
+        ] },
+      ],
+    },
+    en: {
+      title: 'Prices stop dying',
+      intro: 'On a dental budget call the app was turning prices into clock times and into SSNs. "one fifty" came out 1:50. A list of three prices came out 150-25-0350. This is the hotfix: a price is a number now, and it gets written down as one number.',
+      sections: [
+        { heading: 'What was happening', bullets: [
+          'The app groups digits so a phone number reads well, but it could not tell a price from a time. **"one fifty" → 1:50**, **"two twenty five" → 2:25** — prices rendered as clock times.',
+          'Any run of 9 or 10 digits became an SSN or a phone. **"150, 250, 350" → 150-25-0350** — a dental quote wearing a Social Security number.',
+          'And if you had given your phone number 45 seconds earlier, the run got dashed without asking.',
+          'Worse: the eval harness reported **damage 0.00** the whole time. It replayed the caption engine, not the screen, and there was **not one money case** in 23 fixtures.',
+        ] },
+        { heading: 'What it does now', bullets: [
+          'Money folds **first**, before anything else can touch it: "one fifty" → **150**, "two twenty five" → **225**, "one thousand two hundred" → **1200**. No invented dollar sign — only the number that was spoken.',
+          'A price never becomes a time, and a price list never becomes an SSN or a phone number.',
+          'A real time still is one: "at 3 30" → 3:30. With no time cue at all the digits now stay put instead of guessing.',
+          'A real phone number during a billing call **still** formats: if a number is being asked for, the request wins.',
+        ] },
+        { heading: 'Your panic button', bullets: [
+          '**Settings → Deepgram → Numbers → Format numbers: RAW** shows the text exactly as Deepgram said it. Nothing is rewritten, so nothing can be guessed wrong. Numbers stay highlighted and still click-to-copy.',
+          'It ships **ON**. If a call is quoting you prices and a number looks wrong, RAW is the fast way out.',
+        ] },
+      ],
+    },
+  },
+  {
     version: '4.172.0',
     id: 'shift-ear-one-socket',
     highlightElementIds: ['settings-shift-ear', 'audio-route-stt-summary'],

@@ -15,7 +15,15 @@
  * The normalization policy is documented in docs/stt-eval-plan.md and is part
  * of the metric: change it only with the doc.
  */
-import { convertEnglishNumberWords } from './sensitiveDataProtector';
+import {
+  convertEnglishNumberWords,
+  foldMoneyAmounts,
+  combineCompoundNumbers,
+  foldMagnitudes,
+  normalizeVitals,
+  foldFractions,
+  foldPercents,
+} from './sensitiveDataProtector';
 
 /** Filler words are not transcription errors; both sides drop them. */
 const FILLERS = [
@@ -97,6 +105,20 @@ export const normalizeForScoring = (text, opts = {}) => {
   } = opts;
   let out = String(text || '');
   if (foldNumberWords) out = convertEnglishNumberWords(out, lang);
+  // v4.173.0: a SPOKEN number and the same number WRITTEN must score equal.
+  // The display pipeline folds words→digits (money, compounds, magnitudes,
+  // "120 over 80"). If the normalizer does not do the same, the harness
+  // scores our own correct folding as word errors — which is precisely how a
+  // broken pipeline hides behind a green gate. Both sides go through the
+  // identical fold set, so only a WRONG number can register as damage.
+  if (foldNumberWords) {
+    out = foldMoneyAmounts(out);
+    out = combineCompoundNumbers(out, lang);
+    out = foldMagnitudes(out);
+    out = normalizeVitals(out);
+    out = foldFractions(out);
+    out = foldPercents(out);
+  }
   if (doStripGrouping) out = stripGrouping(out);
   out = out.toLowerCase();
   if (stripFillers) {

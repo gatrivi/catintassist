@@ -8,6 +8,7 @@
  */
 import { replayFixtureEvents } from './fixtureReplay';
 import { scoreEvalCase, summarizeEval, KIND_MIX_WEIGHT } from './sttEval';
+import { applyDisplayProtections } from './sensitiveDataProtector';
 import { applyDomainRepair } from './domainLexicon';
 import { findNegationGaps, hasNegationCue } from './negationGuard';
 import { EVAL_CASES } from '../fixtures/eval';
@@ -26,12 +27,21 @@ export const providerTextOf = (fixture) => {
   return '';
 };
 
-/** Text the user reads: every final bubble, in order. */
+/**
+ * Text the user reads: every final bubble, in order.
+ *
+ * v4.173.0: this now replays the RENDER-TIME digit pipeline too
+ * (applyDisplayProtections). It did not, and that is why the headline
+ * `damage` read 0.00 while a dental call was full of wrong numbers: every
+ * stage that rewrites digits runs at render, in TranscriptionBoard, and none
+ * of it is in captionEngine. The harness was measuring the wrong thing.
+ */
 export const displayTextOf = (fixture) => {
   const { rows } = replayFixtureEvents(fixture);
+  const lang = fixture?.lang === 'es' ? 'es' : 'en';
   return (rows || [])
     .filter((r) => r?.isFinal && r?.text)
-    .map((r) => r.text)
+    .map((r) => applyDisplayProtections(r.text, lang, { applyNumberWords: lang === 'en' }))
     .join(' ');
 };
 

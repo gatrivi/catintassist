@@ -1,0 +1,79 @@
+{
+  "id": "pipeline-medical-costs",
+  "kind": "medical",
+  "lang": "en",
+  "label": "A cost call: spoken prices must survive as ONE number each — never a clock, never an SSN",
+  "reference": "The cleaning is one fifty, the crown is two twenty five, and the estimate is one thousand two hundred dollars.",
+  "terms": ["cleaning", "crown"],
+  "criticalPhrases": ["one fifty", "two twenty five", "one thousand two hundred"],
+  "expect": {
+    "maxWerDisplay": 0.25,
+    "maxDamage": 0,
+    "minDigitRecall": 1,
+    "minTermAccuracy": 0.9
+  },
+  "events": [
+    {
+      "atMs": 0,
+      "lane": "en",
+      "payload": {
+        "type": "Results",
+        "is_final": true,
+        "speech_final": true,
+        "start": 1.0,
+        "channel": {
+          "alternatives": [
+            {
+              "transcript": "So the cleaning is one fifty and the crown is two twenty five.",
+              "confidence": 0.94,
+              "words": [
+                { "word": "so", "confidence": 0.95 },
+                { "word": "the", "confidence": 0.96 },
+                { "word": "cleaning", "confidence": 0.93 },
+                { "word": "is", "confidence": 0.95 },
+                { "word": "one", "confidence": 0.94 },
+                { "word": "fifty", "confidence": 0.93 },
+                { "word": "and", "confidence": 0.95 },
+                { "word": "the", "confidence": 0.96 },
+                { "word": "crown", "confidence": 0.92 },
+                { "word": "is", "confidence": 0.95 },
+                { "word": "two", "confidence": 0.94 },
+                { "word": "twenty", "confidence": 0.93 },
+                { "word": "five", "confidence": 0.92 }
+              ]
+            }
+          ]
+        }
+      }
+    },
+    {
+      "atMs": 4000,
+      "lane": "en",
+      "payload": {
+        "type": "Results",
+        "is_final": true,
+        "speech_final": true,
+        "start": 5.0,
+        "channel": {
+          "alternatives": [
+            {
+              "transcript": "The total estimate is one thousand two hundred dollars.",
+              "confidence": 0.93,
+              "words": [
+                { "word": "the", "confidence": 0.95 },
+                { "word": "total", "confidence": 0.94 },
+                { "word": "estimate", "confidence": 0.93 },
+                { "word": "is", "confidence": 0.95 },
+                { "word": "one", "confidence": 0.94 },
+                { "word": "thousand", "confidence": 0.93 },
+                { "word": "two", "confidence": 0.93 },
+                { "word": "hundred", "confidence": 0.92 },
+                { "word": "dollars", "confidence": 0.94 }
+              ]
+            }
+          ]
+        }
+      }
+    }
+  ]
+}

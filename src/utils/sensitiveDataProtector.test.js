@@ -37,6 +37,7 @@ import {
   normalizeVitals,
   findVitalsUnits,
   expandBareTimes,
+  foldMoneyAmounts,
   foldFractions,
   foldPercents,
 } from './sensitiveDataProtector';
@@ -1053,5 +1054,98 @@ describe('cleanFillerWords', () => {
 
   test('leaves number-only content alone', () => {
     expect(cleanFillerWords('5 5 5 0 1 2 3')).toBe('5 5 5 0 1 2 3');
+  });
+});
+
+// ---------------------------------------------------------------------------
+// v4.173.0 — MONEY. A dental/insurance call is nothing but prices, and three
+// stages were eating them: "one fifty" → "1:50" (a clock), "two twenty five"
+// → "2 25" → "2:25", and "150, 250, 350" → "150-25-0350" (an SSN).
+// A price is a number and must be written down as one number.
+// These tests are the gate: if any of them ever pass again, money is dying.
+// ---------------------------------------------------------------------------
+
+describe('spoken money survives the display pipeline (v4.173.0)', () => {
+  test('"one fifty" is 150, never the clock 1:50', () => {
+    expect(applyDisplayProtections('the cleaning is one fifty', 'en')).toContain('150');
+    expect(applyDisplayProtections('the cleaning is one fifty', 'en')).not.toContain('1:50');
+  });
+
+  test('"two twenty five" is 225, not 2 25 and not 2:25', () => {
+    const out = applyDisplayProtections('the crown is two twenty five each', 'en');
+    expect(out).toContain('225');
+    expect(out).not.toContain('2:25');
+  });
+
+  test('"one twenty five" is 125', () => {
+    expect(applyDisplayProtections('that will be one twenty five', 'en')).toContain('125');
+  });
+
+  test('"one hundred fifty" and "one thousand one hundred fifty" fold', () => {
+    expect(applyDisplayProtections('that is one hundred fifty dollars', 'en')).toContain('150');
+    expect(
+      applyDisplayProtections('the total is one thousand one hundred fifty', 'en')
+    ).toContain('1150');
+  });
+
+  test('a price list is never an SSN', () => {
+    // 9 digits used to become 150-25-0350. A quote has no dashes now.
+    const out = applyDisplayProtections('the estimate is 150, 250, 350 for the crowns', 'en');
+    expect(out).not.toMatch(/\d{3}-\d{2}-\d{4}/);
+    expect(out).toContain('150, 250, 350');
+  });
+
+  test('a long price list is never a phone', () => {
+    const out = applyDisplayProtections('that comes to 1,200 1,300 and 1,400 dollars', 'en');
+    expect(out).not.toMatch(/\d{3}-\d{3}-\d{4}/);
+  });
+
+  test('a REAL ssn next to no money word still formats', () => {
+    const out = applyDisplayProtections('social security 123 45 6789', 'en');
+    expect(out).toContain('123-45-6789');
+  });
+
+  test('a REAL phone still formats even on a bill call', () => {
+    const out = applyDisplayProtections('call me at 555 123 4567 about the cost', 'en');
+    expect(out).toContain('555-123-4567');
+  });
+
+  test('Spanish money folds too', () => {
+    expect(applyDisplayProtections('el precio es uno cincuenta', 'es')).not.toContain('1:50');
+  });
+});
+
+describe('money fold never eats a time (v4.173.0)', () => {
+  test('a clock cue vetoes the fold', () => {
+    expect(foldMoneyAmounts('come at 3 30 tomorrow')).toBe('come at 3 30 tomorrow');
+    expect(foldMoneyAmounts('the appointment is 2 45 pm')).toBe('the appointment is 2 45 pm');
+  });
+
+  test('a cueless pair with NO cue stays digits (readable, not wrong)', () => {
+    // No cue either way: we refuse to invent a time AND refuse to invent 150.
+    expect(foldMoneyAmounts('one fifty')).toBe('one fifty');
+  });
+
+  test('bare times still need a clock cue to become clocks', () => {
+    expect(expandBareTimes('see you at 11 30 sharp')).toBe('see you at 11:30 sharp');
+    expect(expandBareTimes('the DOB is 05 12 1980')).toBe('the DOB is 05 12 1980');
+  });
+
+  test('clerk shorthand triples survive (1 1 30 = 1:00, 1:30)', () => {
+    const out = applyDisplayProtections('we have 1 1 30, 2 2 30', 'en');
+    expect(out).toBe('we have 1:00, 1:30, 2:00, 2:30');
+  });
+
+  test('a price and a time in one breath both survive', () => {
+    const out = applyDisplayProtections(
+      'your appointment is at 3 30 and the cleaning is 150 dollars',
+      'en'
+    );
+    expect(out).toContain('3:30');
+    expect(out).toContain('150');
+  });
+
+  test('morning/noche cue still reads as a time', () => {
+    expect(expandBareTimes('a las 3 30 de la mañana')).toBe('a las 3:30 de la mañana');
   });
 });

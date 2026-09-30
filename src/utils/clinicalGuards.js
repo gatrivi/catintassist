@@ -73,3 +73,50 @@ export const isNegationGuardEnabled = () => NEGATION_GUARD.read();
 export const setNegationGuardEnabled = (on) => NEGATION_GUARD.write(on);
 export const toggleNegationGuard = () => NEGATION_GUARD.toggle();
 
+// ---------------------------------------------------------------------------
+// v4.173.0 — DIGIT REWRITES: the panic button.
+//
+// A cost call went wrong because the display pipeline turned spoken prices
+// into clock times and SSNs (see utils/sensitiveDataProtector.js §MONEY FOLD).
+// Those rewrites are worth having — they are what makes a phone number
+// readable — but on a money call they are a liability, and the operator is
+// the one who knows which kind of call they are on.
+//
+// ON  (default): full pipeline, as v4.172.0 plus the money fix.
+// OFF: no number-word conversion, no magnitude/time folds, no digit stitch,
+//      no phone/SSN grouping. The transcript shows exactly what Deepgram
+//      said. Highlighting and click-to-copy of numbers still work — they are
+//      read-only, they never rewrite.
+//
+// Deliberately NOT inverted: a missing key means ON, because a bad default
+// here shows wrong numbers, and wrong numbers cost real money.
+// ---------------------------------------------------------------------------
+
+const DIGIT_REWRITES_KEY = 'catint_digit_rewrites_v1';
+
+export const isDigitRewritesEnabled = () => {
+  try {
+    return localStorage.getItem(DIGIT_REWRITES_KEY) !== '0';
+  } catch {
+    return true; // no storage = full pipeline (safe, matches the shipped default)
+  }
+};
+
+export const setDigitRewritesEnabled = (on) => {
+  const next = on !== false;
+  try {
+    localStorage.setItem(DIGIT_REWRITES_KEY, next ? '1' : '0');
+  } catch {
+    return next;
+  }
+  try {
+    window.dispatchEvent(new CustomEvent('catint_digit_rewrites_changed', { detail: next }));
+  } catch (_) {
+    /* no window (tests) — the value is still saved */
+  }
+  return next;
+};
+
+export const DIGIT_REWRITES_STORAGE_KEY = DIGIT_REWRITES_KEY;
+export const DIGIT_REWRITES_CHANGED_EVENT = 'catint_digit_rewrites_changed';
+

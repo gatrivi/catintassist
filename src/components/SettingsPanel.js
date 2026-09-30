@@ -55,6 +55,9 @@ import {
   setDomainRepairEnabled,
   isNegationGuardEnabled,
   setNegationGuardEnabled,
+  // v4.173.0: the digit-rewrite panic button (ON by default).
+  isDigitRewritesEnabled,
+  setDigitRewritesEnabled,
 } from '../utils/clinicalGuards';
 // v4.157.0 — provider biasing. OFF by default; the medical model costs ~2x EN.
 import { readSttBias, saveSttBias } from '../utils/deepgramListenConfig';
@@ -156,6 +159,8 @@ export default function SettingsPanel({
   const [domainRepairOn, setDomainRepairOn] = useState(isDomainRepairEnabled);
   // v4.156.0 — negation guard switch (read-only warning, its own switch)
   const [negationGuardOn, setNegationGuardOn] = useState(isNegationGuardEnabled);
+  // v4.173.0 — digit rewrites ON by default; RAW is the panic button.
+  const [digitRewritesOn, setDigitRewritesOn] = useState(isDigitRewritesEnabled);
   // v4.157.0 — provider biasing (the only switches that change what Deepgram bills)
   const [sttBias, setSttBias] = useState(readSttBias);
   // v4.158.0 — which of the operator's own ✎ corrections would become keyterms.
@@ -512,6 +517,32 @@ export default function SettingsPanel({
                 invents a missing “denies”. <strong>Negation guard</strong> only puts a ⚠ on a line whose
                 negation looks dropped (read-only, it changes no words). Both ship OFF on purpose: turn one on
                 and listen to a call before you trust it.
+              </p>
+            </div>
+            {/* v4.173.0 — the digit-rewrite panic button. ON = full pipeline. */}
+            <div style={{ marginTop: 14 }}>
+              <div style={{ fontSize: 11, color: '#93c5fd', marginBottom: 6 }}>Numbers</div>
+              <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                <button
+                  type="button"
+                  id="settings-digit-rewrites"
+                  aria-pressed={digitRewritesOn}
+                  onClick={() => setDigitRewritesOn(setDigitRewritesEnabled(!digitRewritesOn))}
+                  style={{
+                    ...tabBtn,
+                    background: digitRewritesOn
+                      ? 'rgba(34, 211, 238, 0.22)'
+                      : 'rgba(239, 68, 68, 0.22)',
+                  }}
+                >
+                  Format numbers: {digitRewritesOn ? 'ON' : 'RAW'}
+                </button>
+              </div>
+              <p style={{ fontSize: 10, color: 'rgba(255,255,255,0.5)', margin: '6px 0 0' }}>
+                <strong>ON</strong> groups phone numbers, folds spoken numbers (“one fifty” → 150) and turns
+                “at 3 30” into 3:30. <strong>RAW</strong> shows exactly what Deepgram said — nothing is
+                rewritten, so nothing can be guessed wrong. Numbers stay highlighted and click-to-copy in both
+                modes. If a call is quoting you prices and a number looks wrong, tap RAW.
               </p>
             </div>
             {/* v4.157.0 — provider biasing. The only switches here that change the bill. */}

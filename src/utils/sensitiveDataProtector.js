@@ -5,6 +5,7 @@
 
 import { flagVanish } from './vanishTrace';
 import { getArmedExpectedType } from './expectedDataContext';
+import { isDigitRewritesEnabled } from './clinicalGuards';
 
 // ------------------------------
 // Display-time helpers (UI)
@@ -117,6 +118,93 @@ export const expandDictationWords = (text, lang = 'en') => {
 };
 
 // ---------------------------------------------------------------------------
+// MONEY FOLD (v4.173.0) — runs FIRST, on raw words, before any other stage.
+// ---------------------------------------------------------------------------
+// A dental/insurance call is nothing but prices, and three stages were eating
+// them with no guard at all:
+//   "one fifty"        → "1 50"  → expandBareTimes  → "1:50"    (a clock!)
+//   "two twenty five"  → "2 20 5"→ combineCompound → "2 25" → "2:25"
+//   "150, 250, 350"    → formatPhoneAndSSNDigits  → "150-25-0350"  (an SSN!)
+// A price is a NUMBER, and a number must be written down as one number. So we
+// fold the spoken money form here, while it is still recognisable, and only
+// when the speaker is actually talking money. No cue → byte-identical to
+// v4.172.0, so appointments ("at 3 30") and dictation are untouched.
+// Digits only: we never invent a currency symbol nobody said.
+// ---------------------------------------------------------------------------
+
+/** Money words / currency in either lane. Deliberately NARROW. */
+const MONEY_CUE_RE =
+  /(?:\$|€|£|\b(?:dollars?|bucks?|usd|pesos?|euros?|money|price|pricing|cost|costs|precio|costos?|cuesta|cobro|cobran|total|totaling|pagar|pago|pay|paid|payment|quote|quotation|estimate|estimating|budget|presupuesto|balance|remaining|owed|due|invoice|factura|billing|copay|co-?pay|copago|deductible|deducible|co-?insurance|coaseguro|out[- ]of[- ]pocket|self.?pay|sin seguro|insuran\w*|seguro)\b)/i;
+
+/** A time cue inside this window means the digits belong to a clock. */
+const CLOCK_CUE_NEAR_RE =
+  /(?:\b(?:at|am|pm|a\.?m\.?p?\.?m?\.?|o'?clock|sharp|hour|hours?|hrs?|minute|minutes?|appointment|appt|scheduled|schedule|slots?|time|when|starts?|starts|mañana|tarde|medianoche|noche)\b|@|a\s+las)/i;
+
+const MONEY_WINDOW = 28;
+
+/**
+ * An explicit ID/phone request near the run BEATS the money veto, same rule
+ * the rest of this file already uses ("request wins"). Without it, a real
+ * phone number dictated during a billing call — "call me at 555 123 4567
+ * about the cost" — would stop formatting, which is worse than the bug.
+ */
+const ID_REQUEST_NEAR_RE =
+  /(?:\b(?:phone|cell|mobile|call me|call back|contact|tel[eé]fono|cel(?:ular)?|n[uú]mero|ssn|social security|ss#|member|policy|insurance|member id|afiliad[oa]|expediente|folio|chart|chart number|mrn)\b|\d{3}[-.\s]\d{3,4}[-.\s]\d{4}\b)/i;
+
+const idRequestNear = (full, i) => {
+  const a = Math.max(0, i - MONEY_WINDOW);
+  const b = Math.min(full.length, i + MONEY_WINDOW);
+  return ID_REQUEST_NEAR_RE.test(full.slice(a, b));
+};
+
+export const hasMoneyCue = (text) => MONEY_CUE_RE.test(text || '');
+
+/** Money cue within MONEY_WINDOW chars of index i. */
+const moneyCueNear = (full, i) => {
+  const a = Math.max(0, i - MONEY_WINDOW);
+  const b = Math.min(full.length, i + MONEY_WINDOW);
+  return MONEY_CUE_RE.test(full.slice(a, b));
+};
+
+/** Clock cue within MONEY_WINDOW chars of index i. */
+const clockCueNear = (full, i) => {
+  const a = Math.max(0, i - MONEY_WINDOW);
+  const b = Math.min(full.length, i + MONEY_WINDOW);
+  return CLOCK_CUE_NEAR_RE.test(full.slice(a, b));
+};
+
+/**
+ * Spoken price → one number. Runs on the display string, after number words
+ * are digits but before compound/magnitude/time folds.
+ *   "1 50"     → 150      (one fifty)          = 1 hundred + 50
+ *   "2 20 5"   → 225      (two twenty five)    = 2 hundred + 2 tens + 5
+ *   "1 100 50" → 1150     (one thousand one hundred fifty, post-magnitude)
+ * A clock cue in the same window vetoes every fold — "at 3 30" stays 3 30.
+ */
+export const foldMoneyAmounts = (text) => {
+  if (!text) return text;
+  let out = text;
+  // The (?<!\d\s) guard is load-bearing: clerk shorthand "1 1 30" is a TRIPLE
+  // (1:00, 1:30) handled later by expandClerkTimeShorthand. Without it the
+  // pair rule eats the tail and "1 1 30" becomes "1 130".
+  //
+  // H tens units ("2 20 5" → 225) BEFORE the pair rule, else "2 20" eats it.
+  out = out.replace(/(?<!\d\s)\b([1-9])\s+((?:[2-9]0|10))\s+([1-9])\b/g, (m, h, t, u, off, full) =>
+    clockCueNear(full, off) ? m : `${parseInt(h, 10) * 100 + parseInt(t, 10) + parseInt(u, 10)}`,
+  );
+  // H MM ("1 50" → 150, "3 15" → 315).
+  out = out.replace(/(?<!\d\s)\b([1-9])\s+([0-5]\d)\b(?!\s*\d)/g, (m, h, mm, off, full) =>
+    clockCueNear(full, off) ? m : `${parseInt(h, 10) * 100 + parseInt(mm, 10)}`,
+  );
+  // Thousands + hundreds ("1 100 50" → 1150). The pair rule above cannot touch
+  // it: "100" is 3 digits, so \b fails after "10".
+  out = out.replace(/(?<!\d\s)\b([1-9])\s+(100)\s+(\d{1,2})\b/g, (m, k, _h, r, off, full) =>
+    clockCueNear(full, off) ? m : `${parseInt(k, 10) * 1000 + 100 + parseInt(r, 10)}`,
+  );
+  return out;
+};
+
+// ---------------------------------------------------------------------------
 // MAGNITUDE FOLDING (v4.120.0) — runs AFTER word conversion, on digits.
 // ---------------------------------------------------------------------------
 // "one hundred twenty three" → "1 hundred 23" → "123".
@@ -213,6 +301,14 @@ export const formatPhoneAndSSNDigits = (text, { ignoreAddressGuard = false, igno
     // v4.120.0: provider IDs are NEVER phones — "NPI 1234567890" stays
     // verbatim even when armed (an NPI is not a phone number, full stop).
     if (/\b(?:npi|dea|ncpdp)\b/i.test(`${before} ${after}`)) return m;
+    // v4.173.0: a money cue near the run means this is a PRICE LIST, not an
+    // ID. "the estimate is 150, 250, 350 for the crowns" is 9 digits and used
+    // to become 150-25-0350 — an SSN out of a dental quote. A real SSN/phone
+    // is never announced next to a price... unless it IS being asked for
+    // ("call me at 555 123 4567 about the cost"), where the request wins.
+    if (moneyCueNear(full, offset + m.length / 2) && !idRequestNear(full, offset + m.length / 2)) {
+      return m;
+    }
     if (!ignoreAddressGuard && looksLikeAddressFragment(before, after)) return m;
     if (!ignoreDateGuard && looksLikeDateFragment(before, after)) return m;
 
@@ -922,13 +1018,23 @@ export const expandWordTimes = (text) => {
 // ---------------------------------------------------------------------------
 // BARE TIMES (v4.121.0) — runs AFTER date masking, on masked text.
 // ---------------------------------------------------------------------------
-// Cueless "3 30" → "3:30" (H 1–12, MM 00–59). Masked dates are already out,
-// and the negative lookahead skips triples ("05 12 1980", "12 34 56" stay).
+// "3 30" → "3:30" (H 1–12, MM 00–59). Masked dates are already out, and the
+// negative lookahead skips triples ("05 12 1980", "12 34 56" stay).
+//
+// v4.173.0: this now REQUIRES a clock cue in the same window ("at", "am/pm",
+// "o'clock", "appointment", "sharp", "hora"…) and a money cue VETOES it.
+// Reason: spoken prices are exactly this shape — "one fifty", "two twenty
+// five" — and turning "1 50" into "1:50" is a WRONG number on a cost call.
+// A time is always cued in real speech; a price often is not, so the safe
+// default is: no cue → leave the digits alone and let the reader see "1 50".
 // ---------------------------------------------------------------------------
 
 export const expandBareTimes = (text) => {
   if (!text) return text;
-  return text.replace(/\b([1-9]|1[0-2])\s+([0-5]\d)\b(?!\s*\d)/g, '$1:$2');
+  return text.replace(/\b([1-9]|1[0-2])\s+([0-5]\d)\b(?!\s*\d)/g, (m, h, mm, off, full) => {
+    if (moneyCueNear(full, off)) return m;
+    return clockCueNear(full, off) ? `${h}:${mm}` : m;
+  });
 };
 
 // ---------------------------------------------------------------------------
@@ -1072,8 +1178,12 @@ export const foldPercents = (text) => {
 };
 
 /** Display pipeline order (transcript + translation panes). */
-export const applyDisplayProtections = (text, lang = 'en', { applyNumberWords = true, expectedType = getArmedExpectedType() } = {}) => {
+export const applyDisplayProtections = (text, lang = 'en', { applyNumberWords = true, expectedType = getArmedExpectedType(), allowDigitRewrites = isDigitRewritesEnabled() } = {}) => {
   if (!text) return text;
+  // v4.173.0: the operator's panic button. OFF = show exactly what Deepgram
+  // said. Every rewrite below is a guess about what a number meant, and on a
+  // money call a wrong guess is worse than no formatting at all.
+  if (!allowDigitRewrites) return text;
   let out = text;
   // v4.122.0: fractions/percent FIRST on words ("one half" → "1/2",
   // "50 por ciento" → "50%") — conversion would eat "one"/"ciento" first.
@@ -1082,6 +1192,9 @@ export const applyDisplayProtections = (text, lang = 'en', { applyNumberWords = 
   // v4.120.0: "double five" → "five five", "8 oh 5" → "8 0 5" first.
   if (applyNumberWords) out = expandDictationWords(out, lang);
   if (applyNumberWords) out = convertEnglishNumberWords(out, lang);
+  // v4.173.0: fold spoken MONEY first — "one fifty" → 150 before
+  // combineCompoundNumbers splits it and expandBareTimes turns it into 1:50.
+  out = foldMoneyAmounts(out);
   // v4.115.0: "eighty two" → "82", "dos punto cinco" → "2.5" before stitch.
   if (applyNumberWords) out = combineCompoundNumbers(out, lang);
   // v4.120.0: "1 hundred 23" → "123", "2 mil 26" → "2026".

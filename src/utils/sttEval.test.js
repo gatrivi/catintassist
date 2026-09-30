@@ -42,10 +42,24 @@ describe('normalizeForScoring', () => {
   });
 
   test('folds number words on both sides so formatting is not an error', () => {
-    // Per-word fold: Deepgram's numerals=true does the "five hundred" -> 500
-    // part for us, so the corpus references are written in digits.
-    expect(normalizeForScoring('five hundred milligrams')).toBe('5 hundred milligrams');
+    // v4.173.0: the fold set is now the SAME one the display pipeline runs.
+    // Previously the normalizer folded only per-word, while the app folded
+    // money/compounds/magnitudes/vitals too — so our own CORRECT output
+    // ("one fifty" -> 150) scored as word errors, and a real regression could
+    // hide inside that noise. Both sides fold identically now, so only a
+    // genuinely different number registers as damage.
+    expect(normalizeForScoring('five hundred milligrams')).toBe('500 milligrams');
     expect(normalizeForScoring('take two mg')).toBe('take 2 mg');
+  });
+
+  test('spoken money and written money score identically (v4.173.0)', () => {
+    // The dental call that started this: "one fifty" must not read as 1:50.
+    expect(normalizeForScoring('the cleaning is one fifty')).toBe(
+      normalizeForScoring('the cleaning is 150')
+    );
+    expect(normalizeForScoring('two twenty five each')).toBe(
+      normalizeForScoring('225 each')
+    );
   });
 
   test('undoes our own phone grouping', () => {
