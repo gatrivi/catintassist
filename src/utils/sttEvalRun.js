@@ -13,18 +13,26 @@ import { applyDomainRepair } from './domainLexicon';
 import { findNegationGaps, hasNegationCue } from './negationGuard';
 import { EVAL_CASES } from '../fixtures/eval';
 
-/** Last final/speech_final event = what Deepgram actually committed. */
+/**
+ * What Deepgram actually committed, joined across every final event.
+ *
+ * v4.174.0: this used to return ONLY the last final event, while
+ * displayTextOf returns every final bubble. On a multi-event fixture that
+ * compared one event against the whole call, so the harness charged the
+ * pipeline for the other bubbles' words as "damage" — pure noise that would
+ * hide a real regression. Joins both sides the same way.
+ */
 export const providerTextOf = (fixture) => {
   const events = fixture?.events || [];
-  for (let i = events.length - 1; i >= 0; i--) {
-    const p = events[i]?.payload;
+  const out = [];
+  for (const ev of events) {
+    const p = ev?.payload;
     if (!p) continue;
-    if (p.is_final || p.speech_final) {
-      const text = p?.channel?.alternatives?.[0]?.transcript;
-      if (text) return text;
-    }
+    if (!(p.is_final || p.speech_final)) continue;
+    const text = p?.channel?.alternatives?.[0]?.transcript;
+    if (text?.trim()) out.push(text.trim());
   }
-  return '';
+  return out.join(' ');
 };
 
 /**

@@ -349,12 +349,18 @@ describe('copyableDigits', () => {
 // repairNYCZipNumbers
 // ---------------------------------------------------------------------------
 describe('repairNYCZipNumbers', () => {
-  test('repairs 3-digit NYC zips', () => {
-    expect(repairNYCZipNumbers('New York 134')).toBe('New York 10034');
+  // v4.174.0: this rule used to PREFIX an invented "100" onto any 3-digit
+  // number after the city, so "New York, 250" (a price) became 10050 —
+  // digits the speaker never said. It now only tidies a real 5-digit ZIP.
+  test('does NOT invent digits for a 3-digit number (that was a price)', () => {
+    expect(repairNYCZipNumbers('New York, 250')).toBe('New York, 250');
+    expect(repairNYCZipNumbers('New York 134')).toBe('New York 134');
+    expect(repairNYCZipNumbers('NY 168')).toBe('NY 168');
   });
 
-  test('NY abbreviation variant', () => {
-    expect(repairNYCZipNumbers('NY 168')).toBe('NY 10068');
+  test('still tidies a real 5-digit NYC zip after a comma', () => {
+    expect(repairNYCZipNumbers('New York, 10034')).toBe('New York 10034');
+    expect(repairNYCZipNumbers('NY, 10068')).toBe('NY 10068');
   });
 
   test('does not touch non-NYC cities', () => {
@@ -1046,10 +1052,24 @@ describe('cleanFillerWords', () => {
     expect(cleanFillerWords('um so my name is John')).toBe('my name is John');
   });
 
-  test('strips phrase fillers', () => {
+  // v4.174.0: phrase fillers are NOT stripped from mid-sentence any more.
+  // They were, and they could change meaning: "Do you know if you have
+  // insurance?" became "Do if you have insurance?" — a question turned into a
+  // fragment, in the exact text that then gets translated.
+  test('keeps mid-sentence phrase fillers (they carry meaning)', () => {
     expect(cleanFillerWords('I mean the patient you know has pain')).toBe(
-      'the patient has pain'
+      'I mean the patient you know has pain'
     );
+    expect(cleanFillerWords('Do you know if you have insurance?')).toBe(
+      'Do you know if you have insurance?'
+    );
+    expect(cleanFillerWords('what kind of insurance do you have')).toBe(
+      'what kind of insurance do you have'
+    );
+  });
+
+  test('still drops a LEADING filler word', () => {
+    expect(cleanFillerWords('um the patient has pain')).toBe('the patient has pain');
   });
 
   test('leaves number-only content alone', () => {
@@ -1147,5 +1167,112 @@ describe('money fold never eats a time (v4.173.0)', () => {
 
   test('morning/noche cue still reads as a time', () => {
     expect(expandBareTimes('a las 3 30 de la mañana')).toBe('a las 3:30 de la mañana');
+  });
+});
+
+// ---------------------------------------------------------------------------
+// v4.174.0 — MISSING DIGITS. Every case here is a real reproduction of a
+// number that DISAPPEARED or changed on a live call. If any of them ever
+// pass again, digits are being lost.
+// ---------------------------------------------------------------------------
+
+describe('digits must never disappear (v4.174.0)', () => {
+  test('a REPEATED dose keeps both copies (collapse was deleting one)', () => {
+    expect(collapseAdjacentDigitRepeats('it was 20 20 mg')).toBe('it was 20 20 mg');
+    expect(collapseAdjacentDigitRepeats('the dose is 500 500 mg')).toBe('the dose is 500 500 mg');
+    expect(applyDisplayProtections('the dose is 500 500 mg', 'en')).toContain('500 500');
+  });
+
+  test('a REPEATED price keeps both copies', () => {
+    expect(collapseAdjacentDigitRepeats('the price is 150 150')).toBe('the price is 150 150');
+    expect(collapseAdjacentDigitRepeats('we need 250 250 250 250 crowns')).toBe(
+      'we need 250 250 250 250 crowns'
+    );
+  });
+
+  test('a genuine stutter dupe still collapses (the feature still works)', () => {
+    expect(collapseAdjacentDigitRepeats('555 123 123 4567')).toBe('555 123 4567');
+    expect(collapseAdjacentDigitRepeats('5 5 5 5')).toBe('5 5 5 5');
+  });
+
+  test('a comma-separated DOSE LIST is not one number', () => {
+    expect(stitchSingleDigitSequences('take 1, 2, 3 tablets')).toBe('take 1, 2, 3 tablets');
+    expect(stitchSingleDigitSequences('the dose is 2, 5 mg')).toBe('the dose is 2, 5 mg');
+  });
+
+  test('phone dictation still stitches (the feature still works)', () => {
+    expect(stitchSingleDigitSequences('5 5 5 1 2 3 4')).toBe('5551234');
+    expect(applyDisplayProtections('call 5551234567', 'en')).toMatch(/555-123-4567/);
+  });
+
+  test('a price list is not turned into a ZIP by a stray "unit"', () => {
+    expect(repairSplitZips('the unit is 4 and the crowns are 45, 250')).toBe(
+      'the unit is 4 and the crowns are 45, 250'
+    );
+  });
+
+  test('a REAL split zip still joins (the feature still works)', () => {
+    expect(repairSplitZips('her zip code is 93, 550')).toBe('her zip code is 93550');
+    expect(repairSplitZips('her zip is 93, 550 in California')).toBe(
+      'her zip is 93550 in California'
+    );
+  });
+
+  test('money fold needs no money word, but never eats a count', () => {
+    // No money cue: "the cleaning is one fifty" is still a price. A price is
+    // never followed by a counted noun, so that is what the fold keys on.
+    expect(foldMoneyAmounts('the cleaning is 1 50')).toBe('the cleaning is 150');
+    expect(foldMoneyAmounts('3 12 people')).toBe('3 12 people');
+    expect(foldMoneyAmounts('2 20 5 4')).toBe('2 20 5 4');
+    expect(foldMoneyAmounts('give 2 5 tablets')).toBe('give 2 5 tablets');
+  });
+
+  test('money fold still works when money IS being discussed', () => {
+    expect(foldMoneyAmounts('the price is 1 50')).toBe('the price is 150');
+    expect(applyDisplayProtections('the crown is 1 50 dollars', 'en')).toContain('150');
+    expect(applyDisplayProtections('that will cost you 1 50', 'en')).toContain('150');
+  });
+
+  test('two spoken numbers in the hundreds are not added together', () => {
+    // A money or dose word means they are TWO numbers, not one number
+    // ("ciento veinte" = 120, but "250 50 dollars" = two prices).
+    expect(applyDisplayProtections('the crowns are 250 50 dollars', 'en')).not.toContain('300');
+    expect(applyDisplayProtections('blood pressure 100 60', 'en')).not.toContain('160');
+  });
+
+  test('"ciento veinte" still folds to 120 (ES magnitudes unbroken)', () => {
+    expect(applyDisplayProtections('ciento veinte', 'es')).toBe('120');
+    expect(applyDisplayProtections('one hundred twenty three', 'en')).toBe('123');
+  });
+});
+
+describe('v4.174.0 — the v4.173.0 regression that shipped broken', () => {
+  // v4.173.0 tested ONLY comma price lists. Deepgram emits spaces, and the
+  // ID pattern added in that release matched the price list ITSELF, so the
+  // money veto cancelled itself and a quote came out as a phone number.
+  test('a SPACE-separated price list is never a phone', () => {
+    const out = applyDisplayProtections('the estimate is 150 250 3500 for the crowns', 'en');
+    expect(out).not.toMatch(/\d{3}-\d{3}-\d{4}/);
+    expect(out).toContain('150 250 3500');
+  });
+
+  test('a 4-price list is never dashed, even with a phone armed', () => {
+    const out = applyDisplayProtections('the crowns are 1500 1600 1700 1800 total', 'en');
+    expect(out).not.toMatch(/\d{3}-\d{3}/);
+  });
+
+  test('a comma price list is still never an SSN', () => {
+    const out = applyDisplayProtections('the estimate is 150, 250, 350 for the crowns', 'en');
+    expect(out).not.toMatch(/\d{3}-\d{2}-\d{4}/);
+  });
+
+  test('a REAL phone on a billing call still formats (request wins)', () => {
+    expect(applyDisplayProtections('call me at 555 123 4567 about the cost', 'en')).toContain(
+      '555-123-4567'
+    );
+  });
+
+  test('a REAL ssn still formats (no money word nearby)', () => {
+    expect(applyDisplayProtections('social security 123 45 6789', 'en')).toContain('123-45-6789');
   });
 });

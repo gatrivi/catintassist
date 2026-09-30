@@ -25,6 +25,57 @@ import { APP_VERSION } from '../constants/version';
 /** Newest first. Only the entry matching APP_VERSION is shown on load. */
 export const RELEASE_NOTES_CATALOG = [
   {
+    version: '4.174.0',
+    id: 'digits-stop-disappearing',
+    highlightElementIds: ['settings-digit-rewrites'],
+    es: {
+      title: 'Los dígitos ya no desaparecen',
+      intro: 'Siguiendo el arreglo de precios de la 4.173.0, esta versión cierra el resto de la familia: números que la app BORRABA o fundía en una llamada en vivo. Y arregla un error que la 4.173.0 dejó abierto.',
+      sections: [
+        { heading: 'Lo que faltaba (todo verificado en vivo)', bullets: [
+          '**Un precio o una dosis repetida perdía una copia.** La etapa que deshacía un stutter de Deepgram también borraba la segunda vez que el doctor decía el número: «la dosis es 500 500 mg» salía **500 mg**. Ahora solo desfasa un duplicado que tiene números distintos a cada lado, que es la forma real de un stutter.',
+          '**Una lista de dosis con comas se volvía un número:** «1, 2, 3 tabletas» salía **123 tabletas**, «2, 5 mg» salía **25 mg**. La coma también es separador de decimales y nunca se trató como tal.',
+          '**Un presupuesto se volvía código postal:** «la unidad es 4 y las coronas son 45, 250» salía **45250**, por la palabra suelta «unidad».',
+          '**Se inventaban dígitos:** «New York, 250» salía **New York 10050**. Esa regla agregaba un «100» que nadie había dicho — y en una llamada de precios, ese 250 era un precio.',
+          '**Dos números juntos se sumaban solos:** «250 50 dólares» salía 300. Un precio y una dosis en la misma frase ya no se funden.',
+        ] },
+        { heading: 'El error que YO dejé en la 4.173.0', bullets: [
+          'La 4.173.0 solo probó listas de precios con **comas**. Deepgram manda espacios, y el patrón que agregué para reconocer un teléfono ya formado reconocía **la propia lista de precios**: «the estimate is 150 250 3500» salía **150-250-3500**. Ahora solo palabras (phone, ssn, policy) pueden decidir eso, nunca la forma de los números.',
+        ] },
+        { heading: 'Bonus: palabras que desaparecían', bullets: [
+          '«you know», «i mean», «sort of», «kind of» se borraban de la mitad de cada oración. «Do **you know** if you have insurance?» quedaba «Do if you have insurance?» — una pregunta convertida en fragmento, en el texto que después se traducía. Ya no se tocan. Un «um» inicial sí se sigue quitando.',
+        ] },
+        { heading: 'El medidor ahora sí mide', bullets: [
+          'El harness comparaba **un solo evento** del provider contra **todas** las burbujas, así que en una llamada de varias partes cargaba al pipeline con palabras que nunca había tocado. Y el normalizador unía dígitos: «500 500 mg» se puntuaba como «500500 mg» — tres números convertidos en uno, dentro de la métrica que existe para detectar justo eso.',
+          'Ahora **damage 0.00**, WER de pantalla 3.3% (antes 7.8%), dígitos 94.5%.',
+        ] },
+      ],
+    },
+    en: {
+      title: 'Digits stop disappearing',
+      intro: 'Following the price hotfix in 4.173.0, this closes the rest of the family: numbers the app was DELETING or fusing on a live call. It also fixes a hole that 4.173.0 itself left open.',
+      sections: [
+        { heading: 'What was still missing (every case verified live)', bullets: [
+          '**A repeated price or dose lost a copy.** The stage that undoes a Deepgram stutter was also deleting the second time the doctor said the number: "the dose is 500 500 mg" came out **500 mg**. It now only collapses a duplicate that has *different* numbers either side, which is the real shape of a straddle stutter.',
+          '**A comma-separated dose list became one number:** "1, 2, 3 tablets" came out **123 tablets**, "2, 5 mg" came out **25 mg**. A comma is a decimal separator too, and only a dot was being treated as one.',
+          '**A quote became a ZIP code:** "the unit is 4 and the crowns are 45, 250" came out **45250**, tripped by the stray word "unit".',
+          '**Digits were invented:** "New York, 250" came out **New York 10050**. That rule prefixed a "100" nobody said — and on a cost call, that 250 was a price.',
+          '**Two numbers added themselves:** "250 50 dollars" came out 300. A price and a dose in one breath no longer fuse.',
+        ] },
+        { heading: 'The hole I left in 4.173.0', bullets: [
+          '4.173.0 only tested COMMA price lists. Deepgram emits spaces, and the pattern I added to spot an already-formatted phone was matching **the price list itself**: "the estimate is 150 250 3500" came out **150-250-3500**. Now only words (phone, ssn, policy) can make that call — never the shape of the numbers.',
+        ] },
+        { heading: 'Bonus: words that were vanishing', bullets: [
+          '"you know", "i mean", "sort of", "kind of" were stripped from the middle of every sentence. "Do **you know** if you have insurance?" became "Do if you have insurance?" — a question turned into a fragment, in the exact text that then gets translated. They are no longer touched. A leading "um" still goes.',
+        ] },
+        { heading: 'The metric can finally see', bullets: [
+          'The harness compared ONE provider event against EVERY bubble, so on a multi-part call it charged the pipeline for words it never touched. And the normalizer fused digits: "500 500 mg" scored as "500500 mg" — three numbers becoming one, inside the very metric that exists to catch that.',
+          'Now **damage 0.00**, display WER 3.3% (was 7.8%), digits 94.5%.',
+        ] },
+      ],
+    },
+  },
+  {
     version: '4.173.0',
     id: 'money-stops-dying',
     highlightElementIds: ['settings-digit-rewrites'],

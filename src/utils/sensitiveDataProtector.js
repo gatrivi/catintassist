@@ -143,13 +143,40 @@ const CLOCK_CUE_NEAR_RE =
 const MONEY_WINDOW = 28;
 
 /**
+ * A dose or measurement in the same window. A repeated dose is real speech
+ * ("give 500 500 mg", "one two one"), so any stage that merges or deletes
+ * digit groups must brake on this exactly as it brakes on money.
+ */
+// "unit" is DELIBERATELY absent: it is overwhelmingly an address word
+// ("1935 Madison Avenue, Unit 1") and treating it as a dosage braked a real
+// dictation run. "units" on its own is rare enough to live without.
+const DOSE_CUE_RE =
+  /\b(?:mg|mgs|ml|mcg|ug|iu|cc|tablet|tablets|capsule|capsules|pill|pills|gota|gotas|drop|drops|spray|inhalations?|patch|dose|doses|dosage|medication|medicine|med|prescription|rx|unidades|tableta|tabletas|pastilla|medicamento|medicina|dosis|receta|vitales|vitals?|blood pressure|pressure|heart rate|pulse|temperature|weight|height|oxygen|spo2)\b/i;
+
+/**
+ * A COUNTED thing. "3 12 people", "give 2 5 tablets" — two separate numbers
+ * followed by something you count, never a price. This is the veto that lets
+ * the money fold run without a money word: the most common dental phrasing
+ * ("the cleaning is one fifty") has no money cue at all, but a price is never
+ * followed by a plural noun.
+ */
+const COUNT_NOUN_RE =
+  /\b(?:people|persons?|patients?|adults?|children|kids|visits?|appointments?|days?|weeks?|months?|years?|times?|tablet|tablets|pills?|capsules?|doses?|hours?|minutes?|seats?|slots?|rooms?|beds?|questions?)\b/i;
+
+/**
  * An explicit ID/phone request near the run BEATS the money veto, same rule
  * the rest of this file already uses ("request wins"). Without it, a real
  * phone number dictated during a billing call — "call me at 555 123 4567
  * about the cost" — would stop formatting, which is worse than the bug.
+ *
+ * v4.174.0: WORDS ONLY. v4.173.0 also matched `\d{3}[-.\s]\d{3,4}[-.\s]\d{4}`
+ * as a "already-formatted ID" signal, but that pattern matches the PRICE LIST
+ * ITSELF — "the estimate is 150 250 3500" satisfied it, cancelled the money
+ * veto and came out 150-250-3500. A shape test can never tell a price list
+ * from a phone, so only vocabulary is allowed to make this decision.
  */
 const ID_REQUEST_NEAR_RE =
-  /(?:\b(?:phone|cell|mobile|call me|call back|contact|tel[eé]fono|cel(?:ular)?|n[uú]mero|ssn|social security|ss#|member|policy|insurance|member id|afiliad[oa]|expediente|folio|chart|chart number|mrn)\b|\d{3}[-.\s]\d{3,4}[-.\s]\d{4}\b)/i;
+  /(?:\b(?:phone|cell|mobile|call me|call back|contact|tel[eé]fono|cel(?:ular)?|n[uú]mero|ssn|social security|ss#|member|member id|policy|policy number|insurance|insurance id|afiliad[oa]|expediente|folio|chart|chart number|mrn|record number|account)\b)/i;
 
 const idRequestNear = (full, i) => {
   const a = Math.max(0, i - MONEY_WINDOW);
@@ -184,25 +211,51 @@ const clockCueNear = (full, i) => {
 export const foldMoneyAmounts = (text) => {
   if (!text) return text;
   let out = text;
+
+  /**
+   * v4.174.0: the stage is NOT gated on a money cue, because the most common
+   * dental phrasing has no money word at all — "the cleaning is one fifty" —
+   * and requiring one left it as "1 50". Instead we veto on a COUNT noun.
+   * That is the shape that actually broke: "3 12 people" is a headcount, and
+   * folding it gave "312 people". A price is not followed by a counted thing.
+   */
+  const countNounAfter = (full, index) => {
+    const tail = full.slice(index, index + 24);
+    return COUNT_NOUN_RE.test(tail);
+  };
+
   // The (?<!\d\s) guard is load-bearing: clerk shorthand "1 1 30" is a TRIPLE
   // (1:00, 1:30) handled later by expandClerkTimeShorthand. Without it the
   // pair rule eats the tail and "1 1 30" becomes "1 130".
   //
   // H tens units ("2 20 5" → 225) BEFORE the pair rule, else "2 20" eats it.
-  out = out.replace(/(?<!\d\s)\b([1-9])\s+((?:[2-9]0|10))\s+([1-9])\b/g, (m, h, t, u, off, full) =>
-    clockCueNear(full, off) ? m : `${parseInt(h, 10) * 100 + parseInt(t, 10) + parseInt(u, 10)}`,
+  // The (?!\s*\d) tail guard means a LONGER digit sequence is never folded:
+  // "2 20 5 4" is four numbers, not 225 followed by a 4.
+  out = out.replace(
+    /(?<!\d\s)\b([1-9])\s+((?:[2-9]0|10))\s+([1-9])\b(?!\s*\d)/g,
+    (m, h, t, u, off, full) =>
+      clockCueNear(full, off) || countNounAfter(full, off + m.length) ? m : `${parseInt(h, 10) * 100 + parseInt(t, 10) + parseInt(u, 10)}`,
   );
   // H MM ("1 50" → 150, "3 15" → 315).
-  out = out.replace(/(?<!\d\s)\b([1-9])\s+([0-5]\d)\b(?!\s*\d)/g, (m, h, mm, off, full) =>
-    clockCueNear(full, off) ? m : `${parseInt(h, 10) * 100 + parseInt(mm, 10)}`,
+  out = out.replace(
+    /(?<!\d\s)\b([1-9])\s+([0-5]\d)\b(?!\s*\d)/g,
+    (m, h, mm, off, full) =>
+      clockCueNear(full, off) || countNounAfter(full, off + m.length) ? m : `${parseInt(h, 10) * 100 + parseInt(mm, 10)}`,
   );
   // Thousands + hundreds ("1 100 50" → 1150). The pair rule above cannot touch
-  // it: "100" is 3 digits, so \b fails after "10".
-  out = out.replace(/(?<!\d\s)\b([1-9])\s+(100)\s+(\d{1,2})\b/g, (m, k, _h, r, off, full) =>
-    clockCueNear(full, off) ? m : `${parseInt(k, 10) * 1000 + 100 + parseInt(r, 10)}`,
+  // it: "100" is 3 digits, so \b fails after "10". This one IS money-gated:
+  // it is rare in English (the map has no "thousand") and reachable mainly
+  // from the Spanish lane, where a bare fold turned "1 100 23" into 1123.
+  out = out.replace(
+    /(?<!\d\s)\b([1-9])\s+(100)\s+(\d{1,2})\b/g,
+    (m, k, _h, r, off, full) =>
+      !MONEY_CUE_RE.test(full) || clockCueNear(full, off)
+        ? m
+        : `${parseInt(k, 10) * 1000 + 100 + parseInt(r, 10)}`,
   );
   return out;
 };
+
 
 // ---------------------------------------------------------------------------
 // MAGNITUDE FOLDING (v4.120.0) — runs AFTER word conversion, on digits.
@@ -236,7 +289,17 @@ export const foldMagnitudes = (text) => {
   out = out.replace(/\b(\d{1,3})\s+1000\b/g,
     (_, h) => `${parseInt(h, 10) * 1000}`);
   // "100 20" (ciento veinte) adds; "1 100 23" would multiply — both safe here.
-  out = out.replace(/\b([1-9]00)\s+(\d{1,2})\b/g, (_, h, r) => `${parseInt(h, 10) + parseInt(r, 10)}`);
+  // v4.174.0: VETO on money/dose, not "require money". Two separate spoken
+  // numbers both in the hundreds ("blood pressure 100 60", "250 50") were
+  // being ADDED into one wrong number. Requiring positive money evidence
+  // instead would have broken "ciento veinte" → 120, because the Spanish map
+  // has already turned "ciento" into 100 by the time we get here. So: a money
+  // or dose word in the window means these are two separate numbers.
+  out = out.replace(/\b([1-9]00)\s+(\d{1,2})\b/g, (m, h, r, off, full) => {
+    const win = full.slice(Math.max(0, off - 30), off + 30);
+    if (MONEY_CUE_RE.test(win) || DOSE_CUE_RE.test(win)) return m;
+    return `${parseInt(h, 10) + parseInt(r, 10)}`;
+  });
   out = out.replace(/\b(\d{1,3})\s+100\s+(\d{1,2})\b/g, (_, h, r) => {
     const base = parseInt(h, 10);
     return `${base % 100 === 0 ? base + parseInt(r, 10) : base * 100 + parseInt(r, 10)}`;
@@ -306,7 +369,14 @@ export const formatPhoneAndSSNDigits = (text, { ignoreAddressGuard = false, igno
     // to become 150-25-0350 — an SSN out of a dental quote. A real SSN/phone
     // is never announced next to a price... unless it IS being asked for
     // ("call me at 555 123 4567 about the cost"), where the request wins.
-    if (moneyCueNear(full, offset + m.length / 2) && !idRequestNear(full, offset + m.length / 2)) {
+    // v4.174.0: the armed request ("can I have your SSN?") outranks the money
+    // veto — same rule v4.117 established, which the v4.173.0 check bypassed
+    // by running before armedFull was consulted.
+    if (
+      !armedFull &&
+      moneyCueNear(full, offset + m.length / 2) &&
+      !idRequestNear(full, offset + m.length / 2)
+    ) {
       return m;
     }
     if (!ignoreAddressGuard && looksLikeAddressFragment(before, after)) return m;
@@ -830,6 +900,11 @@ export const stitchSingleDigitSequences = (text, { minDigits = 2, ignoreAddressG
     // v4.115.0: decimals are NEVER stitchable — "2.5 mg" must not become
     // "25 mg". A dot directly between digits means decimal/version, not dictation.
     if (/\d\.\d/.test(match)) return match;
+    // v4.174.0: same rule for a COMMA. "1, 2, 3 tablets" is three doses and
+    // "2, 5 mg" is a range-ish read; neither is a phone being dictated. A dot
+    // was the only decimal guard, so comma-separated dose lists were silently
+    // becoming one number ("123 tablets", "25 mg").
+    if (/\d\s*,\s*\d/.test(match)) return match;
     // v4.122.0: two-part slash runs are fractions/BP ("1/2", "3/4") — never
     // stitch. Longer slash runs ("5/5/5/1/2/3/4") are dictation — stitch.
     if (match.includes('/') && match.split(/[\s,./-]+/).filter(Boolean).length <= 2) return match;
@@ -840,6 +915,11 @@ export const stitchSingleDigitSequences = (text, { minDigits = 2, ignoreAddressG
     const after = full.slice(offset + match.length, offset + match.length + 40);
     if (!ignoreAddressGuard && looksLikeAddressFragment(before, after)) return match;
     if (!ignoreDateGuard && looksLikeDateFragment(before, after)) return match;
+    // v4.174.0: a dose is NEVER dictation. "give 1 2 0 mg" is 120 mg; merging
+    // it is right, but "1 2 3 tablets" is three separate tablets and must
+    // stay readable as three. Only a unit in the window can tell them apart,
+    // so a dosage cue next to the run keeps it spaced.
+    if (DOSE_CUE_RE.test(`${before} ${after}`) && parts.length <= 3) return match;
     // v4.115.0: chart/MRN dictation stays spaced ("MRN 1 2 3 4 5 6 7 8" is
     // readable and safe). Narrow list on purpose: member/policy/afiliado IDs
     // belong to Phase G SSN grouping and must still stitch.
@@ -1066,7 +1146,28 @@ export const collapseAdjacentDigitRepeats = (text) => {
       // multi-char groups ("123 | 123") collapse.
       if (a.every((t) => t.trim().length === 1)) continue;
       if (a.map((t) => t.trim()).join(' ') !== b.map((t) => t.trim()).join(' ')) continue;
+      // v4.174.0: this is the ONLY stage that DELETES DIGITS, so it now
+      // requires PROOF that the repeat is a chunk-straddle artefact and not
+      // something the speaker said twice.
+      //
+      // A straddle dupe has an exact shape: ONE group repeated, sitting
+      // between two OTHER digit groups. That is what "555 123" + "123 4567"
+      // looks like after two chunks are joined. Anything wider (k > 1) or
+      // without differing digit groups on both sides is just a number that
+      // was said more than once — "we need 250 250 250 250 crowns" is a
+      // price list, and collapsing it deleted two of the four prices.
+      if (k !== 1) continue;
+      const prev = (parts[i - 1] || '').trim();
+      const next = (parts[i + 2] || '').trim();
+      if (!isDigitGroupTok(prev) || !isDigitGroupTok(next)) continue;
+      if (prev === a[0].trim() || next === a[0].trim()) continue;
+      // Belt and braces: money or a dose in the window means two numbers.
+      const win = parts
+        .slice(Math.max(0, i - 6), i + 2 * k + 6)
+        .join(' ');
+      if (MONEY_CUE_RE.test(win) || DOSE_CUE_RE.test(win)) continue;
       const removed = parts.splice(i + k, k).join('').trim();
+
       collapsed = true;
       flagVanish('display_digit_repeat_collapse', {
         before: text,
@@ -1097,7 +1198,13 @@ export const repairSplitZips = (text) => {
     /\b(?:zip(?:\s*code)?|postal(?:\s*code)?|c[oó]digo postal|calle|avenida|carrera|direcci[oó]n|domicilio|apartment|apt|suite|unit)\b/i;
   return text.replace(/\b(\d{2,3})\s*,\s*(\d{3})\b/g, (m, a, b, offset, full) => {
     const before = full.slice(Math.max(0, offset - 40), offset);
-    if (!stateRe.test(before) && !gateRe.test(before)) return m;
+    // v4.174.0: two brakes. (1) MONEY — "the unit is 4 and the crowns are
+    // 45, 250" satisfied the gate on the stray word "unit" and turned a price
+    // list into 45250. A price is never a split ZIP. (2) the gate word must
+    // be CLOSE to the pair, not anywhere in the previous 40 chars.
+    if (MONEY_CUE_RE.test(before)) return m;
+    const near = full.slice(Math.max(0, offset - 18), offset);
+    if (!stateRe.test(near) && !gateRe.test(near)) return m;
     const joined = `${a}${b}`;
     flagVanish('display_zip_fragment_join', {
       before: m,
@@ -1282,13 +1389,18 @@ export const copyableDigits = (value) => {
   return digits || String(value || '').trim();
 };
 
-// NYC ZIP REPAIR — unchanged from v4.27
+// NYC ZIP REPAIR — "New York, 10023" → "New York 10023" (comma only).
+// v4.174.0: this used to PREFIX an invented "100" to any 3-digit number after
+// the city, so "New York, 250" became "New York 10050" — digits the speaker
+// never said, on a call where the number was a price. It now only tidies a
+// 5-digit ZIP that already carries its own leading 1, which is the only shape
+// this rule was ever right about. Anything else stays exactly as dictated.
 export const repairNYCZipNumbers = (text) => {
   if (!text) return text;
-  return text.replace(/\b(New York|NY|N\.Y\.)\s*,?\s*(\d{3})\b/gi, (m, city, zip) => {
-    const suffix = zip.slice(-2);
-    return `${city} 100${suffix}`;
-  });
+  return text.replace(
+    /\b(New York|NY|N\.Y\.)\s*,\s*(1\d{4})\b/gi,
+    (m, city, zip) => `${city} ${zip}`,
+  );
 };
 
 // NÚMEROS MÁGICOS — unchanged from v4.27
@@ -1665,7 +1777,13 @@ const DEDUPE_NEVER_DROP = new Set([
   'stroke', 'trauma', 'code', 'stat',
 ]);
 
-const PHRASE_FILLERS = ['you know', 'i mean', 'sort of', 'kind of'];
+// v4.174.0: phrase fillers are NOT stripped any more.
+// They used to be removed from the MIDDLE of every finalized sentence, which
+// could destroy meaning: "Do you know if you have insurance?" became "Do if
+// you have insurance?" — a question turned into a fragment, in the text the
+// translator then translated. A readability win is never worth changing what
+// the patient said. Leading single-word fillers below still go.
+const PHRASE_FILLERS = [];
 
 export const cleanFillerWords = (text) => {
   if (!text) return text;

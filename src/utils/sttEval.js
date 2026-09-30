@@ -66,21 +66,27 @@ export const alignWords = (ref = [], hyp = []) => {
 };
 
 /**
- * Join digit groups: "555-123-4567" -> "5551234567".
- * Written as a char walk on purpose: a regex with a consuming group skips
- * separators after the consumed digit (it produced "555123 4567").
+ * Join GROUPING separators inside a single number:
+ *   "555-123-4567" -> "5551234567"   "1,200" -> "1200"   "3.5" -> "35"? no.
+ *
+ * v4.174.0: a SPACE between digits is no longer a separator, and a comma
+ * followed by a space is no longer a separator. This function used to treat
+ * every digit-sep-digit as one number, so it rewrote the SCORING TEXT of
+ * "the dose is 500 500 mg" to "500500 mg" and "250 50 75 dollars" to
+ * "2505075 dollars" — three numbers silently becoming one, inside the metric
+ * that is supposed to detect exactly that. Two prices separated by a comma
+ * ("150, 250, 350") and two doses separated by a space are two numbers; only
+ * a dash, a dot, or a comma with NO space after it is grouping.
  */
 export const joinDigitSeparators = (text) => {
-  const isSep = (c) => !!c && /[\s.,:]/.test(c) || c === '-';
+  const isSep = (c) => !!c && (c === '-' || c === '.' || c === ',');
   const isDigit = (c) => !!c && /\d/.test(c);
   let out = '';
   for (let i = 0; i < text.length; i++) {
     const ch = text[i];
     if (isSep(ch)) {
-      let j = i + 1;
-      while (j < text.length && isSep(text[j])) j++;
-      if (isDigit(out[out.length - 1]) && isDigit(text[j])) {
-        i = j - 1; // separator sits between digits -> drop it and keep going
+      // Grouping only: separator sits directly between two digits.
+      if (isDigit(out[out.length - 1]) && isDigit(text[i + 1])) {
         continue;
       }
     }
@@ -153,9 +159,16 @@ export const wordErrorRate = ({ reference = '', hypothesis = '', lang = 'en' } =
  * Did the reference's critical term survive into the hypothesis?
  * Word-boundary aware, so "an" never counts as "Ans" and "mg" not in "mgdl".
  */
-export const hasPhrase = (text, phrase) => {
-  const hay = normalizeForScoring(text, { foldNumberWords: false });
-  const needle = normalizeForScoring(phrase, { foldNumberWords: false });
+/**
+ * Word-boundary aware, so "an" never counts as "Ans" and "mg" not in "mgdl".
+ *
+ * v4.174.0: `lang` is threaded through so BOTH sides are normalized with the
+ * same fold set. Without it "one fifty" (reference) and "150" (screen) were
+ * two different strings, so a correct fold read as a dropped phrase.
+ */
+export const hasPhrase = (text, phrase, lang = 'en') => {
+  const hay = normalizeForScoring(text, { lang });
+  const needle = normalizeForScoring(phrase, { lang });
   if (!needle) return false;
   return ` ${hay} `.includes(` ${needle} `);
 };
@@ -206,10 +219,14 @@ export const digitRunAccuracy = ({ reference = '', hypothesis = '' } = {}) => {
  * Negations and other meaning-flipping phrases. Kept separate from WER because
  * a dropped "no" is a completely different failure from a dropped "the".
  */
-export const criticalPhraseRecall = ({ reference = '', hypothesis = '', phrases = [] } = {}) => {
-  const want = (phrases || []).filter((p) => hasPhrase(reference, p));
+export const criticalPhraseRecall = ({ reference = '', hypothesis = '', phrases = [], lang = 'en' } = {}) => {
+  // v4.174.0: match the phrase in its NORMALIZED form. A phrase written the
+  // way it was spoken ("one fifty") is correctly rendered as "150" on screen,
+  // and the word-boundary check could never see that as the same phrase — so
+  // the harness reported our own correct output as a DROPPED critical phrase.
+  const want = (phrases || []).filter((p) => hasPhrase(reference, p, lang));
   if (!want.length) return { total: 0, hits: 0, recall: 1, dropped: [] };
-  const dropped = want.filter((p) => !hasPhrase(hypothesis, p));
+  const dropped = want.filter((p) => !hasPhrase(hypothesis, p, lang));
   return {
     total: want.length,
     hits: want.length - dropped.length,
@@ -257,6 +274,7 @@ export const scoreEvalCase = ({
     reference,
     hypothesis: hasDisplay ? display : hypothesis,
     phrases: criticalPhrases,
+    lang,
   });
 
   // v4.155.0 — repair is measured against what the user reads WITHOUT it.

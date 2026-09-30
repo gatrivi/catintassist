@@ -2,10 +2,10 @@
   "id": "pipeline-medical-costs",
   "kind": "medical",
   "lang": "en",
-  "label": "A cost call: spoken prices must survive as ONE number each — never a clock, never an SSN",
-  "reference": "The cleaning is one fifty, the crown is two twenty five, and the estimate is one thousand two hundred dollars.",
+  "label": "A cost call: spoken prices must survive as ONE number each — never a clock, never an SSN, never lost",
+  "reference": "the cleaning is 150 and the crown is 225 the total estimate is 1200 dollars if you want the crowns 250 50 75 dollars and the dose is 500 500 mg",
   "terms": ["cleaning", "crown"],
-  "criticalPhrases": ["one fifty", "two twenty five", "one thousand two hundred"],
+  "criticalPhrases": ["150", "225", "1200", "250 50 75", "500 500"],
   "expect": {
     "maxWerDisplay": 0.25,
     "maxDamage": 0,
@@ -69,6 +69,42 @@
                 { "word": "two", "confidence": 0.93 },
                 { "word": "hundred", "confidence": 0.92 },
                 { "word": "dollars", "confidence": 0.94 }
+              ]
+            }
+          ]
+        }
+      }
+    },
+    {
+      "atMs": 8000,
+      "lane": "en",
+      "payload": {
+        "type": "Results",
+        "is_final": true,
+        "speech_final": true,
+        "start": 9.0,
+        "channel": {
+          "alternatives": [
+            {
+              "transcript": "If you want the crowns 250 50 75 dollars and the dose is 500 500 mg.",
+              "confidence": 0.92,
+              "words": [
+                { "word": "if", "confidence": 0.94 },
+                { "word": "you", "confidence": 0.95 },
+                { "word": "want", "confidence": 0.94 },
+                { "word": "the", "confidence": 0.95 },
+                { "word": "crowns", "confidence": 0.92 },
+                { "word": "250", "confidence": 0.93 },
+                { "word": "50", "confidence": 0.92 },
+                { "word": "75", "confidence": 0.92 },
+                { "word": "dollars", "confidence": 0.94 },
+                { "word": "and", "confidence": 0.94 },
+                { "word": "the", "confidence": 0.95 },
+                { "word": "dose", "confidence": 0.93 },
+                { "word": "is", "confidence": 0.95 },
+                { "word": "500", "confidence": 0.93 },
+                { "word": "500", "confidence": 0.92 },
+                { "word": "mg", "confidence": 0.94 }
               ]
             }
           ]
