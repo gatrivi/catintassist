@@ -21,6 +21,7 @@ import { act, renderHook } from '@testing-library/react';
 const session = {
   speechAutoConnect: false,
   isActive: false,
+  shiftEarEnabled: true,
 };
 
 jest.mock('../contexts/SessionContext', () => ({
@@ -49,6 +50,9 @@ jest.mock('../contexts/SessionContext', () => ({
     get speechAutoConnect() {
       return session.speechAutoConnect;
     },
+    get shiftEarEnabled() {
+      return session.shiftEarEnabled;
+    },
   }),
 }));
 
@@ -60,6 +64,8 @@ jest.mock('../utils/deepgramRuntimeKey', () => ({
 }));
 
 import { useDeepgram } from './useDeepgram';
+// The shift-ear budget knobs, so the loop test asserts against real numbers.
+import { EAR_REARM_MAX, EAR_RELEASE_IDLE_MS } from '../utils/shiftEar';
 
 const audioTrack = (over = {}) => ({
   kind: 'audio',
@@ -97,10 +103,17 @@ class FakeSocket {
     this.onopen?.();
   }
 
+  /** A NETWORK drop: no CloseStream was sent — Deepgram decided to go. */
+  die() {
+    this.readyState = 3; // CLOSED
+    this.onclose?.({ code: 1006, reason: 'network' });
+  }
+
   send(data) {
     this.sent.push(data);
   }
 
+  /** Our own teardown: CloseStream first, then a clean code-1000 close. */
   close(code = 1000, reason = '') {
     this.closedWith = code;
     this.readyState = 3; // CLOSED
@@ -170,6 +183,9 @@ beforeEach(() => {
   FakeRecorder.instances = [];
   session.speechAutoConnect = false;
   session.isActive = false;
+  // Opt-in per test: the legacy cases above were written against the pre-4.171
+  // behaviour (no ear at all unless auto-connect is on).
+  session.shiftEarEnabled = false;
   getDisplayMedia = jest.fn().mockResolvedValue(fakeStream());
   oldMediaDevices = Object.getOwnPropertyDescriptor(navigator, 'mediaDevices');
   Object.defineProperty(navigator, 'mediaDevices', {
@@ -341,5 +357,153 @@ describe('a failing press cannot fail the NEXT press (v4.170.0)', () => {
     });
     expect(result.current.sttLive).toBe(true);
     expect(result.current.connectionState).toBe('connected');
+  });
+});
+
+/**
+ * v4.172.0 SHIFT EAR. The claim under test is narrow and cheap to hold: keeping
+ * a pair warm off-call must never start the recorder (no audio leaves the
+ * machine = $0, no phantom minutes), and an off-call socket death must stop
+ * resetting the app to DISCONNECTED.
+ */
+describe('shift ear keeps one pair warm all shift (v4.172.0)', () => {
+  const openFrom = async (from) => {
+    await act(async () => {
+      FakeSocket.instances.slice(from).forEach((s) => s.open());
+    });
+  };
+
+  /**
+   * Advance real time on a network that ANSWERS: every KeepAlive tick, any socket
+   * still mid-handshake completes. Without this a rotated pair sits in
+   * CONNECTING forever, which is a different (and separately tested) failure.
+   */
+  const liveNetworkFor = async (ms) => {
+    for (let t = 0; t < ms; t += 4000) {
+      // eslint-disable-next-line no-await-in-loop
+      await act(async () => {
+        jest.advanceTimersByTime(4000);
+      });
+      // eslint-disable-next-line no-await-in-loop
+      await act(async () => {
+        FakeSocket.instances.filter((s) => s.readyState === 0).forEach((s) => s.open());
+      });
+    }
+  };
+
+  it('stays connected after STOP with no auto-start flag — and sends no audio', async () => {
+    session.shiftEarEnabled = true;
+    const { result } = renderHook(() => useDeepgram());
+    await pressAndOpen(result);
+    expect(result.current.sttLive).toBe(true);
+    const recordersAfterConnect = FakeRecorder.instances.length;
+
+    await act(async () => {
+      result.current.stopRecording();
+    });
+
+    // The pair survives, so the next call starts from an open socket.
+    expect(result.current.connectionState).toBe('connected');
+    // Nothing is streaming: a warm pair has NO recorder, or clinic chatter would
+    // be billed and banked as work that never happened (v4.99.2: 893 minutes).
+    expect(FakeRecorder.instances).toHaveLength(recordersAfterConnect);
+    expect(result.current.sttLive).toBe(false);
+    expect(result.current.connectProgress.audioChunksSent).toBe(false);
+  });
+
+  it('re-arms a pair that dies off-call with no operator press', async () => {
+    session.shiftEarEnabled = true;
+    const { result } = renderHook(() => useDeepgram());
+    await pressAndOpen(result);
+    await act(async () => {
+      result.current.stopRecording();
+    });
+
+    const before = FakeSocket.instances.length;
+    // A network drop (1006), not our CloseStream: Deepgram decided to go.
+    await act(async () => {
+      FakeSocket.instances.slice(-2).forEach((s) => s.die());
+    });
+
+    expect(FakeSocket.instances.length).toBeGreaterThan(before);
+    // The bug this fixes: off-call, the app fell to `disconnected` and went
+    // deaf, so the next call needed a CONNECT press.
+    expect(result.current.connectionState).toBe('connected');
+
+    // The re-armed pair is a KEEPALIVE pair: opening it must not start audio.
+    const recordersBefore = FakeRecorder.instances.length;
+    await openFrom(before);
+    expect(FakeRecorder.instances).toHaveLength(recordersBefore);
+    expect(result.current.sttLive).toBe(false);
+  });
+
+  it('gives up honestly after the re-arm budget instead of looping forever', async () => {
+    session.shiftEarEnabled = true;
+    const { result } = renderHook(() => useDeepgram());
+    await pressAndOpen(result);
+    await act(async () => {
+      result.current.stopRecording();
+    });
+
+    const before = FakeSocket.instances.length;
+    // Every re-arm leaves a pair that never handshakes (network down), so the
+    // next tick dies on it too.
+    for (let i = 0; i < EAR_REARM_MAX + 4; i += 1) {
+      const live = FakeSocket.instances.slice(before).filter((s) => s.readyState !== 3);
+      // eslint-disable-next-line no-await-in-loop
+      await act(async () => {
+        live.forEach((s) => s.die());
+      });
+      // eslint-disable-next-line no-await-in-loop
+      await act(async () => {
+        jest.advanceTimersByTime(4000);
+      });
+    }
+
+    const attempts = FakeSocket.instances.length - before;
+    expect(attempts).toBeLessThanOrEqual(EAR_REARM_MAX * 2 + 2);
+    expect(result.current.connectionMessage).toMatch(/press CONNECT/i);
+  });
+
+  it('hands the pair back after an hour of silence but keeps listening', async () => {
+    session.shiftEarEnabled = true;
+    const { result } = renderHook(() => useDeepgram());
+    await pressAndOpen(result);
+    await act(async () => {
+      result.current.stopRecording();
+    });
+
+    // A healthy network: the pair rotated at 45min handshakes properly, so what
+    // is released at the hour is a live socket, not a half-open one.
+    await liveNetworkFor(EAR_RELEASE_IDLE_MS + 8000);
+
+    // Socket given back (nothing held overnight) and freed properly: Deepgram
+    // stops counting the stream now, not ~10s later.
+    expect(FakeSocket.instances.every((s) => s.readyState === 3)).toBe(true);
+    expect(FakeSocket.instances.some((s) => s.saidGoodbye())).toBe(true);
+    // The EAR is still armed: the next call is a press, not a cold reconnect.
+    expect(result.current.connectionState).toBe('connected');
+    expect(result.current.connectProgress.socketEn).toBe('skipped');
+    expect(result.current.sttLive).toBe(false);
+    // And it never streamed: an hour of idle must not bill Deepgram or bank
+    // minutes that were not worked (v4.99.2: 893 phantom minutes).
+    expect(result.current.connectProgress.audioChunksSent).toBe(false);
+  });
+
+  it('a press after a release still gets a working call pair', async () => {
+    session.shiftEarEnabled = true;
+    const { result } = renderHook(() => useDeepgram());
+    await pressAndOpen(result);
+    await act(async () => {
+      result.current.stopRecording();
+    });
+    await act(async () => {
+      jest.advanceTimersByTime(EAR_RELEASE_IDLE_MS + 8000);
+    });
+
+    const { ok } = await pressAndOpen(result);
+    expect(ok).toBe(true);
+    expect(result.current.sttLive).toBe(true);
+    expect(FakeRecorder.instances).toHaveLength(2);
   });
 });

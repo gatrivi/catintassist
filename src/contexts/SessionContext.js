@@ -548,6 +548,13 @@ export const SessionProvider = ({ children }) => {
     const saved = localStorage.getItem('catint_call_focus');
     return saved === null ? true : saved === 'true';
   });
+  // v4.172.0 SHIFT EAR: keeps one Deepgram pair warm across the whole shift
+  // instead of tearing it down at every STOP. Sockets-only: no recorder, so no
+  // audio and no billing. Off = pre-4.171 behaviour exactly.
+  const [shiftEarEnabled, setShiftEarEnabled] = useState(() => {
+    const saved = localStorage.getItem('catint_shift_ear');
+    return saved === null ? true : saved === 'true';
+  });
 
   const [autoAttachEnabled, setAutoAttachEnabled] = useState(() => {
     const saved = localStorage.getItem('catint_auto_attach_enabled_v1');
@@ -561,6 +568,7 @@ export const SessionProvider = ({ children }) => {
   useEffect(() => { localStorage.setItem('catint_toolbar_visible', JSON.stringify(isToolbarVisible)); }, [isToolbarVisible]);
   useEffect(() => { localStorage.setItem('catint_call_detect', JSON.stringify(isCallDetectionEnabled)); }, [isCallDetectionEnabled]);
   useEffect(() => { localStorage.setItem('catint_call_focus', JSON.stringify(callFocusMode)); }, [callFocusMode]);
+  useEffect(() => { localStorage.setItem('catint_shift_ear', JSON.stringify(shiftEarEnabled)); }, [shiftEarEnabled]);
   useEffect(() => {
     localStorage.setItem(
       'catint_auto_attach_enabled_v1',
@@ -1617,6 +1625,8 @@ export const SessionProvider = ({ children }) => {
     setAutoAttachEnabled,
     callFocusMode,
     setCallFocusMode,
+    shiftEarEnabled,
+    setShiftEarEnabled,
     lastCallSummary,
     setLastCallSummary,
     lastCallArchive,

@@ -126,6 +126,9 @@ export default function SettingsPanel({
     setTranslationMood,
     speechAutoConnect,
     setSpeechAutoConnect,
+    // v4.172.0 SHIFT EAR
+    shiftEarEnabled,
+    setShiftEarEnabled,
     isNotesOpen,
     setIsNotesOpen,
     vaultStatus,
@@ -784,6 +787,24 @@ export default function SettingsPanel({
             </label>
             <p style={{ fontSize: 10, color: 'rgba(255,255,255,0.5)', marginTop: 6 }}>
               v4.92.0: between calls the app keeps its ears open (idle ear — Deepgram gets NO audio, only pings, so no usage) and starts the call by itself when speech appears. Requires audio attached (one CONNECT press per browser session).
+            </p>
+            <label
+              id="settings-shift-ear"
+              style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12, cursor: 'pointer', marginTop: 14 }}
+            >
+              <input
+                type="checkbox"
+                checked={shiftEarEnabled}
+                onChange={(e) => setShiftEarEnabled(e.target.checked)}
+              />
+              Shift Ear — keep one Deepgram socket warm all shift
+            </label>
+            <p style={{ fontSize: 10, color: 'rgba(255,255,255,0.5)', marginTop: 6 }}>
+              v4.172.0: an off-call socket death used to drop the app to DISCONNECTED and deaf
+              (the VAD went with it), so the next call needed a CONNECT press. Now the ear
+              quietly re-opens the pair, rotates it before Deepgram drops it, and lets it go
+              after an hour of silence. Nothing is sent while warm, so it costs $0 and banks
+              no minutes. Off = exactly the old behaviour.
             </p>
             <AutopilotSettings />
             <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12, cursor: 'pointer', marginTop: 14 }}>

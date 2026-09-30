@@ -115,3 +115,4 @@
 | 2026-09-27T18:37:04.907Z | 6d0b674 | v4.168.0 condensed toolbar back off-call: Min/Std/Full, Notes, Tools, Help, Edit, Call detection, Focus + copyable pills |
 | 2026-09-27T20:47:26.876Z | 5984914 | v4.169.0 make the failure visible: per-socket health + translation-surplus warning (CSA call incident) |
 | 2026-09-29T03:11:39.003Z | 6aabc36 | v4.170.0 connect self-heal: CloseStream+1000, ear kill, recorder rebuild, attempt-scoped fail |
+| 2026-09-29T21:25:49.737Z | b7ed892 | v4.171.0 the on-call gallery is yours: pick up to 8 of 24 greetings |

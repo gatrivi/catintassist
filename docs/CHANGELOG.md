@@ -2,6 +2,21 @@
 
 **Version source:** `src/constants/version.js` (must match `package.json` + top-right UI pill)
 
+
+## v4.172.0 - one warm ear for the whole shift
+
+Stopping a call tore the Deepgram socket down, and a socket that dropped **by itself between calls** was treated as an app failure: `stopIdleEar()` + `closeConnections()` → red `Disconnected`, and the local speech detector went down with it. That is the literal source of "it never detects my speech, I press CONNECT every call". One pair is now kept warm across the shift; only the recorder / transcript / money counter toggle.
+
+- **An off-call socket death re-arms, quietly** (`src/utils/shiftEar.js` — pure policy + unit tests). It never starts the recorder: a warm pair carries **no audio**, so it costs $0 and cannot bank minutes nobody worked (v4.99.2: 893 phantom minutes). Checked against the live API first — a KeepAlive-only socket on `/listen` stayed open past 100s receiving nothing but its own echoes. Deepgram's docs say that will not work on this endpoint; it does.
+- **The CONNECT watchdog now dies with the call.** It is armed 12s before audio is expected, so it routinely outlived a short call, and its verdict on an idle pair is `recorder-rebuild` — which started streaming clinic audio with NO call running: billed, transcribed, zero minutes banked, finished with a red TIMEOUT. `enterIdleEar` bumps `connectAttemptIdRef` (the v4.170.0 way to void in-flight connect timers) and clears both timers.
+- **The pair the ear inherits is the CALL's pair**, so its `onclose` ran the call's reconnect ladder and landed on `disconnected`. `handPairToEar()` swaps only the death notice; the transcript handler and `isEarPair` stay, so a wake streams straight back into it instead of rebuilding.
+- **CONNECTING is not dead.** The 4s tick judged a mid-handshake pair as "both sockets gone" and replaced the pair it had just opened — churn, budget burned, "press CONNECT" on exactly the slow networks that need the ear. `isEarPairDead` needs zero open AND zero pending, with a 20s grace for a handshake that never completes.
+- **`releaseEarPair` zeroes its clocks BEFORE closing.** `closeSocket` fires that socket's `onclose` synchronously and the ear's `onclose` reads the clock to tell "we let it go" from "it died", so an hour-of-silence release re-armed the pair it was dropping and then threw the replacement away.
+- **Release is silence-based, never a clock.** A pair rotates at 45 min (off-call only) and is released after 60 min of nothing so nothing is held overnight. An 18:00 timer would cost a manual CONNECT during exactly the overtime the scoreboard exists to chase.
+- **Billed/board minutes untouched**: `SessionContext` accrues on `isActive` only and `availTimer` only off-call. Neither reads socket state — the invariant this whole feature sits inside.
+- **Switch**: Settings → Behaviour → *Shift Ear* (`catint_shift_ear`, ON by default). Off = v4.171.0 behaviour exactly.
+- **Tests**: 22 policy tests in `src/utils/shiftEar.test.js`, 5 hook tests in `useDeepgram.connect.test.js` (fake timers, hand-driven WebSocket/MediaRecorder doubles): stays connected after STOP with no recorder started, re-arms on a network drop with no press, honest give-up after the budget, release after an hour with `CloseStream` sent and zero audio chunks, and a press after a release still gets a working call pair. Full suite 144 suites / 1520 tests.
+
 ## v4.171.0 - you pick the greetings on the strip
 
 The on-call gallery was a hardcoded list of 7, so **17 of your 24 recorded greetings were impossible to fire on a call** — no setting, no trick, just a constant in the source. Recording a new one did nothing visible, and the "nothing happens" you hit had three separate causes that all looked identical.

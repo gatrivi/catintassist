@@ -25,6 +25,53 @@ import { APP_VERSION } from '../constants/version';
 /** Newest first. Only the entry matching APP_VERSION is shown on load. */
 export const RELEASE_NOTES_CATALOG = [
   {
+    version: '4.172.0',
+    id: 'shift-ear-one-socket',
+    highlightElementIds: ['settings-shift-ear', 'audio-route-stt-summary'],
+    es: {
+      title: 'Un solo oído despierto toda la jornada',
+      intro: 'Cada vez que colgabas, el socket con Deepgram se cortaba. Y si se cortaba solo entre llamadas, la app se quedaba en DISCONNECTED y sorda: el micrófono de detección se iba con él y la siguiente llamada te pedía otro CONNECT. Ahora el oído queda caliente.',
+      sections: [
+        { heading: 'Qué estaba pasando', bullets: [
+          'Un socket que muere **fuera de llamada** era tratado como una falla de la app: te pintaba el estado en rojo y apagaba la escucha local. Por eso sentías que «nunca detecta mi voz» y terminabas pulsando CONNECT en cada llamada.',
+          'El cronómetro de 12 segundos del CONNECT sobrevivía al STOP. Sobre un par tieso decidía «reconstruir el grabador» y empezaba a mandar audio del consultorio **sin llamada activa**: te cobraba, se transcribía, y el marcador no cargaba ni un minuto.',
+          'Una red lenta (>4 s en levantar el socket) se leía «los dos se murieron», así que la app reemplazaba el par que acababa de abrir, gastaba los reintentos y se rendía.',
+        ] },
+        { heading: 'Qué hace ahora', bullets: [
+          'Terminás la llamada: los sockets siguen abiertos, el grabador parado. **No sale audio** = cero costo y cero minutos fantasma.',
+          'Si Deepgram corta el socket entre llamadas, la app abre otro par **sola**, sin que toques nada, y te lo avisa en el chip.',
+          'El par se recicla a los 45 minutos antes de que lo corten, y se suelta del todo tras **una hora sin actividad** para no dejar nada abierto de noche. No usamos un horario: si te quedás hasta las 20 por la cuenta, el oído sigue contigo.',
+          'Un socket en manojo (conectando) ya no cuenta como muerto.',
+        ] },
+        { heading: 'Qué NO cambia', bullets: [
+          'El minuto facturable y el del marcador se siguen contando solo con **llamada activa**; ninguna de las dos cosas mira el estado del socket.',
+          'Con el switch apagado el comportamiento es idéntico al de la versión anterior. Está en Ajustes → Comportamiento.',
+        ] },
+      ],
+    },
+    en: {
+      title: 'One warm ear for the whole shift',
+      intro: 'Every time you hung up, the Deepgram socket was torn down. And when it dropped by itself between calls, the app went DISCONNECTED and deaf — the local speech detector died with it, so the next call wanted another CONNECT press. Now the ear stays warm.',
+      sections: [
+        { heading: 'What was happening', bullets: [
+          'A socket dying **off-call** was treated as an app failure: red status, and the local listener went down with it. That is the "it never detects my speech" feeling that left you pressing CONNECT on every call.',
+          'The 12-second CONNECT watchdog outlived STOP. On an idle pair its verdict was "rebuild the recorder", which started streaming clinic audio with **no call running**: billed, transcribed, and the scoreboard banked not a single minute.',
+          'A slow network (over ~4 s to open a socket) read as "both sockets dead", so the app replaced the pair it had just opened, spent the retries, and gave up.',
+        ] },
+        { heading: 'What it does now', bullets: [
+          'You stop a call: the sockets stay open, the recorder is off. **No audio leaves the machine** = zero cost, zero phantom minutes.',
+          'If Deepgram drops the socket between calls, the app opens a fresh pair **on its own**, no press, and says so in the chip.',
+          'The pair is recycled at 45 minutes before anything cuts it, and released entirely after **an hour of silence** so nothing is left open overnight. It is deliberately not a clock: if you stay late to chase the target, the ear stays with you.',
+          'A socket that is still handshaking no longer counts as dead.',
+        ] },
+        { heading: 'What did NOT change', bullets: [
+          'Billed minutes and scoreboard minutes still key off an **active call** only. Neither one looks at socket state.',
+          'With the switch off the behaviour is identical to the previous version. It lives in Settings → Behaviour.',
+        ] },
+      ],
+    },
+  },
+  {
     version: '4.171.0',
     id: 'you-pick-the-gallery',
     highlightElementIds: ['soundboard-dock'],

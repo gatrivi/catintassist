@@ -96,6 +96,14 @@ import {
   setSttAudioRecording,
   updateSttEvent,
 } from "../utils/sttDiagnosticTrace";
+import {
+  shouldRearmEar,
+  earSocketAction,
+  isOrphanedResume,
+  shouldRefillRearmBudget,
+  isEarPairDead,
+  EAR_ORPHAN_RESUME_MS,
+} from "../utils/shiftEar";
 
 const CAPTIONS_CLEARED_EVENT = "catint_captions_cleared";
 const STT_TRACE_LIMIT = 300;
@@ -167,6 +175,8 @@ export const useDeepgram = () => {
     armAutopilotFarewell,
     callAutopilotRef,
     speechAutoConnect,
+    // v4.172.0 SHIFT EAR: one warm pair for the whole shift.
+    shiftEarEnabled,
   } = useSession();
 
   const [connectionState, setConnectionState] = useState("disconnected");
@@ -269,6 +279,27 @@ export const useDeepgram = () => {
   const startRecorderOnSocketsRef = useRef(null);
   const lastRecorderRebuildAtRef = useRef(0);
   const recorderRebuildsRef = useRef(0);
+  // v4.172.0 SHIFT EAR: the warm pair is now expected to outlive a call, so it
+  // needs its own bookkeeping.
+  //   openedAt   → when the CURRENT pair was opened (rotation clock)
+  //   lastBusyAt → when a call ended or speech was last heard (release clock)
+  //   rearms     → silent re-arms spent during this idle stretch
+  const earSocketsOpenedAtRef = useRef(0);
+  const earLastBusyAtRef = useRef(0);
+  const earRearmsRef = useRef(0);
+  const earLastRearmAtRef = useRef(0);
+  // The wake resumed the recorder. If no call ever activates, audio must go back
+  // to KeepAlive-only — never an uncounted stream to Deepgram.
+  const earWakeAtRef = useRef(0);
+  const earWakeTimerRef = useRef(null);
+  // Guards the re-arm path against re-entering itself through onclose.
+  const earRearmingRef = useRef(false);
+  // enterIdleEar is defined below the wake path; bridged for the orphan timer.
+  const enterIdleEarRef = useRef(null);
+  // A live call on EITHER truth — the hook's own stream flag or the session's.
+  // Ear housekeeping (rotate / release / re-arm) must never touch a pair that
+  // is carrying a call, and the two flags flip at slightly different moments.
+  const isCallLive = () => !!(isActiveRef.current || isActiveLiveRef.current);
   // v4.149.0: outgoing-audio speech evidence — last time the stream was
   // actually LOUD locally (RMS). Separates a dead Deepgram pipe (Zap fixes)
   // from a silent mic/tab/headset route (Zap useless). Local-only analyser.
@@ -319,6 +350,10 @@ export const useDeepgram = () => {
   const startRecordingRef = useRef(null);
   const speechAutoConnectRef = useRef(speechAutoConnect);
   useEffect(() => { speechAutoConnectRef.current = speechAutoConnect; }, [speechAutoConnect]);
+  // Ref mirror: the idle KeepAlive tick runs inside a worker-backed interval
+  // that must not be rebuilt every time a Settings toggle flips.
+  const shiftEarEnabledRef = useRef(shiftEarEnabled);
+  useEffect(() => { shiftEarEnabledRef.current = shiftEarEnabled; }, [shiftEarEnabled]);
   const connectFailTimerRef = useRef(null);
   const connectFlagsRef = useRef({
     phase: "idle",
@@ -1765,10 +1800,209 @@ export const useDeepgram = () => {
     idleEarActiveRef.current = false;
     if (vadIntervalRef.current) { vadIntervalRef.current(); vadIntervalRef.current = null; }
     if (idleKeepAliveRef.current) { idleKeepAliveRef.current(); idleKeepAliveRef.current = null; }
+    clearTimeout(earWakeTimerRef.current);
+    earWakeTimerRef.current = null;
     try { vadCtxRef.current?.close(); } catch (_) {}
     vadCtxRef.current = null;
   }, []);
   stopIdleEarRef.current = stopIdleEar;
+
+  // ── SHIFT EAR (v4.172.0) ───────────────────────────────────────────────
+  // The pair the ear keeps warm is NOT a call pair: it pings and it never
+  // carries audio. tryStartStreaming (the call path's socket handler) builds a
+  // MediaRecorder the moment both sockets report open, so the ear cannot reuse
+  // it — off-call audio reaching Deepgram means clinic chatter leaves the
+  // machine, a transcript can auto-start a phantom call, and minutes get banked
+  // for time nobody worked (v4.99.2: 893 of them). The ear pair therefore has
+  // no transcript handler at all, and `isEarPair` marks it so a wake knows it
+  // must upgrade to a real pair instead of streaming into a dead-end socket.
+
+  /**
+   * The ear's socket handlers, shared by a pair the ear OPENS and by the CALL
+   * pair it inherits at STOP.
+   *
+   * The rebinding matters: after STOP the warm sockets are still the call's, with
+   * the call's `onclose` (reconnect ladder / `disconnected`) and the call's
+   * transcript handler. An off-call drop then reset the whole app instead of
+   * quietly re-arming, and any late transcript off-call could paint text and
+   * start a phantom call. In the ear both are inert-by-design.
+   */
+  const earSocketHandlers = useCallback(
+    (side, ws, multiMode) => ({
+      onopen: () => {
+        earRearmingRef.current = false;
+        // `socketsOpen` is the both-lanes-open gate. A patch must only SET it:
+        // syncConnectProgress merges by spread, so an `undefined` value would
+        // write the key as undefined and every truthiness read would flip.
+        const bothOpen =
+          socketRefEn.current?.readyState === 1 &&
+          (multiMode || socketRefEs.current?.readyState === 1);
+        syncConnectProgress({
+          [side === "En" ? "socketEn" : "socketEs"]: "open",
+          ...(bothOpen ? { socketsOpen: true } : null),
+        });
+      },
+      // Deliberately inert: with no recorder there is nothing to transcribe, and
+      // any real transcript handler here could paint text or start a phantom call
+      // while nobody is working.
+      onmessage: () => {},
+      onerror: () => {},
+      onclose: () => {
+        const mine = side === "En" ? socketRefEn.current : socketRefEs.current;
+        if (mine && mine !== ws) return; // rotated/replaced — stay quiet
+        if (side === "En") socketRefEn.current = null;
+        else socketRefEs.current = null;
+        if (!idleEarActiveRef.current || earRearmingRef.current) return;
+        // openedAt === 0 means WE let the pair go on purpose (release). Without
+        // this the CloseStream's own onclose re-arms it one frame later.
+        if (!earSocketsOpenedAtRef.current) return;
+        // A press owns this pair now: startDeepgram closed it to open a call
+        // pair. Re-arming here would fight the call handshake.
+        if (isCallLive()) return;
+        earRearmRef.current?.();
+      },
+    }),
+    [syncConnectProgress],
+  );
+
+  /**
+   * The CALL pair just stopped becomes the warm pair. It KEEPS its transcript
+   * handler and `isEarPair === false` (it really can carry audio, so a wake
+   * streams straight back into it instead of rebuilding), but its DEATH NOTICE
+   * changes: the call's `onclose` runs the reconnect ladder and lands on
+   * `disconnected`, which off-call means the ear went deaf, the chip went red and
+   * the next call needed a CONNECT press — the "it never detects my speech"
+   * report. Here a death quietly re-arms.
+   */
+  const handPairToEar = useCallback(() => {
+    const multiMode = usesMultiSocket(languagePairRef.current);
+    [["En", socketRefEn], ["Es", socketRefEs]].forEach(([side, ref]) => {
+      const ws = ref.current;
+      if (!ws || ws.isEarPair) return;
+      Object.assign(ws, {
+        onclose: earSocketHandlers(side, ws, multiMode).onclose,
+      });
+    });
+  }, [earSocketHandlers]);
+
+  /** Open a KeepAlive-only pair on the preserved stream. Never starts audio. */
+  const openEarPair = useCallback(() => {
+    const API_KEY = getEffectiveDeepgramKey();
+    if (!API_KEY) return false;
+    const stream = streamRef.current;
+    if (!stream?.active || stream.getAudioTracks().length === 0) return false;
+
+    const pair = languagePairRef.current;
+    const multiMode = usesMultiSocket(pair);
+    const bias = readSttBias();
+
+    // WE are replacing this pair (re-arm or rotation). The old pair's CloseStream
+    // fires its own onclose, which would otherwise read as "the sockets died" and
+    // re-arm again — an endless replace loop that also throws away the pair just
+    // opened. Cleared by the new pair's onopen; if it never opens, the KeepAlive
+    // tick's death branch retries (bounded by the re-arm budget).
+    earRearmingRef.current = true;
+    closeSocket(socketRefEn.current);
+    socketRefEn.current = null;
+    closeSocket(socketRefEs.current);
+    socketRefEs.current = null;
+
+    const lanes = multiMode
+      ? [{ side: "En", lang: "multi" }]
+      : [{ side: "En", lang: pair.left }, { side: "Es", lang: pair.right }];
+
+    lanes.forEach(({ side, lang }) => {
+      const ws = new WebSocket(
+        buildListenUrl(lang, sttLatencyModeRef.current, bias),
+        ["token", API_KEY],
+      );
+      ws.isEarPair = true;
+      Object.assign(ws, earSocketHandlers(side, ws, multiMode));
+      if (side === "En") socketRefEn.current = ws;
+      else socketRefEs.current = ws;
+    });
+
+    earSocketsOpenedAtRef.current = Date.now();
+    syncConnectProgress({
+      socketEn: "connecting",
+      socketEs: multiMode ? "skipped" : "connecting",
+      audioChunksSent: false,
+    });
+    return true;
+  }, [closeSocket, syncConnectProgress]);
+
+  /** Sockets died off-call: re-open quietly. Last resort is an honest message. */
+  const rearmEar = useCallback(() => {
+    const stream = streamRef.current;
+    if (
+      !shouldRearmEar({
+        rearms: earRearmsRef.current,
+        streamAlive: !!stream?.active && stream.getAudioTracks().length > 0,
+        inCall: isCallLive(),
+      })
+    ) {
+      critLog("warn", "shift ear: giving up on re-arm", {
+        rearms: earRearmsRef.current,
+        inCall: isCallLive(),
+      });
+      stopIdleEar();
+      closeConnections();
+      setConnectionMessage("Deepgram link lost — press CONNECT.");
+      return;
+    }
+    earRearmsRef.current += 1;
+    earLastRearmAtRef.current = Date.now();
+    critLog("warn", "shift ear: sockets died off-call — re-arming with no press", {
+      attempt: earRearmsRef.current,
+    });
+    // openEarPair raises earRearmingRef itself, BEFORE closing the old pair: the
+    // CloseStream fires that pair's onclose synchronously, and it must not read
+    // as "the sockets died".
+    if (!openEarPair()) {
+      stopIdleEar();
+      closeConnections();
+      setConnectionMessage("Deepgram link lost — press CONNECT.");
+    }
+  }, [openEarPair, stopIdleEar, closeConnections, setConnectionMessage, critLog]);
+  const earRearmRef = useRef(rearmEar);
+  earRearmRef.current = rearmEar;
+
+  /**
+   * Hand the warm pair back: no socket held, the ear itself (VAD) stays armed.
+   * Idempotent — the keepalive tick re-evaluates every 4s and a released pair
+   * still reads `release`, so logging each pass would spam the console.
+   */
+  const releaseEarPair = useCallback(
+    (why) => {
+      if (!socketRefEn.current && !socketRefEs.current) return;
+      critLog("info", "shift ear: releasing warm pair", { why });
+      // Clocks FIRST. `closeSocket` fires that socket's `onclose`, and the ear's
+      // onclose reads `earSocketsOpenedAtRef` to tell "we let it go" from "it
+      // died" — if the close lands before the zeroing (it is synchronous for a
+      // real close on some engines, and always synchronous in tests) the release
+      // re-arms the pair it is deliberately dropping, then the null below throws
+      // away the replacement: churn, budget burned, "press CONNECT".
+      earSocketsOpenedAtRef.current = 0;
+      earRearmsRef.current = 0;
+      earLastRearmAtRef.current = 0;
+      closeSocket(socketRefEn.current);
+      socketRefEn.current = null;
+      closeSocket(socketRefEs.current);
+      socketRefEs.current = null;
+      // 'skipped' is the existing "intentionally not opened" state (isSocketHealthy)
+      // so the chip reads idle-quiet, not broken.
+      syncConnectProgress({
+        socketsOpen: false,
+        socketEn: "skipped",
+        socketEs: "skipped",
+      });
+    },
+    [closeSocket, critLog, syncConnectProgress],
+  );
+  const openEarPairRef = useRef(openEarPair);
+  openEarPairRef.current = openEarPair;
+  const releaseEarPairRef = useRef(releaseEarPair);
+  releaseEarPairRef.current = releaseEarPair;
 
   /** Rebuild just the MediaRecorder and stream into the already-open sockets. */
   const startRecorderOnSockets = useCallback((stream) => {
@@ -1822,33 +2056,100 @@ export const useDeepgram = () => {
   }, [syncConnectProgress]);
   startRecorderOnSocketsRef.current = startRecorderOnSockets;
 
-  /** VAD heard speech → resume audio into warm sockets (or full reconnect). */
+  /** VAD heard speech → audio again, on the right kind of socket. */
   const wakeFromIdleEar = useCallback(() => {
     if (!idleEarActiveRef.current) return;
+    // Waking the recorder means audio leaves the machine. That is only allowed
+    // under the two flags the operator actually switched on: auto-connect (the
+    // wake IS the call start) or autopilot (it needs transcripts to spot the
+    // bridge phrase). Otherwise the warm pair stays warm at $0 and audio waits
+    // for a press — otherwise a cough in the clinic would bill Deepgram and a
+    // whole break would be transcribed for nobody.
+    if (!speechAutoConnectRef.current && !callAutopilotRef.current) {
+      sttTrace("idle ear: speech heard, audio stays off (no auto-start flag)");
+      // Speech proves the shift is still running. If a long idle stretch released
+      // the pair, re-warm it so the next press starts from an open socket. No
+      // recorder starts here — nothing leaves the machine.
+      if (shiftEarEnabledRef.current && !earSocketsOpenedAtRef.current) {
+        earLastBusyAtRef.current = Date.now();
+        openEarPairRef.current?.();
+      }
+      return;
+    }
     stopIdleEar();
     const stream = streamRef.current;
     const multiMode = usesMultiSocket(languagePairRef.current);
     const enOpen = socketRefEn.current?.readyState === 1;
     const esOk = multiMode || socketRefEs.current?.readyState === 1;
-    if (stream?.active && stream.getAudioTracks().length > 0 && enOpen && esOk) {
+    // An ear pair has NO transcript handler by design (it exists only to keep
+    // the stream warm). Streaming into it would bill audio and throw the text
+    // away, so it must be upgraded to a real call pair first.
+    const warmIsCallPair =
+      socketRefEn.current && !socketRefEn.current.isEarPair &&
+      (multiMode || (socketRefEs.current && !socketRefEs.current.isEarPair));
+    if (
+      stream?.active &&
+      stream.getAudioTracks().length > 0 &&
+      enOpen &&
+      esOk &&
+      warmIsCallPair
+    ) {
       if (startRecorderOnSockets(stream)) {
+        earWakeAtRef.current = Date.now();
+        earLastBusyAtRef.current = Date.now();
+        earSocketsOpenedAtRef.current =
+          earSocketsOpenedAtRef.current || Date.now();
         setConnectionState("connected");
         setSttLive(true); // v4.153.0: audio is flowing again.
         setConnectionMessage("Speech detected — reconnecting…");
         sttTrace("idle ear wake: warm recorder resume");
+        // Orphan guard: the recorder is streaming, but a call only becomes
+        // active if something starts one (auto-detect / autopilot / a press). If
+        // nothing ever does, clinic audio is being billed and transcribed while
+        // the scoreboard records NO minutes — exactly the v4.99.2 phantom-time
+        // bug, only self-inflicted. After 30s of that, go back to KeepAlive-only.
+        clearTimeout(earWakeTimerRef.current);
+        earWakeTimerRef.current = setTimeout(() => {
+          earWakeTimerRef.current = null;
+          if (
+            !isOrphanedResume({
+              isActive: !!(isActiveRef.current || isActiveLiveRef.current),
+              resumeAgeMs: Date.now() - earWakeAtRef.current,
+            })
+          )
+            return;
+          critLog("warn", "shift ear: woke for speech but no call started — audio back to idle");
+          try {
+            if (mediaRecorderRef.current?.state !== "inactive") {
+              mediaRecorderRef.current.stop();
+            }
+          } catch (_) {}
+          mediaRecorderRef.current = null;
+          setSttAudioRecording(false);
+          setSttLive(false);
+          setConnectionMessage("No call started — ear listening again");
+          enterIdleEarRef.current?.();
+        }, EAR_ORPHAN_RESUME_MS);
         return;
       }
     }
-    // Cold path: sockets died while idle — full rebuild from the preserved
-    // stream (reuse path, no tab picker, no user gesture needed).
-    // v4.136.0: the wake is now visible and logged. If the rebuild then fails
-    // (e.g. the share died in a background tab and the picker needs a
-    // gesture), the user still knows speech WAS heard and CONNECT is the fix.
+    // Cold path: sockets died or were rotated into an ear pair — full rebuild
+    // from the preserved stream (reuse path, no tab picker, no user gesture).
+    // v4.136.0: the wake is visible and logged. If the rebuild then fails (e.g.
+    // the share died in a background tab and the picker needs a gesture), the
+    // user still knows speech WAS heard and CONNECT is the fix.
     sttTrace("idle ear wake: cold rebuild");
     setSttLive(false);
     setConnectionMessage("Speech detected — press CONNECT if text doesn't resume");
     startRecordingRef.current?.();
-  }, [stopIdleEar, startRecorderOnSockets, setSttLive]);
+  }, [
+    stopIdleEar,
+    startRecorderOnSockets,
+    setSttLive,
+    sttTrace,
+    speechAutoConnectRef,
+    callAutopilotRef,
+  ]);
 
   const wakeFromIdleEarRef = useRef(wakeFromIdleEar);
   wakeFromIdleEarRef.current = wakeFromIdleEar;
@@ -1857,11 +2158,28 @@ export const useDeepgram = () => {
   const enterIdleEar = useCallback(() => {
     // v4.98.0: autopilot also needs the ear open between calls (it listens
     // for the bridge/disconnect phrases, which arrive as transcripts).
-    if (!speechAutoConnectRef.current && !callAutopilotRef.current) return false;
+    // v4.172.0: the shift ear keeps the pair warm with neither flag on — no
+    // recorder, no audio, no cost; it exists so the next press/wake starts from
+    // an open socket instead of a cold handshake.
+    if (
+      !speechAutoConnectRef.current &&
+      !callAutopilotRef.current &&
+      !shiftEarEnabledRef.current
+    )
+      return false;
     const stream = streamRef.current;
     if (!stream?.active || stream.getAudioTracks().length === 0) return false;
     ensureToneMonitor(stream);
-
+    // A call just ended: start the release clock and hand this idle stretch a
+    // fresh re-arm budget (the old one is spent, not carried over).
+    earLastBusyAtRef.current = Date.now();
+    earRearmsRef.current = 0;
+    earLastRearmAtRef.current = 0;
+    earSocketsOpenedAtRef.current =
+      earSocketsOpenedAtRef.current || Date.now();
+    // The pair we are inheriting is the CALL's: its onclose runs the reconnect
+    // ladder and lands on `disconnected`, which off-call = the ear went deaf.
+    handPairToEar();
     // Stop ONLY the recorder — sockets stay open, no audio leaves the machine.
     try {
       if (mediaRecorderRef.current && mediaRecorderRef.current.state !== "inactive") {
@@ -1869,13 +2187,32 @@ export const useDeepgram = () => {
       }
     } catch (_) {}
     mediaRecorderRef.current = null;
+    // v4.172.0: the CONNECT watchdog MUST die with the call. It is armed 12s
+    // before audio is expected at all, so it routinely outlives a short call —
+    // and its verdict on an idle pair ("sockets open, zero audio chunks") is
+    // `recorder-rebuild`: it would start streaming clinic audio into the warm
+    // pair with NO call running (billed, transcribed, banked as ZERO minutes —
+    // the v4.99.2 phantom-time bug self-inflicted) and end in a red TIMEOUT that
+    // only a CONNECT press clears. Bumping the attempt id is the existing
+    // (v4.170.0) way to make every in-flight connect timer inert at once.
+    connectAttemptIdRef.current += 1;
+    clearWatchdog();
+    // The call path's own 4s pinger has nothing to keep alive either; the idle
+    // KeepAlive below owns the sockets from here.
+    clearKeepalive();
     setSttAudioRecording(false);
     idleEarActiveRef.current = true;
     setConnectionState("connected");
     // v4.153.0: warm sockets + NO recorder = not live. Without this, CONNECT
     // saw "connected" and started a call that could never transcribe.
     setSttLive(false);
-    setConnectionMessage("Idle ear — listening for speech (auto-connect on)");
+    // Truthful chip text: with neither auto-start flag on, the ear keeps the
+    // socket warm but audio waits for a press — it is NOT auto-connecting.
+    setConnectionMessage(
+      speechAutoConnectRef.current || callAutopilotRef.current
+        ? "Idle ear — listening for speech (auto-connect on)"
+        : "Shift ear — ready (press CONNECT when the call starts)",
+    );
     syncConnectProgress({
       phase: "ready",
       audioStreamReady: true,
@@ -1892,16 +2229,73 @@ export const useDeepgram = () => {
     idleKeepAliveRef.current = createUnthrottledInterval(() => {
       const multiMode = usesMultiSocket(languagePairRef.current);
       const payload = JSON.stringify({ type: "KeepAlive" });
-      const enOpen = socketRefEn.current?.readyState === 1;
-      const esOpen = multiMode || socketRefEs.current?.readyState === 1;
+      // The lanes we actually own. In multi mode there is only one, so a missing
+      // second socket must never count as a death.
+      const owned = multiMode
+        ? [socketRefEn.current]
+        : [socketRefEn.current, socketRefEs.current];
+      const openCount = owned.filter((ws) => ws?.readyState === 1).length;
+      // CONNECTING is NOT dead. A pair mid-handshake used to read as "both
+      // sockets gone" — on a slow network (>4s TLS+upgrade) the ear replaced the
+      // pair it had just opened, burned the re-arm budget, and gave up with
+      // "press CONNECT". Exactly the thing the shift ear exists to avoid.
+      const pendingCount = owned.filter((ws) => ws?.readyState === 0).length;
       try {
-        if (enOpen) socketRefEn.current.send(payload);
-        if (!multiMode && socketRefEs.current?.readyState === 1) socketRefEs.current.send(payload);
+        owned.forEach((ws) => {
+          if (ws?.readyState === 1) ws.send(payload);
+        });
       } catch (_) {}
-      if (!enOpen && !esOpen) {
-        // Sockets died while idle — clean up; VAD wake will rebuild from stream.
-        stopIdleEar();
-        closeConnections();
+      const now = Date.now();
+      const pairAgeMs = now - (earSocketsOpenedAtRef.current || now);
+      if (isEarPairDead({ openCount, pendingCount, pairAgeMs })) {
+        // Sockets died while idle.
+        // v4.172.0 SHIFT EAR: this used to be `stopIdleEar(); closeConnections()`
+        // — an off-call socket death, which is NORMAL, reset the whole app to
+        // `disconnected`: the ear went deaf (no VAD left), the chip went red, and
+        // the only way back was a CONNECT press. That is the "it never detects my
+        // speech, I press CONNECT every call" report.
+        // Re-opening is free: the re-armed pair never carries audio, so there is
+        // no billing and no phantom minutes; a real call pair still gets opened
+        // fresh by the press (or by the wake's cold rebuild).
+        if (!shiftEarEnabledRef.current) {
+          stopIdleEar();
+          closeConnections();
+          return;
+        }
+        // Zeroed by releaseEarPair = "we let the pair go on purpose". VAD stays
+        // armed; the next wake re-opens. Without this the release would be
+        // undone one tick later by its own death branch.
+        if (!earSocketsOpenedAtRef.current) return;
+        earRearmRef.current?.();
+        return;
+      }
+      if (!shiftEarEnabledRef.current) return;
+      const socketAgeMs = pairAgeMs;
+      // A pair that has lived a minute proved the network is fine, so the re-arm
+      // budget is handed back. Deepgram drops long sessions, and a cap that only
+      // empties would leave the ear deaf by mid-afternoon.
+      if (shouldRefillRearmBudget({ socketAgeMs, rearms: earRearmsRef.current })) {
+        earRearmsRef.current = 0;
+      }
+      // Release clock runs from the last CALL/speech, not from this tick: an hour
+      // of nothing is a shift that is over, and holding a Deepgram stream slot
+      // overnight helps nobody. Deepgram documents no ceiling for streaming
+      // sessions — what it documents is that sessions get dropped and must be
+      // re-initialised, without saying when. So the pair is replaced on a
+      // schedule we choose rather than at the moment the load balancer picks.
+      // Off-call only: housekeeping never interrupts a live call.
+      const action = earSocketAction({
+        earActive: true,
+        inCall: isCallLive(),
+        socketAgeMs,
+        idleSinceMs: now - (earLastBusyAtRef.current || now),
+      });
+      if (action === "rotate") {
+        earSocketsOpenedAtRef.current = now;
+        openEarPairRef.current?.();
+        sttTrace("shift ear: warm pair rotated before it could be dropped");
+      } else if (action === "release") {
+        releaseEarPairRef.current?.("idle");
       }
     }, 4000);
 
@@ -1952,7 +2346,8 @@ export const useDeepgram = () => {
       critLog("warn", "idle ear VAD unavailable", { err: String(e) });
     }
     return true;
-  }, [speechAutoConnectRef, callAutopilotRef, ensureToneMonitor, stopIdleEar, syncConnectProgress, closeConnections, critLog, setSttLive]);
+  }, [speechAutoConnectRef, callAutopilotRef, ensureToneMonitor, stopIdleEar, syncConnectProgress, closeConnections, critLog, setSttLive, clearWatchdog, clearKeepalive, handPairToEar]);
+  enterIdleEarRef.current = enterIdleEar;
   // ────────────────────────────────────────────────────────────────────────
 
   const stopRecording = useCallback(() => {

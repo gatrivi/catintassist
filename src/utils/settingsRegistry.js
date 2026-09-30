@@ -112,8 +112,8 @@ export const SETTINGS_PANELS = [
     id: 'behavior',
     group: 'app',
     label: 'Behavior',
-    hint: 'Autopilot, auto-connect, notes',
-    keywords: 'behavior autopilot auto connect speech hold notes break mood',
+    hint: 'Autopilot, auto-connect, shift ear, notes',
+    keywords: 'behavior autopilot auto connect speech hold notes break mood shift ear socket warm deepgram',
   },
   {
     id: 'display',

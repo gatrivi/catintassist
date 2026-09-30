@@ -53,7 +53,28 @@ if (used >= MAX_PER_HOUR && !allowOver) {
 }
 
 // Push first — only log pushes that actually happened.
+// v4.172.0: `git push` exits 0 when there is NOTHING to push ("Everything
+// up-to-date"), which used to append a phantom row and eat one of the 4/hour
+// Vercel slots — and worse, an uncommitted feature could read as logged/shipped.
+// Compare the remote tip before and after: no movement = no deploy = no row.
+const remoteSha = () => {
+  try {
+    return execSync("git ls-remote origin master").toString().trim().split(/\s+/)[0] || "";
+  } catch (_) {
+    return "";
+  }
+};
+const remoteBefore = remoteSha();
 execSync("git push origin HEAD:master", { stdio: "inherit" });
+const remoteAfter = remoteSha();
+
+if (remoteBefore && remoteAfter && remoteBefore === remoteAfter) {
+  console.log("");
+  console.log(`[PUSH BUDGET] nothing to push — remote already at ${remoteAfter.slice(0, 7)}. NOT logged.`);
+  console.log("[PUSH BUDGET] if you expected a deploy, you probably forgot to `git commit`.");
+  console.log("");
+  process.exit(0);
+}
 
 const hash = execSync("git rev-parse --short HEAD").toString().trim();
 const message = (label || execSync("git log -1 --pretty=%s").toString().trim()).replace(/\|/g, "/");
