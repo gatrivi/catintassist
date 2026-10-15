@@ -170,3 +170,12 @@ and transcription stays ~81%.
 
 Still open, unchanged:
 
+
+## OPEN (2026-10-15) — off-call items that exist but never render
+Plan: restore each behind a remembered toggle (default ON); version pill back permanently.
+1. Day timeline bar 9→18h + "Xh left" — gated `!offCallScoreboardView` (`:3016`)
+2. 🕒 LATE + income cards — `showExpandedIncome` excludes off-call scoreboard
+3. 🏃 shift / 🚪 compensated log-off pills — likely clipped (row `overflow:hidden` <1000px)
+4. Day/month progress bars — collapsed strip passes `showBars={false}`
+5. Endgame / catch-up plan — only inside expanded grid
+6. Version pill upper right — removed in `cbc4591` (breaks core rule)
