@@ -12,6 +12,23 @@ import { diffSensitiveTokens } from './translationSensitiveTokens';
 export const FILLER_ONLY_RE =
   /^(bueno|um|uh|eh|ah|oh|hmm|mhm|sí|si|ok|okay|vale|pues|este|like|you know|yes|no|aja|ajá)[.!?\s…]*$/i;
 
+/**
+ * Stock phrases that are spelled the same in EN and ES. For these an identical
+ * output is the CORRECT translation ("No." -> "No."), and the filler/echo
+ * guards below would otherwise reject it — which made the caller refetch the
+ * same phrase forever. Scoped to real stock phrases on purpose: "Hello world"
+ * echoed back is still an engine echo, not a translation.
+ */
+export const IDENTITY_STOCK_RE =
+  /^(no|yes|okay|ok|hello|hi|hey|bye|goodbye|thanks|thank you|sorry|excuse me|fine|great|alright|all right|right|well|good|nothing|none|same|really|exactly|correct|please|welcome|morning|afternoon|evening|night|good morning|good afternoon|good evening|good night|see you|talk later|of course|no problem|my pleasure)[.!?…]*$/i;
+
+export function isShortIdentityTranslation(source, result) {
+  const src = normalizeSource(source);
+  const out = normalizeSource(result);
+  if (!src || !out || src.toLowerCase() !== out.toLowerCase()) return false;
+  return src.split(/\s+/).filter(Boolean).length <= 3 && IDENTITY_STOCK_RE.test(out);
+}
+
 /** One sentence or one comma-clause per request (v4.94.0) — the local model
  * crawls on paragraphs, so every request stays a tiny mouthful. */
 export const DEFAULT_MAX_SEGMENT_WORDS = 14;
@@ -138,10 +155,15 @@ export function segmentLongMonologue(text, { maxWords = DEFAULT_MAX_SEGMENT_WORD
     };
     for (const c of clauses) {
       if (c.length > cap) {
-        // Comma-less run: hard chunk at cap.
+        // Comma-less run: hard chunk, but into NEAR-EQUAL parts. Chunking at
+        // exactly `cap` orphaned the remainder as its own request ("...a 100%"
+        // / "either."), and a one-word request comes back as junk that gets
+        // glued onto the sentence.
         flush();
-        for (let i = 0; i < c.length; i += cap) {
-          out.push(c.slice(i, i + cap).join(' '));
+        const parts = Math.ceil(c.length / cap);
+        const size = Math.ceil(c.length / parts);
+        for (let i = 0; i < c.length; i += size) {
+          out.push(c.slice(i, i + size).join(' '));
         }
         continue;
       }
@@ -296,7 +318,12 @@ export function applyTranslationResult(state = {}, event = {}) {
     return { state: { ...state, [expectedKey]: entry }, entry };
   }
 
-  if (isGarbageTranslation(sourceTextNorm, raw)) {
+  // "No." -> "No." is the right answer: the guards below exist to catch an
+  // engine answering a real sentence with filler, and they misread a stock
+  // phrase that legitimately translates to itself.
+  const isIdentity = isShortIdentityTranslation(sourceTextNorm, raw);
+
+  if (!isIdentity && isGarbageTranslation(sourceTextNorm, raw)) {
     const entry = preserveOrPassthrough(
       prev,
       { ...base, engineId: engineResult.engineId },
@@ -306,7 +333,7 @@ export function applyTranslationResult(state = {}, event = {}) {
     return { state: { ...state, [expectedKey]: entry }, entry };
   }
 
-  if (isSuspiciouslyShort(sourceTextNorm, raw)) {
+  if (!isIdentity && isSuspiciouslyShort(sourceTextNorm, raw)) {
     const entry = preserveOrPassthrough(
       prev,
       { ...base, engineId: engineResult.engineId },

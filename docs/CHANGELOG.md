@@ -3,6 +3,14 @@
 **Version source:** `src/constants/version.js` (must match `package.json` + top-right UI pill)
 
 
+## v4.175.0 - translations stop going blank
+
+10-15 live call: most bubbles had no translation. Two client-side causes.
+
+- **Wrong source language.** EN + ES sockets both hear the same audio; a bubble opened by the ES socket is labelled `es` even with English words → es→en returned the same text → passthrough guard rejected it → blank. `src/utils/textLanguage.js` (`correctSourceLang`) counts EN/ES function words and overrules the label only on clear evidence; used in `useTranslate.js`. A failed round no longer locks the sticky language pair.
+- **10-02 blackout fixes finally shipped** (`docs/development/translation-blackout-2026-10-02.md`): local engine 6 s timeout / 15 s block (was 1.2 s / 90 s), identity-phrase refetch loop, abort-aware bounded queue, balanced long-sentence chunking.
+- Root cause of the repeated text across bubbles (dual sockets) found, NOT fixed yet.
+
 ## v4.172.0 - one warm ear for the whole shift
 
 Stopping a call tore the Deepgram socket down, and a socket that dropped **by itself between calls** was treated as an app failure: `stopIdleEar()` + `closeConnections()` → red `Disconnected`, and the local speech detector went down with it. That is the literal source of "it never detects my speech, I press CONNECT every call". One pair is now kept warm across the shift; only the recorder / transcript / money counter toggle.

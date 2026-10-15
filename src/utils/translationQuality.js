@@ -3,6 +3,7 @@
 import { peelCompleteSentences } from './transcriptFormat';
 import {
   isGarbageTranslation,
+  isShortIdentityTranslation,
   isSuspiciouslyShort,
   segmentLongMonologue,
   DEFAULT_MAX_SEGMENT_WORDS,
@@ -10,6 +11,7 @@ import {
 
 export {
   isGarbageTranslation,
+  isShortIdentityTranslation,
   isSuspiciouslyShort,
   segmentLongMonologue,
   DEFAULT_MAX_SEGMENT_WORDS,
@@ -60,6 +62,7 @@ export const isTranslationPassthrough = (source, translation, sourceLang, target
 
   return false;
 };
+
 
 /**
  * Words that can only be followed by a noun phrase: a source ending in one of
@@ -129,6 +132,9 @@ export const isTranslationStuckForRetranslate = (
   { quality } = {},
 ) => {
   if (quality === 'weak') return false;
+  // A stock phrase translated to itself is settled, not stuck — retrying it is
+  // the loop this check used to drive.
+  if (isShortIdentityTranslation(source, translation)) return false;
   if (!translation?.trim()) return false;
   const normSource = normalize(source);
   const normTranslation = normalize(translation);

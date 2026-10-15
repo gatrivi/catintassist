@@ -84,9 +84,20 @@ describe('goalAnchor (banked goals count from the moment they are banked)', () =
   it('helpers: ISO days are local, labels are short, workdays validated', () => {
     expect(toIsoDay(MID)).toBe('2026-09-20');
     expect(firstOfMonthIso(MID)).toBe('2026-09-01');
-    expect(goalSetLabel('2026-09-20')).toBe('Sep 20');
+
+    // The label only shows for THIS month (a stale anchor is ignored), so the
+    // dates are built from today instead of being pinned to a calendar month
+    // that made this test rot on the 1st of every month.
+    const now = new Date();
+    const thisMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+    const otherMonth = new Date(now.getFullYear(), now.getMonth() - 1, 20);
+    const otherIso = `${otherMonth.getFullYear()}-${String(otherMonth.getMonth() + 1).padStart(2, '0')}-20`;
+
+    expect(goalSetLabel(`${thisMonth}-20`)).toBe(
+      `${now.toLocaleString('en', { month: 'short' })} 20`,
+    );
     expect(goalSetLabel(null)).toBe('');
-    expect(goalSetLabel('2026-08-20')).toBe(''); // other month → not shown
+    expect(goalSetLabel(otherIso)).toBe(''); // other month → not shown
     expect(isGoalWorkDays(22)).toBe(true);
     expect(isGoalWorkDays(21)).toBe(false);
   });

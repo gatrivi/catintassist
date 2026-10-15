@@ -116,3 +116,6 @@
 | 2026-09-27T20:47:26.876Z | 5984914 | v4.169.0 make the failure visible: per-socket health + translation-surplus warning (CSA call incident) |
 | 2026-09-29T03:11:39.003Z | 6aabc36 | v4.170.0 connect self-heal: CloseStream+1000, ear kill, recorder rebuild, attempt-scoped fail |
 | 2026-09-29T21:25:49.737Z | b7ed892 | v4.171.0 the on-call gallery is yours: pick up to 8 of 24 greetings |
+| 2026-09-30T00:38:38.191Z | b44fc01 | v4.172.0 shift ear: one warm socket all shift, off-call death re-arms |
+| 2026-09-30T15:47:47.946Z | 30172c7 | v4.173.0 money fold hotfix - prices stop dying |
+| 2026-09-30T18:30:18.400Z | 785f674 | v4.174.0 digit destroyers + harness blind spots |

@@ -1,6 +1,7 @@
 import {
   translationSimilarity,
   isTranslationPassthrough,
+  isShortIdentityTranslation,
   isTranslationStuckForRetranslate,
   splitTranslatableSegments,
   isIncrementalTranscriptGrowth,
@@ -36,6 +37,26 @@ describe('isTranslationPassthrough', () => {
       'This authorization shall apply to any renewal reinstated, or amended policy with Midvale unless revoked by you.';
     const bad = `${en} Está bien.`;
     expect(isTranslationPassthrough(en, bad, 'en', 'es')).toBe(true);
+  });
+});
+
+describe('isShortIdentityTranslation', () => {
+  test('accepts stock phrases that are their own translation', () => {
+    expect(isShortIdentityTranslation('Okay.', 'Okay.')).toBe(true);
+    expect(isShortIdentityTranslation('Thank you.', 'thank you.')).toBe(true);
+    expect(isShortIdentityTranslation('No.', 'No.')).toBe(true);
+    expect(isShortIdentityTranslation('Hello.', 'Hello.')).toBe(true);
+  });
+
+  test('rejects an ordinary sentence echoed back, however short', () => {
+    const long = 'Please confirm your date of birth before we continue.';
+    expect(isShortIdentityTranslation(long, long)).toBe(false);
+    expect(isShortIdentityTranslation('Hello world', 'Hello world')).toBe(false);
+  });
+
+  test('rejects a real translation and empty input', () => {
+    expect(isShortIdentityTranslation('Thank you.', 'Gracias.')).toBe(false);
+    expect(isShortIdentityTranslation('Okay.', '')).toBe(false);
   });
 });
 

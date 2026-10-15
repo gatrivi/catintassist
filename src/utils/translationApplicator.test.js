@@ -82,6 +82,32 @@ describe('segmentLongMonologue', () => {
     expect(segs.length).toBe(3);
     segs.forEach((s) => expect(s.split(/\s+/).length).toBeLessThanOrEqual(14));
   });
+
+  test('comma-less chunking leaves no orphan tail fragment', () => {
+    // 16 words, no comma: an exact-14 split used to leave "either." as its own
+    // request, and the engine answered that one word with junk.
+    const sentence =
+      "And there's also a part of the heart that I've not seen a 100% either.";
+    const segs = segmentLongMonologue(sentence);
+    expect(segs.length).toBe(2);
+    segs.forEach((s) => {
+      expect(s.split(/\s+/).length).toBeGreaterThanOrEqual(4);
+      expect(s.split(/\s+/).length).toBeLessThanOrEqual(14);
+    });
+    // No words lost or duplicated at the seam.
+    expect(segs.join(' ')).toBe(sentence);
+  });
+
+  test('a long comma-less run splits into balanced parts', () => {
+    const words = Array.from({ length: 29 }, (_, i) => `w${i}`);
+    const segs = segmentLongMonologue(words.join(' '));
+    expect(segs.join(' ')).toBe(words.join(' '));
+    const sizes = segs.map((s) => s.split(/\s+/).length);
+    sizes.forEach((n) => {
+      expect(n).toBeLessThanOrEqual(14);
+      expect(n).toBeGreaterThanOrEqual(4);
+    });
+  });
 });
 
 describe('applyTranslationResult', () => {
@@ -114,6 +140,29 @@ describe('applyTranslationResult', () => {
     expect(entry.status).toBe('ok');
     expect(entry.preserved).toBe(false);
     expect(entry.text).toMatch(/555/);
+  });
+
+  test('a stock phrase translated to itself is a good translation', () => {
+    const event = {
+      captionId: 'cap-i',
+      segmentId: 'seg-0',
+      sourceText: 'No.',
+      targetLang: 'es',
+    };
+    const sourceHash = hashTranslationSource(event.sourceText);
+    const requestId = buildSegmentRequestId({ ...event, sourceHash });
+    const { entry } = applyTranslationResult(
+      {},
+      {
+        ...event,
+        sourceHash,
+        engineResult: { text: 'No.', engineId: 'local_stt', quality: 'ok', requestId },
+      },
+    );
+    expect(entry.status).toBe('ok');
+    expect(entry.passthrough).toBe(false);
+    expect(entry.warning).toBeUndefined();
+    expect(entry.text).toBe('No.');
   });
 
   test('stale event.sourceHash preserves previous-good', () => {

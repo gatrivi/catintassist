@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
 import {
   isTranslationPassthrough,
+  isShortIdentityTranslation,
   splitLongForTranslation,
   isIncrementalTranscriptGrowth,
   isSentenceComplete,
@@ -26,6 +27,7 @@ import {
   getOppositeLang,
   LANG_PAIR_CHANGED_EVENT,
 } from '../utils/languageConfig';
+import { correctSourceLang } from '../utils/textLanguage';
 import {
   assignSegmentIds,
   applyTranslationResult,
@@ -73,12 +75,40 @@ const setCached = (text, langPair, result) => {
   }
 };
 
+let TRANS_DEAD = {};
+
+// A segment that keeps failing is re-requested on every occurrence, so a
+// broken phrase (long echo, both engines down) loops all session. Mark it
+// proven-bad after a few failures; any success clears the mark. Session-only:
+// a reload re-tries everything on purpose.
+const DEAD_AFTER_FAILURES = 3;
+
+const noteChunkOutcome = (key, ok) => {
+  if (ok) {
+    delete TRANS_DEAD[key];
+    return;
+  }
+  if (Object.keys(TRANS_DEAD).length > MAX_MEM_CACHE) TRANS_DEAD = {};
+  TRANS_DEAD[key] = (TRANS_DEAD[key] || 0) + 1;
+};
+
+const DEAD_CHUNK = { text: '', engineId: 'dead', quality: 'failed', failures: [], tried: [] };
+
 const acceptTranslation = (source, result, sLang, tLang) => {
   const clean = (result || '').trim();
-  if (!clean || clean.length < 1) return '';
+  if (!clean) return '';
+  // "Okay." -> "Okay." is the right answer, not an engine echo. Rejecting it
+  // meant the same phrase was refetched on every later occurrence.
+  if (isShortIdentityTranslation(source, clean)) return clean;
   if (isTranslationPassthrough(source, clean, sLang, tLang)) return '';
   return clean;
 };
+
+/** Echo guard for a settled result: identity stock phrases are legitimate. */
+const isSourceEcho = (source, out, sLang, tLang) =>
+  Boolean(out)
+  && !isShortIdentityTranslation(source, out)
+  && isTranslationPassthrough(source, out, sLang, tLang);
 
 const emptyMeta = {
   engineId: null,
@@ -93,7 +123,7 @@ export const discardPersistedPassthroughEntries = (entries = {}, sourceLang, tar
     Object.entries(entries).filter(([, entry]) => {
       const source = String(entry?.sourceText || '').trim();
       const translated = String(entry?.text || '').trim();
-      return !source || !translated || !isTranslationPassthrough(source, translated, sourceLang, targetLang);
+      return !source || !translated || !isSourceEcho(source, translated, sourceLang, targetLang);
     }),
   );
 
@@ -180,7 +210,7 @@ export const useTranslate = (
     const keys = Object.keys(persistedTranslations);
     if (!keys.length) return;
     hydratedRef.current = true;
-    const persistedSourceLang = normalizeLang(lang);
+    const persistedSourceLang = normalizeLang(correctSourceLang(text, lang, languagePair));
     const persistedTargetLang = getOppositeLang(persistedSourceLang, languagePair);
     translationsMapRef.current = discardPersistedPassthroughEntries(
       persistedTranslations,
@@ -209,7 +239,10 @@ export const useTranslate = (
     }
   }, [lang, languagePair, persistedTranslations, text]);
 
-  const sourceLang = normalizeLang(lang);
+  // v4.175.0: translate FROM the language the words are really in. A bubble
+  // opened by the ES socket can hold English; trusting its label asked es→en,
+  // got the same text back, and the bubble showed no translation at all.
+  const sourceLang = normalizeLang(correctSourceLang(text, lang, languagePair));
   const targetLang = getOppositeLang(sourceLang, languagePair);
   const currentLangPair = `${sourceLang}-${targetLang}`;
 
@@ -375,7 +408,9 @@ export const useTranslate = (
       const [sLang, tLang] = langPair.split('-');
       const capId = captionId || `anon-${hashTranslationSource(normText)}`;
 
-      const sourceForTranslate = applySttCorrections(normText, sLang);
+      // `let`, not `const`: the glossary 'phrase' branch below rewrites this when a
+      // pinned term is hit. As a `const` that assignment THREW, killing the whole turn.
+      let sourceForTranslate = applySttCorrections(normText, sLang);
 
       // v4.161.0 — the glossary mode is the operator's call, read per request so a
       // change in Settings applies to the next line without a reload.
@@ -392,7 +427,7 @@ export const useTranslate = (
         );
         if (applied.length) {
           catLog('[glossary] phrase', { capId, applied });
-          sourceForTranslate = withPhrases; // eslint-disable-line no-param-reassign
+          sourceForTranslate = withPhrases;
         }
       } else if (glossaryMode === 'exact') {
         const glossaryHit = findGlossaryTranslation(sourceForTranslate, sLang, tLang);
@@ -415,6 +450,10 @@ export const useTranslate = (
 
       const fetchChunk = async (chunk) => {
         const norm = chunk.trim().replace(/\s+/g, ' ');
+        const cacheKey = `${langPair}:${norm}`;
+
+        if ((TRANS_DEAD[cacheKey] || 0) >= DEAD_AFTER_FAILURES) return DEAD_CHUNK;
+
         const cached = getCached(norm, langPair);
         if (cached) {
           const accepted = acceptTranslation(norm, cached, sLang, tLang);
@@ -423,7 +462,6 @@ export const useTranslate = (
           }
         }
 
-        const cacheKey = `${langPair}:${norm}`;
         return dedupeInFlight(cacheKey, () =>
           withTranslationSlot(async () => {
             const res = await translateWithFallback({
@@ -438,8 +476,10 @@ export const useTranslate = (
               ladder: loadTranslationLatencyLadder(),
             });
             if (res.text) setCached(norm, langPair, res.text);
+            // An abort means a newer turn replaced this one, not a bad phrase.
+            if (!signal.aborted) noteChunkOutcome(cacheKey, Boolean(res.text));
             return res;
-          }),
+          }, { signal }),
         );
       };
 
@@ -508,9 +548,9 @@ export const useTranslate = (
 
           const res = await fetchChunk(segText);
           // The generic engine keeps legitimate weak short answers. At this
-          // EN/ES boundary, however, an echoed source is never a translation.
-          const sourceEcho = Boolean(res.text) && isTranslationPassthrough(segText, res.text, sLang, tLang);
-          const usableRes = sourceEcho
+          // EN/ES boundary, however, an echoed source is never a translation —
+          // unless it is a short stock phrase that really is its own translation.
+          const usableRes = isSourceEcho(segText, res.text, sLang, tLang)
             ? { ...res, text: '', quality: 'failed' }
             : res;
           lastMeta = {
@@ -556,7 +596,9 @@ export const useTranslate = (
           passthrough: anyPassthrough,
         });
 
-        if (!langPairRef.current) langPairRef.current = langPair;
+        // v4.175.0: only a SUCCESSFUL round locks the direction. A failed round
+        // (wrong-language passthrough) used to lock it, so the bubble stayed blank.
+        if (anyOk && !langPairRef.current) langPairRef.current = langPair;
         // v4.86.1 freeze: a failed/empty round must never overwrite readable text.
         if (anyOk || !hasGoodTranslationRef.current) {
           setTranslation(composed || sourceForTranslate);

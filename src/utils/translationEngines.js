@@ -53,6 +53,17 @@ const SERVER_ERROR_BLACKLIST_MS = 90 * 1000; // 90s — dead gateway, retry soon
 // reported "4-6s behind". 90s is long enough to stop the bleeding, short enough
 // that a recovered engine returns on its own.
 const TIMEOUT_BLACKLIST_MS = 90 * 1000;
+// The local engine is on this machine and is never rate limited, so a timeout
+// there means "slow", not "dead". Measured: a request queued behind the previous
+// turn's decode answers 200 in ~1.8s — the old 90s block then blinded the whole
+// session and every bubble went to the remote gateway (or nowhere).
+const LOCAL_TIMEOUT_BLACKLIST_MS = 15 * 1000;
+// Budget for the local engine: the API queues a turn for up to
+// CATTS_TRANSLATE_QUEUE_WAIT_SEC (3s) behind the decode it just admitted, then
+// decodes (~0.2-1.5s). The 1.2s first rung of the ladder cut that off mid-flight
+// and produced a phantom "engine dead". A refused connection still fails
+// instantly, so a genuinely down API costs nothing here.
+const LOCAL_ENGINE_TIMEOUT_MS = 6000;
 
 export const blacklistEngine = (id, ttlMs, reason = 'error') => {
   const rateLimited = reason === 'rate_limit';
@@ -65,7 +76,9 @@ export const blacklistEngine = (id, ttlMs, reason = 'error') => {
       : serverDown
         ? SERVER_ERROR_BLACKLIST_MS
         : timedOut
-          ? TIMEOUT_BLACKLIST_MS
+          ? id === LOCAL_TRANSLATE_ENGINE
+            ? LOCAL_TIMEOUT_BLACKLIST_MS
+            : TIMEOUT_BLACKLIST_MS
           : id === LOCAL_TRANSLATE_ENGINE
             ? FREE_ENGINE_BLACKLIST_MS
             : BLACKBOX_TTL);
@@ -333,9 +346,12 @@ export const translateWithFallback = async ({
     try {
       // v4.165.0: shrinking per-attempt timeout instead of one flat 4s for all.
       // v4.167.0: the operator's chosen ladder wins when provided.
-      const attemptTimeoutMs = ladder
-        ? engineTimeoutForAttempt(i, chain.length, ladder)
-        : engineTimeoutForAttempt(i, chain.length, [timeoutMs, timeoutMs, timeoutMs]);
+      // The local engine gets its own budget — it queues server-side by design.
+      const attemptTimeoutMs = id === LOCAL_TRANSLATE_ENGINE
+        ? LOCAL_ENGINE_TIMEOUT_MS
+        : ladder
+          ? engineTimeoutForAttempt(i, chain.length, ladder)
+          : engineTimeoutForAttempt(i, chain.length, [timeoutMs, timeoutMs, timeoutMs]);
       const timer = new Promise((_, rej) =>
         setTimeout(() => rej(new Error('timeout')), attemptTimeoutMs),
       );

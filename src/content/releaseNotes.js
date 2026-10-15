@@ -25,6 +25,39 @@ import { APP_VERSION } from '../constants/version';
 /** Newest first. Only the entry matching APP_VERSION is shown on load. */
 export const RELEASE_NOTES_CATALOG = [
   {
+    version: '4.175.0',
+    id: 'translations-stop-going-blank',
+    highlightElementIds: ['transcript-pane'],
+    es: {
+      title: 'Las traducciones ya no quedan en blanco',
+      intro: 'En la llamada del 15-10 la mayoría de las burbujas no tenían traducción. Eran dos fallas, las dos del lado de la app.',
+      sections: [
+        { heading: 'Qué se arregló', bullets: [
+          '**Burbuja en inglés marcada como español.** El socket ES también escucha al doctor; su burbuja quedaba marcada «es», la app pedía traducir es→en, recibía el mismo texto y lo descartaba. Ahora la app mira las palabras y traduce desde el idioma real.',
+          '**El motor local se daba por muerto a los 1,2 s** y quedaba bloqueado 90 s. Ahora espera 6 s y bloquea solo 15 s (arreglo del 02-10, nunca había salido a producción).',
+          '**Frases como «Okay.» o «No.»** se volvían a pedir en bucle; y un pedido fallido ya no fija la dirección de traducción.',
+        ] },
+        { heading: 'Todavía abierto', bullets: [
+          'El texto repetido entre burbujas (dos sockets transcribiendo lo mismo) es el próximo arreglo.',
+        ] },
+      ],
+    },
+    en: {
+      title: 'Translations stop going blank',
+      intro: 'On the 10-15 call most bubbles had no translation. Two failures, both on the app side.',
+      sections: [
+        { heading: 'What was fixed', bullets: [
+          '**English bubble labelled Spanish.** The ES socket hears the doctor too; its bubble was labelled "es", the app asked es→en, got the same text back and threw it away. The app now reads the words and translates from the real language.',
+          '**The local engine was declared dead at 1.2 s** and blocked for 90 s. It now waits 6 s and blocks for 15 s (the 10-02 fix, which had never shipped).',
+          '**Stock phrases like "Okay." or "No."** were refetched in a loop; and a failed round no longer locks the translation direction.',
+        ] },
+        { heading: 'Still open', bullets: [
+          'Text repeated across bubbles (two sockets transcribing the same audio) is the next fix.',
+        ] },
+      ],
+    },
+  },
+  {
     version: '4.174.0',
     id: 'digits-stop-disappearing',
     highlightElementIds: ['settings-digit-rewrites'],
