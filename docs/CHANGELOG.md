@@ -3,6 +3,16 @@
 **Version source:** `src/constants/version.js` (must match `package.json` + top-right UI pill)
 
 
+## v4.178.0 - translation latency (client side)
+
+Local engine answers ~0.1–0.2 s/sentence; the lag was ours. `useTranslate.js` + `translationRequestQueue.js`.
+- **Progressive display:** each segment paints when it lands (never shrinks a longer readable translation).
+- **No debounce on sealed text:** STT final or punctuated → 0 ms (auto used to wait 800 ms). Interim keeps its wait.
+- **One slot per direction** (`lane: en-es / es-en`), was one global slot.
+- **Abort only the growing tail.** Finished segments run to completion and are reused via cache/`dedupeInFlight`; the tail gets a per-turn dedupe key so an old turn's abort can't kill it.
+- Bench (`useTranslate.latency.test.js`, 3 sentences @150 ms): final→first **1250 → 160 ms**, final→full **1250 → 460 ms**. In-app: `__CAT_DUMP('[trans] latency')`.
+- Remote gate fallback untouched.
+
 ## v4.177.0 - one socket: no more repeated text
 
 - Root cause (10-15 call): EN + ES sockets both transcribed the same audio; each finished sentences at different moments → two versions of one sentence on the board.

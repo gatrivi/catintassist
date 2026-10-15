@@ -73,3 +73,26 @@ describe('withTranslationSlot cancellation', () => {
     expect(getTranslationQueueState()).toEqual({ activeSlots: 0, queued: 0 });
   });
 });
+
+describe('per-direction lanes (v4.178.0)', () => {
+  test('en-es and es-en run at the same time; same direction still waits', async () => {
+    let releaseEn;
+    const enGate = new Promise((r) => { releaseEn = r; });
+    const ran = [];
+    const en1 = withTranslationSlot(async () => { ran.push('en1'); await enGate; }, { lane: 'en-es' });
+    const es1 = withTranslationSlot(async () => { ran.push('es1'); }, { lane: 'es-en' });
+    const en2 = withTranslationSlot(async () => { ran.push('en2'); }, { lane: 'en-es' });
+
+    await es1; // not blocked by the busy en-es lane
+    expect(ran).toEqual(['en1', 'es1']);
+    expect(getTranslationQueueState('en-es')).toEqual({ activeSlots: 1, queued: 1 });
+
+    releaseEn();
+    await en1;
+    await en2;
+    await flush();
+    expect(ran).toEqual(['en1', 'es1', 'en2']);
+    expect(getTranslationQueueState('en-es')).toEqual({ activeSlots: 0, queued: 0 });
+    expect(getTranslationQueueState('es-en')).toEqual({ activeSlots: 0, queued: 0 });
+  });
+});

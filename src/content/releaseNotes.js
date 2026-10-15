@@ -25,6 +25,35 @@ import { APP_VERSION } from '../constants/version';
 /** Newest first. Only the entry matching APP_VERSION is shown on load. */
 export const RELEASE_NOTES_CATALOG = [
   {
+    version: '4.178.0',
+    id: 'translation-faster',
+    highlightElementIds: ['transcript-pane'],
+    es: {
+      title: 'Traducción más rápida',
+      intro: 'El motor local responde en ~0,15 s por frase; la demora era de la app.',
+      sections: [
+        { heading: 'Qué cambió', bullets: [
+          'Cada frase aparece apenas llega: leés la 1ª mientras se traduce la 2ª.',
+          'Texto final o con punto se envía ya (antes esperaba 0,8 s).',
+          'EN→ES y ES→EN ya no hacen fila juntos. Frases terminadas no se cancelan.',
+          'Prueba: 3 frases, de 1,25 s → 0,16 s la primera / 0,46 s todas.',
+        ] },
+      ],
+    },
+    en: {
+      title: 'Faster translation',
+      intro: 'The local engine answers in ~0.15 s per sentence; the delay was the app.',
+      sections: [
+        { heading: 'What changed', bullets: [
+          'Each sentence shows as soon as it lands: read #1 while #2 translates.',
+          'Final or punctuated text sends at once (was an 0.8 s wait).',
+          'EN→ES and ES→EN no longer share one queue. Finished sentences are never cancelled.',
+          'Bench: 3 sentences, 1.25 s → 0.16 s first / 0.46 s all.',
+        ] },
+      ],
+    },
+  },
+  {
     version: '4.177.0',
     id: 'one-socket-no-repeats',
     highlightElementIds: ['transcript-pane'],

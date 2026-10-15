@@ -127,9 +127,11 @@ export const discardPersistedPassthroughEntries = (entries = {}, sourceLang, tar
     }),
   );
 
-/** Debounce ms for translation — 0 on bubble split so first chunk re-translates immediately. */
-export function resolveTranslateDebounceMs({ isSplitRewrite, forceTrigger, mood = 'auto' }) {
-  if (isSplitRewrite) return 0;
+/** Debounce ms for translation — 0 on bubble split so first chunk re-translates immediately.
+ * v4.178.0: 0 for sealed text too (STT final or a finished sentence). Waiting
+ * 800 ms on words that will not change only delays them. Interim keeps the wait. */
+export function resolveTranslateDebounceMs({ isSplitRewrite, forceTrigger, mood = 'auto', isSealed = false }) {
+  if (isSplitRewrite || isSealed) return 0;
   const debounceTimes = { auto: 800, fast: 300, default: 600, chill: 1000 };
   return forceTrigger ? (mood === 'auto' ? 800 : 200) : debounceTimes[mood] || 600;
 }
@@ -179,6 +181,7 @@ export const useTranslate = (
   const prevSegmentsRef = useRef([]);
   const debounceTimerRef = useRef(null);
   const abortControllerRef = useRef(null);
+  const turnSeqRef = useRef(0);
   const hasGoodTranslationRef = useRef(false);
   const translationRef = useRef('');
   const translationsMapRef = useRef({ ...(persistedTranslations || {}) });
@@ -395,7 +398,13 @@ export const useTranslate = (
 
     if (shouldSkipDueToDelta) return;
 
-    const waitTime = resolveTranslateDebounceMs({ isSplitRewrite, forceTrigger, mood });
+    const isSealed = isFinal !== false || isSentenceComplete(normText);
+    const waitTime = resolveTranslateDebounceMs({ isSplitRewrite, forceTrigger, mood, isSealed });
+    // v4.178.0 latency probe: "STT final" -> "translation on screen".
+    // Read it with __CAT_DUMP('[trans] latency').
+    const turnStartedAt = Date.now();
+    turnSeqRef.current += 1;
+    const turnSeq = turnSeqRef.current;
 
     if (debounceTimerRef.current) clearTimeout(debounceTimerRef.current);
 
@@ -448,9 +457,17 @@ export const useTranslate = (
 
       const keys = getTranslationApiKeys();
 
-      const fetchChunk = async (chunk) => {
+      // v4.178.0: only the GROWING TAIL is abortable. A finished segment keeps
+      // running when newer STT text arrives: the server would decode it anyway,
+      // so the result lands in cache / dedupeInFlight and the next turn reuses it
+      // instead of queueing a second copy behind the wasted one.
+      const fetchChunk = async (chunk, { abortable = true } = {}) => {
         const norm = chunk.trim().replace(/\s+/g, ' ');
         const cacheKey = `${langPair}:${norm}`;
+        const reqSignal = abortable ? signal : undefined;
+        // An abortable tail never joins (or lends) a shared promise: an older
+        // turn's abort must not kill this turn's request.
+        const flightKey = abortable ? `${cacheKey}#turn${turnSeq}` : cacheKey;
 
         if ((TRANS_DEAD[cacheKey] || 0) >= DEAD_AFTER_FAILURES) return DEAD_CHUNK;
 
@@ -462,14 +479,14 @@ export const useTranslate = (
           }
         }
 
-        return dedupeInFlight(cacheKey, () =>
+        return dedupeInFlight(flightKey, () =>
           withTranslationSlot(async () => {
             const res = await translateWithFallback({
               text: norm,
               sLang,
               tLang,
               keys,
-              signal,
+              signal: reqSignal,
               acceptFn: acceptTranslation,
               // v4.167.0: the operator's latency ladder, read per request so the
               // setting applies to the next line with no reload.
@@ -477,9 +494,9 @@ export const useTranslate = (
             });
             if (res.text) setCached(norm, langPair, res.text);
             // An abort means a newer turn replaced this one, not a bad phrase.
-            if (!signal.aborted) noteChunkOutcome(cacheKey, Boolean(res.text));
+            if (!reqSignal?.aborted) noteChunkOutcome(cacheKey, Boolean(res.text));
             return res;
-          }, { signal }),
+          }, { signal: reqSignal, lane: langPair }),
         );
       };
 
@@ -505,8 +522,32 @@ export const useTranslate = (
           }
         });
 
-        for (const { segmentId, text: segText } of labeled) {
+        // v4.178.0 progressive display: paint each segment as soon as it lands
+        // so the operator reads sentence 1 while sentence 2 is translated.
+        // Never shrinks a longer readable translation (no vanishing text).
+        let shownFirstAt = 0;
+        const paintSoFar = () => {
+          if (signal.aborted) return;
+          const partial = composeCaptionTranslation(
+            translationsMapRef.current,
+            activeKeys,
+            segmentSources,
+          );
+          if (!partial) return;
+          const onScreen = translationRef.current || '';
+          if (hasGoodTranslationRef.current && partial.length < onScreen.length) return;
+          setTranslation(partial);
+          translationRef.current = partial;
+          hasGoodTranslationRef.current = true;
+          if (!shownFirstAt) shownFirstAt = Date.now();
+        };
+
+        for (let segIndex = 0; segIndex < labeled.length; segIndex += 1) {
+          const { segmentId, text: segText } = labeled[segIndex];
           if (signal.aborted) break;
+          const isTail = segIndex === labeled.length - 1;
+          // Punctuated interim text can still be revised by STT, so only a FINAL tail is done.
+          const segmentDone = !isTail || isFinal !== false;
 
           const sourceHash = hashTranslationSource(segText);
           const requestId = buildSegmentRequestId({
@@ -546,7 +587,7 @@ export const useTranslate = (
             continue;
           }
 
-          const res = await fetchChunk(segText);
+          const res = await fetchChunk(segText, { abortable: !segmentDone });
           // The generic engine keeps legitimate weak short answers. At this
           // EN/ES boundary, however, an echoed source is never a translation —
           // unless it is a short stock phrase that really is its own translation.
@@ -580,6 +621,8 @@ export const useTranslate = (
           if (entry.status === 'ok' || entry.status === 'weak') anyOk = true;
           if (entry.status === 'failed' || entry.passthrough || entry.warning) anyFailed = true;
           if (entry.passthrough) anyPassthrough = true;
+          // More segments still to fetch: show what we have now.
+          if (!isTail && (entry.status === 'ok' || entry.status === 'weak')) paintSoFar();
         }
 
         if (signal.aborted) return;
@@ -603,6 +646,15 @@ export const useTranslate = (
         if (anyOk || !hasGoodTranslationRef.current) {
           setTranslation(composed || sourceForTranslate);
           hasGoodTranslationRef.current = anyOk || Boolean(composed);
+        }
+        if (isFinal !== false) {
+          const now = Date.now();
+          catLog('[trans] latency', {
+            capId,
+            segments: labeled.length,
+            firstMs: (shownFirstAt || now) - turnStartedAt,
+            fullMs: now - turnStartedAt,
+          });
         }
         prevSegmentsRef.current = labeled.map((s) => s.text);
         lastTranslatedTextRef.current = normText;
