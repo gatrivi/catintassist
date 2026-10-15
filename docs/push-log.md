@@ -119,3 +119,4 @@
 | 2026-09-30T00:38:38.191Z | b44fc01 | v4.172.0 shift ear: one warm socket all shift, off-call death re-arms |
 | 2026-09-30T15:47:47.946Z | 30172c7 | v4.173.0 money fold hotfix - prices stop dying |
 | 2026-09-30T18:30:18.400Z | 785f674 | v4.174.0 digit destroyers + harness blind spots |
+| 2026-10-15T15:54:00.253Z | e1fa98f | v4.175.0 translations stop going blank |

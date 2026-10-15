@@ -25,6 +25,31 @@ import { APP_VERSION } from '../constants/version';
 /** Newest first. Only the entry matching APP_VERSION is shown on load. */
 export const RELEASE_NOTES_CATALOG = [
   {
+    version: '4.176.0',
+    id: 'header-toggles-grid-io',
+    highlightElementIds: ['header-io-toggle-btn'],
+    es: {
+      title: 'Botones para mostrar/ocultar: grilla y franja IO',
+      intro: 'Regla nueva: lo que a veces molesta y a veces salva la llamada lleva un botón, y la app recuerda tu elección.',
+      sections: [
+        { heading: 'Qué hay', bullets: [
+          '**▦** (durante la llamada, arriba a la derecha): muestra la grilla de 12 métricas debajo del encabezado compacto. Apagado por defecto.',
+          '**IO**: oculta o muestra la franja de audio. Si el audio se rompe, vuelve sola aunque esté oculta.',
+        ] },
+      ],
+    },
+    en: {
+      title: 'Show/hide toggles: grid and IO strip',
+      intro: 'New rule: anything that is a nuisance on some calls and a lifesaver on others gets a toggle, and the app remembers your choice.',
+      sections: [
+        { heading: 'What is new', bullets: [
+          '**▦** (in-call, top right): shows the 12-metric grid under the compact header. Off by default.',
+          '**IO**: hides or shows the audio-route strip. If audio breaks it comes back by itself, even when hidden.',
+        ] },
+      ],
+    },
+  },
+  {
     version: '4.175.0',
     id: 'translations-stop-going-blank',
     highlightElementIds: ['transcript-pane'],

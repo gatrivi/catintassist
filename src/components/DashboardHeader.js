@@ -68,6 +68,7 @@ import {
   LANG_PAIR_CHANGED_EVENT,
 } from '../utils/languageConfig';
 import { DailyTargetsChip, computeGoalDay } from './DailyTargetsChip';
+import { loadHeaderToggle, saveHeaderToggle, shouldShowIoStrip } from '../utils/headerToggles';
 
 const OFF_CALL_METRICS_EXPANDED_KEY = 'catint_off_call_metrics_expanded_v1';
 const SCOREBOARD_MAX_VH_KEY = 'catint_scoreboard_max_vh';
@@ -263,6 +264,11 @@ const StateIndicators = ({ state, breakMinutes, isZombie, silenceCount }) => {  
 
 const SessionControlsSticky = React.memo(({
   isActive,
+  // v4.176.0: header show/hide toggles (src/utils/headerToggles.js)
+  ioStripOn = true,
+  onToggleIoStrip,
+  gridInCall = false,
+  onToggleGridInCall,
   isBreakActive,
   isZombieCall,
   apiKeyMissing,
@@ -799,6 +805,37 @@ const SessionControlsSticky = React.memo(({
               header. If that ever needs to be back, put it in Settings, not
               here. */}
 
+          {/* v4.176.0: ▦ = 12-cell grid under the compact call header. Some
+              calls it is a nuisance, some a lifesaver — the operator decides. */}
+          {(isActive || isZombieCall) && onToggleGridInCall && (
+            <button
+              id="header-grid-toggle-btn"
+              type="button"
+              className="header-chrome-btn"
+              onClick={onToggleGridInCall}
+              aria-pressed={gridInCall}
+              title={gridInCall ? 'Hide the 12-cell grid during calls' : 'Show the 12-cell grid during calls'}
+              style={{ fontSize: '0.7rem', opacity: gridInCall ? 1 : 0.55 }}
+            >
+              ▦
+            </button>
+          )}
+          {/* v4.176.0: IO = audio-route strip. Hidden or not, it returns by
+              itself while audio is broken (shouldShowIoStrip). */}
+          {onToggleIoStrip && (
+            <button
+              id="header-io-toggle-btn"
+              type="button"
+              className="header-chrome-btn"
+              onClick={onToggleIoStrip}
+              aria-pressed={ioStripOn}
+              title={ioStripOn ? 'Hide the audio-route strip (returns by itself if audio breaks)' : 'Show the audio-route strip'}
+              style={{ fontSize: '0.6rem', fontWeight: 700, opacity: ioStripOn ? 1 : 0.55 }}
+            >
+              IO
+            </button>
+          )}
+
           {showEndDayButton && (
             <ElementHintTarget
               elementId="header-end-day-btn"
@@ -828,7 +865,7 @@ const SessionControlsSticky = React.memo(({
           they were the only doors to those views; both now open from Settings →
           Studio. The cat logo below still closes the studio, because that is a
           "back to work" affordance, not an entrance. */}
-      {
+      {shouldShowIoStrip({ ioStripOn, isActive, isZombieCall, audioAttached, virtualCableFailure }) && (
         <AudioRouteStatusBar
           micTestMode={micTestMode}
           setMicTestMode={setMicTestMode}
@@ -865,7 +902,7 @@ const SessionControlsSticky = React.memo(({
           compact
           trailing={trailingSlot}
         />
-      }
+      )}
     </>
   );
 });
@@ -1048,6 +1085,10 @@ export const DashboardHeader = ({
   const [showAsHours, setShowAsHours] = useState(false);
   const [rateView, setRateView] = useState('effective'); // 'effective' | 'active'
   const [overtimeMode, setOvertimeMode] = useState('tail'); // 'tail' | 'under'
+  const [gridInCall, setGridInCall] = useState(() => loadHeaderToggle('gridInCall'));
+  const [ioStripOn, setIoStripOn] = useState(() => loadHeaderToggle('ioStrip'));
+  const toggleGridInCall = useCallback(() => setGridInCall((v) => saveHeaderToggle('gridInCall', !v)), []);
+  const toggleIoStrip = useCallback(() => setIoStripOn((v) => saveHeaderToggle('ioStrip', !v)), []);
   const [callModeExpanded, setCallModeExpanded] = useState(false); // User can pin full header during calls
   // v4.88.5: 3rd HUD mode during calls — meter-only (goal meter as extra-compact HUD)
   const [hudMeterOnly, setHudMeterOnly] = useState(() => localStorage.getItem('catint_hud_meter_only_v1') === '1');
@@ -2371,6 +2412,291 @@ export const DashboardHeader = ({
     </div>
   );
 
+  // v4.176.0: the 12-cell grid, extracted so the ▦ toggle can also show it
+  // in the compact call header (one copy, two callers).
+  const renderNumericGrid = () => (
+    <div id="numeric-metric-grid" className="metric-grid metric-grid--scoreboard">
+      {isEditingScoreboard && (
+        <div style={{ gridColumn: '1 / -1', display: 'flex', gap: '3px', flexWrap: 'wrap', padding: '2px 0', alignItems: 'center' }}>
+          <span style={{ fontSize: '0.5rem', opacity: 0.5, marginRight: 4 }}>Preset:</span>
+          {Object.entries(PRESET_LABELS).map(([id, label]) => (
+            <button
+              key={id}
+              type="button"
+              onClick={() => applyScoreboardPreset(id)}
+              style={{
+                fontSize: '0.5rem', fontWeight: 700, padding: '1px 5px', borderRadius: 3, cursor: 'pointer',
+                background: scoreboardPreset === id ? 'rgba(239,68,68,0.25)' : 'rgba(255,255,255,0.06)',
+                border: scoreboardPreset === id ? '1px solid rgba(239,68,68,0.5)' : '1px solid rgba(255,255,255,0.1)',
+                color: scoreboardPreset === id ? '#93c5fd' : 'rgba(255,255,255,0.6)',
+              }}
+              title={`Apply ${label} scoreboard preset`}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
+      )}
+      {/* 1. Mins worked today */}
+      {showMetric('m1') && (
+      <div
+        id="metric-m1"
+        className={`metric-cell ${isEditingScoreboard ? 'grid-edit-mode' : ''}`}
+        title="Minutes worked today (Click to toggle H:M)"
+        style={{ position: 'relative', background: 'rgba(239,68,68,0.06)', cursor: 'pointer' }}
+        onClick={() => setShowAsHours(!showAsHours)}
+        onMouseEnter={(e) => showMetricTooltip(e, 1)}
+        onMouseLeave={hideMetricTooltip}
+      >
+        <MetricVisibilityToggle metricKey="m1" />
+        <HelpLabel text="1. MINS TODAY" />
+        <div className="metric-cell-val" style={{ color: '#f87171' }}><StatNumber value={formatLiveMins(totalDailyMins, isActive)} size="lg" format={false} /></div>
+        <MetricPct>{metricPcts.minsToday}</MetricPct>
+        <div className="metric-cell-label">MINS TODAY</div>
+      </div>
+      )}
+
+      {showMetric('m2') && (
+      <div
+        id="metric-m2"
+        className={`metric-cell ${isEditingScoreboard ? 'grid-edit-mode' : ''}`}
+        title="Minutes left for daily goal (Click to toggle H:M)"
+        style={{ position: 'relative', background: 'rgba(239,68,68,0.04)', cursor: 'pointer' }}
+        onClick={() => setShowAsHours(!showAsHours)}
+        onMouseEnter={(e) => showMetricTooltip(e, 2)}
+        onMouseLeave={hideMetricTooltip}
+      >
+        <MetricVisibilityToggle metricKey="m2" />
+        <HelpLabel text="2. LEFT TODAY" />
+        <div className="metric-cell-val" style={{ color: '#fca5a5' }}><StatNumber value={formatLiveMins(Math.max(0, dailyGoal - totalDailyMins), isActive)} size="lg" format={false} /></div>
+        <MetricPct>{metricPcts.leftToday}</MetricPct>
+        <div className="metric-cell-label">LEFT TODAY</div>
+      </div>
+      )}
+
+      {/* 3. Goal mins */}
+      {showMetric('m3') && (
+      <div
+        id="metric-m3"
+        className={`metric-cell ${isEditingScoreboard ? 'grid-edit-mode' : ''}`}
+        title="Target goal minutes for today (Click to toggle H:M)"
+        style={{ position: 'relative', background: 'rgba(52,211,153,0.04)', cursor: 'pointer' }}
+        onClick={() => setShowAsHours(!showAsHours)}
+        onMouseEnter={(e) => showMetricTooltip(e, 3)}
+        onMouseLeave={hideMetricTooltip}
+      >
+        <MetricVisibilityToggle metricKey="m3" />
+        <HelpLabel text="3. TODAY GOAL" />
+        <div className="metric-cell-val"><StatNumber value={formatValue(dailyGoal)} size="lg" format={false} /></div>
+        <MetricPct>{metricPcts.todayGoal}</MetricPct>
+        <div className="metric-cell-label">TODAY GOAL</div>
+      </div>
+      )}
+
+      {/* 4. Money today */}
+      {showMetric('m4') && (
+      <div
+        id="metric-m4"
+        className={`metric-cell ${isEditingScoreboard ? 'grid-edit-mode' : ''}`}
+        title="Money earned today"
+        style={{ position: 'relative', background: 'rgba(16,185,129,0.06)' }}
+        onMouseEnter={(e) => showMetricTooltip(e, 4)}
+        onMouseLeave={hideMetricTooltip}
+      >
+        <MetricVisibilityToggle metricKey="m4" />
+        <HelpLabel text="4. AR$ TODAY" />
+        <div className="metric-cell-val" style={{ color: '#34d399' }}>{renderLiveArs(todayArsLive, 'lg', 'AR$')}</div>
+        <MetricPct>{metricPcts.arsToday}</MetricPct>
+        <div className="metric-cell-label">AR$ TODAY</div>
+      </div>
+      )}
+
+      {/* 5. Money to be made today */}
+      {showMetric('m5') && (
+      <div
+        id="metric-m5"
+        className={`metric-cell ${isEditingScoreboard ? 'grid-edit-mode' : ''}`}
+        title="Money remaining for today's goal"
+        style={{ position: 'relative', background: 'rgba(245,158,11,0.04)' }}
+        onMouseEnter={(e) => showMetricTooltip(e, 5)}
+        onMouseLeave={hideMetricTooltip}
+      >
+        <MetricVisibilityToggle metricKey="m5" />
+        <HelpLabel text="5. AR$ LEFT TODAY" />
+        <div className="metric-cell-val" style={{ color: '#fcd34d' }}><StatNumber value={cashToTodayGoal} prefix="AR$" size="lg" /></div>
+        <MetricPct>{metricPcts.arsLeft}</MetricPct>
+        <div className="metric-cell-label">AR$ LEFT TODAY</div>
+      </div>
+      )}
+
+      {/* 6. Stamina Ratio (On-Call vs Break) */}
+      {showMetric('m6') && (
+      <div
+        id="metric-m6"
+        className={`metric-cell ${isEditingScoreboard ? 'grid-edit-mode' : ''}`}
+        title="STAMINA RATIO: Your on-call minutes divided by break minutes. Target is 5.3x (8h on / 90m off)."
+        style={{ position: 'relative', background: 'rgba(168,85,247,0.04)' }}
+        onMouseEnter={(e) => showMetricTooltip(e, 6)}
+        onMouseLeave={hideMetricTooltip}
+      >
+        <MetricVisibilityToggle metricKey="m6" />
+        <HelpLabel text="6. STAMINA RATIO" />
+        <div className="metric-cell-val" style={{ color: (totalDailyMins / Math.max(0.1, liveBreakMins)) >= 5.3 ? '#c084fc' : '#9ca3af' }}>
+          {(totalDailyMins / Math.max(0.1, liveBreakMins)).toFixed(1)}x
+        </div>
+        <MetricPct>{metricPcts.stamina}</MetricPct>
+        <div className="metric-cell-label">STAMINA RATIO</div>
+      </div>
+      )}
+
+      {/* 7. Money month */}
+      {showMetric('m7') && (
+      <div
+        id="metric-m7"
+        className={`metric-cell ${isEditingScoreboard ? 'grid-edit-mode' : ''}`}
+        title="Money earned this month"
+        style={{ position: 'relative' }}
+        onMouseEnter={(e) => showMetricTooltip(e, 7)}
+        onMouseLeave={hideMetricTooltip}
+      >
+        <MetricVisibilityToggle metricKey="m7" />
+        <HelpLabel text="7. AR$ MONTH" />
+        <div className="metric-cell-val"><StatNumber value={monthlyArs} prefix="AR$" size="lg" /></div>
+        <MetricPct>{metricPcts.arsMonth}</MetricPct>
+        {/* v4.87.0: monthly minutes visible + one-click editable target */}
+        <button
+          type="button"
+          onClick={(e) => { e.stopPropagation(); onOpenGoalsView(); }}
+          title={`Month: ${Math.round(stats.monthlyMinutes + unbankedMins)}m of ${stats.goalMinutes}m target — click to open Goal Tracking`}
+          style={{
+            background: 'rgba(251,146,60,0.12)', border: '1px solid rgba(251,146,60,0.4)',
+            borderRadius: 4, color: '#fdba74', cursor: 'pointer',
+            fontSize: '0.6rem', fontWeight: 800, padding: '0.1rem 0.35rem',
+          }}
+        >
+          {Math.round(stats.monthlyMinutes + unbankedMins)} / {stats.goalMinutes}m ✎
+        </button>
+        <div className="metric-cell-label">AR$ MONTH</div>
+      </div>
+      )}
+
+      {/* 8. Money left month */}
+      {showMetric('m8') && (
+      <div
+        id="metric-m8"
+        className={`metric-cell ${isEditingScoreboard ? 'grid-edit-mode' : ''}`}
+        title="Money remaining for monthly goal"
+        style={{ position: 'relative' }}
+        onMouseEnter={(e) => showMetricTooltip(e, 8)}
+        onMouseLeave={hideMetricTooltip}
+      >
+        <MetricVisibilityToggle metricKey="m8" />
+        <HelpLabel text="8. AR$ LEFT MONTH" />
+        <div className="metric-cell-val"><StatNumber value={Math.max(0, monthlyTargetArs - monthlyArs)} prefix="AR$" size="lg" /></div>
+        <MetricPct>{metricPcts.arsLeftMonth}</MetricPct>
+        <div className="metric-cell-label">AR$ LEFT MONTH</div>
+      </div>
+      )}
+
+      {/* 9. Off-call total today */}
+      {showMetric('m9') && (
+      <div
+        id="metric-m9"
+        className={`metric-cell ${isEditingScoreboard ? 'grid-edit-mode' : ''}`}
+        title="Total time spent off-call today (Click to toggle H:M)"
+        style={{ position: 'relative', background: 'rgba(251,146,60,0.06)', cursor: 'pointer' }}
+        onClick={() => setShowAsHours(!showAsHours)}
+        onMouseEnter={(e) => showMetricTooltip(e, 9)}
+        onMouseLeave={hideMetricTooltip}
+      >
+        <MetricVisibilityToggle metricKey="m9" />
+        <HelpLabel text="9. OFF CALL" />
+        <div className="metric-cell-val" style={{ color: '#fdba74' }}><StatNumber value={formatLiveMins(totalOffCallMins, !isActive)} size="lg" format={false} /></div>
+        <MetricPct>{metricPcts.offCall}</MetricPct>
+        <div className="metric-cell-label">OFF CALL</div>
+      </div>
+      )}
+
+      {/* 10. Avg so far mo */}
+      {showMetric('m10') && (
+      <div
+        id="metric-m10"
+        className={`metric-cell ${isEditingScoreboard ? 'grid-edit-mode' : ''}`}
+        title="Average minutes per day so far (Click to toggle H:M)"
+        style={{ position: 'relative', background: 'rgba(139,92,246,0.04)', cursor: 'pointer' }}
+        onClick={() => setShowAsHours(!showAsHours)}
+        onMouseEnter={(e) => showMetricTooltip(e, 10)}
+        onMouseLeave={hideMetricTooltip}
+      >
+        <MetricVisibilityToggle metricKey="m10" />
+        <HelpLabel text="10. MO AVG" />
+        <div className="metric-cell-val"><StatNumber value={formatValue(actualDailyAverage)} size="lg" format={false} /></div>
+        <MetricPct>{metricPcts.moAvg}</MetricPct>
+        <div className="metric-cell-label">MO AVG</div>
+      </div>
+      )}
+
+      {/* 11. Silence/Idle Timer */}
+      {showMetric('m11') && (
+      <div
+        id="metric-m11"
+        className={`metric-cell ${isEditingScoreboard ? 'grid-edit-mode' : ''}`}
+        title="Time since last audio activity (Reset by speech). In call, this tracks patient/user silence."
+        style={{ position: 'relative', background: isActive ? 'rgba(239,68,68,0.06)' : 'rgba(255,255,255,0.04)' }}
+        onMouseEnter={(e) => showMetricTooltip(e, 11)}
+        onMouseLeave={hideMetricTooltip}
+      >
+        <MetricVisibilityToggle metricKey="m11" />
+        <HelpLabel text="11. SILENCE" />
+        <div className="metric-watermark">{isActive ? '🔇' : '⏳'}</div>
+        <div className="metric-cell-val" style={{ color: silenceCount > 600 ? '#f87171' : 'white' }}>
+          <div style={{ visibility: silenceCount > 30 ? 'visible' : 'hidden' }}>
+            <StatNumber value={formatTime(silenceCount)} size="md" format={false} />
+          </div>
+        </div>
+        <MetricPct>{metricPcts.silence}</MetricPct>
+        <div className="metric-cell-label">{isActive ? 'CALL SILENCE' : 'APP IDLE'}</div>
+      </div>
+      )}
+
+      {/* 12. Current call min and cash */}
+      {showMetric('m12') && (
+      <div
+        id="metric-m12"
+        className={`metric-cell ${isEditingScoreboard ? 'grid-edit-mode' : ''}`}
+        title="Current call duration and unbanked cash"
+        style={{ position: 'relative', background: isActive ? 'rgba(16,185,129,0.1)' : 'rgba(255,255,255,0.02)', border: isActive ? '1px solid rgba(16,185,129,0.3)' : 'none' }}
+        onMouseEnter={(e) => showMetricTooltip(e, 12)}
+        onMouseLeave={hideMetricTooltip}
+      >
+        <MetricVisibilityToggle metricKey="m12" />
+        <HelpLabel text="12. CURR CALL" />
+        <div className="metric-cell-val" style={{ display: 'flex', gap: '0.2rem', alignItems: 'center' }}>
+          <StatNumber value={formatTime(sessionSeconds)} size="md" format={false} />
+          {renderSessionArs('lg', 'AR$')}
+        </div>
+        <MetricPct>{metricPcts.currCall}</MetricPct>
+        <div className="metric-cell-label">CURR CALL</div>
+      </div>
+      )}
+      <div id="cell-switch-game" className="metric-cell" style={{ cursor: 'pointer', background: 'rgba(255,255,255,0.04)', gridColumn: 'span 3', flexDirection: 'row', minHeight: '26px' }} onClick={() => setScoreView('game')} title="Switch back to gamified view">
+        <GameIcon size={14} />
+        <div className="metric-cell-label" style={{ opacity: 0.8, marginLeft: '6px' }}>BACK TO GAME VIEW</div>
+      </div>
+      <div className="metric-cell metric-cell-studio" style={{ gridColumn: 'span 1', minHeight: '26px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '4px' }} title="Studio view switch">
+        {!isActive && onCycleWorkspace && (
+          <WorkspaceViewSwitcher
+            view={studioView}
+            onCycle={onCycleWorkspace}
+            variant="inline"
+            showHint={showStudioHint}
+          />
+        )}
+        <AppGuideButton />
+      </div>
+    </div>
+  );
+
   const renderWorkspaceBody = () => (
       <div className={`dashboard-header-fill${offCallScoreboardView ? ' scoreboard-workspace scoreboard-workspace--header' : ''}`} data-guide={offCallScoreboardView ? 'scoreboard' : undefined}>
       <>
@@ -2451,286 +2777,7 @@ export const DashboardHeader = ({
 
                 <div className="flip-back">
                   {showNumericGrid ? (
-                  <div id="numeric-metric-grid" className="metric-grid metric-grid--scoreboard">
-                    {isEditingScoreboard && (
-                      <div style={{ gridColumn: '1 / -1', display: 'flex', gap: '3px', flexWrap: 'wrap', padding: '2px 0', alignItems: 'center' }}>
-                        <span style={{ fontSize: '0.5rem', opacity: 0.5, marginRight: 4 }}>Preset:</span>
-                        {Object.entries(PRESET_LABELS).map(([id, label]) => (
-                          <button
-                            key={id}
-                            type="button"
-                            onClick={() => applyScoreboardPreset(id)}
-                            style={{
-                              fontSize: '0.5rem', fontWeight: 700, padding: '1px 5px', borderRadius: 3, cursor: 'pointer',
-                              background: scoreboardPreset === id ? 'rgba(239,68,68,0.25)' : 'rgba(255,255,255,0.06)',
-                              border: scoreboardPreset === id ? '1px solid rgba(239,68,68,0.5)' : '1px solid rgba(255,255,255,0.1)',
-                              color: scoreboardPreset === id ? '#93c5fd' : 'rgba(255,255,255,0.6)',
-                            }}
-                            title={`Apply ${label} scoreboard preset`}
-                          >
-                            {label}
-                          </button>
-                        ))}
-                      </div>
-                    )}
-                    {/* 1. Mins worked today */}
-                    {showMetric('m1') && (
-                    <div
-                      id="metric-m1"
-                      className={`metric-cell ${isEditingScoreboard ? 'grid-edit-mode' : ''}`}
-                      title="Minutes worked today (Click to toggle H:M)"
-                      style={{ position: 'relative', background: 'rgba(239,68,68,0.06)', cursor: 'pointer' }}
-                      onClick={() => setShowAsHours(!showAsHours)}
-                      onMouseEnter={(e) => showMetricTooltip(e, 1)}
-                      onMouseLeave={hideMetricTooltip}
-                    >
-                      <MetricVisibilityToggle metricKey="m1" />
-                      <HelpLabel text="1. MINS TODAY" />
-                      <div className="metric-cell-val" style={{ color: '#f87171' }}><StatNumber value={formatLiveMins(totalDailyMins, isActive)} size="lg" format={false} /></div>
-                      <MetricPct>{metricPcts.minsToday}</MetricPct>
-                      <div className="metric-cell-label">MINS TODAY</div>
-                    </div>
-                    )}
-
-                    {showMetric('m2') && (
-                    <div
-                      id="metric-m2"
-                      className={`metric-cell ${isEditingScoreboard ? 'grid-edit-mode' : ''}`}
-                      title="Minutes left for daily goal (Click to toggle H:M)"
-                      style={{ position: 'relative', background: 'rgba(239,68,68,0.04)', cursor: 'pointer' }}
-                      onClick={() => setShowAsHours(!showAsHours)}
-                      onMouseEnter={(e) => showMetricTooltip(e, 2)}
-                      onMouseLeave={hideMetricTooltip}
-                    >
-                      <MetricVisibilityToggle metricKey="m2" />
-                      <HelpLabel text="2. LEFT TODAY" />
-                      <div className="metric-cell-val" style={{ color: '#fca5a5' }}><StatNumber value={formatLiveMins(Math.max(0, dailyGoal - totalDailyMins), isActive)} size="lg" format={false} /></div>
-                      <MetricPct>{metricPcts.leftToday}</MetricPct>
-                      <div className="metric-cell-label">LEFT TODAY</div>
-                    </div>
-                    )}
-
-                    {/* 3. Goal mins */}
-                    {showMetric('m3') && (
-                    <div
-                      id="metric-m3"
-                      className={`metric-cell ${isEditingScoreboard ? 'grid-edit-mode' : ''}`}
-                      title="Target goal minutes for today (Click to toggle H:M)"
-                      style={{ position: 'relative', background: 'rgba(52,211,153,0.04)', cursor: 'pointer' }}
-                      onClick={() => setShowAsHours(!showAsHours)}
-                      onMouseEnter={(e) => showMetricTooltip(e, 3)}
-                      onMouseLeave={hideMetricTooltip}
-                    >
-                      <MetricVisibilityToggle metricKey="m3" />
-                      <HelpLabel text="3. TODAY GOAL" />
-                      <div className="metric-cell-val"><StatNumber value={formatValue(dailyGoal)} size="lg" format={false} /></div>
-                      <MetricPct>{metricPcts.todayGoal}</MetricPct>
-                      <div className="metric-cell-label">TODAY GOAL</div>
-                    </div>
-                    )}
-
-                    {/* 4. Money today */}
-                    {showMetric('m4') && (
-                    <div
-                      id="metric-m4"
-                      className={`metric-cell ${isEditingScoreboard ? 'grid-edit-mode' : ''}`}
-                      title="Money earned today"
-                      style={{ position: 'relative', background: 'rgba(16,185,129,0.06)' }}
-                      onMouseEnter={(e) => showMetricTooltip(e, 4)}
-                      onMouseLeave={hideMetricTooltip}
-                    >
-                      <MetricVisibilityToggle metricKey="m4" />
-                      <HelpLabel text="4. AR$ TODAY" />
-                      <div className="metric-cell-val" style={{ color: '#34d399' }}>{renderLiveArs(todayArsLive, 'lg', 'AR$')}</div>
-                      <MetricPct>{metricPcts.arsToday}</MetricPct>
-                      <div className="metric-cell-label">AR$ TODAY</div>
-                    </div>
-                    )}
-
-                    {/* 5. Money to be made today */}
-                    {showMetric('m5') && (
-                    <div
-                      id="metric-m5"
-                      className={`metric-cell ${isEditingScoreboard ? 'grid-edit-mode' : ''}`}
-                      title="Money remaining for today's goal"
-                      style={{ position: 'relative', background: 'rgba(245,158,11,0.04)' }}
-                      onMouseEnter={(e) => showMetricTooltip(e, 5)}
-                      onMouseLeave={hideMetricTooltip}
-                    >
-                      <MetricVisibilityToggle metricKey="m5" />
-                      <HelpLabel text="5. AR$ LEFT TODAY" />
-                      <div className="metric-cell-val" style={{ color: '#fcd34d' }}><StatNumber value={cashToTodayGoal} prefix="AR$" size="lg" /></div>
-                      <MetricPct>{metricPcts.arsLeft}</MetricPct>
-                      <div className="metric-cell-label">AR$ LEFT TODAY</div>
-                    </div>
-                    )}
-
-                    {/* 6. Stamina Ratio (On-Call vs Break) */}
-                    {showMetric('m6') && (
-                    <div
-                      id="metric-m6"
-                      className={`metric-cell ${isEditingScoreboard ? 'grid-edit-mode' : ''}`}
-                      title="STAMINA RATIO: Your on-call minutes divided by break minutes. Target is 5.3x (8h on / 90m off)."
-                      style={{ position: 'relative', background: 'rgba(168,85,247,0.04)' }}
-                      onMouseEnter={(e) => showMetricTooltip(e, 6)}
-                      onMouseLeave={hideMetricTooltip}
-                    >
-                      <MetricVisibilityToggle metricKey="m6" />
-                      <HelpLabel text="6. STAMINA RATIO" />
-                      <div className="metric-cell-val" style={{ color: (totalDailyMins / Math.max(0.1, liveBreakMins)) >= 5.3 ? '#c084fc' : '#9ca3af' }}>
-                        {(totalDailyMins / Math.max(0.1, liveBreakMins)).toFixed(1)}x
-                      </div>
-                      <MetricPct>{metricPcts.stamina}</MetricPct>
-                      <div className="metric-cell-label">STAMINA RATIO</div>
-                    </div>
-                    )}
-
-                    {/* 7. Money month */}
-                    {showMetric('m7') && (
-                    <div
-                      id="metric-m7"
-                      className={`metric-cell ${isEditingScoreboard ? 'grid-edit-mode' : ''}`}
-                      title="Money earned this month"
-                      style={{ position: 'relative' }}
-                      onMouseEnter={(e) => showMetricTooltip(e, 7)}
-                      onMouseLeave={hideMetricTooltip}
-                    >
-                      <MetricVisibilityToggle metricKey="m7" />
-                      <HelpLabel text="7. AR$ MONTH" />
-                      <div className="metric-cell-val"><StatNumber value={monthlyArs} prefix="AR$" size="lg" /></div>
-                      <MetricPct>{metricPcts.arsMonth}</MetricPct>
-                      {/* v4.87.0: monthly minutes visible + one-click editable target */}
-                      <button
-                        type="button"
-                        onClick={(e) => { e.stopPropagation(); onOpenGoalsView(); }}
-                        title={`Month: ${Math.round(stats.monthlyMinutes + unbankedMins)}m of ${stats.goalMinutes}m target — click to open Goal Tracking`}
-                        style={{
-                          background: 'rgba(251,146,60,0.12)', border: '1px solid rgba(251,146,60,0.4)',
-                          borderRadius: 4, color: '#fdba74', cursor: 'pointer',
-                          fontSize: '0.6rem', fontWeight: 800, padding: '0.1rem 0.35rem',
-                        }}
-                      >
-                        {Math.round(stats.monthlyMinutes + unbankedMins)} / {stats.goalMinutes}m ✎
-                      </button>
-                      <div className="metric-cell-label">AR$ MONTH</div>
-                    </div>
-                    )}
-
-                    {/* 8. Money left month */}
-                    {showMetric('m8') && (
-                    <div
-                      id="metric-m8"
-                      className={`metric-cell ${isEditingScoreboard ? 'grid-edit-mode' : ''}`}
-                      title="Money remaining for monthly goal"
-                      style={{ position: 'relative' }}
-                      onMouseEnter={(e) => showMetricTooltip(e, 8)}
-                      onMouseLeave={hideMetricTooltip}
-                    >
-                      <MetricVisibilityToggle metricKey="m8" />
-                      <HelpLabel text="8. AR$ LEFT MONTH" />
-                      <div className="metric-cell-val"><StatNumber value={Math.max(0, monthlyTargetArs - monthlyArs)} prefix="AR$" size="lg" /></div>
-                      <MetricPct>{metricPcts.arsLeftMonth}</MetricPct>
-                      <div className="metric-cell-label">AR$ LEFT MONTH</div>
-                    </div>
-                    )}
-
-                    {/* 9. Off-call total today */}
-                    {showMetric('m9') && (
-                    <div
-                      id="metric-m9"
-                      className={`metric-cell ${isEditingScoreboard ? 'grid-edit-mode' : ''}`}
-                      title="Total time spent off-call today (Click to toggle H:M)"
-                      style={{ position: 'relative', background: 'rgba(251,146,60,0.06)', cursor: 'pointer' }}
-                      onClick={() => setShowAsHours(!showAsHours)}
-                      onMouseEnter={(e) => showMetricTooltip(e, 9)}
-                      onMouseLeave={hideMetricTooltip}
-                    >
-                      <MetricVisibilityToggle metricKey="m9" />
-                      <HelpLabel text="9. OFF CALL" />
-                      <div className="metric-cell-val" style={{ color: '#fdba74' }}><StatNumber value={formatLiveMins(totalOffCallMins, !isActive)} size="lg" format={false} /></div>
-                      <MetricPct>{metricPcts.offCall}</MetricPct>
-                      <div className="metric-cell-label">OFF CALL</div>
-                    </div>
-                    )}
-
-                    {/* 10. Avg so far mo */}
-                    {showMetric('m10') && (
-                    <div
-                      id="metric-m10"
-                      className={`metric-cell ${isEditingScoreboard ? 'grid-edit-mode' : ''}`}
-                      title="Average minutes per day so far (Click to toggle H:M)"
-                      style={{ position: 'relative', background: 'rgba(139,92,246,0.04)', cursor: 'pointer' }}
-                      onClick={() => setShowAsHours(!showAsHours)}
-                      onMouseEnter={(e) => showMetricTooltip(e, 10)}
-                      onMouseLeave={hideMetricTooltip}
-                    >
-                      <MetricVisibilityToggle metricKey="m10" />
-                      <HelpLabel text="10. MO AVG" />
-                      <div className="metric-cell-val"><StatNumber value={formatValue(actualDailyAverage)} size="lg" format={false} /></div>
-                      <MetricPct>{metricPcts.moAvg}</MetricPct>
-                      <div className="metric-cell-label">MO AVG</div>
-                    </div>
-                    )}
-
-                    {/* 11. Silence/Idle Timer */}
-                    {showMetric('m11') && (
-                    <div
-                      id="metric-m11"
-                      className={`metric-cell ${isEditingScoreboard ? 'grid-edit-mode' : ''}`}
-                      title="Time since last audio activity (Reset by speech). In call, this tracks patient/user silence."
-                      style={{ position: 'relative', background: isActive ? 'rgba(239,68,68,0.06)' : 'rgba(255,255,255,0.04)' }}
-                      onMouseEnter={(e) => showMetricTooltip(e, 11)}
-                      onMouseLeave={hideMetricTooltip}
-                    >
-                      <MetricVisibilityToggle metricKey="m11" />
-                      <HelpLabel text="11. SILENCE" />
-                      <div className="metric-watermark">{isActive ? '🔇' : '⏳'}</div>
-                      <div className="metric-cell-val" style={{ color: silenceCount > 600 ? '#f87171' : 'white' }}>
-                        <div style={{ visibility: silenceCount > 30 ? 'visible' : 'hidden' }}>
-                          <StatNumber value={formatTime(silenceCount)} size="md" format={false} />
-                        </div>
-                      </div>
-                      <MetricPct>{metricPcts.silence}</MetricPct>
-                      <div className="metric-cell-label">{isActive ? 'CALL SILENCE' : 'APP IDLE'}</div>
-                    </div>
-                    )}
-
-                    {/* 12. Current call min and cash */}
-                    {showMetric('m12') && (
-                    <div
-                      id="metric-m12"
-                      className={`metric-cell ${isEditingScoreboard ? 'grid-edit-mode' : ''}`}
-                      title="Current call duration and unbanked cash"
-                      style={{ position: 'relative', background: isActive ? 'rgba(16,185,129,0.1)' : 'rgba(255,255,255,0.02)', border: isActive ? '1px solid rgba(16,185,129,0.3)' : 'none' }}
-                      onMouseEnter={(e) => showMetricTooltip(e, 12)}
-                      onMouseLeave={hideMetricTooltip}
-                    >
-                      <MetricVisibilityToggle metricKey="m12" />
-                      <HelpLabel text="12. CURR CALL" />
-                      <div className="metric-cell-val" style={{ display: 'flex', gap: '0.2rem', alignItems: 'center' }}>
-                        <StatNumber value={formatTime(sessionSeconds)} size="md" format={false} />
-                        {renderSessionArs('lg', 'AR$')}
-                      </div>
-                      <MetricPct>{metricPcts.currCall}</MetricPct>
-                      <div className="metric-cell-label">CURR CALL</div>
-                    </div>
-                    )}
-                    <div id="cell-switch-game" className="metric-cell" style={{ cursor: 'pointer', background: 'rgba(255,255,255,0.04)', gridColumn: 'span 3', flexDirection: 'row', minHeight: '26px' }} onClick={() => setScoreView('game')} title="Switch back to gamified view">
-                      <GameIcon size={14} />
-                      <div className="metric-cell-label" style={{ opacity: 0.8, marginLeft: '6px' }}>BACK TO GAME VIEW</div>
-                    </div>
-                    <div className="metric-cell metric-cell-studio" style={{ gridColumn: 'span 1', minHeight: '26px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '4px' }} title="Studio view switch">
-                      {!isActive && onCycleWorkspace && (
-                        <WorkspaceViewSwitcher
-                          view={studioView}
-                          onCycle={onCycleWorkspace}
-                          variant="inline"
-                          showHint={showStudioHint}
-                        />
-                      )}
-                      <AppGuideButton />
-                    </div>
-                  </div>
+                  renderNumericGrid()
                   ) : (
                     <div style={{ padding: '0.5rem', fontSize: '0.6rem', opacity: 0.45, textAlign: 'center' }}>
                       Number grid hidden — Settings → Display
@@ -3479,6 +3526,10 @@ ${isInDeficit ? `⚠️ DEFICIT: Behind pace by ${Math.round(monthlyDeficitMins)
       style={{ position: 'relative', zIndex: 100, '--scoreboard-max-vh': String(scoreboardMaxVh) }}>
       <SessionControlsSticky
         isActive={isActive}
+        ioStripOn={ioStripOn}
+        onToggleIoStrip={toggleIoStrip}
+        gridInCall={gridInCall}
+        onToggleGridInCall={toggleGridInCall}
         isBreakActive={isBreakActive}
         isZombieCall={isZombieCall}
         onCallMins={totalDailyMins}
@@ -3598,7 +3649,7 @@ ${isInDeficit ? `⚠️ DEFICIT: Behind pace by ${Math.round(monthlyDeficitMins)
 
       {!headerMinimal && (
         headerCallCompact
-          ? null
+          ? (gridInCall ? <div className="header-call-grid">{renderNumericGrid()}</div> : null)
           : offCallScoreboardView && !offCallMetricsExpanded
             ? renderOffCallCollapsedBody()
             : renderWorkspaceBody()

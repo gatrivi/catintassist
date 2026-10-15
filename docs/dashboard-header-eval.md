@@ -7,6 +7,17 @@ This is the most-looked-at chrome in the app, so it accumulated the most debt.
 > rows** inside `<header>`, not the header. The header is buttons + I/O strip +
 > goal meter (in call) or sticky row + I/O strip + scoreboard (off call).
 
+## Rule: hide/show = a toggle (operator, 2026-10-15)
+
+A panel that is a nuisance on some calls and a lifesaver on others gets a
+**remembered toggle**, never a fixed hide/show decision. One boolean per toggle in
+`src/utils/headerToggles.js`; defaults equal the old behaviour.
+
+| toggle | where | default | note |
+|---|---|---|---|
+| ▦ grid | header right cluster, in-call | off | shows the 12-cell grid under the compact call header. Expanded header unchanged |
+| IO strip | header right cluster | on | hidden strip comes back by itself while audio is broken (`shouldShowIoStrip`) |
+
 ## Glossary (these names are not self-explanatory)
 
 | name | what it is |

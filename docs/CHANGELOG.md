@@ -3,6 +3,12 @@
 **Version source:** `src/constants/version.js` (must match `package.json` + top-right UI pill)
 
 
+## v4.176.0 - header toggles: ▦ grid + IO strip
+
+- **▦** (in-call, header right): shows the 12-cell grid under the compact call header. Off by default = header as before. Grid extracted to `renderNumericGrid()` (one copy, two callers).
+- **IO**: hides/shows the audio-route strip. On by default. Comes back by itself while audio is broken.
+- Rule documented: hide/show = a remembered toggle (`AGENTS.md`, `docs/dashboard-header-eval.md`). Logic: `src/utils/headerToggles.js`.
+
 ## v4.175.0 - translations stop going blank
 
 10-15 live call: most bubbles had no translation. Two client-side causes.
