@@ -56,3 +56,18 @@ describe('languageConfig', () => {
     expect(formatPairShort({ left: 'en-US', right: 'fr' })).toBe('EN | FR');
   });
 });
+
+describe('v4.177.0 one socket EN+ES', () => {
+  const { usesMultiSocket, setOneSocketEnabled, ONE_SOCKET_KEY } = require('./languageConfig');
+  afterEach(() => localStorage.removeItem(ONE_SOCKET_KEY));
+  test('EN/ES pair uses one multi socket by default', () => {
+    expect(usesMultiSocket({ left: 'en', right: 'es' })).toBe(true);
+  });
+  test('switch OFF restores the two-socket path', () => {
+    setOneSocketEnabled(false);
+    expect(usesMultiSocket({ left: 'en', right: 'es' })).toBe(false);
+  });
+  test('non EN/ES pair is untouched', () => {
+    expect(usesMultiSocket({ left: 'en', right: 'pt' })).toBe(false);
+  });
+});

@@ -127,6 +127,8 @@ let oldMediaStream;
 
 beforeEach(() => {
   localStorage.clear();
+  // v4.177.0: these tests pin the two-socket path (one-socket switch OFF).
+  localStorage.setItem('catint_stt_one_socket_v1', '0');
   sessionStorage.clear();
   FakeSocket.instances = [];
   FakeRecorder.instances = [];
@@ -261,4 +263,18 @@ test('closing the sockets clears sttLive again', async () => {
     result.current.stopRecording();
   });
   expect(result.current.sttLive).toBe(false);
+});
+
+test('v4.177.0: default EN/ES opens ONE language=multi socket (no repeated text)', async () => {
+  localStorage.removeItem('catint_stt_one_socket_v1'); // default = ON
+  const { result } = renderHook(() => useDeepgram());
+  await act(async () => {
+    await result.current.startRecording();
+  });
+  expect(FakeSocket.instances).toHaveLength(1);
+  expect(FakeSocket.instances[0].url).toContain('language=multi');
+  await act(async () => {
+    FakeSocket.instances[0].open();
+  });
+  expect(FakeRecorder.instances).toHaveLength(1);
 });

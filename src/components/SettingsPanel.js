@@ -20,6 +20,8 @@ import {
   isEnEsProtectionMode,
   groupedLanguageOptions,
   getLangLabel,
+  isOneSocketEnabled,
+  setOneSocketEnabled,
 } from '../utils/languageConfig';
 import { DevSimulatePanel } from './DevSimulatePanel';
 import { isDevSimEnabled } from '../utils/devSimulateCaptions';
@@ -157,6 +159,7 @@ export default function SettingsPanel({
   const [sttLatencyMode, setSttLatencyMode] = useState(loadSttLatencyMode);
   // v4.155.0 — domain repair switch (OFF by default; see utils/clinicalGuards.js)
   const [domainRepairOn, setDomainRepairOn] = useState(isDomainRepairEnabled);
+  const [oneSocketOn, setOneSocketOn] = useState(isOneSocketEnabled); // v4.177.0
   // v4.156.0 — negation guard switch (read-only warning, its own switch)
   const [negationGuardOn, setNegationGuardOn] = useState(isNegationGuardEnabled);
   // v4.173.0 — digit rewrites ON by default; RAW is the panic button.
@@ -482,6 +485,24 @@ export default function SettingsPanel({
               </div>
               <p style={{ fontSize: 10, color: 'rgba(255,255,255,0.5)', margin: '6px 0 0' }}>
                 FAST = 100ms chunks + endpointing 150 (reconnects live audio). BAL = steadier 250ms / 300ms.
+              </p>
+            </div>
+            {/* v4.177.0 — one EN+ES socket (fixes repeated text). Next CONNECT. */}
+            <div style={{ marginTop: 14 }}>
+              <button
+                type="button"
+                id="settings-one-socket"
+                aria-pressed={oneSocketOn}
+                onClick={() => setOneSocketOn(setOneSocketEnabled(!oneSocketOn))}
+                style={{
+                  ...tabBtn,
+                  background: oneSocketOn ? 'rgba(34, 211, 238, 0.22)' : tabBtn.background,
+                }}
+              >
+                One socket EN+ES: {oneSocketOn ? 'ON' : 'OFF'}
+              </button>
+              <p style={{ fontSize: 10, color: 'rgba(255,255,255,0.5)', margin: '6px 0 0' }}>
+                ON = one mixed-language stream: no repeated sentences, half the Deepgram minutes. OFF = old EN + ES pair. Applies on next CONNECT.
               </p>
             </div>
             {/* v4.155.0 / v4.156.0 — the two clinical guards. OFF = today's behaviour. */}

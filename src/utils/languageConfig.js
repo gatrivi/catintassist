@@ -104,8 +104,30 @@ export const isEnEsProtectionMode = (pair = DEFAULT_PAIR) => {
   return (a === 'en' && b === 'es') || (a === 'es' && b === 'en');
 };
 
+// v4.177.0 — ONE SOCKET for EN↔ES (default ON). Two sockets (EN + ES) both
+// transcribed the same audio and each finished sentences at different moments,
+// so the board showed two versions of one sentence ("repeated text", 10-15
+// call). One `language=multi` socket = one version, with per-result language.
+// Bonus: half the Deepgram minutes. OFF = the old two-socket path.
+export const ONE_SOCKET_KEY = 'catint_stt_one_socket_v1';
+export const isOneSocketEnabled = () => {
+  try {
+    return localStorage.getItem(ONE_SOCKET_KEY) !== '0';
+  } catch (_) {
+    return true;
+  }
+};
+export const setOneSocketEnabled = (on) => {
+  try {
+    localStorage.setItem(ONE_SOCKET_KEY, on ? '1' : '0');
+  } catch (_) {}
+  return on;
+};
+
 export const usesMultiSocket = (pair = DEFAULT_PAIR) =>
-  pair.left === 'multi' || pair.right === 'multi';
+  pair.left === 'multi' ||
+  pair.right === 'multi' ||
+  (isEnEsProtectionMode(pair) && isOneSocketEnabled());
 
 export const getOppositeLang = (detectedLang, pair = DEFAULT_PAIR) => {
   const norm = normalizeLang(detectedLang);

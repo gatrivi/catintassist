@@ -138,13 +138,9 @@ describe('deepgramListenConfig', () => {
       expect(es).toContain('keyterm=amoxicilina');
     });
 
-    test('v4.164.0: auto-detect never sends the invalid `language=multi`', () => {
-      // "Multilingual (auto-detect)" is a real Settings option, and `multi` is
-      // not a valid Nova-3 `language` value — it was being sent verbatim.
+    test('v4.177.0: multi socket sends language=multi (valid on nova-3)', () => {
       const url = buildListenUrl('multi', 'fast');
-      expect(url).not.toContain('language=multi');
-      expect(url).not.toContain('language=');
-      // everything else is still there
+      expect(url).toContain('language=multi');
       expect(url).toContain('model=nova-3-general');
       expect(url).toContain('words=true');
       expect(url).toContain('endpointing=150');

@@ -3,6 +3,13 @@
 **Version source:** `src/constants/version.js` (must match `package.json` + top-right UI pill)
 
 
+## v4.177.0 - one socket: no more repeated text
+
+- Root cause (10-15 call): EN + ES sockets both transcribed the same audio; each finished sentences at different moments → two versions of one sentence on the board.
+- EN↔ES now uses ONE `language=multi` socket by default (`usesMultiSocket`, `languageConfig.js`). Verified live: nova-3 streaming accepts `language=multi`; a bogus code is refused. The v4.164.0 note calling it invalid was wrong — omitting `language` meant English-only.
+- Bonus: half the Deepgram minutes.
+- Switch: Settings → Speech → "One socket EN+ES" (ON). OFF = old pair. Applies on next CONNECT. **Needs one real call to confirm.**
+
 ## v4.176.0 - header toggles: ▦ grid + IO strip
 
 - **▦** (in-call, header right): shows the 12-cell grid under the compact call header. Off by default = header as before. Grid extracted to `renderNumericGrid()` (one copy, two callers).

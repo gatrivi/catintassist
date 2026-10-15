@@ -25,6 +25,31 @@ import { APP_VERSION } from '../constants/version';
 /** Newest first. Only the entry matching APP_VERSION is shown on load. */
 export const RELEASE_NOTES_CATALOG = [
   {
+    version: '4.177.0',
+    id: 'one-socket-no-repeats',
+    highlightElementIds: ['transcript-pane'],
+    es: {
+      title: 'Un solo socket: se acabó el texto repetido',
+      intro: 'Dos sockets (EN y ES) transcribían el mismo audio y cada uno cortaba las frases en otro momento: la misma frase salía dos veces.',
+      sections: [
+        { heading: 'Qué cambió', bullets: [
+          'Ahora un solo socket mixto inglés/español. Una versión por frase, y la mitad de minutos de Deepgram.',
+          'Si algo falla: Ajustes → «One socket EN+ES: OFF» vuelve al par viejo (en el próximo CONNECT).',
+        ] },
+      ],
+    },
+    en: {
+      title: 'One socket: no more repeated text',
+      intro: 'Two sockets (EN and ES) transcribed the same audio and each cut sentences at a different moment: the same sentence showed twice.',
+      sections: [
+        { heading: 'What changed', bullets: [
+          'One mixed English/Spanish socket now. One version per sentence, and half the Deepgram minutes.',
+          'If anything breaks: Settings → "One socket EN+ES: OFF" restores the old pair (next CONNECT).',
+        ] },
+      ],
+    },
+  },
+  {
     version: '4.176.0',
     id: 'header-toggles-grid-io',
     highlightElementIds: ['header-io-toggle-btn'],

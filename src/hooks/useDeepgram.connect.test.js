@@ -178,6 +178,8 @@ let oldMediaStream;
 beforeEach(() => {
   jest.useFakeTimers();
   localStorage.clear();
+  // v4.177.0: these tests pin the two-socket path (one-socket switch OFF).
+  localStorage.setItem('catint_stt_one_socket_v1', '0');
   sessionStorage.clear();
   FakeSocket.instances = [];
   FakeRecorder.instances = [];

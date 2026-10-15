@@ -132,15 +132,12 @@ const langCode = (l) => (l || 'en').toString().toLowerCase().slice(0, 2);
 /**
  * Documented Deepgram query params only.
  *
- * v4.164.0: `language=multi` is NOT a valid value for Nova-3 — it was being sent
- * verbatim, which is why "Multilingual (auto-detect)" never worked. Omitting
- * `language` is how you ask Deepgram to detect it. The EN/ES path (the default
- * pair) is untouched by this.
+ * v4.177.0: `language=multi` = Nova-3 code-switching EN/ES (the v4.164.0 note
+ * calling it invalid was wrong — verified against the live API).
  */
 export const buildListenUrl = (lang, mode = loadSttLatencyMode(), bias = {}) => {
   const { medicalModel = false, keyterm = false, userKeyterms = false } = bias || {};
   const cfg = getSttLatencyConfig(mode);
-  const isMulti = String(lang || '').toLowerCase() === 'multi';
   const params = new URLSearchParams({
     model: getDeepgramModel(lang, { medicalModel }),
     smart_format: 'true',
@@ -151,7 +148,9 @@ export const buildListenUrl = (lang, mode = loadSttLatencyMode(), bias = {}) => 
     interim_results: 'true',
     endpointing: String(cfg.endpointing),
   });
-  if (isMulti) params.delete('language'); // let Deepgram detect it
+  // v4.177.0: `language=multi` IS valid on nova-3 (checked live 2026-10-15: the
+  // stream opens; a bogus code is refused). Omitting `language` meant ENGLISH
+  // only, which is why auto-detect never heard Spanish. Keep it.
   // Appended last, and only when asked for: with the switch off the query string
   // is exactly what it has always been.
   if (keyterm) {
