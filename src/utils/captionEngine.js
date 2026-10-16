@@ -105,6 +105,37 @@ const startFromCaptionId = (id) => {
  * Exact text + same span only: a speaker genuinely repeating a sentence arrives
  * with a later start, and is always kept.
  */
+// v4.180.0 — repeated sentences across a split. After a sentence-boundary split
+// Deepgram often re-sends sentences the previous bubble already shows, so one
+// question printed 2-3 times in a row (live call 10-16). Drop only WHOLE
+// sentences, only from the HEAD of the new final, only when the exact same
+// sentence (case/punctuation-insensitive, >= RESTART_MIN_WORDS words) is
+// already visible in the last few bubbles (finals are peeled one sentence
+// per bubble, so "the bubble above" alone misses them). Short ones ("Okay.") always stay;
+// nothing already on screen is ever removed.
+const LEAD_SENTENCE_RX = /^.+?[.!?…]+["')\]]?(?=\s|$)/;
+const normSentence = (s) =>
+  String(s || '').toLowerCase().replace(/[^\p{L}\p{N}\s]/gu, '').replace(/\s+/g, ' ').trim();
+const sentencesOf = (text) => {
+  const out = [];
+  let rest = String(text || '').trim();
+  for (let m = rest.match(LEAD_SENTENCE_RX); m; m = rest.match(LEAD_SENTENCE_RX)) {
+    out.push(m[0]);
+    rest = rest.slice(m[0].length).trim();
+  }
+  return out;
+};
+export const dropRepeatedLeadSentences = (prevText, incoming) => {
+  const seen = new Set(sentencesOf(prevText).map(normSentence));
+  let rest = String(incoming || '').trim();
+  for (let m = rest.match(LEAD_SENTENCE_RX); m; m = rest.match(LEAD_SENTENCE_RX)) {
+    const n = normSentence(m[0]);
+    if (wordCount(n) < RESTART_MIN_WORDS || !seen.has(n)) break;
+    rest = rest.slice(m[0].length).trim();
+  }
+  return rest;
+};
+
 const isVerbatimRedelivery = (rows, laneSide, text, startTime) => {
   const key = dupKey(text);
   if (!key) return false;
@@ -348,7 +379,7 @@ const peelCommaChunks = (
  */
 export const reduceTranscriptEvent = (prev, event, ctx) => {
   const {
-    transcript,
+    transcript: rawTranscript,
     isFinal,
     speechFinal,
     confidence,
@@ -363,6 +394,7 @@ export const reduceTranscriptEvent = (prev, event, ctx) => {
     words,
   } = event;
   const { turnWordsBaseRef, currentTurnIdRef, bubbleIdCounterRef, lastBubbleStartedRef } = ctx;
+  let transcript = rawTranscript;
 
   const shouldFinalize = isFinal || speechFinal;
   const eventWordConfidence = normalizeWordConfidence(words);
@@ -385,6 +417,31 @@ export const reduceTranscriptEvent = (prev, event, ctx) => {
     /[.!?…]["')\]]?\s*$/.test(prevLaneFinal.trim()) &&
     Boolean(transcript && String(transcript).trim());
   const isNewTurn = isSilentBreak || !last || startsAfterPeriod;
+  // v4.180.0: skip sentences the bubble above already shows (see helper).
+  if (startsAfterPeriod) {
+    const recentText = [...prev.slice(-4, -1).map((r) => r.text || ''), prevLaneFinal].join(' ');
+    const rest = dropRepeatedLeadSentences(recentText, transcript);
+    if (rest !== String(transcript).trim()) {
+      flagVanish('caption_repeat_sentence_drop', {
+        id: last.id,
+        turnId: last.turnId,
+        before: String(transcript),
+        after: rest,
+        stage: 'captionEngine.repeatLead',
+        force: true,
+        extra: { laneSide, startTime },
+      });
+      if (!rest) {
+        // same exit as a verbatim redelivery: seal a live draft, add nothing.
+        const lastRow = prev[prev.length - 1];
+        if (lastRow && lastRow.isFinal === false && (lastRow.text || '').trim()) {
+          return [...prev.slice(0, -1), { ...lastRow, isFinal: true, tailPreviewText: null }];
+        }
+        return prev;
+      }
+      transcript = rest;
+    }
+  }
   // v4.151.0: the SAME segment delivered twice (stale-socket replay, re-cut with
   // an unchanged start) must not print a second identical message. Gated on exact
   // normalized text + the same Deepgram span, so a repeated sentence (later start)

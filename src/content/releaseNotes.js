@@ -25,6 +25,31 @@ import { APP_VERSION } from '../constants/version';
 /** Newest first. Only the entry matching APP_VERSION is shown on load. */
 export const RELEASE_NOTES_CATALOG = [
   {
+    version: '4.180.0',
+    id: 'no-repeated-sentences',
+    highlightElementIds: ['transcript-pane'],
+    es: {
+      title: 'Frases repetidas: una sola vez',
+      intro: 'Una frase completa ya visible arriba no se vuelve a imprimir.',
+      sections: [
+        { heading: 'Qué cambió', bullets: [
+          'Solo frases enteras (4+ palabras), solo al inicio del nuevo globo.',
+          '"Okay." y frases cortas siempre quedan. Nada visible se borra.',
+        ] },
+      ],
+    },
+    en: {
+      title: 'Repeated sentences: shown once',
+      intro: 'A full sentence already visible above is not printed again.',
+      sections: [
+        { heading: 'What changed', bullets: [
+          'Whole sentences only (4+ words), only at the start of the new bubble.',
+          '"Okay." and short sentences always stay. Nothing visible is removed.',
+        ] },
+      ],
+    },
+  },
+  {
     version: '4.179.1',
     id: 'stt-stall-banner',
     highlightElementIds: ['transcript-pane'],
