@@ -8478,3 +8478,19 @@ body:has(.app-container[data-call-mode="true"]) .element-hint-panel {
   cursor: help;
 }
 .bubble-rail-surplus:hover { color: #fde68a; }
+
+/* v4.179.0: transcription stopped — never silent (SttStallBanner.js) */
+.stt-stall-banner {
+  position: sticky; top: 0; z-index: 30;
+  display: flex; align-items: center; gap: 10px;
+  padding: 4px 10px; font-size: 13px; font-weight: 600;
+  background: #b91c1c; color: #fff;
+  animation: stt-stall-pulse 1.2s ease-in-out infinite alternate;
+}
+.stt-stall-banner button {
+  background: #fff; color: #b91c1c; border: 0; border-radius: 4px;
+  padding: 1px 8px; font-weight: 700; cursor: pointer;
+}
+.stt-stall-ver { margin-left: auto; opacity: .7; font-size: 11px; }
+@keyframes stt-stall-pulse { from { background: #b91c1c; } to { background: #7f1d1d; } }
+@media (prefers-reduced-motion: reduce) { .stt-stall-banner { animation: none; } }

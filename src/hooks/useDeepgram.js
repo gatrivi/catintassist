@@ -81,6 +81,7 @@ import {
   connectStallVerdict,
   shouldAutoZap,
   shouldRebuildRecorder,
+  sttStallReason,
   CONNECT_STALL_MAX_RETRIES,
   CONNECT_RECORDER_MAX_RETRIES,
 } from "../utils/dgStatus";
@@ -227,6 +228,10 @@ export const useDeepgram = () => {
   });
   const [sttLanguage, setSttLanguage] = useState("auto");
   const [lastDataTime, setLastDataTime] = useState(0);
+  // v4.179.0: why transcription stopped (null = fine). Drives the red banner.
+  const [sttStall, setSttStall] = useState(null);
+  const sttStallRef = useRef(null);
+  const lastTextAtRef = useRef(0); // ref twin of lastDataTime for the 5s watchdog
   // Work calls must always start on Tab STT. A past mic test may never hijack
   // the next call after refresh.
   const [micTestMode, setMicTestModeState] = useState(false);
@@ -1517,6 +1522,7 @@ export const useDeepgram = () => {
           // status chip aged to DG STUCK while text still flowed to the board.
           // Confidence>0.4 stays the gate for activity/billing signals only.
           setLastDataTime(Date.now());
+          lastTextAtRef.current = Date.now();
           if (isCallDetectionEnabled && confidence > 0.4) {
             // Hold music/announcements heard WHILE holding are more of the
             // same hold — not the provider returning. Only the silence clock
@@ -2857,10 +2863,40 @@ export const useDeepgram = () => {
   // the old 65s wait is gone. Rules are the pure, tested shouldAutoZap().
   const lastAutoZapAtRef = useRef(0);
   useEffect(() => {
-    if (!isActive || connectionState !== "connected") return undefined;
+    if (!isActive || connectionState !== "connected") {
+      sttStallRef.current = null;
+      setSttStall(null);
+      return undefined;
+    }
+    const connectedAt = Date.now();
+    lastTextAtRef.current = Math.max(lastTextAtRef.current, connectedAt);
     const t = setInterval(() => {
       const now = Date.now();
       const flags = connectFlagsRef.current;
+      // v4.179.0: say it out loud when transcription is stopped.
+      const speakingAgeMs = lastLoudAudioAtRef.current ? now - lastLoudAudioAtRef.current : Infinity;
+      const stall = sttStallReason({
+        sinceConnectMs: now - connectedAt,
+        audioProgressAgeMs: lastAudioProgressAtRef.current ? now - lastAudioProgressAtRef.current : Infinity,
+        msgAgeMs: flags.lastDeepgramMessageAt ? now - flags.lastDeepgramMessageAt : Infinity,
+        textAgeMs: now - lastTextAtRef.current,
+        speakingAgeMs,
+        onHold: !!isHoldLiveRef.current,
+      });
+      if (sttStallRef.current !== stall) {
+        critLog(stall ? "warn" : "info", `stt stall: ${sttStallRef.current || "ok"} -> ${stall || "ok"}`);
+        sttStallRef.current = stall;
+        setSttStall(stall);
+      }
+      // 'deaf' = Deepgram answers with empty Results while we talk. A fresh
+      // socket is the only self-heal; shares the auto-Zap 2-min cooldown.
+      if (stall === "deaf" && now - lastAutoZapAtRef.current >= 120000) {
+        lastAutoZapAtRef.current = now;
+        critLog("warn", "auto reconnectStream: speech heard, no words 20s+");
+        lastTextAtRef.current = now;
+        reconnectStream();
+        return;
+      }
       const lastMsgAt = flags.lastDeepgramMessageAt || 0;
       const audioProgressAgeMs = now - (lastAudioProgressAtRef.current || 0);
       // v4.170.0: the recorder died mid-call. shouldAutoZap() below correctly
@@ -2959,6 +2995,7 @@ export const useDeepgram = () => {
     apiKeyRejected,
     connectProgress,
     lastDataTime,
+    sttStall, // v4.179.0: null | 'no-audio' | 'no-reply' | 'deaf'
     micTestMode,
     setMicTestMode,
     tabStreamReady,

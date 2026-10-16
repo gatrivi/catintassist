@@ -9,6 +9,7 @@ import OnCallSoundboardStrip from "./components/OnCallSoundboardStrip";
 import { NotePad } from "./components/NotePad";
 import { DictionaryTool } from "./components/DictionaryTool";
 import { SilenceGuardian } from "./components/SilenceGuardian";
+import { SttStallBanner } from "./components/SttStallBanner";
 import { AutopilotGuard } from "./components/AutopilotGuard";
 import { DeskExerciseWidget } from "./components/DeskExerciseWidget";
 import { RosaryWidget } from "./components/RosaryWidget";
@@ -87,6 +88,7 @@ const Dashboard = () => {
     apiKeyRejected,
     connectProgress,
     lastDataTime,
+    sttStall,
     micTestMode,
     setMicTestMode,
     tabStreamReady,
@@ -1115,6 +1117,8 @@ const Dashboard = () => {
               open, greetings live in the rail dock instead of a full-width row. */}
           {isActive && !isNotesOpen && <OnCallSoundboardStrip micTestMode={micTestMode} onOpenGreetingEditor={null} />}
           <div className="transcription-pane" data-guide="transcript">
+            {/* v4.179.0: transcription stopped = loud red bar, never silent */}
+            <SttStallBanner reason={sttStall} onZap={reconnectStream} />
             {/* v4.88.0: hold time becomes study time — cards fade in over the transcript */}
             {/* v4.89.1: click outside the card (or just speak) resumes the call */}
             {isActive && isHold && isComponentVisible(COMPONENT_IDS.study_cue_cards, { isActive }) && (

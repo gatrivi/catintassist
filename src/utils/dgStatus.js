@@ -162,3 +162,46 @@ export function connectStallVerdict({
   }
   return retriesLeft > 0 ? 'stall-reconnect' : 'fail-silent';
 }
+
+/**
+ * v4.179.0 — "transcription stopped with no UI sign". Every watchdog above
+ * counts Deepgram's EMPTY Results as life, so "you are talking, Deepgram
+ * answers, but with zero words" was invisible. This verdict feeds a red
+ * banner — it never decides a reconnect on its own except 'deaf'.
+ *
+ * Returns null (fine) or the reason transcription is stopped:
+ *   'no-audio' — our recorder stopped sending chunks (rebuilds spent/failed).
+ *   'no-reply' — audio leaves us, Deepgram sends nothing at all.
+ *   'deaf'     — someone is audibly speaking right now, no words for 20s+.
+ * The first 12s after a connect belong to the connect watchdog → null.
+ */
+export const STT_STALL_GRACE_MS = 12000;
+export const STT_STALL_NO_AUDIO_MS = 15000;
+export const STT_STALL_NO_REPLY_MS = 20000;
+export const STT_STALL_DEAF_TEXT_MS = 20000;
+export const STT_STALL_DEAF_SPEAKING_MS = 3000;
+
+export function sttStallReason({
+  sinceConnectMs = 0,
+  audioProgressAgeMs = Infinity,
+  msgAgeMs = Infinity,
+  textAgeMs = Infinity,
+  speakingAgeMs = Infinity,
+  onHold = false,
+} = {}) {
+  if (sinceConnectMs < STT_STALL_GRACE_MS) return null;
+  if (audioProgressAgeMs >= STT_STALL_NO_AUDIO_MS) return 'no-audio';
+  if (msgAgeMs >= STT_STALL_NO_REPLY_MS) return 'no-reply';
+  // Hold music is loud with no words — not a fault.
+  if (!onHold && speakingAgeMs <= STT_STALL_DEAF_SPEAKING_MS && textAgeMs >= STT_STALL_DEAF_TEXT_MS) {
+    return 'deaf';
+  }
+  return null;
+}
+
+/** Banner text per reason (version tag so the operator knows which build). */
+export const STT_STALL_TEXT = {
+  'no-audio': 'Transcription stopped — no audio leaving the app',
+  'no-reply': 'Transcription stopped — Deepgram not answering',
+  deaf: 'Transcription stopped — speech heard, no words back',
+};
