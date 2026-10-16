@@ -25,7 +25,7 @@ import { APP_VERSION } from '../constants/version';
 /** Newest first. Only the entry matching APP_VERSION is shown on load. */
 export const RELEASE_NOTES_CATALOG = [
   {
-    version: '4.179.0',
+    version: '4.179.1',
     id: 'stt-stall-banner',
     highlightElementIds: ['transcript-pane'],
     es: {
@@ -34,7 +34,7 @@ export const RELEASE_NOTES_CATALOG = [
       sections: [
         { heading: 'Qué cambió', bullets: [
           'Barra roja: sin audio saliendo · Deepgram no responde · se oye voz pero no llegan palabras.',
-          'Voz sin palabras 20 s → reconexión automática (máx. 1 cada 2 min). Botón ⚡ ZAP en la barra.',
+          'Voz sin palabras 20 s → reconexión automática (máx. 1 cada 2 min), también en espera. Botón ⚡ ZAP en la barra.',
           'Cada línea de la consola empieza con la hora (HH:MM:SS.mmm).',
         ] },
       ],
@@ -45,7 +45,7 @@ export const RELEASE_NOTES_CATALOG = [
       sections: [
         { heading: 'What changed', bullets: [
           'Red bar: no audio leaving · Deepgram not answering · speech heard, no words back.',
-          'Speech with no words for 20 s → auto reconnect (max 1 per 2 min). ⚡ ZAP button on the bar.',
+          'Speech with no words for 20 s → auto reconnect (max 1 per 2 min), on hold too. ⚡ ZAP button on the bar.',
           'Every console line now starts with the time (HH:MM:SS.mmm).',
         ] },
       ],

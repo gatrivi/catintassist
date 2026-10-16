@@ -2881,7 +2881,6 @@ export const useDeepgram = () => {
         msgAgeMs: flags.lastDeepgramMessageAt ? now - flags.lastDeepgramMessageAt : Infinity,
         textAgeMs: now - lastTextAtRef.current,
         speakingAgeMs,
-        onHold: !!isHoldLiveRef.current,
       });
       if (sttStallRef.current !== stall) {
         critLog(stall ? "warn" : "info", `stt stall: ${sttStallRef.current || "ok"} -> ${stall || "ok"}`);

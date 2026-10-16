@@ -14,6 +14,6 @@ describe('sttStallReason (v4.179.0)', () => {
     expect(sttStallReason({ ...live, textAgeMs: 25000 })).toBe('deaf'));
   test('dead air (nobody speaking) is not a fault', () =>
     expect(sttStallReason({ ...live, textAgeMs: 90000, speakingAgeMs: 30000 })).toBeNull());
-  test('hold music (loud, no words) is not a fault', () =>
-    expect(sttStallReason({ ...live, textAgeMs: 90000, onHold: true })).toBeNull());
+  test('hold never hides a stall (hold = silence; speech lifts it)', () =>
+    expect(sttStallReason({ ...live, textAgeMs: 90000, onHold: true })).toBe('deaf'));
 });

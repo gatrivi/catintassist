@@ -187,13 +187,13 @@ export function sttStallReason({
   msgAgeMs = Infinity,
   textAgeMs = Infinity,
   speakingAgeMs = Infinity,
-  onHold = false,
 } = {}) {
   if (sinceConnectMs < STT_STALL_GRACE_MS) return null;
   if (audioProgressAgeMs >= STT_STALL_NO_AUDIO_MS) return 'no-audio';
   if (msgAgeMs >= STT_STALL_NO_REPLY_MS) return 'no-reply';
-  // Hold music is loud with no words — not a fault.
-  if (!onHold && speakingAgeMs <= STT_STALL_DEAF_SPEAKING_MS && textAgeMs >= STT_STALL_DEAF_TEXT_MS) {
+  // v4.179.1: NO hold exemption. Hold = provider left = silence (no music),
+  // and speech is what lifts hold — exempting it hid stalls during hold.
+  if (speakingAgeMs <= STT_STALL_DEAF_SPEAKING_MS && textAgeMs >= STT_STALL_DEAF_TEXT_MS) {
     return 'deaf';
   }
   return null;
