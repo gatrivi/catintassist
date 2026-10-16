@@ -25,6 +25,27 @@ import { APP_VERSION } from '../constants/version';
 /** Newest first. Only the entry matching APP_VERSION is shown on load. */
 export const RELEASE_NOTES_CATALOG = [
   {
+    version: '4.181.0',
+    id: 'digit-rule-refined',
+    highlightElementIds: ['transcript-pane'],
+    es: {
+      title: 'Números: el duplicado se va, la única copia queda',
+      intro: 'Un número repetido puede desaparecer si sigue visible en los últimos 5 globos.',
+      sections: [{ heading: 'Qué cambió', bullets: [
+        'Antes: ningún número salía de pantalla, aunque fuera un duplicado.',
+        'Ahora: solo se va si la misma cifra está visible arriba. La única copia nunca se borra.',
+      ] }],
+    },
+    en: {
+      title: 'Numbers: duplicates go, the only copy stays',
+      intro: 'A repeated number may leave if it is still visible in the last 5 bubbles.',
+      sections: [{ heading: 'What changed', bullets: [
+        'Before: no number ever left the screen, even a duplicate.',
+        'Now: it leaves only if the same digits are visible above. The only copy is never removed.',
+      ] }],
+    },
+  },
+  {
     version: '4.180.0',
     id: 'no-repeated-sentences',
     highlightElementIds: ['transcript-pane'],

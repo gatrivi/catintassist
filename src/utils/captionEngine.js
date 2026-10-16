@@ -40,6 +40,18 @@ export const lostDigitRuns = (prevText, nextText) => {
   return [...new Set(digitRunKeys(prevText))].filter((key) => !nextKeys.has(key));
 };
 
+// v4.181.0 — the digit rule, refined. Old: a digit run may never leave the
+// screen (a weak-model-era workaround: reflows deleted the only copy). New: it
+// may leave a row only if the SAME run is still visible in one of the last 5
+// OTHER rows. A duplicate can go; the only copy never does.
+export const digitsShownElsewhere = (rows, excludeId, runs) => {
+  if (!runs || !runs.length) return true;
+  const seen = new Set(
+    (rows || []).slice(-5).filter((r) => r && r.id !== excludeId).flatMap((r) => digitRunKeys(r.text)),
+  );
+  return runs.every((key) => seen.has(key));
+};
+
 const normalizeWord = (word) =>
   (word || "").toString().toLowerCase().replace(/[^\p{L}\p{N}]+/gu, "");
 
@@ -558,8 +570,9 @@ export const reduceTranscriptEvent = (prev, event, ctx) => {
   let supersedeInPlace = false;
   let supersedeReplacesLane = false;
   if (restatedWords > 0 && cleaned.trim()) {
-    if (lostDigitRuns(laneFinalized, transcript).length) {
-      // digits may never leave the screen (v4.136.0): keep the row, consume the
+    if (!digitsShownElsewhere(prev, last.id, lostDigitRuns(laneFinalized, transcript))) {
+      // the only copy of a digit run may never leave the screen (v4.136.0,
+      // refined v4.181.0): keep the row, consume the
       // repeated head and splice the rest in.
       cleaned = dropLeadingWords(cleaned, restatedWords);
     } else if (wordCount(cleaned) >= wordCount(supersededTail(laneFinalized, transcript))) {
@@ -574,7 +587,7 @@ export const reduceTranscriptEvent = (prev, event, ctx) => {
     cleaned.trim() &&
     dupTokens(laneFinalized).length >= RESTART_MIN_WORDS &&
     !restartBoundaryHasNumbers(laneFinalized, cleaned) &&
-    !lostDigitRuns(laneFinalized, cleaned).length &&
+    digitsShownElsewhere(prev, last.id, lostDigitRuns(laneFinalized, cleaned)) &&
     isRunInside(dupTokens(laneFinalized), dupTokens(cleaned))
   ) {
     // Reworded re-cut ("Do you need some" -> "Do you have some, or do you need
@@ -684,7 +697,10 @@ export const reduceTranscriptEvent = (prev, event, ctx) => {
   // v4.136.0: a lane flip that would drop a digit run (zip/phone) keeps the
   // visible text — digits already shown must never vanish on a lane switch.
   const nextText = winSide === "en" ? enFull : esFull;
-  const lostDigits = lostDigitRuns(textBeforeLane, nextText);
+  // v4.181.0: a run still visible in another recent row may go.
+  const lostDigits = lostDigitRuns(textBeforeLane, nextText).filter(
+    (key) => !digitsShownElsewhere(prev, current.id, [key]),
+  );
   if (lostDigits.length) {
     flagVanish('caption_lane_digit_guard', {
       id: current.id,
