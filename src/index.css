@@ -8494,3 +8494,17 @@ body:has(.app-container[data-call-mode="true"]) .element-hint-panel {
 .stt-stall-ver { margin-left: auto; opacity: .7; font-size: 11px; }
 @keyframes stt-stall-pulse { from { background: #b91c1c; } to { background: #7f1d1d; } }
 @media (prefers-reduced-motion: reduce) { .stt-stall-banner { animation: none; } }
+
+/* v4.183.0 — arriving text types in, char by char, light blue → normal
+   (StableTextMorph TypedText; --d = per-char delay). Color/opacity only. */
+.stm-char {
+  animation:
+    stm-char-in 90ms ease-out var(--d, 0ms) both,
+    stm-char-blue 1400ms ease-out var(--d, 0ms) both;
+}
+@keyframes stm-char-in { from { opacity: 0; } to { opacity: 1; } }
+@keyframes stm-char-blue {
+  from { color: #7dd3fc; text-shadow: 0 0 6px rgba(125, 211, 252, 0.55); }
+  to { color: inherit; text-shadow: none; }
+}
+@media (prefers-reduced-motion: reduce) { .stm-char { animation: none !important; } }

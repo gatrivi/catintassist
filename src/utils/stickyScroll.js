@@ -27,6 +27,9 @@ export const RESUME_AFTER_USER_MS = 15000;
 /** A wheel/drag counts as "user is scrolling" for this long. */
 export const USER_GESTURE_HOLD_MS = 400;
 
+/** v4.183.0: mouse moving over the transcript = reading → no auto-scroll for this long after the last move. */
+export const READING_HOLD_MS = 4000;
+
 /** Read the three numbers that decide everything (safe on a null element). */
 export function readScrollMetrics(el) {
   if (!el) return { scrollTop: 0, scrollHeight: 0, clientHeight: 0 };

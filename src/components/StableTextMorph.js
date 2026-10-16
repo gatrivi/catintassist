@@ -77,6 +77,43 @@ const renderSegments = (text, keyPrefix = 't') => {
 };
 
 /**
+ * v4.183.0 — arriving words TYPE in, one char at a time, light-blue fading to
+ * normal, so the eye can follow what changed. Whole run <= TYPE_TOTAL_MAX_MS.
+ * Highlighted values (phone/date/money) arrive as one piece at their offset —
+ * never split into characters (they must stay clickable/copyable).
+ */
+export const TYPE_STEP_MAX_MS = 28;
+export const TYPE_TOTAL_MAX_MS = 900;
+export const typeStepMs = (len) => (len > 0 ? Math.min(TYPE_STEP_MAX_MS, TYPE_TOTAL_MAX_MS / len) : 0);
+export const typeTotalMs = (len) => Math.round(typeStepMs(len) * len);
+
+const TypedText = ({ text }) => {
+  const step = typeStepMs(text.length);
+  let idx = 0;
+  const delay = () => ({ '--d': `${Math.round(idx * step)}ms` });
+  return splitHighlightSegments(text).map((seg, si) => {
+    if (seg.type && SENSITIVE_TYPES.has(seg.type)) {
+      const el = (
+        <span key={`s${si}`} className="stm-char" style={delay()}>
+          <SensitiveSpan value={seg.value} type={seg.type} />
+        </span>
+      );
+      idx += seg.value.length;
+      return el;
+    }
+    return Array.from(seg.value).map((ch, ci) => {
+      const el = (
+        <span key={`${si}-${ci}`} className="stm-char" style={delay()}>
+          {ch}
+        </span>
+      );
+      idx += 1;
+      return el;
+    });
+  });
+};
+
+/**
  * Token rendering for one string slice. v4.142.0: a later repeat of a >4-word run
  * is dimmed (`repeat-dim`, ≥70% visible) — style only, the characters are
  * untouched, so the line still reads exactly as transcribed.
@@ -237,7 +274,9 @@ export function StableTextMorph({
         : decision.mode;
       setCue(mode === SUPERSEDE_MODE.NONE ? null : { ops: decision.ops, mode });
       setPhase('cue');
-      schedule(reduced ? REDUCED_CUE_MS : cueMs, () => {
+      const typedChars = decision.ops
+        .reduce((n, o) => n + String((o.type === 'replace' ? o.to : o.type === 'insert' ? o.text : '') || '').length, 0);
+      schedule(reduced ? REDUCED_CUE_MS : Math.max(cueMs, typeTotalMs(typedChars) + 500), () => {
         setCue(null);
         setPhase('idle');
       });
@@ -310,17 +349,11 @@ export function StableTextMorph({
               </span>
             );
           }
-          if (part.role === 'arriving') {
+          if (part.role === 'arriving' || part.role === 'adopted') {
+            const cls = part.role === 'arriving' ? 'stm-arriving' : 'stm-arriving stm-arriving--quiet';
             return (
-              <span key={`p${i}`} className="stm-arriving">
-                {renderTokenText(part.text)}
-              </span>
-            );
-          }
-          if (part.role === 'adopted') {
-            return (
-              <span key={`p${i}`} className="stm-arriving stm-arriving--quiet">
-                {renderTokenText(part.text)}
+              <span key={`p${i}-${part.text}`} className={cls}>
+                {reducedCue ? renderTokenText(part.text) : <TypedText text={part.text} />}
               </span>
             );
           }

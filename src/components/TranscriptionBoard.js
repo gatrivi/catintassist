@@ -36,6 +36,7 @@ import {
   isAtBottom,
   readScrollMetrics,
   shouldFollow,
+  READING_HOLD_MS,
 } from '../utils/stickyScroll';
 import {
   isCaptionPinned,
@@ -1327,8 +1328,25 @@ export const TranscriptionBoard = ({
     }, RESUME_AFTER_USER_MS);
   }, [followLatest]);
 
+  // v4.183.0: reading = mouse moved over the transcript in the last 4s.
+  // While reading, new lines never yank the view; the "⬇ N new" button counts them.
+  const readingRef = useRef(false);
+  const readingTimerRef = useRef(null);
   const following = () =>
+    !readingRef.current &&
     shouldFollow({ sticky: stickyBottomRef.current, userScrolledUp: userScrolledUpRef.current });
+  const stopReading = () => {
+    if (readingTimerRef.current) clearTimeout(readingTimerRef.current);
+    readingTimerRef.current = null;
+    if (!readingRef.current) return;
+    readingRef.current = false;
+    if (following()) followLatest();
+  };
+  const handleReadingMove = () => {
+    readingRef.current = true;
+    if (readingTimerRef.current) clearTimeout(readingTimerRef.current);
+    readingTimerRef.current = setTimeout(stopReading, READING_HOLD_MS);
+  };
 
   /**
    * New captions → follow. Two settle passes because a bubble can grow AFTER
@@ -1354,8 +1372,10 @@ export const TranscriptionBoard = ({
   const toggleStickyBottom = () => {
     // Paused mid-read? The button reads "⬇ N new" — a click means
     // "take me to the newest line", not "switch the follow off".
-    if (stickyBottomRef.current && userScrolledUpRef.current) {
+    if (stickyBottomRef.current && (userScrolledUpRef.current || readingRef.current || newBelow > 0)) {
       userScrolledUpRef.current = false;
+      readingRef.current = false; // v4.183.0: "⬇ N new" while reading = jump, not "follow off"
+      if (readingTimerRef.current) clearTimeout(readingTimerRef.current);
       if (resumeTimerRef.current) clearTimeout(resumeTimerRef.current);
       followLatest();
       return;
@@ -1412,6 +1432,7 @@ export const TranscriptionBoard = ({
   useEffect(() => () => {
     if (gestureTimerRef.current) clearTimeout(gestureTimerRef.current);
     if (resumeTimerRef.current) clearTimeout(resumeTimerRef.current);
+    if (readingTimerRef.current) clearTimeout(readingTimerRef.current);
   }, []);
 
   useEffect(() => {
@@ -1566,6 +1587,8 @@ export const TranscriptionBoard = ({
         style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column' }} 
         onScroll={handleScroll}
         onWheel={handleWheel}
+        onMouseMove={handleReadingMove}
+        onMouseLeave={stopReading}
         onPointerDown={handlePointerDown}
         onPointerUp={handlePointerUp}
         onTouchStart={handleTouchStart}
