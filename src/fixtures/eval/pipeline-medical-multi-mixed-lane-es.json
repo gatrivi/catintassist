@@ -1,0 +1,236 @@
+{
+  "id": "pipeline-medical-multi-mixed-lane-es",
+  "kind": "medical",
+  "lang": "es",
+  "label": "One multi socket: Spanish lead-in + English-tagged phone/email/SSN in the same bubble (live call 10-16, all three vanished)",
+  "reference": "Mi teléfono es 5551234567 mi correo es juan.perez@gmail.com y el seguro social es 123-45-6789",
+  "terms": [],
+  "criticalPhrases": [
+    "juan.perez@gmail.com"
+  ],
+  "expect": {
+    "maxDamage": 0,
+    "minDigitRecall": 1,
+    "minCriticalRecall": 1
+  },
+  "events": [
+    {
+      "atMs": 0,
+      "lane": "multi",
+      "payload": {
+        "type": "Results",
+        "is_final": true,
+        "speech_final": true,
+        "start": 0.3,
+        "channel": {
+          "alternatives": [
+            {
+              "transcript": "Mi teléfono es",
+              "languages": [
+                "es"
+              ],
+              "confidence": 0.92,
+              "words": [
+                {
+                  "word": "Mi",
+                  "confidence": 0.92,
+                  "language": "es"
+                },
+                {
+                  "word": "teléfono",
+                  "confidence": 0.92,
+                  "language": "es"
+                },
+                {
+                  "word": "es",
+                  "confidence": 0.92,
+                  "language": "es"
+                }
+              ]
+            }
+          ]
+        }
+      }
+    },
+    {
+      "atMs": 600,
+      "lane": "multi",
+      "payload": {
+        "type": "Results",
+        "is_final": true,
+        "speech_final": true,
+        "start": 1.2,
+        "channel": {
+          "alternatives": [
+            {
+              "transcript": "5551234567",
+              "languages": [
+                "en"
+              ],
+              "confidence": 0.92,
+              "words": [
+                {
+                  "word": "555",
+                  "confidence": 0.92,
+                  "language": "en"
+                },
+                {
+                  "word": "123",
+                  "confidence": 0.92,
+                  "language": "en"
+                },
+                {
+                  "word": "4567",
+                  "confidence": 0.92,
+                  "language": "en"
+                }
+              ]
+            }
+          ]
+        }
+      }
+    },
+    {
+      "atMs": 1200,
+      "lane": "multi",
+      "payload": {
+        "type": "Results",
+        "is_final": true,
+        "speech_final": true,
+        "start": 2.4,
+        "channel": {
+          "alternatives": [
+            {
+              "transcript": "mi correo es",
+              "languages": [
+                "es"
+              ],
+              "confidence": 0.92,
+              "words": [
+                {
+                  "word": "mi",
+                  "confidence": 0.92,
+                  "language": "es"
+                },
+                {
+                  "word": "correo",
+                  "confidence": 0.92,
+                  "language": "es"
+                },
+                {
+                  "word": "es",
+                  "confidence": 0.92,
+                  "language": "es"
+                }
+              ]
+            }
+          ]
+        }
+      }
+    },
+    {
+      "atMs": 1800,
+      "lane": "multi",
+      "payload": {
+        "type": "Results",
+        "is_final": true,
+        "speech_final": true,
+        "start": 3.1,
+        "channel": {
+          "alternatives": [
+            {
+              "transcript": "juan.perez@gmail.com",
+              "languages": [
+                "en"
+              ],
+              "confidence": 0.92,
+              "words": [
+                {
+                  "word": "juan.perez@gmail.com",
+                  "confidence": 0.92,
+                  "language": "en"
+                }
+              ]
+            }
+          ]
+        }
+      }
+    },
+    {
+      "atMs": 2400,
+      "lane": "multi",
+      "payload": {
+        "type": "Results",
+        "is_final": true,
+        "speech_final": true,
+        "start": 4.0,
+        "channel": {
+          "alternatives": [
+            {
+              "transcript": "y el seguro social es",
+              "languages": [
+                "es"
+              ],
+              "confidence": 0.92,
+              "words": [
+                {
+                  "word": "y",
+                  "confidence": 0.92,
+                  "language": "es"
+                },
+                {
+                  "word": "el",
+                  "confidence": 0.92,
+                  "language": "es"
+                },
+                {
+                  "word": "seguro",
+                  "confidence": 0.92,
+                  "language": "es"
+                },
+                {
+                  "word": "social",
+                  "confidence": 0.92,
+                  "language": "es"
+                },
+                {
+                  "word": "es",
+                  "confidence": 0.92,
+                  "language": "es"
+                }
+              ]
+            }
+          ]
+        }
+      }
+    },
+    {
+      "atMs": 3000,
+      "lane": "multi",
+      "payload": {
+        "type": "Results",
+        "is_final": true,
+        "speech_final": true,
+        "start": 5.0,
+        "channel": {
+          "alternatives": [
+            {
+              "transcript": "123-45-6789",
+              "languages": [
+                "en"
+              ],
+              "confidence": 0.92,
+              "words": [
+                {
+                  "word": "123-45-6789",
+                  "confidence": 0.92,
+                  "language": "en"
+                }
+              ]
+            }
+          ]
+        }
+      }
+    }
+  ]
+}

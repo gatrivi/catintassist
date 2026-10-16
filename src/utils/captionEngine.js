@@ -395,7 +395,7 @@ export const reduceTranscriptEvent = (prev, event, ctx) => {
     isFinal,
     speechFinal,
     confidence,
-    laneSide,
+    laneSide: eventLaneSide,
     channelKey,
     startTime,
     now,
@@ -412,6 +412,22 @@ export const reduceTranscriptEvent = (prev, event, ctx) => {
   const eventWordConfidence = normalizeWordConfidence(words);
 
   let last = prev[prev.length - 1];
+  // v4.182.0 — one multi socket: lanes are NOT two copies of the same audio
+  // any more, they are consecutive pieces. A bubble shows ONE lane (winner by
+  // word count), so a Spanish "Mi número es" + an English-tagged
+  // "555 123 4567" in the same bubble HID the number completely — same for
+  // emails and SSNs (live call 10-16). Inside a bubble that already has text
+  // in the other lane, multi text joins that lane. A NEW bubble keeps the
+  // detected language (reset below), so speaker switches still translate.
+  const multiLaneFor = (row) => {
+    if (channelKey !== 'multi' || !row || isSilentBreak) return eventLaneSide;
+    const other = eventLaneSide === 'en' ? 'es' : 'en';
+    const hasThis = String(row[`${eventLaneSide}Finalized`] || '').trim();
+    const hasOther =
+      String(row[`${other}Finalized`] || '').trim() || String(row[`${other}Interim`] || '').trim();
+    return !hasThis && hasOther ? other : eventLaneSide;
+  };
+  let laneSide = multiLaneFor(last);
   // v4.123.0: previous bubble already ended in sentence-final punctuation and a
   // new final arrived → start a fresh bubble. Prevents "wall of text" when a
   // speaker (nurse tirade) talks continuously without a silence break.
@@ -519,6 +535,7 @@ export const reduceTranscriptEvent = (prev, event, ctx) => {
         isFinal: false,
       };
       prev = [...prev, last];
+      laneSide = eventLaneSide; // v4.182.0: a fresh bubble speaks its own language
     }
   }
 

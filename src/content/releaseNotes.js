@@ -25,6 +25,29 @@ import { APP_VERSION } from '../constants/version';
 /** Newest first. Only the entry matching APP_VERSION is shown on load. */
 export const RELEASE_NOTES_CATALOG = [
   {
+    version: '4.182.0',
+    id: 'multi-lane-keeps-numbers',
+    highlightElementIds: ['transcript-pane'],
+    es: {
+      title: 'Teléfonos, emails y SSN en español ya no desaparecen',
+      intro: 'Con un solo socket EN+ES, el número marcado como inglés dentro de un globo en español se ocultaba entero.',
+      sections: [{ heading: 'Qué cambió', bullets: [
+        'Dentro de un globo, todo el texto se muestra junto, sin importar el idioma detectado.',
+        'Un globo nuevo sigue usando su propio idioma (la traducción no cambia).',
+        'Prueba: teléfono + email + SSN, de 0% visibles → 100%.',
+      ] }],
+    },
+    en: {
+      title: 'Spanish phones, emails and SSNs no longer vanish',
+      intro: 'With one EN+ES socket, a number tagged English inside a Spanish bubble was hidden entirely.',
+      sections: [{ heading: 'What changed', bullets: [
+        'Inside a bubble, all text shows together whatever language was detected.',
+        'A new bubble still uses its own language (translation unchanged).',
+        'Test: phone + email + SSN went from 0% visible → 100%.',
+      ] }],
+    },
+  },
+  {
     version: '4.181.0',
     id: 'digit-rule-refined',
     highlightElementIds: ['transcript-pane'],

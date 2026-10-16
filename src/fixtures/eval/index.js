@@ -19,6 +19,7 @@ import pipelineMedicalDosisEs from './pipeline-medical-dosis-es.json';
 import pipelineMedicalPediatricDosing from './pipeline-medical-pediatric-dosing.json';
 import pipelineMedicalMedReconciliation from './pipeline-medical-med-reconciliation.json';
 import pipelineMedicalContactNumbers from './pipeline-medical-contact-numbers.json';
+import pipelineMedicalMultiMixedLaneEs from './pipeline-medical-multi-mixed-lane-es.json';
 import pipelineMedicalCosts from './pipeline-medical-costs.json';
 import pipelineMedicalReconciliacionEs from './pipeline-medical-reconciliacion-es.json';
 import pipelineLegalDeposition from './pipeline-legal-deposition.json';
@@ -51,6 +52,7 @@ export const EVAL_CASES = [
   // The number shapes the interpreter says must never drift: decimals, derived
   // doses, and long phone numbers in the same turn as clinical words.
   pipelineMedicalContactNumbers,
+  pipelineMedicalMultiMixedLaneEs,
   // v4.173.0: the cost call. A dental/insurance call is nothing but prices,
   // and the display pipeline used to turn "one fifty" into 1:50 and a price
   // list into an SSN. Nothing in the corpus covered money until this case.
