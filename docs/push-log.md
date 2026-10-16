@@ -123,3 +123,4 @@
 | 2026-10-15T16:54:20.175Z | 5b7cc96 | v4.176.0 header toggles grid + IO strip |
 | 2026-10-15T17:55:48.733Z | d7be256 | v4.177.0 one socket no repeated text |
 | 2026-10-15T21:52:29.263Z | 1cea6f1 | v4.178.0 translation latency |
+| 2026-10-16T17:44:39.875Z | 70e9d71 | v4.179.0 stt stall banner + console timestamps |
