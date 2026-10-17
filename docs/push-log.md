@@ -129,3 +129,4 @@
 | 2026-10-16T19:12:13.401Z | 07a56af | v4.181.0 digit rule refined |
 | 2026-10-16T19:26:26.569Z | d7361c3 | v4.182.0 ES numbers no longer vanish |
 | 2026-10-16T21:05:34.201Z | 0943633 | v4.183.0 typed reveal + reading freeze |
+| 2026-10-17T14:28:51.070Z | 0c996bc | v4.183.1 reading freeze reliable |
