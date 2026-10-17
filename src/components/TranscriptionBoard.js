@@ -1328,13 +1328,16 @@ export const TranscriptionBoard = ({
     }, RESUME_AFTER_USER_MS);
   }, [followLatest]);
 
-  // v4.183.0: reading = mouse moved over the transcript in the last 4s.
+  // v4.183.0: reading = mouse over the transcript (moved within READING_HOLD_MS).
   // While reading, new lines never yank the view; the "⬇ N new" button counts them.
   const readingRef = useRef(false);
   const readingTimerRef = useRef(null);
   const following = () =>
-    !readingRef.current &&
-    shouldFollow({ sticky: stickyBottomRef.current, userScrolledUp: userScrolledUpRef.current });
+    shouldFollow({
+      sticky: stickyBottomRef.current,
+      userScrolledUp: userScrolledUpRef.current,
+      reading: readingRef.current,
+    });
   const stopReading = () => {
     if (readingTimerRef.current) clearTimeout(readingTimerRef.current);
     readingTimerRef.current = null;
@@ -1587,6 +1590,7 @@ export const TranscriptionBoard = ({
         style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column' }} 
         onScroll={handleScroll}
         onWheel={handleWheel}
+        onMouseEnter={handleReadingMove}
         onMouseMove={handleReadingMove}
         onMouseLeave={stopReading}
         onPointerDown={handlePointerDown}

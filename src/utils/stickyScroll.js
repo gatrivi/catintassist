@@ -27,8 +27,10 @@ export const RESUME_AFTER_USER_MS = 15000;
 /** A wheel/drag counts as "user is scrolling" for this long. */
 export const USER_GESTURE_HOLD_MS = 400;
 
-/** v4.183.0: mouse moving over the transcript = reading → no auto-scroll for this long after the last move. */
-export const READING_HOLD_MS = 4000;
+/** v4.183.1: mouse over the transcript = reading → no auto-scroll. A mouse
+ * parked there with no movement for this long counts as "not reading" (safety
+ * so a forgotten cursor can't freeze the pane forever). Leave = follow at once. */
+export const READING_HOLD_MS = 15000;
 
 /** Read the three numbers that decide everything (safe on a null element). */
 export function readScrollMetrics(el) {
@@ -50,8 +52,8 @@ export function isAtBottom(metrics, slack = AT_BOTTOM_SLACK_PX) {
 }
 
 /** Follow while the toggle is on AND the operator has not scrolled away. */
-export function shouldFollow({ sticky, userScrolledUp }) {
-  return Boolean(sticky) && !userScrolledUp;
+export function shouldFollow({ sticky, userScrolledUp, reading = false }) {
+  return Boolean(sticky) && !userScrolledUp && !reading;
 }
 
 /**

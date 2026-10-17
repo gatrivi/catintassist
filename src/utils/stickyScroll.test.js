@@ -66,3 +66,13 @@ describe('stickyScroll — newest transcript line stays visible', () => {
     expect(classifyScroll({ now, programmaticUntil: now + 500, userGesture: true })).toBe('user');
   });
 });
+
+describe('reading freeze (v4.183.1)', () => {
+  const { shouldFollow, READING_HOLD_MS } = require('./stickyScroll');
+  test('reading blocks follow even when sticky', () =>
+    expect(shouldFollow({ sticky: true, userScrolledUp: false, reading: true })).toBe(false));
+  test('not reading + sticky = follow (old behaviour unchanged)', () =>
+    expect(shouldFollow({ sticky: true, userScrolledUp: false })).toBe(true));
+  test('a still mouse keeps the freeze long enough to read a bubble', () =>
+    expect(READING_HOLD_MS).toBeGreaterThanOrEqual(10000));
+});

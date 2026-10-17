@@ -25,7 +25,7 @@ import { APP_VERSION } from '../constants/version';
 /** Newest first. Only the entry matching APP_VERSION is shown on load. */
 export const RELEASE_NOTES_CATALOG = [
   {
-    version: '4.183.0',
+    version: '4.183.1',
     id: 'typed-reveal-reading-freeze',
     highlightElementIds: ['transcript-pane'],
     es: {
@@ -33,7 +33,7 @@ export const RELEASE_NOTES_CATALOG = [
       intro: 'El texto nuevo se escribe letra por letra en celeste; leer frena el scroll.',
       sections: [{ heading: 'Qué cambió', bullets: [
         'Palabras nuevas o corregidas aparecen letra por letra en celeste y vuelven al color normal.',
-        'Mouse moviéndose sobre la transcripción = leyendo: no salta al final por 4 s.',
+        'Mouse sobre la transcripción = leyendo: no salta al final (aunque el mouse esté quieto, hasta 15 s). Sacar el mouse = vuelve al final.',
         '"⬇ N new" cuenta lo que llegó; click = ir al final.',
       ] }],
     },
@@ -42,7 +42,7 @@ export const RELEASE_NOTES_CATALOG = [
       intro: 'New text types in letter by letter in light blue; reading stops the scroll.',
       sections: [{ heading: 'What changed', bullets: [
         'New or corrected words type in letter by letter in light blue, then turn normal.',
-        'Mouse moving over the transcript = reading: no jump to the bottom for 4 s.',
+        'Mouse over the transcript = reading: no jump to the bottom (even with a still mouse, up to 15 s). Mouse out = back to newest.',
         '"⬇ N new" counts what arrived; click = jump to newest.',
       ] }],
     },
