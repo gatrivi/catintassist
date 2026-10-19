@@ -32,7 +32,6 @@ import { CorrectionsBackupPanel } from './CorrectionsBackupPanel';
 import { AppBackupPanel } from './AppBackupPanel';
 import { CallLogImportPanel } from './CallLogImportPanel';
 import { displayDeviceName } from '../utils/audioDeviceLabels';
-import { MicVerifyChip } from './MicVerifyChip';
 import { useAuth } from '../contexts/AuthContext';
 import { useAudioSource } from '../hooks/useAudioSource';
 import { useAudioSettings } from '../contexts/AudioSettingsContext';
@@ -199,10 +198,8 @@ export default function SettingsPanel({
   const {
     inputDevices,
     outputDevices,
-    selectedMicId,
     selectedSinkId,
     selectedRecMicId,
-    changeMicId,
     changeSinkId,
     changeRecMicId,
     fetchDevices,
@@ -1220,40 +1217,10 @@ export default function SettingsPanel({
                 Devices
               </div>
 
-              <label style={{ fontSize: 11, color: '#6ee7b7' }}>
-                🎙️ Call transcription input (mic)
-                <select
-                  value={selectedMicId}
-                  onChange={(e) => changeMicId(e.target.value)}
-                  onFocus={() => fetchDevices({ requestMicPermissionForLabels: true })}
-                  style={devSelectStyle}
-                >
-                  <option value="">Default (let browser pick)</option>
-                  {inputDevices.map((d, i) => (
-                    <option key={d.deviceId} value={d.deviceId}>
-                      {d.label || `Mic ${i + 1}`}
-                    </option>
-                  ))}
-                </select>
-                <span style={{ ...devHintStyle }}>
-                  Used in mic mode + as the tab-share fallback. In Tab-share mode the interpreter tab audio is captured instead.
-                </span>
-              </label>
-
-              {/* v4.132.0: MIC VERIFY chip relocated here from the off-call header
-                  inline row (#off-call-inline-row) — it reports THIS mic (pin) +
-                  last verdict, so it sits with the mic selectors now. Label stays
-                  visible even when the chip renders null (no pin, no TEST yet); the
-                  hint below says why, so the row never reads as broken. */}
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
-                <span style={{ fontSize: 11, color: '#6ee7b7' }}>
-                  🎙️ Client mic — last MIC VERIFY verdict
-                </span>
-                <MicVerifyChip title="Client mic + last MIC VERIFY verdict — full panel in the idle pane below" />
-                <span style={{ ...devHintStyle }}>
-                  Full MIC VERIFY panel stays in the idle pane — press TEST there before going avail. This chip is empty until a mic is pinned or a TEST has run.
-                </span>
-              </div>
+              {/* v4.185.0: "Call transcription input (mic)" + "Client mic — MIC VERIFY"
+                  rows removed: the first was mislabeled (it was the live mic sent to
+                  the call), the second only a status readout. 🎤 mic-mode pick stays
+                  in the I/O strip. Rows left: recording mic, greeting output, STT source. */}
 
               <label style={{ fontSize: 11, color: '#6ee7b7' }}>
                 🎙️ Greeting recording mic
@@ -1263,7 +1230,7 @@ export default function SettingsPanel({
                   onFocus={() => fetchDevices({ requestMicPermissionForLabels: true })}
                   style={devSelectStyle}
                 >
-                  <option value="">Same as call mic</option>
+                  <option value="">Same as 🎤 mic (I/O strip)</option>
                   {inputDevices.map((d, i) => (
                     <option key={d.deviceId} value={d.deviceId}>
                       {d.label || `Mic ${i + 1}`}
@@ -1271,7 +1238,7 @@ export default function SettingsPanel({
                   ))}
                 </select>
                 <span style={{ ...devHintStyle }}>
-                  Mic used only to record soundboard greetings — pick a different one (e.g. Realtek) without touching the call input.
+                  Mic used only to record soundboard greetings — pick a different one (e.g. Realtek) — recording only, never sent to the call.
                 </span>
               </label>
 

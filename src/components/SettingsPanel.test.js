@@ -77,26 +77,18 @@ const seedMicVerdict = () => {
   );
 };
 
-describe('SettingsPanel → Audio: MIC VERIFY chip (v4.132.0)', () => {
+describe('SettingsPanel → Audio: devices (v4.185.0)', () => {
   afterEach(() => localStorage.clear());
 
-  test('renders the chip next to the mic selectors once a verdict exists', () => {
+  // v4.185.0: the duplicate mic rows are gone — Devices = recording mic + greeting output.
+  test('no mislabeled call-mic row and no MIC VERIFY chip row', () => {
     seedMicVerdict();
     renderAudioSection();
-
-    // The labelled row is inside the Devices/mic area of the Audio section.
-    expect(screen.getByText(/Client mic — last MIC VERIFY verdict/)).toBeInTheDocument();
-    const chip = document.querySelector('.mic-verify-chip');
-    expect(chip).not.toBeNull();
-    expect(chip.textContent).toContain('CABLE Output');
-  });
-
-  test('empty state: chip no-ops, label + idle-pane hint stay so the row reads', () => {
-    renderAudioSection();
-
+    expect(screen.queryByText(/Call transcription input/)).toBeNull();
+    expect(screen.queryByText(/Client mic — last MIC VERIFY verdict/)).toBeNull();
     expect(document.querySelector('.mic-verify-chip')).toBeNull();
-    expect(screen.getByText(/Client mic — last MIC VERIFY verdict/)).toBeInTheDocument();
-    expect(screen.getByText(/Full MIC VERIFY panel stays in the idle pane/)).toBeInTheDocument();
+    expect(screen.getByText(/Greeting recording mic/)).toBeInTheDocument();
+    expect(screen.getByText(/Greeting playback output/)).toBeInTheDocument();
   });
 
   test('admin STT trace and audio ring default off and toggle explicitly', () => {

@@ -186,3 +186,27 @@ test('a superseded decode cannot interrupt a newer playing greeting', async () =
   expect(stop).toHaveBeenCalledTimes(1);
   expect(result.current.sinkPlaybackActive).toBe(false);
 });
+
+// v4.185.0: a selected mic feeds the meter only — it is NEVER played to the
+// greeting output. The old forward sent CABLE Output (music + caller) to the client.
+test('selected mic is never routed to the greeting output', async () => {
+  const micStream = { getTracks: () => [{ stop: jest.fn() }] };
+  localStorage.setItem('CATINTASSIST_MIC_ID', 'cable-output');
+  navigator.mediaDevices.getUserMedia = jest.fn().mockResolvedValue(micStream);
+  window.AudioContext = jest.fn(() => ({
+    createMediaStreamSource: () => ({ connect: jest.fn() }),
+    createAnalyser: () => ({ fftSize: 0, frequencyBinCount: 4, getByteFrequencyData: jest.fn() }),
+    close: jest.fn().mockResolvedValue(),
+  }));
+  jest.spyOn(window, 'requestAnimationFrame').mockImplementation(() => 0);
+  const { result } = renderHook(() => useAudioSettings(), { wrapper });
+  await act(async () => { await flush(); });
+  expect(navigator.mediaDevices.getUserMedia).toHaveBeenCalled();
+  expect(audio.srcObject).not.toBe(micStream);
+  act(() => { result.current.stopClipToSink(); });
+  expect(audio.srcObject).not.toBe(micStream);
+  act(() => { result.current.restoreLiveMic('test'); });
+  expect(audio.srcObject).not.toBe(micStream);
+  await act(async () => { await result.current.playClipToSink(blob, 1, { clipKey: 'intake' }); });
+  expect(audio.srcObject).not.toBe(micStream);
+});

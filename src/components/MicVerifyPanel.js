@@ -27,9 +27,6 @@ const TONE_COLOR = { pass: '#34d399', fail: '#f87171', warn: '#fbbf24' };
 export const MicVerifyPanel = () => {
   const {
     inputDevices,
-    outputDevices,
-    selectedSinkId,
-    changeSinkId,
     fetchDevices,
   } = useAudioSettings();
 
@@ -49,10 +46,6 @@ export const MicVerifyPanel = () => {
   const edgeDefault = useMemo(() => findEdgeDefaultInput(inputDevices), [inputDevices]);
   const micChoices = useMemo(() => probeTargets(inputDevices), [inputDevices]);
   const labelsHidden = useMemo(() => hasHiddenLabels(inputDevices), [inputDevices]);
-  const sinkName = useMemo(
-    () => outputDevices.find((d) => d.deviceId === selectedSinkId)?.label || 'System default',
-    [outputDevices, selectedSinkId],
-  );
 
   // First visit: pre-pin Edge's default — that IS what the platform grabs.
   useEffect(() => {
@@ -160,7 +153,8 @@ export const MicVerifyPanel = () => {
   const playLoopback = async (url) => {
     const a = new Audio(url || loopbackUrl);
     try {
-      if (selectedSinkId && a.setSinkId) await a.setSinkId(selectedSinkId);
+      // v4.185.0: local speakers ONLY. It used to play to the greeting output
+      // (Voicemeeter Input → B1) = the client heard it, you did not.
       a.onended = () => setPhase('idle');
       await a.play();
       setPhase('playing');
@@ -196,15 +190,8 @@ export const MicVerifyPanel = () => {
             ))}
           </select>
         </label>
-        <label className="mic-verify-field">
-          <span>Playback check device</span>
-          <select value={selectedSinkId} onChange={(e) => changeSinkId(e.target.value)}>
-            <option value="">System default</option>
-            {outputDevices.map((d, i) => (
-              <option key={d.deviceId} value={d.deviceId}>{displayDeviceName(d, i, 'out', null, outputDevices)}</option>
-            ))}
-          </select>
-        </label>
+        {/* v4.185.0: "Playback check device" picker removed — it silently
+            changed the GREETING output (global sink) from inside a mic test. */}
         <button
           type="button"
           className="mic-verify-test-btn"
@@ -257,7 +244,7 @@ export const MicVerifyPanel = () => {
       {loopbackUrl && phase !== 'listening' && (
         <div className="mic-verify-loopback">
           <button type="button" onClick={() => playLoopback()}>▶ HEAR YOURSELF</button>
-          <span>plays through: {sinkName}</span>
+          <span>plays through: your speakers (never the call)</span>
         </div>
       )}
       {loopbackError && <div className="mic-verify-hint" style={{ color: '#fbbf24' }}>{loopbackError}</div>}

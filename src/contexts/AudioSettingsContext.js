@@ -148,14 +148,12 @@ export const AudioSettingsProvider = ({ children }) => {
              audio: { deviceId: { exact: selectedMicId }, echoCancellation: false, noiseSuppression: false, autoGainControl: false } 
           });
           if (isMounted) {
+            // v4.185.0: the mic stream feeds the level METER only. It is never
+            // played to the sink — the old live forward sent whatever this
+            // device carried (CABLE Output = music + the caller) to the client.
+            // Your voice reaches the call through Voicemeeter (Strip 0 → B1).
             micStreamRef.current = stream;
-            if (!clipPlaybackStopRef.current) {
-              passthroughAudioRef.current.srcObject = stream;
-              passthroughAudioRef.current.volume = sinkPlaybackActiveRef.current ? 0 : 1;
-              passthroughAudioRef.current.muted = sinkPlaybackActiveRef.current;
-              passthroughAudioRef.current.play().catch(e => console.error(e));
-            }
-            
+
             // Attach visualizer without React state to avoid massive re-renders
             const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
             const source = audioCtx.createMediaStreamSource(stream);
@@ -275,10 +273,20 @@ export const AudioSettingsProvider = ({ children }) => {
     };
   }, [selectedMicId, selectedSinkId]);
 
+  /** v4.185.0: the sink carries greetings ONLY — empty it when no clip plays. */
+  const silenceSinkElement = () => {
+    const el = passthroughAudioRef.current;
+    if (!el) return;
+    try {
+      el.pause?.();
+      el.srcObject = null;
+    } catch (_) {}
+  };
+
   /**
-   * Panic restore (v4.86.2): rebind live mic to the caller path, no matter
-   * what state clip playback left behind. Safe to call anytime — it is the
-   * one-tap "Restore Mic" failsafe for crash/mid-clip emergencies.
+   * Panic stop (v4.86.2; v4.185.0): kill any clip, leave the sink silent.
+   * Name kept so the "Restore Mic" buttons still work — your mic does not
+   * go through the app any more, so "restore" = stop the clip.
    */
   const restoreLiveMic = useCallback((reason = 'manual') => {
     clipGenerationRef.current += 1;
@@ -286,45 +294,12 @@ export const AudioSettingsProvider = ({ children }) => {
     clipPlaybackStopRef.current = null;
     sinkPlaybackActiveRef.current = false;
     setSinkPlaybackActiveState(false);
-    const el = passthroughAudioRef.current;
-    const mic = micStreamRef.current;
-    if (el && mic) {
-      try {
-        el.srcObject = mic;
-        el.volume = 1;
-        el.muted = false;
-        el.play().catch(() => {});
-      } catch (_) {}
-    }
+    silenceSinkElement();
     logRouteEvent(ROUTE_EVENT.PASSTHROUGH_RESTORE, { routeMode: 'panic', reason });
-    return { ok: !!(el && mic), reason: el && mic ? undefined : 'no_mic_stream' };
+    return { ok: true };
   }, []);
 
-  /** Watchdog: never leave the caller path without a mic on teardown paths. */
-  useEffect(() => {
-    const onHide = () => {
-      // Never stomp a playing clip — the watchdog rebinding the live mic here
-      // used to cut greetings mid-playback when the tab was hidden/unhidden.
-      if (sinkPlaybackActiveRef.current) return;
-      try {
-        const el = passthroughAudioRef.current;
-        const mic = micStreamRef.current;
-        if (el && mic && el.srcObject !== mic) {
-          el.srcObject = mic;
-          el.play().catch(() => {});
-        }
-      } catch (_) {}
-    };
-    window.addEventListener('pagehide', onHide);
-    document.addEventListener('visibilitychange', onHide);
-    return () => {
-      window.removeEventListener('pagehide', onHide);
-      document.removeEventListener('visibilitychange', onHide);
-      onHide();
-    };
-  }, []);
-
-  /** Stop passthrough clip playback and restore live mic stream. */
+  /** Stop clip playback; the sink goes silent (never back to a live mic). */
   const stopClipToSink = useCallback(() => {
     clipGenerationRef.current += 1;
     if (clipPlaybackStopRef.current) {
@@ -333,14 +308,7 @@ export const AudioSettingsProvider = ({ children }) => {
     }
     sinkPlaybackActiveRef.current = false;
     setSinkPlaybackActiveState(false);
-    const el = passthroughAudioRef.current;
-    const mic = micStreamRef.current;
-    if (el && mic) {
-      el.srcObject = mic;
-      el.volume = 1;
-      el.muted = false;
-      el.play().catch(() => {});
-    }
+    silenceSinkElement();
     logRouteEvent(ROUTE_EVENT.PASSTHROUGH_RESTORE, { routeMode: ROUTE_MODE.PASSTHROUGH });
   }, []);
 
@@ -366,7 +334,6 @@ export const AudioSettingsProvider = ({ children }) => {
     const cancelledResult = () => ({ ok: false, cancelled: true, reason: cancellation() });
 
     const el = passthroughAudioRef.current;
-    const savedMic = micStreamRef.current;
 
     // v4.104.0: direct ctx.setSinkId render first — buffered output on the sink's
     // own clock (no live MediaStream, no srcObject swap). The "can of tuna" chop
@@ -424,7 +391,7 @@ export const AudioSettingsProvider = ({ children }) => {
       const session = playBufferViaPassthrough(el, buffer, ctx, {
         volume,
         sinkId: selectedSinkId,
-        savedSrcObject: savedMic,
+        savedSrcObject: null, // v4.185.0: after the clip the sink is silent
         onProgress,
       });
       clipPlaybackStopRef.current = session.stop;
@@ -441,12 +408,7 @@ export const AudioSettingsProvider = ({ children }) => {
       clipPlaybackStopRef.current = null;
       sinkPlaybackActiveRef.current = false;
       setSinkPlaybackActiveState(false);
-      if (el && savedMic) {
-        el.srcObject = savedMic;
-        el.volume = 1;
-        el.muted = false;
-        el.play().catch(() => {});
-      }
+      silenceSinkElement();
       logRouteEvent(ROUTE_EVENT.PLAY_END, { clipKey, routeMode: ROUTE_MODE.PASSTHROUGH });
       return { ok: true, mode: ROUTE_MODE.PASSTHROUGH };
     } catch (err) {
@@ -455,10 +417,7 @@ export const AudioSettingsProvider = ({ children }) => {
       clipPlaybackStopRef.current = null;
       sinkPlaybackActiveRef.current = false;
       setSinkPlaybackActiveState(false);
-      if (el && savedMic) {
-        el.srcObject = savedMic;
-        el.play().catch(() => {});
-      }
+      silenceSinkElement();
       logRouteEvent(ROUTE_EVENT.PLAY_FAIL, {
         clipKey,
         routeMode: ROUTE_MODE.PASSTHROUGH,

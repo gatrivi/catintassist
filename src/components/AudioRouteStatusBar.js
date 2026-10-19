@@ -480,7 +480,7 @@ export const AudioRouteStatusBar = ({
           elementId="audio-route-mic-select"
           icon="🎤"
           heading="Mic = your real mic"
-          body="Physical headset/mic. App pipes it through VB out to the patient. Not CABLE Output."
+          body="Physical headset/mic. Used for 🎤 mic-mode transcription + the level meter. Never sent to the call (v4.185.0)."
           color="#a78bfa"
         >
           <label className="audio-route-device-pick" title={`Mic: ${micDeviceLabel}`}>

@@ -25,6 +25,29 @@ import { APP_VERSION } from '../constants/version';
 /** Newest first. Only the entry matching APP_VERSION is shown on load. */
 export const RELEASE_NOTES_CATALOG = [
   {
+    version: '4.185.0',
+    id: 'no-mic-forward',
+    highlightElementIds: ['app-version-pill'],
+    es: {
+      title: 'La app ya no manda tu mic a la llamada',
+      intro: 'A la llamada solo salen los saludos. Tu voz va por Voicemeeter (Strip 1 → B1).',
+      sections: [{ heading: 'Qué cambió', bullets: [
+        'Se cortó el reenvío del mic: con CABLE Output elegido, el cliente escuchaba música y su propia voz.',
+        'MIC VERIFY "▶ HEAR YOURSELF" suena en tus parlantes, nunca en la llamada.',
+        'Ajustes → Audio: 3 filas (mic de grabación, salida de saludos, fuente STT).',
+      ] }],
+    },
+    en: {
+      title: 'The app no longer sends your mic to the call',
+      intro: 'Only greetings go out. Your voice goes through Voicemeeter (Strip 1 → B1).',
+      sections: [{ heading: 'What changed', bullets: [
+        'Mic forward removed: with CABLE Output picked, the client heard music and their own voice.',
+        'MIC VERIFY "▶ HEAR YOURSELF" plays on your speakers, never the call.',
+        'Settings → Audio: 3 rows (recording mic, greeting output, STT source).',
+      ] }],
+    },
+  },
+  {
     version: '4.184.0',
     id: 'url-cable-switch',
     highlightElementIds: ['app-version-pill'],
