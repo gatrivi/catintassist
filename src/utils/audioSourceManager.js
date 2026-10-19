@@ -48,6 +48,17 @@ export const readAudioSourceMode = (storage = typeof localStorage !== "undefined
   }
 };
 
+/**
+ * v4.184.0: URL switch for the audio source — `?cable` or `?tab`.
+ * Saved like the Settings toggle, so it sticks after reload.
+ * Outage use: open http://localhost:3001/?cable → CONNECT uses CABLE Output.
+ */
+export const applyAudioSourceFromUrl = (search = typeof window !== "undefined" ? window.location.search : "") => {
+  const params = new URLSearchParams(search || "");
+  if (params.has("cable")) persistAudioSourceMode(AUDIO_SOURCE_MODE_VIRTUAL_CABLE);
+  else if (params.has("tab")) persistAudioSourceMode(AUDIO_SOURCE_MODE_TAB);
+};
+
 export const persistAudioSourceMode = (
   mode,
   storage = typeof localStorage !== "undefined" ? localStorage : null,

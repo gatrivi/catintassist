@@ -299,3 +299,16 @@ describe("audioSourceManager", () => {
   });
 });
 
+
+describe("applyAudioSourceFromUrl (v4.184.0)", () => {
+  const { applyAudioSourceFromUrl, readAudioSourceMode } = require("./audioSourceManager");
+  beforeEach(() => localStorage.clear());
+  it("?cable saves virtualCable, ?tab saves tab, nothing leaves it alone", () => {
+    applyAudioSourceFromUrl("?cable");
+    expect(readAudioSourceMode()).toBe("virtualCable");
+    applyAudioSourceFromUrl("");
+    expect(readAudioSourceMode()).toBe("virtualCable");
+    applyAudioSourceFromUrl("?tab");
+    expect(readAudioSourceMode()).toBe("tab");
+  });
+});

@@ -25,6 +25,21 @@ import { APP_VERSION } from '../constants/version';
 /** Newest first. Only the entry matching APP_VERSION is shown on load. */
 export const RELEASE_NOTES_CATALOG = [
   {
+    version: '4.184.0',
+    id: 'url-cable-switch',
+    highlightElementIds: ['app-version-pill'],
+    es: {
+      title: 'Cable por URL',
+      intro: 'Agregá ?cable a la dirección y CONNECT usa CABLE Output (?tab vuelve a pestaña).',
+      sections: [{ heading: 'Qué cambió', bullets: ['http://localhost:3001/?cable → queda guardado.'] }],
+    },
+    en: {
+      title: 'Cable via URL',
+      intro: 'Add ?cable to the address and CONNECT uses CABLE Output (?tab switches back).',
+      sections: [{ heading: 'What changed', bullets: ['http://localhost:3001/?cable → saved, sticks after reload.'] }],
+    },
+  },
+  {
     version: '4.183.1',
     id: 'typed-reveal-reading-freeze',
     highlightElementIds: ['transcript-pane'],
