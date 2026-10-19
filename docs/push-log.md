@@ -131,3 +131,4 @@
 | 2026-10-16T21:05:34.201Z | 0943633 | v4.183.0 typed reveal + reading freeze |
 | 2026-10-17T14:28:51.070Z | 0c996bc | v4.183.1 reading freeze reliable |
 | 2026-10-19T15:29:09.211Z | 2fe1968 | v4.184.0 url cable switch |
+| 2026-10-19T16:17:06.112Z | 850708e | v4.185.0 no mic forward |

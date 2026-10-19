@@ -75,6 +75,8 @@ const normalizeWord = (word) =>
  * overlap guard normalizes ("names," ≡ "names").
  */
 export const RESTART_MIN_WORDS = 4;
+/** v4.186.0: Deepgram start (s) within this = the same draft segment. */
+const DRAFT_START_EPSILON_S = 0.05;
 /** A restart re-states a phrase; checking more than this only burns CPU. */
 const RESTART_HEAD_MAX_WORDS = 24;
 
@@ -399,7 +401,7 @@ export const reduceTranscriptEvent = (prev, event, ctx) => {
     channelKey,
     startTime,
     now,
-    isSilentBreak,
+    isSilentBreak: wallClockSilentBreak,
     protectionsOn,
     langMode,
     pair,
@@ -412,6 +414,19 @@ export const reduceTranscriptEvent = (prev, event, ctx) => {
   const eventWordConfidence = normalizeWordConfidence(words);
 
   let last = prev[prev.length - 1];
+  // v4.186.0 — a draft and its final are the SAME audio. The silent break is a
+  // wall-clock gap (>2.5 s with no Deepgram event), so a speaker pausing
+  // mid-sentence used to start a new bubble when the final finally came: the
+  // draft was frozen in the old bubble and the final printed again below it
+  // (live calls 10-19: "...schedule the next" + "I'll give you to the front
+  // desk... next appointment."). Same Deepgram start = rewrite, never a break.
+  const rewritesDraft =
+    !!last &&
+    last.isFinal === false &&
+    Number.isFinite(last.interimStart) &&
+    Number.isFinite(startTime) &&
+    Math.abs(startTime - last.interimStart) < DRAFT_START_EPSILON_S;
+  const isSilentBreak = wallClockSilentBreak && !rewritesDraft;
   // v4.182.0 — one multi socket: lanes are NOT two copies of the same audio
   // any more, they are consecutive pieces. A bubble shows ONE lane (winner by
   // word count), so a Spanish "Mi número es" + an English-tagged
@@ -440,8 +455,12 @@ export const reduceTranscriptEvent = (prev, event, ctx) => {
     ? (laneSide === "en" ? last.enFinalized : last.esFinalized) ||
       (last.isFinal === false ? "" : last.text || "")
     : "";
+  // v4.186.0: a DRAFT after a sealed sentence opens its own bubble too. It
+  // used to join the sealed row, so when its final arrived (and split here)
+  // the old row kept the draft words = the same words twice. Now the draft
+  // lives in the new bubble and its final replaces it IN PLACE (morph, no move).
   const startsAfterPeriod =
-    shouldFinalize &&
+    (shouldFinalize || (!!last && last.isFinal !== false)) &&
     /[.!?…]["')\]]?\s*$/.test(prevLaneFinal.trim()) &&
     Boolean(transcript && String(transcript).trim());
   const isNewTurn = isSilentBreak || !last || startsAfterPeriod;
@@ -758,6 +777,8 @@ export const reduceTranscriptEvent = (prev, event, ctx) => {
   current.enFull = enFull;
   current.esFull = esFull;
   current.isFinal = shouldFinalize;
+  // v4.186.0: remember which audio the draft covers (see rewritesDraft).
+  current.interimStart = shouldFinalize ? null : startTime;
   if (!shouldFinalize) {
     current.tailPreviewText = null;
   }

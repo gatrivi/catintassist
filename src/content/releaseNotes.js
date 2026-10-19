@@ -25,6 +25,27 @@ import { APP_VERSION } from '../constants/version';
 /** Newest first. Only the entry matching APP_VERSION is shown on load. */
 export const RELEASE_NOTES_CATALOG = [
   {
+    version: '4.186.0',
+    id: 'draft-rewrite-in-place',
+    highlightElementIds: ['transcript-pane'],
+    es: {
+      title: 'Sin frases repetidas entre burbujas',
+      intro: 'El borrador y su versión final son el mismo audio: la final reemplaza al borrador en la misma burbuja.',
+      sections: [{ heading: 'Qué cambió', bullets: [
+        'Una pausa de 2,5 s a mitad de frase ya no congela el borrador ni imprime la frase otra vez abajo.',
+        'Después de una oración cerrada, el borrador nuevo abre su propia burbuja: la final cambia ahí mismo, sin saltar.',
+      ] }],
+    },
+    en: {
+      title: 'No more repeated sentences across bubbles',
+      intro: 'A draft and its final are the same audio: the final replaces the draft in the same bubble.',
+      sections: [{ heading: 'What changed', bullets: [
+        'A 2.5 s pause mid-sentence no longer freezes the draft and prints the sentence again below.',
+        'After a finished sentence, the next draft opens its own bubble, so its final changes in place, no jump.',
+      ] }],
+    },
+  },
+  {
     version: '4.185.0',
     id: 'no-mic-forward',
     highlightElementIds: ['app-version-pill'],
