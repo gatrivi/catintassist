@@ -516,6 +516,15 @@ describe('hallucinationGuard', () => {
     expect(out).not.toMatch(/\[Stutter Pruned\]/);
   });
 
+  // v4.187.0: heavy stutter never truncates the bubble (was: first 12 words + marker).
+  test('heavy stutter keeps every non-repeated word, no truncation', () => {
+    const real = 'my daughter drives me to the clinic every tuesday because I cannot see well at night anymore';
+    const loop = Array(20).fill('thank thank').join(' ');
+    const out = hallucinationGuard(`${real} ${loop}`);
+    expect(out).not.toMatch(/Stutter Pruned/);
+    expect(out).toContain(real);
+  });
+
   test('dedupe never drops negation or key med tokens', () => {
     expect(hallucinationGuard('patient is not not allergic')).toBe('patient is not not allergic');
   });

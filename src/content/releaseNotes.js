@@ -25,6 +25,27 @@ import { APP_VERSION } from '../constants/version';
 /** Newest first. Only the entry matching APP_VERSION is shown on load. */
 export const RELEASE_NOTES_CATALOG = [
   {
+    version: '4.187.0',
+    id: 'stutter-never-truncates',
+    highlightElementIds: ['transcript-pane'],
+    es: {
+      title: 'Un tartamudeo ya no corta la burbuja',
+      intro: 'Un bucle de palabras repetidas ya no recorta la burbuja a 12 palabras.',
+      sections: [{ heading: 'Qué cambió', bullets: [
+        'Se quitan solo las repeticiones; todas las demás palabras quedan visibles.',
+        'Se acabó la marca "[Stutter Pruned]".',
+      ] }],
+    },
+    en: {
+      title: 'A stutter no longer cuts the bubble',
+      intro: 'A loop of repeated words no longer trims the bubble to 12 words.',
+      sections: [{ heading: 'What changed', bullets: [
+        'Only the repeats are removed; every other word stays visible.',
+        'No more "[Stutter Pruned]" marker.',
+      ] }],
+    },
+  },
+  {
     version: '4.186.0',
     id: 'draft-rewrite-in-place',
     highlightElementIds: ['transcript-pane'],

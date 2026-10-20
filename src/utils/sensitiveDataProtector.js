@@ -1872,23 +1872,16 @@ export const hallucinationGuard = (text) => {
     lastPair = pair;
   }
 
-  if (
-    words.length > 15 &&
-    cleaned.length < words.length * 0.5 &&
-    !containsNumberSequence(text, 2) &&
-    !containsCriticalData(text) &&
-    !hasCriticalDataCue(text)
-  ) {
-    const pruned = `${cleaned.slice(0, 12).join(' ')}... [Stutter Pruned]`;
-    // eslint-disable-next-line no-console
-    if (process.env.NODE_ENV !== 'production') console.log('[PRUNED]', text, '→', cleaned.slice(0, 12).join(' '));
-    flagVanish('hallucination_stutter_prune', {
+  // v4.187.0: heavy stutter is LOGGED only. It used to cut the whole bubble to
+  // 12 words + "[Stutter Pruned]" — deleting real words already on screen.
+  // The dedupe above already removed the repeats; keep every other word.
+  if (words.length > 15 && cleaned.length < words.length * 0.5) {
+    flagVanish('hallucination_stutter_heavy', {
       before: text,
-      after: pruned,
+      after: cleaned.join(' '),
       stage: 'hallucinationGuard',
       force: true,
     });
-    return pruned;
   }
 
   const out = cleanFillerWords(cleaned.join(' '));
