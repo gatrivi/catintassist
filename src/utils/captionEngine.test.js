@@ -92,7 +92,9 @@ describe("captionEngine", () => {
     ]);
   });
 
-  test("final event seals and creates tail row with tailPreviewText reusing live draft id", () => {
+  // v4.188.0: the READ bubble keeps the draft id (first sentence morphs in
+  // place); the tail is a NEW bubble below. Was: tail reused the draft id.
+  test("final event seals and creates tail row; first sentence keeps the live draft id", () => {
     const ctx = makeCtx();
     const now1 = Date.now();
     const now2 = now1 + 500;
@@ -124,7 +126,19 @@ describe("captionEngine", () => {
     expect(sealedRows.every((r) => !r.tailPreviewText)).toBe(true);
     expect(tailRow).toBeTruthy();
     expect(tailRow.tailPreviewText).toBe("tail");
-    expect(tailRow.id).toBe(interimId);
+    expect(sealedRows[0].id).toBe(interimId);
+    expect(tailRow.id).not.toBe(interimId);
+    expect(finalRows.indexOf(tailRow)).toBeGreaterThan(finalRows.indexOf(sealedRows[0]));
+  });
+
+  test("tail keeps its own id while it grows (no remount per word)", () => {
+    const ctx = makeCtx();
+    const t = Date.now();
+    const a = reduceTranscriptEvent([], makeEvent({ transcript: "hello", now: t }), ctx);
+    const b = reduceTranscriptEvent(a, makeEvent({ transcript: "Hello. tail", isFinal: true, now: t + 500, isSilentBreak: false }), ctx);
+    const tailId = b.find((r) => r.isFinal === false).id;
+    const c = reduceTranscriptEvent(b, makeEvent({ transcript: " tail more", now: t + 700, isSilentBreak: false }), ctx);
+    expect(c.find((r) => r.isFinal === false).id).toBe(tailId);
   });
 
   test("tail preview clears on next interim update", () => {

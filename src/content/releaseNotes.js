@@ -25,6 +25,27 @@ import { APP_VERSION } from '../constants/version';
 /** Newest first. Only the entry matching APP_VERSION is shown on load. */
 export const RELEASE_NOTES_CATALOG = [
   {
+    version: '4.188.0',
+    id: 'reading-bubble-stays',
+    highlightElementIds: ['transcript-pane'],
+    es: {
+      title: 'La burbuja que leés no se mueve',
+      intro: 'Al cerrarse una oración, la primera frase se queda en la burbuja que estás leyendo.',
+      sections: [{ heading: 'Qué cambió', bullets: [
+        'Las frases siguientes y las palabras nuevas abren burbujas debajo.',
+        'El texto solo se mueve hacia abajo, nunca hacia arriba.',
+      ] }],
+    },
+    en: {
+      title: 'The bubble you are reading stays put',
+      intro: 'When a sentence closes, the first sentence stays in the bubble you are reading.',
+      sections: [{ heading: 'What changed', bullets: [
+        'Later sentences and new words open bubbles below.',
+        'Text only moves down, never up.',
+      ] }],
+    },
+  },
+  {
     version: '4.187.0',
     id: 'stutter-never-truncates',
     highlightElementIds: ['transcript-pane'],

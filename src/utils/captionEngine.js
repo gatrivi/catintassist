@@ -869,14 +869,16 @@ export const reduceTranscriptEvent = (prev, event, ctx) => {
         },
       });
       const hasTail = Boolean(tailText?.trim());
-      if (hasTail && sealedAll[0]?.id === originalLastId) {
-        sealedAll[0] = {
-          ...sealedAll[0],
-          id: `${buildStableCaptionId(channelKey, startTime, true)}-s0-${++bubbleIdCounterRef.current}`,
-        };
-      } else if (sealedAll[0] && originalLastId && !hasTail) {
+      // v4.188.0: the bubble you are READING keeps its mount — the first
+      // sentence stays in it (morphs in place). Only later sentences + the
+      // tail open new bubbles BELOW. Was: sentences moved up into a new bubble
+      // and the reading bubble shrank to the tail (eyes lost their place).
+      if (sealedAll[0] && originalLastId) {
         sealedAll[0] = { ...sealedAll[0], id: originalLastId };
       }
+      const tailId = originalLastId
+        ? `${buildStableCaptionId(channelKey, startTime, false)}-t-${++bubbleIdCounterRef.current}`
+        : originalLastId;
       newArr = [...prev.slice(0, -1), ...sealedAll];
       if (hasTail) {
         const winLang = current.lang || pair.left;
@@ -889,7 +891,7 @@ export const reduceTranscriptEvent = (prev, event, ctx) => {
         );
         newArr.push({
           ...current,
-          id: originalLastId,
+          id: tailId,
           turnId: current.turnId,
           turnWordCount: turnWordsBaseRef.current,
           text: formatted,
@@ -908,8 +910,8 @@ export const reduceTranscriptEvent = (prev, event, ctx) => {
             tailSide === "es"
               ? `${formatted} ${current.esInterim || ""}`.trim()
               : current.esFull,
-          // The tail stays a LIVE row on purpose (v4.141.0: it reuses the live
-          // draft's id so the bubble keeps growing without remounting). It is
+          // The tail stays a LIVE row on purpose (v4.188.0: its own new id,
+          // kept while it grows — no remount per word). It is
           // sealed by the turn-transition path below, which is what stops its
           // words from being stranded when the speaker simply stops talking.
           isFinal: false,
