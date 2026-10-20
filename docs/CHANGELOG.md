@@ -3,6 +3,12 @@
 **Version source:** `src/constants/version.js` (must match `package.json` + top-right UI pill)
 
 
+## v4.189.0 - opener readiness chips
+
+Greetings strip always shows `EN ✓` / `ES 2/3` / `ES ✗` / `ES 🔒` (green / amber / red), collapsed and expanded.
+Replaces `· ES missing`, which only showed when all 3 slots were empty and ignored CALL OK.
+Tap: off-call → Greeting Editor on the first missing slot; mid-call → a notice saying what's wrong. Logic: `src/utils/openerReadiness.js`.
+
 ## v4.178.0 - translation latency (client side)
 
 Local engine answers ~0.1–0.2 s/sentence; the lag was ours. `useTranslate.js` + `translationRequestQueue.js`.

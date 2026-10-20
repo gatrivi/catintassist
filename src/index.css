@@ -7665,8 +7665,7 @@ body:has(.app-container[data-call-mode="true"]) .element-hint-panel {
   color: #bfdbfe;
 }
 
-.on-call-sb-slot-variant,
-.on-call-sb-slot-missing {
+.on-call-sb-slot-variant {
   font-size: 0.62rem;
   font-weight: 700;
   white-space: nowrap;
@@ -7679,9 +7678,22 @@ body:has(.app-container[data-call-mode="true"]) .element-hint-panel {
   color: #fbbf24;
 }
 
-.on-call-sb-slot-missing {
-  color: #f87171;
+/* v4.189.0 opener readiness chips — EN/ES, one state each, always visible. */
+.on-call-sb-opener {
+  font-size: 0.62rem;
+  font-weight: 800;
+  line-height: 1;
+  white-space: nowrap;
+  padding: 2px 6px;
+  border-radius: 999px;
+  border: 1px solid currentColor;
+  background: transparent;
+  cursor: pointer;
 }
+.on-call-sb-opener.is-ok { color: #4ade80; }
+.on-call-sb-opener.is-partial { color: #fbbf24; }
+.on-call-sb-opener.is-none,
+.on-call-sb-opener.is-locked { color: #f87171; background: rgba(248, 113, 113, 0.14); }
 
 .on-call-sb-hear,
 .on-call-sb-stop {
@@ -7719,8 +7731,7 @@ body:has(.app-container[data-call-mode="true"]) .element-hint-panel {
 /* 900x600 keeps every cue (collapsed row is ~470px of the ~888px available).
    Phones are the only place the cue text must go — slot + picker + controls stay. */
 @media (max-width: 640px) {
-  .on-call-sb-slot-variant,
-  .on-call-sb-slot-missing {
+  .on-call-sb-slot-variant {
     display: none;
   }
 }

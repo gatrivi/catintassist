@@ -115,8 +115,8 @@ describe('collapsed pill names the live time-of-day slot', () => {
     const restore = withSlot('morning');
     try {
       await renderStrip();
-      expect(await screen.findByText('· EN missing')).toBeInTheDocument();
-      expect(screen.getByText('· ES missing')).toBeInTheDocument();
+      expect(await screen.findByText('EN ✗')).toBeInTheDocument();
+      expect(screen.getByText('ES ✗')).toBeInTheDocument();
     } finally {
       restore();
     }
@@ -523,5 +523,34 @@ describe('nothing on the strip is ever a dead button (v4.171.0)', () => {
     } finally {
       restore();
     }
+  });
+});
+
+describe('v4.189.0 opener readiness chips', () => {
+  test('partial EN + untested ES are shown at a glance, collapsed', async () => {
+    const blob = clip();
+    loadFile.mockImplementation(async (key) => (
+      ['greeting_en_morning', 'greeting_en_afternoon', 'greeting_es_morning'].includes(key) ? blob : null
+    ));
+    allowCallerFire('greeting_en_morning'); // CALL OK for EN only
+    await renderStrip();
+    expect(await screen.findByText('EN 2/3')).toHaveClass('is-partial');
+    expect(screen.getByText('ES 🔒')).toHaveClass('is-locked');
+  });
+
+  test('off-call tap opens the editor on the first missing slot', async () => {
+    const blob = clip();
+    loadFile.mockImplementation(async (key) => (key === 'greeting_es_morning' ? blob : null));
+    const onOpenGreetingEditor = jest.fn();
+    await renderStrip({ onOpenGreetingEditor, micTestMode: true });
+    fireEvent.click(await screen.findByText('ES 1/3'));
+    expect(onOpenGreetingEditor).toHaveBeenCalledWith('greeting_es_afternoon');
+  });
+
+  test('mid-call tap explains instead of navigating', async () => {
+    loadFile.mockImplementation(async () => null);
+    await renderStrip({ onOpenGreetingEditor: null });
+    fireEvent.click(await screen.findByText('EN ✗'));
+    expect(screen.getByText(/EN opener: nothing recorded.*fix off-call/)).toBeInTheDocument();
   });
 });

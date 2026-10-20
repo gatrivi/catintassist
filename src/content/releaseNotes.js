@@ -25,6 +25,31 @@ import { APP_VERSION } from '../constants/version';
 /** Newest first. Only the entry matching APP_VERSION is shown on load. */
 export const RELEASE_NOTES_CATALOG = [
   {
+    version: '4.189.0',
+    id: 'opener-readiness',
+    highlightElementIds: ['opener-ready-en', 'opener-ready-es'],
+    es: {
+      title: 'Ves al instante si te falta un saludo de apertura',
+      intro: 'La barra de saludos muestra EN y ES con un solo estado cada uno.',
+      sections: [{ heading: 'Qué significa', bullets: [
+        '✓ verde: las 3 grabaciones (mañana, tarde, noche) y probado con el cliente.',
+        '2/3 ámbar: falta un horario; suena otro horario cercano.',
+        '✗ rojo: no hay nada grabado. 🔒 rojo: grabado pero sin CALL OK, el botón no va a sonar.',
+        'Tocalo fuera de llamada: abre el editor en el horario que falta.',
+      ] }],
+    },
+    en: {
+      title: 'See at a glance if an opener recording is missing',
+      intro: 'The greetings bar shows EN and ES with one state each.',
+      sections: [{ heading: 'What it means', bullets: [
+        '✓ green: all 3 recordings (morning, afternoon, evening) and caller-tested.',
+        '2/3 amber: a time slot is missing; a nearby slot plays instead.',
+        '✗ red: nothing recorded. 🔒 red: recorded but no CALL OK, the tile will not play.',
+        'Tap it off-call: opens the editor on the missing slot.',
+      ] }],
+    },
+  },
+  {
     version: '4.188.0',
     id: 'reading-bubble-stays',
     highlightElementIds: ['transcript-pane'],

@@ -19,6 +19,7 @@ import {
 import { bindAudioToSink, primePlaybackElements, rampVolume } from '../utils/audioRoute';
 import { readRouteModePreference, ROUTE_MODE } from '../utils/audioRoutePassthrough';
 import { readCallerMonitor, writeCallerMonitor } from '../utils/callerMonitor';
+import { OPENER_IDS, openerReadiness } from '../utils/openerReadiness';
 import { logRouteEvent, ROUTE_EVENT } from '../utils/routeDiagnostics';
 import { APP_VERSION } from '../constants/version';
 import { getWorkSlot, getSlotAuto, getWorkClockLabel, readSlotOverride, writeSlotOverride, nearestSlotOrder, TIME_SLOTS, WORK_TIMEZONE } from '../utils/workTime';
@@ -467,9 +468,7 @@ export function OnCallSoundboardStrip({ micTestMode = false, collapsed: collapse
     : null;
   const playingLabel = playingSlot ? slotLabelFor(playingSlot.actionId) : null;
 
-  // v4.131.0 pill cues: which recording the two dynamic greetings would fire,
-  // and whether any of them has no recording at all.
-  const langOf = (actionId) => (ACTIONS.find((a) => a.id === actionId)?.lang || '').toUpperCase();
+  // v4.131.0 pill cue: which recording the two dynamic greetings would fire.
   const greetingSlots = gallerySlots.filter((s) => s.dynamic);
   const greetingCues = greetingSlots.map((slot) => {
     const key = resolveFireKey(slot, timeOfDay, blobs);
@@ -478,7 +477,17 @@ export function OnCallSoundboardStrip({ micTestMode = false, collapsed: collapse
   const fallbackVariants = [...new Set(
     greetingCues.filter((c) => c.has && c.variant !== timeOfDay).map((c) => c.variant)
   )];
-  const missingLangs = greetingCues.filter((c) => !c.has).map((c) => langOf(c.slot.actionId));
+  // v4.189.0: one chip per opener (EN/ES), always visible — answers "am I
+  // missing an opener?" before you press it, not after the patient yells.
+  const openerChips = OPENER_IDS.map((id) => ({
+    id,
+    ...openerReadiness(id, blobs, isManualCallOk(manualCallOk, `${id}_morning`, selectedSinkId, selectedMicId), !micTestMode),
+  }));
+  // Off-call: open the editor on the first missing slot. Mid-call: just say it.
+  const onOpenerChip = (chip) => {
+    if (onOpenGreetingEditor) onOpenGreetingEditor(`${chip.id}_${chip.missing[0] || timeOfDay}`);
+    else flashNotice(`${chip.text} · fix off-call`);
+  };
 
   return (
     <div
@@ -535,14 +544,19 @@ export function OnCallSoundboardStrip({ micTestMode = false, collapsed: collapse
           {VARIANT_ICON[v]} using {SLOT_LABEL[v]}
         </span>
       ))}
-      {collapsed && clipsLoaded && missingLangs.map((lang) => (
-        <span
-          key={`missing-${lang}`}
-          className="on-call-sb-slot-missing"
-          title={`No ${lang} greeting recorded for any time of day — record it in Soundboard Studio`}
+      {clipsLoaded && openerChips.map((chip) => (
+        <button
+          key={`opener-${chip.id}`}
+          id={`opener-ready-${chip.lang.toLowerCase()}`}
+          type="button"
+          className={`on-call-sb-opener is-${chip.state}`}
+          data-guide="on-call-opener-ready"
+          onClick={() => onOpenerChip(chip)}
+          title={`${chip.text} [v${APP_VERSION}]`}
+          aria-label={chip.text}
         >
-          · {lang} missing
-        </span>
+          {chip.lang} {chip.glyph}
+        </button>
       ))}
       <button
         type="button"
