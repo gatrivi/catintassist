@@ -132,3 +132,6 @@
 | 2026-10-17T14:28:51.070Z | 0c996bc | v4.183.1 reading freeze reliable |
 | 2026-10-19T15:29:09.211Z | 2fe1968 | v4.184.0 url cable switch |
 | 2026-10-19T16:17:06.112Z | 850708e | v4.185.0 no mic forward |
+| 2026-10-19T19:56:43.080Z | 6b9191f | v4.186.0 draft rewrite in place |
+| 2026-10-20T17:04:12.839Z | 5eaa5c1 | v4.187.0 stutter never truncates |
+| 2026-10-20T19:50:02.977Z | 00d70dc | v4.188.0 reading bubble stays |
