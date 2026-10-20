@@ -20,6 +20,7 @@ import { bindAudioToSink, primePlaybackElements, rampVolume } from '../utils/aud
 import { readRouteModePreference, ROUTE_MODE } from '../utils/audioRoutePassthrough';
 import { readCallerMonitor, writeCallerMonitor } from '../utils/callerMonitor';
 import { OPENER_IDS, openerReadiness } from '../utils/openerReadiness';
+import { HEARD_RMS, SILENT_AFTER_MS, failReason, finishPhase, levelBars } from '../utils/greetingSend';
 import { logRouteEvent, ROUTE_EVENT } from '../utils/routeDiagnostics';
 import { APP_VERSION } from '../constants/version';
 import { getWorkSlot, getSlotAuto, getWorkClockLabel, readSlotOverride, writeSlotOverride, nearestSlotOrder, TIME_SLOTS, WORK_TIMEZONE } from '../utils/workTime';
@@ -148,6 +149,10 @@ export function OnCallSoundboardStrip({ micTestMode = false, collapsed: collapse
   // v4.171.0: a gate refusal that would only flash for 3.5s is indistinguishable
   // from a dead button on a live call, so refusals park here until answered.
   const [blockInfo, setBlockInfo] = useState(null);
+  // v4.190.0: what happened to the last press — { phase, label, text, bars }.
+  // Shown on the pill itself so it is visible even while collapsed.
+  const [send, setSend] = useState(null);
+  const sendTimerRef = useRef(null);
   // v4.171.0: bumped whenever a clip is recorded or deleted anywhere, so the
   // in-memory copy the tiles fire from can never lag the audio.
   const [scanTick, setScanTick] = useState(0);
@@ -268,6 +273,15 @@ export function OnCallSoundboardStrip({ micTestMode = false, collapsed: collapse
     rampCancelRef.current = null;
   }, [stopClipToSink]);
 
+  // v4.190.0: one writer for the press status. SENT clears itself after 5 s;
+  // a failure stays until tapped (a 3.5 s flash is missed mid-sentence).
+  const showSend = (next) => {
+    window.clearTimeout(sendTimerRef.current);
+    setSend(next);
+    if (next?.phase === 'sent') sendTimerRef.current = window.setTimeout(() => setSend(null), 5000);
+  };
+  const failSend = (label, text) => showSend({ phase: 'failed', label, text: `NOT SENT · ${text}` });
+
   const fireClip = async (slot) => {
     const key = resolveFireKey(slot, timeOfDay, blobs);
     const blob = blobs[key];
@@ -303,14 +317,19 @@ export function OnCallSoundboardStrip({ micTestMode = false, collapsed: collapse
         clearPlay();
         logRouteEvent(ROUTE_EVENT.PLAY_END, { clipKey: key, onCall: true, micTestMode: true });
       };
-      audioRefLocal.current.onended = onEnd;
+      audioRefLocal.current.onended = () => {
+        onEnd();
+        showSend({ phase: 'sent', label: slotLabelFor(slot.actionId), text: 'PLAYED locally ✓ (mic test)' });
+      };
       try {
         await audioRefLocal.current.play();
         rampCancelRef.current = rampVolume(audioRefLocal.current, null, localVolume, 0);
+        showSend({ phase: 'onair', label: slotLabelFor(slot.actionId), text: 'LOCAL (mic test)' });
       } catch (e) {
         console.error('On-call soundboard local play error:', e);
         logRouteEvent(ROUTE_EVENT.PLAY_FAIL, { clipKey: key, reason: e?.message, micTestMode: true });
         clearPlay();
+        failSend(slotLabelFor(slot.actionId), failReason(e));
       }
       return;
     }
@@ -359,6 +378,29 @@ export function OnCallSoundboardStrip({ micTestMode = false, collapsed: collapse
 
     logRouteEvent(ROUTE_EVENT.PLAY_START, { clipKey: key, routeMode, onCall: true, withMonitor });
     setPlayingKey(key);
+    // v4.190.0 press proof: SENDING until the output meter hears sound.
+    const t0 = performance.now();
+    let levelKnown = false;
+    let heard = false;
+    let silentFlagged = false;
+    let lastBars = -1;
+    showSend({ phase: 'sending', label, text: 'SENDING' });
+    const onLevel = (rms) => {
+      if (attempt !== playbackAttemptRef.current) return;
+      levelKnown = true;
+      if (rms > HEARD_RMS) heard = true;
+      if (!heard && !silentFlagged && performance.now() - t0 > SILENT_AFTER_MS) {
+        silentFlagged = true;
+        failSend(label, 'SILENT — no sound is reaching the output');
+        return;
+      }
+      const bars = levelBars(rms);
+      // A clip with a long silent lead-in recovers from SILENT once sound shows.
+      if (heard && bars !== lastBars) {
+        lastBars = bars;
+        setSend({ phase: 'onair', label, text: 'ON AIR', bars });
+      }
+    };
     progressRafRef.current = requestAnimationFrame(trackProgress);
     primePlaybackElements(withMonitor ? audioRefLocal.current : null, audioRefSink.current);
     if (withMonitor) audioRefLocal.current.src = url;
@@ -370,6 +412,9 @@ export function OnCallSoundboardStrip({ micTestMode = false, collapsed: collapse
       URL.revokeObjectURL(url);
       clearPlay();
       logRouteEvent(ROUTE_EVENT.PLAY_END, { clipKey: key, onCall: true });
+      const done = finishPhase({ levelKnown, heard, secs: (performance.now() - t0) / 1000 });
+      if (done.phase === 'failed') failSend(label, done.text);
+      else showSend({ label, ...done });
     };
     audioRefLocal.current.onended = onEnd;
     audioRefSink.current.onended = onEnd;
@@ -384,12 +429,15 @@ export function OnCallSoundboardStrip({ micTestMode = false, collapsed: collapse
         const pt = await playClipToSink(blob, sinkVolume, {
           clipKey: key,
           onProgress: (p) => { if (!withMonitor) setPlaybackProgress(p); },
+          onLevel,
         });
         if (pt.cancelled) {
           if (attempt !== playbackAttemptRef.current) return;
           clearPlay(false); // Cancellation must not stop the shared sink's replacement clip.
           if (pt.reason === 'sink_changed') {
-            flashNotice('Output changed — play again on the new route.');
+            failSend(label, 'output changed mid-clip — press again');
+          } else {
+            showSend(null); // you pressed Stop or another greeting
           }
           return;
         }
@@ -401,8 +449,8 @@ export function OnCallSoundboardStrip({ micTestMode = false, collapsed: collapse
             await audioRefSink.current.play();
             rampCancelRef.current = rampVolume(withMonitor ? audioRefLocal.current : null, audioRefSink.current, localVolume, sinkVolume);
           } else {
-            flashNotice('⚠️ Route failed');
             clearPlay();
+            failSend(label, 'route failed — check Speaker (CABLE Input)');
           }
         } else if (!withMonitor) {
           // Passthrough owns the sink element — no local/sink element will end,
@@ -412,8 +460,8 @@ export function OnCallSoundboardStrip({ micTestMode = false, collapsed: collapse
       } else {
         const bound = await bindAudioToSink(audioRefSink.current, selectedSinkId);
         if (!bound) {
-          flashNotice('⚠️ Sink bind failed');
           clearPlay();
+          failSend(label, 'output device refused — re-pick Speaker (CABLE Input)');
           return;
         }
         audioRefSink.current.src = url;
@@ -424,6 +472,7 @@ export function OnCallSoundboardStrip({ micTestMode = false, collapsed: collapse
       console.error('On-call soundboard play error:', e);
       logRouteEvent(ROUTE_EVENT.PLAY_FAIL, { clipKey: key, reason: e?.message });
       clearPlay();
+      failSend(label, failReason(e));
     }
   };
 
@@ -509,6 +558,27 @@ export function OnCallSoundboardStrip({ micTestMode = false, collapsed: collapse
           </span>
         )}
       </button>
+      {/* v4.190.0: press status — never silent. Live phases show only the
+          state + meter (the LIVE span already names the clip); SENT / NOT SENT
+          name it. Tap to dismiss. */}
+      {send && (
+        <button
+          type="button"
+          className={`on-call-sb-send is-${send.phase}`}
+          data-guide="on-call-send-status"
+          aria-live="polite"
+          onClick={() => showSend(null)}
+          title={`Last greeting press: ${send.text} · ${send.label} — tap to dismiss [v${APP_VERSION}]`}
+        >
+          {send.text}
+          {(send.phase === 'sent' || send.phase === 'failed') && ` · ${send.label}`}
+          {send.phase === 'onair' && (
+            <span className="on-call-sb-meter" aria-hidden="true">
+              {'▮'.repeat(send.bars)}{'▯'.repeat(5 - send.bars)}
+            </span>
+          )}
+        </button>
+      )}
       {/* v4.131.1: manual time-of-day pick — the interpreter's choice beats the
           work clock. A sibling of the pill controls, never inside a button. */}
       <span
@@ -571,7 +641,7 @@ export function OnCallSoundboardStrip({ micTestMode = false, collapsed: collapse
         <button
           type="button"
           className="on-call-sb-stop"
-          onClick={() => clearPlay()}
+          onClick={() => { clearPlay(); showSend(null); }}
           title="Stop the greeting now — patient path goes silent"
         >
           ⏹ Stop

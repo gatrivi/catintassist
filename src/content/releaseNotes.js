@@ -25,6 +25,31 @@ import { APP_VERSION } from '../constants/version';
 /** Newest first. Only the entry matching APP_VERSION is shown on load. */
 export const RELEASE_NOTES_CATALOG = [
   {
+    version: '4.190.0',
+    id: 'greeting-press-feedback',
+    highlightElementIds: ['opener-ready-en', 'opener-ready-es'],
+    es: {
+      title: 'Apretar un saludo ya nunca es silencioso',
+      intro: 'La barra de saludos te dice qué pasó, sin que el paciente tenga que gritar.',
+      sections: [{ heading: 'Qué ves', bullets: [
+        'ENVIANDO (ámbar) → AL AIRE con medidor real de la salida → ENVIADO ✓ 3.2s.',
+        'Si no sale sonido en 1.5 s: rojo SILENCIO. Si falla: rojo con el motivo en palabras simples.',
+        'El rojo queda hasta que lo tocás.',
+        'Escape ahora cierra el Estudio (ya no cambia EN/ES).',
+      ] }],
+    },
+    en: {
+      title: 'A greeting press is never silent',
+      intro: 'The greetings bar tells you what happened — no waiting for the patient to yell.',
+      sections: [{ heading: 'What you see', bullets: [
+        'SENDING (amber) → ON AIR with a real output meter → SENT ✓ 3.2s.',
+        'No sound within 1.5 s: red SILENT. Any failure: red, with the reason in plain words.',
+        'Red stays until you tap it.',
+        'Escape now closes the Studio (no longer flips EN/ES).',
+      ] }],
+    },
+  },
+  {
     version: '4.189.0',
     id: 'opener-readiness',
     highlightElementIds: ['opener-ready-en', 'opener-ready-es'],

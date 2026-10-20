@@ -75,6 +75,7 @@ export async function decodeBlobOnContext(ctx, blob) {
 export function playBufferDirect(ctx, buffer, {
   volume = 1,
   onProgress,
+  onLevel,
   normalize = true,
 } = {}) {
   if (!ctx || !buffer) {
@@ -95,6 +96,20 @@ export function playBufferDirect(ctx, buffer, {
   gain.gain.value = 0;
   source.connect(gain);
   gain.connect(ctx.destination);
+  // v4.190.0: tap what actually goes to the output device. Wall-clock progress
+  // moves even when the context is stalled; this meter does not.
+  const analyser = onLevel && ctx.createAnalyser ? ctx.createAnalyser() : null;
+  if (analyser) {
+    analyser.fftSize = 1024;
+    gain.connect(analyser);
+  }
+  const levelBuf = analyser ? new Float32Array(analyser.fftSize) : null;
+  const readLevel = () => {
+    analyser.getFloatTimeDomainData(levelBuf);
+    let sum = 0;
+    for (let i = 0; i < levelBuf.length; i += 1) sum += levelBuf[i] * levelBuf[i];
+    return ctx.state === 'running' ? Math.sqrt(sum / levelBuf.length) : 0;
+  };
 
   const finish = (err) => {
     if (stopped) return;
@@ -122,13 +137,14 @@ export function playBufferDirect(ctx, buffer, {
 
       const duration = buffer.duration;
       let progId = null;
-      if (onProgress) {
+      if (onProgress || analyser) {
         const t0 = performance.now();
         const tick = () => {
           if (stopped) return;
           const p = Math.min(1, (performance.now() - t0) / 1000 / duration);
-          onProgress(p);
-          if (p < 1) progId = requestAnimationFrame(tick);
+          onProgress?.(p);
+          if (analyser) onLevel(readLevel());
+          if (p < 1 || analyser) progId = requestAnimationFrame(tick);
         };
         progId = requestAnimationFrame(tick);
       }

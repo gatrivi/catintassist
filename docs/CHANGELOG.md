@@ -3,6 +3,13 @@
 **Version source:** `src/constants/version.js` (must match `package.json` + top-right UI pill)
 
 
+## v4.190.0 - greeting press is never silent
+
+- Strip pill shows `SENDING` → `ON AIR ▮▮▮▯▯` → `SENT ✓ 3.2s`. Meter = AnalyserNode on the direct-sink gain (`audioRouteDirect.js` `onLevel`), reads 0 when the context is not running. Wall-clock progress used to move even when nothing played.
+- Flat meter for 1.5 s → red `NOT SENT · SILENT`. Play errors (were `console.error` only), route/bind failures and a sink change mid-clip → red with a plain reason (`greetingSend.js` `failReason`). Red stays until tapped.
+- Legacy dual-element fallback has no meter → `SENT ✓ (not measured)`.
+- Escape/Space no longer flip EN/ES while the off-call Studio is open (`App.js`), so Escape exits again.
+
 ## v4.189.0 - opener readiness chips
 
 Greetings strip always shows `EN ✓` / `ES 2/3` / `ES ✗` / `ES 🔒` (green / amber / red), collapsed and expanded.

@@ -518,9 +518,16 @@ const Dashboard = () => {
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, []);
 
+  // v4.190.0: while the off-call Studio is open, Escape means "exit" and Space
+  // means "press the focused button" — the language hotkeys used to eat both
+  // (Escape never closed the Studio, and every press silently flipped EN/ES).
+  const studioKeysRef = useRef(false);
+  studioKeysRef.current = isSoundboardStudio && !isActive;
+
   // Hotkeys for language switching
   useEffect(() => {
     const handleKeyDown = (e) => {
+      if (studioKeysRef.current && (e.code === "Escape" || e.code === "Space")) return;
       const isTyping =
         e.target.tagName === "TEXTAREA" || e.target.tagName === "INPUT";
 

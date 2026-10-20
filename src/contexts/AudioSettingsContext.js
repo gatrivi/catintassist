@@ -318,7 +318,7 @@ export const AudioSettingsProvider = ({ children }) => {
    * Route clip through passthrough element (same VB-Cable path as live mic).
    * @returns {Promise<{ ok: boolean, mode?: string, reason?: string }>}
    */
-  const playClipToSink = useCallback(async (blob, volume = 1, { clipKey, onProgress } = {}) => {
+  const playClipToSink = useCallback(async (blob, volume = 1, { clipKey, onProgress, onLevel } = {}) => {
     if (!blob || !selectedSinkId) {
       return { ok: false, reason: 'no_sink_or_blob' };
     }
@@ -351,7 +351,7 @@ export const AudioSettingsProvider = ({ children }) => {
       sinkPlaybackActiveRef.current = true;
       setSinkPlaybackActiveState(true);
       setSinkPlaybackActive(true); // duck live mic during clip (same as before, minus swap)
-      const session = playBufferDirect(ctx, buffer, { volume, onProgress });
+      const session = playBufferDirect(ctx, buffer, { volume, onProgress, onLevel });
       clipPlaybackStopRef.current = session.stop;
 
       logRouteEvent(ROUTE_EVENT.DIRECT_INJECT, { clipKey, sinkId: selectedSinkId });

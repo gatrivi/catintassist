@@ -554,3 +554,48 @@ describe('v4.189.0 opener readiness chips', () => {
     expect(screen.getByText(/EN opener: nothing recorded.*fix off-call/)).toBeInTheDocument();
   });
 });
+
+describe('v4.190.0 a greeting press is never silent', () => {
+  const fireEnOpener = async () => {
+    const blob = clip();
+    loadFile.mockImplementation(async (key) => (key === 'greeting_en_morning' ? blob : null));
+    allowCallerFire('greeting_en_morning');
+    getWorkSlot.mockReturnValue('morning');
+    await renderStrip();
+    expand();
+    fireEvent.click((await openers())[0]);
+  };
+
+  test('sound measured on the output → SENT ✓', async () => {
+    settings.playClipToSink.mockImplementation(async (b, v, opts) => {
+      opts.onLevel(0.1);
+      return { ok: true };
+    });
+    await fireEnOpener();
+    expect(await screen.findByText(/SENT ✓/)).toHaveClass('is-sent');
+  });
+
+  test('meter stays flat past 1.5 s → red SILENT, stays up', async () => {
+    let now = 0;
+    jest.spyOn(performance, 'now').mockImplementation(() => now);
+    settings.playClipToSink.mockImplementation(async (b, v, opts) => {
+      opts.onLevel(0);
+      now = 2000;
+      opts.onLevel(0);
+      return { ok: true };
+    });
+    await fireEnOpener();
+    expect(await screen.findByText(/NOT SENT · SILENT/)).toHaveClass('is-failed');
+  });
+
+  test('playback throws → red reason in plain words, not console-only', async () => {
+    const err = new Error('play() failed');
+    err.name = 'NotAllowedError';
+    settings.playClipToSink.mockRejectedValue(err);
+    jest.spyOn(console, 'error').mockImplementation(() => {});
+    await fireEnOpener();
+    const chip = await screen.findByText(/NOT SENT · browser blocked audio/);
+    fireEvent.click(chip);
+    expect(screen.queryByText(/NOT SENT/)).not.toBeInTheDocument();
+  });
+});

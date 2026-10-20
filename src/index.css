@@ -7320,6 +7320,27 @@ body:has(.app-container[data-call-mode="true"]) .element-hint-panel {
   text-overflow: ellipsis;
 }
 
+/* v4.190.0 press status chip: amber sending, green on air / sent, red failed. */
+.on-call-sb-send {
+  font-size: 0.62rem;
+  font-weight: 800;
+  line-height: 1;
+  white-space: nowrap;
+  max-width: 320px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  padding: 2px 7px;
+  border-radius: 4px;
+  border: 1px solid currentColor;
+  background: transparent;
+  cursor: pointer;
+}
+.on-call-sb-send.is-sending { color: #fbbf24; animation: pulseGlow 1.2s infinite; }
+.on-call-sb-send.is-onair,
+.on-call-sb-send.is-sent { color: #4ade80; }
+.on-call-sb-send.is-failed { color: #fecaca; background: rgba(220, 38, 38, 0.55); border-color: #f87171; }
+.on-call-sb-meter { margin-left: 5px; letter-spacing: -1px; }
+
 .on-call-sb-size {
   display: inline-flex;
   align-items: center;
