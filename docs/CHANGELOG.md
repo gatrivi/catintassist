@@ -3,6 +3,13 @@
 **Version source:** `src/constants/version.js` (must match `package.json` + top-right UI pill)
 
 
+## v4.191.0 - goal wheel use case 1 (have X, want Y, per day?)
+
+- `monthBasis` workdays left = **real calendar** (`realWorkdaysLeft`, 6.5/Wk = Mon–Sat + half Sunday), was `round(daysLeft × basis / daysInMonth)`. Oct 21–31: 6/Wk 10 days (old: 9). Can be fractional (10.5).
+- Frequency buttons show `per day to reach the goal` (`5/Wk 7h30/d`) instead of `22d`.
+- Picking a frequency keeps the **goal** fixed (was: weekly hours fixed, goal moved).
+- Typed goal snaps the wheel by daily need (was: full-month total → mid-month 5500 landed on ~3h/day). Centre row shows the exact need.
+
 ## v4.190.0 - greeting press is never silent
 
 - Strip pill shows `SENDING` → `ON AIR ▮▮▮▯▯` → `SENT ✓ 3.2s`. Meter = AnalyserNode on the direct-sink gain (`audioRouteDirect.js` `onLevel`), reads 0 when the context is not running. Wall-clock progress used to move even when nothing played.

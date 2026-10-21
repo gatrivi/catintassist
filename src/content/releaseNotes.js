@@ -25,6 +25,29 @@ import { APP_VERSION } from '../constants/version';
 /** Newest first. Only the entry matching APP_VERSION is shown on load. */
 export const RELEASE_NOTES_CATALOG = [
   {
+    version: '4.191.0',
+    id: 'goal-wheel-per-day',
+    highlightElementIds: ['goal-config-version-pill'],
+    es: {
+      title: 'La ruedita responde: ¿cuánto por día?',
+      intro: 'Poné tu meta del mes; cada botón de días muestra cuánto necesitás por día.',
+      sections: [{ heading: 'Qué cambió', bullets: [
+        '5/Wk · 6/Wk · 6.5/Wk · Grind muestran horas por día para llegar a la meta.',
+        'Cambiar de días ya no cambia la meta: solo cambia el por día.',
+        'Los días que quedan salen del calendario real (sábados y domingos incluidos).',
+      ] }],
+    },
+    en: {
+      title: 'The goal wheel answers: how much per day?',
+      intro: 'Type your month goal; each days-a-week button shows the daily need.',
+      sections: [{ heading: 'What changed', bullets: [
+        '5/Wk · 6/Wk · 6.5/Wk · Grind show hours per day to reach the goal.',
+        'Switching days no longer changes the goal — only the per-day need.',
+        'Days left come from the real calendar (Saturdays and Sundays counted).',
+      ] }],
+    },
+  },
+  {
     version: '4.190.0',
     id: 'greeting-press-feedback',
     highlightElementIds: ['opener-ready-en', 'opener-ready-es'],

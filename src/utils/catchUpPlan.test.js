@@ -1,6 +1,6 @@
 import {
   computeCatchUp, formatCatchUpLine, formatCatchUpVerdict, fmtHm,
-  monthBasis, expectedByTodayFor, goalSetDayOfMonth,
+  monthBasis, expectedByTodayFor, goalSetDayOfMonth, realWorkdaysLeft,
 } from './catchUpPlan';
 
 // Fixed "now" so the math is deterministic in tests
@@ -86,11 +86,11 @@ describe('catchUpPlan', () => {
 
   // v4.101.0: workday basis — catch-up spreads over remaining WORKDAYS
   it('workDays basis: spread over remaining workdays, not calendar days', () => {
-    // Sep 10 → 21 calendar days left; 28d/mo basis → round(21*28/30)=20 workdays
+    // v4.191.0 real calendar: Sep 10–30 2026 at 6.5/Wk = 18 Mon–Sat + 3 half Sundays = 19.5
     const p = computeCatchUp({ goalMinutes: 3000, monthlyMinutes: 628, dailyMinutes: 60, workDays: 28, now: NOON });
-    expect(p.remainingWorkdays).toBe(20);
-    expect(p.requiredToday).toBe(Math.round(2372 / 20)); // 119 not 113
-    expect(p.daysAfter).toBe(19);
+    expect(p.remainingWorkdays).toBe(19.5);
+    expect(p.requiredToday).toBe(Math.round(2372 / 19.5)); // 122 not 113
+    expect(p.daysAfter).toBe(18.5);
   });
 
   it('workDays basis: no workDays → legacy calendar behavior unchanged', () => {
@@ -103,10 +103,10 @@ describe('catchUpPlan', () => {
     // 9231m goal ($1200 @ $0.13), day 11 of Sep, 1192m banked, 6.5/Wk (28d)
     const p = computeCatchUp({ goalMinutes: 9231, monthlyMinutes: 1192, dailyMinutes: 0, workDays: 28, now: new Date('2026-09-11T12:00:00') });
     // deficit vs even spread ≈ 9231*11/30 − 1192 ≈ 2193m; remaining 8039m over
-    // round(20*28/30)=19 workdays → 423m/workday (honest number, not a scare).
+    // v4.191.0 real calendar: 18.5 workdays left → 435m/workday (honest, not a scare).
     expect(p.deficitMins).toBeGreaterThan(0);
-    expect(p.requiredToday).toBe(423);
-    expect(p.remainingWorkdays).toBe(19);
+    expect(p.requiredToday).toBe(435);
+    expect(p.remainingWorkdays).toBe(18.5);
   });
 
   // ── ANCHORED-GOAL: a goal banked MID-MONTH counts from the day it is banked ──
@@ -189,14 +189,14 @@ describe('catchUpPlan', () => {
       expect(p.deficitMins).toBe(0);
     });
 
-    it('Sep 28 (2 workdays left): 480m today, not 88h', () => {
+    it('Sep 28 (Mon: 3 real workdays left): 320m today, not 88h', () => {
       const p = computeCatchUp({
         goalMinutes: 960, monthlyMinutes: 0, dailyMinutes: 0, workDays: 22,
         goalSetAt: '2026-09-28', goalBaseMinutes: 0,
         now: new Date('2026-09-28T12:00:00'),
       });
-      expect(p.remainingWorkdays).toBe(2);
-      expect(p.requiredToday).toBe(480);
+      expect(p.remainingWorkdays).toBe(3);
+      expect(p.requiredToday).toBe(320);
       expect(p.deficitMins).toBe(0);
       const legacy = computeCatchUp({ goalMinutes: 10560, monthlyMinutes: 0, dailyMinutes: 0, workDays: 22, now: new Date('2026-09-28T12:00:00') });
       expect(legacy.deficitMins).toBe(9856); // what the user was being shown before
@@ -233,5 +233,15 @@ describe('catchUpPlan', () => {
       expect(p.deficitMins).toBe(-1000);
       expect(p.requiredToday).toBe(0);      // nothing left to do
     });
+  });
+});
+
+describe('v4.191.0 realWorkdaysLeft (real calendar)', () => {
+  const OCT21 = new Date('2026-10-21T10:00:00'); // Wed; Sat 24, Sun 25, Sat 31 left
+  it('Oct 21–31 2026: 5→8, 6→10, 6.5→10.5, 7→11', () => {
+    expect([5, 6, 6.5, 7].map((p) => realWorkdaysLeft(p, OCT21))).toEqual([8, 10, 10.5, 11]);
+  });
+  it('monthBasis uses it for the dial bases', () => {
+    expect(monthBasis({ workDays: 26, now: OCT21 }).remainingWorkdays).toBe(10);
   });
 });

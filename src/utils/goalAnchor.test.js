@@ -20,9 +20,9 @@ describe('goalAnchor (banked goals count from the moment they are banked)', () =
     expect(deriveBankTargetMinutes({ bankedMinutes: 0, perWorkdayMinutes: PER_WORKDAY, workDays: 22, now: SEP1 })).toBe(10560);
   });
 
-  it('late month: 2 workdays left → target is 2 days of commitment', () => {
+  it('late month: Mon Sep 28 = 3 real workdays left → target is 3 days of commitment', () => {
     const late = new Date('2026-09-28T12:00:00');
-    expect(deriveBankTargetMinutes({ bankedMinutes: 0, perWorkdayMinutes: PER_WORKDAY, workDays: 22, now: late })).toBe(960);
+    expect(deriveBankTargetMinutes({ bankedMinutes: 0, perWorkdayMinutes: PER_WORKDAY, workDays: 22, now: late })).toBe(1440);
     const last = new Date('2026-09-30T12:00:00');
     expect(deriveBankTargetMinutes({ bankedMinutes: 0, perWorkdayMinutes: PER_WORKDAY, workDays: 22, now: last })).toBe(480);
   });

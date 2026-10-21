@@ -15,13 +15,41 @@ export const fmtHm = (m) => `${Math.floor(m / 60)}h${String(Math.round(m % 60)).
  * derived bank target (goalAnchor.js) and `requiredToday` can never disagree.
  * workDays = 0 → legacy calendar-day basis.
  */
+/**
+ * v4.191.0: monthly workday basis → days per week (the dial's 5 options).
+ * 6.5/Wk = Mon–Sat + half a Sunday.
+ */
+export const PER_WEEK_BY_WORKDAYS = { 17: 4, 22: 5, 26: 6, 28: 6.5, 30: 7 };
+
+/** How much of a weekday (0=Sun … 6=Sat) one pattern works. */
+const dayWeight = (perWk, dow) => {
+  if (perWk >= 7) return 1;
+  if (dow === 0) return perWk === 6.5 ? 0.5 : 0; // Sunday
+  if (dow === 6) return perWk >= 6 ? 1 : 0; // Saturday
+  return perWk === 4 ? 0.8 : 1; // Mon–Fri (4/Wk = any 4 of the 5)
+};
+
+/**
+ * v4.191.0: REAL workdays left, today included, from the calendar — not a
+ * month average. Oct 21–31 2026 at 6/Wk = 10 days (the average said 9).
+ */
+export const realWorkdaysLeft = (perWk, now = new Date()) => {
+  const daysInMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
+  let total = 0;
+  for (let d = now.getDate(); d <= daysInMonth; d += 1) {
+    total += dayWeight(perWk, new Date(now.getFullYear(), now.getMonth(), d).getDay());
+  }
+  return Math.round(total * 10) / 10;
+};
+
 export const monthBasis = ({ workDays = 0, now = new Date() } = {}) => {
   const daysInMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
   const currentDay = now.getDate();
   const remainingDays = Math.max(1, daysInMonth - currentDay + 1);
-  const remainingWorkdays = workDays > 0
-    ? Math.max(1, Math.round((remainingDays * workDays) / daysInMonth))
-    : remainingDays;
+  const perWk = PER_WEEK_BY_WORKDAYS[workDays];
+  let remainingWorkdays = remainingDays; // 0 = legacy calendar-day basis
+  if (perWk) remainingWorkdays = Math.max(1, realWorkdaysLeft(perWk, now));
+  else if (workDays > 0) remainingWorkdays = Math.max(1, Math.round((remainingDays * workDays) / daysInMonth));
   return { daysInMonth, currentDay, remainingDays, remainingWorkdays };
 };
 

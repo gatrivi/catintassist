@@ -190,17 +190,29 @@ export const DialGoalSelector = ({
     if (!onPreview) return;
     onPreview({ monthlyMinutes: effectiveMonthly, workDays, daysPerWeek: daysPerWeekOf(workDays) });
   }, [effectiveMonthly, workDays, onPreview]);
+  // v4.191.0: snap the wheel to the row whose DAILY time is closest to what the
+  // typed goal needs per workday. It used to match the FULL-month total, so
+  // mid-month "5500" landed on ~3h/day instead of the ~6h/day really needed.
   const applyCustomToDial = () => {
-    const v = Number(customMonth);
-    if (!Number.isFinite(v) || v <= 0) return;
-    // Find dial row whose monthly is closest at current workdays.
+    if (!customActive) return;
     let best = 0; let diff = Infinity;
     targets.forEach((hrs, i) => {
-      const d = Math.round(Math.round((hrs * 60) / daysPerWeek) * workDays);
-      if (Math.abs(d - v) < diff) { diff = Math.abs(d - v); best = i; }
+      const d = Math.abs(Math.round((hrs * 60) / daysPerWeek) - perWorkdayTarget);
+      if (d < diff) { diff = d; best = i; }
     });
     setActiveIndex(best);
   };
+
+  // v4.191.0 use case 1: "I have X, I want Y — how much per day at 5 / 6 /
+  // 6.5 / 7 days a week?" Each frequency button shows its answer, from the REAL
+  // calendar. Picking one keeps the GOAL fixed and moves the daily time.
+  const perDayFor = (opt) =>
+    Math.max(0, effectiveMonthly - bankedMins) / monthBasis({ workDays: opt.val }).remainingWorkdays;
+  const pickWorkDays = (opt) => {
+    if (!customActive && effectiveMonthly > 0) setCustomMonth(String(Math.round(effectiveMonthly)));
+    setWorkDays(opt.val);
+  };
+  useEffect(() => { applyCustomToDial(); }, [workDays]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // v4.100.0: live catch-up preview for the EFFECTIVE monthly goal.
   // ANCHORED-GOAL: the pace clock starts now (or keeps the saved anchor when the
@@ -501,7 +513,11 @@ export const DialGoalSelector = ({
             const opacity = distance === 0 ? 1 : distance === 1 ? 0.6 : 0.3;
 
             const rWeeklyMins = hrs * 60;
-            const rDailyMins = Math.round(rWeeklyMins / daysPerWeek);
+            // v4.191.0: with a typed goal the centre row shows the EXACT daily need,
+            // not the nearest 5h/Wk grid value.
+            const rDailyMins = distance === 0 && customActive
+              ? Math.round(perWorkdayTarget)
+              : Math.round(rWeeklyMins / daysPerWeek);
             const rMonthMins = Math.round(rDailyMins * workDays);
             const rDailyCash = rDailyMins * ratePerMinute * arsRate;
             const rMonthCash = rMonthMins * ratePerMinute * arsRate;
@@ -545,13 +561,14 @@ export const DialGoalSelector = ({
 
       {/* Workdays — weekly commitment stays locked, daily + monthly follow. */}
       <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
-        <div style={{ fontSize: '0.6rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '1px', paddingLeft: '0.2rem' }}>frequency: active days (weekly commitment locked)</div>
+        <div style={{ fontSize: '0.6rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '1px', paddingLeft: '0.2rem' }}>days a week → per day to reach the goal</div>
         <div style={{ display: 'flex', gap: '0.2rem' }}>
           {WORK_DAY_OPTS.map((opt) => (
             <button
               key={opt.val}
               type="button"
-              onClick={() => setWorkDays(opt.val)}
+              onClick={() => pickWorkDays(opt)}
+              title={`${opt.sub} basis · ${monthBasis({ workDays: opt.val }).remainingWorkdays} workdays left this month (real calendar) ${APP_VERSION_LABEL}`}
               aria-pressed={workDays === opt.val}
               style={{
                 flex: 1, padding: '0.4rem 0', borderRadius: '6px', cursor: 'pointer',
@@ -563,7 +580,7 @@ export const DialGoalSelector = ({
               }}
             >
               <span style={{ fontSize: '0.7rem', fontWeight: workDays === opt.val ? 800 : 600 }}>{opt.label}</span>
-              <span style={{ fontSize: '0.55rem', opacity: workDays === opt.val ? 0.9 : 0.6 }}>{opt.sub}</span>
+              <span style={{ fontSize: '0.55rem', opacity: workDays === opt.val ? 0.9 : 0.6 }}>{fmtHm(perDayFor(opt))}/d</span>
             </button>
           ))}
         </div>

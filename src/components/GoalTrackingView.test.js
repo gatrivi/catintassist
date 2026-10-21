@@ -49,10 +49,11 @@ describe('GoalTrackingView (v4.113.0)', () => {
       expect(document.getElementById('goal-pace-need').textContent).toBe(fmtHm(plan.requiredToday));
     };
     // 5500m @ 6.5/wk → 20h/wk → 185m/workday
-    expectPace(1000 + 185 * monthBasis({ workDays: 28 }).remainingWorkdays, 28);
-    // Switch to 5/Wk (22d/mo): preview goal becomes 1000 + round(1200/5) × workdays left
+    const goal = Math.round(1000 + 185 * monthBasis({ workDays: 28 }).remainingWorkdays);
+    expectPace(goal, 28);
+    // v4.191.0: switching to 5/Wk keeps the GOAL; only the per-day need moves.
     fireEvent.click(screen.getByRole('button', { name: /^5\/Wk/i }));
-    expectPace(1000 + 240 * monthBasis({ workDays: 22 }).remainingWorkdays, 22);
+    expectPace(goal, 22);
   });
 
   test('Bank Goal writes the target + its anchor and stays in the view', () => {

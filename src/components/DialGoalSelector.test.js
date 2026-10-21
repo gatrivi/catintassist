@@ -1,6 +1,6 @@
 import { render, screen, fireEvent } from '@testing-library/react';
 import { DialGoalSelector, WORK_DAY_OPTS, daysPerWeekOf } from './DialGoalSelector';
-import { monthBasis } from '../utils/catchUpPlan';
+import { monthBasis, fmtHm } from '../utils/catchUpPlan';
 import { APP_VERSION_LABEL } from '../constants/version';
 
 jest.mock('../hooks/useProgressiveAudio', () => ({
@@ -86,14 +86,13 @@ describe('DialGoalSelector rehab (v4.100.0)', () => {
     // worked so far (1000) + per-workday commitment × workdays left.
     // 5500m @ 6.5/wk snaps to 20h/wk → daily = round(1200/6.5) = 185m
     const left = monthBasis({ workDays: 28 }).remainingWorkdays;
-    expect(onPreview).toHaveBeenLastCalledWith({ monthlyMinutes: 1000 + 185 * left, workDays: 28, daysPerWeek: 6.5 });
+    expect(onPreview).toHaveBeenLastCalledWith({ monthlyMinutes: Math.round(1000 + 185 * left), workDays: 28, daysPerWeek: 6.5 });
     fireEvent.click(screen.getByRole('button', { name: /Raise weekly commitment/i }));
     // 25h/wk @ 6.5 → round(1500/6.5) = 231m/workday
-    expect(onPreview).toHaveBeenLastCalledWith({ monthlyMinutes: 1000 + 231 * left, workDays: 28, daysPerWeek: 6.5 });
+    expect(onPreview).toHaveBeenLastCalledWith({ monthlyMinutes: Math.round(1000 + 231 * left), workDays: 28, daysPerWeek: 6.5 });
     fireEvent.click(screen.getByRole('button', { name: /^5\/Wk/i }));
-    // 25h/wk @ 5d/wk (22d/mo) → 300m/workday over the 22d-basis workdays left
-    const left22 = monthBasis({ workDays: 22 }).remainingWorkdays;
-    expect(onPreview).toHaveBeenLastCalledWith({ monthlyMinutes: 1000 + 300 * left22, workDays: 22, daysPerWeek: 5 });
+    // v4.191.0: frequency keeps the GOAL fixed (use case 1); daily need moves.
+    expect(onPreview).toHaveBeenLastCalledWith({ monthlyMinutes: Math.round(1000 + 231 * left), workDays: 22, daysPerWeek: 5 });
   });
 
   test('bank payload carries the anchor inputs (ANCHORED-GOAL)', () => {
@@ -102,7 +101,7 @@ describe('DialGoalSelector rehab (v4.100.0)', () => {
     bankGoal();
     const [target, meta] = onSave.mock.calls[0];
     const left = monthBasis({ workDays: 28 }).remainingWorkdays;
-    expect(target).toBe(1000 + 185 * left);          // worked + commitment × workdays left
+    expect(target).toBe(Math.round(1000 + 185 * left)); // worked + commitment × workdays left
     expect(meta.perWorkdayMinutes).toBe(185);        // commitment kept for next month
     expect(meta.baseMinutes).toBe(1000);             // deficit starts at 0 when banked
     expect(meta.workDays).toBe(28);
@@ -472,5 +471,18 @@ describe('goal dial layout + a11y (v4.163.0)', () => {
     expect(banked).toBeTruthy();
     expect(container.querySelector('label[for="dial-monthly-mins"]')).toBeTruthy();
     expect(container.querySelector('label[for="dial-banked-month"]')).toBeTruthy();
+  });
+});
+
+describe('v4.191.0 use case 1: have X, want Y, how much per day?', () => {
+  test('each frequency button shows the per-day need from the real calendar', () => {
+    render(<DialGoalSelector {...baseProps} monthlyMinutes={1900} dailyMinutes={0} />);
+    fireEvent.change(screen.getByLabelText(/Monthly mins/), { target: { value: '5500' } });
+    ['5/Wk', '6/Wk', '6.5/Wk', 'Grind'].forEach((label) => {
+      const val = WORK_DAY_OPTS.find((o) => o.label === label).val;
+      const want = fmtHm(3600 / monthBasis({ workDays: val }).remainingWorkdays);
+      expect(screen.getByRole('button', { name: new RegExp(`^${label.replace('.', '\.').replace('/', '\/')}`) }))
+        .toHaveTextContent(`${want}/d`);
+    });
   });
 });
