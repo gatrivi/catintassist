@@ -135,3 +135,6 @@
 | 2026-10-19T19:56:43.080Z | 6b9191f | v4.186.0 draft rewrite in place |
 | 2026-10-20T17:04:12.839Z | 5eaa5c1 | v4.187.0 stutter never truncates |
 | 2026-10-20T19:50:02.977Z | 00d70dc | v4.188.0 reading bubble stays |
+| 2026-10-20T20:53:07.402Z | feeb325 | v4.189.0 opener readiness |
+| 2026-10-20T23:09:27.960Z | 9a96a3d | v4.190.0 greeting press feedback |
+| 2026-10-21T18:10:14.121Z | 81899d4 | v4.191.0 goal wheel per day |
