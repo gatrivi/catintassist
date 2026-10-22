@@ -24,6 +24,12 @@ export const DEFAULT_START_PHRASES = [
 export const DEFAULT_END_PHRASES = [
   'caller has disconnected',
   'has disconnected the call',
+  // v4.194.0: "the client has disconnected from the call" (10-22) matched none.
+  'client has disconnected',
+  'has disconnected from the call',
+  'disconnected from the call',
+  'party has disconnected',
+  'patient has disconnected',
   'caller has hung up',
   'call has ended',
   'call is complete',
@@ -75,7 +81,9 @@ export const loadAutopilotPhrases = () => {
     const raw = JSON.parse(localStorage.getItem(PHRASES_KEY) || 'null');
     return {
       start: pick(raw?.start, DEFAULT_START_PHRASES),
-      end: pick(raw?.end, DEFAULT_END_PHRASES),
+      // v4.194.0: saved end lists used to REPLACE the defaults, so new
+      // platform disconnect phrases never reached anyone who had saved once.
+      end: [...new Set([...pick(raw?.end, []), ...DEFAULT_END_PHRASES])],
       queue: pick(raw?.queue, DEFAULT_QUEUE_PHRASES),
       farewell: pick(raw?.farewell, DEFAULT_FAREWELL_PHRASES),
     };
@@ -150,3 +158,11 @@ export const canAutopilotStart = ({ enabled, isActive, isZombie, cooldownRemains
 /** Auto-END gate: armed, live call, not on hold, past the first-minute echo window. */
 export const canAutopilotEnd = ({ enabled, isActive, isHold, callAgeSecs }) =>
   !!enabled && !!isActive && !isHold && callAgeSecs >= AUTOPILOT_MIN_CALL_SECS;
+
+/**
+ * v4.194.0: the PLATFORM saying the client disconnected ends the call even with
+ * autopilot off and even on hold — still via the 10s "Keep call" banner.
+ * Only the first-minute echo window still blocks it.
+ */
+export const canPlatformDisconnectEnd = ({ isActive, callAgeSecs }) =>
+  !!isActive && callAgeSecs >= AUTOPILOT_MIN_CALL_SECS;

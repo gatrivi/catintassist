@@ -29,7 +29,7 @@ import {
 } from '../utils/breakState';
 import {
   canAutopilotStart,
-  canAutopilotEnd,
+  canPlatformDisconnectEnd,
   AUTOPILOT_START_COOLDOWN_MS,
   AUTOPILOT_END_COUNTDOWN_MS,
   AUTOPILOT_FAREWELL_SILENCE_MS,
@@ -1042,10 +1042,10 @@ export const SessionProvider = ({ children }) => {
 
   /** End phrase heard → open the 10s cancellable countdown. */
   const requestAutopilotEnd = useCallback(() => {
-    const ok = canAutopilotEnd({
-      enabled: callAutopilotRef.current,
+    // v4.194.0: end phrases are platform disconnect announcements → they end
+    // the call even with autopilot off / on hold (banner still cancellable).
+    const ok = canPlatformDisconnectEnd({
       isActive: isActiveStateRef.current,
-      isHold: isHoldAutoRef.current,
       callAgeSecs: (Date.now() - callStartAtRef.current) / 1000,
     });
     if (!ok) return false;

@@ -75,10 +75,19 @@ function record(level, label, args) {
   }
 }
 
+/**
+ * v4.194.0: info lines go to the RING only — the console shows warn/error, so
+ * a real fault (socket close, stall) is not buried under translation/STT spam.
+ * Want the old firehose back: localStorage.catint_log_verbose = '1'.
+ */
+const verboseConsole = () => {
+  try { return localStorage.getItem('catint_log_verbose') === '1'; } catch { return false; }
+};
+
 function emit(level, label, args) {
   if (level === 'error') console.error(label, ...args);
   else if (level === 'warn') console.warn(label, ...args);
-  else console.log(label, ...args);
+  else if (verboseConsole()) console.log(label, ...args);
   record(level, label, args);
 }
 

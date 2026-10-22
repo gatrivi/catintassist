@@ -1021,9 +1021,10 @@ export const TranscriptionBoard = ({
       const trace = (window.__catintSttTrace ??= []);
       trace.push(entry);
       if (trace.length > 300) trace.splice(0, trace.length - 300);
-      console.info('[CAT STT] 7 string rendered in TranscriptionBoard', entry);
+      // v4.194.0: per-interim lines → ring only (was console spam on every word).
+      catLog('[CAT STT] 7 string rendered in TranscriptionBoard', entry);
       if ((lastCap.text || '').trim() && !(lastCap.wordConfidence?.length)) {
-        console.warn('[CAT STT] rendered without word confidence', {
+        catLog('[CAT STT] rendered without word confidence', {
           id: lastCap.id,
           chars: lastCap.text?.length || 0,
           text: (lastCap.text || '').slice(0, 160),

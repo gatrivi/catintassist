@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useSession } from '../contexts/SessionContext';
+import { APP_VERSION_LABEL } from '../constants/version';
 
 /**
  * Call Autopilot UI (v4.98.0).
@@ -64,7 +65,7 @@ export const AutopilotGuard = ({ onStopAudio }) => {
       }}
     >
       <span style={{ fontWeight: 900, color: '#fbbf24', fontSize: '0.78rem' }}>
-        🤖 Auto-end in {secsLeft}s — disconnect phrase heard
+        🤖 Auto-end in {secsLeft}s — disconnect phrase heard <span style={{ opacity: 0.6, fontWeight: 600 }}>{APP_VERSION_LABEL}</span>
       </span>
       <button
         onClick={cancelAutopilotEnd}

@@ -8,6 +8,7 @@ import {
   matchFarewellPhrase,
   canAutopilotStart,
   canAutopilotEnd,
+  canPlatformDisconnectEnd,
   phrasesToText,
   textToPhrases,
   loadAutopilotPhrases,
@@ -109,4 +110,24 @@ describe('loadAutopilotPhrases', () => {
       expect(loadAutopilotPhrases().start).toEqual(DEFAULT_START_PHRASES);
       jest.restoreAllMocks();
     });
+});
+
+// v4.194.0: 10-22 live call — "the client has disconnected from the call"
+// matched no end phrase; and a saved list hid every new default.
+describe('platform disconnect ends the call (v4.194.0)', () => {
+  afterEach(() => localStorage.clear());
+  test('client disconnect wording matches', () => {
+    expect(matchCallEndPhrase('The client has disconnected from the call.')).toBeTruthy();
+  });
+  test('saved end list keeps the shipped defaults', () => {
+    localStorage.setItem('catint_autopilot_phrases_v1', JSON.stringify({ end: ['my own phrase'] }));
+    const { end } = loadAutopilotPhrases();
+    expect(end).toContain('my own phrase');
+    expect(end).toContain('client has disconnected');
+  });
+  test('works with autopilot off and on hold; not in the first minute', () => {
+    expect(canPlatformDisconnectEnd({ isActive: true, callAgeSecs: 120 })).toBe(true);
+    expect(canPlatformDisconnectEnd({ isActive: true, callAgeSecs: AUTOPILOT_MIN_CALL_SECS - 1 })).toBe(false);
+    expect(canPlatformDisconnectEnd({ isActive: false, callAgeSecs: 120 })).toBe(false);
+  });
 });

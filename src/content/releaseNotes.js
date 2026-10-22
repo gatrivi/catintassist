@@ -25,6 +25,27 @@ import { APP_VERSION } from '../constants/version';
 /** Newest first. Only the entry matching APP_VERSION is shown on load. */
 export const RELEASE_NOTES_CATALOG = [
   {
+    version: '4.194.0',
+    id: 'client-disconnect-ends-call',
+    highlightElementIds: ['transcript-pane'],
+    es: {
+      title: '"The client has disconnected" corta la llamada',
+      intro: 'Aparece el cartel de 10 s con "Keep call", aunque el autopilot esté apagado.',
+      sections: [{ heading: 'Qué cambió', bullets: [
+        'Nuevas frases de corte: client/party/patient has disconnected, disconnected from the call.',
+        'Consola limpia: solo avisos y errores. Para ver una caída: copy(__CAT_DUMP("Deepgram", true)).',
+      ] }],
+    },
+    en: {
+      title: '"The client has disconnected" ends the call',
+      intro: 'The 10 s "Keep call" banner shows even with autopilot off.',
+      sections: [{ heading: 'What changed', bullets: [
+        'New end phrases: client/party/patient has disconnected, disconnected from the call.',
+        'Quiet console: warnings and errors only. For a drop: copy(__CAT_DUMP("Deepgram", true)).',
+      ] }],
+    },
+  },
+  {
     version: '4.193.0',
     id: 'hold-overlay-removed',
     highlightElementIds: ['transcript-pane'],

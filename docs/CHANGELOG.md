@@ -3,6 +3,13 @@
 **Version source:** `src/constants/version.js` (must match `package.json` + top-right UI pill)
 
 
+## v4.194.0 - client-disconnect ends the call · quiet console
+
+- End phrases + `client has disconnected`, `disconnected from the call`, `party/patient has disconnected`. Saved phrase lists no longer hide new defaults (union).
+- Platform disconnect phrase arms the 10s `Keep call` banner even with autopilot OFF and on hold (`canPlatformDisconnectEnd`). First-minute echo window still blocks.
+- `catLog` info → ring only; console shows warn/error. Per-interim `[CAT STT]` lines → ring. Firehose back: `localStorage.catint_log_verbose='1'`.
+- Connection drops: paste `copy(__CAT_DUMP('Deepgram', true))` after a drop.
+
 ## v4.193.0 - hold vocabulary overlay removed
 
 - Study cue-card overlay no longer covers the transcript on hold (it fired mid-call on short pauses). Hold still shows `H mm:ss` in the header; cue cards stay in the idle pane.
