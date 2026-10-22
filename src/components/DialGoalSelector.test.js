@@ -486,3 +486,23 @@ describe('v4.191.0 use case 1: have X, want Y, how much per day?', () => {
     });
   });
 });
+
+/**
+ * v4.192.0: 21st of the month, 2500m worked. The wheel and the sentence must
+ * show what you END the month with (worked + daily × days LEFT), never
+ * daily × a whole month.
+ */
+describe('month-end projection (v4.192.0)', () => {
+  test('plain sentence = worked + daily × workdays left', () => {
+    render(<DialGoalSelector {...baseProps} initialWorkDays={26} monthlyMinutes={2500} dailyMinutes={0} />);
+    const box = document.getElementById('dial-plain-answer');
+    const { remainingWorkdays, currentDay } = monthBasis({ workDays: 26 });
+    const perDay = Number(box.textContent.match(/Do (\d+)h(\d+)/).slice(1).reduce((h, m) => h * 60 + Number(m)));
+    expect(box.textContent).toContain(`for ${remainingWorkdays} days`);
+    expect(box.textContent).toContain(`day ${currentDay}, you have 2500m`);
+    const reach = Number(box.textContent.match(/you reach (\d+)m/)[1]);
+    // fmtHm rounds the shown minutes, so allow that rounding × days left.
+    expect(Math.abs(reach - (2500 + perDay * remainingWorkdays))).toBeLessThanOrEqual(remainingWorkdays);
+    expect(screen.getByText('By month end')).toBeInTheDocument();
+  });
+});

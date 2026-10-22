@@ -167,7 +167,11 @@ export const DialGoalSelector = ({
   // bankedMins = what is already worked this month; the banked target only
   // covers the workdays that are LEFT, so it can never ask for days that are gone.
   const bankedMins = Math.max(0, Math.round(Number(monthlyMinutes) || 0));
-  const { remainingWorkdays } = monthBasis({ workDays });
+  const { remainingWorkdays, currentDay } = monthBasis({ workDays });
+  // v4.192.0: what you REALLY end the month with at a given daily time =
+  // already worked + daily × workdays LEFT. The wheel used daily × the whole
+  // month, so on the 21st "7h/day" claimed a goal that was out of reach.
+  const monthEndMins = (perDay) => Math.round(bankedMins + perDay * remainingWorkdays);
   const dialTargetMins = deriveBankTargetMinutes({
     bankedMinutes: bankedMins, perWorkdayMinutes: dailyMins, workDays,
   });
@@ -420,6 +424,14 @@ export const DialGoalSelector = ({
             <span>✅ on pace · today → <strong>{fmtHm(catchUp.needToday)}</strong></span>
           )}
           <br />
+          {/* v4.192.0: the plain answer, one sentence: do X for Y days → Z. */}
+          <span id="dial-plain-answer">
+            Do <strong>{fmtHm(perWorkdayTarget)}</strong>/day for <strong>{remainingWorkdays}</strong> days → you reach
+            {' '}<strong>{monthEndMins(perWorkdayTarget)}m</strong> (AR${Math.round(monthEndMins(perWorkdayTarget) * ratePerMinute * arsRate).toLocaleString('es-AR')}).
+            {' '}Today is day <strong>{currentDay}</strong>, you have <strong>{bankedMins}m</strong>, your goal is
+            {' '}<strong>{effectiveMonthly}m</strong> (AR${Math.round(effectiveMonthly * ratePerMinute * arsRate).toLocaleString('es-AR')}).
+          </span>
+          <br />
           <span style={{ opacity: 0.85 }}>
             {customActive ? (
               <>custom <strong>{effectiveMonthly}m</strong> − {fmtHm(bankedMins)} worked over <strong>{remainingWorkdays}</strong> workdays left
@@ -445,7 +457,7 @@ export const DialGoalSelector = ({
           <span style={{ flex: 1, textAlign: 'center' }}>Commitment</span>
           <span style={{ flex: 1, textAlign: 'center' }}>Daily Time</span>
           <span style={{ flex: 1, textAlign: 'center' }}>Daily ARS</span>
-          <span style={{ flex: 1, textAlign: 'center' }}>Monthly Goal</span>
+          <span style={{ flex: 1, textAlign: 'center' }}>By month end</span>
         </div>
         <button type="button" onClick={() => step(1)} aria-label="Raise weekly commitment" style={stepBtn}>▶</button>
       </div>
@@ -518,7 +530,7 @@ export const DialGoalSelector = ({
             const rDailyMins = distance === 0 && customActive
               ? Math.round(perWorkdayTarget)
               : Math.round(rWeeklyMins / daysPerWeek);
-            const rMonthMins = Math.round(rDailyMins * workDays);
+            const rMonthMins = monthEndMins(rDailyMins); // v4.192.0: by month end, not a full month
             const rDailyCash = rDailyMins * ratePerMinute * arsRate;
             const rMonthCash = rMonthMins * ratePerMinute * arsRate;
 

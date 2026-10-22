@@ -25,6 +25,27 @@ import { APP_VERSION } from '../constants/version';
 /** Newest first. Only the entry matching APP_VERSION is shown on load. */
 export const RELEASE_NOTES_CATALOG = [
   {
+    version: '4.192.0',
+    id: 'goal-wheel-month-end',
+    highlightElementIds: ['goal-config-version-pill'],
+    es: {
+      title: 'La ruedita ya no miente a fin de mes',
+      intro: 'La última columna muestra con cuánto TERMINÁS el mes, contando los días que quedan.',
+      sections: [{ heading: 'Qué cambió', bullets: [
+        '"By month end" = lo trabajado + horas/día × días que quedan (antes: × mes entero).',
+        'Arriba: "Hacé X/día por Y días → llegás a Z. Hoy es día P, tenés Q, tu meta es R."',
+      ] }],
+    },
+    en: {
+      title: 'Goal wheel no longer lies about month end',
+      intro: 'The last column shows what you END the month with, counting the days left.',
+      sections: [{ heading: 'What changed', bullets: [
+        '"By month end" = worked + daily × days left (was: × the whole month).',
+        'Top line: "Do X/day for Y days → you reach Z. Today is day P, you have Q, your goal is R."',
+      ] }],
+    },
+  },
+  {
     version: '4.191.0',
     id: 'goal-wheel-per-day',
     highlightElementIds: ['goal-config-version-pill'],

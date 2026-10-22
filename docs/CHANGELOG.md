@@ -3,6 +3,11 @@
 **Version source:** `src/constants/version.js` (must match `package.json` + top-right UI pill)
 
 
+## v4.192.0 - goal wheel: month-end, not full month
+
+- Wheel last column `Monthly Goal` → `By month end` = worked + daily × **workdays left**. It was daily × the whole month: on the 21st "7h/day" showed 2.5M AR$ that could not be reached.
+- Pace box leads with one sentence: `Do X/day for Y days → you reach Z. Today is day P, you have Q m, your goal is R.` (`#dial-plain-answer`)
+
 ## v4.191.0 - goal wheel use case 1 (have X, want Y, per day?)
 
 - `monthBasis` workdays left = **real calendar** (`realWorkdaysLeft`, 6.5/Wk = Mon–Sat + half Sunday), was `round(daysLeft × basis / daysInMonth)`. Oct 21–31: 6/Wk 10 days (old: 9). Can be fractional (10.5).
