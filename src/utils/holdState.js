@@ -1,5 +1,5 @@
 // Hold auto-trigger / auto-resume rules (v4.147.0) — pure helpers, unit-tested.
-// Click-outside-to-resume lives in App.js (study-hold-overlay onClick).
+// v4.193.0: the study overlay (click-outside-to-resume) is gone; resume = speech or the header H.
 import { normalizeLang } from './languageConfig.js';
 
 export const HOLD_INTENT_WINDOW_MS = 60000;

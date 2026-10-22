@@ -3,6 +3,10 @@
 **Version source:** `src/constants/version.js` (must match `package.json` + top-right UI pill)
 
 
+## v4.193.0 - hold vocabulary overlay removed
+
+- Study cue-card overlay no longer covers the transcript on hold (it fired mid-call on short pauses). Hold still shows `H mm:ss` in the header; cue cards stay in the idle pane.
+
 ## v4.192.0 - goal wheel: month-end, not full month
 
 - Wheel last column `Monthly Goal` → `By month end` = worked + daily × **workdays left**. It was daily × the whole month: on the 21st "7h/day" showed 2.5M AR$ that could not be reached.

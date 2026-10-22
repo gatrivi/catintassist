@@ -58,11 +58,9 @@ import { setSttActive } from "./utils/routeDiagnostics";
 import { shouldHealConnect } from "./utils/connectEvidence";
 import { isWellbeingDockEnabled } from "./utils/wellbeingDock";
 import {
-  COMPONENT_IDS,
   isComponentVisible,
   useComponentVisibilityRefresh,
 } from "./utils/componentVisibility";
-import { StudyCueCards } from "./components/StudyCueCards";
 import "./index.css";
 
 const focusQuickNotesSoon = () => {
@@ -106,8 +104,6 @@ const Dashboard = () => {
     isNotesOpen,
     setIsNotesOpen,
     isActive,
-    isHold,
-    setIsHold,
     hipaaGraceActive,
     isBreakActive,
     isZombieCall,
@@ -1126,26 +1122,7 @@ const Dashboard = () => {
           <div className="transcription-pane" data-guide="transcript">
             {/* v4.179.0: transcription stopped = loud red bar, never silent */}
             <SttStallBanner reason={sttStall} onZap={reconnectStream} />
-            {/* v4.88.0: hold time becomes study time — cards fade in over the transcript */}
-            {/* v4.89.1: click outside the card (or just speak) resumes the call */}
-            {isActive && isHold && isComponentVisible(COMPONENT_IDS.study_cue_cards, { isActive }) && (
-              <div
-                className="study-hold-overlay"
-                onClick={() => setIsHold(false)}
-                onKeyDown={(e) => {
-                  if (e.target !== e.currentTarget) return;
-                  if (e.key === 'Enter' || e.key === 'Escape') setIsHold(false);
-                }}
-                role="button"
-                tabIndex={0}
-                aria-label="Resume call"
-                title="Click outside the card (or just speak) to resume the call"
-              >
-                <div className="study-hold-card-wrap" onClick={(e) => e.stopPropagation()}>
-                  <StudyCueCards variant="hold" />
-                </div>
-              </div>
-            )}
+            {/* v4.193.0: hold study overlay removed — it popped up mid-call on short pauses. Hold = header H only. */}
             <TranscriptionBoard
               captions={captions}
               isActive={isActive}

@@ -25,6 +25,21 @@ import { APP_VERSION } from '../constants/version';
 /** Newest first. Only the entry matching APP_VERSION is shown on load. */
 export const RELEASE_NOTES_CATALOG = [
   {
+    version: '4.193.0',
+    id: 'hold-overlay-removed',
+    highlightElementIds: ['transcript-pane'],
+    es: {
+      title: 'Chau tarjetas de vocabulario en el hold',
+      intro: 'Ya no tapan la transcripción en medio de la llamada.',
+      sections: [{ heading: 'Qué cambió', bullets: ['El hold sigue marcado con H en la barra; las tarjetas quedan solo en idle.'] }],
+    },
+    en: {
+      title: 'No more vocabulary cards on hold',
+      intro: 'They no longer cover the transcript mid-call.',
+      sections: [{ heading: 'What changed', bullets: ['Hold still shows H in the header; cards stay in the idle pane only.'] }],
+    },
+  },
+  {
     version: '4.192.0',
     id: 'goal-wheel-month-end',
     highlightElementIds: ['goal-config-version-pill'],
