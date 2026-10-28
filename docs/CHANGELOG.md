@@ -3,6 +3,11 @@
 **Version source:** `src/constants/version.js` (must match `package.json` + top-right UI pill)
 
 
+## v4.197.0 - SSN shape needs a cue · audio-clock bubble split (switch, OFF)
+
+- **Flaw 8:** 9 digits → `NNN-NN-NNNN` only with an SSN/ID sentinel ("social", "SSN", "member ID", "medicaid"…) or an armed request. No cue → neutral `NNN NNN NNN` (still grouped per the v4.15 rule, every digit kept). `formatPhoneAndSSNDigits({ ssnCue })` defaults true for direct callers.
+- **Flaws 9-10:** Settings → Deepgram → **Split on real silence** (`catint_stt_utterance_end_v1`, OFF). ON = socket opens with `utterance_end_ms=1000`; next words after Deepgram's `UtteranceEnd` start a new bubble; wall-clock net 8 s. OFF = old 2.5 s rule, URL byte-identical. Armed per socket at open time (a flip mid-shift waits for next CONNECT). Endpointing untouched: FAST 150 / BAL 300 toggle already exists. Logic: `src/utils/turnEnd.js`.
+
 ## v4.196.0 - transcription engine Phase 1 (✎ fixes stick, safer formatting)
 
 Source: [`development/transcription-engine-diagnosis.md`](development/transcription-engine-diagnosis.md). Tests: `src/utils/transcriptionPhase1.test.js` (one block per flaw).

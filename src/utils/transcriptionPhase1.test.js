@@ -152,3 +152,37 @@ describe('flaw 4 end-to-end: next packet does not revert the fix', () => {
     expect(patchEngineCaption(st, 'nope', { text: 'b' })).toBe(st);
   });
 });
+
+describe('flaw 8 (v4.197.0): 9 digits are SSN-shaped only with a cue', () => {
+  const show = (t, lang = 'en') => applyDisplayProtections(t, lang, { allowDigitRewrites: true, expectedType: null });
+  test('SSN cue → NNN-NN-NNNN', () => expect(show('my social is 123456789')).toContain('123-45-6789'));
+  test('no cue → neutral NNN NNN NNN, every digit kept', () => {
+    const out = show('the code is 612345678');
+    expect(out).toContain('612 345 678');
+    expect(out).not.toContain('612-34-5678');
+  });
+  test('10-digit phone unchanged', () => expect(show('call 5551234567')).toContain('555-123-4567'));
+});
+
+describe('turn end (v4.197.0)', () => {
+  const { isTurnBreak, isUtteranceEndMessage } = require('./turnEnd');
+  const { buildListenUrl } = require('./deepgramListenConfig');
+  test('switch off = old 2.5 s rule', () => {
+    expect(isTurnBreak({ gapMs: 2600, switchOn: false, utteranceEndedSinceLast: false })).toBe(true);
+    expect(isTurnBreak({ gapMs: 2000, switchOn: false, utteranceEndedSinceLast: true })).toBe(false);
+  });
+  test('switch on = audio silence decides; wall gap is only the 8 s net', () => {
+    expect(isTurnBreak({ gapMs: 3000, switchOn: true, utteranceEndedSinceLast: false })).toBe(false);
+    expect(isTurnBreak({ gapMs: 300, switchOn: true, utteranceEndedSinceLast: true })).toBe(true);
+    expect(isTurnBreak({ gapMs: 9000, switchOn: true, utteranceEndedSinceLast: false })).toBe(true);
+  });
+  test('UtteranceEnd message detected', () => {
+    expect(isUtteranceEndMessage({ type: 'UtteranceEnd', last_word_end: 2.3 })).toBe(true);
+    expect(isUtteranceEndMessage({ type: 'Results' })).toBe(false);
+  });
+  test('URL: off = unchanged, on = utterance_end_ms appended', () => {
+    const off = buildListenUrl('multi', 'fast', {});
+    expect(off).not.toContain('utterance_end_ms');
+    expect(buildListenUrl('multi', 'fast', { utteranceEnd: true })).toBe(`${off}&utterance_end_ms=1000`);
+  });
+});

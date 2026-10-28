@@ -25,6 +25,27 @@ import { APP_VERSION } from '../constants/version';
 /** Newest first. Only the entry matching APP_VERSION is shown on load. */
 export const RELEASE_NOTES_CATALOG = [
   {
+    version: '4.197.0',
+    id: 'turn-end-ssn-cue',
+    highlightElementIds: ['transcript-pane'],
+    es: {
+      title: '9 dígitos ya no son "SSN" por defecto',
+      intro: 'Sin "social"/"SSN" cerca, 9 dígitos se agrupan 612 345 678 (no 612-34-5678). Todos los dígitos quedan.',
+      sections: [{ heading: 'Para probar', bullets: [
+        'Ajustes → Deepgram → "Split on real silence": burbuja nueva solo tras 1 s de silencio real (no 2,5 s de reloj).',
+        'Viene APAGADO. Una llamada ON, una OFF, y comparás.',
+      ] }],
+    },
+    en: {
+      title: '9 digits are no longer "SSN" by default',
+      intro: 'Without "social"/"SSN" nearby, 9 digits group as 612 345 678 (not 612-34-5678). Every digit stays.',
+      sections: [{ heading: 'To try', bullets: [
+        'Settings → Deepgram → "Split on real silence": new bubble only after 1 s of real audio silence (not 2.5 s of wall clock).',
+        'Ships OFF. One call ON, one OFF, compare.',
+      ] }],
+    },
+  },
+  {
     version: '4.196.0',
     id: 'corrections-stick',
     highlightElementIds: ['transcript-pane'],

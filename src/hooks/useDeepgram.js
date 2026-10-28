@@ -41,6 +41,7 @@ import {
   CAPTION_PATCH_EVENT,
 } from "../utils/captionEngine";
 import { applyDeepgramTranscriptPayload } from "../utils/applyDeepgramTranscriptPayload";
+import { readTurnEndSwitch, isUtteranceEndMessage, isTurnBreak } from "../utils/turnEnd";
 import {
   STT_LATENCY_CHANGED_EVENT,
   buildListenUrl,
@@ -341,6 +342,8 @@ export const useDeepgram = () => {
   const shouldCaptureCaptionsRef = useRef(false);
   const didLogCaptureGateWhileNotActiveRef = useRef(false);
   const lastTranscriptTimeRef = useRef(Date.now());
+  const utteranceEndedRef = useRef({}); // v4.197.0: per socket lang → saw UtteranceEnd
+  const utteranceEndArmedRef = useRef({}); // v4.197.0: per socket lang → opened with utterance_end_ms
   const lastEnglishActivityPulseRef = useRef(0);
   const turnWordsBaseRef = useRef(0); // words already sealed in the current silence-to-silence turn
   const currentTurnIdRef = useRef(null);
@@ -1362,7 +1365,8 @@ export const useDeepgram = () => {
         // switch in Settings applies to the next call without a reload. With
         // both switches off this returns {} and the URL is byte-identical to
         // v4.154.0 (locked by a test in deepgramListenConfig.test.js).
-        const sttBias = readSttBias();
+        const sttBias = { ...readSttBias(), utteranceEnd: readTurnEndSwitch() };
+        utteranceEndArmedRef.current[lang] = sttBias.utteranceEnd; // what THIS socket was opened with
         const url = buildListenUrl(lang, sttLatencyModeRef.current, sttBias);
         catLog("[Deepgram:open] OPENING SOCKET", { lang, socketSide, url, sttBias });
         const ws = new WebSocket(url, ["token", API_KEY]);
@@ -1444,6 +1448,13 @@ export const useDeepgram = () => {
               });
               return;
             }
+          }
+          // v4.197.0: Deepgram says the audio went silent → the next words on
+          // THIS socket start a new turn. Not a transcript: never counts as an
+          // empty Result (stall logic) and never reaches the caption engine.
+          if (isUtteranceEndMessage(received)) {
+            utteranceEndedRef.current[lang] = true;
+            return;
           }
           const alt = receivedAlt;
           const transcript = alt?.transcript;
@@ -1617,7 +1628,15 @@ export const useDeepgram = () => {
           const now = Date.now();
           const timeSinceLast = now - lastTranscriptTimeRef.current;
           lastTranscriptTimeRef.current = now;
-          const isSilentBreak = timeSinceLast > 2500;
+          // v4.197.0: switch OFF = the old 2.5 s wall-clock rule, unchanged.
+          const isSilentBreak = isTurnBreak({
+            gapMs: timeSinceLast,
+            // the socket's OWN setting: a switch flipped mid-shift on a warm
+            // socket opened without utterance_end_ms must not wait 8 s per turn.
+            switchOn: utteranceEndArmedRef.current[lang] === true,
+            utteranceEndedSinceLast: utteranceEndedRef.current[lang] === true,
+          });
+          utteranceEndedRef.current[lang] = false;
 
           if (!shouldCaptureCaptionsRef.current) {
             updateSttEvent(diagnosticEvent?.id, { status: STT_EVENT_STATUS.BLOCKED });
@@ -1960,7 +1979,7 @@ export const useDeepgram = () => {
 
     const pair = languagePairRef.current;
     const multiMode = usesMultiSocket(pair);
-    const bias = readSttBias();
+    const bias = { ...readSttBias(), utteranceEnd: readTurnEndSwitch() };
 
     // WE are replacing this pair (re-arm or rotation). The old pair's CloseStream
     // fires its own onclose, which would otherwise read as "the sockets died" and
@@ -1978,6 +1997,7 @@ export const useDeepgram = () => {
       : [{ side: "En", lang: pair.left }, { side: "Es", lang: pair.right }];
 
     lanes.forEach(({ side, lang }) => {
+      utteranceEndArmedRef.current[lang] = bias.utteranceEnd; // v4.197.0
       const ws = new WebSocket(
         buildListenUrl(lang, sttLatencyModeRef.current, bias),
         ["token", API_KEY],

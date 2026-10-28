@@ -421,7 +421,7 @@ export const combineCompoundNumbers = (text, lang = 'en') => {
 //      Other lengths → digit groups of 3 with dashes (unchanged).
 // ---------------------------------------------------------------------------
 
-export const formatPhoneAndSSNDigits = (text, { ignoreAddressGuard = false, ignoreDateGuard = false, allowNonStandardDash = false, expectedType = null } = {}) => {
+export const formatPhoneAndSSNDigits = (text, { ignoreAddressGuard = false, ignoreDateGuard = false, allowNonStandardDash = false, expectedType = null, ssnCue = true } = {}) => {
   if (!text) return text;
   // v4.117.0: armed ID request overrides the ZIP/MRN verbatim brakes below.
   const armedFull =
@@ -473,6 +473,13 @@ export const formatPhoneAndSSNDigits = (text, { ignoreAddressGuard = false, igno
       return m;
     }
     if (digitsOnly.length === 9) {
+      // v4.197.0: SSN shape NNN-NN-NNNN only with an SSN/ID cue (sentinel or
+      // armed request). No cue = still grouped for reading (v4.15 rule), but
+      // as neutral NNN NNN NNN — an MRN / ES mobile / tracking code is not an
+      // SSN. Every digit stays, same order.
+      if (!ssnCue && !armedId) {
+        return `${digitsOnly.slice(0, 3)} ${digitsOnly.slice(3, 6)} ${digitsOnly.slice(6)}`;
+      }
       // SSN: NNN-NN-NNNN
       return `${digitsOnly.slice(0, 3)}-${digitsOnly.slice(3, 5)}-${digitsOnly.slice(5)}`;
     }
@@ -1425,6 +1432,8 @@ export const applyDisplayProtections = (text, lang = 'en', { applyNumberWords = 
     allowNonStandardDash: fullTransform,
     // v4.117.0: armed request ("asked 2 bubbles ago") overrides ZIP/MRN brakes.
     expectedType: expectedType || null,
+    // v4.197.0: SSN dash shape needs an SSN/ID cue somewhere in this text.
+    ssnCue: sentinel.mode === 'ssn',
   };
 
   const { text: masked, restore } = maskDateUnits(out);

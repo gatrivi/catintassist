@@ -4,7 +4,8 @@
 
 - **Shipped:** flaws 1, 2, 3, 4, 5, 6, 7 (7 partly: about/around/say/make skipped — they turn prices into clocks).
 - **Flaw 4 correction:** the real cause was not `enFinalized` alone — `useDeepgram` rebuilds every row from `captionEngineRef` on each flush, so EVERY ✎ fix (any bubble, source + translation) was lost. Fixed via `patchEngineCaption`.
-- **Open:** flaw 8 (SSN gate — v4.15 user rule says group all 9-digit runs; needs a decision), flaws 9-10 (endpointing / `utterance_end_ms` — needs a live call A/B).
+- **v4.197.0:** flaw 8 shipped (no cue → `NNN NNN NNN`). Flaws 9-10: `utterance_end_ms` behind Settings switch **Split on real silence** (OFF). **Owed: one call ON vs one OFF.** Endpointing: use existing FAST/BAL toggle for the 150 vs 300 A/B.
+- **Not done:** lane hysteresis (flaw 10 proper) — wait for the A/B.
 
 ## Executive Summary
 

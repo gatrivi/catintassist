@@ -1,6 +1,7 @@
 /** Deepgram listen WS tuning — fast default for live interpret. v4.80.2 */
 import { buildKeyterms } from './sttKeyterms';
 import { loadCorrections } from './transcriptCorrections';
+import { UTTERANCE_END_MS } from './turnEnd';
 
 export const STT_LATENCY_STORAGE_KEY = 'catint_stt_latency_v1';
 export const STT_LATENCY_CHANGED_EVENT = 'catint_stt_latency_changed';
@@ -136,7 +137,7 @@ const langCode = (l) => (l || 'en').toString().toLowerCase().slice(0, 2);
  * calling it invalid was wrong — verified against the live API).
  */
 export const buildListenUrl = (lang, mode = loadSttLatencyMode(), bias = {}) => {
-  const { medicalModel = false, keyterm = false, userKeyterms = false } = bias || {};
+  const { medicalModel = false, keyterm = false, userKeyterms = false, utteranceEnd = false } = bias || {};
   const cfg = getSttLatencyConfig(mode);
   const params = new URLSearchParams({
     model: getDeepgramModel(lang, { medicalModel }),
@@ -159,6 +160,9 @@ export const buildListenUrl = (lang, mode = loadSttLatencyMode(), bias = {}) => 
     const corrections = userKeyterms ? loadCorrections() : [];
     buildKeyterms(lang, { corrections }).forEach((term) => params.append('keyterm', term));
   }
+  // v4.197.0: audio-clock turn end (utils/turnEnd.js). Off = URL unchanged.
+  // No extra cost: Deepgram bills audio minutes, not events.
+  if (utteranceEnd) params.append('utterance_end_ms', String(UTTERANCE_END_MS));
   return `wss://api.deepgram.com/v1/listen?${params.toString()}`;
 };
 

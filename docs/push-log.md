@@ -143,3 +143,4 @@
 | 2026-10-22T17:59:24.662Z | a02ff24 | v4.194.0 disconnect end + quiet console |
 | 2026-10-28T17:17:35.371Z | 5a93bb1 | v4.195.0 CONNECT like ZAP |
 | 2026-10-28T17:22:36.835Z | 2085fd3 | v4.195.1 STT UI honest |
+| 2026-10-28T19:38:10.001Z | 8eb4007 | v4.196.0 engine phase 1 |
