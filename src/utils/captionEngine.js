@@ -535,6 +535,7 @@ export const reduceTranscriptEvent = (prev, event, ctx) => {
         currentTurnIdRef.current = last.turnId || `turn-${now}`;
       }
 
+      const prevBubbleSide = dominantLaneSide(last); // v4.198.0
       last = {
         id: buildStableCaptionId(channelKey, startTime, false),
         // v4.150.0: wall-clock ms this bubble started — powers the hover
@@ -555,6 +556,15 @@ export const reduceTranscriptEvent = (prev, event, ctx) => {
       };
       prev = [...prev, last];
       laneSide = eventLaneSide; // v4.182.0: a fresh bubble speaks its own language
+      // v4.198.0 lane hysteresis: a SENTENCE split (no silence = same turn)
+      // whose chunk carries no language evidence ("OK.", "555 123 4567",
+      // "sí", an email) keeps the previous bubble's language. Multi tags such
+      // chunks at random; a flipped bubble is translated the wrong way round
+      // = blank translation. Real words ("Me llamo Juan") still flip.
+      if (channelKey === 'multi' && !isSilentBreak && prevBubbleSide && prevBubbleSide !== laneSide &&
+          isLanguageNeutralChunk(transcript)) {
+        laneSide = prevBubbleSide;
+      }
     }
   }
 
@@ -973,6 +983,35 @@ export const patchEngineCaption = (state, id, patch) => {
     return { ...state, liveDraft: { ...state.liveDraft, ...patch } };
   }
   return state;
+};
+
+/**
+ * v4.198.0 — words that say nothing about EN vs ES. A chunk made ONLY of
+ * these (plus digits, emails, punctuation) is language-neutral.
+ */
+const NEUTRAL_WORDS = new Set([
+  'ok', 'okay', 'oka', 'si', 'sí', 'no', 'yes', 'yeah', 'ya', 'mhm', 'mm', 'hmm',
+  'uh', 'um', 'eh', 'ah', 'oh', 'aja', 'ajá', 'aha', 'huh', 'bye', 'hello', 'hola',
+]);
+
+export const isLanguageNeutralChunk = (text) => {
+  const tokens = String(text || '').trim().split(/\s+/).filter(Boolean);
+  if (!tokens.length) return false;
+  return tokens.every((t) => {
+    if (/@/.test(t) || /\d/.test(t)) return true; // digits, emails, "4567."
+    const w = t.toLowerCase().replace(/[^\p{L}]/gu, '');
+    return !w || NEUTRAL_WORDS.has(w);
+  });
+};
+
+/** Which lane a row mostly shows ('en' | 'es' | null). */
+export const dominantLaneSide = (row) => {
+  if (!row) return null;
+  const n = (s) => String(s || '').trim().split(/\s+/).filter(Boolean).length;
+  const en = n(row.enFinalized) + n(row.enInterim);
+  const es = n(row.esFinalized) + n(row.esInterim);
+  if (!en && !es) return null;
+  return es > en ? 'es' : 'en';
 };
 
 /** Whether UI should flush immediately (final) vs throttle (interim only). */

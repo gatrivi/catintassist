@@ -3,6 +3,11 @@
 **Version source:** `src/constants/version.js` (must match `package.json` + top-right UI pill)
 
 
+## v4.198.0 - lane hysteresis (flaw 10)
+
+- One multi socket + sentence split (no silence = same turn): a chunk with NO language evidence (digits, email, OK, sí, no, mhm…) keeps the previous bubble's lane. Before: Deepgram tagged it at random → ES bubble flipped to EN → translated the wrong way → blank. Real words still flip ("What is your name?" → "Me llamo Juan").
+- `isLanguageNeutralChunk` / `dominantLaneSide` in `captionEngine.js`. Silence breaks unchanged. Tests in `transcriptionPhase1.test.js` (mutation-checked).
+
 ## v4.197.0 - SSN shape needs a cue · audio-clock bubble split (switch, OFF)
 
 - **Flaw 8:** 9 digits → `NNN-NN-NNNN` only with an SSN/ID sentinel ("social", "SSN", "member ID", "medicaid"…) or an armed request. No cue → neutral `NNN NNN NNN` (still grouped per the v4.15 rule, every digit kept). `formatPhoneAndSSNDigits({ ssnCue })` defaults true for direct callers.

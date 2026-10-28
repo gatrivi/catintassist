@@ -186,3 +186,39 @@ describe('turn end (v4.197.0)', () => {
     expect(buildListenUrl('multi', 'fast', { utteranceEnd: true })).toBe(`${off}&utterance_end_ms=1000`);
   });
 });
+
+describe('flaw 10 (v4.198.0): lane hysteresis on multi sentence splits', () => {
+  const { isLanguageNeutralChunk } = require('./captionEngine');
+  const mev = (atMs, start, transcript, lang) => ({
+    atMs,
+    lane: 'multi',
+    payload: {
+      type: 'Results', is_final: true, speech_final: false, start, duration: 1,
+      channel: { detected_language: lang, alternatives: [{ transcript, confidence: 0.95,
+        words: transcript.split(' ').map((w) => ({ word: w, confidence: 0.95 })) }] },
+    },
+  });
+  const langs = (rows) => rows.map((r) => r.lang);
+
+  test.each(['OK.', '555 123 4567.', 'Sí.', 'juan@mail.com', 'mhm 42'])('neutral: %s', (t) =>
+    expect(isLanguageNeutralChunk(t)).toBe(true));
+  test.each(['Me llamo Juan.', 'Thank you.', 'No tengo'])('not neutral: %s', (t) =>
+    expect(isLanguageNeutralChunk(t)).toBe(false));
+
+  test('ES sentence + EN-tagged phone digits → still a Spanish bubble', () => {
+    const { rows } = replayFixtureEvents({ events: [
+      mev(0, 1, 'Mi número de teléfono es el siguiente.', 'es'),
+      mev(400, 3, '555 123 4567.', 'en'),
+    ] });
+    expect(rows).toHaveLength(2);
+    expect(langs(rows)).toEqual(['es', 'es']);
+  });
+
+  test('real speaker switch without silence still flips', () => {
+    const { rows } = replayFixtureEvents({ events: [
+      mev(0, 1, 'What is your name?', 'en'),
+      mev(400, 3, 'Me llamo Juan Perez.', 'es'),
+    ] });
+    expect(langs(rows)).toEqual(['en', 'es']);
+  });
+});

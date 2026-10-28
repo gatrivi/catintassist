@@ -144,3 +144,4 @@
 | 2026-10-28T17:17:35.371Z | 5a93bb1 | v4.195.0 CONNECT like ZAP |
 | 2026-10-28T17:22:36.835Z | 2085fd3 | v4.195.1 STT UI honest |
 | 2026-10-28T19:38:10.001Z | 8eb4007 | v4.196.0 engine phase 1 |
+| 2026-10-28T19:51:37.775Z | 6b5ab3e | v4.197.0 ssn cue + utterance end |

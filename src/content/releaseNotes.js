@@ -25,6 +25,27 @@ import { APP_VERSION } from '../constants/version';
 /** Newest first. Only the entry matching APP_VERSION is shown on load. */
 export const RELEASE_NOTES_CATALOG = [
   {
+    version: '4.198.0',
+    id: 'lane-hysteresis',
+    highlightElementIds: ['transcript-pane'],
+    es: {
+      title: 'Números y "OK" ya no cambian el idioma de la burbuja',
+      intro: 'Si un hispanohablante dicta un teléfono y la frase se corta, la burbuja nueva sigue en español (antes saltaba a inglés y la traducción quedaba en blanco).',
+      sections: [{ heading: 'Qué cambió', bullets: [
+        'Solo con trozos sin idioma: dígitos, emails, OK, sí, no, mhm.',
+        'Un cambio real de hablante ("Me llamo Juan") sigue cambiando el idioma.',
+      ] }],
+    },
+    en: {
+      title: 'Numbers and "OK" no longer flip a bubble’s language',
+      intro: 'When a Spanish speaker dictates a phone number and the sentence splits, the new bubble stays Spanish (it used to flip to English and translate blank).',
+      sections: [{ heading: 'What changed', bullets: [
+        'Only for chunks with no language: digits, emails, OK, sí, no, mhm.',
+        'A real speaker switch ("Me llamo Juan") still flips.',
+      ] }],
+    },
+  },
+  {
     version: '4.197.0',
     id: 'turn-end-ssn-cue',
     highlightElementIds: ['transcript-pane'],
