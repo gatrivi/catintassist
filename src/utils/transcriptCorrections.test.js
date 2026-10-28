@@ -69,6 +69,7 @@ describe('transcriptCorrections v4.76', () => {
   test('v4.115.0: digit corrections do not rewrite inside phone runs', () => {
     saveCorrection({ sourceHeard: '212', corrected: 'two twelve', lang: 'en' });
     expect(applySttCorrections('call 555-1212-3456', 'en')).toBe('call 555-1212-3456');
-    expect(applySttCorrections('room 212 please', 'en')).toBe('room two twelve please');
+    // v4.196.0: a number fix never leaves its own bubble (blast-radius brake).
+    expect(applySttCorrections('room 212 please', 'en')).toBe('room 212 please');
   });
 });

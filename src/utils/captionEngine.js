@@ -923,6 +923,58 @@ export const reduceTranscriptEvent = (prev, event, ctx) => {
   return ensureUniqueCaptionIds(newArr.slice(-CAPTION_ROW_LIMIT));
 };
 
+/**
+ * v4.196.0 — apply a ✎ source correction to a bubble so it STICKS.
+ * The live bubble is rebuilt from its lane buffers (`enFinalized + enInterim`)
+ * on every Deepgram event, so writing only `text` was reverted by the next
+ * packet. The fix writes the corrected text into the bubble's own lane as
+ * finalized and clears both drafts; later speech appends AFTER the fix.
+ * The other lane is cleared: the human vouches for the whole visible text.
+ */
+export const applyUserCorrectionToCaption = (cap, corrected, sttHeard, pair) => ({
+  ...cap,
+  ...userCorrectionPatch(cap, corrected, sttHeard, pair),
+});
+
+/** The fields a ✎ source fix changes (also sent to the engine, see below). */
+export const userCorrectionPatch = (cap, corrected, sttHeard, pair) => {
+  const side = laneSideForLang(cap.lang, pair);
+  return {
+    text: corrected,
+    enFinalized: side === "en" ? corrected : "",
+    esFinalized: side === "es" ? corrected : "",
+    enInterim: "",
+    esInterim: "",
+    userCorrected: true,
+    sttHeard,
+    userTranslationOverride: null,
+  };
+};
+
+/**
+ * v4.196.0 — THE real reason ✎ fixes vanished: useDeepgram owns the rows
+ * (`captionEngineRef`) and every flush rebuilds the whole board from it, so a
+ * fix written only to React `captions` was gone on the next packet — any
+ * bubble, source or translation. A fix must ALSO patch the engine.
+ * Pure: returns a new state; unknown id → same state.
+ */
+export const CAPTION_PATCH_EVENT = "catint_caption_patch";
+
+export const patchEngineCaption = (state, id, patch) => {
+  if (!state || !id || !patch) return state;
+  const finals = state.finals || [];
+  const idx = finals.findIndex((c) => c.id === id);
+  if (idx >= 0) {
+    const next = finals.slice();
+    next[idx] = { ...next[idx], ...patch };
+    return { ...state, finals: next };
+  }
+  if (state.liveDraft?.id === id) {
+    return { ...state, liveDraft: { ...state.liveDraft, ...patch } };
+  }
+  return state;
+};
+
 /** Whether UI should flush immediately (final) vs throttle (interim only). */
 export const shouldFlushImmediately = (isFinal, speechFinal) =>
   Boolean(isFinal || speechFinal);

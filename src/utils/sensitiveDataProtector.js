@@ -136,9 +136,12 @@ export const expandDictationWords = (text, lang = 'en') => {
 const MONEY_CUE_RE =
   /(?:\$|€|£|\b(?:dollars?|bucks?|usd|pesos?|euros?|money|price|pricing|cost|costs|precio|costos?|cuesta|cobro|cobran|total|totaling|pagar|pago|pay|paid|payment|quote|quotation|estimate|estimating|budget|presupuesto|balance|remaining|owed|due|invoice|factura|billing|copay|co-?pay|copago|deductible|deducible|co-?insurance|coaseguro|out[- ]of[- ]pocket|self.?pay|sin seguro|insuran\w*|seguro)\b)/i;
 
-/** A time cue inside this window means the digits belong to a clock. */
+/** A time cue inside this window means the digits belong to a clock.
+ * v4.196.0: + by / noon / mediodía / hora(s) ("come by 3 30").
+ * NOT about/around/say/make: "it's about one fifty" is a PRICE, and a clock
+ * cue here vetoes the money fold → 1:50 (the v4.173.0 bug). */
 const CLOCK_CUE_NEAR_RE =
-  /(?:\b(?:at|am|pm|a\.?m\.?p?\.?m?\.?|o'?clock|sharp|hour|hours?|hrs?|minute|minutes?|appointment|appt|scheduled|schedule|slots?|time|when|starts?|starts|mañana|tarde|medianoche|noche)\b|@|a\s+las)/i;
+  /(?:\b(?:at|by|noon|mediod[ií]a|horas?|am|pm|a\.?m\.?p?\.?m?\.?|o'?clock|sharp|hour|hours?|hrs?|minute|minutes?|appointment|appt|scheduled|schedule|slots?|time|when|starts?|starts|mañana|tarde|medianoche|noche)\b|@|a\s+las)/i;
 
 const MONEY_WINDOW = 28;
 
@@ -256,6 +259,81 @@ export const foldMoneyAmounts = (text) => {
   return out;
 };
 
+
+// ---------------------------------------------------------------------------
+// SPANISH SPOKEN MONEY (v4.196.0)
+// ---------------------------------------------------------------------------
+// The ES pane never converts number words (v4.27.0: "uno nunca sabe" must not
+// become "1 nunca sabe"), so "ciento cincuenta pesos" never folded. This fold is
+// NARROW on purpose: only a run of Spanish number words IMMEDIATELY followed by
+// a currency word. Everything else stays byte-identical.
+//   "ciento cincuenta pesos"        → "150 pesos"
+//   "dos mil quinientos dólares"    → "2500 dólares"
+//   "uno nunca sabe"                → unchanged (no currency)
+// ---------------------------------------------------------------------------
+
+const ES_HUNDREDS = {
+  cien: 100, ciento: 100, doscientos: 200, doscientas: 200, trescientos: 300,
+  trescientas: 300, cuatrocientos: 400, cuatrocientas: 400, quinientos: 500,
+  quinientas: 500, seiscientos: 600, seiscientas: 600, setecientos: 700,
+  setecientas: 700, ochocientos: 800, ochocientas: 800, novecientos: 900,
+  novecientas: 900,
+};
+
+const esWordValue = (w) => {
+  const k = normalizeAccents(w.toLowerCase());
+  if (k === 'un' || k === 'una') return 1;
+  if (ES_HUNDREDS[k] !== undefined) return ES_HUNDREDS[k];
+  const v = ES_NUMBER_MAP[k];
+  return v !== undefined && k !== 'mil' ? parseInt(v, 10) : null;
+};
+
+const ES_MONEY_WORD_RE = /^(?:pesos?|d[óo]lar(?:es)?|euros?|centavos?)\b/i;
+
+export const foldSpanishSpokenMoney = (text) => {
+  if (!text) return text;
+  const tokens = text.split(/(\s+)/); // keep spacing
+  const out = [];
+  let i = 0;
+  while (i < tokens.length) {
+    // collect a run: number words, "y", "mil" (whitespace tokens in between)
+    if (/^\s*$/.test(tokens[i])) { out.push(tokens[i]); i++; continue; }
+    let j = i;
+    const run = [];
+    while (j < tokens.length) {
+      const t = tokens[j];
+      if (/^\s+$/.test(t)) { j++; continue; }
+      const bare = t.toLowerCase();
+      if (bare === 'mil' || bare === 'y' || esWordValue(bare) !== null) {
+        run.push({ bare, at: j });
+        j++;
+        continue;
+      }
+      break;
+    }
+    // trim a trailing/leading "y" and require a currency word right after
+    while (run.length && run[run.length - 1].bare === 'y') run.pop();
+    const nextWord = tokens.slice(j).find((t) => !/^\s+$/.test(t)) || '';
+    const words = run.filter((r) => r.bare !== 'y');
+    if (words.length >= 1 && run[0].bare !== 'y' && ES_MONEY_WORD_RE.test(nextWord)) {
+      let total = 0;
+      let cur = 0;
+      for (const { bare } of run) {
+        if (bare === 'y') continue;
+        if (bare === 'mil') { total += (cur || 1) * 1000; cur = 0; continue; }
+        cur += esWordValue(bare);
+      }
+      const last = run[run.length - 1].at;
+      out.push(String(total + cur));
+      // keep the whitespace that followed the run
+      i = last + 1;
+      continue;
+    }
+    out.push(tokens[i]);
+    i++;
+  }
+  return out.join('');
+};
 
 // ---------------------------------------------------------------------------
 // MAGNITUDE FOLDING (v4.120.0) — runs AFTER word conversion, on digits.
@@ -1299,6 +1377,8 @@ export const applyDisplayProtections = (text, lang = 'en', { applyNumberWords = 
   // v4.120.0: "double five" → "five five", "8 oh 5" → "8 0 5" first.
   if (applyNumberWords) out = expandDictationWords(out, lang);
   if (applyNumberWords) out = convertEnglishNumberWords(out, lang);
+  // v4.196.0: ES lane skips number words, but "ciento cincuenta pesos" → 150.
+  if (!applyNumberWords && String(lang).slice(0, 2).toLowerCase() === 'es') out = foldSpanishSpokenMoney(out);
   // v4.173.0: fold spoken MONEY first — "one fifty" → 150 before
   // combineCompoundNumbers splits it and expandBareTimes turns it into 1:50.
   out = foldMoneyAmounts(out);
@@ -1810,6 +1890,20 @@ export const cleanFillerWords = (text) => {
   return t.replace(/\s+/g, ' ').trim();
 };
 
+/**
+ * v4.196.0 — "es Juan, Juan Perez" / "my name is David, David Smith".
+ * Deepgram capitalizes names. Two Capitalized copies of a word, where the
+ * second is NOT a sentence start, is a person restating a name, not a
+ * stutter: keep both. ("The. The" after a period still dedupes.)
+ */
+export const isRepeatedProperName = (prevRaw, curRaw) => {
+  const prev = String(prevRaw || '');
+  const cur = String(curRaw || '');
+  const startsUpper = (w) => /^\p{Lu}/u.test(w.replace(/^[^\p{L}]+/u, ''));
+  if (!startsUpper(prev) || !startsUpper(cur)) return false;
+  return !/[.!?]["')\]]*$/.test(prev);
+};
+
 export const hallucinationGuard = (text) => {
   if (!text) return text;
   const words = text.trim().split(/\s+/);
@@ -1853,6 +1947,7 @@ export const hallucinationGuard = (text) => {
       norm.length > 1 &&
       !isNumberLike(word) &&
       !DEDUPE_NEVER_DROP.has(norm) &&
+      !isRepeatedProperName(words[i - 1], word) &&
       !containsCriticalData(localWindow) &&
       !hasCriticalDataCue(localWindow)
     )
@@ -1955,7 +2050,12 @@ export const removeOverlapPreservingDigitSequences = (base, addition) => {
       containsCriticalData(overlapText) ||
       containsCriticalData(boundaryText) ||
       hasCriticalDataCue(boundaryText) ||
-      overlapSlice.some((w) => DEDUPE_NEVER_DROP.has(normalize(w)))
+      overlapSlice.some((w) => DEDUPE_NEVER_DROP.has(normalize(w))) ||
+      // v4.196.0: "es Juan," + "Juan Perez" — a 1-word name echo that opens a
+      // full name (next word also Capitalized) is a restated name, not overlap.
+      (bestOverlap === 1 &&
+        isRepeatedProperName(base.trim().split(/\s+/).slice(-1)[0], aWordsRaw[0]) &&
+        isRepeatedProperName(aWordsRaw[0], aWordsRaw[1]))
     ) {
       bestOverlap = 0;
     }

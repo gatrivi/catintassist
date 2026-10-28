@@ -209,6 +209,14 @@ export const clearGlossary = (sourceLang, targetLang) => {
   return doomed.length;
 };
 
+/** A digit or a spoken number word (EN/ES) — such fixes stay in their bubble. */
+const HAS_NUMBER_RE =
+  /\d|\b(?:zero|one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve|\w+teen|twenty|thirty|forty|fifty|sixty|seventy|eighty|ninety|hundred|thousand|cero|uno|dos|tres|cuatro|cinco|seis|siete|ocho|nueve|diez|once|doce|trece|catorce|quince|dieci\w+|veint\w+|treinta|cuarenta|cincuenta|sesenta|setenta|ochenta|noventa|cien|ciento|\w+cientos|mil)\b/i;
+
+/** One 3+ letter word fixed into a Capitalized name ("ana" → "Anna"). */
+const isNameFix = (e) =>
+  /^\p{L}{3,}$/u.test((e.sourceHeard || '').trim()) && /^\p{Lu}\p{L}+$/u.test((e.corrected || '').trim());
+
 /** Replace known misheard phrases (longest first, case-insensitive). */
 export const applySttCorrections = (text, lang) => {
   const raw = (text || '').trim();
@@ -217,9 +225,17 @@ export const applySttCorrections = (text, lang) => {
   const exact = findCorrection(raw, lang);
   if (exact) return exact.corrected;
 
+  // v4.196.0: blast-radius brake. A ✎ fix used to rewrite the same words in
+  // EVERY other bubble ("ten" → "twenty" changed every later "ten"). Now a fix
+  // only travels to other bubbles when it is a real term (same rule as glossary
+  // phrases: 2+ words, one word of 4+ letters, or a 3+ letter word fixed into
+  // a Capitalized name) and touches NO digit / number word — a
+  // number fixed in bubble A must never change a number in bubble B.
+  // The exact whole-bubble match above is unchanged.
   let out = raw;
   const entries = loadSttEntries(lang)
-    .filter((e) => e.sourceHeard.length >= 3)
+    .filter((e) => qualifiesAsPhrase(normalizeText(e.sourceHeard)) || isNameFix(e))
+    .filter((e) => !HAS_NUMBER_RE.test(e.sourceHeard) && !HAS_NUMBER_RE.test(e.corrected || ''))
     .sort((a, b) => b.sourceHeard.length - a.sourceHeard.length);
 
   for (const entry of entries) {

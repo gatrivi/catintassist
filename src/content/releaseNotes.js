@@ -25,6 +25,31 @@ import { APP_VERSION } from '../constants/version';
 /** Newest first. Only the entry matching APP_VERSION is shown on load. */
 export const RELEASE_NOTES_CATALOG = [
   {
+    version: '4.196.0',
+    id: 'corrections-stick',
+    highlightElementIds: ['transcript-pane'],
+    es: {
+      title: 'Tus correcciones ✎ ya no desaparecen',
+      intro: 'Antes, cualquier corrección se borraba con la siguiente palabra que llegaba. Ahora queda.',
+      sections: [{ heading: 'Qué cambió', bullets: [
+        'Una corrección ✎ ya no cambia números ni palabras sueltas en otras burbujas.',
+        '"es Juan, Juan Pérez" ya no pierde el primer Juan.',
+        '"ciento cincuenta pesos" → 150 pesos · "come by 3 30" → 3:30.',
+        'Repetido = fondo gris suave; reemplazado = texto gris. Ya no se ven iguales.',
+      ] }],
+    },
+    en: {
+      title: 'Your ✎ fixes no longer vanish',
+      intro: 'Any correction used to be wiped by the next word that arrived. Now it stays.',
+      sections: [{ heading: 'What changed', bullets: [
+        'A ✎ fix no longer changes numbers or short words in other bubbles.',
+        '"es Juan, Juan Perez" keeps the first Juan.',
+        '"ciento cincuenta pesos" → 150 pesos · "come by 3 30" → 3:30.',
+        'Repeat = soft grey background; superseded = grey text. No longer identical.',
+      ] }],
+    },
+  },
+  {
     version: '4.195.1',
     id: 'stt-ui-honest',
     highlightElementIds: ['header-zap-btn'],

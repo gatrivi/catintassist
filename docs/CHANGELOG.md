@@ -3,6 +3,18 @@
 **Version source:** `src/constants/version.js` (must match `package.json` + top-right UI pill)
 
 
+## v4.196.0 - transcription engine Phase 1 (✎ fixes stick, safer formatting)
+
+Source: [`development/transcription-engine-diagnosis.md`](development/transcription-engine-diagnosis.md). Tests: `src/utils/transcriptionPhase1.test.js` (one block per flaw).
+
+- **✎ fixes vanished (worse than diagnosed):** `useDeepgram` owns the rows (`captionEngineRef`) and every flush rebuilds the WHOLE board from it → any fix (source or translation, any bubble) died on the next packet. Now the fix is sent as `catint_caption_patch` → `patchEngineCaption`, and also written to the lane buffers (`userCorrectionPatch`).
+- **✎ blast radius:** a fix only travels to other bubbles if it is a real term (2+ words or one 4+ letter word) and has NO digit / number word. Exact whole-bubble match unchanged.
+- **Names:** "es Juan, Juan Perez" keeps both Juans (two Capitalized copies, 2nd not a sentence start). Plain stutter still dedupes.
+- **ES money:** "ciento cincuenta pesos" → `150 pesos`. Only a number-word run right before pesos/dólares/euros/centavos. "uno nunca sabe" untouched.
+- **Clock cues:** + `by`, `noon`, `mediodía`, `hora(s)`. NOT about/around/say/make (they collide with prices: "about one fifty" would become 1:50).
+- **Dim colors:** `.repeat-dim` now has a faint grey background (superseded = grey text). A low-confidence word inside a repeat shows only the amber underline (`:has()` precedence).
+- **Not done (needs a call/decision):** 9-digit SSN gate (flaw 8), endpointing 150→250 + `utterance_end_ms` (flaws 9-10).
+
 ## v4.195.1 - STT health UI stops lying (CONNECT Phase B)
 
 - ZAP (`#header-zap-btn`) glows amber + pulses while `sttStall` is set (same reason as the red banner).

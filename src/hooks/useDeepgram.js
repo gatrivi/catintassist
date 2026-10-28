@@ -37,6 +37,8 @@ import {
   shouldFlushImmediately,
   createCaptionEngineState,
   captionsSnapshotEqual,
+  patchEngineCaption,
+  CAPTION_PATCH_EVENT,
 } from "../utils/captionEngine";
 import { applyDeepgramTranscriptPayload } from "../utils/applyDeepgramTranscriptPayload";
 import {
@@ -500,6 +502,17 @@ export const useDeepgram = () => {
     captionsHydratedRef.current = true;
     captionEngineRef.current = initEngineFromPersisted(captions);
   }, [isCaptionsLoaded, captions]);
+
+  // v4.196.0: a ✎ fix patches the engine too — every flush rebuilds the board
+  // from captionEngineRef, so a fix that lived only in React state was undone.
+  useEffect(() => {
+    const onPatch = (e) => {
+      const { id, patch } = e?.detail || {};
+      captionEngineRef.current = patchEngineCaption(captionEngineRef.current, id, patch);
+    };
+    window.addEventListener(CAPTION_PATCH_EVENT, onPatch);
+    return () => window.removeEventListener(CAPTION_PATCH_EVENT, onPatch);
+  }, []);
 
   useEffect(() => {
     const onCleared = () => resetCaptionEngine();

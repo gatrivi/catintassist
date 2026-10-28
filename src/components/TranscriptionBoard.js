@@ -78,6 +78,12 @@ import {
 // resolveDisplayText is a pass-through and the bubble shows exactly what
 // Deepgram said.
 import { resolveDisplayText } from '../utils/displaySourceText';
+import {
+  applyUserCorrectionToCaption,
+  userCorrectionPatch,
+  CAPTION_PATCH_EVENT,
+} from '../utils/captionEngine';
+
 import { NEGATION_GAP_TITLE } from '../utils/negationGuard';
 // v4.169.0: a translation longer than its source can be is reporting content
 // that was never said. Reported, never rewritten.
@@ -89,6 +95,13 @@ import {
   NEGATION_GUARD_CHANGED_EVENT,
 } from '../utils/clinicalGuards';
 import { catLog } from '../utils/catLog';
+
+/** v4.196.0: tell useDeepgram's engine about a ✎ fix (it owns the rows). */
+const sendEnginePatch = (id, patch) => {
+  try {
+    window.dispatchEvent(new CustomEvent(CAPTION_PATCH_EVENT, { detail: { id, patch } }));
+  } catch (_) {}
+};
 
 // Messages addressed TO the interpreter ("Interpreter, ..." / "Intérprete, ...") — light blue so they're never read as patient speech.
 const INTERPRETER_CUE_RE = /^\s*(interpreter|int[ée]rprete|interprete)\s*[,.:;:]/i;
@@ -1063,18 +1076,13 @@ export const TranscriptionBoard = ({
         lang: sourceLang,
         kind: CORRECTION_KIND.STT,
       });
+      // v4.196.0: lane buffers + engine too, or the next Deepgram packet reverts the fix.
       updateCaptions((prev) =>
-        prev.map((c) =>
-          c.id === capId
-            ? {
-                ...c,
-                text: trimmed,
-                userCorrected: true,
-                sttHeard,
-                userTranslationOverride: null,
-              }
-            : c,
-        ),
+        prev.map((c) => {
+          if (c.id !== capId) return c;
+          sendEnginePatch(capId, userCorrectionPatch(c, trimmed, sttHeard, languagePair));
+          return applyUserCorrectionToCaption(c, trimmed, sttHeard, languagePair);
+        }),
       );
       setTranslationBumps((prev) => ({ ...prev, [capId]: (prev[capId] ?? 0) + 1 }));
     } else {
@@ -1085,12 +1093,13 @@ export const TranscriptionBoard = ({
         targetLang,
         kind: CORRECTION_KIND.GLOSSARY,
       });
+      sendEnginePatch(capId, { userTranslationOverride: trimmed });
       updateCaptions((prev) =>
         prev.map((c) => (c.id === capId ? { ...c, userTranslationOverride: trimmed } : c)),
       );
     }
     setCorrectionEditor(null);
-  }, [correctionEditor, updateCaptions]);
+  }, [correctionEditor, updateCaptions, languagePair]);
 
   const makeEditHandlers = useCallback(
     (cap) => ({

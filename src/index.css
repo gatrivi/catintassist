@@ -6415,6 +6415,18 @@ body:has(.app-container[data-call-mode="true"]) .element-hint-panel {
   display: inline;
   opacity: 0.72;
 }
+/* v4.196.0 — one signal per meaning. Superseded = grey TEXT (below); repeat =
+   own color + faint grey highlighter BACKGROUND, so the two never look alike. */
+.repeat-dim {
+  background: rgba(148, 163, 184, 0.12);
+  border-radius: 2px;
+}
+/* Precedence: low-confidence beats repeat. A shaky word inside a repeat shows
+   only the amber dotted underline — no stacked dim + tint mud. */
+.repeat-dim:has(.confidence-word--low) {
+  opacity: 1;
+  background: none;
+}
 
 /* Superseded wording: secondary, but readable — v4.142.0 raises it from ~25%
    weight (which the operator reported as unreadable) to the same 70% floor as
