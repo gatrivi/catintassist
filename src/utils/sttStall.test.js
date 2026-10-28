@@ -17,3 +17,10 @@ describe('sttStallReason (v4.179.0)', () => {
   test('hold never hides a stall (hold = silence; speech lifts it)', () =>
     expect(sttStallReason({ ...live, textAgeMs: 90000, onHold: true })).toBe('deaf'));
 });
+
+describe('sttStallReason deaf window (v4.195.0)', () => {
+  test('10s no words while speaking = deaf (was 20s)', () =>
+    expect(sttStallReason({ ...live, textAgeMs: 11000 })).toBe('deaf'));
+  test('a 6s pause between polls still counts as speaking (was 3s)', () =>
+    expect(sttStallReason({ ...live, textAgeMs: 11000, speakingAgeMs: 6000 })).toBe('deaf'));
+});

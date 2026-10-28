@@ -141,7 +141,7 @@ export function shouldRebuildRecorder({
  * clear by pressing ZAP five times.
  *
  * Returns:
- *   'ok'               — Deepgram proved alive (any message) or text already flowed.
+ *   'ok'               — words flowed, or DG answers and nobody spoke yet (v4.195.0).
  *   'recorder-rebuild' — sockets open, no audio ever left us, rebuild budget left.
  *   'fail-no-audio'    — audio never reached Deepgram and a rebuild won't help.
  *   'stall-reconnect'  — audio sent, Deepgram mute, retries left → auto reconnect.
@@ -153,15 +153,34 @@ export function connectStallVerdict({
   audioChunksSent = false,
   transcriptReceived = false,
   gotDgMessage = false,
+  heardSpeech = false,
   retriesLeft = 0,
   recorderRetriesLeft = 0,
 } = {}) {
-  if (transcriptReceived || gotDgMessage) return 'ok';
+  if (transcriptReceived) return 'ok';
   if (!audioChunksSent) {
+    if (gotDgMessage) return 'ok';
     return recorderRetriesLeft > 0 ? 'recorder-rebuild' : 'fail-no-audio';
+  }
+  // v4.195.0: Deepgram answering is NOT proof of life — it sends empty
+  // Results on a deaf socket. Proof = words after the caller spoke.
+  // Silent line (nobody loud yet) is not a fault → stand down.
+  if (gotDgMessage) {
+    if (!heardSpeech) return 'ok';
+    // Deaf after every retry: don't kill the call — the mid-call 'deaf'
+    // monitor + red stall banner (ZAP) take over.
+    return retriesLeft > 0 ? 'stall-reconnect' : 'ok';
   }
   return retriesLeft > 0 ? 'stall-reconnect' : 'fail-silent';
 }
+
+/**
+ * v4.195.0 — CONNECT used to close the old sockets and open the new ones in
+ * the same tick; ZAP waited 400 ms and worked. The gap lets Deepgram free the
+ * old streams before the new ones count against the concurrency cap.
+ * ONE gap for every rebuild path (CONNECT, ZAP, auto-heal).
+ */
+export const SOCKET_REOPEN_GAP_MS = 400;
 
 /**
  * v4.179.0 — "transcription stopped with no UI sign". Every watchdog above
@@ -172,14 +191,19 @@ export function connectStallVerdict({
  * Returns null (fine) or the reason transcription is stopped:
  *   'no-audio' — our recorder stopped sending chunks (rebuilds spent/failed).
  *   'no-reply' — audio leaves us, Deepgram sends nothing at all.
- *   'deaf'     — someone is audibly speaking right now, no words for 20s+.
+ *   'deaf'     — someone spoke in the last 8s, no words for 10s+.
  * The first 12s after a connect belong to the connect watchdog → null.
  */
 export const STT_STALL_GRACE_MS = 12000;
 export const STT_STALL_NO_AUDIO_MS = 15000;
 export const STT_STALL_NO_REPLY_MS = 20000;
-export const STT_STALL_DEAF_TEXT_MS = 20000;
-export const STT_STALL_DEAF_SPEAKING_MS = 3000;
+// v4.195.0: 20s → 10s no words; speaking window 3s → 8s so a short pause
+// between the 5s polls no longer hides the stall.
+export const STT_STALL_DEAF_TEXT_MS = 10000;
+export const STT_STALL_DEAF_SPEAKING_MS = 8000;
+/** 'deaf' self-heal: one per 30s, max 3 per call (was one per 2 min). */
+export const STT_DEAF_HEAL_COOLDOWN_MS = 30000;
+export const STT_DEAF_HEAL_MAX = 3;
 
 export function sttStallReason({
   sinceConnectMs = 0,

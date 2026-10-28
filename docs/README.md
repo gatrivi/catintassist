@@ -3,6 +3,7 @@
 This is the single source of truth for *documentation + onboarding*.
 
 ## What's new
+- **2026-10-28** — **CONNECT button & STT reliability assessment (v4.194.0)**: in-depth diagnosis of ~40% live reliability, 8 root-cause vectors, false-positive UI signals, and remediation blueprint — [development/connect-button-assessment.md](development/connect-button-assessment.md)
 - **2026-09-09** — **Agent token budget playbook**: cheapest-tool-first, batch sessions, single judge pass — [`development/agent-token-budget.md`](development/agent-token-budget.md)
 - **2026-09-08** — **PUSH BUDGET (Vercel free)**: max 4 pushes/hour, every push logged — [`push-log.md`](push-log.md) · guard script `scripts/safe-push.js`
 - **2026-09-07** — Full read-only app audit (translation latency root causes, soundboard garble candidates, secrets-in-bundle, test failures) — [`DIAGNOSIS-2026-09-07.md`](DIAGNOSIS-2026-09-07.md)

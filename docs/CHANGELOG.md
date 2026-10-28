@@ -3,6 +3,14 @@
 **Version source:** `src/constants/version.js` (must match `package.json` + top-right UI pill)
 
 
+## v4.195.0 - CONNECT works like ZAP
+
+- CONNECT over live/warm sockets now closes them, waits `SOCKET_REOPEN_GAP_MS` (400 ms, same as ZAP), then opens the new pair. Same-tick close+open = deaf sockets on Deepgram.
+- 12s connect watchdog no longer dies on the first audio chunk; it stays until the first WORD. Verdict: caller spoke + no words = rebuild (empty Results are not proof of life). Silent line = no action. Deaf after 3 tries = banner + ZAP, never kills the call.
+- Empty Results no longer refill the stall budget (would loop forever).
+- Mid-call `deaf`: 10s no words (was 20s), speaking window 8s (was 3s), own 30s cooldown, max 3/call (was 1 per 2 min).
+- Reliability metric: `__CAT_CONNECTS()` → first-try / self-healed / needed-zap / no-words over the last 20 calls. Ring lines `connect run: …` (`src/utils/connectRuns.js`).
+
 ## v4.194.0 - client-disconnect ends the call · quiet console
 
 - End phrases + `client has disconnected`, `disconnected from the call`, `party/patient has disconnected`. Saved phrase lists no longer hide new defaults (union).

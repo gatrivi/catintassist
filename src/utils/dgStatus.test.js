@@ -173,3 +173,19 @@ describe('shouldAutoZap — speech-evidence stall recovery (v4.149.0)', () => {
     expect(shouldAutoZap({ msgAgeMs: 90_000, audioProgressAgeMs: 3_000, sinceLastZapMs: DG_AUTO_ZAP_COOLDOWN_MS - 1 })).toBe(false);
   });
 });
+
+describe('connectStallVerdict — words, not messages (v4.195.0)', () => {
+  const sent = { audioChunksSent: true, gotDgMessage: true, retriesLeft: 2 };
+  it('empty Results while the caller spoke = deaf socket → reconnect', () => {
+    expect(connectStallVerdict({ ...sent, heardSpeech: true })).toBe('stall-reconnect');
+  });
+  it('silent line (nobody spoke) is not a fault', () => {
+    expect(connectStallVerdict({ ...sent, heardSpeech: false })).toBe('ok');
+  });
+  it('words came back = ok', () => {
+    expect(connectStallVerdict({ ...sent, heardSpeech: true, transcriptReceived: true })).toBe('ok');
+  });
+  it('deaf after every retry never hard-fails the call (banner + ZAP take over)', () => {
+    expect(connectStallVerdict({ ...sent, heardSpeech: true, retriesLeft: 0 })).toBe('ok');
+  });
+});

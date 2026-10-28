@@ -509,3 +509,21 @@ describe('shift ear keeps one pair warm all shift (v4.172.0)', () => {
     expect(FakeRecorder.instances).toHaveLength(2);
   });
 });
+
+describe('CONNECT waits for Deepgram to free the old pair (v4.195.0)', () => {
+  it('a press over live sockets opens the new pair only after the 400 ms gap, like ZAP', async () => {
+    const { result } = renderHook(() => useDeepgram());
+    const { fresh: first } = await pressAndOpen(result);
+    const before = FakeSocket.instances.length;
+    await act(async () => {
+      await result.current.startRecording();
+    });
+    // Old pair told goodbye, new pair NOT opened in the same tick.
+    expect(first.every((s) => s.saidGoodbye())).toBe(true);
+    expect(FakeSocket.instances.length).toBe(before);
+    await act(async () => {
+      jest.advanceTimersByTime(400);
+    });
+    expect(FakeSocket.instances.length).toBe(before + 2);
+  });
+});

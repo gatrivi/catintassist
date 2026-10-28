@@ -25,6 +25,29 @@ import { APP_VERSION } from '../constants/version';
 /** Newest first. Only the entry matching APP_VERSION is shown on load. */
 export const RELEASE_NOTES_CATALOG = [
   {
+    version: '4.195.0',
+    id: 'connect-like-zap',
+    highlightElementIds: ['transcript-pane'],
+    es: {
+      title: 'CONNECT ahora funciona como ZAP',
+      intro: 'Espera 400 ms a que Deepgram suelte las conexiones viejas antes de abrir las nuevas.',
+      sections: [{ heading: 'Qué cambió', bullets: [
+        'Si el cliente habla y no llegan palabras en 12 s, se reconecta solo (hasta 3 veces).',
+        'En llamada: 10 s sin palabras mientras alguien habla = reconexión automática (antes 20 s y una cada 2 min).',
+        'Medición real: consola __CAT_CONNECTS() = cuántos CONNECT anduvieron al primer intento.',
+      ] }],
+    },
+    en: {
+      title: 'CONNECT now works like ZAP',
+      intro: 'It waits 400 ms for Deepgram to release the old connections before opening new ones.',
+      sections: [{ heading: 'What changed', bullets: [
+        'Caller talks but no words in 12 s → reconnects by itself (up to 3 times).',
+        'Mid-call: 10 s of no words while someone speaks = auto reconnect (was 20 s, once per 2 min).',
+        'Real numbers: console __CAT_CONNECTS() = how many CONNECTs worked first try.',
+      ] }],
+    },
+  },
+  {
     version: '4.194.0',
     id: 'client-disconnect-ends-call',
     highlightElementIds: ['transcript-pane'],

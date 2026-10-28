@@ -84,7 +84,11 @@ import {
   sttStallReason,
   CONNECT_STALL_MAX_RETRIES,
   CONNECT_RECORDER_MAX_RETRIES,
+  SOCKET_REOPEN_GAP_MS,
+  STT_DEAF_HEAL_COOLDOWN_MS,
+  STT_DEAF_HEAL_MAX,
 } from "../utils/dgStatus";
+import { startRun, endRun, noteRunHeal, describeRun } from "../utils/connectRuns";
 import { analyzeToneFrame, createToneTracker } from "../utils/toneWatch";
 import {
   STT_EVENT_STATUS,
@@ -309,6 +313,8 @@ export const useDeepgram = () => {
   // actually LOUD locally (RMS). Separates a dead Deepgram pipe (Zap fixes)
   // from a silent mic/tab/headset route (Zap useless). Local-only analyser.
   const lastLoudAudioAtRef = useRef(0);
+  // v4.195.0: open connect run (call start -> first word), utils/connectRuns.js
+  const connectRunRef = useRef(null);
   const callVadCtxRef = useRef(null);
   const callVadIntervalRef = useRef(null);
   const stopCallVadRef = useRef(null);
@@ -992,6 +998,13 @@ export const useDeepgram = () => {
       setSttAudioRecording(false);
       lastDiagnosticAudioChunkAtRef.current = 0;
 
+      // v4.195.0: old sockets (warm pair / previous call) -> wait the reopen
+      // gap before opening new ones, exactly like ZAP. Checked before the
+      // ear teardown below, which may null the refs itself.
+      // A socket already CLOSED (readyState 3) holds no Deepgram slot.
+      const holdsSlot = (ws) => !!ws && ws.readyState !== 3;
+      const hadSockets = holdsSlot(socketRefEn.current) || holdsSlot(socketRefEs.current);
+
       // v4.170.0: this reuse path used to close the warm idle-ear sockets and
       // leave the ear itself alive. Its 4s KeepAlive then saw "both sockets
       // dead", called closeConnections() and reset the whole app to
@@ -1052,6 +1065,7 @@ export const useDeepgram = () => {
         dgMessageSeenRef.current = false;
         startKeepalive();
         const attemptId = connectAttemptIdRef.current;
+        const streamingStartedAt = Date.now();
         clearWatchdog();
         // v4.170.0: the watchdog is now re-armable, because a stall can have
         // two different causes with two different fixes:
@@ -1068,20 +1082,22 @@ export const useDeepgram = () => {
             audioChunksSent: flags.audioChunksSent,
             transcriptReceived: flags.transcriptReceived,
             gotDgMessage: dgMessageSeenRef.current,
+            // v4.195.0: caller audibly spoke since these sockets went live.
+            heardSpeech: lastLoudAudioAtRef.current > streamingStartedAt,
             retriesLeft: CONNECT_STALL_MAX_RETRIES - connectStallRetriesRef.current,
             recorderRetriesLeft:
               CONNECT_RECORDER_MAX_RETRIES - connectRecorderRetriesRef.current,
           });
           if (verdict === "ok") return;
           if (verdict === "stall-reconnect") {
-            // Audio IS flowing but Deepgram never answered — dead pipe.
+            // Audio IS flowing but no words came back (dead or deaf pipe).
             // Rebuild sockets NOW instead of aging to the 60s red chip.
             connectStallRetriesRef.current += 1;
-            setConnectionMessage("Deepgram not responding — reconnecting…");
+            setConnectionMessage("No words from Deepgram — reconnecting…");
             catWarn(
-              `[Deepgram:stall] audio sent, zero Deepgram messages — auto reconnect (try ${connectStallRetriesRef.current}/${CONNECT_STALL_MAX_RETRIES})`,
+              `[Deepgram:stall] audio sent, no words (dgMsg=${dgMessageSeenRef.current}) — auto reconnect (try ${connectStallRetriesRef.current}/${CONNECT_STALL_MAX_RETRIES})`,
             );
-            reconnectStreamRef.current?.();
+            reconnectStreamRef.current?.("auto");
             return;
           }
           if (verdict === "recorder-rebuild") {
@@ -1211,7 +1227,8 @@ export const useDeepgram = () => {
                     });
                   }
                   clearKeepalive();
-                  clearWatchdog();
+                  // v4.195.0: watchdog stays armed until the first WORD
+                  // (it used to die here, 100-250 ms in, and never ran).
                 }
               }
             });
@@ -1345,10 +1362,11 @@ export const useDeepgram = () => {
 
         ws.onmessage = (message) => {
           // v4.148.0: ANY traffic (Metadata, empty Results, …) proves the pipe
-          // is alive — arm the probe and give the stall budget back.
+          // is open. v4.195.0: it no longer refills the stall budget — a deaf
+          // socket sends empty Results, so the refill made an endless 12s
+          // rebuild loop. Only real words refill it (first-transcript block).
           if (!dgMessageSeenRef.current) {
             dgMessageSeenRef.current = true;
-            connectStallRetriesRef.current = 0;
           }
           let received;
           try {
@@ -1503,6 +1521,12 @@ export const useDeepgram = () => {
 
           if (!connectFlagsRef.current.transcriptReceived) {
             syncConnectProgress({ transcriptReceived: true, phase: "ready" });
+            // v4.195.0: first real word = proof of life -> watchdog done,
+            // stall budget refilled, connect run recorded.
+            clearWatchdog();
+            connectStallRetriesRef.current = 0;
+            const run = endRun(connectRunRef, { word: true });
+            if (run) catLog(describeRun(run));
           }
           syncConnectProgress({
             lastTranscriptStringAt: Date.now(),
@@ -1753,20 +1777,32 @@ export const useDeepgram = () => {
         return ws;
       };
 
-      const firstLang = multiMode ? "multi" : pair.left;
-      socketRefEn.current = createSocket(firstLang, stream, {
-        socketSide: "En",
-        isFirst: true,
-      });
-      if (!multiMode) {
-        // v4.153.0: parallel ES open (see the note in ws.onopen).
-        syncConnectProgress({ socketEs: "connecting" });
-        socketRefEs.current = createSocket(pair.right, stream, {
-          socketSide: "Es",
-          isFirst: false,
+      const openSockets = () => {
+        const firstLang = multiMode ? "multi" : pair.left;
+        socketRefEn.current = createSocket(firstLang, stream, {
+          socketSide: "En",
+          isFirst: true,
         });
+        if (!multiMode) {
+          // v4.153.0: parallel ES open (see the note in ws.onopen).
+          syncConnectProgress({ socketEs: "connecting" });
+          socketRefEs.current = createSocket(pair.right, stream, {
+            socketSide: "Es",
+            isFirst: false,
+          });
+        }
+        armOpenStall(); // v4.103.2: hang = sockets never open → auto-retry
+      };
+      if (!hadSockets) {
+        openSockets();
+      } else {
+        // v4.195.0: same-tick close+open was CONNECT's deaf-socket bug.
+        setTimeout(() => {
+          if (connectAttemptIdRef.current !== myAttemptId) return; // superseded
+          if (socketRefEn.current || socketRefEs.current) return; // someone else opened
+          openSockets();
+        }, SOCKET_REOPEN_GAP_MS);
       }
-      armOpenStall(); // v4.103.2: hang = sockets never open → auto-retry
     },
     [
       isCallDetectionEnabled,
@@ -2810,8 +2846,11 @@ export const useDeepgram = () => {
     [beginStream, closeConnections],
   );
 
-  const reconnectStream = useCallback(() => {
-    critLog("warn", "manual reconnectStream()");
+  const reconnectStream = useCallback((why) => {
+    // v4.195.0: auto heals pass "auto"; the ZAP button passes a click event.
+    const auto = why === "auto";
+    critLog("warn", auto ? "auto reconnectStream()" : "manual reconnectStream()");
+    noteRunHeal(connectRunRef.current, auto ? "auto" : "zap");
     connectAttemptIdRef.current += 1;
     clearWatchdog();
     reconnectAttemptsRef.current = 0; // Reset manual attempts
@@ -2834,7 +2873,7 @@ export const useDeepgram = () => {
         // If stream is dead, we need a full restart
         startRecording();
       }
-    }, 400);
+    }, SOCKET_REOPEN_GAP_MS);
   }, [closeConnections, startDeepgram, startRecording, clearWatchdog, resetConnectProgress, critLog]);
 
   const toggleLanguage = useCallback(() => {
@@ -2861,8 +2900,27 @@ export const useDeepgram = () => {
   // v4.148.1: 65s → 35s. The clock is trustworthy now and the recorder-must-
   // still-be-sending + 120s-cooldown guards stay, so the loop risk that sized
   // the old 65s wait is gone. Rules are the pure, tested shouldAutoZap().
-  const lastAutoZapAtRef = useRef(0);
+  // v4.195.0: connect reliability — a run opens at call start and closes at
+  // the first word (closed in ws.onmessage) or when the call ends wordless.
   useEffect(() => {
+    if (isActive) {
+      connectRunRef.current = startRun();
+      // Speech auto-start: the first word can arrive before isActive commits.
+      if (connectFlagsRef.current.transcriptReceived) {
+        const run = endRun(connectRunRef, { word: true });
+        if (run) catLog(describeRun(run));
+      }
+      return;
+    }
+    const run = endRun(connectRunRef);
+    if (run) catLog(describeRun(run));
+  }, [isActive]);
+
+  const lastAutoZapAtRef = useRef(0);
+  const lastDeafHealAtRef = useRef(0);
+  const deafHealsRef = useRef(0);
+  useEffect(() => {
+    if (!isActive) deafHealsRef.current = 0; // new call = fresh heal budget
     if (!isActive || connectionState !== "connected") {
       sttStallRef.current = null;
       setSttStall(null);
@@ -2888,12 +2946,19 @@ export const useDeepgram = () => {
         setSttStall(stall);
       }
       // 'deaf' = Deepgram answers with empty Results while we talk. A fresh
-      // socket is the only self-heal; shares the auto-Zap 2-min cooldown.
-      if (stall === "deaf" && now - lastAutoZapAtRef.current >= 120000) {
-        lastAutoZapAtRef.current = now;
-        critLog("warn", "auto reconnectStream: speech heard, no words 20s+");
+      // socket is the only self-heal. v4.195.0: own 30s cooldown, max 3 per
+      // call (was one per 2 min — a deaf start stayed deaf for minutes).
+      if (
+        stall === "deaf" &&
+        deafHealsRef.current < STT_DEAF_HEAL_MAX &&
+        now - lastDeafHealAtRef.current >= STT_DEAF_HEAL_COOLDOWN_MS
+      ) {
+        deafHealsRef.current += 1;
+        lastDeafHealAtRef.current = now;
+        lastAutoZapAtRef.current = now; // keep the silent-Zap below from doubling up
+        critLog("warn", `auto reconnectStream: speech heard, no words 10s+ (${deafHealsRef.current}/${STT_DEAF_HEAL_MAX})`);
         lastTextAtRef.current = now;
-        reconnectStream();
+        reconnectStream("auto");
         return;
       }
       const lastMsgAt = flags.lastDeepgramMessageAt || 0;
@@ -2941,7 +3006,7 @@ export const useDeepgram = () => {
       }
       lastAutoZapAtRef.current = now;
       critLog("warn", "auto reconnectStream: Deepgram silent 15s+ while speaking (or 35s+ total)");
-      reconnectStream();
+      reconnectStream("auto");
     }, 5000);
     return () => clearInterval(t);
   }, [isActive, connectionState, reconnectStream, critLog]);
