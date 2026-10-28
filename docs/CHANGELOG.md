@@ -3,6 +3,12 @@
 **Version source:** `src/constants/version.js` (must match `package.json` + top-right UI pill)
 
 
+## v4.195.1 - STT health UI stops lying (CONNECT Phase B)
+
+- ZAP (`#header-zap-btn`) glows amber + pulses while `sttStall` is set (same reason as the red banner).
+- `reconnectStream` sets `lastDataTime` to 0, not now → no fake 30s `TEXT ✓` after a ZAP. QUIET/STUCK use the message clock, so no false red.
+- Bottom rail: `Text`/`UI` dots expire after 30s (`DG_FRESH_TEXT_MS`); `In` dot + soundwave follow local loudness (`connectProgress.lastLoudAudioAt`, synced ≤1 per 0.7s), not MediaRecorder packets.
+
 ## v4.195.0 - CONNECT works like ZAP
 
 - CONNECT over live/warm sockets now closes them, waits `SOCKET_REOPEN_GAP_MS` (400 ms, same as ZAP), then opens the new pair. Same-tick close+open = deaf sockets on Deepgram.

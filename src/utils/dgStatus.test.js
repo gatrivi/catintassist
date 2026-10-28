@@ -189,3 +189,12 @@ describe('connectStallVerdict — words, not messages (v4.195.0)', () => {
     expect(connectStallVerdict({ ...sent, heardSpeech: true, retriesLeft: 0 })).toBe('ok');
   });
 });
+
+describe('dgStatus after a ZAP (v4.195.1)', () => {
+  it('text clock reset to 0 + fresh Deepgram messages = no TEXT ✓, but not red either', () => {
+    const s = dgStatus({ ...base, lastDataTime: 0, lastDeepgramMessageAt: NOW - 1_000 });
+    expect(s.freshText).toBe(false);
+    expect(s.stuck).toBe(false);
+    expect(s.quiet).toBe(false);
+  });
+});

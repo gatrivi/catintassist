@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { DG_FRESH_TEXT_MS } from '../utils/dgStatus';
 
 import { useTTS } from '../hooks/useTTS';
 import { useTranslate } from '../hooks/useTranslate';
@@ -1211,7 +1212,13 @@ export const TranscriptionBoard = ({
   );
   const lastAudioChunkAt = connectProgress?.lastAudioChunkAt || 0;
   const showSttSoundbar = connectionState === 'connected';
-  const audioHot = lastAudioChunkAt > 0 && sttNow - lastAudioChunkAt < 1400;
+  // v4.195.1: wave = someone audibly speaking (local RMS), not "a packet
+  // left" — the recorder ships silence too, so the old wave never stopped.
+  const lastLoudAudioAt = connectProgress?.lastLoudAudioAt || 0;
+  const audioHot = lastLoudAudioAt > 0 && sttNow - lastLoudAudioAt < 1400;
+  // v4.195.1: Text/UI dots go back to "waiting" after 30s with no words
+  // (they stayed lit forever after the first word of the session).
+  const freshAt = (t) => (t && sttNow - t < DG_FRESH_TEXT_MS ? t : 0);
   const enConfidence = Number.isFinite(connectProgress?.lastSocketEnConfidence)
     ? connectProgress.lastSocketEnConfidence
     : null;
@@ -1246,7 +1253,7 @@ export const TranscriptionBoard = ({
   const captureBlocked =
     (connectProgress?.captureBlockedAt || 0) > (connectProgress?.lastCaptionCommitAt || 0);
   const sttPipelineSteps = [
-    { key: 'heard', label: 'In', title: 'Sound heard by app', at: lastAudioChunkAt },
+    { key: 'heard', label: 'In', title: 'Speech-level sound heard by app', at: lastLoudAudioAt },
     { key: 'sent', label: 'API', title: 'Sound sent to Deepgram', at: lastAudioChunkAt },
     { key: 'dgmsg', label: 'DG', title: 'Deepgram answered', at: connectProgress?.lastDeepgramMessageAt || 0 },
     {
@@ -1255,14 +1262,14 @@ export const TranscriptionBoard = ({
       title: repeatedEmptyReply
         ? `Deepgram answered empty ${emptyReplyStreak} times; check the selected audio source`
         : 'Deepgram returned text',
-      at: connectProgress?.lastTranscriptStringAt || 0,
+      at: freshAt(connectProgress?.lastTranscriptStringAt),
       state: repeatedEmptyReply ? 'empty' : undefined,
     },
     {
       key: 'commit',
       label: captureBlocked ? 'UI×' : 'UI',
       title: captureBlocked ? 'Text returned but the active-call capture gate blocked rendering' : 'Text committed to UI',
-      at: connectProgress?.lastCaptionCommitAt || 0,
+      at: freshAt(connectProgress?.lastCaptionCommitAt),
       state: captureBlocked ? 'blocked' : undefined,
     },
   ];
@@ -1835,7 +1842,7 @@ export const TranscriptionBoard = ({
           {!socketHealth.alert && socketHealth.quiet && (
             <span className="stt-socket-quiet">· {socketHealth.quiet.text}</span>
           )}
-          <div className="stt-sound-wave" title={audioHot ? 'Audio chunks are reaching the app and being sent to Deepgram' : 'Waiting for speech'}>
+          <div className="stt-sound-wave" title={audioHot ? 'Someone is speaking — audio is going to Deepgram' : 'Quiet — no speech-level sound'}>
             {Array.from({ length: 14 }).map((_, i) => <span key={i} style={{ '--bar-i': i }} />)}
           </div>
           {sttPipelineSteps.map((step) => (

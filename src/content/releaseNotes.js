@@ -25,6 +25,29 @@ import { APP_VERSION } from '../constants/version';
 /** Newest first. Only the entry matching APP_VERSION is shown on load. */
 export const RELEASE_NOTES_CATALOG = [
   {
+    version: '4.195.1',
+    id: 'stt-ui-honest',
+    highlightElementIds: ['header-zap-btn'],
+    es: {
+      title: 'Las luces verdes ya no mienten',
+      intro: 'Si la transcripción se corta, el botón ZAP se pone ámbar y titila: un toque y vuelve.',
+      sections: [{ heading: 'Qué cambió', bullets: [
+        'TEXT ✓ solo con palabras reales (antes se prendía 30 s después de cada ZAP).',
+        'Puntos Text/UI de la barra de abajo se apagan tras 30 s sin palabras.',
+        'La onda de sonido se mueve solo cuando alguien habla, no con silencio.',
+      ] }],
+    },
+    en: {
+      title: 'Green lights no longer lie',
+      intro: 'When transcription stops, the ZAP button turns amber and pulses: one tap brings it back.',
+      sections: [{ heading: 'What changed', bullets: [
+        'TEXT ✓ only from real words (it used to light for 30 s after every ZAP).',
+        'Bottom-rail Text/UI dots go dark after 30 s with no words.',
+        'The soundwave moves only when someone speaks, not on silence.',
+      ] }],
+    },
+  },
+  {
     version: '4.195.0',
     id: 'connect-like-zap',
     highlightElementIds: ['transcript-pane'],

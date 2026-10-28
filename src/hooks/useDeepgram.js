@@ -313,6 +313,7 @@ export const useDeepgram = () => {
   // actually LOUD locally (RMS). Separates a dead Deepgram pipe (Zap fixes)
   // from a silent mic/tab/headset route (Zap useless). Local-only analyser.
   const lastLoudAudioAtRef = useRef(0);
+  const lastLoudSyncAtRef = useRef(0); // v4.195.1: UI copy, max ~1 render/0.7s
   // v4.195.0: open connect run (call start -> first word), utils/connectRuns.js
   const connectRunRef = useRef(null);
   const callVadCtxRef = useRef(null);
@@ -750,7 +751,17 @@ export const useDeepgram = () => {
             sum += v * v;
           }
           const rms = Math.sqrt(sum / buf.length);
-          if (rms >= IDLE_EAR_RMS_THRESHOLD) lastLoudAudioAtRef.current = Date.now();
+          if (rms >= IDLE_EAR_RMS_THRESHOLD) {
+            const now = Date.now();
+            lastLoudAudioAtRef.current = now;
+            // v4.195.1: soundwave + "In" dot follow real loudness, not packets
+            // (MediaRecorder sends chunks of pure silence too).
+            if (now - lastLoudSyncAtRef.current > 700) {
+              lastLoudSyncAtRef.current = now;
+              connectFlagsRef.current = { ...connectFlagsRef.current, lastLoudAudioAt: now };
+              setConnectProgress(connectFlagsRef.current);
+            }
+          }
         } catch (_) {}
       };
       callVadIntervalRef.current = createUnthrottledInterval(tick, 250);
@@ -2863,9 +2874,10 @@ export const useDeepgram = () => {
     resetConnectProgress();
     setConnectionState("connecting");
     setConnectionMessage("Reconnecting to Deepgram...");
-    // v4.136.0: the text clock restarts with the connection — the chip must
-    // never keep ageing a pre-Zap transcript once the new sockets are live.
-    setLastDataTime(Date.now());
+    // v4.195.1: no text yet on the new sockets → no TEXT ✓. Faking "now"
+    // painted TEXT ✓ for 30s on a deaf reconnect. QUIET/STUCK run on the
+    // message clock, so a zero here can't turn the chip red.
+    setLastDataTime(0);
     setTimeout(() => {
       if (streamRef.current && isActiveRef.current)
         startDeepgram(streamRef.current);

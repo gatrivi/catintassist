@@ -514,6 +514,20 @@ body {
   color: rgba(255, 255, 255, 0.95);
 }
 
+/* v4.195.1: ZAP glows amber while transcription is stalled — the fix is one tap. */
+.header-chrome-btn.header-zap-stall {
+  background: #f59e0b;
+  border-color: rgba(245, 158, 11, 0.9);
+  color: #111;
+  animation: headerZapStall 1.2s ease-in-out infinite;
+}
+@keyframes headerZapStall {
+  50% { box-shadow: 0 0 12px rgba(245, 158, 11, 0.7); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .header-chrome-btn.header-zap-stall { animation: none; }
+}
+
 /* Colored accents — hierarchy: connect (most) → break → hold → logoff (least). */
 .header-accent-connect {
   background: #10b981 !important;

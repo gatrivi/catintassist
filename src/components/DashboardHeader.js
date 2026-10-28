@@ -312,6 +312,7 @@ const SessionControlsSticky = React.memo(({
   disableZap,
   isZapping,
   onReconnectStream,
+  sttStall = null,
 
   // Call micro bar
   silenceCount,
@@ -585,10 +586,16 @@ const SessionControlsSticky = React.memo(({
                 <button
                   id="header-zap-btn"
                   type="button"
-                  className={`header-chrome-btn${isZapping ? ' is-on' : ''}`}
+                  className={`header-chrome-btn${isZapping ? ' is-on' : ''}${sttStall ? ' header-zap-stall' : ''}`}
                   onClick={disableZap ? undefined : () => onReconnectStream()}
                   disabled={disableZap}
-                  title={disableZap ? 'ZAP disabled' : 'ZAP - Reconnect Audio Stream'}
+                  title={
+                    disableZap
+                      ? 'ZAP disabled'
+                      : sttStall
+                        ? 'Transcription stopped — press ZAP to reconnect'
+                        : 'ZAP - Reconnect Audio Stream'
+                  }
                 >
                   <ZapIcon size={14} />
                 </button>
@@ -908,6 +915,7 @@ const SessionControlsSticky = React.memo(({
 });
 
 export const DashboardHeader = ({
+  sttStall = null,
   onAttachAudio,
   onAttachAudioFresh,
   onStartCall,
@@ -3573,6 +3581,7 @@ ${isInDeficit ? `⚠️ DEFICIT: Behind pace by ${Math.round(monthlyDeficitMins)
         disableZap={false}
         isZapping={isZapping}
         onReconnectStream={handleZap}
+        sttStall={sttStall}
 
         silenceCount={silenceCount}
         lastEnglishActivityTime={lastEnglishActivityTime}

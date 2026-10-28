@@ -1008,6 +1008,7 @@ const Dashboard = () => {
       </a>
 
       <DashboardHeader
+        sttStall={sttStall}
         onAttachAudio={() => handleAttachAudio(false)}
         onAttachAudioFresh={() => handleAttachAudio(true)}
         onStartCall={() => handleStartCall(false)}
