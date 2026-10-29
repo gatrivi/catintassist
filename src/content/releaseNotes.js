@@ -25,6 +25,31 @@ import { APP_VERSION } from '../constants/version';
 /** Newest first. Only the entry matching APP_VERSION is shown on load. */
 export const RELEASE_NOTES_CATALOG = [
   {
+    version: '4.199.0',
+    id: 'transcription-four-faults',
+    highlightElementIds: ['transcript-pane'],
+    es: {
+      title: 'Transcripción: 4 fallas arregladas',
+      intro: 'Párrafos que desaparecían, palabras comidas, idioma equivocado y lentitud.',
+      sections: [{ heading: 'Qué cambió', bullets: [
+        'Un número que crece ("4" → "45 años…") ya no congela la burbuja: el resto del párrafo aparece.',
+        'Frases repetidas tras una pausa ("el doctor… el doctor dijo") ya no se borran.',
+        'Idioma = voto por palabra (antes: la primera etiqueta de Deepgram).',
+        'Menos repintados por paquete y la consola ya no se inunda de avisos.',
+      ] }],
+    },
+    en: {
+      title: 'Transcription: 4 faults fixed',
+      intro: 'Vanishing paragraphs, eaten words, wrong language, and lag.',
+      sections: [{ heading: 'What changed', bullets: [
+        'A growing number ("4" → "45 years old…") no longer freezes the bubble — the rest of the paragraph shows.',
+        'Words repeated across a pause ("the doctor… the doctor said") are no longer deleted.',
+        'Language = per-word vote (was: Deepgram’s first tag).',
+        'Far fewer re-renders per packet; console no longer floods with warnings.',
+      ] }],
+    },
+  },
+  {
     version: '4.198.0',
     id: 'lane-hysteresis',
     highlightElementIds: ['transcript-pane'],

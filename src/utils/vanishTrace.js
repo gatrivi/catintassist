@@ -5,8 +5,11 @@
  * Usage: window.__catintVanishTrace  ·  window.__catintVanishOn = false to mute
  */
 
-import { catWarn } from "./catLog";
+import { catLog, catWarn } from "./catLog";
 const MAX = 400;
+// v4.199.0: console = real loss only, max one line per reason per 3 s.
+const CONSOLE_GAP_MS = 3000;
+const lastConsoleAt = {};
 
 const wordList = (t) => (t || '').trim().split(/\s+/).filter(Boolean);
 
@@ -76,8 +79,18 @@ export function flagVanish(reason, detail = {}) {
   buf.push(entry);
   if (buf.length > MAX) buf.splice(0, buf.length - MAX);
 
-  // eslint-disable-next-line no-console
-  catWarn('[CAT VANISH]', reason, entry);
+  // v4.199.0: splits / rewrites / guards fired a console WARN on every
+  // Deepgram packet (~200 lines/s) — that alone lagged the page and buried
+  // real faults. Everything still lands in the buffer + __CAT_DUMP ring; the
+  // console only shows words that really vanished, throttled per reason.
+  const realLoss = lost.length > 0 && !entry.remount;
+  const t = Date.now();
+  if (realLoss && t - (lastConsoleAt[reason] || 0) >= CONSOLE_GAP_MS) {
+    lastConsoleAt[reason] = t;
+    catWarn('[CAT VANISH]', reason, entry);
+  } else {
+    catLog('[CAT VANISH]', reason, entry);
+  }
   return entry;
 }
 

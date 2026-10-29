@@ -2051,8 +2051,7 @@ export const removeOverlapPreservingDigitSequences = (base, addition) => {
         .slice(0, Math.min(aWordsRaw.length, bestOverlap + 8))
         .join(' '),
     ].join(' ');
-    // eslint-disable-next-line no-console
-    if (process.env.NODE_ENV !== 'production') console.log('[OVERLAP]', bestOverlap, 'words:', overlapText);
+    // v4.199.0: was a console.log per packet in dev — now silent.
     if (
       /\d/.test(overlapText) ||
       overlapSlice.some(isNumberLike) ||

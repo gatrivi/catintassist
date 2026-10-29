@@ -35,9 +35,11 @@ export const digitRunKeys = (text) =>
   (String(text || '').match(/\d[\d\s,.-]*\d|\d/g) || []).map((run) =>
     run.replace(/\D/g, ''),
   );
+// v4.199.0: a run that GREW ("4" → "45", "555 12" → "555 123 4567") is kept,
+// not lost — the old exact match froze any draft whose number was still being said.
 export const lostDigitRuns = (prevText, nextText) => {
-  const nextKeys = new Set(digitRunKeys(nextText));
-  return [...new Set(digitRunKeys(prevText))].filter((key) => !nextKeys.has(key));
+  const nextKeys = digitRunKeys(nextText);
+  return [...new Set(digitRunKeys(prevText))].filter((key) => !nextKeys.some((n) => n.includes(key)));
 };
 
 // v4.181.0 — the digit rule, refined. Old: a digit run may never leave the
@@ -400,6 +402,7 @@ export const reduceTranscriptEvent = (prev, event, ctx) => {
     laneSide: eventLaneSide,
     channelKey,
     startTime,
+    duration,
     now,
     isSilentBreak: wallClockSilentBreak,
     protectionsOn,
@@ -594,7 +597,18 @@ export const reduceTranscriptEvent = (prev, event, ctx) => {
   // One guard call per event. The split below only fires when this guard removed
   // NOTHING (`guardStripped === false`), and a brand-new bubble has no base text
   // to strip against anyway — so `cleaned` is valid in both branches.
-  let cleaned = removeOverlapPreservingDigitSequences(baseContext, transcript);
+  // v4.199.0: Deepgram never re-sends audio it already finalized — a final
+  // whose start is at/after the end of the audio already shown is NEW speech,
+  // so a repeated phrase ("see the doctor… the doctor said") is real and must
+  // stay. The overlap guard used to eat it (words missing on every short
+  // pause). Unknown timing / a reconnect (clock restarts at 0) = old guard.
+  const shownAudioEnd = Math.max(
+    -1,
+    ...prev.slice(-4).map((r) => Number(r?.audioEnd?.[channelKey])).filter(Number.isFinite),
+  );
+  const isNewAudio =
+    Number.isFinite(startTime) && shownAudioEnd >= 0 && startTime >= shownAudioEnd - 0.05;
+  let cleaned = isNewAudio ? String(transcript).trim() : removeOverlapPreservingDigitSequences(baseContext, transcript);
   const guardStripped = wordCount(cleaned) < wordCount(transcript);
 
   // v4.151.0 - a restated segment SUPERSEDES the row it repeats instead of
@@ -610,7 +624,7 @@ export const reduceTranscriptEvent = (prev, event, ctx) => {
   // already finalized on this lane (head or middle - the guard above cleans tails).
   // A number at the boundary still vetoes it (v4.146.0 phone protector).
   const restatedWords =
-    !startsAfterPeriod && !guardStripped && !restartBoundaryHasNumbers(laneFinalized, transcript)
+    !isNewAudio && !startsAfterPeriod && !guardStripped && !restartBoundaryHasNumbers(laneFinalized, transcript)
       ? restatedHeadWindow(laneFinalized, transcript)
       : 0;
   let supersedeInPlace = false;
@@ -630,6 +644,7 @@ export const reduceTranscriptEvent = (prev, event, ctx) => {
       cleaned = '';
     }
   } else if (
+    !isNewAudio &&
     cleaned.trim() &&
     dupTokens(laneFinalized).length >= RESTART_MIN_WORDS &&
     !restartBoundaryHasNumbers(laneFinalized, cleaned) &&
@@ -739,15 +754,33 @@ export const reduceTranscriptEvent = (prev, event, ctx) => {
   if (langMode === "left") winnerLang = pair.left;
   else if (langMode === "right") winnerLang = pair.right;
 
-  const winSide = laneSideForLang(winnerLang, pair);
+  let winSide = laneSideForLang(winnerLang, pair);
   // v4.136.0: a lane flip that would drop a digit run (zip/phone) keeps the
   // visible text — digits already shown must never vanish on a lane switch.
-  const nextText = winSide === "en" ? enFull : esFull;
+  let nextText = winSide === "en" ? enFull : esFull;
   // v4.181.0: a run still visible in another recent row may go.
   const lostDigits = lostDigitRuns(textBeforeLane, nextText).filter(
     (key) => !digitsShownElsewhere(prev, current.id, [key]),
   );
-  if (lostDigits.length) {
+  // v4.199.0: the guard used to FREEZE the bubble for good, so every later
+  // word of the paragraph was dropped. Now:
+  //  - a number that GREW is not lost (see lostDigitRuns);
+  //  - a lane flip that would drop digits stays on the lane already shown,
+  //    and that lane keeps growing;
+  //  - a changed number (4567 → 4568) still holds the old text, but only
+  //    while no real speech follows: 4+ new words = the newer text wins.
+  const prevSide = current.lang ? laneSideForLang(current.lang, pair) : null;
+  if (lostDigits.length && prevSide && prevSide !== winSide) {
+    const keepText = prevSide === "en" ? enFull : esFull;
+    if (keepText.trim() && !lostDigitRuns(textBeforeLane, keepText).length) {
+      winSide = prevSide;
+      winnerLang = current.lang;
+      nextText = keepText;
+    }
+  }
+  const stillLost = lostDigits.length > 0 && lostDigitRuns(textBeforeLane, nextText).length > 0;
+  const speechMovedOn = wordCount(nextText) - wordCount(textBeforeLane) >= 4;
+  if (stillLost && !speechMovedOn) {
     flagVanish('caption_lane_digit_guard', {
       id: current.id,
       turnId: current.turnId,
@@ -787,6 +820,12 @@ export const reduceTranscriptEvent = (prev, event, ctx) => {
   current.enFull = enFull;
   current.esFull = esFull;
   current.isFinal = shouldFinalize;
+  // v4.199.0: end of the FINAL audio this row shows, per socket (see isNewAudio).
+  if (shouldFinalize && Number.isFinite(startTime) && Number(duration) > 0) {
+    const end = startTime + Number(duration);
+    const prevEnd = Number(current.audioEnd?.[channelKey]);
+    current.audioEnd = { ...(current.audioEnd || {}), [channelKey]: Number.isFinite(prevEnd) ? Math.max(prevEnd, end) : end };
+  }
   // v4.186.0: remember which audio the draft covers (see rewritesDraft).
   current.interimStart = shouldFinalize ? null : startTime;
   if (!shouldFinalize) {

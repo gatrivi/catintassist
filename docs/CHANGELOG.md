@@ -3,6 +3,14 @@
 **Version source:** `src/constants/version.js` (must match `package.json` + top-right UI pill)
 
 
+## v4.199.0 - transcription: 4 faults (user: "drops entire paragraphs", wrong words, wrong language, laggy)
+
+1. **Paragraphs vanished:** the lane digit guard froze a bubble whenever a number grew ("4" → "45") — every later word was never shown or sealed. Growth now counts as kept; a flip stays on the shown lane; a changed number holds only until 4+ new words arrive. `captionEngine.js`.
+2. **Wrong language:** multi lane = per-word `language` vote (digits don't vote), was `languages[0]`. `multiLangOf` in `applyDeepgramTranscriptPayload.js`.
+3. **Lag:** `syncConnectProgress` re-rendered the app 2-3x per packet → per-packet counters repaint every 250 ms; silence clock every 500 ms; `[CAT VANISH]` console = real loss only, 1 line/reason/3 s (all still in `__CAT_DUMP`).
+4. **Eaten words:** overlap/restate guards deleted phrases repeated across a pause. A final whose audio starts after the shown audio end (`row.audioEnd[socket]`) is new speech → kept. No timing / reconnect = old guard.
+- Tests: `transcriptionPhase2.test.js` (fault 1 + 4 tests failed before the fix).
+
 ## v4.198.0 - lane hysteresis (flaw 10)
 
 - One multi socket + sentence split (no silence = same turn): a chunk with NO language evidence (digits, email, OK, sí, no, mhm…) keeps the previous bubble's lane. Before: Deepgram tagged it at random → ES bubble flipped to EN → translated the wrong way → blank. Real words still flip ("What is your name?" → "Me llamo Juan").

@@ -40,7 +40,7 @@ import {
   patchEngineCaption,
   CAPTION_PATCH_EVENT,
 } from "../utils/captionEngine";
-import { applyDeepgramTranscriptPayload } from "../utils/applyDeepgramTranscriptPayload";
+import { applyDeepgramTranscriptPayload, multiLangOf } from "../utils/applyDeepgramTranscriptPayload";
 import { readTurnEndSwitch, isUtteranceEndMessage, isTurnBreak } from "../utils/turnEnd";
 import {
   STT_LATENCY_CHANGED_EVENT,
@@ -118,6 +118,17 @@ const STT_TRACE_LIMIT = 300;
 
 /** Opt-in per-chunk/per-message console spam. Buffer (`window.__catintSttTrace`) always runs. */
 const STT_VERBOSE_KEY = "catint_stt_verbose";
+
+// v4.199.0: per-packet counters — repainted at most every PROGRESS_PAINT_MS.
+const PROGRESS_PAINT_MS = 250;
+const HOT_PROGRESS_KEYS = new Set([
+  "lastDeepgramMessageAt", "lastSocketEnMessageAt", "lastSocketEsMessageAt",
+  "lastSocketEnConfidence", "lastSocketEsConfidence", "lastSocketEnHadText", "lastSocketEsHadText",
+  "socketEnWords", "socketEsWords", "socketEnLastTextAt", "socketEsLastTextAt",
+  "lastEmptyTranscriptAt", "emptyTranscriptStreak", "lastTranscriptStringAt", "lastTranscriptText",
+  "lastTranscriptConfidence", "lastWordConfidenceCount", "lastCaptionCommitAt",
+]);
+
 export const isSttVerbose = () => {
   try {
     return localStorage.getItem(STT_VERBOSE_KEY) === "1";
@@ -239,6 +250,7 @@ export const useDeepgram = () => {
   const [sttStall, setSttStall] = useState(null);
   const sttStallRef = useRef(null);
   const lastTextAtRef = useRef(0); // ref twin of lastDataTime for the 5s watchdog
+  const lastDataPaintAtRef = useRef(0); // v4.199.0: last setLastDataTime repaint
   // Work calls must always start on Tab STT. A past mic test may never hijack
   // the next call after refresh.
   const [micTestMode, setMicTestModeState] = useState(false);
@@ -416,9 +428,26 @@ export const useDeepgram = () => {
     lastError: null,
   });
 
+  // v4.199.0 lag fix: every Deepgram packet called this 2-3x, and each call
+  // re-rendered the whole app (~30 renders/s mid-sentence). The ref (what the
+  // logic reads) still updates at once; the React state only repaints every
+  // 250 ms for per-packet counters. Anything else (phase, socket state,
+  // errors, first word) repaints immediately, as before.
+  const progressPaintTimerRef = useRef(null);
   const syncConnectProgress = (patch) => {
     connectFlagsRef.current = { ...connectFlagsRef.current, ...patch, lastUpdatedAt: Date.now() };
-    setConnectProgress(connectFlagsRef.current);
+    const hotOnly = Object.keys(patch || {}).every((k) => HOT_PROGRESS_KEYS.has(k));
+    if (!hotOnly) {
+      if (progressPaintTimerRef.current) clearTimeout(progressPaintTimerRef.current);
+      progressPaintTimerRef.current = null;
+      setConnectProgress(connectFlagsRef.current);
+      return;
+    }
+    if (progressPaintTimerRef.current) return;
+    progressPaintTimerRef.current = setTimeout(() => {
+      progressPaintTimerRef.current = null;
+      setConnectProgress(connectFlagsRef.current);
+    }, PROGRESS_PAINT_MS);
   };
 
   // Critical-only console logs for outage hotfixing.
@@ -1528,9 +1557,7 @@ export const useDeepgram = () => {
 
           const socketLaneLang =
             lang === "multi"
-              ? received.channel?.detected_language ||
-                alt?.languages?.[0] ||
-                pair.left
+              ? multiLangOf(received, pair.left) // v4.199.0: word vote
               : lang;
           const laneSide = laneSideForLang(socketLaneLang, pair);
 
@@ -1580,7 +1607,12 @@ export const useDeepgram = () => {
           // old confidence>0.4 gate froze it during mumbled stretches, so the
           // status chip aged to DG STUCK while text still flowed to the board.
           // Confidence>0.4 stays the gate for activity/billing signals only.
-          setLastDataTime(Date.now());
+          // v4.199.0: repaint the silence clock at most every 500 ms (was per
+          // packet = an App-wide re-render each time). The ref stays exact.
+          if (Date.now() - lastDataPaintAtRef.current >= 500) {
+            lastDataPaintAtRef.current = Date.now();
+            setLastDataTime(lastDataPaintAtRef.current);
+          }
           lastTextAtRef.current = Date.now();
           if (isCallDetectionEnabled && confidence > 0.4) {
             // Hold music/announcements heard WHILE holding are more of the
