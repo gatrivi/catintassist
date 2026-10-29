@@ -6,6 +6,7 @@ import { readCallerMonitor } from '../utils/callerMonitor';
 import { logRouteEvent, ROUTE_EVENT } from '../utils/routeDiagnostics';
 import { readMicTestMode } from '../utils/micMode';
 import { isLocalOnlyPlayback } from '../utils/audioSelfTest';
+import { catLog, catError } from '../utils/catLog';
 
 export const useTTS = () => {
   const [isPlaying, setIsPlaying] = useState(false);
@@ -59,7 +60,7 @@ export const useTTS = () => {
       if (!isCurrent()) return;
       if (!audioUrl) {
         // FALLBACK: Browser Speech Synthesis — always local speakers
-        console.log("Using browser synthesis fallback...");
+        catLog('[TTS] Using browser synthesis fallback...');
         logRouteEvent(ROUTE_EVENT.PLAY_START, {
           clipKey: 'tts',
           routeMode: localOnly ? 'local_speakers' : 'speech_synthesis',
@@ -172,10 +173,10 @@ export const useTTS = () => {
         clearInterval(ttsTimer);
         if (!isCurrent()) return;
         window.__CAT_AUDIO_VOL = 0;
-        console.error('Local play error:', e);
+        catError('[TTS] Local play error:', e);
       });
       if (selectedSinkId && !sinkViaPassthrough) {
-        audioSink.play().catch((e) => console.error('Sink play error:', e));
+        audioSink.play().catch((e) => catError('[TTS] Sink play error:', e));
       }
     } catch (err) {
       if (!isCurrent()) return;

@@ -11,6 +11,7 @@ import {
   listStorageKeys,
 } from '../utils/storage';
 import { fileNameForBlob, keyFromFileName, extToMime } from '../utils/recordingFileNaming';
+import { catWarn, catError } from '../utils/catLog';
 import { bindAudioToSink, primePlaybackElements, rampVolume } from '../utils/audioRoute';
 import { readRouteModePreference, ROUTE_MODE } from '../utils/audioRoutePassthrough';
 import { readCallerMonitor } from '../utils/callerMonitor';
@@ -290,7 +291,7 @@ export const GreetingsPanel = ({ onEditModeChange, onExitStudio, micTestMode = f
     try {
       setStorageSummary(await getStorageSummary());
     } catch (e) {
-      console.warn('Storage summary failed:', e);
+      catWarn('[Greetings:storage] Storage summary failed:', e);
     }
   };
 
@@ -426,7 +427,7 @@ export const GreetingsPanel = ({ onEditModeChange, onExitStudio, micTestMode = f
       URL.revokeObjectURL(url);
     } catch (e) {
       alert('Export failed — see console');
-      console.error(e);
+      catError('[Greetings:backup] Export failed:', e);
     } finally {
       setStorageBusy(false);
     }
@@ -443,7 +444,7 @@ export const GreetingsPanel = ({ onEditModeChange, onExitStudio, micTestMode = f
       alert(`Restored ${count} item(s) from backup.`);
     } catch (e) {
       alert('Import failed — invalid or corrupt backup file');
-      console.error(e);
+      catError('[Greetings:backup] Import failed:', e);
     } finally {
       setStorageBusy(false);
     }
@@ -472,7 +473,7 @@ export const GreetingsPanel = ({ onEditModeChange, onExitStudio, micTestMode = f
       alert(`Downloaded ${all.length} file(s). Keep the filenames — upload uses them to re-assign each clip.`);
     } catch (e) {
       alert('Download failed — see console');
-      console.error(e);
+      catError('[Greetings:backup] Download failed:', e);
     } finally {
       setStorageBusy(false);
     }
@@ -509,7 +510,7 @@ export const GreetingsPanel = ({ onEditModeChange, onExitStudio, micTestMode = f
       );
     } catch (e) {
       alert('Upload failed — see console');
-      console.error(e);
+      catError('[Greetings:backup] Upload failed:', e);
     } finally {
       setStorageBusy(false);
     }
@@ -603,7 +604,7 @@ export const GreetingsPanel = ({ onEditModeChange, onExitStudio, micTestMode = f
           if (res.loudness) nextLoud[key] = res.loudness;
           if (res.chop) nextChop[key] = res.chop;
         } catch (e) {
-          console.warn('Waveform decode failed:', key, e);
+          catWarn('[Greetings:waveform] Waveform decode failed:', key, e);
         }
       }
       if (cancelled) return;
@@ -677,7 +678,7 @@ export const GreetingsPanel = ({ onEditModeChange, onExitStudio, micTestMode = f
         return next;
       });
     } catch (e) {
-      console.warn('Health check failed:', e);
+      catWarn('[Greetings:health] Health check failed:', e);
     } finally {
       setIsAnalyzing(null);
     }
@@ -731,7 +732,7 @@ export const GreetingsPanel = ({ onEditModeChange, onExitStudio, micTestMode = f
         stream = await navigator.mediaDevices.getUserMedia(rawConstraints(recMicId));
       } catch (deviceErr) {
         if (!recMicId) throw deviceErr; // no id requested → real permission/absence error
-        console.warn('Greeting rec: mic id failed, retrying default —', deviceErr?.name);
+        catWarn('[Greetings:rec] Mic id failed, retrying default —', deviceErr?.name);
         stream = await navigator.mediaDevices.getUserMedia(rawConstraints(null));
       }
       // Use higher bitrate and webm/opus for better reliability
@@ -1063,7 +1064,7 @@ export const GreetingsPanel = ({ onEditModeChange, onExitStudio, micTestMode = f
         rampCancelRef.current = rampVolume(audioRefLocal.current, null, localVolume, 0);
       }
     } catch (e) {
-      console.error('Playback error:', e);
+      catError('[Greetings:play] Playback error:', e);
       logRouteEvent(ROUTE_EVENT.PLAY_FAIL, { clipKey: key, reason: e?.message });
       if (wasCallTest) {
         setLastRouteTest({ clipKey: key, result: 'fail', at: Date.now() });

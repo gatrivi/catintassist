@@ -462,7 +462,8 @@ export const useDeepgram = () => {
       lastCritLogAtRef.current = now;
       const phase = connectFlagsRef.current?.phase;
       const attemptId = connectAttemptIdRef.current;
-      console[level](`[CAT STT CRIT] ${message}`, {
+      const logFn = level === "error" ? catError : level === "warn" ? catWarn : catLog;
+      logFn(`[CAT STT CRIT] ${message}`, {
         phase,
         attemptId,
         isActive: isActiveRef.current,
@@ -839,7 +840,7 @@ export const useDeepgram = () => {
         mediaRecorderRef.current.stop();
       }
     } catch (e) {
-      console.warn("Failed to stop recorder:", e);
+      catWarn("[STT:recorder] Failed to stop recorder:", e);
     }
     mediaRecorderRef.current = null;
     setSttAudioRecording(false);
@@ -1307,7 +1308,7 @@ export const useDeepgram = () => {
 
           }
         } catch (err) {
-          console.error(err);
+          catError("[STT:recorder] MediaRecorder start error:", err);
           failConnection(`MediaRecorder failed: ${err.message}`, {
             failureCategory: FAILURE.AUDIO,
           });
@@ -1743,7 +1744,7 @@ export const useDeepgram = () => {
             perf.captionMs += dt;
             if (dt > 8 && process.env.NODE_ENV !== "production") {
               perf.captionSlow += 1;
-              console.warn("[captionEngine slow]", {
+              catWarn("[captionEngine slow]", {
                 ms: dt.toFixed(2),
                 transcriptLength: transcript.length,
                 isFinal,
@@ -1784,7 +1785,11 @@ export const useDeepgram = () => {
           if (ws !== socketRefEn.current && ws !== socketRefEs.current) return;
           const code = event?.code;
           const reason = event?.reason || "";
-          catError("[Deepgram:close] SOCKET CLOSED", { lang, socketSide, code, reason });
+          if (code === 1000 || code === 1005) {
+            catLog("[Deepgram:close] SOCKET CLOSED (clean)", { lang, socketSide, code, reason });
+          } else {
+            catError("[Deepgram:close] SOCKET CLOSED", { lang, socketSide, code, reason });
+          }
           syncConnectProgress({
             [sk]: "error",
             [skClose]: `${code}${reason ? `: ${reason}` : ""}`,
@@ -2168,7 +2173,7 @@ export const useDeepgram = () => {
       mediaRecorderRef.current.start(getMediaRecorderTimeslice(sttLatencyModeRef.current));
       return true;
     } catch (err) {
-      console.error("[IdleEar] recorder resume failed:", err);
+      catError("[IdleEar] recorder resume failed:", err);
       return false;
     }
   }, [syncConnectProgress]);
@@ -2656,7 +2661,7 @@ export const useDeepgram = () => {
       }
       return ok;
     } catch (err) {
-      console.error(err);
+      catError("[STT:stream] Capture error:", err);
       const attemptedSource = resolveSttSource({
         micTestMode: micTestModeRef.current,
         audioSourceMode: readAudioSourceMode(),
@@ -2786,7 +2791,7 @@ export const useDeepgram = () => {
       }
       return ok;
     } catch (err) {
-      console.error(err);
+      catError("[STT:stream] Capture error:", err);
       const attemptedSource = resolveSttSource({
         micTestMode: micTestModeRef.current,
         audioSourceMode: readAudioSourceMode(),

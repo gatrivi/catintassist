@@ -1,5 +1,6 @@
 import React from 'react';
 import { APP_VERSION_LABEL } from '../constants/version';
+import { catError } from '../utils/catLog';
 
 export class ErrorBoundary extends React.Component {
   state = { error: null };
@@ -9,7 +10,7 @@ export class ErrorBoundary extends React.Component {
   }
 
   componentDidCatch(error, info) {
-    console.error('[ErrorBoundary]', error, info?.componentStack);
+    catError('[ErrorBoundary]', error, { componentStack: info?.componentStack });
   }
 
   handleReload = () => {

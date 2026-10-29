@@ -16,7 +16,7 @@ import {
 import { loadGlossaryMode } from '../utils/glossaryMode';
 // v4.167.0 — FAST by default: the operator picks the translation latency ladder
 import { loadTranslationLatencyLadder } from '../utils/translationLatencyMode';
-import { catLog } from '../utils/catLog';
+import { catLog, catError } from '../utils/catLog';
 import { translateWithFallback } from '../utils/translationEngines';
 import { getTranslationApiKeys } from '../utils/translationRuntimeKeys';
 import { dedupeInFlight, withTranslationSlot } from '../utils/translationRequestQueue';
@@ -673,7 +673,7 @@ export const useTranslate = (
         }
       } catch (e) {
         if (e.name !== 'AbortError') {
-          console.error('[Trans] Catch:', e);
+          catError('[Trans] Catch:', e);
           // Failed round: keep frozen display, drop the badge.
           setIsStale(false);
         }

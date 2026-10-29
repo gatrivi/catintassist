@@ -21,6 +21,7 @@ import { readCallerMonitor } from '../utils/callerMonitor';
 import { generateObjectUrl } from '../utils/storage';
 import AudioEditorPanel from './AudioEditorPanel';
 import { APP_VERSION_LABEL } from '../constants/version';
+import { catError } from '../utils/catLog';
 import './GreetingEditorView.css';
 
 const SLOT_META = {
@@ -203,7 +204,7 @@ export const GreetingEditorView = ({ onExit, onOpenStudio, initialClipKey = null
       };
       rafRef.current = requestAnimationFrame(tick);
     } catch (e) {
-      console.error('Preview play failed:', e);
+      catError('[GreetingEditor] Preview play failed:', e);
       setPlayError(`Playback failed: ${e?.message || e}. Check the 🔊 output and retry.`);
       stopPlayback();
     }

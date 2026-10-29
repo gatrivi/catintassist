@@ -146,3 +146,4 @@
 | 2026-10-28T19:38:10.001Z | 8eb4007 | v4.196.0 engine phase 1 |
 | 2026-10-28T19:51:37.775Z | 6b5ab3e | v4.197.0 ssn cue + utterance end |
 | 2026-10-28T21:11:31.592Z | a5ac6eb | v4.198.0 lane hysteresis |
+| 2026-10-29T17:45:07.444Z | 2625180 | v4.199.0 transcription 4 faults |

@@ -16,6 +16,7 @@ import {
 import { analyzeClipLegibility } from '../utils/audioSelfTest';
 import { routeFamilyKey, MANUAL_CALL_OK_STORAGE, LEGACY_CALL_PATH_STORAGE } from '../utils/routeVerification';
 import { LAST_CALL_ARCHIVE_KEY } from '../utils/lastCallArchive';
+import { catWarn } from '../utils/catLog';
 
 const withoutKey = (store, key) => {
   const next = { ...store };
@@ -229,7 +230,7 @@ export const useGreetingClip = ({ onChange } = {}) => {
       window.dispatchEvent(new Event('catint_gates_updated'));
       return true;
     } catch (e) {
-      console.warn('Health check failed:', e);
+      catWarn('[GreetingClip:health] Health check failed:', e);
       if (mountedRef.current && probeRef.current === probeId) {
         setError(e.message || 'Health check failed — check connection or Deepgram key, then retry.');
       }

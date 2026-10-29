@@ -20,6 +20,7 @@ import {
   shouldAutoFixSink,
 } from '../utils/audioSourceManager';
 import { rememberDeviceLabels } from '../utils/audioDeviceLabels';
+import { catWarn, catError } from '../utils/catLog';
 
 const AudioSettingsContext = createContext();
 
@@ -77,7 +78,7 @@ export const AudioSettingsProvider = ({ children }) => {
           stream.getTracks().forEach(t => t.stop());
           devices = await navigator.mediaDevices.enumerateDevices();
         } catch (e) {
-          console.warn('Microphone permission denied.', e);
+          catWarn('[Audio:perm] Microphone permission denied.', e);
         }
       }
       const outputs = devices.filter(d => d.kind === 'audiooutput');
@@ -111,7 +112,7 @@ export const AudioSettingsProvider = ({ children }) => {
         }
       }
     } catch (err) {
-      console.error('Failed to enumerate audio devices:', err);
+      catError('[Audio:device] Failed to enumerate audio devices:', err);
     }
   }, [selectedSinkId]);
 
@@ -138,7 +139,7 @@ export const AudioSettingsProvider = ({ children }) => {
       // 1. Point the pipeline's output to the Virtual Microphone
       if (passthroughAudioRef.current.setSinkId) {
         try { await passthroughAudioRef.current.setSinkId(selectedSinkId || ''); } 
-        catch (e) { console.error("setSinkId fail on passthrough:", e); }
+        catch (e) { catError('[Audio:sink] setSinkId fail on passthrough:', e); }
       }
 
       // 2. Feed the actual Physical Mic into the pipeline
@@ -172,7 +173,7 @@ export const AudioSettingsProvider = ({ children }) => {
             let lastBarW = -1;
             const updateVolume = () => {
               if (!isMounted) {
-                audioCtx.close().catch(console.error);
+                audioCtx.close().catch((e) => catWarn('[Audio:ctx] audioCtx close fail:', e));
                 return;
               }
               meterFrame += 1;
@@ -246,7 +247,7 @@ export const AudioSettingsProvider = ({ children }) => {
             updateVolume();
           }
         } catch (e) {
-          console.error("Failed to capture physical mic for passthrough", e);
+          catError('[Audio:mic] Failed to capture physical mic for passthrough:', e);
           setMicStatus('no-signal');
           setMicLevel(0);
         }
@@ -413,7 +414,7 @@ export const AudioSettingsProvider = ({ children }) => {
       return { ok: true, mode: ROUTE_MODE.PASSTHROUGH };
     } catch (err) {
       if (cancellation()) return cancelledResult();
-      console.error('playClipToSink failed:', err);
+      catError('[Audio:sink] playClipToSink failed:', err);
       clipPlaybackStopRef.current = null;
       sinkPlaybackActiveRef.current = false;
       setSinkPlaybackActiveState(false);
@@ -443,7 +444,7 @@ export const AudioSettingsProvider = ({ children }) => {
         monitorGainRef.current = gain;
         source.connect(gain);
         gain.connect(ctx.destination); // local speakers only
-      }).catch(e => { console.error('Mic monitor failed:', e); setMonitorMic(false); });
+      }).catch(e => { catError('[Audio:mic] Mic monitor failed:', e); setMonitorMic(false); });
     } else {
       if (monitorStreamRef.current) { monitorStreamRef.current.getTracks().forEach(t => t.stop()); monitorStreamRef.current = null; }
       if (monitorCtxRef.current) { monitorCtxRef.current.close().catch(()=>{}); monitorCtxRef.current = null; }

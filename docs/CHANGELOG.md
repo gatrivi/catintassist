@@ -3,6 +3,16 @@
 **Version source:** `src/constants/version.js` (must match `package.json` + top-right UI pill)
 
 
+## v4.200.0 - console logs de-noised · safe error serialization · unified incident dump
+
+- **Console de-noiser:** identical consecutive or alternating logs within 3 seconds are throttled from flooding browser DevTools (200 lines → 1 line with summary badge `[×N]`). First occurrence always prints immediately with 0ms latency.
+- **Safe error serialization:** `serializeArg` in `src/utils/catLog.js` extracts `name`, `message`, `cause`, and `stack` from native `Error` instances, `DOMException`, and `Event` objects (was `JSON.stringify` rendering `{}` and erasing call stacks).
+- **Unified logger:** eliminated isolated `critLog` in `useDeepgram.js`; migrated 40+ raw `console.*` calls across `AudioSettingsContext`, `useTranslate`, `ErrorBoundary`, `GreetingsPanel`, and `OnCallSoundboardStrip` into `catLog`/`catWarn`/`catError`.
+- **Clean shutdown:** normal socket closures (`code 1000` / `1005`) logged as clean info, eliminating false red error spam on call start/stop.
+- **Unified incident helper:** `__CAT_INCIDENT()` in browser console prints and automatically copies a clean 15-line incident snapshot with recent errors and warning counts.
+- **Global listeners:** `window.onerror` and `unhandledrejection` hooked into `catError` to catch silent async failures.
+
+
 ## v4.199.0 - transcription: 4 faults (user: "drops entire paragraphs", wrong words, wrong language, laggy)
 
 1. **Paragraphs vanished:** the lane digit guard froze a bubble whenever a number grew ("4" → "45") — every later word was never shown or sealed. Growth now counts as kept; a flip stays on the shown lane; a changed number holds only until 4+ new words arrive. `captionEngine.js`.

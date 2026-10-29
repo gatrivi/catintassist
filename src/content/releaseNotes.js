@@ -25,6 +25,31 @@ import { APP_VERSION } from '../constants/version';
 /** Newest first. Only the entry matching APP_VERSION is shown on load. */
 export const RELEASE_NOTES_CATALOG = [
   {
+    version: '4.200.0',
+    id: 'console-logs-denoised',
+    highlightElementIds: ['transcript-pane'],
+    es: {
+      title: 'Consola limpia: sin spam repetitivo',
+      intro: 'Depurar errores críticos ahora es simple y directo.',
+      sections: [{ heading: 'Qué cambió', bullets: [
+        'Las líneas repetitivas se agrupan: ya no hay 200 líneas iguales tapando los errores reales.',
+        'Los errores ahora conservan su mensaje y stack real (antes mostraban {} vacío).',
+        'Todos los errores de audio, STT y traducción van a un solo registro.',
+        'Escribe __CAT_INCIDENT() en la consola para un resumen limpio de 15 líneas listo para pegar.',
+      ] }],
+    },
+    en: {
+      title: 'Console Clean: No Repetitive Spam',
+      intro: 'Debugging critical errors is now simple and uncluttered.',
+      sections: [{ heading: 'What changed', bullets: [
+        'Repetitive console logs are de-noised: no more scrolling past 200 duplicate lines to find the fault.',
+        'Errors preserve their real message and call stack instead of empty {}.',
+        'Audio, STT, and translation failures unified under one central recorder.',
+        'Run __CAT_INCIDENT() in the console for a clean 15-line incident snapshot ready to paste.',
+      ] }],
+    },
+  },
+  {
     version: '4.199.0',
     id: 'transcription-four-faults',
     highlightElementIds: ['transcript-pane'],

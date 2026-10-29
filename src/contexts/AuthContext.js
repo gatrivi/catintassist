@@ -25,6 +25,7 @@ import {
   pullTimeTrackFromCloud,
   pushTimeTrackToCloud,
 } from '../services/timeTrackService';
+import { catWarn } from '../utils/catLog';
 
 const AuthContext = createContext(null);
 const PUSH_INTERVAL_MS = 45000;
@@ -49,7 +50,7 @@ export const AuthProvider = ({ children }) => {
       setSyncState('idle');
       setAuthError(null);
     } catch (err) {
-      console.warn('Cloud push failed:', err);
+      catWarn('[Auth] Cloud push failed:', err);
       setSyncState('error');
       setAuthError(err?.message || 'Cloud sync failed');
     }
@@ -67,7 +68,7 @@ export const AuthProvider = ({ children }) => {
         const cloudTimeTrack = await pullTimeTrackFromCloud(uid);
         if (cloudTimeTrack) applyCloudTimeTrack(cloudTimeTrack);
       } catch (ttErr) {
-        console.warn('Time-track pull failed:', ttErr);
+        catWarn('[Auth] Time-track pull failed:', ttErr);
       }
       if (shouldOfferImport(uid, cloudDoc)) {
         setImportPrompt({ uid, keyCount: Object.keys(collectLocalSettings()).length });
@@ -78,7 +79,7 @@ export const AuthProvider = ({ children }) => {
       setSyncState('idle');
       setAuthError(null);
     } catch (err) {
-      console.warn('Cloud pull failed:', err);
+      catWarn('[Auth] Cloud pull failed:', err);
       setSyncState('error');
       setAuthError(err?.message || 'Cloud sync failed');
     }

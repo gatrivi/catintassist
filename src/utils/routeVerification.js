@@ -1,5 +1,7 @@
 /** Manual route attestation — clip + sink + mic fingerprint. v4.71.0 */
 
+import { catLog } from './catLog';
+
 export const MANUAL_CALL_OK_STORAGE = 'catint_manual_call_ok_v1';
 export const LEGACY_CALL_PATH_STORAGE = 'catint_call_path_verified';
 
@@ -56,7 +58,7 @@ export const setManualCallOk = (store, clipKey, sinkId, micId) => {
 export const warnLegacyCallPathStorage = () => {
   try {
     if (localStorage.getItem(LEGACY_CALL_PATH_STORAGE)) {
-      console.info(
+      catLog(
         '[soundboard] Legacy call-path proofs (catint_call_path_verified) ignored since v4.71 — re-run Call Test and confirm CALL OK.',
       );
     }

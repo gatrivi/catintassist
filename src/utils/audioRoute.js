@@ -1,4 +1,5 @@
 /** Best-effort HTMLAudioElement → virtual output (VB-Cable etc.) */
+import { catError } from './catLog';
 
 export async function bindAudioToSink(audioEl, sinkId) {
   if (!audioEl?.setSinkId || !sinkId) return false;
@@ -6,7 +7,7 @@ export async function bindAudioToSink(audioEl, sinkId) {
     await audioEl.setSinkId(sinkId);
     return true;
   } catch (err) {
-    console.error('bindAudioToSink failed:', err);
+    catError('[AudioRoute] bindAudioToSink failed:', err);
     return false;
   }
 }

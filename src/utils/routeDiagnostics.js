@@ -1,4 +1,5 @@
 /** Soundboard / TTS route diagnostics — ring buffer for STT-load repro (v4.75.0). */
+import { catLog } from './catLog';
 
 const MAX_EVENTS = 40;
 const events = [];
@@ -47,7 +48,7 @@ export const logRouteEvent = (type, data = {}) => {
     window.__CAT_ROUTE_DIAG = events;
   } catch (_) {}
   if (process.env.NODE_ENV !== 'production') {
-    console.debug('[route]', type, entry);
+    catLog('[route]', type, entry);
   }
   return entry;
 };

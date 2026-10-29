@@ -1,4 +1,5 @@
 /** Clip playback via passthrough element — same VB-Cable path as live mic (v4.75.0). */
+import { catWarn } from './catLog';
 
 export const ROUTE_MODE = {
   PASSTHROUGH: 'passthrough',
@@ -143,7 +144,7 @@ export function playBufferViaPassthrough(passthroughEl, buffer, ctx, {
         if (err?.name === 'NotAllowedError') {
           throw new Error('autoplay_blocked');
         }
-        console.warn('passthrough play() warning:', err);
+        catWarn('[AudioRoute] passthrough play() warning:', err);
       }
 
       if (normalize) normalizePeak(buffer);

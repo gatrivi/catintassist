@@ -22,6 +22,7 @@ import { readCallerMonitor, writeCallerMonitor } from '../utils/callerMonitor';
 import { OPENER_IDS, openerReadiness } from '../utils/openerReadiness';
 import { HEARD_RMS, SILENT_AFTER_MS, failReason, finishPhase, levelBars } from '../utils/greetingSend';
 import { logRouteEvent, ROUTE_EVENT } from '../utils/routeDiagnostics';
+import { catError } from '../utils/catLog';
 import { APP_VERSION } from '../constants/version';
 import { getWorkSlot, getSlotAuto, getWorkClockLabel, readSlotOverride, writeSlotOverride, nearestSlotOrder, TIME_SLOTS, WORK_TIMEZONE } from '../utils/workTime';
 
@@ -326,7 +327,7 @@ export function OnCallSoundboardStrip({ micTestMode = false, collapsed: collapse
         rampCancelRef.current = rampVolume(audioRefLocal.current, null, localVolume, 0);
         showSend({ phase: 'onair', label: slotLabelFor(slot.actionId), text: 'LOCAL (mic test)' });
       } catch (e) {
-        console.error('On-call soundboard local play error:', e);
+        catError('[Soundboard] Local play error:', e);
         logRouteEvent(ROUTE_EVENT.PLAY_FAIL, { clipKey: key, reason: e?.message, micTestMode: true });
         clearPlay();
         failSend(slotLabelFor(slot.actionId), failReason(e));
@@ -469,7 +470,7 @@ export function OnCallSoundboardStrip({ micTestMode = false, collapsed: collapse
         rampCancelRef.current = rampVolume(withMonitor ? audioRefLocal.current : null, audioRefSink.current, localVolume, sinkVolume);
       }
     } catch (e) {
-      console.error('On-call soundboard play error:', e);
+      catError('[Soundboard] Play error:', e);
       logRouteEvent(ROUTE_EVENT.PLAY_FAIL, { clipKey: key, reason: e?.message });
       clearPlay();
       failSend(label, failReason(e));
