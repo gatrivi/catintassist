@@ -26,6 +26,46 @@ import { APP_VERSION } from '../constants/version';
 export const RELEASE_NOTES_CATALOG = [
   {
     version: '4.200.0',
+    id: 'caption-engine-v2-phase-a',
+    highlightElementIds: ['transcript-pane'],
+    es: {
+      title: 'Motor de subtítulos v2: construido, todavía apagado',
+      intro: 'Nada cambia en pantalla. El motor nuevo (marcas de tiempo = verdad, nada se borra) ya pasa todas las pruebas.',
+      sections: [{ heading: 'Siguiente', bullets: [
+        'Fase B: corre en silencio al lado del actual durante llamadas reales y cuenta palabras perdidas.',
+      ] }],
+    },
+    en: {
+      title: 'Caption engine v2: built, still off',
+      intro: 'Nothing changes on screen. The new engine (timestamps = truth, nothing deleted) passes every test.',
+      sections: [{ heading: 'Next', bullets: [
+        'Phase B: runs silently beside the current one on real calls and counts lost words.',
+      ] }],
+    },
+  },
+  {
+    version: '4.201.0',
+    id: 'one-tap-copy-log',
+    highlightElementIds: ['transcript-pane'],
+    es: {
+      title: 'Botón 1-tap: Copiar registro en fallas',
+      intro: 'Si la transcripción se detiene, copia el diagnóstico con un solo clic.',
+      sections: [{ heading: 'Qué cambió', bullets: [
+        'La barra roja de reconexión ahora tiene un botón "📋 Copy Log".',
+        'Copia al portapapeles un resumen de 15 líneas con los últimos errores sin abrir DevTools.',
+      ] }],
+    },
+    en: {
+      title: '1-Tap Copy Log on Stall Banner',
+      intro: 'If transcription stops, grab the incident diagnostic with a single click.',
+      sections: [{ heading: 'What changed', bullets: [
+        'The red stall banner now includes a "📋 Copy Log" button.',
+        'Instantly copies the 15-line diagnostic snapshot to clipboard without opening DevTools.',
+      ] }],
+    },
+  },
+  {
+    version: '4.200.0',
     id: 'console-logs-denoised',
     highlightElementIds: ['transcript-pane'],
     es: {

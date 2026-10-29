@@ -3,6 +3,12 @@
 **Version source:** `src/constants/version.js` (must match `package.json` + top-right UI pill)
 
 
+## v4.201.0 - 1-tap incident copy button on stall banner
+
+- **Zero-DevTools debugging:** `SttStallBanner.js` adds a `📋 Copy Log` button right next to `⚡ ZAP`.
+- **Instant clipboard copy:** Clicking immediately extracts the 15-line `__CAT_INCIDENT()` summary to clipboard and shows a `Copied ✓` feedback state for 2 seconds. No F12 or console commands required while on call.
+
+
 ## v4.200.0 - console logs de-noised · safe error serialization · unified incident dump
 
 - **Console de-noiser:** identical consecutive or alternating logs within 3 seconds are throttled from flooding browser DevTools (200 lines → 1 line with summary badge `[×N]`). First occurrence always prints immediately with 0ms latency.
@@ -12,6 +18,13 @@
 - **Unified incident helper:** `__CAT_INCIDENT()` in browser console prints and automatically copies a clean 15-line incident snapshot with recent errors and warning counts.
 - **Global listeners:** `window.onerror` and `unhandledrejection` hooked into `catError` to catch silent async failures.
 
+
+## v4.200.0 - caption engine v2 "ledger", Phase A (built, NOT wired)
+
+- `src/utils/sttLedger.js`: `ledgerApply` (finals write-once keyed by socket:epoch:start, interim replaces draft, final drops stale drafts, clock rewind = new epoch) + `bubblesFrom` (pure: audio gap 1.2 s / language change / sentence end ≥3 words / 60-word cap) + `ledgerLoss` (final words missing from bubbles = the only alarm) + `replayLedger`.
+- Tests `sttLedger.test.js` (80): rules, 40 random-stream no-loss property tests, all single-socket fixtures, eval v2 damage ≤ v1 (both 0). Mutation-checked.
+- Known divergence: `interim-rewrite` — v1 holds first-heard 4567, v2 shows Deepgram's final 4568.
+- Plan: `docs/development/caption-engine-v2-plan.md`. Next: Phase B shadow mode.
 
 ## v4.199.0 - transcription: 4 faults (user: "drops entire paragraphs", wrong words, wrong language, laggy)
 
