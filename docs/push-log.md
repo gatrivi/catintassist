@@ -147,3 +147,4 @@
 | 2026-10-28T19:51:37.775Z | 6b5ab3e | v4.197.0 ssn cue + utterance end |
 | 2026-10-28T21:11:31.592Z | a5ac6eb | v4.198.0 lane hysteresis |
 | 2026-10-29T17:45:07.444Z | 2625180 | v4.199.0 transcription 4 faults |
+| 2026-10-29T19:47:18.526Z | a3e49fd | v4.200.0 console logs de-noised |
