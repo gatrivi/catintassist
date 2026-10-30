@@ -78,7 +78,7 @@ export const SETTINGS_PANELS = [
     group: 'speech',
     label: 'Deepgram',
     hint: 'STT model, latency, clinical guards, keyterms',
-    keywords: 'stt transcription deepgram model nova latency speed term repair negation guard keyterm bias medical',
+    keywords: 'stt transcription deepgram model nova latency speed term repair negation guard keyterm bias medical shadow ledger engine v2',
   },
   {
     id: 'dg-key',

@@ -57,7 +57,7 @@ const order = (a, b) => a.epoch - b.epoch || a.start - b.start;
  * @returns {object} the same ledger when nothing changed, else a new one
  */
 export const ledgerApply = (ledger, payload, opts = {}) => {
-  const { socket = 'multi', pair = { left: 'en', right: 'es' }, now = Date.now() } = opts;
+  const { socket = 'multi', pair = { left: 'en', right: 'es' }, now = Date.now(), epoch: explicitEpoch } = opts;
   const alt = payload?.channel?.alternatives?.[0];
   const text = String(alt?.transcript || '').trim();
   if (!text) return ledger; // empty Results = keepalive, never erases a draft
@@ -67,13 +67,16 @@ export const ledgerApply = (ledger, payload, opts = {}) => {
   const words = Array.isArray(alt?.words) ? alt.words : [];
 
   let next = ledger;
-  let epoch = next.epochs[socket] || 0;
+  let epoch = Number.isFinite(explicitEpoch) ? explicitEpoch : (next.epochs[socket] || 0);
+  if (Number.isFinite(explicitEpoch) && next.epochs[socket] !== explicitEpoch) {
+    next = { ...next, epochs: { ...next.epochs, [socket]: explicitEpoch } };
+  }
   // Safety net: if the socket was reopened and nobody called ledgerNewEpoch,
   // the clock jumping backwards gives it away.
   const mine = next.segments.filter((s) => s.socket === socket && s.epoch === epoch && s.final);
   const shownEnd = mine.length ? Math.max(...mine.map((s) => s.end)) : -Infinity;
   const key = (e) => `${socket}:${e}:${start.toFixed(3)}`;
-  if (start < shownEnd - REWIND_S && !next.segments.some((s) => s.key === key(epoch))) {
+  if (!Number.isFinite(explicitEpoch) && start < shownEnd - REWIND_S && !next.segments.some((s) => s.key === key(epoch))) {
     next = ledgerNewEpoch(next, socket);
     epoch = next.epochs[socket];
   }
@@ -236,7 +239,7 @@ export const ledgerLoss = (ledger, rows) => {
   const shown = new Map();
   (rows || [])
     .filter((r) => !r.userCorrected)
-    .forEach((r) => tokens(r.rawText).map(normTok).filter(Boolean).forEach((t) => shown.set(t, (shown.get(t) || 0) + 1)));
+    .forEach((r) => tokens(r.rawText || r.text).map(normTok).filter(Boolean).forEach((t) => shown.set(t, (shown.get(t) || 0) + 1)));
   const corrected = new Set((rows || []).filter((r) => r.userCorrected).flatMap((r) => r.segKeys || []));
   const missing = [];
   ledger.segments

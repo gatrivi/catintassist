@@ -118,10 +118,15 @@ describe('SettingsPanel -> Deepgram: guards + provider biasing (v4.157.0)', () =
     expect(screen.getByRole('button', { name: /Negation guard: OFF/i })).toHaveAttribute('aria-pressed', 'false');
     expect(screen.getByRole('button', { name: /Medical model \(EN\): OFF/i })).toHaveAttribute('aria-pressed', 'false');
     expect(screen.getByRole('button', { name: /Keyterm bias: OFF/i })).toHaveAttribute('aria-pressed', 'false');
+    expect(screen.getByRole('button', { name: /Shadow Engine v2: OFF/i })).toHaveAttribute('aria-pressed', 'false');
   });
 
   test('each switch flips on its own and persists', () => {
     renderDeepgramSection();
+
+    fireEvent.click(screen.getByRole('button', { name: /Shadow Engine v2: OFF/i }));
+    expect(screen.getByRole('button', { name: /Shadow Engine v2: ON/i })).toHaveAttribute('aria-pressed', 'true');
+    expect(screen.getByRole('button', { name: /Term repair: OFF/i })).toHaveAttribute('aria-pressed', 'false');
 
     fireEvent.click(screen.getByRole('button', { name: /Term repair: OFF/i }));
     expect(screen.getByRole('button', { name: /Term repair: ON/i })).toHaveAttribute('aria-pressed', 'true');

@@ -63,6 +63,7 @@ import {
 // v4.157.0 — provider biasing. OFF by default; the medical model costs ~2x EN.
 import { readSttBias, saveSttBias } from '../utils/deepgramListenConfig';
 import { readTurnEndSwitch, saveTurnEndSwitch } from '../utils/turnEnd';
+import { readLedgerShadowSwitch, writeLedgerShadowSwitch } from '../utils/sttLedgerShadow';
 import {
   buildKeyterms,
   keytermTokenCost,
@@ -158,6 +159,7 @@ export default function SettingsPanel({
   const [languagePair, setLanguagePair] = useState(loadLanguagePair);
   const [sttLatencyMode, setSttLatencyMode] = useState(loadSttLatencyMode);
   const [turnEndOn, setTurnEndOn] = useState(readTurnEndSwitch); // v4.197.0
+  const [ledgerShadowOn, setLedgerShadowOn] = useState(readLedgerShadowSwitch); // v4.201.0
   // v4.155.0 — domain repair switch (OFF by default; see utils/clinicalGuards.js)
   const [domainRepairOn, setDomainRepairOn] = useState(isDomainRepairEnabled);
   const [oneSocketOn, setOneSocketOn] = useState(isOneSocketEnabled); // v4.177.0
@@ -642,6 +644,27 @@ export default function SettingsPanel({
                 mid-sentence can cut one sentence in two. <strong>ON</strong>: a new bubble starts only after
                 1 s of real silence in the audio (Deepgram <code>UtteranceEnd</code>), or 8 s with no text.
                 Same price. Applies on the next CONNECT. Try one call ON, one OFF.
+              </p>
+            </div>
+            {/* v4.201.0 — Caption Engine v2 Shadow Mode (utils/sttLedgerShadow.js). */}
+            <div style={{ marginTop: 14 }}>
+              <div style={{ fontSize: 11, color: '#93c5fd', marginBottom: 6 }}>Caption Engine v2 (Shadow)</div>
+              <button
+                type="button"
+                id="settings-ledger-shadow"
+                aria-pressed={ledgerShadowOn}
+                onClick={() => setLedgerShadowOn(writeLedgerShadowSwitch(!ledgerShadowOn))}
+                style={{
+                  ...tabBtn,
+                  background: ledgerShadowOn ? 'rgba(34, 211, 238, 0.22)' : tabBtn.background,
+                }}
+              >
+                Shadow Engine v2: {ledgerShadowOn ? 'ON' : 'OFF'}
+              </button>
+              <p style={{ fontSize: 10, color: 'rgba(255,255,255,0.5)', margin: '6px 0 0' }}>
+                <strong>OFF</strong> (default): v1 engine only. <strong>ON</strong>: runs Engine v2 (ledger) in
+                the background with zero UI impact, measuring word loss between v1 and v2 on live calls. Check
+                console <code>__CAT_LEDGER_SHADOW()</code> anytime.
               </p>
             </div>
           </div>

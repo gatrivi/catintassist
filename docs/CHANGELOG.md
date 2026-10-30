@@ -3,10 +3,12 @@
 **Version source:** `src/constants/version.js` (must match `package.json` + top-right UI pill)
 
 
-## v4.201.0 - 1-tap incident copy button on stall banner
+## v4.201.0 - 1-tap stall banner copy log button · caption engine v2 shadow mode (Phase B)
 
 - **Zero-DevTools debugging:** `SttStallBanner.js` adds a `📋 Copy Log` button right next to `⚡ ZAP`.
 - **Instant clipboard copy:** Clicking immediately extracts the 15-line `__CAT_INCIDENT()` summary to clipboard and shows a `Copied ✓` feedback state for 2 seconds. No F12 or console commands required while on call.
+- **Caption engine v2 Phase B (Shadow Mode):** Runs the v2 ledger in the background beside v1 without UI changes. Feeds all call Results messages to `ledgerApply` and logs a comparative loss delta at call end (`[Ledger:shadow] call end summary`).
+- **Settings toggle & Console inspection:** Opt-in toggle in Settings → Deepgram (`Shadow Engine v2: ON/OFF`, default OFF, persistent). Console helper `__CAT_LEDGER_SHADOW()` inspects v1 vs v2 loss live anytime.
 
 
 ## v4.200.0 - console logs de-noised · safe error serialization · unified incident dump

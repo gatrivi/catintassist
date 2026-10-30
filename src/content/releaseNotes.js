@@ -25,6 +25,39 @@ import { APP_VERSION } from '../constants/version';
 /** Newest first. Only the entry matching APP_VERSION is shown on load. */
 export const RELEASE_NOTES_CATALOG = [
   {
+    version: '4.201.0',
+    id: 'caption-engine-v2-phase-b-shadow',
+    highlightElementIds: ['transcript-pane'],
+    es: {
+      title: 'Motor v2 en modo sombra + botón de copia en parada',
+      intro: 'Fase B: el nuevo motor de subtítulos v2 corre en segundo plano sin alterar la pantalla para auditar pérdidas de palabras. Botón 📋 en el banner rojo copia 15 líneas de diagnóstico en 1 toque.',
+      sections: [
+        {
+          heading: 'Novedades',
+          bullets: [
+            'Banner de parada de transcripción: botón de 1 toque para copiar diagnóstico al portapapeles.',
+            'Ajustes → Deepgram: selector para modo sombra del Motor v2 (apagado por defecto).',
+            'Consola __CAT_LEDGER_SHADOW() permite auditar la comparación v1 vs v2 en cualquier momento.',
+          ],
+        },
+      ],
+    },
+    en: {
+      title: 'Engine v2 Shadow Mode + 1-Tap Stall Log Copy',
+      intro: 'Phase B: the new v2 ledger engine runs silently in the background with zero UI changes to measure word loss. Red stall banner now features a 1-tap clipboard log copy button.',
+      sections: [
+        {
+          heading: 'New features',
+          bullets: [
+            'STT stall banner: 1-tap copy button copies a clean 15-line diagnostic snapshot to clipboard.',
+            'Settings → Deepgram: opt-in toggle for Engine v2 Shadow Mode (OFF by default).',
+            'Console command __CAT_LEDGER_SHADOW() inspects v1 vs v2 loss live anytime.',
+          ],
+        },
+      ],
+    },
+  },
+  {
     version: '4.200.0',
     id: 'caption-engine-v2-phase-a',
     highlightElementIds: ['transcript-pane'],

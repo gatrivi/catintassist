@@ -41,6 +41,8 @@ import {
   CAPTION_PATCH_EVENT,
 } from "../utils/captionEngine";
 import { applyDeepgramTranscriptPayload, multiLangOf } from "../utils/applyDeepgramTranscriptPayload";
+import { createLedger, ledgerApply, bubblesFrom, ledgerLoss } from "../utils/sttLedger";
+import { readLedgerShadowSwitch } from "../utils/sttLedgerShadow";
 import { readTurnEndSwitch, isUtteranceEndMessage, isTurnBreak } from "../utils/turnEnd";
 import {
   STT_LATENCY_CHANGED_EVENT,
@@ -280,6 +282,7 @@ export const useDeepgram = () => {
   const streamRef = useRef(null);
   const isActiveRef = useRef(false);
   const captionEngineRef = useRef(createCaptionEngineState());
+  const shadowLedgerRef = useRef(createLedger());
   const interimFlushTimerRef = useRef(null);
   const lastInterimAtRef = useRef(0);
   const lastAudioProgressAtRef = useRef(0);
@@ -499,6 +502,7 @@ export const useDeepgram = () => {
 
   const resetCaptionEngine = useCallback(() => {
     captionEngineRef.current = createCaptionEngineState();
+    shadowLedgerRef.current = createLedger();
     turnWordsBaseRef.current = 0;
     currentTurnIdRef.current = null;
     lastBubbleStartedRef.current = 0;
@@ -552,6 +556,35 @@ export const useDeepgram = () => {
     window.addEventListener(CAPTIONS_CLEARED_EVENT, onCleared);
     return () => window.removeEventListener(CAPTIONS_CLEARED_EVENT, onCleared);
   }, [resetCaptionEngine]);
+
+  // v4.201.0: expose __CAT_LEDGER_SHADOW in console for on-call inspection.
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    window.__CAT_LEDGER_SHADOW = () => {
+      const ledger = shadowLedgerRef.current;
+      const v1Rows = captionEngineRef.current?.finals || [];
+      const v1Loss = ledgerLoss(ledger, v1Rows);
+      const v2Rows = bubblesFrom(ledger, { pair: languagePairRef.current });
+      const v2Loss = ledgerLoss(ledger, v2Rows);
+      return {
+        enabled: readLedgerShadowSwitch(),
+        segmentsCount: ledger?.segments?.length || 0,
+        v1RowsCount: v1Rows.length,
+        v2RowsCount: v2Rows.length,
+        v1LossCount: v1Loss.length,
+        v1LostWords: v1Loss,
+        v2LossCount: v2Loss.length,
+        v2LostWords: v2Loss,
+        ledger,
+        v2Rows,
+      };
+    };
+    return () => {
+      try {
+        delete window.__CAT_LEDGER_SHADOW;
+      } catch (_) {}
+    };
+  }, []);
 
   const resetConnectProgress = useCallback(() => {
     didLogCaptureGateWhileNotActiveRef.current = false;
@@ -1687,6 +1720,20 @@ export const useDeepgram = () => {
             return;
           }
 
+          // v4.201.0: Engine v2 Shadow Mode — feed ledger in background if switch is ON
+          if (readLedgerShadowSwitch()) {
+            try {
+              shadowLedgerRef.current = ledgerApply(shadowLedgerRef.current, received, {
+                socket: lang,
+                pair,
+                now,
+                epoch: connectAttemptIdRef.current || 0,
+              });
+            } catch (err) {
+              catWarn('[Ledger:shadow] apply error', err);
+            }
+          }
+
           // Throttle interim transcript processing: final/speech-final always processed.
           const isFinalish = !!isFinal || !!speechFinal;
           if (!isFinalish) {
@@ -2482,6 +2529,25 @@ export const useDeepgram = () => {
     turnWordsBaseRef.current = 0;
     currentTurnIdRef.current = null;
     endSttSession();
+    // v4.201.0: compare v1 vs v2 loss if shadow mode is enabled
+    if (readLedgerShadowSwitch() && shadowLedgerRef.current?.segments?.length > 0) {
+      try {
+        const v1Rows = captionEngineRef.current?.finals || [];
+        const lostWords = ledgerLoss(shadowLedgerRef.current, v1Rows);
+        const v2Rows = bubblesFrom(shadowLedgerRef.current, { pair: languagePairRef.current });
+        const v2Loss = ledgerLoss(shadowLedgerRef.current, v2Rows);
+        catLog('[Ledger:shadow] call end summary', {
+          segments: shadowLedgerRef.current.segments.length,
+          v1FinalRows: v1Rows.length,
+          v2Rows: v2Rows.length,
+          v1LostWords: lostWords.length,
+          v1LostList: lostWords.slice(0, 20),
+          v2LostWords: v2Loss.length,
+        });
+      } catch (err) {
+        catWarn('[Ledger:shadow] summary error', err);
+      }
+    }
     if (!enterIdleEar()) {
       closeConnections();
     }
