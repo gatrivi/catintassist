@@ -3,6 +3,12 @@
 **Version source:** `src/constants/version.js` (must match `package.json` + top-right UI pill)
 
 
+## v4.202.0 - Spoken emails written into the text (transcript + translation)
+
+- `foldSpokenEmails` (`sensitiveDataProtector.js`): "Mercedes punto r 56 arroba iCloud punto com" → `mercedes.r56@icloud.com`. Runs in `applyDisplayProtections` (both panes) AND in `translateWithFallback` (MT input), so the engine never turns punto/arroba into point/at.
+- Before (v4.115.0): highlight only, text stayed spoken, copy gave `56@icloud.com`.
+- Safety: domain must end in a known TLD (`at noon` never folds); leading "es/is/my" stay as text. Panic switch (digit rewrites OFF) also disables it.
+
 ## v4.201.0 - 1-tap stall banner copy log button · caption engine v2 shadow mode (Phase B)
 
 - **Zero-DevTools debugging:** `SttStallBanner.js` adds a `📋 Copy Log` button right next to `⚡ ZAP`.

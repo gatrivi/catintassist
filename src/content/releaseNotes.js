@@ -25,6 +25,21 @@ import { APP_VERSION } from '../constants/version';
 /** Newest first. Only the entry matching APP_VERSION is shown on load. */
 export const RELEASE_NOTES_CATALOG = [
   {
+    version: '4.202.0',
+    id: 'spoken-email-fold',
+    highlightElementIds: ['transcript-pane'],
+    es: {
+      title: 'Correos dictados se escriben como correo',
+      intro: '"Mercedes punto r 56 arroba iCloud punto com" ahora se ve como mercedes.r56@icloud.com, en la transcripción y en la traducción.',
+      sections: [{ heading: 'Novedades', bullets: ['El traductor recibe el correo ya escrito: no más "point"/"at".', 'Clic en el correo = copia completa.'] }],
+    },
+    en: {
+      title: 'Dictated emails show as emails',
+      intro: '"Mercedes punto r 56 arroba iCloud punto com" now shows as mercedes.r56@icloud.com in transcript and translation.',
+      sections: [{ heading: 'New', bullets: ['The translator gets the written address: no more "point"/"at".', 'Click the email = full copy.'] }],
+    },
+  },
+  {
     version: '4.201.0',
     id: 'caption-engine-v2-phase-b-shadow',
     highlightElementIds: ['transcript-pane'],

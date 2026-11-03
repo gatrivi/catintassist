@@ -29,6 +29,7 @@ import {
   combineCompoundNumbers,
   expandWordTimes,
   findSpokenEmailUnits,
+  foldSpokenEmails,
   collapseAdjacentDigitRepeats,
   repairSplitZips,
   normalizeAddressDirectionals,
@@ -241,7 +242,8 @@ describe('sentinel display gate (Phase C)', () => {
   test('email sentinel does not stitch digit runs', () => {
     const raw = 'my email is john 1 2 3 at gmail dot com';
     expect(detectSentinelContext(raw, 'en').mode).toBe('email');
-    expect(applyDisplayProtections(raw, 'en')).toContain('1 2 3');
+    // v4.202.0: digits stay in the address (folded), never become a phone group.
+    expect(applyDisplayProtections(raw, 'en')).toContain('john123@gmail.com');
   });
 
   test('spelling sentinel does not stitch letter-adjacent digits', () => {
@@ -745,6 +747,26 @@ describe('sensitive data round 2 (v4.115.0)', () => {
     expect(units).toHaveLength(1);
     expect(units[0].copyValue).toBe('juan@gmail.com');
     expect(findSpokenEmailUnits('meet at noon tomorrow')).toHaveLength(0);
+  });
+
+  // v4.202.0: live call 11-03 — the email stayed spoken and MT wrecked it.
+  test('foldSpokenEmails writes the address into the text', () => {
+    expect(foldSpokenEmails('Mi correo electrónico es Mercedes punto r 56 arroba iCloud punto com.'))
+      .toBe('Mi correo electrónico es mercedes.r56@icloud.com.');
+    expect(foldSpokenEmails('my email is john dot smith at gmail dot com'))
+      .toBe('my email is john.smith@gmail.com');
+    expect(foldSpokenEmails('es ana guion bajo 22 arroba hotmail punto com punto ar'))
+      .toBe('es ana_22@hotmail.com.ar');
+    expect(foldSpokenEmails('correo es r 56 arroba yahoo.com')).toBe('correo es r56@yahoo.com');
+    // no TLD = not an email
+    expect(foldSpokenEmails('meet at noon tomorrow')).toBe('meet at noon tomorrow');
+    expect(foldSpokenEmails('I am at home dot')).toBe('I am at home dot');
+    expect(foldSpokenEmails('already juan@gmail.com')).toBe('already juan@gmail.com');
+  });
+
+  test('display pipeline folds the spoken email (ES lane)', () => {
+    const out = applyDisplayProtections('Mercedes punto r 56 arroba iCloud punto com', 'es', { applyNumberWords: false, allowDigitRewrites: true, expectedType: null });
+    expect(out).toContain('mercedes.r56@icloud.com');
   });
 
   test('Calle number-first ES address is one unit', () => {

@@ -1,6 +1,7 @@
 /** Ordered translation engine chain with rate-limit fallback — v4.73.1 */
 
 import { getTranslationApiKeys, getTranslationKeyStatus } from './translationRuntimeKeys';
+import { foldSpokenEmails } from './sensitiveDataProtector';
 
 const DEFAULT_AZURE_REGION = 'brazilsouth';
 
@@ -323,6 +324,9 @@ export const translateWithFallback = async ({
   timeoutMs = 4000,
   ladder = null, // v4.167.0: operator-picked ladder (FAST/BAL/PATIENT)
 }) => {
+  // v4.202.0: the engine sees "juan.r56@gmail.com", never "juan punto r 56
+  // arroba…" (it translated punto/arroba into "point"/"at").
+  text = foldSpokenEmails(text);
   const fetchers = buildFetchers(sLang, tLang, keys, signal);
   let chain = buildEngineChain(sLang, tLang, keys);
   // All engines paused — retry only transient (non-429) blocks on free tier.

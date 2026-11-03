@@ -885,6 +885,51 @@ export const findSpokenEmailUnits = (text) => {
   return units.sort((a, b) => a.start - b.start);
 };
 
+/**
+ * v4.202.0: spoken email → written email, IN THE TEXT (both panes + MT input).
+ * "Mercedes punto r 56 arroba iCloud punto com" → "mercedes.r56@icloud.com".
+ * v4.115.0 only highlighted; the text stayed spoken, the copy kept just "56@…",
+ * and the translator turned "punto"/"arroba" into "point"/"at".
+ * Safety: the domain MUST end in a known TLD ("at noon" never matches).
+ * Local part joins: word, then (separator word | single letter | digits)*.
+ */
+const EMAIL_DOT = '(?:punto|dot|point|period)';
+const EMAIL_SEP = `(?:${EMAIL_DOT}|gui[oó]n\\s+bajo|underscore|gui[oó]n|dash|hyphen)`;
+const EMAIL_TLD = '(?:com|net|org|edu|gov|info|io|co|us|mx|ar|es|cl|pe|uy|ve|ec|bo|py|do|pr|gt|hn|sv|ni|cr|pa)';
+const SPOKEN_EMAIL_RE = new RegExp(
+  `\\b([A-Za-z0-9]+(?:\\s+${EMAIL_SEP}\\s+[A-Za-z0-9]+|\\s+[A-Za-z]\\b|\\s+\\d+\\b|[._-][A-Za-z0-9]+)*)` +
+  `\\s+(?:arroba|at\\s+sign|at)\\s+` +
+  `([A-Za-z0-9-]+(?:(?:\\s+${EMAIL_DOT}\\s+|\\.)[A-Za-z0-9-]+)*(?:\\s+${EMAIL_DOT}\\s+|\\.)${EMAIL_TLD})\\b`,
+  'gi'
+);
+// Words that can sit in front of the address but are not part of it.
+const EMAIL_LEAD_STOP = new Set(['is', 'es', 'my', 'mi', 'su', 'your', 'the', 'el', 'la', 'email', 'correo', 'its', 'a']);
+
+const spokenSepToChar = (sep) => {
+  const s = sep.toLowerCase();
+  if (/bajo|underscore/.test(s)) return '_';
+  if (/gui|dash|hyphen/.test(s)) return '-';
+  return '.';
+};
+
+export const foldSpokenEmails = (text) => {
+  if (!text || !/\b(arroba|at)\b/i.test(text)) return text;
+  const sepRe = new RegExp(`\\s+(${EMAIL_SEP})\\s+`, 'gi');
+  return text.replace(SPOKEN_EMAIL_RE, (whole, local, domain) => {
+    // Tokens split on spaces; separators become one-char tokens.
+    const tokens = local.replace(sepRe, (m, sep) => ` \u0000${spokenSepToChar(sep)} `).trim().split(/\s+/);
+    // Keep leading filler words ("es", "is") as plain text before the address.
+    const lead = [];
+    while (tokens.length > 1 && EMAIL_LEAD_STOP.has(tokens[0].toLowerCase()) && !tokens[1].startsWith('\u0000')) {
+      lead.push(tokens.shift());
+    }
+    const user = tokens.map((t) => (t.startsWith('\u0000') ? t.slice(1) : t)).join('');
+    const host = domain.replace(new RegExp(`\\s+${EMAIL_DOT}\\s+`, 'gi'), '.');
+    const addr = `${user}@${host}`.toLowerCase();
+    return lead.length ? `${lead.join(' ')} ${addr}` : addr;
+  });
+};
+
 /** Merge non-overlapping typed units; earlier/longer wins on overlap. */
 const mergeTypedUnits = (groups) => {
   const all = [];
@@ -1393,6 +1438,9 @@ export const applyDisplayProtections = (text, lang = 'en', { applyNumberWords = 
   if (applyNumberWords) out = combineCompoundNumbers(out, lang);
   // v4.120.0: "1 hundred 23" → "123", "2 mil 26" → "2026".
   if (applyNumberWords) out = foldMagnitudes(out);
+  // v4.202.0: "juan punto r 56 arroba gmail punto com" → "juan.r56@gmail.com"
+  // after number words became digits ("r fifty six" → "r 56").
+  out = foldSpokenEmails(out);
   // v4.120.0: "120 over 80" → "120/80" before sentinels (standard vitals form).
   out = normalizeVitals(out);
   // v4.114.0: clerk "1 1 30" → "1:00, 1:30" BEFORE sentinels see the text,
