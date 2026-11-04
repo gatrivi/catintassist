@@ -305,7 +305,10 @@ describe('CONNECT watchdog when our audio never starts (v4.170.0)', () => {
     expect(fresh.every((s) => s.readyState === 1)).toBe(true);
   });
 
-  it('rebuilds a recorder that dies mid-call without Zapping the sockets', async () => {
+  // v4.203.0: a socket that already carried audio must NEVER get a 2nd
+  // recorder — its new WebM header mid-stream makes Deepgram deaf (the
+  // "every call needs ZAP" bug). A dead recorder mid-call → a FRESH pair.
+  it('a recorder that dies mid-call gets a FRESH socket pair (never a 2nd WebM header)', async () => {
     session.isActive = true;
     const { result } = renderHook(() => useDeepgram());
     const { fresh } = await pressAndOpen(result);
@@ -320,9 +323,24 @@ describe('CONNECT watchdog when our audio never starts (v4.170.0)', () => {
       jest.advanceTimersByTime(15_000);
     });
 
+    // Old pair: closed politely (CloseStream frees the Deepgram slot).
+    expect(fresh.every((s) => s.readyState === 3 && s.saidGoodbye())).toBe(true);
+    // New pair opens after the reopen gap; the new recorder rides ONLY on it.
+    await act(async () => {
+      jest.advanceTimersByTime(500);
+    });
+    const next = FakeSocket.instances.slice(fresh.length).filter((s) => s.readyState === 0);
+    expect(next.length).toBeGreaterThan(0);
+    await act(async () => {
+      next.forEach((s) => s.open());
+    });
     expect(FakeRecorder.instances.length).toBeGreaterThan(1);
-    expect(result.current.connectionState).toBe('connected');
-    expect(fresh.every((s) => s.readyState === 1)).toBe(true);
+    const oldSentBefore = fresh.map((s) => s.sent.length);
+    await act(async () => {
+      FakeRecorder.instances[FakeRecorder.instances.length - 1].emitChunk();
+    });
+    expect(fresh.map((s) => s.sent.length)).toEqual(oldSentBefore);
+    expect(next.some((s) => s.sent.length > 0)).toBe(true);
   });
 });
 

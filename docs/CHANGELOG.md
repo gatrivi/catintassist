@@ -3,6 +3,12 @@
 **Version source:** `src/constants/version.js` (must match `package.json` + top-right UI pill)
 
 
+## v4.203.0 - CONNECT needs ZAP: root cause (2nd WebM header on an old socket)
+
+- Audio is WebM/Opus; every new MediaRecorder starts with a file header. The shift ear kept last call's pair warm and the next call (ear wake / mid-call rebuild) hung a NEW recorder on it → 2nd header mid-stream → Deepgram silent. ZAP worked only because it opens fresh sockets.
+- Rule now: one recorder per socket, ever. `startRecorderOnSockets` sees `ws.__catCarriedAudio` → opens a fresh pair via `startDeepgram` (CloseStream on the old). Cost: ~1 s handshake on wake.
+- Logs: `catKey()` = always-printed `🔌` line per connect run (filter console by 🔌). Ring/`__CAT_DUMP`/bubble stamps now LOCAL time (were UTC → didn't match the console).
+
 ## v4.202.0 - Spoken emails written into the text (transcript + translation)
 
 - `foldSpokenEmails` (`sensitiveDataProtector.js`): "Mercedes punto r 56 arroba iCloud punto com" → `mercedes.r56@icloud.com`. Runs in `applyDisplayProtections` (both panes) AND in `translateWithFallback` (MT input), so the engine never turns punto/arroba into point/at.

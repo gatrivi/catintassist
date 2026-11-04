@@ -25,6 +25,8 @@
  *   __CAT_INCIDENT()          // clean 15-line incident snapshot (auto-copied)
  */
 
+import { localClock } from './consoleTimestamps';
+
 const RING_MAX = 500;
 const RING_MAX_WARN = 500;
 const CONSOLE_THROTTLE_MS = 3000;
@@ -68,7 +70,9 @@ export function serialize(args) {
 }
 
 function record(level, label, text) {
-  const entry = { t: new Date().toISOString().slice(11, 23), level, label, text, count: 1 };
+  // v4.203.0: LOCAL time (was UTC) — same clock as the console stamp, so
+  // "14:37" in the console = "14:37" in __CAT_DUMP().
+  const entry = { t: localClock(), level, label, text, count: 1 };
 
   // Collapse exact repeats (same label + text): bump count, refresh timestamp.
   // Look back up to 50 entries to catch alternating A/B/A/B spam loops.
@@ -158,6 +162,16 @@ function emit(level, label, args) {
 export const catLog = (label, ...args) => emit('info', label, args);
 export const catWarn = (label, ...args) => emit('warn', label, args);
 export const catError = (label, ...args) => emit('error', label, args);
+
+/**
+ * v4.203.0 — KEY line: recorded as info, but ALWAYS printed (no verbose
+ * switch, no throttle) with a 🔌 prefix. For the handful of lines the operator
+ * must find in a noisy console: one per connect result. Filter console: 🔌
+ */
+export const catKey = (label, ...args) => {
+  record('info', label, serialize(args));
+  console.info(`🔌 ${label}`, ...args);
+};
 
 /** Dump the ring: warn/error entries first, newest last. filter = substring/regex on label+text. */
 export function dump(filter, returnText) {

@@ -94,6 +94,7 @@ import {
   STT_DEAF_HEAL_MAX,
 } from "../utils/dgStatus";
 import { startRun, endRun, noteRunHeal, describeRun } from "../utils/connectRuns";
+import { catKey } from "../utils/catLog";
 import { analyzeToneFrame, createToneTracker } from "../utils/toneWatch";
 import {
   STT_EVENT_STATUS,
@@ -304,6 +305,7 @@ export const useDeepgram = () => {
   // Bridges startRecorderOnSockets (defined below startDeepgram) into the
   // connect watchdog, which must be able to rebuild a silent recorder.
   const startRecorderOnSocketsRef = useRef(null);
+  const startDeepgramRef = useRef(null); // v4.203.0
   const lastRecorderRebuildAtRef = useRef(0);
   const recorderRebuildsRef = useRef(0);
   // v4.172.0 SHIFT EAR: the warm pair is now expected to outlive a call, so it
@@ -1278,11 +1280,13 @@ export const useDeepgram = () => {
                   sentAny = true;
                   lanes.push("En");
                   socketRefEn.current.send(e.data);
+                  socketRefEn.current.__catCarriedAudio = true; // v4.203.0
                 }
                 if (!multiMode && socketRefEs.current?.readyState === 1) {
                   sentAny = true;
                   lanes.push("Es");
                   socketRefEs.current.send(e.data);
+                  socketRefEs.current.__catCarriedAudio = true; // v4.203.0
                 }
                 const firstAudioChunk = sentAny && !connectFlagsRef.current.audioChunksSent;
                 if (sentAny) {
@@ -1622,7 +1626,7 @@ export const useDeepgram = () => {
             clearWatchdog();
             connectStallRetriesRef.current = 0;
             const run = endRun(connectRunRef, { word: true });
-            if (run) catLog(describeRun(run));
+            if (run) catKey(describeRun(run));
           }
           syncConnectProgress({
             lastTranscriptStringAt: Date.now(),
@@ -1957,6 +1961,7 @@ export const useDeepgram = () => {
       closeSocket,
     ],
   );
+  startDeepgramRef.current = startDeepgram; // v4.203.0: fresh-pair path
 
   // ── IDLE EAR ENGINE (v4.92.0) ───────────────────────────────────────────
   // After STOP: sockets stay OPEN (KeepAlive pings only — zero audio sent to
@@ -2176,6 +2181,20 @@ export const useDeepgram = () => {
 
   /** Rebuild just the MediaRecorder and stream into the already-open sockets. */
   const startRecorderOnSockets = useCallback((stream) => {
+    // v4.203.0 — THE "CONNECT needs ZAP" BUG. Audio is WebM/Opus: every new
+    // MediaRecorder starts with a fresh WebM file header. A socket that already
+    // carried audio from an OLD recorder (last call's pair kept warm by the
+    // shift ear, or a mid-call rebuild) then receives a SECOND header mid-
+    // stream — Deepgram cannot decode past it and goes silent: sockets open,
+    // audio flowing, zero words. ZAP "fixed" it only because ZAP opens fresh
+    // sockets. Rule: one recorder per socket, ever. Carried audio → new pair.
+    const carried =
+      socketRefEn.current?.__catCarriedAudio || socketRefEs.current?.__catCarriedAudio;
+    if (carried) {
+      catKey("connect: old sockets already got audio → opening FRESH sockets (no ZAP needed)");
+      startDeepgramRef.current?.(stream);
+      return "fresh";
+    }
     try {
       if (mediaRecorderRef.current) {
         try { mediaRecorderRef.current.stop(); } catch (_) {}
@@ -2210,8 +2229,14 @@ export const useDeepgram = () => {
             }).catch(() => {});
           }
           try {
-            if (socketRefEn.current?.readyState === 1) socketRefEn.current.send(e.data);
-            if (!multiMode && socketRefEs.current?.readyState === 1) socketRefEs.current.send(e.data);
+            if (socketRefEn.current?.readyState === 1) {
+              socketRefEn.current.send(e.data);
+              socketRefEn.current.__catCarriedAudio = true; // v4.203.0
+            }
+            if (!multiMode && socketRefEs.current?.readyState === 1) {
+              socketRefEs.current.send(e.data);
+              socketRefEs.current.__catCarriedAudio = true;
+            }
           } catch (_) {}
           lastAudioProgressAtRef.current = audioNow;
           syncConnectProgress({ audioChunksSent: true, lastAudioChunkAt: Date.now() });
@@ -2264,15 +2289,22 @@ export const useDeepgram = () => {
       esOk &&
       warmIsCallPair
     ) {
-      if (startRecorderOnSockets(stream)) {
+      const resumed = startRecorderOnSockets(stream);
+      if (resumed) {
+        // v4.203.0: "fresh" = the warm pair already carried last call's audio,
+        // so a NEW pair is handshaking — startDeepgram owns the state/chips.
+        const fresh = resumed === "fresh";
         earWakeAtRef.current = Date.now();
         earLastBusyAtRef.current = Date.now();
-        earSocketsOpenedAtRef.current =
-          earSocketsOpenedAtRef.current || Date.now();
-        setConnectionState("connected");
-        setSttLive(true); // v4.153.0: audio is flowing again.
+        earSocketsOpenedAtRef.current = fresh
+          ? Date.now()
+          : earSocketsOpenedAtRef.current || Date.now();
+        if (!fresh) {
+          setConnectionState("connected");
+          setSttLive(true); // v4.153.0: audio is flowing again.
+        }
         setConnectionMessage("Speech detected — reconnecting…");
-        sttTrace("idle ear wake: warm recorder resume");
+        sttTrace(fresh ? "idle ear wake: fresh pair" : "idle ear wake: warm recorder resume");
         // Orphan guard: the recorder is streaming, but a call only becomes
         // active if something starts one (auto-detect / autopilot / a press). If
         // nothing ever does, clinic audio is being billed and transcribed while
@@ -3056,12 +3088,12 @@ export const useDeepgram = () => {
       // Speech auto-start: the first word can arrive before isActive commits.
       if (connectFlagsRef.current.transcriptReceived) {
         const run = endRun(connectRunRef, { word: true });
-        if (run) catLog(describeRun(run));
+        if (run) catKey(describeRun(run));
       }
       return;
     }
     const run = endRun(connectRunRef);
-    if (run) catLog(describeRun(run));
+    if (run) catKey(describeRun(run));
   }, [isActive]);
 
   const lastAutoZapAtRef = useRef(0);
@@ -3133,7 +3165,8 @@ export const useDeepgram = () => {
         });
         const rebuilt =
           streamRef.current && startRecorderOnSocketsRef.current?.(streamRef.current);
-        if (rebuilt) {
+        // v4.203.0: "fresh" = new sockets handshaking; they set their own state.
+        if (rebuilt && rebuilt !== "fresh") {
           lastAudioProgressAtRef.current = now;
           setSttLive(true);
           setSttAudioRecording(true);

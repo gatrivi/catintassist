@@ -146,8 +146,8 @@ describe('splitLongTextAtCommas digit guard', () => {
 
 // v4.150.0: hover timestamp — local for hold math, catLog format for log correlation.
 describe('bubbleTimestampLabel', () => {
-  test('formats local HH:MM:SS and catLog HH:MM:SS.mmm (UTC)', () => {
-    const ms = Date.UTC(2026, 8, 25, 14, 32, 7, 123);
+  test('formats local HH:MM:SS and catLog HH:MM:SS.mmm (local, v4.203.0)', () => {
+    const ms = new Date(2026, 8, 25, 14, 32, 7, 123).getTime();
     const ts = bubbleTimestampLabel(ms);
     expect(ts).not.toBeNull();
     expect(ts.log).toBe('14:32:07.123');
@@ -155,7 +155,7 @@ describe('bubbleTimestampLabel', () => {
   });
 
   test('falls back to turn-<ms> id for pre-createdAt persisted bubbles', () => {
-    const ms = Date.UTC(2026, 8, 25, 9, 5, 3, 400);
+    const ms = new Date(2026, 8, 25, 9, 5, 3, 400).getTime();
     expect(bubbleTimestampLabel(undefined, `turn-${ms}`).log).toBe('09:05:03.400');
   });
 

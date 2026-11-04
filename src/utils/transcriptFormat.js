@@ -1,3 +1,5 @@
+import { localClock } from './consoleTimestamps';
+
 const normalizeClue = (s) =>
   (s || '')
     .normalize('NFD')
@@ -275,7 +277,7 @@ export const applyTranscriptFormatting = (text, lang = 'en') => formatTranscript
 /**
  * v4.150.0: hover timestamp for a transcript bubble (debug aid).
  * `local` = wall clock HH:MM:SS (what you compare against "how long on hold").
- * `log` = catLog ring-buffer format (HH:MM:SS.mmm UTC) so it can be matched
+ * `log` = catLog ring-buffer format (HH:MM:SS.mmm local) so it can be matched
  * byte-for-byte against __CAT_DUMP() console output.
  * Falls back to the `turn-<ms>` id for bubbles persisted before createdAt existed.
  */
@@ -286,6 +288,6 @@ export const bubbleTimestampLabel = (createdAt, turnId) => {
   if (Number.isNaN(d.getTime())) return null;
   return {
     local: d.toTimeString().slice(0, 8),
-    log: d.toISOString().slice(11, 23),
+    log: localClock(d), // v4.203.0: local, same clock as catLog ring + console
   };
 };

@@ -3,9 +3,14 @@
  * operator can say "show me the 14:37 ones". Patches console once, at boot.
  * A string first arg gets the stamp glued INTO it, so `%c` styling still works.
  */
-export function stampArgs(args, date = new Date()) {
+/** Local wall clock `HH:MM:SS.mmm` — ONE clock for console, __CAT_DUMP and bubbles (v4.203.0). */
+export function localClock(date = new Date()) {
   const p = (n, w = 2) => String(n).padStart(w, '0');
-  const ts = `${p(date.getHours())}:${p(date.getMinutes())}:${p(date.getSeconds())}.${p(date.getMilliseconds(), 3)}`;
+  return `${p(date.getHours())}:${p(date.getMinutes())}:${p(date.getSeconds())}.${p(date.getMilliseconds(), 3)}`;
+}
+
+export function stampArgs(args, date = new Date()) {
+  const ts = localClock(date);
   if (typeof args[0] === 'string') return [`${ts} ${args[0]}`, ...args.slice(1)];
   return [ts, ...args];
 }

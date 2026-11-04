@@ -25,6 +25,21 @@ import { APP_VERSION } from '../constants/version';
 /** Newest first. Only the entry matching APP_VERSION is shown on load. */
 export const RELEASE_NOTES_CATALOG = [
   {
+    version: '4.203.0',
+    id: 'connect-fresh-sockets',
+    highlightElementIds: ['transcript-pane'],
+    es: {
+      title: 'CONNECT sin ZAP',
+      intro: 'Causa encontrada: el audio nuevo se colgaba de un socket viejo y Deepgram quedaba sordo. Ahora cada llamada abre sockets nuevos.',
+      sections: [{ heading: 'Consola', bullets: ['Filtrá la consola con 🔌 = una línea por conexión (hora local, resultado, segundos hasta la 1ª palabra, zaps).', '__CAT_DUMP() ahora usa hora local, igual que la consola.'] }],
+    },
+    en: {
+      title: 'CONNECT without ZAP',
+      intro: 'Root cause found: new audio was hung on an old socket and Deepgram went deaf. Every call now opens fresh sockets.',
+      sections: [{ heading: 'Console', bullets: ['Filter the console with 🔌 = one line per connect (local time, outcome, seconds to first word, zaps).', '__CAT_DUMP() now uses local time, same as the console.'] }],
+    },
+  },
+  {
     version: '4.202.0',
     id: 'spoken-email-fold',
     highlightElementIds: ['transcript-pane'],
