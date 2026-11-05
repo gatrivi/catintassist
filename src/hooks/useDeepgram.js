@@ -94,7 +94,7 @@ import {
   STT_DEAF_HEAL_COOLDOWN_MS,
   STT_DEAF_HEAL_MAX,
 } from "../utils/dgStatus";
-import { startRun, endRun, noteRunHeal, noteRunLevel, describeRun } from "../utils/connectRuns";
+import { startRun, endRun, noteRunHeal, noteRunLevel, noteRunSignal, describeRun } from "../utils/connectRuns";
 import { createCallVadGate, feedCallVad } from "../utils/callVadGate";
 import { catKey } from "../utils/catLog";
 import { analyzeToneFrame, createToneTracker } from "../utils/toneWatch";
@@ -838,6 +838,7 @@ export const useDeepgram = () => {
           const speaking = feedCallVad(gate, rms);
           noteRunLevel(connectRunRef.current, gate); // measure for __CAT_CONNECTS
           if (speaking) {
+            noteRunSignal(connectRunRef.current, "speech"); // v4.207.0
             const now = Date.now();
             lastLoudAudioAtRef.current = now;
             // v4.195.1: soundwave + "In" dot follow real loudness, not packets
@@ -1479,6 +1480,7 @@ export const useDeepgram = () => {
           // rebuild loop. Only real words refill it (first-transcript block).
           if (!dgMessageSeenRef.current) {
             dgMessageSeenRef.current = true;
+            noteRunSignal(connectRunRef.current, "dg"); // v4.207.0
           }
           let received;
           try {

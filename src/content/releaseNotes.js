@@ -25,6 +25,21 @@ import { APP_VERSION } from '../constants/version';
 /** Newest first. Only the entry matching APP_VERSION is shown on load. */
 export const RELEASE_NOTES_CATALOG = [
   {
+    version: '4.207.0',
+    id: 'connect-run-cause',
+    highlightElementIds: ['transcript-pane'],
+    es: {
+      title: 'Cada CONNECT fallido dice por qué',
+      intro: '__CAT_CONNECTS() ahora cuenta causas: no-reply (Deepgram no contestó), quiet-line (no se oyó a nadie), deaf (se oyó voz, cero palabras).',
+      sections: [{ heading: 'Después del turno', bullets: ['Consola: __CAT_CONNECTS() → pegame el resultado.'] }],
+    },
+    en: {
+      title: 'Every failed CONNECT says why',
+      intro: '__CAT_CONNECTS() now counts causes: no-reply (Deepgram silent), quiet-line (nobody heard), deaf (speech heard, zero words).',
+      sections: [{ heading: 'After the shift', bullets: ['Console: __CAT_CONNECTS() → paste me the result.'] }],
+    },
+  },
+  {
     version: '4.206.0',
     id: 'reopen-waits-close',
     highlightElementIds: ['transcript-pane'],

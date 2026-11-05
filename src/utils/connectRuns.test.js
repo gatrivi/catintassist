@@ -46,3 +46,33 @@ describe('connectRuns (v4.195.0)', () => {
     );
   });
 });
+
+describe('runCause — a failed CONNECT names its cause (v4.207.0)', () => {
+  const { startRun: sr, noteRunSignal: sig, runCause: cause, endRun: end, summarizeRuns: sum } = require('./connectRuns');
+  const mem = () => { const m = {}; return { getItem: (k) => m[k] || null, setItem: (k, v) => { m[k] = v; } }; };
+  it('Deepgram never answered → no-reply', () => {
+    const ref = { current: sr(0) };
+    expect(end(ref, { storage: mem() }).cause).toBe('no-reply');
+  });
+  it('answered, nobody heard → quiet-line', () => {
+    const ref = { current: sr(0) };
+    sig(ref.current, 'dg', 500);
+    expect(end(ref, { storage: mem() }).cause).toBe('quiet-line');
+  });
+  it('answered + caller heard + no words → deaf', () => {
+    const ref = { current: sr(0) };
+    sig(ref.current, 'dg', 500);
+    sig(ref.current, 'speech', 3000);
+    expect(end(ref, { storage: mem() }).cause).toBe('deaf');
+  });
+  it('first try → ok; signals after the first word are ignored', () => {
+    const ref = { current: sr(0) };
+    const run = end(ref, { word: true, now: 900, storage: mem() });
+    expect(run.cause).toBe('ok');
+    sig(run, 'dg', 2000);
+    expect(run.dgMsgMs).toBeUndefined();
+  });
+  it('summary counts causes', () => {
+    expect(sum([{ outcome: 'no-words', firstWordMs: null, cause: 'deaf' }, { firstWordMs: 1, autoHeals: 0, zaps: 0, cause: 'ok' }]).causes).toEqual({ deaf: 1 });
+  });
+});

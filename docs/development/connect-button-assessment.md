@@ -95,3 +95,5 @@ Every element in the end-to-end chain was audited:
 5. **Connect record says WHICH vector**: `{rmsPeak, dgMsg, heardSpeech, words, healKind}` → `__CAT_CONNECTS()` shows the cause of each miss.
 
 **Tests:** `connectStallVerdict` re-arm, `shouldHealConnect` word gate, adaptive VAD floor, close-wait cap. **Done =** after one shift, `__CAT_CONNECTS()` first-try dominates. Not before.
+
+**Shipped:** step 1 v4.204.0 · step 2 v4.205.0 · step 3 dropped · step 4 v4.206.0 · step 5 v4.207.0. Next = one shift of `__CAT_CONNECTS()` data.

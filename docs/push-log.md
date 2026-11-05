@@ -156,3 +156,4 @@
 | 2026-11-04T20:13:55.229Z | 5e96520 | v4.203.0 connect fresh sockets |
 | 2026-11-05T19:58:56.329Z | ed34ade | v4.204.0 connect watchdog rearm |
 | 2026-11-05T20:27:22.327Z | 0b4be81 | v4.205.0 adaptive call VAD |
+| 2026-11-05T20:55:07.160Z | b27eb47 | v4.206.0 reopen waits close |
