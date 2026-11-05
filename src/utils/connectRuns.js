@@ -18,6 +18,14 @@ export const startRun = (now = Date.now()) => ({
   firstWordMs: null,
 });
 
+/** v4.205.0: loudest tick + learned noise floor while waiting for the first
+ * word — tells us if a miss was "too quiet to notice" or "deaf socket". */
+export function noteRunLevel(run, gate) {
+  if (!run || run.firstWordMs != null || !gate) return;
+  run.rmsPeak = Math.max(run.rmsPeak || 0, gate.peak || 0);
+  run.rmsFloor = gate.floor;
+}
+
 /** Count a heal — only while the run is still waiting for its first word. */
 export function noteRunHeal(run, kind) {
   if (!run || run.firstWordMs != null) return;
@@ -82,7 +90,9 @@ export function endRun(ref, { word = false, now = Date.now(), storage } = {}) {
 export const describeRun = (run) =>
   `connect run: ${run.outcome} · first word ${
     run.firstWordMs == null ? '—' : `${(run.firstWordMs / 1000).toFixed(1)}s`
-  } · auto ${run.autoHeals} · zap ${run.zaps}`;
+  } · auto ${run.autoHeals} · zap ${run.zaps}${
+    run.rmsPeak != null ? ` · peak ${run.rmsPeak.toFixed(3)} floor ${(run.rmsFloor || 0).toFixed(3)}` : ''
+  }`;
 
 if (typeof window !== 'undefined') {
   window.__CAT_CONNECTS = () => summarizeRuns(loadRuns());

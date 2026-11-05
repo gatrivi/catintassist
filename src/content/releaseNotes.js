@@ -25,6 +25,21 @@ import { APP_VERSION } from '../constants/version';
 /** Newest first. Only the entry matching APP_VERSION is shown on load. */
 export const RELEASE_NOTES_CATALOG = [
   {
+    version: '4.205.0',
+    id: 'call-vad-adaptive',
+    highlightElementIds: ['transcript-pane'],
+    es: {
+      title: 'La app oye voces bajas en la llamada',
+      intro: 'El umbral fijo de volumen no detectaba voces bajas de la pestaña, así que el vigilante de CONNECT y el aviso rojo nunca saltaban. Ahora aprende el ruido de la línea y detecta voz a 3× ese nivel.',
+      sections: [{ heading: 'Consola', bullets: ['Línea 🔌 / connect run ahora muestra peak y floor (volumen). Si falla un CONNECT, mandame esa línea.'] }],
+    },
+    en: {
+      title: 'The app hears quiet callers',
+      intro: 'A fixed loudness bar missed quiet tab audio, so the CONNECT watchdog and the red banner never fired. It now learns the line noise and calls speech at 3× that level.',
+      sections: [{ heading: 'Console', bullets: ['The connect run line now shows peak and floor (loudness). If a CONNECT fails, send me that line.'] }],
+    },
+  },
+  {
     version: '4.204.0',
     id: 'connect-watchdog-rearm',
     highlightElementIds: ['transcript-pane'],

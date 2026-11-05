@@ -62,7 +62,7 @@ import {
   recordLastConnect,
 } from "../utils/connectEvidence";
 import { traceCaptionArrayDiff } from "../utils/vanishTrace";
-import { updateVadLoudFrames, shouldWakeFromVad, shouldSpeechAutoStart, IDLE_EAR_RMS_THRESHOLD } from "../utils/idleEar";
+import { updateVadLoudFrames, shouldWakeFromVad, shouldSpeechAutoStart } from "../utils/idleEar";
 import { createUnthrottledInterval } from "../utils/workerInterval";
 import {
   RING_TRIGGER_FRAMES,
@@ -94,7 +94,8 @@ import {
   STT_DEAF_HEAL_COOLDOWN_MS,
   STT_DEAF_HEAL_MAX,
 } from "../utils/dgStatus";
-import { startRun, endRun, noteRunHeal, describeRun } from "../utils/connectRuns";
+import { startRun, endRun, noteRunHeal, noteRunLevel, describeRun } from "../utils/connectRuns";
+import { createCallVadGate, feedCallVad } from "../utils/callVadGate";
 import { catKey } from "../utils/catLog";
 import { analyzeToneFrame, createToneTracker } from "../utils/toneWatch";
 import {
@@ -824,6 +825,7 @@ export const useDeepgram = () => {
       analyser.fftSize = 512;
       srcNode.connect(analyser);
       const buf = new Uint8Array(analyser.frequencyBinCount);
+      const gate = createCallVadGate(); // v4.205.0: learns this line's floor
       const tick = () => {
         try {
           analyser.getByteTimeDomainData(buf);
@@ -833,7 +835,9 @@ export const useDeepgram = () => {
             sum += v * v;
           }
           const rms = Math.sqrt(sum / buf.length);
-          if (rms >= IDLE_EAR_RMS_THRESHOLD) {
+          const speaking = feedCallVad(gate, rms);
+          noteRunLevel(connectRunRef.current, gate); // measure for __CAT_CONNECTS
+          if (speaking) {
             const now = Date.now();
             lastLoudAudioAtRef.current = now;
             // v4.195.1: soundwave + "In" dot follow real loudness, not packets
