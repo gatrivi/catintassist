@@ -153,3 +153,4 @@
 | 2026-10-30T00:12:54.189Z | 6bf22a1 | v4.201.0 stall banner copy & engine v2 shadow mode |
 | 2026-11-03T14:36:38.946Z | d1d348d | v4.202.0 spoken emails |
 | 2026-11-03T14:36:54.665Z | 3a23ba3 | v4.202.0 spoken emails |
+| 2026-11-04T20:13:55.229Z | 5e96520 | v4.203.0 connect fresh sockets |

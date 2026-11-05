@@ -175,6 +175,20 @@ export function connectStallVerdict({
 }
 
 /**
+ * v4.204.0 — the watchdog used to switch itself OFF on 'ok'. A quiet first
+ * 12 s (ringing, greeting) = 'ok' → no watchdog for the rest of the call, so
+ * a deaf socket at second 13+ was never rebuilt. Now: 'ok' before the first
+ * real word → look again in 8 s. First word (or STOP) ends it.
+ * Returns ms until the next look, or 0 = stop watching.
+ */
+export const CONNECT_WATCHDOG_REARM_MS = 8000;
+export function watchdogRearmMs({ verdict = 'ok', transcriptReceived = false } = {}) {
+  if (verdict !== 'ok') return 0; // other verdicts own their next step
+  if (transcriptReceived) return 0; // proof of life → done
+  return CONNECT_WATCHDOG_REARM_MS;
+}
+
+/**
  * v4.195.0 — CONNECT used to close the old sockets and open the new ones in
  * the same tick; ZAP waited 400 ms and worked. The gap lets Deepgram free the
  * old streams before the new ones count against the concurrency cap.

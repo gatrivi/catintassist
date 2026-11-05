@@ -90,6 +90,7 @@ import {
   CONNECT_STALL_MAX_RETRIES,
   CONNECT_RECORDER_MAX_RETRIES,
   SOCKET_REOPEN_GAP_MS,
+  watchdogRearmMs,
   STT_DEAF_HEAL_COOLDOWN_MS,
   STT_DEAF_HEAL_MAX,
 } from "../utils/dgStatus";
@@ -1180,7 +1181,18 @@ export const useDeepgram = () => {
             recorderRetriesLeft:
               CONNECT_RECORDER_MAX_RETRIES - connectRecorderRetriesRef.current,
           });
-          if (verdict === "ok") return;
+          if (verdict === "ok") {
+            // v4.204.0: keep watching until the first real word.
+            const again = watchdogRearmMs({
+              verdict,
+              transcriptReceived: connectFlagsRef.current.transcriptReceived,
+            });
+            if (again) {
+              clearWatchdog();
+              watchdogTimeoutRef.current = setTimeout(evaluateStall, again);
+            }
+            return;
+          }
           if (verdict === "stall-reconnect") {
             // Audio IS flowing but no words came back (dead or deaf pipe).
             // Rebuild sockets NOW instead of aging to the 60s red chip.

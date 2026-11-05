@@ -25,6 +25,21 @@ import { APP_VERSION } from '../constants/version';
 /** Newest first. Only the entry matching APP_VERSION is shown on load. */
 export const RELEASE_NOTES_CATALOG = [
   {
+    version: '4.204.0',
+    id: 'connect-watchdog-rearm',
+    highlightElementIds: ['transcript-pane'],
+    es: {
+      title: 'CONNECT vigila hasta la 1ª palabra',
+      intro: 'Si los primeros 12 s eran silencio, el vigilante de CONNECT se apagaba y un socket sordo nunca se reconstruía. Ahora revisa cada 8 s hasta la primera palabra.',
+      sections: [{ heading: 'Qué mirar', bullets: ['Llamada que arranca en silencio y no transcribe → debería reconectarse sola sin ZAP.'] }],
+    },
+    en: {
+      title: 'CONNECT watches until the first word',
+      intro: 'A quiet first 12 s switched the CONNECT watchdog off, so a deaf socket was never rebuilt. It now checks every 8 s until the first word.',
+      sections: [{ heading: 'Watch for', bullets: ['A call that starts quiet and shows no text → should reconnect by itself, no ZAP.'] }],
+    },
+  },
+  {
     version: '4.203.0',
     id: 'connect-fresh-sockets',
     highlightElementIds: ['transcript-pane'],

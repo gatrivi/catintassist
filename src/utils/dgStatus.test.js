@@ -1,6 +1,8 @@
 import {
   dgStatus,
   connectStallVerdict,
+  watchdogRearmMs,
+  CONNECT_WATCHDOG_REARM_MS,
   isSocketHealthy,
   shouldAutoZap,
   DG_ZAP_SPEAKING_SILENCE_MS,
@@ -196,5 +198,23 @@ describe('dgStatus after a ZAP (v4.195.1)', () => {
     expect(s.freshText).toBe(false);
     expect(s.stuck).toBe(false);
     expect(s.quiet).toBe(false);
+  });
+});
+
+describe('watchdogRearmMs — watch until first word (v4.204.0)', () => {
+  it('quiet start (ok, no words) → look again in 8 s', () => {
+    expect(watchdogRearmMs({ verdict: 'ok', transcriptReceived: false })).toBe(CONNECT_WATCHDOG_REARM_MS);
+  });
+  it('first word arrived → stop watching', () => {
+    expect(watchdogRearmMs({ verdict: 'ok', transcriptReceived: true })).toBe(0);
+  });
+  it('non-ok verdicts own their next step → no re-arm here', () => {
+    ['stall-reconnect', 'recorder-rebuild', 'fail-silent', 'fail-no-audio'].forEach((v) =>
+      expect(watchdogRearmMs({ verdict: v })).toBe(0));
+  });
+  it('quiet 12 s then caller speaks with no words → next look reconnects', () => {
+    const quiet = connectStallVerdict({ audioChunksSent: true, gotDgMessage: true, heardSpeech: false, retriesLeft: 2 });
+    expect(watchdogRearmMs({ verdict: quiet })).toBe(CONNECT_WATCHDOG_REARM_MS);
+    expect(connectStallVerdict({ audioChunksSent: true, gotDgMessage: true, heardSpeech: true, retriesLeft: 2 })).toBe('stall-reconnect');
   });
 });
