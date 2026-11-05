@@ -90,7 +90,7 @@ Every element in the end-to-end chain was audited:
 **Steps** (one release, one push):
 1. **Watchdog lives until first word** (#7): `'ok'` without `transcriptReceived` → re-arm 8 s; stop only on first word or call end.
 2. **Measure, then lower VAD** (#8/#4): log peak RMS per connect into `recordLastConnect`. Use adaptive floor (noise ×3, min 0.004) for tab/cable instead of fixed 0.02.
-3. **One healer, gated on words** (#3): `shouldHealConnect` uses "first word received", not `sttLive`. Must not double-fire with step 1 (same attempt id).
+3. ~~**One healer, gated on words**~~ **DROPPED after step 1+2:** the watchdog now owns "live, no words, caller spoke" (re-checks every 8 s); `shouldHealConnect` owns "never went live". Gating it on words = 2nd rebuild at 6 s during a quiet ring, racing the watchdog. Original (#3): `shouldHealConnect` uses "first word received", not `sttLive`. Must not double-fire with step 1 (same attempt id).
 4. **Reopen gap = wait for `onclose`** (#5 hedge): wait for old sockets' close event, cap 1.5 s, instead of fixed 400 ms.
 5. **Connect record says WHICH vector**: `{rmsPeak, dgMsg, heardSpeech, words, healKind}` → `__CAT_CONNECTS()` shows the cause of each miss.
 

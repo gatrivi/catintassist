@@ -197,6 +197,35 @@ export function watchdogRearmMs({ verdict = 'ok', transcriptReceived = false } =
 export const SOCKET_REOPEN_GAP_MS = 400;
 
 /**
+ * v4.206.0 — a fixed 400 ms was a guess. Now: wait until the old sockets are
+ * really CLOSED (Deepgram answered our CloseStream → slot freed), but never
+ * less than 400 ms (known-good) and never more than 1.5 s (a call is waiting).
+ * Polls readyState, so it never touches the sockets' own onclose handlers.
+ * Calls `done` once. Returns cancel().
+ */
+export const SOCKET_REOPEN_MAX_WAIT_MS = 1500;
+export function afterSocketsClosed(sockets, done, {
+  minMs = SOCKET_REOPEN_GAP_MS,
+  maxMs = SOCKET_REOPEN_MAX_WAIT_MS,
+  pollMs = 50,
+} = {}) {
+  const start = Date.now();
+  let timer = null;
+  const allClosed = () => (sockets || []).every((ws) => !ws || ws.readyState === 3);
+  const check = () => {
+    const age = Date.now() - start;
+    if (age >= maxMs || (age >= minMs && allClosed())) {
+      timer = null;
+      done({ waitedMs: age, closed: allClosed() });
+      return;
+    }
+    timer = setTimeout(check, age < minMs ? minMs - age : pollMs);
+  };
+  timer = setTimeout(check, minMs);
+  return () => { if (timer) clearTimeout(timer); timer = null; };
+}
+
+/**
  * v4.179.0 — "transcription stopped with no UI sign". Every watchdog above
  * counts Deepgram's EMPTY Results as life, so "you are talking, Deepgram
  * answers, but with zero words" was invisible. This verdict feeds a red

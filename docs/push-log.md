@@ -155,3 +155,4 @@
 | 2026-11-03T14:36:54.665Z | 3a23ba3 | v4.202.0 spoken emails |
 | 2026-11-04T20:13:55.229Z | 5e96520 | v4.203.0 connect fresh sockets |
 | 2026-11-05T19:58:56.329Z | ed34ade | v4.204.0 connect watchdog rearm |
+| 2026-11-05T20:27:22.327Z | 0b4be81 | v4.205.0 adaptive call VAD |

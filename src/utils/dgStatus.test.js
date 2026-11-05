@@ -2,6 +2,7 @@ import {
   dgStatus,
   connectStallVerdict,
   watchdogRearmMs,
+  afterSocketsClosed,
   CONNECT_WATCHDOG_REARM_MS,
   isSocketHealthy,
   shouldAutoZap,
@@ -216,5 +217,43 @@ describe('watchdogRearmMs — watch until first word (v4.204.0)', () => {
     const quiet = connectStallVerdict({ audioChunksSent: true, gotDgMessage: true, heardSpeech: false, retriesLeft: 2 });
     expect(watchdogRearmMs({ verdict: quiet })).toBe(CONNECT_WATCHDOG_REARM_MS);
     expect(connectStallVerdict({ audioChunksSent: true, gotDgMessage: true, heardSpeech: true, retriesLeft: 2 })).toBe('stall-reconnect');
+  });
+});
+
+describe('afterSocketsClosed — reopen waits for the old pair (v4.206.0)', () => {
+  beforeEach(() => jest.useFakeTimers());
+  afterEach(() => jest.useRealTimers());
+  it('already closed → fires at the 400 ms floor, not before', () => {
+    const done = jest.fn();
+    afterSocketsClosed([{ readyState: 3 }, null], done);
+    jest.advanceTimersByTime(399);
+    expect(done).not.toHaveBeenCalled();
+    jest.advanceTimersByTime(1);
+    expect(done).toHaveBeenCalledWith(expect.objectContaining({ closed: true }));
+  });
+  it('still closing → waits until it closes', () => {
+    const ws = { readyState: 2 };
+    const done = jest.fn();
+    afterSocketsClosed([ws], done);
+    jest.advanceTimersByTime(700);
+    expect(done).not.toHaveBeenCalled();
+    ws.readyState = 3;
+    jest.advanceTimersByTime(50);
+    expect(done).toHaveBeenCalledTimes(1);
+  });
+  it('never closes → gives up at 1.5 s (a call is waiting)', () => {
+    const done = jest.fn();
+    afterSocketsClosed([{ readyState: 2 }], done);
+    jest.advanceTimersByTime(1500);
+    expect(done).toHaveBeenCalledWith(expect.objectContaining({ closed: false }));
+    jest.advanceTimersByTime(5000);
+    expect(done).toHaveBeenCalledTimes(1);
+  });
+  it('cancel() stops it', () => {
+    const done = jest.fn();
+    const cancel = afterSocketsClosed([{ readyState: 2 }], done);
+    cancel();
+    jest.advanceTimersByTime(5000);
+    expect(done).not.toHaveBeenCalled();
   });
 });

@@ -89,8 +89,8 @@ import {
   sttStallReason,
   CONNECT_STALL_MAX_RETRIES,
   CONNECT_RECORDER_MAX_RETRIES,
-  SOCKET_REOPEN_GAP_MS,
   watchdogRearmMs,
+  afterSocketsClosed,
   STT_DEAF_HEAL_COOLDOWN_MS,
   STT_DEAF_HEAL_MAX,
 } from "../utils/dgStatus";
@@ -1122,6 +1122,7 @@ export const useDeepgram = () => {
         }
       } catch (_) {}
       mediaRecorderRef.current = null;
+      const oldSockets = [socketRefEn.current, socketRefEs.current]; // v4.206.0
       closeSocket(socketRefEn.current);
       socketRefEn.current = null;
       closeSocket(socketRefEs.current);
@@ -1944,11 +1945,13 @@ export const useDeepgram = () => {
         openSockets();
       } else {
         // v4.195.0: same-tick close+open was CONNECT's deaf-socket bug.
-        setTimeout(() => {
+        // v4.206.0: wait for the old pair to really close (0.4–1.5 s).
+        afterSocketsClosed(oldSockets, ({ waitedMs, closed }) => {
           if (connectAttemptIdRef.current !== myAttemptId) return; // superseded
           if (socketRefEn.current || socketRefEs.current) return; // someone else opened
+          catLog(`[Deepgram:reopen] after ${waitedMs}ms (old pair ${closed ? "closed" : "still closing"})`);
           openSockets();
-        }, SOCKET_REOPEN_GAP_MS);
+        });
       }
     },
     [
@@ -3054,6 +3057,7 @@ export const useDeepgram = () => {
     // calls would exhaust it and a later dead recorder would go unrecovered.
     recorderRebuildsRef.current = 0;
     lastRecorderRebuildAtRef.current = 0;
+    const oldSockets = [socketRefEn.current, socketRefEs.current]; // v4.206.0
     closeConnections();
     resetConnectProgress();
     setConnectionState("connecting");
@@ -3062,14 +3066,15 @@ export const useDeepgram = () => {
     // painted TEXT ✓ for 30s on a deaf reconnect. QUIET/STUCK run on the
     // message clock, so a zero here can't turn the chip red.
     setLastDataTime(0);
-    setTimeout(() => {
+    // v4.206.0: wait for the old pair to really close (0.4–1.5 s), not a fixed 400 ms.
+    afterSocketsClosed(oldSockets, () => {
       if (streamRef.current && isActiveRef.current)
         startDeepgram(streamRef.current);
       else {
         // If stream is dead, we need a full restart
         startRecording();
       }
-    }, SOCKET_REOPEN_GAP_MS);
+    });
   }, [closeConnections, startDeepgram, startRecording, clearWatchdog, resetConnectProgress, critLog]);
 
   const toggleLanguage = useCallback(() => {

@@ -25,6 +25,21 @@ import { APP_VERSION } from '../constants/version';
 /** Newest first. Only the entry matching APP_VERSION is shown on load. */
 export const RELEASE_NOTES_CATALOG = [
   {
+    version: '4.206.0',
+    id: 'reopen-waits-close',
+    highlightElementIds: ['transcript-pane'],
+    es: {
+      title: 'CONNECT/ZAP esperan que cierre el par viejo',
+      intro: 'Antes se esperaban 400 ms fijos antes de abrir sockets nuevos. Ahora se espera a que Deepgram cierre los viejos (0,4–1,5 s), para no abrir sobre un lugar todavía ocupado.',
+      sections: [{ heading: 'Consola', bullets: ['[Deepgram:reopen] dice cuánto esperó y si el par viejo cerró.'] }],
+    },
+    en: {
+      title: 'CONNECT/ZAP wait for the old pair to close',
+      intro: 'Was a fixed 400 ms before opening new sockets. Now waits until Deepgram really closed the old ones (0.4–1.5 s), so new sockets never open onto a busy slot.',
+      sections: [{ heading: 'Console', bullets: ['[Deepgram:reopen] says how long it waited and whether the old pair closed.'] }],
+    },
+  },
+  {
     version: '4.205.0',
     id: 'call-vad-adaptive',
     highlightElementIds: ['transcript-pane'],
