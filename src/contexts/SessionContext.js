@@ -1174,6 +1174,12 @@ export const SessionProvider = ({ children }) => {
       });
       if (onCallEnded) onCallEnded(minutesToAdd);
       playCoinStack(minutesToAdd);
+      // v4.208.0: tell the header a call was banked, however it ended
+      // (STOP, autopilot farewell, client disconnect, silence guard) —
+      // the +AR$ coin burst used to fire on the STOP button only.
+      try {
+        window.dispatchEvent(new CustomEvent('catint_call_banked', { detail: { mins: minutesToAdd } }));
+      } catch (_) {}
     }
     // v4.124.0: snapshot the finished call for the OFF-call HUD counters
     // (wall-clock length + end stamp) BEFORE zeroing the live timer.

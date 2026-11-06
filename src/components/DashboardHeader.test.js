@@ -422,3 +422,25 @@ describe('condensed toolbar off-call reach (v4.168.0)', () => {
     },
   );
 });
+
+// v4.208.0: the +AR$ coin burst used to fire only from the header STOP button.
+// Calls ended by autopilot / client disconnect / silence guard never showed it.
+describe('call-banked coin burst (v4.208.0)', () => {
+  test('any banked call shows the +AR$ burst', () => {
+    const { act } = require('@testing-library/react');
+    renderOffCall('scoreboard');
+    act(() => {
+      window.dispatchEvent(new CustomEvent('catint_call_banked', { detail: { mins: 10 } }));
+    });
+    // 10 min × 0.13 × 1000 = AR$1300
+    expect(document.body.textContent).toMatch(/\+AR\$\s?1[.,]?300/);
+  });
+  test('zero-minute call: no burst', () => {
+    const { act } = require('@testing-library/react');
+    renderOffCall('scoreboard');
+    act(() => {
+      window.dispatchEvent(new CustomEvent('catint_call_banked', { detail: { mins: 0 } }));
+    });
+    expect(document.body.textContent).not.toMatch(/\+AR\$/);
+  });
+});

@@ -25,6 +25,21 @@ import { APP_VERSION } from '../constants/version';
 /** Newest first. Only the entry matching APP_VERSION is shown on load. */
 export const RELEASE_NOTES_CATALOG = [
   {
+    version: '4.208.0',
+    id: 'call-coin-burst-every-end',
+    highlightElementIds: ['transcript-pane'],
+    es: {
+      title: 'Vuelve la lluvia de monedas +AR$',
+      intro: 'Al terminar cada llamada vuelve la animación con lo ganado. Antes solo salía con el botón STOP; las llamadas cerradas solas (despedida, cliente colgó, silencio) no la mostraban.',
+      sections: [{ heading: 'Qué mirar', bullets: ['Fin de llamada automático → monedas + "+AR$…" unos 4 s.'] }],
+    },
+    en: {
+      title: 'The +AR$ coin burst is back',
+      intro: 'Every call end shows the earnings animation again. It only fired on the STOP button; calls that ended by themselves (farewell, client hung up, silence) showed nothing.',
+      sections: [{ heading: 'Watch for', bullets: ['Auto call end → coins + "+AR$…" for ~4 s.'] }],
+    },
+  },
+  {
     version: '4.207.0',
     id: 'connect-run-cause',
     highlightElementIds: ['transcript-pane'],

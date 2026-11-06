@@ -157,3 +157,4 @@
 | 2026-11-05T19:58:56.329Z | ed34ade | v4.204.0 connect watchdog rearm |
 | 2026-11-05T20:27:22.327Z | 0b4be81 | v4.205.0 adaptive call VAD |
 | 2026-11-05T20:55:07.160Z | b27eb47 | v4.206.0 reopen waits close |
+| 2026-11-05T23:11:01.834Z | 6233fff | v4.207.0 connect run cause |

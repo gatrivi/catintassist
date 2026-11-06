@@ -1337,9 +1337,13 @@ export const DashboardHeader = ({
 
   // handleStart and local starting logic REMOVED to favor unified App-level handlers passed via props
 
-  const handleStop = useCallback(() => {
-    setCallModeExpanded(false);
-    stopSession((mins) => {
+  // v4.208.0: +AR$ coin burst on EVERY banked call, not just the STOP button.
+  // SessionContext fires `catint_call_banked` from stopSession(), so calls
+  // ended by autopilot / client disconnect / silence guard celebrate too.
+  useEffect(() => {
+    const onBanked = (e) => {
+      const mins = Number(e?.detail?.mins) || 0;
+      if (mins <= 0) return;
       // DENOMINATION PAYOUT LOGIC
       // Diamonds = 20m, Bills = 5m, Coins = 1m
       let rem = Math.round(mins);
@@ -1354,12 +1358,19 @@ export const DashboardHeader = ({
 
       setCelebration({ type: 'call', label: `+AR$${Math.round(mins * RATE_PER_MINUTE * arsRate).toLocaleString('es-AR')}`, coins: Math.min(60, Math.floor(mins * 1.5)) });
       setTimeout(() => setCelebration(null), 4000);
-    });
+    };
+    window.addEventListener('catint_call_banked', onBanked);
+    return () => window.removeEventListener('catint_call_banked', onBanked);
+  }, [audioEngine, RATE_PER_MINUTE, arsRate]);
+
+  const handleStop = useCallback(() => {
+    setCallModeExpanded(false);
+    stopSession(); // coin burst comes from the catint_call_banked event above
     // ponytail: keep tab/STT attached between calls — next green press starts call only.
     // Stop Deepgram for privacy, but preserve the active tab MediaStream.
     // The next Connect reuses it and does not open the tab picker.
     onStopAudio?.();
-  }, [stopSession, RATE_PER_MINUTE, arsRate, audioEngine, onStopAudio]);
+  }, [stopSession, onStopAudio]);
 
   const handleEndDay = () => {
     setCallModeExpanded(false);
