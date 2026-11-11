@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
+import { workedDaysThisMonth, avgPerWorkedDay, impossibleTodayLimit } from '../utils/raceBoard';
 import { StatNumber } from './StatNumber';
 import { useRewardAudio } from '../hooks/useRewardAudio';
 import { useSession } from '../contexts/SessionContext';
@@ -1563,11 +1564,11 @@ export const DashboardHeader = ({
       icon: '📊',
       heading: 'MO AVG',
       color: '#a855f7',
-      body: 'Average minutes per day so far this month. If the average is climbing, you’re likely ahead of your monthly pacing plan.'
+      body: 'Average minutes per WORKED day this month (weekends/days off not counted). "need" = minutes per remaining workday to hit the month goal. Avg ≥ need = on track.'
     },
     11: {
       icon: '🔇',
-      heading: 'SILENCE',
+      heading: 'APP IDLE',
       color: '#ef4444',
       body: 'Time since the last audio activity (speech resets it). In-call, higher silence usually means the patient/user has gone quiet—pull them back gently.'
     },
@@ -1650,7 +1651,11 @@ export const DashboardHeader = ({
   const monthlyMaxMins = stats.monthlyMinutes + workableMinsRemaining + (remainingWorkdaysThisMonth * 14 * 35);
   const monthlyRemainingCashVal = Math.round((workableMinsRemaining + remainingWorkdaysThisMonth * 14 * 35) * RATE_PER_MINUTE * arsRate);
   const monthlyMaxArs = Math.round(monthlyMaxMins * RATE_PER_MINUTE * arsRate).toLocaleString('es-AR');
-  const actualDailyAverage = currentDay > 0 ? (stats.monthlyMinutes / currentDay) : 0;
+  // v4.210.0: MO AVG = per WORKED day (was ÷ calendar days → weekends dragged it down).
+  const workedDaysSoFar = workedDaysThisMonth(dailyLog, stats.dailyMinutes, now);
+  const actualDailyAverage = avgPerWorkedDay(stats.monthlyMinutes, workedDaysSoFar);
+  // v4.210.0: today's minutes can't exceed the clock since the day started.
+  const todayMinsLimit = impossibleTodayLimit(stats.dailyMinutes, stats.dayStartTime, now);
   
   const monthElapsedRatio = currentDay / daysInMonth;
   const isMonthlyGoalMet = stats.monthlyMinutes >= stats.goalMinutes;
@@ -1688,7 +1693,7 @@ export const DashboardHeader = ({
     arsMonth: monthlyTargetArs > 0 ? `${((monthlyArs / monthlyTargetArs) * 100).toFixed(0)}% of tgt` : '—',
     arsLeftMonth: monthlyTargetArs > 0 ? `${((Math.max(0, monthlyTargetArs - monthlyArs) / monthlyTargetArs) * 100).toFixed(0)}% left` : '—',
     offCall: (totalDailyMins + totalOffCallMins) > 0 ? `${((totalOffCallMins / (totalDailyMins + totalOffCallMins)) * 100).toFixed(0)}% off-call` : '—',
-    moAvg: baseYield > 0 ? `${((actualDailyAverage / baseYield) * 100).toFixed(0)}% vs pace` : '—',
+    moAvg: `need ${Math.round(remainingWorkDays > 0 ? Math.max(0, stats.goalMinutes - stats.monthlyMinutes) / remainingWorkDays : 0)}/day · ${workedDaysSoFar}d`,
     silence: silenceCount > 30 ? `${Math.min(100, ((silenceCount / 600) * 100)).toFixed(0)}% of 10m` : '—',
     currCall: isActive && dailyGoal > 0 ? `${(((sessionSeconds / 60) / dailyGoal) * 100).toFixed(0)}% of day` : '—',
   };
@@ -2470,7 +2475,9 @@ export const DashboardHeader = ({
         <MetricVisibilityToggle metricKey="m1" />
         <HelpLabel text="1. MINS TODAY" />
         <div className="metric-cell-val" style={{ color: '#f87171' }}><StatNumber value={formatLiveMins(totalDailyMins, isActive)} size="lg" format={false} /></div>
-        <MetricPct>{metricPcts.minsToday}</MetricPct>
+        <MetricPct>{todayMinsLimit !== null
+          ? <span style={{ color: '#f87171', fontWeight: 700 }} title={`Impossible: only ${todayMinsLimit}m since the day started — banked minutes are wrong (v4.210.0)`}>⚠ max {todayMinsLimit}m</span>
+          : metricPcts.minsToday}</MetricPct>
         <div className="metric-cell-label">MINS TODAY</div>
       </div>
       )}

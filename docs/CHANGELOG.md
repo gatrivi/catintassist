@@ -3,6 +3,13 @@
 **Version source:** `src/constants/version.js` (must match `package.json` + top-right UI pill)
 
 
+## v4.210.0 - Off-call race board · MO AVG per worked day · MINS TODAY sanity ⚠
+
+- `IdleRaceBoard` fills the empty transcript pane off-call: month bar, YOU vs PACE GHOST (`computeCatchUp().expectedByToday`), one huge gap number, one action line, 4 tiles (MO AVG first, colored vs need). `@container` tiers: <520px 2×2, <340px number+bar+avg, height <520px no tiles. Renders nothing without a goal; math in try/catch.
+- MO AVG: ÷ worked days (≥15m) instead of calendar days; pct line → `need X/day · Nd`. Tooltip text rewritten; stale `SILENCE` heading → `APP IDLE`.
+- MINS TODAY: red `⚠ max Nm` when banked minutes exceed clock since day start (09:00 or earlier same-day start). Display only — the 712m root cause is NOT fixed yet.
+- Math: `src/utils/raceBoard.js` (+ tests).
+
 ## v4.209.0 - Session notes never carry into the next call
 
 - Before: notes cleared only by the 15 s HIPAA grace finalizer — cancelled when the next call starts inside 15 s (always-on ear), and skipped entirely on the "keep transcript visible" end path.

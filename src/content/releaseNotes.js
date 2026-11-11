@@ -25,6 +25,21 @@ import { APP_VERSION } from '../constants/version';
 /** Newest first. Only the entry matching APP_VERSION is shown on load. */
 export const RELEASE_NOTES_CATALOG = [
   {
+    version: '4.210.0',
+    id: 'idle-race-board',
+    highlightElementIds: ['transcript-pane'],
+    es: {
+      title: 'Carrera del mes: vos vs el ritmo',
+      intro: 'Fuera de llamada, el panel muestra una barra del mes: vos contra un "fantasma" que marca dónde deberías estar hoy. Un número grande = cuánto te falta (o sobra).',
+      sections: [{ heading: 'También', bullets: ['MO AVG = promedio por día TRABAJADO (antes contaba fines de semana) + "need X/day".', 'MINS TODAY en rojo ⚠ si supera lo posible desde que empezó el día.'] }],
+    },
+    en: {
+      title: 'Month race: you vs the pace',
+      intro: 'Off-call, the pane shows a month bar: you racing a "pace ghost" marking where you should be today. One big number = how far behind (or ahead).',
+      sections: [{ heading: 'Also', bullets: ['MO AVG = average per WORKED day (weekends no longer drag it down) + "need X/day".', 'MINS TODAY turns red ⚠ when it exceeds what is possible since the day started.'] }],
+    },
+  },
+  {
     version: '4.209.0',
     id: 'session-notes-per-call',
     highlightElementIds: ['quick-notes-textarea'],

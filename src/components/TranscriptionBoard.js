@@ -45,6 +45,7 @@ import {
   togglePinEntry,
 } from '../utils/pinnedCaptions';
 import { NewcomerIdleGuide } from './NewcomerIdleGuide';
+import { IdleRaceBoard } from './IdleRaceBoard';
 import {
   bubbleExpandKey,
   countWords as countBubbleWords,
@@ -1694,6 +1695,9 @@ export const TranscriptionBoard = ({
                 isActive={isActive}
                 onHideSession={() => setNewcomerSessionHidden(true)}
               />
+            ) : !isActive ? (
+              /* v4.210.0: off-call glance board — month race vs pace ghost */
+              <IdleRaceBoard />
             ) : null}
           </div>
         )}

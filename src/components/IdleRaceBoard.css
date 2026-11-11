@@ -1,0 +1,116 @@
+/* IdleRaceBoard (v4.210.0) — big shapes, high contrast, no thin text.
+   Sizes follow the PANE width (@container), not the monitor. */
+.race-board {
+  --rb-bad: #f87171;
+  --rb-good: #34d399;
+  --rb-even: #fbbf24;
+  --rb-tone: var(--rb-even);
+  container-type: inline-size;
+  width: min(100%, 760px);
+  padding: 0.6rem 1rem;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 0.55rem;
+  font-family: var(--font-mono, monospace);
+  color: #e5e7eb;
+}
+.race-board--bad { --rb-tone: var(--rb-bad); }
+.race-board--good { --rb-tone: var(--rb-good); }
+
+/* The one number. */
+.race-board__gap {
+  text-align: center;
+  font-size: clamp(2rem, 14cqi, 5rem);
+  font-weight: 800;
+  line-height: 1;
+  color: var(--rb-tone);
+  text-shadow: 0 0 18px color-mix(in srgb, var(--rb-tone) 45%, transparent);
+  font-variant-numeric: tabular-nums;
+}
+
+/* Month track: you (solid) racing the pace ghost (dashed line). */
+.race-board__track {
+  position: relative;
+  height: 22px;
+  margin: 0.9rem 0 0.2rem;
+  border-radius: 11px;
+  background: #1f2937;
+  border: 1px solid #374151;
+}
+.race-board__fill {
+  position: absolute; inset: 0 auto 0 0;
+  border-radius: 11px;
+  background: linear-gradient(90deg, #2563eb, #60a5fa);
+  transition: width 0.6s ease;
+}
+.race-board__gapband {
+  position: absolute; top: 0; bottom: 0;
+  background: repeating-linear-gradient(135deg,
+    color-mix(in srgb, var(--rb-tone) 55%, transparent) 0 6px,
+    transparent 6px 12px);
+  animation: rb-march 1.2s linear infinite;
+}
+.race-board__ghost, .race-board__you {
+  position: absolute; top: -6px; bottom: -6px;
+  transform: translateX(-50%);
+}
+.race-board__ghost { border-left: 3px dashed #e5e7eb; opacity: 0.85; }
+.race-board__you { width: 4px; background: #fff; border-radius: 2px; box-shadow: 0 0 10px #60a5fa; }
+.race-board__tag {
+  position: absolute; bottom: 100%; left: 50%;
+  transform: translateX(-50%);
+  font-size: 0.7rem; font-weight: 700; letter-spacing: 0.05em;
+  text-transform: uppercase; white-space: nowrap;
+}
+.race-board__you .race-board__tag { top: 100%; bottom: auto; color: #93c5fd; }
+
+.race-board__action {
+  text-align: center;
+  font-size: clamp(0.85rem, 3cqi, 1.05rem);
+  font-weight: 600;
+}
+
+.race-board__stats {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 0.4rem;
+}
+.race-board__stat {
+  display: flex; flex-direction: column; align-items: center;
+  padding: 0.35rem 0.2rem;
+  border-radius: 6px;
+  background: #111827;
+  border: 1px solid #1f2937;
+}
+.race-board__stat b { font-size: clamp(1rem, 4cqi, 1.6rem); font-variant-numeric: tabular-nums; }
+.race-board__stat span { font-size: 0.72rem; color: #9ca3af; text-align: center; }
+/* MO AVG = first stat, biggest, colored by have vs need. */
+.race-board__stat:first-child { border-width: 2px; }
+.race-board__stat:first-child b { font-size: clamp(1.3rem, 6cqi, 2.2rem); }
+.race-board__stat--good { border-color: var(--rb-good); }
+.race-board__stat--good b { color: var(--rb-good); }
+.race-board__stat--warn { border-color: var(--rb-even); }
+.race-board__stat--warn b { color: var(--rb-even); }
+.race-board__stat--bad { border-color: var(--rb-bad); }
+.race-board__stat--bad b { color: var(--rb-bad); }
+
+/* Narrow pane: 2×2 stats. */
+@container (max-width: 520px) {
+  .race-board__stats { grid-template-columns: repeat(2, 1fr); }
+}
+/* Very narrow: number + bar + MO AVG only. */
+@container (max-width: 340px) {
+  .race-board__action, .race-board__stat:not(:first-child) { display: none; }
+  .race-board__stats { grid-template-columns: 1fr; }
+}
+/* Short window (old 4:3 monitors / docked pane): drop the stat tiles. */
+@media (max-height: 520px) {
+  .race-board__stats { display: none; }
+}
+
+@keyframes rb-march { to { background-position: 24px 0; } }
+@media (prefers-reduced-motion: reduce) {
+  .race-board__gapband { animation: none; }
+  .race-board__fill { transition: none; }
+}
