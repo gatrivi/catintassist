@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { NewcomerIdleGuide } from './NewcomerIdleGuide';
+import { IdleRaceBoard } from './IdleRaceBoard';
 import { isNewcomerGuideDismissed } from '../utils/newcomerGuide';
 import {
   isComponentVisible,
@@ -85,6 +86,8 @@ export const OffCallWorkspace = ({
   return (
     <main id="interpret-root" className={`main-content view-interpret interpret-workspace${notesOpen ? ' notes-open' : ''}`}>
       <div className="interpret-pane" data-guide="transcript">
+        {/* v4.210.2: race board ALWAYS first off-call — guide/tips sit under it */}
+        <IdleRaceBoard />
         {showGuide ? (
           <NewcomerIdleGuide
             audioAttached={audioAttached}

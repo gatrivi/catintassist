@@ -3,6 +3,10 @@
 **Version source:** `src/constants/version.js` (must match `package.json` + top-right UI pill)
 
 
+## v4.210.2 - Race board where you actually look off-call
+
+- v4.210.0 mounted `IdleRaceBoard` in TranscriptionBoard's empty state, but off-call App renders `OffCallWorkspace` instead. Now first child of `.interpret-pane` there (guide/tips below); pane becomes a column via `:has(> .race-board)`.
+
 ## v4.210.1 - Smart grid tooltips (live math, all 12 cells)
 
 - Each cell's hover now starts with `▶ <the math, live>` (e.g. MO AVG `2,411m ÷ 8 worked days = 301/day · need 845/day · short 544/day`), then the old explanation. Lines built every render into `metricLiveLinesRef`, read at hover time — no extra state/timers.

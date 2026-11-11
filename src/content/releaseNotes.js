@@ -25,6 +25,21 @@ import { APP_VERSION } from '../constants/version';
 /** Newest first. Only the entry matching APP_VERSION is shown on load. */
 export const RELEASE_NOTES_CATALOG = [
   {
+    version: '4.210.2',
+    id: 'race-board-offcall-top',
+    highlightElementIds: ['interpret-root'],
+    es: {
+      title: 'La carrera del mes ahora se ve',
+      intro: 'Fuera de llamada, la barra vos-vs-ritmo va arriba del panel; la guía y los tips quedan debajo. Antes estaba en un lugar que casi nunca aparecía.',
+      sections: [{ heading: 'Qué mirar', bullets: ['Fuera de llamada → número grande + barra arriba.'] }],
+    },
+    en: {
+      title: 'The month race is now visible',
+      intro: 'Off-call, the you-vs-pace bar sits on top of the pane; guide and tips go below. Before, it lived in a spot that almost never showed.',
+      sections: [{ heading: 'Watch for', bullets: ['Off-call → big number + bar on top.'] }],
+    },
+  },
+  {
     version: '4.210.1',
     id: 'smart-grid-tooltips',
     highlightElementIds: ['metric-m10'],

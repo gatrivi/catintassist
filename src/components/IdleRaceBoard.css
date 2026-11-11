@@ -114,3 +114,11 @@
   .race-board__gapband { animation: none; }
   .race-board__fill { transition: none; }
 }
+
+/* v4.210.2: off-call pane stacks board on top, guide/tips below (pane was a centered row). */
+.interpret-pane:has(> .race-board) {
+  flex-direction: column;
+  justify-content: flex-start;
+  gap: 0.5rem;
+}
+.race-board { flex-shrink: 0; }
