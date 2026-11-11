@@ -1,5 +1,6 @@
 import { catWarn, catError } from "../utils/catLog";
 import React, { createContext, useContext, useState, useEffect, useRef, useCallback } from 'react';
+import { archiveAndClearNotes } from '../utils/sessionNotes';
 import { useRewardAudio } from '../hooks/useRewardAudio';
 import { set as idbSet, get as idbGet } from 'idb-keyval';
 import {
@@ -95,6 +96,8 @@ export const SessionProvider = ({ children }) => {
   // HIPAA: after STOP/disconnect we keep transcript/translation/pins for a short grace
   // window (to allow quick reconnect for "bad translation service" refresh).
   const HIPAA_GRACE_MS_DEFAULT = 15000;
+  // v4.209.0: true = notes on the pad were written during a call that has ended.
+  const notesFromEndedCallRef = useRef(false);
   const [hipaaGraceActive, setHipaaGraceActive] = useState(false);
   const hipaaGraceActiveRef = useRef(false);
   const hipaaGraceTimerRef = useRef(null);
@@ -408,15 +411,8 @@ export const SessionProvider = ({ children }) => {
     } catch (e) {}
 
     // Notes: move live notes to trash (in case you want audit) then clear live UI.
-    try {
-      const liveNotes = localStorage.getItem('catintassist_notes') || '';
-      if (liveNotes.trim().length > 0) {
-        const trashKey = `catintassist_notes_trash:${new Date().toISOString()}`;
-        localStorage.setItem(trashKey, liveNotes);
-      }
-      localStorage.setItem('catintassist_notes', '');
-      window.dispatchEvent(new CustomEvent('catint_notes_cleared'));
-    } catch (e) {}
+    archiveAndClearNotes();
+    notesFromEndedCallRef.current = false;
 
     purgeTranslationCache();
     setHipaaGraceActive(false);
@@ -887,6 +883,12 @@ export const SessionProvider = ({ children }) => {
     // v4.92.0: auto-start within the 15s HIPAA grace MUST cancel the finalizer,
     // or it wipes the live transcript mid-call. Idempotent for manual paths.
     cancelHipaaDisconnectGrace();
+    // v4.209.0: session notes belong to ONE call — last call's notes never
+    // carry in (the grace cancel above used to keep them alive).
+    if (!isRecovery && notesFromEndedCallRef.current) {
+      notesFromEndedCallRef.current = false;
+      archiveAndClearNotes();
+    }
     updateActivity();
     setLastEnglishActivityTime(Date.now());
     callHadSpeechRef.current = false;
@@ -1100,6 +1102,8 @@ export const SessionProvider = ({ children }) => {
   // TERMINAR LLAMADA: Guardamos los minutos que trabajamos para no perderlos.
   const stopSession = (onCallEnded) => {
     setIsActive(false);
+    // v4.209.0: notes on screen now belong to an ended call → next call clears them.
+    notesFromEndedCallRef.current = true;
     // Clear revenant/re-attach gate — STOP must not leave zombie banner/capture gate.
     clearZombieState();
     // v4.146.0: STOP also clears an armed farewell / pending end countdown.

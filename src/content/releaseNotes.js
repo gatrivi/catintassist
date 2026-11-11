@@ -25,6 +25,21 @@ import { APP_VERSION } from '../constants/version';
 /** Newest first. Only the entry matching APP_VERSION is shown on load. */
 export const RELEASE_NOTES_CATALOG = [
   {
+    version: '4.209.0',
+    id: 'session-notes-per-call',
+    highlightElementIds: ['quick-notes-textarea'],
+    es: {
+      title: 'Las notas son de UNA llamada',
+      intro: 'Al empezar una llamada nueva, las notas de la anterior se borran (quedan en la papelera hasta fin del día). Antes pasaban a la siguiente si entraba otra llamada en menos de 15 s.',
+      sections: [{ heading: 'Qué mirar', bullets: ['Llamada nueva → bloc de notas vacío.'] }],
+    },
+    en: {
+      title: 'Notes belong to ONE call',
+      intro: 'When a new call starts, the previous call notes are cleared (kept in trash until end of day). Before: they carried over if the next call came within 15 s.',
+      sections: [{ heading: 'Watch for', bullets: ['New call → empty notepad.'] }],
+    },
+  },
+  {
     version: '4.208.0',
     id: 'call-coin-burst-every-end',
     highlightElementIds: ['transcript-pane'],

@@ -3,6 +3,11 @@
 **Version source:** `src/constants/version.js` (must match `package.json` + top-right UI pill)
 
 
+## v4.209.0 - Session notes never carry into the next call
+
+- Before: notes cleared only by the 15 s HIPAA grace finalizer — cancelled when the next call starts inside 15 s (always-on ear), and skipped entirely on the "keep transcript visible" end path.
+- Now: `stopSession` flags the pad as "ended call"; the next `startSession` (not recovery) archives to `catintassist_notes_trash:*` and clears. Helper: `src/utils/sessionNotes.js`.
+
 ## v4.203.0 - CONNECT needs ZAP: root cause (2nd WebM header on an old socket)
 
 - Audio is WebM/Opus; every new MediaRecorder starts with a file header. The shift ear kept last call's pair warm and the next call (ear wake / mid-call rebuild) hung a NEW recorder on it → 2nd header mid-stream → Deepgram silent. ZAP worked only because it opens fresh sockets.
