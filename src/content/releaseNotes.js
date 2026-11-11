@@ -25,6 +25,21 @@ import { APP_VERSION } from '../constants/version';
 /** Newest first. Only the entry matching APP_VERSION is shown on load. */
 export const RELEASE_NOTES_CATALOG = [
   {
+    version: '4.210.1',
+    id: 'smart-grid-tooltips',
+    highlightElementIds: ['metric-m10'],
+    es: {
+      title: 'Tooltips con la cuenta real',
+      intro: 'Pasá el mouse por cualquiera de las 12 celdas: la primera línea muestra la cuenta con tus números de ahora (ej. 2411m ÷ 8 días = 301/día · need 845/día).',
+      sections: [{ heading: 'Qué mirar', bullets: ['MINS TODAY dice IMPOSSIBLE si el número no cierra con el reloj.'] }],
+    },
+    en: {
+      title: 'Tooltips show the real math',
+      intro: 'Hover any of the 12 cells: the first line shows the math with your numbers right now (e.g. 2411m ÷ 8 days = 301/day · need 845/day).',
+      sections: [{ heading: 'Watch for', bullets: ['MINS TODAY says IMPOSSIBLE when the number does not fit the clock.'] }],
+    },
+  },
+  {
     version: '4.210.0',
     id: 'idle-race-board',
     highlightElementIds: ['transcript-pane'],

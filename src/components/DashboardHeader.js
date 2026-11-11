@@ -1574,14 +1574,21 @@ export const DashboardHeader = ({
     },
     12: {
       icon: '📞',
-      heading: 'CURR CALL',
+      heading: 'CURR CALL (AR$)',
       color: '#10b981',
       body: 'Current call duration and its live unbanked cash. It helps you separate “this call is productive” from “today is good overall.”'
     }
   }), []);
 
+  // v4.210.1: live math per cell, refreshed every render (read at hover time,
+  // so the tooltip shows the numbers on screen, not a generic sentence).
+  const metricLiveLinesRef = useRef({});
   const showMetricTooltip = useCallback((e, metricKey) => {
-    const d = metricTooltipData[metricKey];
+    const base = metricTooltipData[metricKey];
+    const live = metricLiveLinesRef.current[metricKey];
+    const d = base && live ? { ...base, body: `▶ ${live}
+
+${base.body}` } : base;
     if (!d) return;
     const rect = e.currentTarget.getBoundingClientRect();
     const placement = rect.top < 160 ? 'below' : 'above';
@@ -1697,6 +1704,31 @@ export const DashboardHeader = ({
     silence: silenceCount > 30 ? `${Math.min(100, ((silenceCount / 600) * 100)).toFixed(0)}% of 10m` : '—',
     currCall: isActive && dailyGoal > 0 ? `${(((sessionSeconds / 60) / dailyGoal) * 100).toFixed(0)}% of day` : '—',
   };
+
+  // v4.210.1: smart tooltip lines — the math behind each grid cell, live.
+  {
+    const r = (n) => Math.round(Number(n) || 0).toLocaleString('en-US');
+    const ars = (n) => `AR$${r(n)}`;
+    const perMinArs = RATE_PER_MINUTE * arsRate;
+    const monthLeftMins = Math.max(0, (stats.goalMinutes || 0) - (stats.monthlyMinutes || 0));
+    const needPerDay = remainingWorkDays > 0 ? monthLeftMins / remainingWorkDays : 0;
+    metricLiveLinesRef.current = {
+      1: `${r(stats.dailyMinutes)}m banked${isActive ? ` + ${r(sessionSeconds / 60)}m this call` : ''} · ${r(stats.callsToday)} calls · goal ${r(dailyGoal)}m`
+        + (todayMinsLimit !== null ? ` · ⚠ IMPOSSIBLE: only ${todayMinsLimit}m since the day started` : ''),
+      2: `${r(dailyGoal)} − ${r(totalDailyMins)} = ${r(Math.max(0, dailyGoal - totalDailyMins))}m to go`,
+      3: `${r(dailyGoal)}m = max(${r(baseYield)} base, ${r(monthLeftMins)}m left ÷ ${remainingWorkDays} workdays), capped 600`,
+      4: `${r(totalDailyMins)}m × ${ars(perMinArs)}/min = ${ars(todayArsLive)}`,
+      5: `${ars(dailyTargetArs)} target − ${ars(todayArsLive)} = ${ars(cashToTodayGoal)}`,
+      6: `${r(totalDailyMins)}m on-call ÷ ${r(liveBreakMins)}m break = ${staminaRatioVal.toFixed(1)}x (target 5.3x)`,
+      7: `${r(stats.monthlyMinutes)} of ${r(stats.goalMinutes)}m · ${ars(monthlyArs)} of ${ars(monthlyTargetArs)}`,
+      8: `${r(monthLeftMins)}m left = ${ars(Math.max(0, monthlyTargetArs - monthlyArs))} · ${r(needPerDay)}m/day × ${remainingWorkDays} workdays`,
+      9: `${r(totalOffCallMins)}m off-call (avail + break, capped at clock since 09:00)`,
+      10: `${r(stats.monthlyMinutes)}m ÷ ${workedDaysSoFar} worked days = ${r(actualDailyAverage)}/day · need ${r(needPerDay)}/day`
+        + (actualDailyAverage >= needPerDay ? ' ✓ on track' : ` · short ${r(needPerDay - actualDailyAverage)}/day`),
+      11: `${Math.floor(silenceCount / 60)}m ${silenceCount % 60}s since last audio`,
+      12: isActive ? `${r(sessionSeconds / 60)}m on this call = ${ars(sessionArsLive)}` : 'no call running',
+    };
+  }
 
   const formatHoursMins = (totalMins) => {
     const h = Math.floor(totalMins / 60);

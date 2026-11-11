@@ -3,6 +3,10 @@
 **Version source:** `src/constants/version.js` (must match `package.json` + top-right UI pill)
 
 
+## v4.210.1 - Smart grid tooltips (live math, all 12 cells)
+
+- Each cell's hover now starts with `▶ <the math, live>` (e.g. MO AVG `2,411m ÷ 8 worked days = 301/day · need 845/day · short 544/day`), then the old explanation. Lines built every render into `metricLiveLinesRef`, read at hover time — no extra state/timers.
+
 ## v4.210.0 - Off-call race board · MO AVG per worked day · MINS TODAY sanity ⚠
 
 - `IdleRaceBoard` fills the empty transcript pane off-call: month bar, YOU vs PACE GHOST (`computeCatchUp().expectedByToday`), one huge gap number, one action line, 4 tiles (MO AVG first, colored vs need). `@container` tiers: <520px 2×2, <340px number+bar+avg, height <520px no tiles. Renders nothing without a goal; math in try/catch.
