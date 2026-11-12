@@ -66,4 +66,13 @@ describe('expectedDataContext (v4.117.0)', () => {
     armExpectedData('the patient feels fine', {});
     expect(getArmedExpectedType()).toBeNull();
   });
+
+  // v4.211.0 (SIP): compound requests ("address and telephone") arm phone
+  test('compound request with address and telephone arms phone', () => {
+    armExpectedData("What's the address and telephone number of the patient?", {});
+    expect(getArmedExpectedType()).toBe('phone');
+
+    armExpectedData('¿Cuál es la dirección y el número de teléfono del paciente?', {});
+    expect(getArmedExpectedType()).toBe('phone');
+  });
 });

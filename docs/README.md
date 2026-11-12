@@ -3,6 +3,7 @@
 This is the single source of truth for *documentation + onboarding*.
 
 ## What's new
+- **2026-11-12** — **SIP (Standard Industry Practices)**: intrinsic structure over global locks; zero exclusionary lockouts for compound requests (v4.211.0)
 - **2026-10-28** — **CONNECT button & STT reliability assessment (v4.194.0)**: in-depth diagnosis of ~40% live reliability, 8 root-cause vectors, false-positive UI signals, and remediation blueprint — [development/connect-button-assessment.md](development/connect-button-assessment.md)
 - **2026-09-09** — **Agent token budget playbook**: cheapest-tool-first, batch sessions, single judge pass — [`development/agent-token-budget.md`](development/agent-token-budget.md)
 - **2026-09-08** — **PUSH BUDGET (Vercel free)**: max 4 pushes/hour, every push logged — [`push-log.md`](push-log.md) · guard script `scripts/safe-push.js`

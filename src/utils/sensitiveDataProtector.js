@@ -1460,16 +1460,16 @@ export const applyDisplayProtections = (text, lang = 'en', { applyNumberWords = 
   // ssn/phone sentinels win over address/date guards (Phase G tests): a dictated
   // ID/phone near "Madison Avenue" or "May 8" must still stitch + group.
   // v4.117.0: armed expectation (asked 2 bubbles ago) counts as a cue:
-  // phone/ssn/member force full transform, dob/address force verbatim.
+  // phone/ssn/member force full transform.
+  // v4.211.0 (SIP): zero exclusionary lockouts. Asking for an address/DOB
+  // must never silence or disable phone formatting on subsequent tokens.
   const armedFull =
     expectedType === 'phone' || expectedType === 'ssn' || expectedType === 'member';
-  const armedSkip =
-    !armedFull && (expectedType === 'dob' || expectedType === 'address');
   const sentinel = detectSentinelContext(out, lang);
   const skipStitch =
-    !armedFull && (shouldSkipDigitStitch(sentinel.mode) || armedSkip);
+    !armedFull && shouldSkipDigitStitch(sentinel.mode);
   const skipPhone =
-    !armedFull && (shouldSkipPhoneFormat(sentinel.mode) || armedSkip);
+    !armedFull && shouldSkipPhoneFormat(sentinel.mode);
   const fullTransform =
     sentinel.mode === 'ssn' || sentinel.mode === 'phone' || armedFull;
   const stitchOpts = {

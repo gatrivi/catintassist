@@ -854,6 +854,12 @@ describe('armed expectation (v4.117.0)', () => {
     expect(applyDisplayProtections('05 12 1980', 'en')).toContain('05 12 1980');
   });
 
+  // v4.211.0 (SIP): address request does not block phone formatting
+  test('address request does not block phone formatting on subsequent tokens', () => {
+    armExpectedData('where do you live', {});
+    expect(applyDisplayProtections('call 317 387 0732', 'en')).toBe('call 317-387-0732');
+  });
+
   test('explicit expectedType param works without the store', () => {
     expect(
       applyDisplayProtections('1 2 3 4 5 6 7 8', 'en', { expectedType: 'phone' }),

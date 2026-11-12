@@ -7,6 +7,7 @@ import {
   formatSpellingText,
   isSpellingBlock,
   splitLongTextAtCommas,
+  peelCompleteSentences,
   bubbleTimestampLabel,
 } from './transcriptFormat';
 
@@ -162,5 +163,22 @@ describe('bubbleTimestampLabel', () => {
   test('returns null when nothing usable is present', () => {
     expect(bubbleTimestampLabel(undefined, undefined)).toBeNull();
     expect(bubbleTimestampLabel(NaN, 'turn-notanumber')).toBeNull();
+  });
+});
+
+// v4.211.0 (SIP): digit sequence guard in sentence splitter
+describe('peelCompleteSentences (v4.211.0 SIP)', () => {
+  test('does not split across two back-to-back digit runs', () => {
+    const text = '3 17 46, 240. 317-387-0732.';
+    const { sentences, remainder } = peelCompleteSentences(text);
+    expect(sentences).toHaveLength(0);
+    expect(remainder).toBe('3 17 46, 240. 317-387-0732.');
+  });
+
+  test('still splits normal sentences ending with digits when next starts with words', () => {
+    const text = 'I am 45. My telephone number is 317-387-0732.';
+    const { sentences, remainder } = peelCompleteSentences(text);
+    expect(sentences).toEqual(['I am 45.']);
+    expect(remainder).toBe('My telephone number is 317-387-0732.');
   });
 });

@@ -3,7 +3,13 @@
 **Version source:** `src/constants/version.js` (must match `package.json` + top-right UI pill)
 
 
-## v4.210.2 - Race board where you actually look off-call
+## v4.211.0 - SIP (Standard Industry Practices) phone formatting & digit boundaries
+
+- **SIP adopted:** Format entities by intrinsic token structure (10 digits → phone) rather than global exclusion locks. Added "SIP" section to `AGENTS.md`.
+- **Zero exclusionary lockouts (`sensitiveDataProtector.js`):** Removed `armedSkip`. An address or DOB question no longer shuts down phone formatting/stitching on subsequent bubbles.
+- **Compound requests (`expectedDataContext.js`):** "address and telephone" ("dirección y teléfono") arms `phone` so dictated numbers format properly even after compound questions.
+- **Digit boundary sentence guard (`transcriptFormat.js`):** `peelCompleteSentences` no longer splits across two back-to-back digit runs (e.g. `46, 240. 317-387-0732.`), keeping dictated phone numbers intact.
+
 
 - v4.210.0 mounted `IdleRaceBoard` in TranscriptionBoard's empty state, but off-call App renders `OffCallWorkspace` instead. Now first child of `.interpret-pane` there (guide/tips below); pane becomes a column via `:has(> .race-board)`.
 

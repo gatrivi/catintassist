@@ -221,6 +221,11 @@ export const peelCompleteSentences = (text) => {
     if (!m) break;
     const sent = m[1].trim();
     if (!sent) break;
+    // v4.211.0 (SIP): never split across two digit groups — a stray period
+    // mid-dictation ("46, 240. 317-387-0732") is not a sentence boundary.
+    if (/\d[.!?…]+$/.test(sent) && /^\d/.test(rest)) {
+      break;
+    }
     sentences.push(sent);
     rest = m[2].trim();
   }

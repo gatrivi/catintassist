@@ -158,3 +158,8 @@
 | 2026-11-05T20:27:22.327Z | 0b4be81 | v4.205.0 adaptive call VAD |
 | 2026-11-05T20:55:07.160Z | b27eb47 | v4.206.0 reopen waits close |
 | 2026-11-05T23:11:01.834Z | 6233fff | v4.207.0 connect run cause |
+| 2026-11-06T15:05:16.492Z | 5d69a05 | v4.208.0 coin burst every call end |
+| 2026-11-11T16:25:07.919Z | b9c9617 | v4.209.0 session notes per call |
+| 2026-11-11T18:36:03.543Z | 0ef875d | v4.210.0 race board |
+| 2026-11-11T19:50:02.915Z | 75bf984 | v4.210.1 smart tooltips |
+| 2026-11-11T20:36:02.142Z | 47e7614 | v4.210.2 race board visible off-call |
