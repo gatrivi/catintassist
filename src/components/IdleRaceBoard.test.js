@@ -13,6 +13,9 @@ test('renders the gap number and MO AVG when a goal exists', () => {
   });
   render(<IdleRaceBoard />);
   expect(screen.getByText(/MO AVG/)).toBeInTheDocument();
+  expect(screen.getByText(/DAILY NEED/)).toBeInTheDocument();
+  expect(screen.getByText(/PACE GAP/)).toBeInTheDocument();
+  expect(screen.getByText(/MONTH PROGRESS/)).toBeInTheDocument();
   expect(screen.getByLabelText(/Month pace/)).toBeInTheDocument();
 });
 

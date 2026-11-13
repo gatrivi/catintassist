@@ -3,6 +3,12 @@
 **Version source:** `src/constants/version.js` (must match `package.json` + top-right UI pill)
 
 
+## v4.212.0 - Idle Race Dashboard: Hours as main, true pace gap & daily demand
+
+- **Full dashboard layout (`IdleRaceBoard.js` / `.css`):** Replaced the single giant negative number with 3 hero cards: **DAILY NEED** (e.g. `4h 15m/day`), **PACE GAP** (vs today's expected pace, e.g. `−18h`), and **MONTH PROGRESS** (`24%`).
+- **Hours as main, minutes in sub/tooltips (`raceBoard.js`):** `fmtHoursClean` and `formatGapHours` render human-conceptual hours (e.g. `18h`, `4h 15m`, `70h remaining`) with total minutes visible in subtext and accessible tooltips.
+- **Remaining goal framed properly:** The remaining month balance (e.g. `70h / 4,200m`) is displayed under support stats as remaining time over workdays left, rather than screaming as an artificial deficit.
+
 ## v4.211.0 - SIP (Standard Industry Practices) phone formatting & digit boundaries
 
 - **SIP adopted:** Format entities by intrinsic token structure (10 digits → phone) rather than global exclusion locks. Added "SIP" section to `AGENTS.md`.

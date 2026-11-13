@@ -163,3 +163,4 @@
 | 2026-11-11T18:36:03.543Z | 0ef875d | v4.210.0 race board |
 | 2026-11-11T19:50:02.915Z | 75bf984 | v4.210.1 smart tooltips |
 | 2026-11-11T20:36:02.142Z | 47e7614 | v4.210.2 race board visible off-call |
+| 2026-11-12T22:27:21.219Z | 106e8a7 | v4.211.0: SIP intrinsic entity formatting, zero exclusionary locks, digit sentence guard |

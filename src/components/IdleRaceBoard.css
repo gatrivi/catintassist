@@ -18,15 +18,66 @@
 .race-board--bad { --rb-tone: var(--rb-bad); }
 .race-board--good { --rb-tone: var(--rb-good); }
 
-/* The one number. */
-.race-board__gap {
-  text-align: center;
-  font-size: clamp(2rem, 14cqi, 5rem);
+/* Hero Dashboard cards (v4.212.0) */
+.race-board__heroes {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 0.55rem;
+}
+.race-board__hero {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 0.6rem 0.4rem;
+  border-radius: 8px;
+  background: #111827;
+  border: 1px solid #1f2937;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.2);
+}
+.race-board__hero-label {
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  color: #9ca3af;
+  text-transform: uppercase;
+}
+.race-board__hero-val {
+  font-size: clamp(1.4rem, 4.5cqi, 2.2rem);
   font-weight: 800;
-  line-height: 1;
-  color: var(--rb-tone);
-  text-shadow: 0 0 18px color-mix(in srgb, var(--rb-tone) 45%, transparent);
+  line-height: 1.1;
+  margin: 0.2rem 0;
   font-variant-numeric: tabular-nums;
+  color: #f3f4f6;
+}
+.race-board__hero-sub {
+  font-size: 0.72rem;
+  color: #9ca3af;
+  text-align: center;
+}
+
+.race-board__hero--need {
+  border-color: #3b82f6;
+}
+.race-board__hero--need .race-board__hero-val {
+  color: #60a5fa;
+  text-shadow: 0 0 12px rgba(96, 165, 250, 0.35);
+}
+
+.race-board__hero--gap {
+  border-color: var(--rb-tone);
+}
+.race-board__hero--gap .race-board__hero-val {
+  color: var(--rb-tone);
+  text-shadow: 0 0 12px color-mix(in srgb, var(--rb-tone) 40%, transparent);
+}
+
+.race-board__hero--progress {
+  border-color: #10b981;
+}
+.race-board__hero--progress .race-board__hero-val {
+  color: #34d399;
+  text-shadow: 0 0 12px rgba(52, 211, 153, 0.35);
 }
 
 /* Month track: you (solid) racing the pace ghost (dashed line). */
@@ -85,9 +136,15 @@
 }
 .race-board__stat b { font-size: clamp(1rem, 4cqi, 1.6rem); font-variant-numeric: tabular-nums; }
 .race-board__stat span { font-size: 0.72rem; color: #9ca3af; text-align: center; }
+.race-board__stat-sub {
+  font-size: 0.65rem;
+  color: #6b7280;
+  margin-top: 0.15rem;
+  text-align: center;
+}
 /* MO AVG = first stat, biggest, colored by have vs need. */
 .race-board__stat:first-child { border-width: 2px; }
-.race-board__stat:first-child b { font-size: clamp(1.3rem, 6cqi, 2.2rem); }
+.race-board__stat:first-child b { font-size: clamp(1.2rem, 5cqi, 1.8rem); }
 .race-board__stat--good { border-color: var(--rb-good); }
 .race-board__stat--good b { color: var(--rb-good); }
 .race-board__stat--warn { border-color: var(--rb-even); }
@@ -95,11 +152,12 @@
 .race-board__stat--bad { border-color: var(--rb-bad); }
 .race-board__stat--bad b { color: var(--rb-bad); }
 
-/* Narrow pane: 2×2 stats. */
+/* Narrow pane: hero cards wrap, 2×2 stats. */
 @container (max-width: 520px) {
+  .race-board__heroes { grid-template-columns: 1fr; }
   .race-board__stats { grid-template-columns: repeat(2, 1fr); }
 }
-/* Very narrow: number + bar + MO AVG only. */
+/* Very narrow: heroes + bar + MO AVG only. */
 @container (max-width: 340px) {
   .race-board__action, .race-board__stat:not(:first-child) { display: none; }
   .race-board__stats { grid-template-columns: 1fr; }

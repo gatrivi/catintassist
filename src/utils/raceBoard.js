@@ -64,11 +64,13 @@ export const buildRaceModel = ({ goalMinutes = 0, monthMinutes = 0, todayMinutes
   if (!goal || !plan) return null;
   const expected = Math.max(0, Math.min(goal, Math.round(plan.expectedByToday || 0)));
   const gap = expected - done;
+  const remaining = Math.max(0, goal - done);
   const avg = avgPerWorkedDay(done, workedDays);
   const needPerDay = Math.round(plan.requiredToday || 0);
   return {
     goal,
     done,
+    remaining,
     expected,
     gap,
     youPct: pct(done, goal),
@@ -86,11 +88,27 @@ export const buildRaceModel = ({ goalMinutes = 0, monthMinutes = 0, todayMinutes
   };
 };
 
-/** "−3,368m" / "+120m" / "on pace" — the one huge number. */
+/** "−3,368m" / "+120m" / "on pace" — formatted in minutes. */
 export const formatGap = (gap) => {
   if (Math.abs(gap) <= 30) return 'on pace';
   const n = Math.abs(Math.round(gap)).toLocaleString('en-US');
   return gap > 0 ? `−${n}m` : `+${n}m`;
+};
+
+/** "18h" / "4h 15m" / "0h" — hours as main representation. */
+export const fmtHoursClean = (m) => {
+  const abs = Math.abs(Math.round(m || 0));
+  const h = Math.floor(abs / 60);
+  const rem = abs % 60;
+  if (rem === 0) return `${h}h`;
+  return `${h}h ${rem}m`;
+};
+
+/** "−18h" / "+2h 30m" / "on pace" — hours representation of gap. */
+export const formatGapHours = (gap) => {
+  if (Math.abs(gap) <= 30) return 'on pace';
+  const h = fmtHoursClean(gap);
+  return gap > 0 ? `−${h}` : `+${h}`;
 };
 
 /** HH:MM from a Date, '' when none. */

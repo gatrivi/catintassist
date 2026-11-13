@@ -9,7 +9,7 @@
 import React, { useMemo } from 'react';
 import { useSession } from '../contexts/SessionContext';
 import { computeCatchUp } from '../utils/catchUpPlan';
-import { buildRaceModel, formatGap, hhmm, workedDaysThisMonth } from '../utils/raceBoard';
+import { buildRaceModel, formatGap, formatGapHours, fmtHoursClean, hhmm, workedDaysThisMonth } from '../utils/raceBoard';
 import { APP_VERSION_LABEL } from '../constants/version';
 import './IdleRaceBoard.css';
 
@@ -55,16 +55,35 @@ export const IdleRaceBoard = () => {
   const action = model.finished
     ? '🏁 month goal done — everything now is bonus'
     : model.needToday > 0
-      ? `do ${fmt(model.needToday)}m more today${eta ? ` · off ≈ ${eta}` : ''} · then ${fmt(model.needPerDay)}/day × ${model.daysLeft}d`
-      : `today's share done ✓ · ${fmt(model.needPerDay)}/day keeps pace`;
+      ? `do ${fmtHoursClean(model.needToday)} more today${eta ? ` · off ≈ ${eta}` : ''} · then ${fmtHoursClean(model.needPerDay)}/day × ${model.daysLeft}d`
+      : `today's share done ✓ · ${fmtHoursClean(model.needPerDay)}/day keeps pace`;
 
   return (
     <section
       className={`race-board race-board--${model.tone}`}
-      aria-label={`Month pace ${formatGap(model.gap)}`}
+      aria-label={`Month pace ${formatGapHours(model.gap)} (${formatGap(model.gap)})`}
       title={`Race board ${APP_VERSION_LABEL}: ${fmt(model.done)} of ${fmt(model.goal)}m · pace ghost says ${fmt(model.expected)}m by today`}
     >
-      <div className="race-board__gap" aria-live="polite">{formatGap(model.gap)}</div>
+      {/* v4.212.0: Hero Dashboard — Daily Need, Pace Gap, Month Progress */}
+      <div className="race-board__heroes">
+        <div className="race-board__hero race-board__hero--need" title={`${fmt(model.needPerDay)} minutes needed per workday`}>
+          <span className="race-board__hero-label">DAILY NEED</span>
+          <b className="race-board__hero-val">{fmtHoursClean(model.needPerDay)}</b>
+          <span className="race-board__hero-sub">{fmt(model.needPerDay)}m / workday</span>
+        </div>
+
+        <div className={`race-board__hero race-board__hero--gap race-board__hero--${model.tone}`} title={`Pace gap vs today: ${formatGap(model.gap)} (${fmt(model.done)}m banked vs ${fmt(model.expected)}m expected)`}>
+          <span className="race-board__hero-label">PACE GAP</span>
+          <b className="race-board__hero-val">{formatGapHours(model.gap)}</b>
+          <span className="race-board__hero-sub">{formatGap(model.gap)} vs today</span>
+        </div>
+
+        <div className="race-board__hero race-board__hero--progress" title={`${fmt(model.done)} of ${fmt(model.goal)} minutes completed`}>
+          <span className="race-board__hero-label">MONTH PROGRESS</span>
+          <b className="race-board__hero-val">{Math.round(model.youPct)}%</b>
+          <span className="race-board__hero-sub">{fmtHoursClean(model.done)} / {fmtHoursClean(model.goal)}</span>
+        </div>
+      </div>
 
       <div className="race-board__track" role="img" aria-label={`You ${Math.round(model.youPct)}% · pace ${Math.round(model.ghostPct)}%`}>
         <div className="race-board__fill" style={{ width: `${model.youPct}%` }} />
@@ -86,17 +105,25 @@ export const IdleRaceBoard = () => {
       <div className="race-board__action">{action}</div>
 
       <div className="race-board__stats">
-        <div className={`race-board__stat race-board__stat--${model.avgTone}`} title={`${fmt(model.done)}m ÷ ${model.workedDays} worked days`}>
-          <b>{fmt(model.avg)}</b><span>MO AVG / day · need {fmt(model.needPerDay)}</span>
+        <div className={`race-board__stat race-board__stat--${model.avgTone}`} title={`${fmtHoursClean(model.done)} (${fmt(model.done)}m) ÷ ${model.workedDays} worked days`}>
+          <b>{fmtHoursClean(model.avg)}</b>
+          <span>MO AVG / day</span>
+          <small className="race-board__stat-sub">{fmt(model.avg)}m · need {fmt(model.needPerDay)}m</small>
         </div>
-        <div className="race-board__stat">
-          <b>{fmt(model.today)}</b><span>today</span>
+        <div className="race-board__stat" title={`${fmt(model.today)} minutes worked today`}>
+          <b>{fmtHoursClean(model.today)}</b>
+          <span>today</span>
+          <small className="race-board__stat-sub">{fmt(model.today)}m</small>
         </div>
-        <div className="race-board__stat">
-          <b>{fmt(model.done)}</b><span>of {fmt(model.goal)}m month</span>
+        <div className="race-board__stat" title={`${fmtHoursClean(model.remaining)} (${fmt(model.remaining)}m) left to complete ${fmt(model.goal)}m goal`}>
+          <b>{fmtHoursClean(model.remaining)}</b>
+          <span>remaining</span>
+          <small className="race-board__stat-sub">{fmt(model.remaining)}m to goal</small>
         </div>
-        <div className="race-board__stat">
-          <b>{model.daysLeft}</b><span>workdays left</span>
+        <div className="race-board__stat" title={`${model.daysLeft} workdays remaining in this month`}>
+          <b>{model.daysLeft}</b>
+          <span>workdays left</span>
+          <small className="race-board__stat-sub">time to pace</small>
         </div>
       </div>
     </section>

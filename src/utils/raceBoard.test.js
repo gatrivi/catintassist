@@ -1,5 +1,5 @@
 import {
-  workedDaysThisMonth, avgPerWorkedDay, impossibleTodayLimit, paceTone, buildRaceModel, formatGap, hhmm,
+  workedDaysThisMonth, avgPerWorkedDay, impossibleTodayLimit, paceTone, buildRaceModel, formatGap, formatGapHours, fmtHoursClean, hhmm,
 } from './raceBoard';
 
 const NOW = new Date(2026, 10, 11, 13, 25); // Wed Nov 11 2026, 13:25
@@ -77,6 +77,17 @@ test('formatGap', () => {
   expect(formatGap(3368)).toBe('−3,368m');
   expect(formatGap(-120)).toBe('+120m');
   expect(formatGap(10)).toBe('on pace');
+});
+
+test('fmtHoursClean and formatGapHours (v4.212.0)', () => {
+  expect(fmtHoursClean(1080)).toBe('18h');
+  expect(fmtHoursClean(255)).toBe('4h 15m');
+  expect(fmtHoursClean(60)).toBe('1h');
+  expect(fmtHoursClean(0)).toBe('0h');
+
+  expect(formatGapHours(1080)).toBe('−18h');
+  expect(formatGapHours(-150)).toBe('+2h 30m');
+  expect(formatGapHours(20)).toBe('on pace');
 });
 
 test('hhmm', () => {
