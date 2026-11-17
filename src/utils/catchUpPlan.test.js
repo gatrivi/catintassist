@@ -233,6 +233,22 @@ describe('catchUpPlan', () => {
       expect(p.deficitMins).toBe(-1000);
       expect(p.requiredToday).toBe(0);      // nothing left to do
     });
+
+    it('v4.213.0: goalBaseMinutes higher than monthlyMinutes is clamped to monthlyMinutes', () => {
+      // User scenario: monthlyMinutes = 100, goal = 5500, but goalBaseMinutes was saved as 5500
+      const p = computeCatchUp({
+        goalMinutes: 5500,
+        monthlyMinutes: 100,
+        dailyMinutes: 100,
+        workDays: 28,
+        goalSetAt: '2026-11-16',
+        goalBaseMinutes: 5500, // corrupt/stale stored base
+        now: new Date('2026-11-16T14:55:00'),
+      });
+      // Base clamped to monthlyMinutes (100) -> expectedByToday is 100 on bank day, deficit is 0
+      expect(p.expectedByToday).toBe(100);
+      expect(p.deficitMins).toBe(0);
+    });
   });
 });
 

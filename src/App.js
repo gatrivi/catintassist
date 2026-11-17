@@ -25,7 +25,7 @@ import {
 import { useDeepgram } from "./hooks/useDeepgram";
 import { useAudioSource } from "./hooks/useAudioSource";
 import { useDevSimulate } from "./hooks/useDevSimulate";
-import { useProgressiveAudio } from "./hooks/useProgressiveAudio";
+import { useOffCallChimer } from "./hooks/useOffCallChimer";
 import { useAppUpdateCheck } from "./hooks/useAppUpdateCheck";
 import { useReleaseNotes } from "./hooks/useReleaseNotes";
 import { UpdateAppBanner } from "./components/UpdateAppBanner";
@@ -114,8 +114,9 @@ const Dashboard = () => {
     callFocusMode,
     stopBreak,
     autoAttachEnabled,
+    stats,
+    goalWorkDays,
   } = useSession();
-  const { playCoin } = useProgressiveAudio();
   const { updateAvailable, latestVersionToken, dismissUpdate, reloadToUpdate } =
     useAppUpdateCheck();
   const [isEditingBg, setIsEditingBg] = useState(false);
@@ -774,19 +775,13 @@ const Dashboard = () => {
         ? "0 0 8px #f59e0b"
         : "0 0 8px #10b981";
 
-  // Off-call idle tick: progressively deeper, but less frequent/less annoying
-  const idleMinuteCountRef = useRef(0);
-  useEffect(() => {
-    if (isActive || isBreakActive) {
-      idleMinuteCountRef.current = 0;
-      return;
-    }
-    const iv = setInterval(() => {
-      idleMinuteCountRef.current += 1;
-      playCoin(idleMinuteCountRef.current);
-    }, 90000);
-    return () => clearInterval(iv);
-  }, [isActive, isBreakActive, playCoin]);
+  // v4.213.0: Off-call minute chime — tune adapts to pace (ahead/on pace/behind) and break status
+  useOffCallChimer({
+    isActive,
+    isBreakActive,
+    stats,
+    goalWorkDays,
+  });
 
   // Escape exits Soundboard Studio when off-call (skip if editor modal open)
   useEffect(() => {

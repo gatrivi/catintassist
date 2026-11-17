@@ -78,6 +78,12 @@ import {
   clearGlossary,
   CORRECTIONS_CHANGED_EVENT,
 } from '../utils/transcriptCorrections';
+// v4.213.0 — off-call minute chime settings
+import {
+  readOffCallChimeSettings,
+  saveOffCallChimeSettings,
+  playOffCallChime,
+} from '../utils/offCallChime';
 // v4.161.0 — off / exact / phrase: the operator decides how strictly pins apply
 import {
   GLOSSARY_MODES,
@@ -191,6 +197,7 @@ export default function SettingsPanel({
   }, []);
   const [sttDiagnostics, setSttDiagnostics] = useState(readSttDiagnosticSettings);
   const [inspectorOn, setInspectorOn] = useState(readInspectorEnabled);
+  const [chimeSettings, setChimeSettings] = useState(readOffCallChimeSettings);
   const {
     currentSourceMode,
     switchAudioSourceMode,
@@ -1254,6 +1261,85 @@ export default function SettingsPanel({
                   Mic 🎤
                 </button>
               </div>
+            </div>
+
+            {/* v4.213.0: Off-Call Minute Chime */}
+            <div style={{ padding: 10, border: '1px solid rgba(148,163,184,.28)', borderRadius: 8, background: 'rgba(15,23,42,.7)', display: 'flex', flexDirection: 'column', gap: 8 }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <span style={{ fontSize: 11, color: '#38bdf8', fontWeight: 700 }}>🔔 Off-Call Minute Chime</span>
+                <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 11, cursor: 'pointer' }}>
+                  <input
+                    type="checkbox"
+                    checked={chimeSettings.enabled}
+                    onChange={(e) => {
+                      const next = { ...chimeSettings, enabled: e.target.checked };
+                      setChimeSettings(next);
+                      saveOffCallChimeSettings(next);
+                    }}
+                  />
+                  <span style={{ color: chimeSettings.enabled ? '#34d399' : 'rgba(255,255,255,0.45)', fontWeight: 600 }}>
+                    {chimeSettings.enabled ? 'Enabled' : 'Disabled'}
+                  </span>
+                </label>
+              </div>
+              <p style={{ fontSize: 10, color: 'rgba(255,255,255,0.6)', margin: 0, lineHeight: 1.45 }}>
+                Plays a gentle chime every minute you are off call. Tune adapts to pace: bright ascending triad when ahead, pure 5th on pace, cautionary minor chime when behind pace; relaxed tea bell during break time.
+              </p>
+              {chimeSettings.enabled && (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginTop: 2 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 10, color: 'rgba(255,255,255,0.7)' }}>
+                    <span>Volume: {Math.round(chimeSettings.volume * 100)}%</span>
+                    <input
+                      type="range"
+                      min="0.1"
+                      max="1.0"
+                      step="0.05"
+                      value={chimeSettings.volume}
+                      onChange={(e) => {
+                        const next = { ...chimeSettings, volume: Number(e.target.value) };
+                        setChimeSettings(next);
+                        saveOffCallChimeSettings(next);
+                      }}
+                      style={{ flex: 1, accentColor: '#38bdf8', cursor: 'pointer' }}
+                    />
+                  </div>
+                  <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center', marginTop: 4 }}>
+                    <span style={{ fontSize: 10, color: 'rgba(255,255,255,0.45)' }}>Preview tunes:</span>
+                    <button
+                      type="button"
+                      onClick={() => playOffCallChime('ahead', { force: true, volume: chimeSettings.volume })}
+                      style={{ ...tabBtn, fontSize: 10, padding: '2px 8px' }}
+                      title="Ahead of pace (bright ascending C-E-G)"
+                    >
+                      🎵 Ahead
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => playOffCallChime('on_pace', { force: true, volume: chimeSettings.volume })}
+                      style={{ ...tabBtn, fontSize: 10, padding: '2px 8px' }}
+                      title="On pace (clean fifth D-A)"
+                    >
+                      🔔 On Pace
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => playOffCallChime('behind_mild', { force: true, volume: chimeSettings.volume })}
+                      style={{ ...tabBtn, fontSize: 10, padding: '2px 8px' }}
+                      title="Behind pace (cautionary C-A)"
+                    >
+                      🛎️ Behind
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => playOffCallChime('break_healthy', { force: true, volume: chimeSettings.volume })}
+                      style={{ ...tabBtn, fontSize: 10, padding: '2px 8px' }}
+                      title="Break (soothing tea chime 528Hz)"
+                    >
+                      ☕ Break
+                    </button>
+                  </div>
+                </div>
+              )}
             </div>
 
             {/* v4.103.0: Sound settings — 3 device selectors (mic shown here were

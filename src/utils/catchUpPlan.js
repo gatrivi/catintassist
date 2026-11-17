@@ -80,12 +80,17 @@ export const expectedByTodayFor = ({
   now = new Date(),
   daysInMonth,
   currentDay,
+  monthlyMinutes = null,
 } = {}) => {
   const dInMo = daysInMonth ?? new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
   const day = currentDay ?? now.getDate();
   const setDay = goalSetDayOfMonth(goalSetAt, now);
   if (!setDay) return Math.round((goalMinutes / dInMo) * day); // legacy: goal in force since the 1st
-  const base = Math.max(0, Math.min(Number(goalBaseMinutes) || 0, goalMinutes));
+  // v4.213.0: base minutes can never exceed actual banked minutes this month, nor the goal itself.
+  const maxBase = monthlyMinutes !== null && monthlyMinutes !== undefined
+    ? Math.min(Math.max(0, Number(monthlyMinutes) || 0), goalMinutes)
+    : goalMinutes;
+  const base = Math.max(0, Math.min(Number(goalBaseMinutes) || 0, maxBase));
   const span = Math.max(1, dInMo - setDay); // set day → month end (0 when set on the last day)
   const elapsed = Math.max(0, Math.min(day - setDay, span));
   return Math.round(base + (goalMinutes - base) * (elapsed / span));
@@ -109,7 +114,7 @@ export const computeCatchUp = ({
   const { daysInMonth, currentDay, remainingDays, remainingWorkdays } = monthBasis({ workDays, now });
 
   const expectedByToday = expectedByTodayFor({
-    goalMinutes, goalBaseMinutes, goalSetAt, now, daysInMonth, currentDay,
+    goalMinutes, goalBaseMinutes, goalSetAt, now, daysInMonth, currentDay, monthlyMinutes,
   });
   const deficitMins = Math.round(expectedByToday - monthlyMinutes); // + = behind
 

@@ -289,6 +289,11 @@ export const SessionProvider = ({ children }) => {
 
         parsed.lastMonthKey = currentMonthKey;
 
+        // v4.213.0: goalBaseMinutes can never exceed actual banked monthlyMinutes
+        if (typeof parsed.goalBaseMinutes === 'number' && parsed.goalBaseMinutes > (parsed.monthlyMinutes || 0)) {
+          parsed.goalBaseMinutes = Math.max(0, parsed.monthlyMinutes || 0);
+        }
+
         return { ...initialStats, ...parsed };
       } catch (e) { return initialStats; }
     }

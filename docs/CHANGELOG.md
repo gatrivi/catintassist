@@ -2,8 +2,16 @@
 
 **Version source:** `src/constants/version.js` (must match `package.json` + top-right UI pill)
 
+## v4.213.0 - Adaptive off-call minute chime & pace anchor clamping
 
-## v4.212.0 - Idle Race Dashboard: Hours as main, true pace gap & daily demand
+- **Adaptive off-call minute chime (`useOffCallChimer.js`, `offCallChime.js`):** Plays a subtle synthetic chime every 60s off-call. Tune automatically adapts depending on situation:
+  - **Ahead of pace (`ahead`):** Upbeat ascending major triad (C5–E5–G5).
+  - **On pace (`on_pace`):** Balanced, clean perfect fifth (D5–A5).
+  - **Behind pace (`behind_mild` / `behind_urgent`):** Cautionary minor intervals (C5–A4; drops to G4–Eb4 minor 3rd when idling >5m).
+  - **Break time (`break_healthy` / `break_low` / `break_overtime`):** Calming meditation/tea bell (528Hz); transitions to 2-tone alert when budget <15m, and soft pulses in overtime.
+- **Audio safety & settings (`SettingsPanel.js`):** 100% silent during calls (`isActive`). Dedicated toggle, volume slider, and 4 instant preview buttons in Settings → Audio.
+- **Pace anchor base clamp (`catchUpPlan.js`, `SessionContext.js`):** `goalBaseMinutes` is clamped to actual banked `monthlyMinutes`, preventing stale or target values (e.g. 5500) from corrupting the pace ghost into an artificial `-5400m` deficit mid-month.
+
 
 - **Full dashboard layout (`IdleRaceBoard.js` / `.css`):** Replaced the single giant negative number with 3 hero cards: **DAILY NEED** (e.g. `4h 15m/day`), **PACE GAP** (vs today's expected pace, e.g. `−18h`), and **MONTH PROGRESS** (`24%`).
 - **Hours as main, minutes in sub/tooltips (`raceBoard.js`):** `fmtHoursClean` and `formatGapHours` render human-conceptual hours (e.g. `18h`, `4h 15m`, `70h remaining`) with total minutes visible in subtext and accessible tooltips.
