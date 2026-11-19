@@ -58,6 +58,26 @@ describe('offCallChime', () => {
       const tune = resolveOffCallChimeTone({ isBreakActive: false, deficitMins: 0, gap: -60 });
       expect(tune.id).toBe('ahead');
     });
+
+    test('returns null when active and silence < 60s', () => {
+      const tune = resolveOffCallChimeTone({ isActive: true, silenceSecs: 30 });
+      expect(tune).toBeNull();
+    });
+
+    test('returns call_silence when active and silence >= 60s and not on hold', () => {
+      const tune = resolveOffCallChimeTone({ isActive: true, isHold: false, silenceSecs: 75 });
+      expect(tune.id).toBe('call_silence');
+    });
+
+    test('returns null when active and on hold <= 15m (900s)', () => {
+      const tune = resolveOffCallChimeTone({ isActive: true, isHold: true, holdSeconds: 300, silenceSecs: 300 });
+      expect(tune).toBeNull();
+    });
+
+    test('returns hold_overtime when active and on hold > 15m (900s)', () => {
+      const tune = resolveOffCallChimeTone({ isActive: true, isHold: true, holdSeconds: 950 });
+      expect(tune.id).toBe('hold_overtime');
+    });
   });
 
   describe('settings persistence', () => {

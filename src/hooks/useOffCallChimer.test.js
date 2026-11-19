@@ -21,20 +21,81 @@ describe('useOffCallChimer', () => {
     jest.useRealTimers();
   });
 
-  test('does not chime when isActive is true', () => {
+  test('does not chime when isActive is true and speech is active', () => {
     renderHook(() =>
       useOffCallChimer({
         isActive: true,
         isBreakActive: false,
+        lastActivityTime: Date.now(),
         stats: { goalMinutes: 5500, monthlyMinutes: 1000 },
       })
     );
 
     act(() => {
-      jest.advanceTimersByTime(120000); // 2 minutes
+      jest.advanceTimersByTime(30000); // 30s
     });
 
     expect(offCallChime.playOffCallChime).not.toHaveBeenCalled();
+  });
+
+  test('chimes on mid-call silence (>60s) when not on hold', () => {
+    renderHook(() =>
+      useOffCallChimer({
+        isActive: true,
+        isBreakActive: false,
+        isHold: false,
+        lastActivityTime: Date.now() - 65000, // 65s of silence
+        stats: { goalMinutes: 5500, monthlyMinutes: 1000 },
+      })
+    );
+
+    act(() => {
+      jest.advanceTimersByTime(1000);
+    });
+
+    expect(offCallChime.playOffCallChime).toHaveBeenCalledTimes(1);
+    const playedTune = offCallChime.playOffCallChime.mock.calls[0][0];
+    expect(playedTune.id).toBe('call_silence');
+  });
+
+  test('mutes silence chimes when in active call and on hold <= 15m', () => {
+    renderHook(() =>
+      useOffCallChimer({
+        isActive: true,
+        isBreakActive: false,
+        isHold: true,
+        holdSeconds: 300, // 5 min on hold
+        lastActivityTime: Date.now() - 300000,
+        stats: { goalMinutes: 5500, monthlyMinutes: 1000 },
+      })
+    );
+
+    act(() => {
+      jest.advanceTimersByTime(60000);
+    });
+
+    expect(offCallChime.playOffCallChime).not.toHaveBeenCalled();
+  });
+
+  test('chimes hold overtime when on hold > 15m (900s)', () => {
+    renderHook(() =>
+      useOffCallChimer({
+        isActive: true,
+        isBreakActive: false,
+        isHold: true,
+        holdSeconds: 965, // >15m
+        lastActivityTime: Date.now() - 965000,
+        stats: { goalMinutes: 5500, monthlyMinutes: 1000 },
+      })
+    );
+
+    act(() => {
+      jest.advanceTimersByTime(1000);
+    });
+
+    expect(offCallChime.playOffCallChime).toHaveBeenCalledTimes(1);
+    const playedTune = offCallChime.playOffCallChime.mock.calls[0][0];
+    expect(playedTune.id).toBe('hold_overtime');
   });
 
   test('chimes every 60 seconds when off-call and enabled', () => {

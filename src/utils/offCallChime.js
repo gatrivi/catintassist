@@ -84,10 +84,30 @@ export const CHIME_TUNES = {
       { freq: 440.00, duration: 0.26, delay: 0.36, type: 'triangle' },
     ],
   },
+  call_silence: {
+    id: 'call_silence',
+    label: 'Call silence (>1m)',
+    emoji: '🤫',
+    notes: [
+      { freq: 440.00, duration: 0.22, delay: 0.0, type: 'triangle' }, // A4
+      { freq: 392.00, duration: 0.35, delay: 0.16, type: 'sine' },     // G4
+    ],
+  },
+  hold_overtime: {
+    id: 'hold_overtime',
+    label: 'Hold overtime (>15m)',
+    emoji: '⏸️',
+    notes: [
+      { freq: 523.25, duration: 0.15, delay: 0.0, type: 'triangle' }, // C5
+      { freq: 523.25, duration: 0.15, delay: 0.20, type: 'triangle' }, // C5
+      { freq: 659.25, duration: 0.35, delay: 0.40, type: 'triangle' }, // E5
+    ],
+  },
 };
 
 /**
- * Pure resolver: maps off-call state into the corresponding chime tune.
+ * Pure resolver: maps off-call and in-call state into the corresponding chime tune.
+ * Returns null if currently silent (e.g. normal conversation or active hold under 15m).
  */
 export const resolveOffCallChimeTone = ({
   isBreakActive = false,
@@ -95,14 +115,36 @@ export const resolveOffCallChimeTone = ({
   idleSecs = 0,
   deficitMins = 0,
   gap = null,
+  isActive = false,
+  isHold = false,
+  holdSeconds = 0,
+  silenceSecs = 0,
 } = {}) => {
+  // Case 1: In active call
+  if (isActive) {
+    if (isHold) {
+      // Hold mutes chime for first 15m (900s). Overtime chimes after 15m.
+      if (holdSeconds > 900) {
+        return CHIME_TUNES.hold_overtime;
+      }
+      return null;
+    }
+    // Live call not on hold: silent if speech occurred within last 60s
+    if (silenceSecs < 60) {
+      return null;
+    }
+    // Mid-call silence >= 60s without hold
+    return CHIME_TUNES.call_silence;
+  }
+
+  // Case 2: On break
   if (isBreakActive) {
     if (breakLeft <= 0) return CHIME_TUNES.break_overtime;
     if (breakLeft < 15) return CHIME_TUNES.break_low;
     return CHIME_TUNES.break_healthy;
   }
 
-  // Standby (waiting between calls): pace determines mood, idle time adds urgency
+  // Case 3: Off-call standby waiting between calls
   const effectiveDeficit = gap !== null && Number.isFinite(Number(gap))
     ? Number(gap)
     : Number(deficitMins) || 0;
@@ -189,6 +231,7 @@ if (typeof window !== 'undefined') {
  * Returns an object with `stop()` for immediate cancel on call connect.
  */
 export const playOffCallChime = (tuneIdOrObj, options = {}) => {
+  if (!tuneIdOrObj) return { stop: () => {} };
   const tune = typeof tuneIdOrObj === 'string'
     ? CHIME_TUNES[tuneIdOrObj] || CHIME_TUNES.on_pace
     : tuneIdOrObj || CHIME_TUNES.on_pace;

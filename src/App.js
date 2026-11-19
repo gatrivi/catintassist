@@ -104,6 +104,9 @@ const Dashboard = () => {
     isNotesOpen,
     setIsNotesOpen,
     isActive,
+    isHold,
+    holdSeconds,
+    lastActivityTime,
     hipaaGraceActive,
     isBreakActive,
     isZombieCall,
@@ -775,10 +778,13 @@ const Dashboard = () => {
         ? "0 0 8px #f59e0b"
         : "0 0 8px #10b981";
 
-  // v4.213.0: Off-call minute chime — tune adapts to pace (ahead/on pace/behind) and break status
+  // v4.215.0: Off-call & in-call silence chime — tune adapts to pace/break and alerts on mid-call silence (>1m un-held or >15m hold)
   useOffCallChimer({
     isActive,
     isBreakActive,
+    isHold,
+    holdSeconds,
+    lastActivityTime,
     stats,
     goalWorkDays,
   });

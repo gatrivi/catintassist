@@ -1283,7 +1283,7 @@ export default function SettingsPanel({
                 </label>
               </div>
               <p style={{ fontSize: 10, color: 'rgba(255,255,255,0.6)', margin: 0, lineHeight: 1.45 }}>
-                Plays a gentle chime every minute you are off call. Tune adapts to pace: bright ascending triad when ahead, pure 5th on pace, cautionary minor chime when behind pace; relaxed tea bell during break time.
+                Plays a gentle chime every minute you are off call (adapts to pace/break). In live calls, alerts on mid-call silence (&gt;1m un-held, or &gt;15m on hold). HOLD pauses alerts for up to 15 min and auto-resumes when speech returns.
               </p>
               {chimeSettings.enabled && (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginTop: 2 }}>
@@ -1336,6 +1336,22 @@ export default function SettingsPanel({
                       title="Break (soothing tea chime 528Hz)"
                     >
                       ☕ Break
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => playOffCallChime('call_silence', { force: true, volume: chimeSettings.volume })}
+                      style={{ ...tabBtn, fontSize: 10, padding: '2px 8px' }}
+                      title="Mid-call silence (>1m without hold)"
+                    >
+                      🤫 Silence
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => playOffCallChime('hold_overtime', { force: true, volume: chimeSettings.volume })}
+                      style={{ ...tabBtn, fontSize: 10, padding: '2px 8px' }}
+                      title="Hold overtime (>15m on hold)"
+                    >
+                      ⏸️ Hold &gt;15m
                     </button>
                   </div>
                 </div>

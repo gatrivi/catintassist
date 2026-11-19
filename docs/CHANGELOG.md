@@ -2,6 +2,15 @@
 
 **Version source:** `src/constants/version.js` (must match `package.json` + top-right UI pill)
 
+## v4.215.0 - Mid-call silence alerts, 15m hold mute & speech auto-resume
+
+- **Mid-call silence alerts (`useOffCallChimer.js`, `offCallChime.js`):**
+  - **In-call silence (>1m):** If an active call goes silent with no transcription detected for $\ge 60$s without hold, a gentle alert chime (`call_silence`) sounds every minute.
+  - **15-minute hold mute:** Pressing **HOLD** mutes the silence chime for up to 15 minutes. If a call remains on hold past 15m, a hold-overtime chime (`hold_overtime`) fires once per minute past the 15m mark.
+  - **Speech auto-resume:** When conversation resumes, `shouldAutoResume` clears hold and resets silence counters, instantly muting the chime.
+  - **Clean call exit:** Stopping a call clears hold and seamlessly transitions to normal off-call pace/break chimes.
+  - **Preview & descriptions (`SettingsPanel.js`):** Updated audio settings description and added preview buttons for `🤫 Silence` and `⏸️ Hold >15m`.
+
 ## v4.214.0 - Off-call chimes background resilience & local translation service lift
 
 - **Off-call chime audibility & wall-clock anchoring (`useOffCallChimer.js`, `offCallChime.js`):**
