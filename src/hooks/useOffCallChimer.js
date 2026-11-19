@@ -84,14 +84,16 @@ export const useOffCallChimer = ({
     }
   }, [isBreakActive, stats, goalWorkDays]);
 
-  // Off-call minute timer
-  const offCallSecsRef = useRef(0);
+  // Off-call minute timer (wall-clock based for background tab immunity)
+  const offCallStartRef = useRef(0);
+  const lastChimeMinuteRef = useRef(0);
   const activePlaybackRef = useRef(null);
 
   useEffect(() => {
     // If currently on call, cancel any playing chime and reset counter
     if (isActive) {
-      offCallSecsRef.current = 0;
+      offCallStartRef.current = 0;
+      lastChimeMinuteRef.current = 0;
       if (activePlaybackRef.current) {
         activePlaybackRef.current.stop();
         activePlaybackRef.current = null;
@@ -99,13 +101,20 @@ export const useOffCallChimer = ({
       return undefined;
     }
 
-    // Interval counts seconds off-call
-    const timer = setInterval(() => {
-      offCallSecsRef.current += 1;
-      const secs = offCallSecsRef.current;
+    if (!offCallStartRef.current) {
+      offCallStartRef.current = Date.now();
+      lastChimeMinuteRef.current = 0;
+    }
 
-      // Fire chime exactly at each 60-second mark (1m, 2m, 3m...)
-      if (secs > 0 && secs % 60 === 0) {
+    // Interval checks elapsed off-call time against wall clock
+    const timer = setInterval(() => {
+      const elapsedMs = Date.now() - (offCallStartRef.current || Date.now());
+      const elapsedMins = Math.floor(elapsedMs / 60000);
+      const elapsedSecs = Math.floor(elapsedMs / 1000);
+
+      // Fire chime exactly once for each new elapsed minute (1m, 2m, 3m...)
+      if (elapsedMins > lastChimeMinuteRef.current) {
+        lastChimeMinuteRef.current = elapsedMins;
         if (!settings.enabled) return;
 
         const goalMinutes = Number(stats?.goalMinutes) || 0;
@@ -131,7 +140,7 @@ export const useOffCallChimer = ({
         const tune = resolveOffCallChimeTone({
           isBreakActive,
           breakLeft,
-          idleSecs: secs,
+          idleSecs: elapsedSecs,
           deficitMins,
         });
 

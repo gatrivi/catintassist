@@ -171,6 +171,19 @@ const getChimeAudioContext = () => {
   return sharedChimeCtx;
 };
 
+// Auto-unlock AudioContext on first user interaction in the tab
+if (typeof window !== 'undefined') {
+  const unlockAudio = () => {
+    try {
+      if (sharedChimeCtx && sharedChimeCtx.state === 'suspended') {
+        sharedChimeCtx.resume().catch(() => {});
+      }
+    } catch (_) {}
+  };
+  window.addEventListener('pointerdown', unlockAudio, { capture: true, passive: true });
+  window.addEventListener('keydown', unlockAudio, { capture: true, passive: true });
+}
+
 /**
  * Synthesizes and plays a chime tune.
  * Returns an object with `stop()` for immediate cancel on call connect.
@@ -183,15 +196,20 @@ export const playOffCallChime = (tuneIdOrObj, options = {}) => {
   const ctx = options.audioCtx || getChimeAudioContext();
   if (!ctx) return { stop: () => {} };
 
+  // Explicitly attempt resume if suspended
+  if (ctx.state === 'suspended') {
+    ctx.resume?.().catch(() => {});
+  }
+
   const settings = readOffCallChimeSettings();
   if (options.force !== true && !settings.enabled) return { stop: () => {} };
 
   const volume = typeof options.volume === 'number' ? options.volume : settings.volume;
   const t = ctx.currentTime + 0.01;
 
-  // Master Gain capped at 0.12 for soft, non-startling playback
+  // Master Gain capped at 0.25 for clear, comfortable audibility
   const masterGain = ctx.createGain();
-  const peakVolume = Math.max(0.01, Math.min(0.12, volume * 0.10));
+  const peakVolume = Math.max(0.02, Math.min(0.25, volume * 0.20));
   masterGain.gain.setValueAtTime(peakVolume, t);
   masterGain.connect(ctx.destination);
 

@@ -2,6 +2,14 @@
 
 **Version source:** `src/constants/version.js` (must match `package.json` + top-right UI pill)
 
+## v4.214.0 - Off-call chimes background resilience & local translation service lift
+
+- **Off-call chime audibility & wall-clock anchoring (`useOffCallChimer.js`, `offCallChime.js`):**
+  - **Wall-clock time:** Anchored off-call interval to `Date.now()` so timer never drifts or skips minutes when Chrome throttles background tabs.
+  - **Autoplay unlock:** Added window `pointerdown`/`keydown` unlock listeners so Web Audio `AudioContext` is never kept in suspended state by browser autoplay policies.
+  - **Audible master gain:** Calibrated master gain from 0.06 to 0.25 max for clean, audible notification over headsets/ambient noise.
+- **Local translation watchdog (`scripts/watch-local.ps1`):** Lifted hidden uvicorn service on `127.0.0.1:59200` (`catts/api/main.py`), verified smoke translation response (`200 OK`).
+
 ## v4.213.0 - Adaptive off-call minute chime & pace anchor clamping
 
 - **Adaptive off-call minute chime (`useOffCallChimer.js`, `offCallChime.js`):** Plays a subtle synthetic chime every 60s off-call. Tune automatically adapts depending on situation:
