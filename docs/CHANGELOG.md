@@ -2,6 +2,13 @@
 
 **Version source:** `src/constants/version.js` (must match `package.json` + top-right UI pill)
 
+## v4.219.0 - Small window 900px fix: zero-width Avail toggle integration
+
+- **Small Window (900px) Layout Protection (`DashboardHeader.js`, `DashboardHeader.test.js`):**
+  - Removed the standalone wide `[🟢 AVAIL]` button from the tight sticky header left cluster, which was causing horizontal overflow and character-wrapping at 900px width.
+  - Integrated Avail status and 1-tap toggle directly into the existing `📡{offCallMins}m` / `🟢{offCallMins}m` pill (`#header-offcall-mins`) in the sticky row — zero extra pixel footprint.
+  - Preserved the full `[🟢 ON AVAIL]` / `[📡 SET AVAIL]` button in the expanded lower toolbar next to `COFFEE` for full discoverability.
+
 ## v4.218.0 - Silent coffee break & mathematically unique metric-tuned chimes
 
 - **Silent Coffee Break (`offCallChime.js`, `useOffCallChimer.js`):**

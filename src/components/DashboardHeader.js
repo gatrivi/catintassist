@@ -508,7 +508,32 @@ const SessionControlsSticky = React.memo(({
                 AR${Math.round(dailyIncomeArs).toLocaleString('en-US')}
               </span>
               <span id="header-oncall-mins" style={{ color: '#34d399' }}>📞{Math.round(onCallMins)}m</span>
-              <span id="header-offcall-mins" style={{ color: '#fbbf24' }}>📡{Math.round(offCallMins)}m</span>
+              <button
+                id="header-offcall-mins"
+                type="button"
+                className={`header-offcall-mins-btn${isOnAvail ? ' is-avail' : ''}`}
+                onClick={onToggleAvail || undefined}
+                style={{
+                  background: isOnAvail ? 'rgba(16,185,129,0.22)' : 'transparent',
+                  border: isOnAvail ? '1px solid #10b981' : '1px solid transparent',
+                  borderRadius: '4px',
+                  padding: '0 2px',
+                  margin: 0,
+                  color: isOnAvail ? '#34d399' : '#fbbf24',
+                  cursor: onToggleAvail ? 'pointer' : 'default',
+                  fontWeight: 800,
+                  fontSize: 'inherit',
+                  fontFamily: 'inherit',
+                  lineHeight: 'inherit',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                }}
+                title={isOnAvail
+                  ? `🟢 ON AVAIL (${Math.round(offCallMins)}m off-call) — idle chime silenced. Click to turn off.`
+                  : `📡 Off-call (${Math.round(offCallMins)}m) — click to set ON AVAIL and silence idle chimes.`}
+              >
+                {isOnAvail ? '🟢' : '📡'}{Math.round(offCallMins)}m
+              </button>
             </span>
           </ElementHintTarget>
 
@@ -540,36 +565,6 @@ const SessionControlsSticky = React.memo(({
               )}
             </button>
           </ElementHintTarget>
-          )}
-
-          {/* v4.217.0: Avail button — signals "I'm on Avail" waiting for calls, silences idle chimes */}
-          {!isActive && onToggleAvail && (
-            <button
-              id="header-avail-btn"
-              type="button"
-              className={`header-chrome-btn${isOnAvail ? ' is-on is-avail' : ''}`}
-              onClick={onToggleAvail}
-              style={{
-                background: isOnAvail ? 'rgba(16,185,129,0.22)' : 'rgba(255,255,255,0.06)',
-                border: isOnAvail ? '1.5px solid #10b981' : '1px solid rgba(255,255,255,0.14)',
-                color: isOnAvail ? '#34d399' : '#94a3b8',
-                padding: '0.2rem 0.5rem',
-                borderRadius: '6px',
-                fontSize: '0.7rem',
-                fontWeight: 800,
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: '0.25rem',
-                cursor: 'pointer',
-                boxShadow: isOnAvail ? '0 0 8px rgba(16,185,129,0.35)' : 'none',
-                transition: 'all 0.15s ease-out',
-              }}
-              title={isOnAvail
-                ? "🟢 ON AVAIL (ready for incoming calls) — idle chime silenced. Click to set Off Avail."
-                : "📡 SET AVAIL — Click when you put yourself on Avail to silence off-call idle chimes."}
-            >
-              <span>{isOnAvail ? '🟢 AVAIL' : '📡 AVAIL'}</span>
-            </button>
           )}
 
           {!isActive && onOpenGoalsView && (

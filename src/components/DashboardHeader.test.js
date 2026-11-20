@@ -446,10 +446,10 @@ describe('call-banked coin burst (v4.208.0)', () => {
     expect(document.body.textContent).not.toMatch(/\+AR\$/);
   });
 
-  test('renders Avail button off-call and clicking calls toggleAvail', () => {
+  test('renders Avail controls off-call and clicking toggles Avail', () => {
     const { fireEvent } = require('@testing-library/react');
     renderOffCall('scoreboard');
-    const availBtn = document.getElementById('header-avail-btn');
+    const availBtn = document.getElementById('header-offcall-mins');
     expect(availBtn).toBeTruthy();
     fireEvent.click(availBtn);
     expect(mockSession.toggleAvail).toHaveBeenCalled();
