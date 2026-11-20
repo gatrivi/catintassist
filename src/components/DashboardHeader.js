@@ -304,6 +304,9 @@ const SessionControlsSticky = React.memo(({
   shouldBreakNudge,
   stopBreak,
   onStartBreak,
+  // v4.217.0: Avail
+  isOnAvail = false,
+  onToggleAvail = null,
 
   // Call controls
   handleStop,
@@ -537,6 +540,36 @@ const SessionControlsSticky = React.memo(({
               )}
             </button>
           </ElementHintTarget>
+          )}
+
+          {/* v4.217.0: Avail button — signals "I'm on Avail" waiting for calls, silences idle chimes */}
+          {!isActive && onToggleAvail && (
+            <button
+              id="header-avail-btn"
+              type="button"
+              className={`header-chrome-btn${isOnAvail ? ' is-on is-avail' : ''}`}
+              onClick={onToggleAvail}
+              style={{
+                background: isOnAvail ? 'rgba(16,185,129,0.22)' : 'rgba(255,255,255,0.06)',
+                border: isOnAvail ? '1.5px solid #10b981' : '1px solid rgba(255,255,255,0.14)',
+                color: isOnAvail ? '#34d399' : '#94a3b8',
+                padding: '0.2rem 0.5rem',
+                borderRadius: '6px',
+                fontSize: '0.7rem',
+                fontWeight: 800,
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '0.25rem',
+                cursor: 'pointer',
+                boxShadow: isOnAvail ? '0 0 8px rgba(16,185,129,0.35)' : 'none',
+                transition: 'all 0.15s ease-out',
+              }}
+              title={isOnAvail
+                ? "🟢 ON AVAIL (ready for incoming calls) — idle chime silenced. Click to set Off Avail."
+                : "📡 SET AVAIL — Click when you put yourself on Avail to silence off-call idle chimes."}
+            >
+              <span>{isOnAvail ? '🟢 AVAIL' : '📡 AVAIL'}</span>
+            </button>
           )}
 
           {!isActive && onOpenGoalsView && (
@@ -951,7 +984,7 @@ export const DashboardHeader = ({
   onSwitchToTabShare,
   onSwitchToVirtualCable,
 }) => {
-  const { isActive, sessionSeconds, sessionEarnings, stats, updateStat, stopSession, endDay, RATE_PER_MINUTE, arsRate, setArsRate, isBreakActive, breakSeconds, startBreak, stopBreak, availSeconds, isEditingScoreboard, setIsEditingScoreboard, visibleCards, toggleCard, visibleMetrics, toggleMetric, scoreboardPreset, applyScoreboardPreset, isNotesOpen, setIsNotesOpen, isToolbarVisible, setIsToolbarVisible, goalWorkDays, isZombieCall, isScoreboardHelpVisible, setIsScoreboardHelpVisible, isHold, setIsHold, holdSeconds, dailyTimeline, historyTimeline, dailyLog, lastActivityTime, lastEnglishActivityTime, isCallDetectionEnabled, setIsCallDetectionEnabled, callFocusMode, setCallFocusMode, minutesSinceLastBreak, vaultStatus, getMonthResyncPreview, reconcileMonthTotal, lastCallSeconds, lastCallEndedAt } = useSession();
+  const { isActive, sessionSeconds, sessionEarnings, stats, updateStat, stopSession, endDay, RATE_PER_MINUTE, arsRate, setArsRate, isBreakActive, isOnAvail, toggleAvail, breakSeconds, startBreak, stopBreak, availSeconds, isEditingScoreboard, setIsEditingScoreboard, visibleCards, toggleCard, visibleMetrics, toggleMetric, scoreboardPreset, applyScoreboardPreset, isNotesOpen, setIsNotesOpen, isToolbarVisible, setIsToolbarVisible, goalWorkDays, isZombieCall, isScoreboardHelpVisible, setIsScoreboardHelpVisible, isHold, setIsHold, holdSeconds, dailyTimeline, historyTimeline, dailyLog, lastActivityTime, lastEnglishActivityTime, isCallDetectionEnabled, setIsCallDetectionEnabled, callFocusMode, setCallFocusMode, minutesSinceLastBreak, vaultStatus, getMonthResyncPreview, reconcileMonthTotal, lastCallSeconds, lastCallEndedAt } = useSession();
 
   // v4.164.0: greeting-editor was missing here, so the Greeting Editor view got
   // the FULL scoreboard + progress stack rendered above it — and at <=900px the
@@ -3000,7 +3033,25 @@ ${base.body}` } : base;
               {isBreakActive ? (
                 <button id="stop-break-btn" className="btn" onClick={stopBreak} style={{ background: '#fb923c', color: 'white' }}>STOP BREAK</button>
               ) : (
-                <button id="break-btn" className="btn" onClick={startBreak} disabled={isActive} style={{ opacity: isActive ? 0.3 : 1 }}>COFFEE</button>
+                <>
+                  <button id="break-btn" className="btn" onClick={startBreak} disabled={isActive} style={{ opacity: isActive ? 0.3 : 1 }}>COFFEE</button>
+                  <button
+                    id="lower-avail-btn"
+                    className="btn"
+                    onClick={toggleAvail}
+                    disabled={isActive}
+                    style={{
+                      background: isOnAvail ? 'rgba(16,185,129,0.25)' : 'rgba(255,255,255,0.06)',
+                      border: isOnAvail ? '1.5px solid #10b981' : '1px solid rgba(255,255,255,0.15)',
+                      color: isOnAvail ? '#34d399' : '#94a3b8',
+                      fontWeight: 800,
+                      boxShadow: isOnAvail ? '0 0 8px rgba(16,185,129,0.35)' : 'none',
+                    }}
+                    title={isOnAvail ? "🟢 ON AVAIL — idle chime silenced. Click to exit Avail." : "⚪ SET AVAIL — Click when you put yourself on Avail to silence off-call idle chimes."}
+                  >
+                    {isOnAvail ? '🟢 ON AVAIL' : '📡 SET AVAIL'}
+                  </button>
+                </>
               )}
               
               <div className="header-utility-group" style={{ display: 'flex', gap: '0.2rem', alignItems: 'center', flexWrap: 'wrap' }}>
@@ -3623,6 +3674,8 @@ ${isInDeficit ? `⚠️ DEFICIT: Behind pace by ${Math.round(monthlyDeficitMins)
         shouldBreakNudge={shouldBreakNudge}
         stopBreak={stopBreak}
         onStartBreak={handleStartBreak}
+        isOnAvail={isOnAvail}
+        onToggleAvail={toggleAvail}
 
         handleStop={handleStop}
         isHold={isHold}

@@ -43,6 +43,8 @@ const mockSession = {
   breakSeconds: 0,
   startBreak: jest.fn(),
   stopBreak: jest.fn(),
+  isOnAvail: false,
+  toggleAvail: jest.fn(),
   availSeconds: 0,
   isEditingScoreboard: false,
   setIsEditingScoreboard: jest.fn(),
@@ -442,5 +444,14 @@ describe('call-banked coin burst (v4.208.0)', () => {
       window.dispatchEvent(new CustomEvent('catint_call_banked', { detail: { mins: 0 } }));
     });
     expect(document.body.textContent).not.toMatch(/\+AR\$/);
+  });
+
+  test('renders Avail button off-call and clicking calls toggleAvail', () => {
+    const { fireEvent } = require('@testing-library/react');
+    renderOffCall('scoreboard');
+    const availBtn = document.getElementById('header-avail-btn');
+    expect(availBtn).toBeTruthy();
+    fireEvent.click(availBtn);
+    expect(mockSession.toggleAvail).toHaveBeenCalled();
   });
 });

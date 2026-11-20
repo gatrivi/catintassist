@@ -111,6 +111,7 @@ export const CHIME_TUNES = {
  */
 export const resolveOffCallChimeTone = ({
   isBreakActive = false,
+  isOnAvail = false,
   breakLeft = 90,
   idleSecs = 0,
   deficitMins = 0,
@@ -120,6 +121,11 @@ export const resolveOffCallChimeTone = ({
   holdSeconds = 0,
   silenceSecs = 0,
 } = {}) => {
+  // Case 0: On Avail (waiting for incoming calls) -> idle chimes silenced
+  if (isOnAvail && !isActive) {
+    return null;
+  }
+
   // Case 1: In active call
   if (isActive) {
     if (isHold) {

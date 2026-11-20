@@ -13,6 +13,11 @@ describe('offCallChime', () => {
   });
 
   describe('resolveOffCallChimeTone', () => {
+    test('silences chime (returns null) when isOnAvail is true off-call', () => {
+      const tune = resolveOffCallChimeTone({ isOnAvail: true, isActive: false, deficitMins: 60 });
+      expect(tune).toBeNull();
+    });
+
     test('resolves break_healthy when on break and breakLeft >= 15', () => {
       const tune = resolveOffCallChimeTone({ isBreakActive: true, breakLeft: 45 });
       expect(tune.id).toBe('break_healthy');

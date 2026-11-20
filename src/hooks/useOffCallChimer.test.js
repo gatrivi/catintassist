@@ -120,6 +120,23 @@ describe('useOffCallChimer', () => {
     expect(offCallChime.playOffCallChime).toHaveBeenCalledTimes(2);
   });
 
+  test('silences off-call idle chimes when isOnAvail is true', () => {
+    renderHook(() =>
+      useOffCallChimer({
+        isActive: false,
+        isBreakActive: false,
+        isOnAvail: true,
+        stats: { goalMinutes: 5500, monthlyMinutes: 1000 },
+      })
+    );
+
+    act(() => {
+      jest.advanceTimersByTime(120000); // 2 minutes
+    });
+
+    expect(offCallChime.playOffCallChime).not.toHaveBeenCalled();
+  });
+
   test('chimes with break tune when isBreakActive is true', () => {
     renderHook(() =>
       useOffCallChimer({

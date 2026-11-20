@@ -18,6 +18,7 @@ import { computeCatchUp } from '../utils/catchUpPlan';
 export const useOffCallChimer = ({
   isActive = false,
   isBreakActive = false,
+  isOnAvail = false,
   isHold = false,
   holdSeconds = 0,
   lastActivityTime = 0,
@@ -79,6 +80,7 @@ export const useOffCallChimer = ({
       return resolveOffCallChimeTone({
         isActive,
         isBreakActive,
+        isOnAvail,
         isHold,
         holdSeconds,
         silenceSecs: 0,
@@ -89,7 +91,7 @@ export const useOffCallChimer = ({
     } catch {
       return CHIME_TUNES.on_pace;
     }
-  }, [isActive, isBreakActive, isHold, holdSeconds, stats, goalWorkDays]);
+  }, [isActive, isBreakActive, isOnAvail, isHold, holdSeconds, stats, goalWorkDays]);
 
   // Off-call and in-call silence minute timers (wall-clock based)
   const offCallStartRef = useRef(0);
@@ -120,6 +122,12 @@ export const useOffCallChimer = ({
 
       // CASE 1: OFF-CALL
       if (!isActive) {
+        // v4.217.0: If user is ON AVAIL waiting for calls, idle chimes are silenced!
+        if (isOnAvail) {
+          lastChimeMinuteRef.current = 0;
+          return;
+        }
+
         const elapsedMs = now - (offCallStartRef.current || now);
         const elapsedMins = Math.floor(elapsedMs / 60000);
         const elapsedSecs = Math.floor(elapsedMs / 1000);
@@ -215,6 +223,7 @@ export const useOffCallChimer = ({
   }, [
     isActive,
     isBreakActive,
+    isOnAvail,
     isHold,
     holdSeconds,
     lastActivityTime,

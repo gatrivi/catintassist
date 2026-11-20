@@ -2,6 +2,18 @@
 
 **Version source:** `src/constants/version.js` (must match `package.json` + top-right UI pill)
 
+## v4.217.0 - Avail mode toggle & off-call idle chime silencing
+
+- **"I'm on Avail" Mode & Button (`DashboardHeader.js`, `SessionContext.js`):**
+  - Added dedicated **`[🟢 ON AVAIL]` / `[📡 SET AVAIL]`** button in both the sticky header bar (next to Coffee/Break) and the expanded lower toolbar.
+  - 1-click toggles Avail state with instant green glowing visual feedback.
+  - Automatically turns off when a break (`COFFEE`) is started.
+  - Remembers state in `localStorage` (`catint_on_avail`).
+- **Off-call Idle Chime Silenced on Avail (`useOffCallChimer.js`, `offCallChime.js`):**
+  - When on Avail waiting for calls, the periodic off-call idle chimer is completely silenced so waiting interpreters are never disturbed.
+- **Console Helper (`SessionContext.js`):**
+  - Added `window.__CAT_TOGGLE_AVAIL(forced)` to quickly check or toggle Avail mode from DevTools.
+
 ## v4.216.0 - 5,500m commission floor preset & honorific translation cleanup
 
 - **Permanent 5,500m Commission Floor Presets (`DialGoalSelector.js`):**

@@ -109,6 +109,7 @@ const Dashboard = () => {
     lastActivityTime,
     hipaaGraceActive,
     isBreakActive,
+    isOnAvail,
     isZombieCall,
     minutesSinceLastBreak,
     startSession,
@@ -779,9 +780,11 @@ const Dashboard = () => {
         : "0 0 8px #10b981";
 
   // v4.215.0: Off-call & in-call silence chime — tune adapts to pace/break and alerts on mid-call silence (>1m un-held or >15m hold)
+  // v4.217.0: Silenced when isOnAvail is true (user is on Avail waiting for calls)
   useOffCallChimer({
     isActive,
     isBreakActive,
+    isOnAvail,
     isHold,
     holdSeconds,
     lastActivityTime,

@@ -198,6 +198,14 @@ export const SessionProvider = ({ children }) => {
   const [lastSilenceDeductionMins, setLastSilenceDeductionMins] = useState(0);
   const [sessionSeconds, setSessionSeconds] = useState(() => Number(localStorage.getItem('catint_s_sec')) || 0);
   const [isBreakActive, setIsBreakActive] = useState(() => JSON.parse(localStorage.getItem('catint_break')) || false);
+  const [isOnAvail, setIsOnAvail] = useState(() => {
+    try {
+      const stored = localStorage.getItem('catint_on_avail');
+      return stored !== null ? JSON.parse(stored) : false;
+    } catch {
+      return false;
+    }
+  });
   const [breakSeconds, setBreakSeconds] = useState(() => Number(localStorage.getItem('catint_b_sec')) || 0);
   const [availSeconds, setAvailSeconds] = useState(() => Number(localStorage.getItem('catint_a_sec')) || 0);
   const [lastActivityTime, setLastActivityTime] = useState(Date.now());
@@ -1412,9 +1420,19 @@ export const SessionProvider = ({ children }) => {
     };
   }, [isActive, isBreakActive]);
 
+  const toggleAvail = useCallback((forced) => {
+    setIsOnAvail((prev) => {
+      const next = typeof forced === 'boolean' ? forced : !prev;
+      safeLocalStorageSet('catint_on_avail', JSON.stringify(next));
+      return next;
+    });
+  }, []);
+
   const startBreak = () => {
     // v4.90.0: auto-break may already be counting — never reset the live counter.
     if (isActive || isBreakActive) return;
+    setIsOnAvail(false);
+    safeLocalStorageSet('catint_on_avail', JSON.stringify(false));
     commitAvailTime();
     breakWasAutoRef.current = false;
     breakStintStartRef.current = Date.now();
@@ -1535,10 +1553,18 @@ export const SessionProvider = ({ children }) => {
       console.log(`[CAT:GOAL] Set monthly goal to ${mins}m (banked: ${stats.monthlyMinutes || 0}m, workdays: ${goalWorkDays})`);
       return { goalMinutes: mins, anchor };
     };
-    return () => {
-      try { delete window.__CAT_SET_GOAL; } catch (_) {}
+    // v4.217.0: Quick console helper to toggle Avail state
+    window.__CAT_TOGGLE_AVAIL = (forced) => {
+      toggleAvail(forced);
+      return !isOnAvail;
     };
-  }, [bankGoal, goalWorkDays, stats.monthlyMinutes]);
+    return () => {
+      try {
+        delete window.__CAT_SET_GOAL;
+        delete window.__CAT_TOGGLE_AVAIL;
+      } catch (_) {}
+    };
+  }, [bankGoal, goalWorkDays, stats.monthlyMinutes, toggleAvail, isOnAvail]);
 
   /** Retroactive daily edit — keeps monthly + progress bar in sync. */
   const adjustDailyMinutes = (newDailyMinutes) => {
@@ -1594,6 +1620,9 @@ export const SessionProvider = ({ children }) => {
     arsRateFetchedAt,
     refreshArsRate,
     isBreakActive,
+    isOnAvail,
+    setIsOnAvail,
+    toggleAvail,
     breakSeconds,
     setBreakSeconds,   // exposed for TimeEditModal
     startBreak,
