@@ -377,6 +377,7 @@ const SessionControlsSticky = React.memo(({
   // v4.88.5: 3rd HUD mode — meter-only (extra compact) during calls
   meterOnly = false,
   onToggleMeterHud,
+  headerMinimal = false,
   /** v4.99.0: node rendered at the right end of the audio chips row
       (off-call scoreboard merges its metrics strip into that single line). */
   trailingSlot = null,
@@ -450,7 +451,7 @@ const SessionControlsSticky = React.memo(({
           {/* v4.98.0: autopilot armed indicator */}
           <AutopilotChip />
 
-          {!isActive ? (
+          {headerMinimal ? (
               <ConnectInterpretButton
                 onSingle={connectOnSingle}
                 onDouble={connectOnDouble}
@@ -467,7 +468,7 @@ const SessionControlsSticky = React.memo(({
                 audioSourceMode={configuredAudioSourceMode}
                 providerReady={!apiKeyMissing && !vaultNeedsDecrypt}
               />
-          ) : (
+          ) : isActive ? (
             <ElementHintTarget
               elementId="header-stop-btn"
               guideKey="stop"
@@ -486,7 +487,7 @@ const SessionControlsSticky = React.memo(({
                 <StopIcon size={14} />
               </button>
             </ElementHintTarget>
-          )}
+          ) : null}
 
           {/* Today timers: on-call vs off-call at a glance (v4.86.5) */}
           <ElementHintTarget
@@ -1483,7 +1484,7 @@ export const DashboardHeader = ({
       const end = Math.min(dailyShiftEndMs, evt.end || now.getTime());
       const left = Math.max(0, Math.min(100, ((start - dailyShiftStartMs) / dailyShiftDuration) * 100));
       const right = Math.max(0, Math.min(100, ((end - dailyShiftStartMs) / dailyShiftDuration) * 100));
-      return { index, type: evt.type, left, width: Math.max(0, right - left) };
+      return { index, type: evt.type, left, width: Math.max(0, right - left), start: evt.start, end: evt.end };
     })
     .filter((segment) => segment.width > 0);
   const compactShiftRemainingSeconds = Math.max(0, Math.floor((dailyShiftEndMs - now.getTime()) / 1000));
@@ -3724,6 +3725,7 @@ ${isInDeficit ? `⚠️ DEFICIT: Behind pace by ${Math.round(monthlyDeficitMins)
         offCallStatusLabel={offCallStatusLabel}
         meterOnly={meterOnlyMode}
         onToggleMeterHud={toggleMeterHud}
+        headerMinimal={headerMinimal}
         trailingSlot={offCallScoreboardView ? renderInlineMetricsStrip(offCallMetricsExpanded) : null}
       />
 
@@ -3752,6 +3754,32 @@ ${isInDeficit ? `⚠️ DEFICIT: Behind pace by ${Math.round(monthlyDeficitMins)
             renderTargetsChip()
           )}
         </div>
+      )}
+
+      {!isActive && !headerMinimal && (
+        <ConnectInterpretButton
+          onSingle={connectOnSingle}
+          onDouble={connectOnDouble}
+          flash={connectFlash}
+          disabled={false}
+          size="detailed-bar"
+          label={connectLabel}
+          requireDoubleTapIndicator={connectRequireDoubleTapIndicator}
+          onArmDoubleTap={() => audioEngine.playWarningPing?.()}
+          pendingDoubleTapTitle="Tap again to pick tab"
+          singleTitle={connectSingleTitle}
+          doubleTitle={connectDoubleTitle}
+          micTestMode={micTestMode}
+          audioSourceMode={configuredAudioSourceMode}
+          providerReady={!apiKeyMissing && !vaultNeedsDecrypt}
+          totalOnCallSeconds={totalOnCallSeconds}
+          totalOffCallSeconds={totalOffCallSeconds}
+          compactShiftRemainingSeconds={compactShiftRemainingSeconds}
+          compactWorkdaySegments={compactWorkdaySegments}
+          shiftElapsedRatio={shiftElapsedRatio}
+          dailyGoal={dailyGoal}
+          totalDailyMins={totalDailyMins}
+        />
       )}
 
       {!headerMinimal && (

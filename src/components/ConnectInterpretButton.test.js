@@ -61,5 +61,57 @@ describe('ConnectInterpretButton', () => {
     expect(btn).toHaveAttribute('data-provider-ready', '0');
     expect(btn.querySelectorAll('svg')).toHaveLength(1);
   });
+
+  test('detailed-bar mode renders detailed day progress with readouts, track, and click-to-connect', async () => {
+    const onSingle = jest.fn();
+    const onDouble = jest.fn();
+    const segments = [
+      { index: 0, type: 'work', left: 10, width: 25, start: Date.now() - 3600000, end: Date.now() - 1800000 },
+      { index: 1, type: 'avail', left: 35, width: 15, start: Date.now() - 1800000, end: Date.now() - 900000 },
+    ];
+
+    render(
+      <ConnectInterpretButton
+        size="detailed-bar"
+        label="Start interpreting"
+        onSingle={onSingle}
+        onDouble={onDouble}
+        totalOnCallSeconds={5400}
+        totalOffCallSeconds={1800}
+        compactShiftRemainingSeconds={10800}
+        compactWorkdaySegments={segments}
+        shiftElapsedRatio={0.45}
+        dailyGoal={350}
+        totalDailyMins={90}
+        providerReady
+        audioMode="tab"
+      />
+    );
+
+    const btn = screen.getByRole('button', { name: /start interpreting/i });
+    expect(btn).toBeInTheDocument();
+    expect(btn).toHaveClass('connect-interpret-btn--detailed');
+    expect(btn).toHaveAttribute('id', 'header-connect-btn');
+
+    // Readouts check
+    expect(btn).toHaveTextContent(/ON/);
+    expect(btn).toHaveTextContent(/01:30:00/);
+    expect(btn).toHaveTextContent(/OFF/);
+    expect(btn).toHaveTextContent(/30:00/);
+    expect(btn).toHaveTextContent(/LEFT/);
+    expect(btn).toHaveTextContent(/03:00:00/);
+    expect(btn).toHaveTextContent(/90\/350m/);
+    expect(btn).toHaveTextContent(/09:00/);
+    expect(btn).toHaveTextContent(/18:00/);
+
+    // Track segments check
+    expect(btn.querySelector('.compact-call-goal-meter__segment--work')).toBeInTheDocument();
+    expect(btn.querySelector('.compact-call-goal-meter__segment--avail')).toBeInTheDocument();
+    expect(btn.querySelector('.compact-call-goal-meter__now')).toBeInTheDocument();
+
+    // Click anywhere on the detailed bar triggers connect
+    await userEvent.click(btn);
+    expect(onSingle).toHaveBeenCalledTimes(1);
+  });
 });
 

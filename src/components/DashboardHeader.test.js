@@ -454,4 +454,20 @@ describe('call-banked coin burst (v4.208.0)', () => {
     fireEvent.click(availBtn);
     expect(mockSession.toggleAvail).toHaveBeenCalled();
   });
+
+  test('v4.221.0 off-call renders #header-connect-btn as a detailed day progress bar in row 2', () => {
+    mockSession.isActive = false;
+    const { container } = renderOffCall('scoreboard');
+
+    const connectBtn = container.querySelector('#header-connect-btn');
+    expect(connectBtn).not.toBeNull();
+    expect(connectBtn).toHaveClass('connect-interpret-btn--detailed');
+    expect(connectBtn).toHaveTextContent(/ON/);
+    expect(connectBtn).toHaveTextContent(/OFF/);
+    expect(connectBtn).toHaveTextContent(/LEFT/);
+    expect(connectBtn.querySelector('.connect-interpret-btn__track')).not.toBeNull();
+
+    // Not duplicated in sticky left-cluster
+    expect(container.querySelectorAll('#header-connect-btn')).toHaveLength(1);
+  });
 });

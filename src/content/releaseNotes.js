@@ -25,6 +25,36 @@ import { APP_VERSION } from '../constants/version';
 /** Newest first. Only the entry matching APP_VERSION is shown on load. */
 export const RELEASE_NOTES_CATALOG = [
   {
+    version: '4.221.0',
+    id: 'offcall-connect-detailed-day-progress',
+    highlightElementIds: ['header-connect-btn'],
+    es: {
+      title: 'Botón Conectar con progreso detallado del día',
+      intro: 'Fuera de llamada, el botón Conectar (#header-connect-btn) ahora es una barra de progreso del día grande y detallada con métricas ON/OFF/LEFT, marcas de turno y segmentos cronológicos.',
+      sections: [{ heading: 'Qué mirar', bullets: ['Fuera de llamada → barra de progreso completa en el botón Conectar, tocás en cualquier parte para iniciar.'] }],
+    },
+    en: {
+      title: 'Detailed day progress on Connect button',
+      intro: 'Off-call, the Connect button (#header-connect-btn) is now a big, detailed version of the day progress bar with ON/OFF/LEFT readouts, shift ticks, and chronological segments.',
+      sections: [{ heading: 'Watch for', bullets: ['Off-call → full detailed progress bar on the Connect button, click anywhere to start.'] }],
+    },
+  },
+  {
+    version: '4.220.0',
+    id: 'idle-emoji-month-calendar',
+    highlightElementIds: ['idle-month-calendar'],
+    es: {
+      title: 'Calendario mensual de bloques en reposo',
+      intro: 'En la pantalla de reposo, podés ver los bloques de trabajo de 50 minutos con emojis para cada día del mes.',
+      sections: [{ heading: 'Qué mirar', bullets: ['Pestaña Calendario en reposo con emojis sólidos y atenuados.'] }],
+    },
+    en: {
+      title: 'Idle emoji month calendar',
+      intro: 'On the idle screen, view 50-minute work block emojis for every day of the month.',
+      sections: [{ heading: 'Watch for', bullets: ['Calendar tab on idle screen with solid and faded emojis.'] }],
+    },
+  },
+  {
     version: '4.210.2',
     id: 'race-board-offcall-top',
     highlightElementIds: ['interpret-root'],

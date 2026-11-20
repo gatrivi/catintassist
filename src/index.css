@@ -410,7 +410,7 @@ body {
 /* Uniform buttons: CONNECT, STOP, HOLD are one cell like CAT/ZAP.
    The 🤖 provider glyph hides in the row (tooltip + data-provider-ready
    keep the info); the double-cell era ends here. */
-#header-connect-btn > span > svg + svg {
+#header-connect-btn:not(.connect-interpret-btn--detailed) > span > svg + svg {
   display: none;
 }
 /* Belt-and-suspenders: IDs win over every width rule, boxes can never grow.
@@ -418,7 +418,7 @@ body {
    (23px ≤1100px via vars, icon 14px). All three share header-chrome-btn as
    base so border/line-height match STOP/ZAP. :not(.has-label) so the 90m
    BREAK label can still expand to width:auto via the .has-label rule below. */
-#header-connect-btn,
+#header-connect-btn:not(.connect-interpret-btn--detailed),
 #header-hold-btn,
 #header-break-btn:not(.has-label) {
   width: var(--btn-icon) !important;
@@ -435,6 +435,169 @@ body {
   flex-shrink: 0;
   box-sizing: border-box;
   overflow: hidden;
+}
+
+/* v4.221.0: Off-call detailed day progress bar on #header-connect-btn */
+#header-connect-btn.connect-interpret-btn--detailed {
+  position: static !important;
+  width: calc(100% - 8px) !important;
+  max-width: calc(100% - 8px) !important;
+  min-width: 0 !important;
+  height: auto !important;
+  min-height: 34px !important;
+  max-height: none !important;
+  display: flex !important;
+  flex-direction: column !important;
+  justify-content: center !important;
+  align-items: stretch !important;
+  gap: 3px !important;
+  padding: 3px 8px 4px 8px !important;
+  margin: 1px 4px 3px 4px !important;
+  border-radius: 6px !important;
+  background: linear-gradient(180deg, rgba(16, 185, 129, 0.12) 0%, rgba(15, 23, 42, 0.88) 100%) !important;
+  border: 1px solid rgba(16, 185, 129, 0.42) !important;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.08) !important;
+  cursor: pointer !important;
+  box-sizing: border-box !important;
+  flex-shrink: 0 !important;
+  overflow: visible !important;
+  text-align: left !important;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease, transform 0.1s ease !important;
+}
+
+#header-connect-btn.connect-interpret-btn--detailed:hover {
+  border-color: rgba(16, 185, 129, 0.85) !important;
+  background: linear-gradient(180deg, rgba(16, 185, 129, 0.18) 0%, rgba(15, 23, 42, 0.92) 100%) !important;
+  box-shadow: 0 0 16px rgba(16, 185, 129, 0.32), inset 0 1px 0 rgba(255, 255, 255, 0.14) !important;
+}
+
+#header-connect-btn.connect-interpret-btn--detailed:active {
+  transform: scale(0.996) !important;
+}
+
+.connect-interpret-btn__top-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  gap: 8px;
+  min-width: 0;
+}
+
+.connect-interpret-btn__action-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background: rgba(16, 185, 129, 0.25);
+  border: 1px solid rgba(16, 185, 129, 0.6);
+  padding: 1px 6px;
+  border-radius: 4px;
+  color: #34d399;
+  font-size: 0.63rem;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.connect-interpret-btn__icons {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+}
+
+.connect-interpret-btn__readouts {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  font: 700 9.5px/1 var(--font-mono);
+  letter-spacing: 0.03em;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  min-width: 0;
+}
+
+.connect-interpret-btn__stat {
+  display: inline-flex;
+  gap: 3px;
+  align-items: baseline;
+}
+.connect-interpret-btn__stat b {
+  font-weight: 900;
+}
+.connect-interpret-btn__stat.stat--on {
+  color: #38bdf8;
+}
+.connect-interpret-btn__stat.stat--off {
+  color: #fdba74;
+}
+.connect-interpret-btn__stat.stat--left {
+  color: #fcd34d;
+}
+.connect-interpret-btn__stat.stat--goal {
+  color: #c084fc;
+}
+
+.connect-interpret-btn__shift-range {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 0.58rem;
+  color: rgba(226, 232, 240, 0.6);
+  font-family: var(--font-mono);
+  font-weight: 600;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+.connect-interpret-btn__shift-range .range-sep {
+  opacity: 0.4;
+}
+
+.connect-interpret-btn__track {
+  position: relative;
+  width: 100%;
+  height: 8px;
+  border-radius: 99px;
+  background: rgba(0, 0, 0, 0.48);
+  box-shadow: inset 0 0 0 1px rgba(148, 163, 184, 0.16);
+  overflow: hidden;
+}
+
+.connect-interpret-btn__track-ticks {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 1;
+}
+.connect-interpret-btn__track-tick {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 1px;
+  background: rgba(255, 255, 255, 0.12);
+}
+
+.connect-interpret-btn__goal-notch {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 2px;
+  background: rgba(192, 132, 252, 0.75);
+  box-shadow: 0 0 4px rgba(192, 132, 252, 0.9);
+  z-index: 3;
+  pointer-events: none;
+}
+
+@media (max-width: 900px) {
+  .connect-interpret-btn__shift-range {
+    display: none;
+  }
+}
+@media (max-width: 650px) {
+  .connect-interpret-btn__stat.stat--goal {
+    display: none;
+  }
 }
 
 /* v4.126.0: off-call center never overlaps — every child can shrink, the

@@ -2,6 +2,36 @@
 
 **Version source:** `src/constants/version.js` (must match `package.json` + top-right UI pill)
 
+## v4.221.0 - Off-call detailed day progress bar on connect button (#header-connect-btn)
+
+- **Detailed Day Progress Bar Connect Button (`ConnectInterpretButton.js`, `DashboardHeader.js`, `index.css`):**
+  - Transformed off-call `#header-connect-btn` into a big, detailed version of the on-call day progress bar spanning across Row 2 of the header.
+  - Prominent interactive action pill (`CONNECT TAB` / `START CALL` / `RE-ATTACH`) with leading mode icons (🔖 Tab, 🎧 Cable, 🎙️ Mic + 🤖 Robot) and green pulse animation when ready.
+  - Detailed workday metrics readout:
+    - **ON {time}**: Cyan text (`#38bdf8`) with total on-call minutes banked today.
+    - **OFF {time}**: Orange text (`#fdba74`) with total off-call minutes (avail + break).
+    - **LEFT {time}**: Gold text (`#fcd34d`) showing exact time remaining until 18:00.
+    - **GOAL {banked}/{target}m ({pct}%)**: Purple pacing indicator.
+    - **Shift bounds**: `☀️ 09:00 → 🌙 18:00`.
+  - Detailed timeline track:
+    - 6 hour tick marks (09:00, 11:00, 13:00, 15:00, 17:00, 18:00).
+    - Goal target notch at daily goal proportion.
+    - Chronological segments for `work` (blue glow), `avail` (orange), and `break` (pink), with duration tooltips on hover.
+    - Luminous `now` needle tracking current time of day.
+  - Click-anywhere to connect (single tap = immediate connect gesture, double tap = tab picker).
+  - Clean separation: in studio minimal mode (`soundboard`/`goals`/`greeting-editor`), compact icon button is preserved in the sticky row with zero ID duplication.
+
+## v4.220.0 - Off-call idle emoji month calendar (50m work blocks)
+
+- **Idle Emoji Month Calendar (`IdleMonthCalendar.js`, `IdleMonthCalendar.css`, `IdleRaceBoard.js`):**
+  - Added visual monthly work calendar directly on the off-call idle screen.
+  - Each workday shows emoji badges representing 50-minute work blocks (~1 hour each):
+    - **Solid & vibrant (`🐱`)**: Completed and banked work blocks for that day.
+    - **Faded & grayed-out (`🐱`)**: Remaining blocks required to meet the workday target pace.
+    - **Rest day (`☕`)**: Weekend or off-day with 0m.
+  - Interactive past-day click to edit minutes inline.
+  - Tabs in idle board to seamlessly toggle between `📅 Calendar` (default) and `🏎️ Pace Race`.
+
 ## v4.219.0 - Small window 900px fix: zero-width Avail toggle integration
 
 - **Small Window (900px) Layout Protection (`DashboardHeader.js`, `DashboardHeader.test.js`):**
