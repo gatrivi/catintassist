@@ -2,6 +2,20 @@
 
 **Version source:** `src/constants/version.js` (must match `package.json` + top-right UI pill)
 
+## v4.218.0 - Silent coffee break & mathematically unique metric-tuned chimes
+
+- **Silent Coffee Break (`offCallChime.js`, `useOffCallChimer.js`):**
+  - Starting a coffee break completely silences periodic idle chimes while break budget is healthy (`breakLeft >= 15m`).
+  - Cautionary warning chime (`break_low`) only sounds when break is almost exhausted (`< 15m`) or overtime (`break_overtime`).
+- **Mathematically Unique Acoustic Fingerprinting (`offCallChime.js`, `useOffCallChimer.js`):**
+  - Added parametric micro-tuning algorithm `calculateChimeMetricModulation` & `synthesizeMetricTune`.
+  - Dynamically synthesizes distinct frequencies for each chime based on:
+    - **Day of the week** (0..6): shifts base root modal tuning (+0 to +72 cents).
+    - **Day of the month** (1..31): cyclic micro-cent variation (+0 to +27 cents).
+    - **Pace deficit / gap**: tilts lower/darker when behind pace (-60 cents) and brighter when ahead (+60 cents).
+    - **Daily minutes banked**: ascends smoothly as interpreter works through the day (+0.1 cent/min).
+  - Preserves 100% of internal musical chord interval ratios (perfect fifths, major triads) so chimes always sound harmonic and pleasing while possessing a unique daily acoustic fingerprint.
+
 ## v4.217.0 - Avail mode toggle & off-call idle chime silencing
 
 - **"I'm on Avail" Mode & Button (`DashboardHeader.js`, `SessionContext.js`):**

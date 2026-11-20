@@ -4,6 +4,7 @@ import {
   saveOffCallChimeSettings,
   resolveOffCallChimeTone,
   playOffCallChime,
+  synthesizeMetricTune,
   CHIME_TUNES,
 } from '../utils/offCallChime';
 import { computeCatchUp } from '../utils/catchUpPlan';
@@ -51,8 +52,16 @@ export const useOffCallChimer = ({
   }, [settings]);
 
   const previewTune = useCallback((tuneId) => {
-    playOffCallChime(tuneId, { force: true, volume: settings.volume });
-  }, [settings.volume]);
+    playOffCallChime(tuneId, {
+      force: true,
+      volume: settings.volume,
+      metrics: {
+        dailyMinutes: Number(stats?.dailyMinutes) || 0,
+        dayOfWeek: new Date().getDay(),
+        dayOfMonth: new Date().getDate(),
+      },
+    });
+  }, [settings.volume, stats?.dailyMinutes]);
 
   // Current tune preview based on current state
   const getCurrentTune = useCallback(() => {
@@ -77,7 +86,7 @@ export const useOffCallChimer = ({
         deficitMins = plan?.deficitMins || 0;
       }
 
-      return resolveOffCallChimeTone({
+      const baseTune = resolveOffCallChimeTone({
         isActive,
         isBreakActive,
         isOnAvail,
@@ -87,6 +96,14 @@ export const useOffCallChimer = ({
         breakLeft,
         idleSecs: 0,
         deficitMins,
+      });
+
+      if (!baseTune) return null;
+      return synthesizeMetricTune(baseTune, {
+        dailyMinutes,
+        deficitMins,
+        dayOfWeek: new Date().getDay(),
+        dayOfMonth: new Date().getDate(),
       });
     } catch {
       return CHIME_TUNES.on_pace;
@@ -155,16 +172,27 @@ export const useOffCallChimer = ({
             deficitMins = plan?.deficitMins || 0;
           }
 
+          const chimeMetrics = {
+            dailyMinutes,
+            deficitMins,
+            dayOfWeek: new Date().getDay(),
+            dayOfMonth: new Date().getDate(),
+          };
+
           const tune = resolveOffCallChimeTone({
             isActive: false,
             isBreakActive,
+            isOnAvail,
             breakLeft,
             idleSecs: elapsedSecs,
             deficitMins,
           });
 
           if (tune) {
-            activePlaybackRef.current = playOffCallChime(tune, { volume: settings.volume });
+            activePlaybackRef.current = playOffCallChime(tune, {
+              volume: settings.volume,
+              metrics: chimeMetrics,
+            });
           }
         }
         return;
@@ -185,7 +213,14 @@ export const useOffCallChimer = ({
               holdSeconds,
             });
             if (tune) {
-              activePlaybackRef.current = playOffCallChime(tune, { volume: settings.volume });
+              activePlaybackRef.current = playOffCallChime(tune, {
+                volume: settings.volume,
+                metrics: {
+                  dailyMinutes: Number(stats?.dailyMinutes) || 0,
+                  dayOfWeek: new Date().getDay(),
+                  dayOfMonth: new Date().getDate(),
+                },
+              });
             }
           }
         } else {
@@ -214,7 +249,14 @@ export const useOffCallChimer = ({
           silenceSecs,
         });
         if (tune) {
-          activePlaybackRef.current = playOffCallChime(tune, { volume: settings.volume });
+          activePlaybackRef.current = playOffCallChime(tune, {
+            volume: settings.volume,
+            metrics: {
+              dailyMinutes: Number(stats?.dailyMinutes) || 0,
+              dayOfWeek: new Date().getDay(),
+              dayOfMonth: new Date().getDate(),
+            },
+          });
         }
       }
     }, 1000);

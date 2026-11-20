@@ -137,7 +137,7 @@ describe('useOffCallChimer', () => {
     expect(offCallChime.playOffCallChime).not.toHaveBeenCalled();
   });
 
-  test('chimes with break tune when isBreakActive is true', () => {
+  test('silences chime during healthy break (breakLeft >= 15)', () => {
     renderHook(() =>
       useOffCallChimer({
         isActive: false,
@@ -150,9 +150,25 @@ describe('useOffCallChimer', () => {
       jest.advanceTimersByTime(60000);
     });
 
+    expect(offCallChime.playOffCallChime).not.toHaveBeenCalled();
+  });
+
+  test('chimes warning when break time is low (<15m)', () => {
+    renderHook(() =>
+      useOffCallChimer({
+        isActive: false,
+        isBreakActive: true,
+        stats: { dailyBreakMinutes: 80 }, // 90 - 80 = 10m left
+      })
+    );
+
+    act(() => {
+      jest.advanceTimersByTime(60000);
+    });
+
     expect(offCallChime.playOffCallChime).toHaveBeenCalledTimes(1);
     const playedTune = offCallChime.playOffCallChime.mock.calls[0][0];
-    expect(playedTune.id).toBe('break_healthy');
+    expect(playedTune.id).toBe('break_low');
   });
 
   test('toggleChime switches enabled state and persists', () => {

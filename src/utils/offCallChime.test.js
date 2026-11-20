@@ -4,6 +4,8 @@ import {
   readOffCallChimeSettings,
   saveOffCallChimeSettings,
   playOffCallChime,
+  calculateChimeMetricModulation,
+  synthesizeMetricTune,
   CHIME_STORAGE_KEY,
 } from './offCallChime';
 
@@ -18,9 +20,9 @@ describe('offCallChime', () => {
       expect(tune).toBeNull();
     });
 
-    test('resolves break_healthy when on break and breakLeft >= 15', () => {
+    test('silences chime (returns null) during healthy break (breakLeft >= 15)', () => {
       const tune = resolveOffCallChimeTone({ isBreakActive: true, breakLeft: 45 });
-      expect(tune.id).toBe('break_healthy');
+      expect(tune).toBeNull();
     });
 
     test('resolves break_low when on break and breakLeft < 15 and > 0', () => {
@@ -121,6 +123,41 @@ describe('offCallChime', () => {
       const handle = playOffCallChime(CHIME_TUNES.ahead, { audioCtx: fakeCtx, force: true });
       expect(typeof handle.stop).toBe('function');
       expect(() => handle.stop()).not.toThrow();
+    });
+  });
+
+  describe('calculateChimeMetricModulation and synthesizeMetricTune', () => {
+    test('calculates distinct modulation across days of week', () => {
+      const modSun = calculateChimeMetricModulation({ dayOfWeek: 0, dayOfMonth: 1, deficitMins: 0, dailyMinutes: 0 });
+      const modFri = calculateChimeMetricModulation({ dayOfWeek: 5, dayOfMonth: 1, deficitMins: 0, dailyMinutes: 0 });
+      expect(modSun.totalCents).toBe(0);
+      expect(modFri.totalCents).toBe(60);
+      expect(modFri.freqMultiplier).toBeGreaterThan(modSun.freqMultiplier);
+    });
+
+    test('tilts pitch downward when behind pace and upward when ahead', () => {
+      const modBehind = calculateChimeMetricModulation({ dayOfWeek: 2, dayOfMonth: 10, deficitMins: 200, dailyMinutes: 0 });
+      const modAhead = calculateChimeMetricModulation({ dayOfWeek: 2, dayOfMonth: 10, deficitMins: -200, dailyMinutes: 0 });
+      expect(modBehind.totalCents).toBeLessThan(modAhead.totalCents);
+      expect(modBehind.freqMultiplier).toBeLessThan(modAhead.freqMultiplier);
+    });
+
+    test('transposes chime notes while preserving harmonic interval ratio', () => {
+      const base = CHIME_TUNES.on_pace; // 2 notes: D5 (587.33), A5 (880.00)
+      const tuned = synthesizeMetricTune(base, {
+        dayOfWeek: 3,
+        dayOfMonth: 15,
+        deficitMins: 50,
+        dailyMinutes: 180,
+      });
+
+      expect(tuned.notes).toHaveLength(base.notes.length);
+      expect(tuned.notes[0].freq).not.toBe(base.notes[0].freq);
+
+      // Original ratio: 880 / 587.33 ≈ 1.4983 (perfect fifth)
+      const origRatio = base.notes[1].freq / base.notes[0].freq;
+      const tunedRatio = tuned.notes[1].freq / tuned.notes[0].freq;
+      expect(Math.abs(tunedRatio - origRatio)).toBeLessThan(0.01);
     });
   });
 });

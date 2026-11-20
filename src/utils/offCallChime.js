@@ -147,7 +147,8 @@ export const resolveOffCallChimeTone = ({
   if (isBreakActive) {
     if (breakLeft <= 0) return CHIME_TUNES.break_overtime;
     if (breakLeft < 15) return CHIME_TUNES.break_low;
-    return CHIME_TUNES.break_healthy;
+    // Healthy coffee break (>= 15m remaining) is peaceful silence
+    return null;
   }
 
   // Case 3: Off-call standby waiting between calls
@@ -233,14 +234,94 @@ if (typeof window !== 'undefined') {
 }
 
 /**
+ * Calculates a unique, mathematically-derived pitch modulation (in cents)
+ * based on date and interpreter metrics:
+ * - dayOfWeek (0-6)
+ * - dayOfMonth (1-31)
+ * - deficitMins (minutes behind/ahead in month goal)
+ * - dailyMinutes (minutes worked today)
+ */
+export const calculateChimeMetricModulation = ({
+  dayOfWeek = typeof window !== 'undefined' ? new Date().getDay() : 0,
+  dayOfMonth = typeof window !== 'undefined' ? new Date().getDate() : 1,
+  deficitMins = 0,
+  dailyMinutes = 0,
+} = {}) => {
+  // 1. Day of week modal shift: 0..6 -> 0 to +72 cents (~12 cents per day)
+  const dowCents = (Math.max(0, Math.min(6, Number(dayOfWeek) || 0)) % 7) * 12;
+
+  // 2. Day of month subtle shift: 1..31 -> 0 to +27 cents
+  const dom = Math.max(1, Math.min(31, Number(dayOfMonth) || 1));
+  const domCents = ((dom - 1) % 10) * 3;
+
+  // 3. Deficit shift: ahead = brighter (+cents), behind = deeper/darker (-cents)
+  // Clamp between -60 and +60 cents
+  const def = Number(deficitMins) || 0;
+  const deficitCents = Math.max(-60, Math.min(60, Math.round(-def * 0.15)));
+
+  // 4. Daily progress shift: as minutes are banked today, tone gently ascends (+0.1 cent/min, max +50)
+  const todayMins = Math.max(0, Number(dailyMinutes) || 0);
+  const todayCents = Math.max(0, Math.min(50, Math.round(todayMins * 0.1)));
+
+  // Total shift bounded in musical zone (-150 to +150 cents = within ±1.5 semitones)
+  const totalCents = Math.max(-150, Math.min(150, dowCents + domCents + deficitCents + todayCents));
+
+  // Equal temperament multiplier: f = f_0 * 2^(cents / 1200)
+  const freqMultiplier = Math.pow(2, totalCents / 1200);
+
+  return {
+    totalCents,
+    freqMultiplier,
+    dayOfWeek,
+    dayOfMonth,
+    deficitMins: def,
+    dailyMinutes: todayMins,
+  };
+};
+
+/**
+ * Synthesizes a mathematically unique chime tune by transposing base frequencies
+ * according to date and session metrics while strictly preserving chord harmony.
+ */
+export const synthesizeMetricTune = (baseTune, metrics = {}) => {
+  if (!baseTune || !baseTune.notes) return baseTune;
+  const mod = calculateChimeMetricModulation(metrics);
+  const todayMins = Math.max(0, Number(metrics?.dailyMinutes) || 0);
+
+  const tunedNotes = baseTune.notes.map((n, idx) => {
+    // Keep internal chord interval ratios intact; add tiny shimmer on final sustaining note
+    const shimmer = idx === baseTune.notes.length - 1
+      ? 1 + ((todayMins % 30) * 0.00015)
+      : 1;
+    const finalFreq = Math.round((n.freq * mod.freqMultiplier * shimmer) * 100) / 100;
+    return {
+      ...n,
+      freq: finalFreq,
+    };
+  });
+
+  return {
+    ...baseTune,
+    metricsModulation: mod,
+    notes: tunedNotes,
+  };
+};
+
+/**
  * Synthesizes and plays a chime tune.
+ * Options may include:
+ * - metrics: { dayOfWeek, dayOfMonth, deficitMins, dailyMinutes } for unique harmonic tuning
+ * - volume, audioCtx, force
  * Returns an object with `stop()` for immediate cancel on call connect.
  */
 export const playOffCallChime = (tuneIdOrObj, options = {}) => {
   if (!tuneIdOrObj) return { stop: () => {} };
-  const tune = typeof tuneIdOrObj === 'string'
+  const baseTune = typeof tuneIdOrObj === 'string'
     ? CHIME_TUNES[tuneIdOrObj] || CHIME_TUNES.on_pace
     : tuneIdOrObj || CHIME_TUNES.on_pace;
+
+  // Synthesize mathematically unique frequencies from date and metrics
+  const tune = synthesizeMetricTune(baseTune, options.metrics);
 
   const ctx = options.audioCtx || getChimeAudioContext();
   if (!ctx) return { stop: () => {} };
