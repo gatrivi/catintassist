@@ -58,4 +58,12 @@ describe('MonthCalendarPanel (v4.113.0)', () => {
     // 9900 goal − 1000 banked over the 28d-basis workdays left
     expect(screen.getByText(/Need \d+m\/workday for preview goal/i)).toBeInTheDocument();
   });
+
+  test('clicking Floor tier invokes onSelectGoal with 5500', () => {
+    const onSelectGoal = jest.fn();
+    render(<MonthCalendarPanel workDays={28} onSelectGoal={onSelectGoal} />);
+    const floorTier = screen.getByTitle(/Click to set goal to 5500m/i);
+    fireEvent.click(floorTier);
+    expect(onSelectGoal).toHaveBeenCalledWith(5500);
+  });
 });

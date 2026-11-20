@@ -52,6 +52,7 @@ export const DialGoalSelector = ({
   // ANCHORED-GOAL follow-up: the saved COMMITMENT (stats.goalPerWorkdayMinutes /
   // stats.goalWorkDays). The dial snaps to IT — never to the prorated month total.
   committedPerWorkdayMinutes = 0, committedWorkDays = 0,
+  externalGoalMinutes = null,
 }) => {
   const audioEngine = useProgressiveAudio();
 
@@ -217,6 +218,28 @@ export const DialGoalSelector = ({
     setWorkDays(opt.val);
   };
   useEffect(() => { applyCustomToDial(); }, [workDays]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // v4.216.0: 1-click select a monthly preset (5500m commission floor, 11000m growth, 16500m legend).
+  // Immediately locks the monthly total and snaps the wheel to the exact daily need for the rest of the month.
+  const selectMonthlyPreset = useCallback((mins) => {
+    if (!Number.isFinite(mins) || mins <= 0) return;
+    const target = Math.round(mins);
+    setCustomMonth(String(target));
+    const need = Math.max(0, target - bankedMins) / Math.max(1, remainingWorkdays);
+    let best = 0; let diff = Infinity;
+    targets.forEach((hrs, i) => {
+      const d = Math.abs(Math.round((hrs * 60) / daysPerWeek) - need);
+      if (d < diff) { diff = d; best = i; }
+    });
+    setActiveIndex(best);
+    audioEngine.playTick(1);
+  }, [bankedMins, remainingWorkdays, targets, daysPerWeek, audioEngine]);
+
+  useEffect(() => {
+    if (externalGoalMinutes != null && Number(externalGoalMinutes) > 0) {
+      selectMonthlyPreset(Number(externalGoalMinutes));
+    }
+  }, [externalGoalMinutes, selectMonthlyPreset]);
 
   // v4.100.0: live catch-up preview for the EFFECTIVE monthly goal.
   // ANCHORED-GOAL: the pace clock starts now (or keeps the saved anchor when the
@@ -534,9 +557,12 @@ export const DialGoalSelector = ({
             const rDailyCash = rDailyMins * ratePerMinute * arsRate;
             const rMonthCash = rMonthMins * ratePerMinute * arsRate;
 
-            const isFloor = rMonthMins >= 5500 && rMonthMins < 5600;
-            const isGrowth = rMonthMins >= 11000 && rMonthMins < 11100;
-            const isLegend = rMonthMins >= 16500 && rMonthMins < 16600;
+            const isFloor = (distance === 0 && customActive && effectiveMonthly === 5500)
+              || (rMonthMins >= 5400 && rMonthMins <= 5600);
+            const isGrowth = (distance === 0 && customActive && effectiveMonthly === 11000)
+              || (rMonthMins >= 10800 && rMonthMins <= 11200);
+            const isLegend = (distance === 0 && customActive && effectiveMonthly === 16500)
+              || (rMonthMins >= 16300 && rMonthMins <= 16700);
 
             return (
               <div key={hrs} onClick={() => { setActiveIndex(idx); setCustomMonth(''); scrollRef.current.scrollTop = idx * itemHeight; }} style={{
@@ -595,6 +621,98 @@ export const DialGoalSelector = ({
               <span style={{ fontSize: '0.55rem', opacity: workDays === opt.val ? 0.9 : 0.6 }}>{fmtHm(perDayFor(opt))}/d</span>
             </button>
           ))}
+        </div>
+      </div>
+
+      {/* Permanent Commission Floor & Goal Presets (v4.216.0) */}
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem', margin: '0.2rem 0' }}>
+        <div style={{ fontSize: '0.6rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '1px', paddingLeft: '0.2rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <span>Monthly Target Presets</span>
+          <span style={{ color: '#38bdf8', fontWeight: 700 }}>5,500m = Commission Minimum</span>
+        </div>
+        <div style={{ display: 'flex', gap: '0.3rem' }}>
+          <button
+            type="button"
+            id="goal-preset-floor-5500"
+            onClick={() => selectMonthlyPreset(5500)}
+            aria-label="Set 5500m commission floor"
+            title="5,500m monthly floor — minimum required for interpreter commission"
+            aria-pressed={effectiveMonthly === 5500}
+            style={{
+              flex: 1.4,
+              padding: '0.45rem 0.5rem',
+              borderRadius: '7px',
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: '0.35rem',
+              background: effectiveMonthly === 5500 ? 'rgba(59,130,246,0.25)' : 'rgba(59,130,246,0.1)',
+              color: effectiveMonthly === 5500 ? '#93c5fd' : '#60a5fa',
+              border: effectiveMonthly === 5500 ? '1.5px solid #3b82f6' : '1px solid rgba(59,130,246,0.3)',
+              fontWeight: 800,
+              fontSize: '0.72rem',
+              transition: 'all 0.15s ease-out',
+              boxShadow: effectiveMonthly === 5500 ? '0 0 10px rgba(59,130,246,0.3)' : 'none',
+            }}
+          >
+            <span>🪜 5,500m FLOOR</span>
+            {effectiveMonthly === 5500 && (
+              <span style={{ fontSize: '0.55rem', background: '#3b82f6', color: '#fff', padding: '1px 4px', borderRadius: '3px', fontWeight: 900 }}>
+                ACTIVE
+              </span>
+            )}
+          </button>
+          <button
+            type="button"
+            id="goal-preset-growth-11000"
+            onClick={() => selectMonthlyPreset(11000)}
+            aria-label="Set 11000m growth goal"
+            aria-pressed={effectiveMonthly === 11000}
+            style={{
+              flex: 1,
+              padding: '0.45rem 0.4rem',
+              borderRadius: '7px',
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: '0.25rem',
+              background: effectiveMonthly === 11000 ? 'rgba(168,85,247,0.25)' : 'rgba(0,0,0,0.3)',
+              color: effectiveMonthly === 11000 ? '#d8b4fe' : 'var(--text-muted)',
+              border: effectiveMonthly === 11000 ? '1.5px solid #a855f7' : '1px solid rgba(255,255,255,0.06)',
+              fontWeight: 700,
+              fontSize: '0.68rem',
+              transition: 'all 0.15s ease-out',
+            }}
+          >
+            <span>🚀 11,000m</span>
+          </button>
+          <button
+            type="button"
+            id="goal-preset-legend-16500"
+            onClick={() => selectMonthlyPreset(16500)}
+            aria-label="Set 16500m legend goal"
+            aria-pressed={effectiveMonthly === 16500}
+            style={{
+              flex: 1,
+              padding: '0.45rem 0.4rem',
+              borderRadius: '7px',
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: '0.25rem',
+              background: effectiveMonthly === 16500 ? 'rgba(245,158,11,0.25)' : 'rgba(0,0,0,0.3)',
+              color: effectiveMonthly === 16500 ? '#fde68a' : 'var(--text-muted)',
+              border: effectiveMonthly === 16500 ? '1.5px solid #f59e0b' : '1px solid rgba(255,255,255,0.06)',
+              fontWeight: 700,
+              fontSize: '0.68rem',
+              transition: 'all 0.15s ease-out',
+            }}
+          >
+            <span>👑 16,500m</span>
+          </button>
         </div>
       </div>
 

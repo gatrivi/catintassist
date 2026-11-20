@@ -20,7 +20,8 @@ const DOW = ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
 // Lives inside the Goal Tracking view. Props:
 //   previewGoalMinutes — live (unsaved) dial selection; null = use saved stats.goalMinutes
 //   workDays           — workday basis (17/22/26/28/30 per month); 0 = calendar days
-export const MonthCalendarPanel = ({ previewGoalMinutes = null, workDays = 0 }) => {
+//   onSelectGoal       — (mins) => void: 1-click select a tier as target (e.g. 5500m floor)
+export const MonthCalendarPanel = ({ previewGoalMinutes = null, workDays = 0, onSelectGoal = null }) => {
   const { stats, dailyLog, commitDayToLog, editPastDay, RATE_PER_MINUTE, arsRate } = useSession();
 
   const now       = new Date();
@@ -159,12 +160,16 @@ export const MonthCalendarPanel = ({ previewGoalMinutes = null, workDays = 0 }) 
 
       {/* GOAL TIERS — emphasis gradient */}
       <div style={{ display: 'flex', flexDirection: 'column', gap: '0.3rem' }}>
-        <div style={{ fontSize: '0.6rem', color: '#475569', letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: '0.1rem' }}>Goal Tiers</div>
+        <div style={{ fontSize: '0.6rem', color: '#475569', letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: '0.1rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <span>Goal Tiers (Click to select)</span>
+          <span style={{ color: '#38bdf8', fontWeight: 700 }}>🪜 Floor = 5,500m</span>
+        </div>
         {TIERS.map((tier) => {
           const status = isReachable(tier.mins);
           const done = status === 'done';
           const reachable = status === 'yes';
           const daily = paceFor(tier.mins);
+          const isSelected = Math.round(effGoal) === tier.mins;
 
           // Dim "next month" tier heavily; dim other aspirationals slightly
           const opacity = done ? 0.5
@@ -177,13 +182,30 @@ export const MonthCalendarPanel = ({ previewGoalMinutes = null, workDays = 0 }) 
           return (
             <div
               key={tier.mins}
-              title={tier.label.includes('Next Month') ? 'Start preparing — this is next month\'s target 🗓️' : ''}
+              role="button"
+              tabIndex={0}
+              onClick={() => onSelectGoal?.(tier.mins)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' || e.key === ' ') {
+                  e.preventDefault();
+                  onSelectGoal?.(tier.mins);
+                }
+              }}
+              title={tier.label.includes('Next Month')
+                ? 'Start preparing — this is next month\'s target 🗓️'
+                : `Click to set goal to ${tier.mins}m (${tier.label})`}
               style={{
                 display: 'flex', alignItems: 'center', gap: '0.5rem',
-                padding: '0.3rem 0.5rem',
+                padding: '0.35rem 0.5rem',
                 borderRadius: '8px',
-                background: done ? 'rgba(16,185,129,0.08)' : reachable ? `${tier.color}11` : 'rgba(255,255,255,0.02)',
-                border: `1px solid ${done ? 'rgba(16,185,129,0.3)' : reachable ? `${tier.color}44` : 'rgba(255,255,255,0.05)'}`,
+                cursor: 'pointer',
+                background: isSelected
+                  ? `${tier.color}22`
+                  : (done ? 'rgba(16,185,129,0.08)' : reachable ? `${tier.color}11` : 'rgba(255,255,255,0.02)'),
+                border: `1.5px solid ${isSelected
+                  ? tier.color
+                  : (done ? 'rgba(16,185,129,0.3)' : reachable ? `${tier.color}44` : 'rgba(255,255,255,0.05)')}`,
+                boxShadow: isSelected ? `0 0 8px ${tier.color}44` : 'none',
                 opacity,
                 transition: 'all 0.2s',
               }}
@@ -195,8 +217,10 @@ export const MonthCalendarPanel = ({ previewGoalMinutes = null, workDays = 0 }) 
               <div style={{ flex: 1, height: '5px', background: 'rgba(255,255,255,0.05)', borderRadius: '3px', overflow: 'hidden' }}>
                 <div style={{ height: '100%', width: `${monthProgress * 100}%`, background: done ? '#10b981' : tier.color, borderRadius: '3px', transition: 'width 0.5s' }} />
               </div>
-              <span style={{ fontSize: '0.6rem', color: '#64748b', whiteSpace: 'nowrap' }}>
-                {done
+              <span style={{ fontSize: '0.6rem', color: isSelected ? '#fff' : '#64748b', fontWeight: isSelected ? 800 : 400, whiteSpace: 'nowrap' }}>
+                {isSelected
+                  ? '🎯 TARGET'
+                  : done
                   ? 'done!'
                   : tier.label.includes('Next Month')
                   ? `${Math.round(stats.monthlyMinutes / tier.mins * 100)}% prepared`
@@ -204,7 +228,7 @@ export const MonthCalendarPanel = ({ previewGoalMinutes = null, workDays = 0 }) 
                   ? `${daily}m/day`
                   : `${daily}m/day (stretch)`}
               </span>
-              <span style={{ fontSize: '0.55rem', color: '#475569', whiteSpace: 'nowrap' }}>
+              <span style={{ fontSize: '0.55rem', color: isSelected ? '#fff' : '#475569', fontWeight: isSelected ? 700 : 400, whiteSpace: 'nowrap' }}>
                 {formatArs(tier.mins)}
               </span>
             </div>

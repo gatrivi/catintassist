@@ -25,6 +25,7 @@ export const GoalTrackingView = ({ onExit }) => {
 
   // Live (unsaved) dial selection — null until the dial reports its first preview.
   const [preview, setPreview] = useState(null);
+  const [externalGoalMinutes, setExternalGoalMinutes] = useState(null);
   const [savedFlash, setSavedFlash] = useState('');
   const [backupFlash, setBackupFlash] = useState('');
 
@@ -148,6 +149,20 @@ export const GoalTrackingView = ({ onExit }) => {
           <span style={{ fontSize: '0.6rem', opacity: 0.6, color: 'var(--text-muted)' }}>{APP_VERSION_LABEL}</span>
           <button
             type="button"
+            id="goal-view-floor-5500-btn"
+            onClick={() => setExternalGoalMinutes(5500)}
+            title="Instant 1-tap select 5,500m commission minimum floor"
+            style={{
+              background: previewGoalMinutes === 5500 ? 'rgba(59,130,246,0.3)' : 'rgba(59,130,246,0.12)',
+              border: previewGoalMinutes === 5500 ? '1px solid #3b82f6' : '1px solid rgba(59,130,246,0.35)',
+              color: '#93c5fd', borderRadius: '8px', padding: '0.35rem 0.65rem',
+              fontSize: '0.72rem', fontWeight: 800, cursor: 'pointer',
+            }}
+          >
+            🪜 5,500m Floor
+          </button>
+          <button
+            type="button"
             id="goal-view-backup-btn"
             onClick={handleBackup}
             title="Download goal + month progress as one small file (no audio). Restore it from Settings → Data if a hot reload wipes this browser."
@@ -198,12 +213,17 @@ export const GoalTrackingView = ({ onExit }) => {
             // configurator lands on the row that was actually banked.
             committedPerWorkdayMinutes={stats.goalPerWorkdayMinutes || 0}
             committedWorkDays={stats.goalWorkDays || 0}
+            externalGoalMinutes={externalGoalMinutes}
             onSave={handleSave}
             onCancel={onExit}
           />
         </div>
         <div className="goal-tracking-calendar">
-          <MonthCalendarPanel previewGoalMinutes={preview?.monthlyMinutes ?? null} workDays={previewWorkDays} />
+          <MonthCalendarPanel
+            previewGoalMinutes={preview?.monthlyMinutes ?? null}
+            workDays={previewWorkDays}
+            onSelectGoal={setExternalGoalMinutes}
+          />
         </div>
       </div>
     </div>

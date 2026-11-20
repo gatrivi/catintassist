@@ -2,6 +2,19 @@
 
 **Version source:** `src/constants/version.js` (must match `package.json` + top-right UI pill)
 
+## v4.216.0 - 5,500m commission floor preset & honorific translation cleanup
+
+- **Permanent 5,500m Commission Floor Presets (`DialGoalSelector.js`):**
+  - Added dedicated, prominent preset buttons above custom monthly input: **`[🪜 5,500m FLOOR]`** (always visible, highlighted active with blue glow when active), **`[🚀 11,000m]`**, and **`[👑 16,500m]`**.
+  - 1-tap select: sets target to 5,500m, immediately snaps the commitment wheel to the exact daily need for remaining workdays (e.g. 299m / 4h59m with 10 days left), and pre-arms `Bank Goal: 5500m/Mo`.
+  - Wheel center row lights up with blue `[FLOOR]` badge when 5500m is selected.
+- **Interactive Goal Tiers in Calendar (`MonthCalendarPanel.js`, `GoalTrackingView.js`):**
+  - All Goal Tier cards in the right pane (especially `🪜 Floor 5,500m`) are now clickable buttons with hover states, keyboard navigation, and `[🎯 TARGET]` active pill.
+  - Clicking any tier immediately updates the configurator target and dial need.
+  - Added top-level `[🪜 5,500m Floor]` quick reset button in the Goal Tracking pace card header for instant 1-tap recovery.
+- **Rescue console helper (`SessionContext.js`):** Exposed `window.__CAT_SET_GOAL(5500)` in DevTools console to instantly bank and anchor 5500m (or any custom minutes) anytime.
+- **Medical honorific translation guard (`translationEngines.js`):** Cleaned premature question marks splitting physician titles from surnames (e.g. "doctor? Senville" -> "doctor Senville") in MT responses.
+
 ## v4.215.0 - Mid-call silence alerts, 15m hold mute & speech auto-resume
 
 - **Mid-call silence alerts (`useOffCallChimer.js`, `offCallChime.js`):**

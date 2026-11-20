@@ -97,4 +97,12 @@ describe('GoalTrackingView (v4.113.0)', () => {
     // Calendar pane: month name header renders
     expect(screen.getByText(/📅/)).toBeInTheDocument();
   });
+
+  test('clicking 5,500m Floor button in header snaps preview to 5500', () => {
+    render(<GoalTrackingView onExit={jest.fn()} />);
+    const floorBtn = screen.getByRole('button', { name: /5,500m Floor/i });
+    expect(floorBtn).toBeInTheDocument();
+    fireEvent.click(floorBtn);
+    expect(screen.getByRole('button', { name: /Bank Goal: 5500m\/Mo/ })).toBeInTheDocument();
+  });
 });

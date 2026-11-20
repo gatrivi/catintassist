@@ -233,7 +233,10 @@ export const sanitizeEngineResponse = (input) => {
   ) {
     return '';
   }
-  return input.trim();
+  let clean = input.trim();
+  // v4.216.0: Clean premature punctuation splitting honorific from surname (e.g. "doctor? Senville" -> "doctor Senville")
+  clean = clean.replace(/\b(doctor|doctora|dr|dra|sr|sra|mister|mr|mrs|ms)\s*\?\s+([A-ZÁÉÍÓÚÑ][a-zà-ÿ]+)/gi, '$1 $2');
+  return clean;
 };
 
 export { getTranslationKeyStatus } from './translationRuntimeKeys';

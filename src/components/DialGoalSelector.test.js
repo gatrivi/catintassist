@@ -506,3 +506,19 @@ describe('month-end projection (v4.192.0)', () => {
     expect(screen.getByText('By month end')).toBeInTheDocument();
   });
 });
+
+describe('v4.216.0: 5500m commission floor preset button', () => {
+  test('clicking 5,500m FLOOR preset sets custom month to 5500 and updates bank button', () => {
+    render(<DialGoalSelector {...baseProps} monthlyMinutes={2509} dailyMinutes={0} />);
+    const floorBtn = screen.getByRole('button', { name: /Set 5500m commission floor/i });
+    expect(floorBtn).toBeInTheDocument();
+    fireEvent.click(floorBtn);
+    expect(screen.getByRole('button', { name: /Bank Goal: 5500m\/Mo/ })).toBeInTheDocument();
+    expect(screen.getByText(/^ACTIVE$/)).toBeInTheDocument();
+  });
+
+  test('externalGoalMinutes prop sets 5500m target and updates dial', () => {
+    render(<DialGoalSelector {...baseProps} externalGoalMinutes={5500} monthlyMinutes={2509} dailyMinutes={0} />);
+    expect(screen.getByRole('button', { name: /Bank Goal: 5500m\/Mo/ })).toBeInTheDocument();
+  });
+});

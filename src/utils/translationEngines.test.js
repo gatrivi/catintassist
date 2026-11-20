@@ -9,6 +9,7 @@ import {
   translateWithFallback,
   clearSessionEngineBlacklist,
   clearTransientEngineBlacklist,
+  sanitizeEngineResponse,
 } from './translationEngines';
 import { isTranslationPassthrough } from './translationQuality';
 
@@ -195,5 +196,10 @@ describe('translationEngines v4.54', () => {
     blacklistEngine('gateway', undefined, 'server_error');
     clearTransientEngineBlacklist();
     expect(isEngineBlocked('gateway')).toBe(true);
+  });
+
+  test('sanitizeEngineResponse cleans rogue question mark between honorific and doctor surname', () => {
+    const raw = '¿Puedes decirle que acabo de hablar con el doctor? Senville y estamos intentando decidir qué hacer.';
+    expect(sanitizeEngineResponse(raw)).toBe('¿Puedes decirle que acabo de hablar con el doctor Senville y estamos intentando decidir qué hacer.');
   });
 });

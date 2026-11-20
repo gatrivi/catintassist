@@ -1522,6 +1522,24 @@ export const SessionProvider = ({ children }) => {
     return anchor;
   }, []);
 
+  // v4.216.0: Quick console rescue helper to set goal to 5,500m (or any target)
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    window.__CAT_SET_GOAL = (targetMins = 5500) => {
+      const mins = Math.max(0, Math.round(Number(targetMins) || 5500));
+      const anchor = bankGoal({
+        targetMinutes: mins,
+        workDays: goalWorkDays,
+        baseMinutes: stats.monthlyMinutes || 0,
+      });
+      console.log(`[CAT:GOAL] Set monthly goal to ${mins}m (banked: ${stats.monthlyMinutes || 0}m, workdays: ${goalWorkDays})`);
+      return { goalMinutes: mins, anchor };
+    };
+    return () => {
+      try { delete window.__CAT_SET_GOAL; } catch (_) {}
+    };
+  }, [bankGoal, goalWorkDays, stats.monthlyMinutes]);
+
   /** Retroactive daily edit — keeps monthly + progress bar in sync. */
   const adjustDailyMinutes = (newDailyMinutes) => {
     setStats((prev) => {
