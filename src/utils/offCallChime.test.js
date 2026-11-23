@@ -20,6 +20,11 @@ describe('offCallChime', () => {
       expect(tune).toBeNull();
     });
 
+    test('silences chime (returns null) when isOnAvail is true in live call mode', () => {
+      const tune = resolveOffCallChimeTone({ isOnAvail: true, isActive: true, silenceSecs: 90 });
+      expect(tune).toBeNull();
+    });
+
     test('silences chime (returns null) during healthy break (breakLeft >= 15)', () => {
       const tune = resolveOffCallChimeTone({ isBreakActive: true, breakLeft: 45 });
       expect(tune).toBeNull();

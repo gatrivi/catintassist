@@ -10,7 +10,7 @@ import { shouldAutoEndGhostCall } from '../utils/callEndGuard';
  * for a sustained period while the session is active.
  */
 export const SilenceGuardian = ({ lastDataTime, onStopAudio, connectionState = 'connected' }) => {
-  const { isActive, lastActivityTime, stopSession, startBreak, isHold } = useSession();
+  const { isActive, lastActivityTime, stopSession, startBreak, isHold, isOnAvail } = useSession();
   const audioEngine = useProgressiveAudio();
   const [, setShowWarning] = useState(false);
   const [lastAlertTime, setLastAlertTime] = useState(0);
@@ -50,7 +50,7 @@ export const SilenceGuardian = ({ lastDataTime, onStopAudio, connectionState = '
       const levels = alertedRef.current;
       const pc = promptRef.current;
 
-      if (isHold) {
+      if (isHold || isOnAvail) {
         setShowWarning((w) => (w ? false : w));
         setPromptCount((p) => (p ? 0 : p));
         setShowDisconnectTooltip((d) => (d ? false : d));
@@ -113,6 +113,7 @@ export const SilenceGuardian = ({ lastDataTime, onStopAudio, connectionState = '
     lastActivityTime,
     audioEngine,
     isHold,
+    isOnAvail,
     startBreak,
     stopSession,
     onStopAudio,
@@ -120,7 +121,7 @@ export const SilenceGuardian = ({ lastDataTime, onStopAudio, connectionState = '
     connectionState,
   ]);
 
-  if (!isActive || isHold) return null;
+  if (!isActive || isHold || isOnAvail) return null;
   if (!showDisconnectTooltip || doNotShowDisconnectTooltip) return null;
 
   return (

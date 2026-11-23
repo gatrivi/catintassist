@@ -468,14 +468,11 @@ export const SessionProvider = ({ children }) => {
 
   const [holdIntentAt, setHoldIntentAt] = useState(0);
 
-  const updateActivity = () => setLastActivityTime(Date.now());
-  const updateEnglishActivity = () => setLastEnglishActivityTime(Date.now());
-  const requestHoldIntent = () => setHoldIntentAt(Date.now());
-  const clearHoldIntent = () => setHoldIntentAt(0);
-
   // ── AUTO-BREAK (v4.90.0): break counts ALL time with no transcription ──
   // Refs mirror state so the 1s auto-break loop never needs re-creating.
   const lastActivityTimeRef = useRef(lastActivityTime);
+  const isActiveStateRef = useRef(isActive);
+  const isOnAvailAutoRef = useRef(isOnAvail);
   const isHoldAutoRef = useRef(isHold);
   const isBreakActiveAutoRef = useRef(isBreakActive);
   const isZombieAutoRef = useRef(isZombieCall);
@@ -484,9 +481,23 @@ export const SessionProvider = ({ children }) => {
   const breakStintStartRef = useRef(Date.now());
   const manualBreakSuppressUntilRef = useRef(0);
   useEffect(() => { lastActivityTimeRef.current = lastActivityTime; }, [lastActivityTime]);
+  useEffect(() => { isActiveStateRef.current = isActive; }, [isActive]);
+  useEffect(() => { isOnAvailAutoRef.current = isOnAvail; }, [isOnAvail]);
   useEffect(() => { isHoldAutoRef.current = isHold; }, [isHold]);
   useEffect(() => { isBreakActiveAutoRef.current = isBreakActive; }, [isBreakActive]);
   useEffect(() => { isZombieAutoRef.current = isZombieCall; }, [isZombieCall]);
+
+  const updateActivity = () => {
+    setLastActivityTime(Date.now());
+    // v4.222.0: When speech arrives during an active call, auto-exit Avail mode
+    if (isActiveStateRef.current && isOnAvailAutoRef.current) {
+      setIsOnAvail(false);
+      safeLocalStorageSet('catint_on_avail', JSON.stringify(false));
+    }
+  };
+  const updateEnglishActivity = () => setLastEnglishActivityTime(Date.now());
+  const requestHoldIntent = () => setHoldIntentAt(Date.now());
+  const clearHoldIntent = () => setHoldIntentAt(0);
 
   const recordTimelineEvent = useCallback((type) => {
     const now = Date.now();
@@ -989,12 +1000,7 @@ export const SessionProvider = ({ children }) => {
   }, []);
 
   // v4.87.2: ref-based guard. Deepgram socket closures capture this callback at
-  // connect time, so a stale `isActive` here re-ran startSession on every
-  // transcript after speech auto-start (timer reset to 0, work events spam).
-  const isActiveStateRef = useRef(isActive);
-  useEffect(() => {
-    isActiveStateRef.current = isActive;
-  }, [isActive]);
+  // connect time (isActiveStateRef defined above).
 
   // v4.92.0: live toggle for auto-start (socket closures read the ref).
   const isCallDetectionEnabledRef = useRef(isCallDetectionEnabled);

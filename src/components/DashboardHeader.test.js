@@ -455,6 +455,16 @@ describe('call-banked coin burst (v4.208.0)', () => {
     expect(mockSession.toggleAvail).toHaveBeenCalled();
   });
 
+  test('v4.222.0 renders Avail button in live in-call header and clicking toggles Avail', () => {
+    const { fireEvent } = require('@testing-library/react');
+    mockSession.isActive = true;
+    render(<DashboardHeader connectionState="idle" />);
+    const liveAvailBtn = document.getElementById('header-avail-btn');
+    expect(liveAvailBtn).toBeTruthy();
+    fireEvent.click(liveAvailBtn);
+    expect(mockSession.toggleAvail).toHaveBeenCalled();
+  });
+
   test('v4.221.0 off-call renders #header-connect-btn as a detailed day progress bar in row 2', () => {
     mockSession.isActive = false;
     const { container } = renderOffCall('scoreboard');

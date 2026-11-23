@@ -25,6 +25,21 @@ import { APP_VERSION } from '../constants/version';
 /** Newest first. Only the entry matching APP_VERSION is shown on load. */
 export const RELEASE_NOTES_CATALOG = [
   {
+    version: '4.222.0',
+    id: 'live-avail-button-silence-muting',
+    highlightElementIds: ['header-avail-btn'],
+    es: {
+      title: 'Botón Avail en vivo y silenciado de campanadas',
+      intro: 'Botón dedicado #header-avail-btn en el encabezado durante llamadas en vivo (al lado de Hold y Zap). Silencia las alertas de silencio de 60s y desconexiones mientras esperás llamadas en cola; se desactiva solo al hablar.',
+      sections: [{ heading: 'Qué mirar', bullets: ['En vivo → botón 📡 que pasa a 🟢 AVAIL al activarse y silencia campanadas mientras esperás llamadas.'] }],
+    },
+    en: {
+      title: 'Live Avail button & silence chime muting',
+      intro: 'Dedicated #header-avail-btn in the live in-call header (beside Hold and Zap). Silences 60s mid-call silence chimes and SilenceGuardian drops while waiting for queue calls; auto-exits on speech.',
+      sections: [{ heading: 'Watch for', bullets: ['Live mode → compact 📡 button expands to 🟢 AVAIL when active, muting silence chimes while waiting.'] }],
+    },
+  },
+  {
     version: '4.221.0',
     id: 'offcall-connect-detailed-day-progress',
     highlightElementIds: ['header-connect-btn'],

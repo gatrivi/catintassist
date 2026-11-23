@@ -2,6 +2,20 @@
 
 **Version source:** `src/constants/version.js` (must match `package.json` + top-right UI pill)
 
+## v4.222.0 - Live in-call Avail button & silence chime muting (#header-avail-btn)
+
+- **Live Avail Mode Button (`DashboardHeader.js`, `index.css`):**
+  - Added dedicated `#header-avail-btn` to the live in-call toolbar left cluster, positioned alongside `#header-hold-btn` and `#header-zap-btn`.
+  - Inactive state: compact 28px square button with antenna/signal icon (`SignalIcon`).
+  - Active state (`isOnAvail === true`): expands to emerald badge with `🟢 AVAIL` text and subtle glow.
+  - Enabled `#lower-avail-btn` during active sessions as well.
+- **Silence Chime & Guardian Muting (`offCallChime.js`, `useOffCallChimer.js`, `SilenceGuardian.js`):**
+  - `resolveOffCallChimeTone()` now checks `if (isOnAvail) return null;` — suppressing chimes during both off-call standby and live waiting.
+  - `useOffCallChimer.js` bypasses Case 2 in-call silence checks when `isOnAvail === true`.
+  - `SilenceGuardian.js` suppresses tiered warning pings and the 7-minute ghost-call auto-disconnect when `isOnAvail === true`.
+- **Auto-exit on Speech (`SessionContext.js`):**
+  - When speech words arrive during live mode (`updateActivity()`), Avail mode automatically disengages back to active call mode so normal mid-call protections resume seamlessly.
+
 ## v4.221.0 - Off-call detailed day progress bar on connect button (#header-connect-btn)
 
 - **Detailed Day Progress Bar Connect Button (`ConnectInterpretButton.js`, `DashboardHeader.js`, `index.css`):**

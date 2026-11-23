@@ -199,6 +199,13 @@ export const useOffCallChimer = ({
       }
 
       // CASE 2: ACTIVE CALL
+      // v4.222.0: If user is ON AVAIL waiting for calls, silence in-call silence chimes!
+      if (isOnAvail) {
+        lastSilenceMinuteRef.current = 0;
+        lastHoldOvertimeMinuteRef.current = 0;
+        return;
+      }
+
       // Subcase 2a: ON HOLD
       if (isHold) {
         lastSilenceMinuteRef.current = 0; // Hold overrides silence timer

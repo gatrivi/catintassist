@@ -121,8 +121,8 @@ export const resolveOffCallChimeTone = ({
   holdSeconds = 0,
   silenceSecs = 0,
 } = {}) => {
-  // Case 0: On Avail (waiting for incoming calls) -> idle chimes silenced
-  if (isOnAvail && !isActive) {
+  // Case 0: On Avail (waiting for incoming calls, both off-call and in live mode) -> idle chimes silenced
+  if (isOnAvail) {
     return null;
   }
 

@@ -608,6 +608,33 @@ const SessionControlsSticky = React.memo(({
                 </button>
               </ElementHintTarget>
               <ElementHintTarget
+                elementId="header-avail-btn"
+                heading="Avail mode"
+                body="Toggle Avail mode while waiting for calls. Silences call silence chimes and warnings until words are spoken or you tap to exit."
+                color="#10b981"
+              >
+                <button
+                  id="header-avail-btn"
+                  type="button"
+                  className={`header-chrome-btn header-accent-avail${isOnAvail ? ' is-active' : ''}`}
+                  onClick={onToggleAvail || undefined}
+                  title={
+                    isOnAvail
+                      ? '🟢 ON AVAIL (waiting for calls — silence chime muted) — Click to exit Avail'
+                      : '📡 SET AVAIL — Waiting for calls (Click to silence silence chime)'
+                  }
+                >
+                  {isOnAvail ? (
+                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: '2px', fontWeight: 900, fontSize: '0.62rem' }}>
+                      <span>🟢</span>
+                      <span>AVAIL</span>
+                    </span>
+                  ) : (
+                    <SignalIcon size={14} />
+                  )}
+                </button>
+              </ElementHintTarget>
+              <ElementHintTarget
                 elementId="header-zap-btn"
                 heading="Zap reconnect"
                 body={disableZap ? 'ZAP disabled — stream is healthy.' : 'Force-reconnect the audio stream when STT goes stale.'}
@@ -3035,7 +3062,6 @@ ${base.body}` } : base;
                     id="lower-avail-btn"
                     className="btn"
                     onClick={toggleAvail}
-                    disabled={isActive}
                     style={{
                       background: isOnAvail ? 'rgba(16,185,129,0.25)' : 'rgba(255,255,255,0.06)',
                       border: isOnAvail ? '1.5px solid #10b981' : '1px solid rgba(255,255,255,0.15)',

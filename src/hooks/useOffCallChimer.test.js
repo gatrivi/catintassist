@@ -137,6 +137,25 @@ describe('useOffCallChimer', () => {
     expect(offCallChime.playOffCallChime).not.toHaveBeenCalled();
   });
 
+  test('silences in-call silence chimes when isOnAvail is true during active call', () => {
+    renderHook(() =>
+      useOffCallChimer({
+        isActive: true,
+        isBreakActive: false,
+        isOnAvail: true,
+        isHold: false,
+        lastActivityTime: Date.now() - 120000,
+        stats: { goalMinutes: 5500, monthlyMinutes: 1000 },
+      })
+    );
+
+    act(() => {
+      jest.advanceTimersByTime(120000); // 2 minutes
+    });
+
+    expect(offCallChime.playOffCallChime).not.toHaveBeenCalled();
+  });
+
   test('silences chime during healthy break (breakLeft >= 15)', () => {
     renderHook(() =>
       useOffCallChimer({
