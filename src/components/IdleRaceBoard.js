@@ -112,18 +112,20 @@ export const IdleRaceBoard = () => {
         </SmartTooltip>
 
         <SmartTooltip
-          title="📉 PACE GAP (Pace Ghost Deficit)"
+          title="📉 MONTH PACE GAP (Month-to-Date)"
           badge={model.gap > 30 ? '📉 BEHIND PACE' : (model.gap < -30 ? '📈 AHEAD OF PACE' : '✅ ON PACE')}
           tone={model.gap > 30 ? 'bad' : (model.gap < -30 ? 'good' : 'neutral')}
-          formula={`Expected by today: ${fmtHoursClean(model.expected)} (${fmt(model.expected)}m) · Banked: ${fmtHoursClean(model.done)} (${fmt(model.done)}m) · Gap: ${formatGapHours(model.gap)} (${formatGap(model.gap)})`}
-          desc="Compares your banked talk-time against where an even monthly pace expects you to be by today. Negative means behind pace ghost."
-          hint="💡 Catch-up is distributed evenly across all remaining workdays."
+          formula={`Month pace by today: ${fmtHoursClean(model.expected)} (${fmt(model.expected)}m) · Month banked: ${fmtHoursClean(model.done)} (${fmt(model.done)}m) · Gap: ${formatGapHours(model.gap)} (${formatGap(model.gap)})`}
+          desc="Compares your cumulative month banked talk-time against where an even monthly pace expects you to be from day 1 through today (not a single day's target)."
+          hint={model.isUnreachable
+            ? '💡 Goal is out of reach from day 1 — tap 🎯 Goal Dial in Settings to reset from today.'
+            : '💡 Catch-up is distributed evenly across all remaining workdays.'}
           delay={250}
         >
           <div className={`race-board__hero race-board__hero--gap race-board__hero--${model.tone}`}>
-            <span className="race-board__hero-label">PACE GAP</span>
+            <span className="race-board__hero-label">MONTH PACE GAP</span>
             <b className="race-board__hero-val">{formatGapHours(model.gap)}</b>
-            <span className="race-board__hero-sub">{formatGap(model.gap)} vs today</span>
+            <span className="race-board__hero-sub">{formatGap(model.gap)} month-to-date</span>
           </div>
         </SmartTooltip>
 

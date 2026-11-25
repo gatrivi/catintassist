@@ -25,6 +25,21 @@ import { APP_VERSION } from '../constants/version';
 /** Newest first. Only the entry matching APP_VERSION is shown on load. */
 export const RELEASE_NOTES_CATALOG = [
   {
+    version: '4.226.0',
+    id: 'call-log-paste-formats-and-show-all',
+    highlightElementIds: ['settings-data-import'],
+    es: {
+      title: 'Pegado de registro de llamadas más flexible y brecha mensual clara',
+      intro: 'Ahora acepta horas 24h/con segundos, fechas ISO, duración con «min», y pegado vertical con encabezados o sin Pay; suma botón de 1 toque para ver otros días y aclara que la brecha de ritmo es acumulada del mes.',
+      sections: [{ heading: 'Qué cambió', bullets: ['Settings → Today: 1 toque para mostrar todos los días pegados; MONTH PACE GAP indica «month-to-date» en vez de «vs today».'] }],
+    },
+    en: {
+      title: 'Flexible call-log paste & clearer month pace gap',
+      intro: 'Call log import now parses 24h/seconds times, ISO dates, "min" duration units, and vertical pastes with headers or missing Pay, adds a 1-tap Show all days button, and labels the cumulative pace gap as month-to-date.',
+      sections: [{ heading: 'What changed', bullets: ['Settings → Today: 1-tap Show all days + inline Apply hints; IdleRaceBoard labels cumulative gap as month-to-date.'] }],
+    },
+  },
+  {
     version: '4.225.0',
     id: 'smart-tooltips-and-unreachable-goal-guard',
     highlightElementIds: ['daily-targets-chip'],

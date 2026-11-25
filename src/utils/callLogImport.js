@@ -39,27 +39,60 @@ const splitRow = (line, delim) => {
 
 const isHeaderRow = (cells) => /customer|call date|duration|billable/i.test(cells.join(' '));
 
-const parseDateTime = (dateStr, timeStr) => {
-  // MM/DD/YYYY + "hh:mm AM/PM" (local time).
-  const dm = String(dateStr || '').match(/(\d{1,2})\/(\d{1,2})\/(\d{4})/);
-  const tm = String(timeStr || '').match(/(\d{1,2}):(\d{2})\s*([AaPp])\.?\s*[Mm]?\.?/);
-  if (!dm || !tm) return null;
-  let h = Number(tm[1]) % 12;
-  if (/p/i.test(tm[3])) h += 12;
-  const d = new Date(Number(dm[3]), Number(dm[1]) - 1, Number(dm[2]), h, Number(tm[2]), 0, 0);
-  return Number.isNaN(d.getTime()) ? null : d.getTime();
+const parseDateParts = (dateStr) => {
+  const s = String(dateStr || '');
+  // YYYY-MM-DD or YYYY/MM/DD
+  const iso = s.match(/\b(\d{4})[/-](\d{1,2})[/-](\d{1,2})\b/);
+  if (iso) return { y: Number(iso[1]), m: Number(iso[2]), d: Number(iso[3]) };
+  // MM/DD/YYYY or MM-DD-YYYY
+  const us4 = s.match(/\b(\d{1,2})[/-](\d{1,2})[/-](\d{4})\b/);
+  if (us4) return { y: Number(us4[3]), m: Number(us4[1]), d: Number(us4[2]) };
+  // MM/DD/YY
+  const us2 = s.match(/\b(\d{1,2})\/(\d{1,2})\/(\d{2})\b/);
+  if (us2) return { y: 2000 + Number(us2[3]), m: Number(us2[1]), d: Number(us2[2]) };
+  return null;
 };
 
-const isYes = (v) => /^\s*(y(es)?|true|1)\s*$/i.test(String(v || ''));
+const parseTimeParts = (timeStr) => {
+  const s = String(timeStr || '');
+  // 12-hour with optional seconds: "09:35 AM", "09:35:12 AM", "9:35p.m."
+  const t12 = s.match(/(\d{1,2}):(\d{2})(?::\d{2})?\s*([AaPp])\.?\s*[Mm]?\.?/);
+  if (t12) {
+    let h = Number(t12[1]) % 12;
+    if (/p/i.test(t12[3])) h += 12;
+    const m = Number(t12[2]);
+    return m >= 0 && m < 60 ? { h, m } : null;
+  }
+  // 24-hour fallback with optional seconds: "14:35", "09:05:12"
+  const t24 = s.match(/\b(\d{1,2}):(\d{2})(?::\d{2})?\b/);
+  if (t24) {
+    const h = Number(t24[1]);
+    const m = Number(t24[2]);
+    return h >= 0 && h < 24 && m >= 0 && m < 60 ? { h, m } : null;
+  }
+  return null;
+};
+
+const parseDateTime = (dateStr, timeStr) => {
+  const dp = parseDateParts(dateStr);
+  const tp = parseTimeParts(timeStr) || parseTimeParts(dateStr);
+  if (!dp || !tp) return null;
+  const d = new Date(dp.y, dp.m - 1, dp.d, tp.h, tp.m, 0, 0);
+  if (Number.isNaN(d.getTime()) || d.getMonth() !== dp.m - 1 || d.getDate() !== dp.d) return null;
+  return d.getTime();
+};
+
+const isYes = (v) => /^\s*(y(es)?|s[ií]|true|1)\s*$/i.test(String(v || ''));
+const isDurationUnit = (t) => /^(min(ute)?s?|m)$/i.test(String(t || '').trim());
 
 /**
  * Fallback for plain space-separated paste (chat/monitor copy with no tabs):
  *   10615 09/08/2026 10:41 AM 29 Yes No $0.00
- * Customer ID has no spaces; Call Start may be "10:41 AM" (two tokens).
+ * Customer ID has no spaces; Call Start may be "10:41 AM" (two tokens) or 24h.
  */
 const parseSpaceRow = (line) => {
   const toks = String(line || '').trim().split(/\s+/);
-  const dateIdx = toks.findIndex((t) => /\b\d{1,2}\/\d{1,2}\/\d{4}\b/.test(t));
+  const dateIdx = toks.findIndex((t) => isDateTok(t));
   if (dateIdx < 0) return null;
   const dateStr = toks[dateIdx];
   let startStr = toks[dateIdx + 1] || '';
@@ -69,7 +102,9 @@ const parseSpaceRow = (line) => {
     startStr = `${startStr} ${toks[dateIdx + 2]}`;
     restIdx = dateIdx + 3;
   }
-  const [durStr, billableStr, droppedStr] = [toks[restIdx], toks[restIdx + 1], toks[restIdx + 2]];
+  const durStr = toks[restIdx];
+  if (isDurationUnit(toks[restIdx + 1])) restIdx += 1;
+  const [billableStr, droppedStr] = [toks[restIdx + 1], toks[restIdx + 2]];
   const startMs = parseDateTime(dateStr, startStr);
   const mins = Number.parseFloat(durStr);
   if (startMs === null || !Number.isFinite(mins) || mins < 0) return null;
@@ -87,17 +122,26 @@ const parseSpaceRow = (line) => {
  * Vertical paste: each field on its own line (copy from the client app list) —
  *   91836 / 09/08/2026 / 12:17 PM / 19 / Yes / No / $0.00 / (next record...)
  * Regroups lines into one space-separated record string per call.
- * A record closes on a money token ("$0.00") or when a new date line arrives
- * after a full buffer (>=6 fields) — covers missing Pay values.
+ * Handles leading header lines and missing Pay tokens cleanly.
  */
-const isDateTok = (t) => /\b\d{1,2}\/\d{1,2}\/\d{4}\b/.test(t);
+const isDateTok = (t) => /\b(\d{1,2}[/-]\d{1,2}[/-]\d{2,4}|\d{4}[/-]\d{1,2}[/-]\d{1,2})\b/.test(t);
 const isMoneyTok = (t) => /\$\s?\d/.test(t);
+const isVerticalHeaderField = (t) => /^(customer(\s*id)?|call\s*date|call\s*start|duration(\s*\(minutes\))?|billable|dropped|pay)$/i.test(String(t || '').trim());
+const isBoolTok = (t) => /^(yes|no|y|n|s[ií]|true|false)$/i.test(String(t || '').trim());
+
 const groupVerticalRecords = (lines) => {
-  if (!lines.some(isDateTok)) return null; // not vertical format
+  const cleaned = lines.filter((l) => !isVerticalHeaderField(l));
+  if (!cleaned.some(isDateTok)) return null; // not vertical format
   const records = [];
   let buf = [];
-  lines.forEach((l) => {
-    if (isDateTok(l) && buf.length >= 6) { records.push(buf.join(' ')); buf = []; }
+  cleaned.forEach((l) => {
+    if (isDateTok(l) && buf.some(isDateTok)) {
+      // Previous record had no $ token; carry trailing non-boolean ID to the new record.
+      const tail = buf[buf.length - 1];
+      const carryId = tail && !isBoolTok(tail) && !isDurationUnit(tail) && !/:/.test(tail) ? buf.pop() : null;
+      records.push(buf.join(' '));
+      buf = carryId ? [carryId] : [];
+    }
     buf.push(l);
     if (isMoneyTok(l)) { records.push(buf.join(' ')); buf = []; }
   });

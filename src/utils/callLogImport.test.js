@@ -85,6 +85,29 @@ describe('callLogImport', () => {
     expect(calls.find((c) => c.customerId === '91836').mins).toBe(19);
   });
 
+  test('parses 24h times, seconds, ISO dates, "10 min" units, and vertical pastes with headers or without Pay', () => {
+    const t24 = parseCallLogText('1178\t2026-09-08\t14:35:12\t10 min\tYes\tNo\t$0.00');
+    expect(t24.skipped).toBe(0);
+    expect(t24.calls).toHaveLength(1);
+    expect(new Date(t24.calls[0].startMs).getHours()).toBe(14);
+    expect(t24.calls[0].mins).toBe(10);
+    expect(t24.calls[0].billable).toBe(true);
+
+    const spaceUnits = parseCallLogText('1178 09/08/2026 09:35:45 AM 12 min Sí No');
+    expect(spaceUnits.skipped).toBe(0);
+    expect(spaceUnits.calls).toHaveLength(1);
+    expect(spaceUnits.calls[0].billable).toBe(true);
+
+    const vertNoPay = parseCallLogText([
+      'Customer ID', 'Call Date', 'Call Start', 'Duration (Minutes)', 'Billable', 'Dropped', 'Pay',
+      '91836', '09/08/2026', '12:17 PM', '19', 'Yes', 'No',
+      '7074', '09/08/2026', '12:03 PM', '7', 'Yes', 'No',
+    ].join('\n'));
+    expect(vertNoPay.skipped).toBe(0);
+    expect(vertNoPay.calls).toHaveLength(2);
+    expect(vertNoPay.calls.map((c) => c.customerId)).toEqual(['7074', '91836']);
+  });
+
   test('12h edge cases: 12 AM vs 12 PM', () => {
     const { calls } = parseCallLogText('1,09/08/2026,12:05 AM,5,Yes,No,$0\n2,09/08/2026,12:05 PM,5,Yes,No,$0');
     expect(new Date(calls[0].startMs).getHours()).toBe(0);

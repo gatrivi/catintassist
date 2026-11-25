@@ -171,3 +171,4 @@
 | 2026-11-23T00:04:26.491Z | 5ef93fc | v4.222.0: live in-call Avail button (#header-avail-btn), silence chime muting & auto-exit on speech |
 | 2026-11-25T17:52:41.919Z | f77c61c | v4.223.0 remove untested greeting gate and suppress playback call start |
 | 2026-11-25T19:00:55.811Z | 1798f0d | v4.224.0: fix Connect getting stuck in DG disconnected |
+| 2026-11-25T19:28:41.024Z | 142400e | v4.225.0 smart tooltips, unreachable goal guardrails, and watch-local timeout |

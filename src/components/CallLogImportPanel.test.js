@@ -108,6 +108,7 @@ describe('CallLogImportPanel (v4.160.0)', () => {
     paste(TODAY_PASTE);
 
     expect(screen.getByRole('button', { name: /Apply to scoreboard/i })).toBeDisabled();
+    expect(screen.getByText(/Already matches scoreboard/i)).toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: /Apply to scoreboard/i }));
     expect(mockSession.importCallLog).not.toHaveBeenCalled();
   });
@@ -123,14 +124,15 @@ describe('CallLogImportPanel (v4.160.0)', () => {
     expect(screen.getAllByText('TODAY').length).toBe(1);
   });
 
-  test('a paste with no rows for today explains the filter instead of failing silently', () => {
+  test('a paste with no rows for today explains the filter and offers a 1-tap Show all button', () => {
     render(<CallLogImportPanel />);
     paste(`555\t${YESTERDAY}\t05:10 PM\t30\tYes\tNo\t$0.00`);
 
     expect(screen.getByText(/No valid rows/i)).toBeInTheDocument();
     expect(screen.getByText(/1 other day\(s\)/i)).toBeInTheDocument();
-    fireEvent.click(screen.getByLabelText(/Today only/i));
+    fireEvent.click(screen.getByRole('button', { name: /Show all 1 day\(s\)/i }));
     expect(screen.getByText(/0m → 30m \(\+30\)/)).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /Apply to scoreboard/i })).toBeEnabled();
   });
 
   test('unreadable rows are listed, not printed as a JSON blob', () => {

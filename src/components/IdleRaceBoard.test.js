@@ -16,7 +16,8 @@ test('renders heroes and default emoji calendar when a goal exists', () => {
   });
   render(<IdleRaceBoard />);
   expect(screen.getByText(/DAILY NEED/)).toBeInTheDocument();
-  expect(screen.getByText(/PACE GAP/)).toBeInTheDocument();
+  expect(screen.getByText(/MONTH PACE GAP/)).toBeInTheDocument();
+  expect(screen.getByText(/month-to-date/)).toBeInTheDocument();
   expect(screen.getByText(/MONTH PROGRESS/)).toBeInTheDocument();
   expect(screen.getByText(/Calendar \(50m Emojis\)/)).toBeInTheDocument();
 });

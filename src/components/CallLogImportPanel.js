@@ -36,7 +36,7 @@ export function CallLogImportPanel() {
   const [confirming, setConfirming] = useState(false);
   const [undoInfo, setUndoInfo] = useState(null); // { savedAt, summary }
 
-  const todayStr = useMemo(() => new Date().toDateString(), []);
+  const todayStr = new Date().toDateString();
   const todayMinutes = stats?.dailyMinutes || 0;
 
   const parsed = useMemo(() => {
@@ -117,6 +117,15 @@ export function CallLogImportPanel() {
 
   const sum = parsed ? summarizeDiff(parsed.rows) : null;
   const noRows = parsed && parsed.rows.length === 0;
+  const applyHint = !paste.trim()
+    ? ''
+    : noRows && parsed.allDayCount > 0
+      ? 'Filtered by “Today only”'
+      : noRows
+        ? 'No valid call rows parsed — check format'
+        : !sum?.changedDays
+          ? 'Already matches scoreboard'
+          : '';
 
   return (
     <div id="settings-data-import" className="paste-panel">
@@ -161,7 +170,18 @@ export function CallLogImportPanel() {
         <div className="paste-panel-err">
           No valid rows.
           {parsed.allDayCount > 0 && (
-            <span> This paste has {parsed.allDayCount} other day(s) — untick “Today only”.</span>
+            <>
+              <span> This paste has {parsed.allDayCount} other day(s) — untick “Today only”.</span>
+              {' '}
+              <button
+                type="button"
+                className="btn"
+                onClick={() => { setTodayOnly(false); setConfirming(false); }}
+                style={{ padding: '1px 6px', fontSize: '0.66rem' }}
+              >
+                Show all {parsed.allDayCount} day(s)
+              </button>
+            </>
           )}
         </div>
       )}
@@ -232,9 +252,11 @@ export function CallLogImportPanel() {
             className="btn btn--primary"
             onClick={handleApply}
             disabled={!sum?.changedDays}
+            title={applyHint || 'Previewed changes are ready to apply'}
           >
             Apply to scoreboard
           </button>
+          {applyHint && <span className="paste-row-mut">{applyHint}</span>}
           <span className="paste-panel-ver">{APP_VERSION_LABEL}</span>
         </div>
       )}
