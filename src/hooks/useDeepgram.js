@@ -696,6 +696,7 @@ export const useDeepgram = () => {
   /** User cancelled tab picker — calm reset, not a Deepgram error. */
   const abortConnectAttempt = useCallback((message) => {
     isActiveRef.current = false;
+    setSttLive(false);
     reconnectAttemptsRef.current = 0;
     clearWatchdog();
     clearKeepalive();
@@ -717,7 +718,7 @@ export const useDeepgram = () => {
       socketEn: "pending",
       socketEs: "pending",
     });
-  }, [clearWatchdog, clearKeepalive]);
+  }, [clearWatchdog, clearKeepalive, setSttLive]);
 
   // Only store transcript bubbles during an active or zombie-resumed call.
   // Armed sync before React paints (Connect auto-starts call) — beginStream can
@@ -1088,7 +1089,7 @@ export const useDeepgram = () => {
           failureCategory: FAILURE.AUTH,
           keyResolved: false,
         });
-        return;
+        return false;
       }
       const diagnosticSettings = readSttDiagnosticSettings();
       if ((diagnosticSettings.traceEnabled || diagnosticSettings.audioRingEnabled) && !getActiveSttSessionId()) {
@@ -1878,9 +1879,11 @@ export const useDeepgram = () => {
 
           if (connectFlagsRef.current.phase === "connecting") {
             // v4.103.2: auto-retry transient closes before hard-failing.
-            if (code !== 1000 && !retryPending) {
+            // v4.224.0: an active socket closing with 1000 mid-handshake must
+            // never hang silently either — retry or fail cleanly.
+            if (!retryPending) {
               if (
-                !shouldRetryConnectClose(code, reason) ||
+                (!shouldRetryConnectClose(code, reason) && code !== 1000) ||
                 !retryOpenSockets(`close-${code}`, 600 * (connectRetries + 1))
               ) {
                 scheduleConnectFail(lang, code, reason, socketSide);
@@ -1957,6 +1960,7 @@ export const useDeepgram = () => {
           openSockets();
         });
       }
+      return true;
     },
     [
       isCallDetectionEnabled,
@@ -2131,6 +2135,7 @@ export const useDeepgram = () => {
 
   /** Sockets died off-call: re-open quietly. Last resort is an honest message. */
   const rearmEar = useCallback(() => {
+    if (connectFlagsRef.current.phase === "connecting") return;
     const stream = streamRef.current;
     if (
       !shouldRearmEar({
@@ -2456,6 +2461,7 @@ export const useDeepgram = () => {
     // ~1/min, which starved the KeepAlive (socket died) AND the VAD (ear
     // went deaf) — the main "fails to detect speech" cause.
     idleKeepAliveRef.current = createUnthrottledInterval(() => {
+      if (!idleEarActiveRef.current || connectFlagsRef.current.phase === "connecting") return;
       const multiMode = usesMultiSocket(languagePairRef.current);
       const payload = JSON.stringify({ type: "KeepAlive" });
       // The lanes we actually own. In multi mode there is only one, so a missing
@@ -2631,15 +2637,19 @@ export const useDeepgram = () => {
       // Safe-switch guard: only stop the active Deepgram pipeline
       // if the ended tracks belong to the current MediaStream.
       if (streamRef.current !== stream) return;
+      const wasActive = isActiveRef.current || connectFlagsRef.current.phase === "connecting";
       streamRef.current = null;
       streamSourceRef.current = null;
       stopToneMonitor();
       stopRecordingRef.current();
+      if (wasActive) {
+        setConnectionState("error");
+        setConnectionMessage("Audio share ended — press ZAP or Connect to re-attach.");
+      }
     };
     if (source === "tab") {
       const vt = stream.getVideoTracks()[0];
       if (vt) vt.onended = onStreamEnded;
-      return;
     }
     stream.getAudioTracks().forEach((track) => {
       track.onended = onStreamEnded;
@@ -2680,7 +2690,10 @@ export const useDeepgram = () => {
       setAttachedAudioSourceMode(source);
       bindStreamLifecycle(stream, source);
       syncConnectProgress({ audioStreamReady: true, phase: "connecting" });
-      startDeepgram(stream);
+      if (!startDeepgram(stream)) {
+        isActiveRef.current = false;
+        return false;
+      }
       // Source-specific “audio attached” flags (used by UI).
       if (source === "tab") {
         setTabStreamReady(true);
@@ -2714,6 +2727,12 @@ export const useDeepgram = () => {
       resetConnectProgress();
       clearWatchdog();
       setConnectionState("connecting");
+      // v4.224.0: stop the idle ear BEFORE awaiting stream capture so its 4s
+      // KeepAlive / 100ms VAD tick cannot reset connectionState to disconnected
+      // while the browser tab-share picker is open.
+      try {
+        stopIdleEarRef.current?.();
+      } catch (_) {}
       // Mic mode wins over persisted VB-Cable — UI 🎤 must match STT path.
       // v4.151.1: ONE resolver decides the route for every connect attempt.
       // Mic mode must win here (v4.84 regression: it did not, so CONNECT
@@ -2755,7 +2774,10 @@ export const useDeepgram = () => {
           setTabStreamReady(false);
           setCableStreamReady(false);
         }
-        startDeepgram(streamRef.current);
+        if (!startDeepgram(streamRef.current)) {
+          isActiveRef.current = false;
+          return false;
+        }
         return true;
       }
       if (streamRef.current) {
@@ -2882,6 +2904,9 @@ export const useDeepgram = () => {
       stopStreamTracks();
       resetConnectProgress();
       setConnectionState("connecting");
+      try {
+        stopIdleEarRef.current?.();
+      } catch (_) {}
       setConnectionMessage(
         useMic
           ? "Requesting Microphone (fresh)..."

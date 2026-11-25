@@ -221,7 +221,7 @@ export const AudioRouteStatusBar = ({
   });
   const stale = dg.quiet;     // amber: connected, zero DG data 30s+ (waiting, not dead)
   const critical = dg.stuck;  // red: zero DG data 60s+ or a socket lost
-  const isDeepgramError = connectionState === 'error';
+  const isDeepgramError = connectionState === 'error' || (isActive && connectionState === 'disconnected');
 
   const isMicAttached = attachedAudioSourceMode === 'mic' || micTestMode;
   const isCableAttached = attachedAudioSourceMode === 'virtualCable';
@@ -266,7 +266,7 @@ export const AudioRouteStatusBar = ({
       ? 'ok'
       : connectionState === 'connecting'
         ? 'warn'
-        : connectionState === 'error'
+        : isDeepgramError
           ? 'err'
           : audioAttached
             ? 'warn'
@@ -292,6 +292,7 @@ export const AudioRouteStatusBar = ({
   const sttSummaryHintBody = useMemo(() => {
     if (enOk && esOk) return 'Both EN and ES Deepgram sockets open — dual-language STT active.';
     if (connectionState === 'connecting') return 'Opening Deepgram EN + ES websockets…';
+    if (isActive && connectionState === 'disconnected') return 'Deepgram disconnected during call — tap ZAP to reconnect.';
     if (connectionState === 'error') return 'Deepgram error — check API key in Settings or tap Zap to reconnect.';
     if (connectionState === 'connected') {
       const parts = [`EN ${enOk ? 'open' : 'closed'}`, `ES ${esOk ? 'open' : 'closed'}`];
@@ -301,7 +302,7 @@ export const AudioRouteStatusBar = ({
     }
     if (audioAttached) return 'Audio attached but Deepgram not connected — press CONNECT.';
     return 'Deepgram disconnected — press CONNECT to start speech-to-text.';
-  }, [enOk, esOk, connectionState, audioAttached, stale, critical]);
+  }, [enOk, esOk, connectionState, isActive, audioAttached, stale, critical]);
 
   const sttInHintColor = sttInState === 'ok' ? '#10b981' : sttInState === 'err' ? '#ef4444' : '#f59e0b';
   const sttSummaryHintColor =

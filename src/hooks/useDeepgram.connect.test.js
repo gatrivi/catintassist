@@ -22,6 +22,7 @@ const mockSession = {
   speechAutoConnect: false,
   isActive: false,
   shiftEarEnabled: true,
+  deepgramKey: 'test-key-0123456789',
   trySpeechAutoStart: jest.fn(() => false),
   tryAutopilotStart: jest.fn(() => false),
   updateCaptions: jest.fn(),
@@ -60,10 +61,14 @@ jest.mock('../contexts/SessionContext', () => ({
 }));
 
 jest.mock('../utils/deepgramRuntimeKey', () => ({
-  getEffectiveDeepgramKey: () => 'test-key-0123456789',
-  getDeepgramKeyInfo: () => ({ key: 'test-key-0123456789', source: 'test', masked: 'test' }),
-  needsUserSuppliedDeepgramKey: () => false,
-  isValidDeepgramApiKey: () => true,
+  getEffectiveDeepgramKey: () => mockSession.deepgramKey,
+  getDeepgramKeyInfo: () => ({
+    key: mockSession.deepgramKey,
+    source: mockSession.deepgramKey ? 'test' : 'none',
+    masked: mockSession.deepgramKey ? 'test' : '—',
+  }),
+  needsUserSuppliedDeepgramKey: () => !mockSession.deepgramKey,
+  isValidDeepgramApiKey: (k) => Boolean(k),
 }));
 
 import { useDeepgram } from './useDeepgram';
@@ -204,6 +209,7 @@ beforeEach(() => {
   // Opt-in per test: the legacy cases above were written against the pre-4.171
   // behaviour (no ear at all unless auto-connect is on).
   mockSession.shiftEarEnabled = false;
+  mockSession.deepgramKey = 'test-key-0123456789';
   getDisplayMedia = jest.fn().mockResolvedValue(fakeStream());
   oldMediaDevices = Object.getOwnPropertyDescriptor(navigator, 'mediaDevices');
   Object.defineProperty(navigator, 'mediaDevices', {
@@ -616,5 +622,91 @@ describe('soundboard playback call guard (v4.223.0)', () => {
     });
     release();
     expect(mockSession.updateCaptions).toHaveBeenCalled();
+  });
+});
+
+describe('CONNECT never gets stuck in DG disconnected (v4.224.0)', () => {
+  it('stops idle ear BEFORE awaiting tab picker so expiring ear ticks cannot reset to disconnected', async () => {
+    mockSession.shiftEarEnabled = true;
+    const { result } = renderHook(() => useDeepgram());
+    await pressAndOpen(result);
+
+    // End call -> enters idle/shift ear.
+    await act(async () => {
+      result.current.stopRecording();
+    });
+    expect(result.current.connectionState).toBe('connected');
+
+    // Simulate dead previous stream + pending tab picker on next Connect.
+    let resolvePicker;
+    getDisplayMedia.mockImplementationOnce(
+      () => new Promise((res) => { resolvePicker = res; }),
+    );
+    // Kill the current sockets so if the ear tick still ran it would rearm/close.
+    await act(async () => {
+      FakeSocket.instances.slice(-2).forEach((s) => s.die());
+    });
+
+    // Make the cached stream non-reusable (muted) by pressing startRecordingFresh or ending track.
+    const freshPromise = result.current.startRecordingFresh();
+    await act(async () => {
+      jest.advanceTimersByTime(5000);
+    });
+    expect(result.current.connectionState).toBe('connecting');
+
+    await act(async () => {
+      resolvePicker(fakeStream());
+      await freshPromise;
+    });
+    const newest = FakeSocket.instances.slice(-2);
+    await act(async () => {
+      newest.forEach((s) => s.open());
+    });
+    expect(result.current.connectionState).toBe('connected');
+    expect(result.current.sttLive).toBe(true);
+  });
+
+  it('startRecording returns false (does not start an active call) when API key is missing', async () => {
+    mockSession.deepgramKey = null;
+    const { result } = renderHook(() => useDeepgram());
+    let ok = true;
+    await act(async () => {
+      ok = await result.current.startRecording();
+    });
+    expect(ok).toBe(false);
+    expect(result.current.connectionState).toBe('error');
+  });
+
+  it('clean code-1000 close during handshake retries instead of hanging silently', async () => {
+    const { result } = renderHook(() => useDeepgram());
+    const before = FakeSocket.instances.length;
+    await act(async () => {
+      await result.current.startRecording();
+    });
+    expect(result.current.connectionState).toBe('connecting');
+
+    // Server closes with 1000 mid-handshake before opening.
+    await act(async () => {
+      FakeSocket.instances[before].close(1000, '');
+    });
+    await act(async () => {
+      jest.advanceTimersByTime(1000);
+    });
+    expect(FakeSocket.instances.length).toBeGreaterThan(before + 2);
+  });
+
+  it('mid-call tab stream end transitions to error instead of silent disconnected', async () => {
+    const track = audioTrack();
+    const stream = fakeStream(track);
+    getDisplayMedia.mockResolvedValueOnce(stream);
+    const { result } = renderHook(() => useDeepgram());
+    await pressAndOpen(result);
+    expect(result.current.sttLive).toBe(true);
+
+    await act(async () => {
+      track.onended?.();
+    });
+    expect(result.current.connectionState).toBe('error');
+    expect(result.current.connectionMessage).toMatch(/ended/i);
   });
 });

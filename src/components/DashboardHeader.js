@@ -456,7 +456,7 @@ const SessionControlsSticky = React.memo(({
                 onSingle={connectOnSingle}
                 onDouble={connectOnDouble}
                 flash={connectFlash}
-                disabled={false}
+                disabled={connectionState === 'connecting'}
                 size="top"
                 label={connectLabel}
                 requireDoubleTapIndicator={requireDoubleTapIndicator}
@@ -2050,8 +2050,12 @@ ${base.body}` } : base;
 
   const connectLabel = vaultNeedsDecrypt
     ? 'Unlock key'
+    : apiKeyMissingNoVault
+    ? 'Add DG key'
     : isZombieCall
     ? 'Re-attach'
+    : connectionState === 'connecting'
+    ? 'Connecting…'
     : audioAttached
         ? 'Start interpreting'
         : micTestMode
@@ -2083,6 +2087,7 @@ ${base.body}` } : base;
         : 'Pick a different browser tab';
 
   const connectOnSingle = (() => {
+    if (connectionState === 'connecting') return undefined;
     // CRITICAL STT RECOVERY: a locked saved key must open its one-step fix.
     // Never start audio capture here: it wastes time and ends in an opaque
     // Deepgram failure during a live patient call.
@@ -2102,6 +2107,7 @@ ${base.body}` } : base;
   })();
 
   const connectOnDouble = (() => {
+    if (connectionState === 'connecting') return undefined;
     const intent = resolveConnectIntent({
       vaultNeedsDecrypt,
       apiKeyMissingNoVault,
@@ -2112,7 +2118,10 @@ ${base.body}` } : base;
     if (intent === 'open-key-unlock') return () => dispatchOpenDeepgramSettings('connect', 'vault_locked');
     if (intent === 'open-key-settings') return () => dispatchOpenDeepgramSettings('connect', 'bundled_missing');
     if (intent === 'recovery') return onRecovery;
-    if (intent === 'attach-fresh') return onAttachAudioFresh || onAttachAudio;
+    // v4.224.0: never let a 280ms double-click tear down a brand-new attach via
+    // startRecordingFresh() -> closeConnections(). Re-picking a tab stays on
+    // double-tap once audio is already attached.
+    if (intent === 'attach-fresh') return undefined;
     return onConnectAnotherTab;
   })();
 
@@ -3787,7 +3796,7 @@ ${isInDeficit ? `⚠️ DEFICIT: Behind pace by ${Math.round(monthlyDeficitMins)
           onSingle={connectOnSingle}
           onDouble={connectOnDouble}
           flash={connectFlash}
-          disabled={false}
+          disabled={connectionState === 'connecting'}
           size="detailed-bar"
           label={connectLabel}
           requireDoubleTapIndicator={connectRequireDoubleTapIndicator}

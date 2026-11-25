@@ -25,6 +25,21 @@ import { APP_VERSION } from '../constants/version';
 /** Newest first. Only the entry matching APP_VERSION is shown on load. */
 export const RELEASE_NOTES_CATALOG = [
   {
+    version: '4.224.0',
+    id: 'connect-dg-disconnected-race-fixes',
+    highlightElementIds: ['header-connect-btn', 'audio-route-stt-summary'],
+    es: {
+      title: 'Conectar confiable: sin trabarse en "DG disconnected"',
+      intro: 'Se corrigieron las carreras que devolvían Deepgram a «disconnected» al presionar Conectar (oídos en espera durante el selector de pestaña, doble clic rápido, cierres 1000 en handshake y cortes de audio sin botón ZAP).',
+      sections: [{ heading: 'Qué cambió', bullets: ['El oído en espera se detiene antes de abrir el selector, se bloquea el doble toque accidental al conectar y siempre tenés botón ZAP si se corta en llamada.'] }],
+    },
+    en: {
+      title: 'Reliable Connect: no more getting stuck in "DG disconnected"',
+      intro: 'Fixed race conditions that reset Deepgram back to "disconnected" right after pressing Connect (idle ear ticks during tab picker, accidental double-tap teardown, clean 1000 close mid-handshake, and stranded active calls without ZAP).',
+      sections: [{ heading: 'What changed', bullets: ['Idle ear stops before stream capture, duplicate/double-click attaches are serialized, missing-key state stays honest, and active calls in disconnected state surface ZAP.'] }],
+    },
+  },
+  {
     version: '4.223.0',
     id: 'soundboard-no-untested-gate-and-call-guard',
     highlightElementIds: ['opener-ready-es', 'opener-ready-en'],

@@ -72,6 +72,12 @@ describe('AudioRouteStatusBar compact strip (v4.165.0)', () => {
     expect(container.querySelector('#audio-route-zap-btn')).not.toBeNull();
   });
 
+  test('v4.224.0 active call with disconnected state still surfaces ZAP rescue button', () => {
+    const onReconnectStream = jest.fn();
+    const { container } = renderCompact({ onReconnectStream, isActive: true, connectionState: 'disconnected' });
+    expect(container.querySelector('#audio-route-zap-btn')).not.toBeNull();
+  });
+
   // v4.167.0: these two buttons were this row's LAST two occupants, and they
   // were the only doors to those views anywhere in the app. They left so the
   // row could give up its width; Settings -> Studio is the door now (see

@@ -168,3 +168,5 @@
 | 2026-11-20T16:57:53.684Z | 61d0cc2 | v4.218.0: silent coffee break & mathematically unique metric-tuned chimes |
 | 2026-11-20T17:36:18.281Z | ba45d4c | v4.219.0: small window 900px fix - zero-width Avail toggle integration |
 | 2026-11-20T23:13:16.218Z | 815252d | v4.221.0: off-call detailed day progress bar on connect button (#header-connect-btn) |
+| 2026-11-23T00:04:26.491Z | 5ef93fc | v4.222.0: live in-call Avail button (#header-avail-btn), silence chime muting & auto-exit on speech |
+| 2026-11-25T17:52:41.919Z | f77c61c | v4.223.0 remove untested greeting gate and suppress playback call start |

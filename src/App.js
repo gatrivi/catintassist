@@ -587,6 +587,13 @@ const Dashboard = () => {
   // no tab picker, no gesture needed) and never ask again for that press.
   const connectPressedAtRef = useRef(0);
   const connectHealedRef = useRef(false);
+  const connectInFlightRef = useRef(false);
+
+  const handleStopAudio = useCallback(() => {
+    connectPressedAtRef.current = 0;
+    connectHealedRef.current = false;
+    stopRecording();
+  }, [stopRecording]);
 
   const handleStartCall = useCallback(
     (isRecovery = false) => {
@@ -601,16 +608,25 @@ const Dashboard = () => {
   // Attach audio then auto-start call (one green-button press).
   const handleAttachAudio = useCallback(
     async (fresh = false) => {
-      cancelHipaaDisconnectGrace?.();
-      if (isBreakActive) stopBreak();
-      // Arm before await — DG text can arrive before isActive React commit.
-      armCaptionCapture(true);
-      connectPressedAtRef.current = Date.now();
-      connectHealedRef.current = false;
-      const ok = fresh ? await startRecordingFresh() : await startRecording();
-      if (ok) handleStartCall(false);
-      else armCaptionCapture(false);
-      return ok;
+      if (connectInFlightRef.current) return false;
+      connectInFlightRef.current = true;
+      try {
+        cancelHipaaDisconnectGrace?.();
+        if (isBreakActive) stopBreak();
+        // Arm before await — DG text can arrive before isActive React commit.
+        armCaptionCapture(true);
+        connectPressedAtRef.current = Date.now();
+        connectHealedRef.current = false;
+        const ok = fresh ? await startRecordingFresh() : await startRecording();
+        if (ok) handleStartCall(false);
+        else {
+          armCaptionCapture(false);
+          connectPressedAtRef.current = 0;
+        }
+        return ok;
+      } finally {
+        connectInFlightRef.current = false;
+      }
     },
     [
       startRecording,
@@ -1002,10 +1018,10 @@ const Dashboard = () => {
         />
       </div>
 
-      <SilenceGuardian lastDataTime={lastDataTime} onStopAudio={stopRecording} connectionState={connectionState} />
+      <SilenceGuardian lastDataTime={lastDataTime} onStopAudio={handleStopAudio} connectionState={connectionState} />
 
       {/* v4.98.0: autopilot 10s auto-end countdown banner */}
-      <AutopilotGuard onStopAudio={stopRecording} />
+      <AutopilotGuard onStopAudio={handleStopAudio} />
 
       <a href="#main-transcript" className="skip-to-main">
         Skip to transcript
@@ -1016,7 +1032,7 @@ const Dashboard = () => {
         onAttachAudio={() => handleAttachAudio(false)}
         onAttachAudioFresh={() => handleAttachAudio(true)}
         onStartCall={() => handleStartCall(false)}
-        onStopAudio={stopRecording}
+        onStopAudio={handleStopAudio}
         onReconnectStream={reconnectStream}
         onRecovery={handleRecovery}
         onConnectAnotherTab={handleConnectAnotherTab}

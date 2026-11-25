@@ -480,4 +480,39 @@ describe('call-banked coin burst (v4.208.0)', () => {
     // Not duplicated in sticky left-cluster
     expect(container.querySelectorAll('#header-connect-btn')).toHaveLength(1);
   });
+
+  test('v4.224.0 disables #header-connect-btn while connecting and blocks double-tap fresh teardown when unattached', () => {
+    const onAttachAudio = jest.fn();
+    const onAttachAudioFresh = jest.fn();
+    mockSession.isActive = false;
+
+    const { container, rerender } = render(
+      <DashboardHeader
+        offCallWorkspace="scoreboard"
+        connectionState="disconnected"
+        audioAttached={false}
+        onAttachAudio={onAttachAudio}
+        onAttachAudioFresh={onAttachAudioFresh}
+      />,
+    );
+    const btn = container.querySelector('#header-connect-btn');
+    expect(btn).toBeEnabled();
+    fireEvent.click(btn);
+    fireEvent.click(btn);
+    expect(onAttachAudio).toHaveBeenCalledTimes(1);
+    expect(onAttachAudioFresh).not.toHaveBeenCalled();
+
+    rerender(
+      <DashboardHeader
+        offCallWorkspace="scoreboard"
+        connectionState="connecting"
+        audioAttached={false}
+        onAttachAudio={onAttachAudio}
+        onAttachAudioFresh={onAttachAudioFresh}
+      />,
+    );
+    const connectingBtn = container.querySelector('#header-connect-btn');
+    expect(connectingBtn).toBeDisabled();
+    expect(connectingBtn).toHaveTextContent(/CONNECTING/i);
+  });
 });
