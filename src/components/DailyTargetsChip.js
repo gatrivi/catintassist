@@ -82,7 +82,12 @@ export const DailyTargetsChip = ({
   const catchUp = goalMinutes > 0
     ? computeCatchUp({ goalMinutes, monthlyMinutes, dailyMinutes, workDays, goalSetAt, goalBaseMinutes })
     : null;
-  const dailyMin = catchUp ? catchUp.requiredToday : usdGoal.dailyMin;
+  // v4.223.0: If requiredToday exceeds 24h (1440m), clamp to 600m (10h max realistic shift, matching DashboardHeader line 1485)
+  // so the chip doesn't display nonsensical "/26h57m" or "/$210" targets.
+  const isUnreachable = catchUp && (catchUp.isUnreachable || catchUp.requiredToday > 1440);
+  const dailyMin = catchUp
+    ? (isUnreachable ? Math.min(600, catchUp.requiredToday) : catchUp.requiredToday)
+    : usdGoal.dailyMin;
   const leftMin = catchUp ? Math.max(0, goalMinutes - monthlyMinutes) : usdGoal.leftMin;
   const monthGoalMin = catchUp ? goalMinutes : Math.round(GOAL_USD / ratePerMinute);
   const earnedUsd = dailyMinutes * ratePerMinute;
@@ -148,10 +153,11 @@ export const DailyTargetsChip = ({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // ── v4.91.0: SMART TOOLTIP ──────────────────────────────────────────────
+  // ── v4.91.0: SMART TOOLTIP (v4.223.0 with hover delay & unreachable warning) ──
   // Hover the chip → floating panel spells every chip out in USD:
   // earned vs target, minutes to go ≈ $, what a break minute costs, month pace.
   const [smartTip, setSmartTip] = useState(null); // {x,y} chip top-center
+  const tipTimerRef = useRef(null);
   const usd = (m) => `$${(m * ratePerMinute).toFixed(2)}`;
   const pctToday = targetUsd > 0 ? Math.round((earnedUsd / targetUsd) * 100) : 0;
   // v4.96.0: month-pace deficit leads the tooltip — the "am I behind?" answer first
@@ -166,6 +172,7 @@ export const DailyTargetsChip = ({
         : `✅ on month pace · ${fmtHm(catchUp.requiredToday)}/day × ${catchUp.remainingWorkdays}d${sinceSuffix}`
     : null;
   const tipRows = [
+    isUnreachable ? `🚨 OUT OF REACH: requires ${fmtHm(catchUp.requiredToday)}/day (>24h) · clamped to 10h focus` : null,
     deficitRow,
     `💵 ${usd(dailyMinutes)} / $${targetUsd.toFixed(0)} today (${pctToday}%)`,
     plan.need <= 0
@@ -178,30 +185,47 @@ export const DailyTargetsChip = ({
       ? `⏰ by 18:00 → ${fmtHm(plan.slack18)} off · by 23:00 → ${fmtHm(plan.slack23)} off`
       : `⚠️ pace by 18:00: NO · overtime to 23:00 → ${fmtHm(plan.slack23)} off`,
   ].filter(Boolean);
+
   const showSmartTip = (e) => {
     const r = e.currentTarget.getBoundingClientRect();
-    setSmartTip({
-      x: Math.min(Math.max(r.left + r.width / 2, 150), (window.innerWidth || 900) - 150),
-      y: r.top,
-    });
+    const x = Math.min(Math.max(r.left + r.width / 2, 150), (window.innerWidth || 900) - 150);
+    const y = r.top;
+    if (tipTimerRef.current) clearTimeout(tipTimerRef.current);
+    tipTimerRef.current = setTimeout(() => {
+      setSmartTip({ x, y });
+    }, 250);
   };
+
+  const hideSmartTip = () => {
+    if (tipTimerRef.current) {
+      clearTimeout(tipTimerRef.current);
+      tipTimerRef.current = null;
+    }
+    setSmartTip(null);
+  };
+
+  useEffect(() => {
+    return () => {
+      if (tipTimerRef.current) clearTimeout(tipTimerRef.current);
+    };
+  }, []);
   // ────────────────────────────────────────────────────────────────────────
 
   // Pair builders — used twice: visible (conditionally, by fitLevel) and inside
   // the hidden always-full measurer with IDENTICAL styling, so `full.offsetWidth`
   // is exactly the width the chip would have with every pair shown.
   const mkUsd = (r) => (
-    <span key="usd" ref={r} style={pairStyle} title={`Earned today vs today's $ target`}>
+    <span key="usd" ref={r} style={pairStyle} title={`Earned today vs today's $ target${isUnreachable ? ' (clamped to 10h focus)' : ''}`}>
       <span style={lblStyle}>💵</span>
       <span style={valStyle}>${earnedUsd.toFixed(2)}</span>
       <span style={tgtStyle}>/${targetUsd.toFixed(0)}</span>
     </span>
   );
   const mkTime = () => (
-    <span key="time" style={pairStyle} title={`On-call today vs today's target (${dailyMin}m)`}>
+    <span key="time" style={pairStyle} title={isUnreachable ? `On-call today vs 10h max shift focus (raw daily need: ${catchUp.requiredToday}m/d > 24h)` : `On-call today vs today's target (${dailyMin}m)`}>
       <span style={lblStyle}>⏱</span>
       <span style={valStyle}>{fmtHm(dailyMinutes)}</span>
-      <span style={tgtStyle}>/{fmtHm(dailyMin)}</span>
+      <span style={tgtStyle}>/{fmtHm(dailyMin)}{isUnreachable ? ' ⚠️' : ''}</span>
     </span>
   );
   const mkCoffee = (r) => (
@@ -224,7 +248,7 @@ export const DailyTargetsChip = ({
       id="daily-targets-chip"
       ref={chipRef}
       onMouseEnter={showSmartTip}
-      onMouseLeave={() => setSmartTip(null)}
+      onMouseLeave={hideSmartTip}
       onClick={onOpenGoalsView ? (e) => { e.stopPropagation(); onOpenGoalsView(); } : undefined}
       onKeyDown={onOpenGoalsView ? (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onOpenGoalsView(); } } : undefined}
       role={onOpenGoalsView ? 'button' : undefined}

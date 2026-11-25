@@ -25,6 +25,21 @@ import { APP_VERSION } from '../constants/version';
 /** Newest first. Only the entry matching APP_VERSION is shown on load. */
 export const RELEASE_NOTES_CATALOG = [
   {
+    version: '4.225.0',
+    id: 'smart-tooltips-and-unreachable-goal-guard',
+    highlightElementIds: ['daily-targets-chip'],
+    es: {
+      title: 'Tooltips explicativos y alertas de meta inalcanzable',
+      intro: 'Pasando el mouse por los contadores del encabezado y del tablero de ritmo ves la fórmula exacta de cada métrica. Si la meta mensual pide más de 24h por día, se muestra el aviso de meta fuera de alcance.',
+      sections: [{ heading: 'Qué cambió', bullets: ['SmartTooltip con retraso de 250ms; aviso >24h/día y tope visual de 10h en el chip diario.'] }],
+    },
+    en: {
+      title: 'Smart metric tooltips & unreachable goal guardrails',
+      intro: 'Hovering header timers and pace-board cards now shows exact formulas after a 250ms delay. Monthly goals requiring >24h/day flag as out of reach instead of showing impossible daily hours.',
+      sections: [{ heading: 'What changed', bullets: ['SmartTooltip explanations on header & pace board; >24h/day unreachable flag and 10h chip cap.'] }],
+    },
+  },
+  {
     version: '4.224.0',
     id: 'connect-dg-disconnected-race-fixes',
     highlightElementIds: ['header-connect-btn', 'audio-route-stt-summary'],

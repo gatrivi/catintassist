@@ -250,6 +250,35 @@ describe('catchUpPlan', () => {
       expect(p.deficitMins).toBe(0);
     });
   });
+
+  describe('v4.223.0 isUnreachable & impossible offEta sanity', () => {
+    it('flags isUnreachable when daily need exceeds 24 hours (1440m)', () => {
+      // 13,200m (220h) goal with 2692m banked on Nov 24 (6.5 workdays left)
+      // 10,508m remaining / 6.5d = 1617m/day (26h 57m)
+      const p = computeCatchUp({
+        goalMinutes: 13200,
+        monthlyMinutes: 2692,
+        dailyMinutes: 41,
+        workDays: 28, // 6.5/wk
+        now: new Date('2026-11-24T12:00:00'),
+      });
+      expect(p.requiredToday).toBeGreaterThan(1440);
+      expect(p.isUnreachable).toBe(true);
+      expect(p.offEta).toBeNull(); // never prints a next-day 14:42 clock-off
+    });
+
+    it('keeps isUnreachable false when daily need is under 1440m', () => {
+      const p = computeCatchUp({
+        goalMinutes: 5500,
+        monthlyMinutes: 2692,
+        dailyMinutes: 41,
+        workDays: 28,
+        now: new Date('2026-11-24T12:00:00'),
+      });
+      expect(p.requiredToday).toBeLessThan(1440);
+      expect(p.isUnreachable).toBe(false);
+    });
+  });
 });
 
 describe('v4.191.0 realWorkdaysLeft (real calendar)', () => {

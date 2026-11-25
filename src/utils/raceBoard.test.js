@@ -60,6 +60,13 @@ describe('buildRaceModel', () => {
     expect(m.ghostPct).toBeGreaterThan(m.youPct);
     expect(m.avg).toBe(147);
     expect(m.avgTone).toBe('bad');
+    expect(m.isUnreachable).toBe(false);
+  });
+  test('flags isUnreachable when requiredToday > 1440m', () => {
+    const unreachPlan = { expectedByToday: 10000, requiredToday: 1617, needToday: 1576, remainingWorkdays: 6.5, isUnreachable: true };
+    const m = buildRaceModel({ goalMinutes: 13200, monthMinutes: 2692, todayMinutes: 41, plan: unreachPlan, workedDays: 19 });
+    expect(m.isUnreachable).toBe(true);
+    expect(m.needPerDay).toBe(1617);
   });
   test('no goal or no plan → null (board hides)', () => {
     expect(buildRaceModel({ goalMinutes: 0, plan })).toBeNull();

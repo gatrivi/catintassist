@@ -33,6 +33,27 @@ test('can switch to race track view and see MO AVG and stats', () => {
   expect(screen.getByText(/MO AVG/)).toBeInTheDocument();
 });
 
+test('renders unreachable indication when daily need exceeds 24 hours', () => {
+  jest.useFakeTimers();
+  jest.setSystemTime(new Date('2026-11-24T12:00:00'));
+  try {
+    // Nov 24, 220h goal with only 2692m banked and 6.5 workdays left -> ~26h 57m/d
+    jest.spyOn(Session, 'useSession').mockReturnValue({
+      stats: { goalMinutes: 13200, monthlyMinutes: 2692, dailyMinutes: 41 },
+      dailyLog: {},
+      goalWorkDays: 28,
+    });
+    render(<IdleRaceBoard />);
+    expect(screen.getByText(/>24h \/ day/)).toBeInTheDocument();
+    expect(screen.getByText(/Out of reach/)).toBeInTheDocument();
+    const raceTab = screen.getByRole('button', { name: /Pace Race/ });
+    fireEvent.click(raceTab);
+    expect(screen.getByText(/Goal unreachable: requires/)).toBeInTheDocument();
+  } finally {
+    jest.useRealTimers();
+  }
+});
+
 test('renders nothing without a goal (never a broken panel)', () => {
   jest.spyOn(Session, 'useSession').mockReturnValue({ stats: {}, dailyLog: {}, goalWorkDays: 0 });
   const { container } = render(<IdleRaceBoard />);

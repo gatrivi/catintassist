@@ -37,6 +37,7 @@ import { daysPerWeekOf } from './DialGoalSelector';
 import { perWorkdayFromStats, weeklyHoursFromCommitment, savedGoalWorkDays } from '../utils/goalAnchor';
 import { fmtHm } from '../utils/catchUpPlan';
 import { ElementHintTarget, useElementHint, buildHintPayload } from './ElementHint';
+import { SmartTooltip } from './SmartTooltip';
 import { useProgressiveAudio } from '../hooks/useProgressiveAudio';
 import { TimeEditModal } from './TimeEditModal';
 import { GameScoreboard } from './GameScoreboard';
@@ -767,30 +768,66 @@ const SessionControlsSticky = React.memo(({
                   ? `Off call for ${formatTime(offCallGapSecs)}, last call was ${formatTime(lastCallSeconds || 0)}`
                   : `Off call live ${formatTime(availSeconds || 0)}, no call banked yet today`}
               >
-                <span className="status-bar-timer status-bar-timer--off-call">
-                  <span className="status-bar-timer-icon" aria-hidden>🚪</span>
-                  <span>OFF&nbsp;</span>
-                  <SlotMicroValue text={formatTime(lastCallValidToday ? offCallGapSecs : (availSeconds || 0))} />
-                </span>
+                <SmartTooltip
+                  as="span"
+                  title="🚪 OFF-CALL GAP"
+                  formula={`Off call for ${formatTime(lastCallValidToday ? offCallGapSecs : (availSeconds || 0))}`}
+                  desc="Time elapsed since your last call finished (or live avail if no call yet today)."
+                  placement="below"
+                  delay={250}
+                >
+                  <span className="status-bar-timer status-bar-timer--off-call">
+                    <span className="status-bar-timer-icon" aria-hidden>🚪</span>
+                    <span>OFF&nbsp;</span>
+                    <SlotMicroValue text={formatTime(lastCallValidToday ? offCallGapSecs : (availSeconds || 0))} />
+                  </span>
+                </SmartTooltip>
                 {lastCallValidToday && (
                   <>
                     <span className="status-bar-timer-sep" aria-hidden>·</span>
-                    <span className="status-bar-timer status-bar-timer--on-call">
-                      <span className="status-bar-timer-icon" aria-hidden>📞</span>
-                      <span>LAST&nbsp;</span>
-                      <SlotMicroValue text={formatTime(lastCallSeconds || 0)} />
-                    </span>
+                    <SmartTooltip
+                      as="span"
+                      title="📞 LAST CALL"
+                      formula={`Duration: ${formatTime(lastCallSeconds || 0)}`}
+                      desc="Duration of the most recently finished call today."
+                      placement="below"
+                      delay={250}
+                    >
+                      <span className="status-bar-timer status-bar-timer--on-call">
+                        <span className="status-bar-timer-icon" aria-hidden>📞</span>
+                        <span>LAST&nbsp;</span>
+                        <SlotMicroValue text={formatTime(lastCallSeconds || 0)} />
+                      </span>
+                    </SmartTooltip>
                   </>
                 )}
                 {/* v4.124.0: DAY totals ride here too — #header-oncall/offcall-mins
                     are CSS-hidden at ≤1100px, so 900px would otherwise show none. */}
                 <span className="status-bar-timer-sep" aria-hidden>·</span>
-                <span className="status-bar-timer status-bar-timer--on-call" title="On-call today (total)">
-                  <span>📞{Math.round(onCallMins || 0)}m</span>
-                </span>
-                <span className="status-bar-timer status-bar-timer--off-call" title="Off-call today (total)">
-                  <span>📡{Math.round(offCallMins || 0)}m</span>
-                </span>
+                <SmartTooltip
+                  as="span"
+                  title="📞 TODAY ON-CALL"
+                  formula={`${Math.round(onCallMins || 0)}m banked today`}
+                  desc="Total minutes spent actively interpreting on calls today."
+                  placement="below"
+                  delay={250}
+                >
+                  <span className="status-bar-timer status-bar-timer--on-call" title="On-call today (total)">
+                    <span>📞{Math.round(onCallMins || 0)}m</span>
+                  </span>
+                </SmartTooltip>
+                <SmartTooltip
+                  as="span"
+                  title="📡 TODAY AVAIL / OFF-CALL"
+                  formula={`${Math.round(offCallMins || 0)}m off-call today`}
+                  desc="Total time spent available and waiting between calls today."
+                  placement="below"
+                  delay={250}
+                >
+                  <span className="status-bar-timer status-bar-timer--off-call" title="Off-call today (total)">
+                    <span>📡{Math.round(offCallMins || 0)}m</span>
+                  </span>
+                </SmartTooltip>
               </div>
               {/* v4.132.0: the off-call MIC VERIFY chip moved out of this row (it
                   lives in Settings → Audio → Devices now). The ON-CALL chip in the

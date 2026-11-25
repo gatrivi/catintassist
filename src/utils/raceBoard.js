@@ -67,6 +67,7 @@ export const buildRaceModel = ({ goalMinutes = 0, monthMinutes = 0, todayMinutes
   const remaining = Math.max(0, goal - done);
   const avg = avgPerWorkedDay(done, workedDays);
   const needPerDay = Math.round(plan.requiredToday || 0);
+  const isUnreachable = needPerDay > 1440 || Boolean(plan.isUnreachable) || (plan.remainingWorkdays > 0 && remaining > plan.remainingWorkdays * 1440);
   return {
     goal,
     done,
@@ -79,6 +80,8 @@ export const buildRaceModel = ({ goalMinutes = 0, monthMinutes = 0, todayMinutes
     avg,
     workedDays,
     needPerDay,
+    isUnreachable,
+    verdict: plan.verdict || (isUnreachable ? 'unreachable' : 'on-track'),
     avgTone: paceTone(avg, needPerDay),
     today: Math.round(Number(todayMinutes) || 0),
     needToday: Math.round(plan.needToday || 0),

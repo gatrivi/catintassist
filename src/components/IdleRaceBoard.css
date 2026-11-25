@@ -64,6 +64,15 @@
   text-shadow: 0 0 12px rgba(96, 165, 250, 0.35);
 }
 
+.race-board__hero--unreachable {
+  border-color: rgba(239, 68, 68, 0.6) !important;
+  background: rgba(239, 68, 68, 0.08) !important;
+}
+.race-board__hero--unreachable .race-board__hero-val {
+  color: #f87171 !important;
+  text-shadow: 0 0 12px rgba(248, 113, 113, 0.45) !important;
+}
+
 .race-board__hero--gap {
   border-color: var(--rb-tone);
 }

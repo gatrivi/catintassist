@@ -52,10 +52,11 @@ function Lift-Api {
     if ($null -eq $oldSkip) { Remove-Item Env:CATTS_SKIP_STARTUP_BACKFILL -ErrorAction SilentlyContinue }
     else { $env:CATTS_SKIP_STARTUP_BACKFILL = $oldSkip }
   }
-  $deadline = (Get-Date).AddSeconds(60)
+  $StartTimeoutSec = if ($env:CATTS_API_START_TIMEOUT_SEC) { [int]$env:CATTS_API_START_TIMEOUT_SEC } else { 180 }
+  $deadline = (Get-Date).AddSeconds($StartTimeoutSec)
   $health = $null
   while (-not $health -and (Get-Date) -lt $deadline) { Start-Sleep -Milliseconds 1000; $health = Get-Health }
-  if (-not $health) { Log "LIFT FAIL: still down after 60s, see catintassist-api.err.log"; return $false }
+  if (-not $health) { Log "LIFT FAIL: still down after ${StartTimeoutSec}s, see catintassist-api.err.log"; return $false }
   try {
     $body = @{ text = "Please sit here."; from_lang = "en"; to_lang = "es" } | ConvertTo-Json -Compress
     $t = Invoke-RestMethod "http://127.0.0.1:$Port/stt/translate" -Method Post -ContentType "application/json" -Body $body -TimeoutSec 30

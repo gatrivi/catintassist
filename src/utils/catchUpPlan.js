@@ -122,6 +122,10 @@ export const computeCatchUp = ({
   const requiredToday = Math.round(remainingGoal / remainingWorkdays);
   const needToday = Math.max(0, requiredToday - dailyMinutes);
 
+  // v4.223.0: Unreachable check — if daily need exceeds 24 hours (1440m)
+  // or remaining goal exceeds total hours left across all remaining workdays.
+  const isUnreachable = remainingWorkdays > 0 && (requiredToday > 1440 || remainingGoal > remainingWorkdays * 1440);
+
   // Per-workday load for the days AFTER today, assuming today hits requiredToday
   const daysAfter = remainingWorkdays - 1;
   const thenPerDay = daysAfter >= 1
@@ -140,8 +144,8 @@ export const computeCatchUp = ({
     else verdict = 'impossible';
   }
 
-  // Estimated clock-off if you start needToday right now
-  const offEta = needToday > 0
+  // Estimated clock-off if you start needToday right now (null if impossible or unreachable)
+  const offEta = (needToday > 0 && needToday <= 1440 && verdict !== 'impossible' && !isUnreachable)
     ? new Date(now.getTime() + needToday * 60000)
     : null;
 
@@ -154,6 +158,7 @@ export const computeCatchUp = ({
     needToday,
     thenPerDay,
     daysAfter,
+    isUnreachable,
     verdict,
     offEta, // Date | null
   };
@@ -164,6 +169,7 @@ const VERDICT_LABEL = {
   'fits-by-18': '✅ fits by 18:00',
   'needs-ot': '⚠️ needs OT to 23:00',
   impossible: "🔴 won't fit today",
+  unreachable: '🚨 goal unreachable (>24h/day)',
 };
 
 /** One-liner for the expanded dashboard strip. */
