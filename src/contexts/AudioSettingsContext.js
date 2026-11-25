@@ -21,6 +21,7 @@ import {
 } from '../utils/audioSourceManager';
 import { rememberDeviceLabels } from '../utils/audioDeviceLabels';
 import { catWarn, catError } from '../utils/catLog';
+import { beginSoundboardAudioGuard } from '../utils/soundboardCallGuard';
 
 const AudioSettingsContext = createContext();
 
@@ -324,6 +325,7 @@ export const AudioSettingsProvider = ({ children }) => {
       return { ok: false, reason: 'no_sink_or_blob' };
     }
     stopClipToSink();
+    const releaseGuard = beginSoundboardAudioGuard('sink_clip');
     const generation = clipGenerationRef.current;
     const entrySink = selectedSinkId;
     // Cancellation is terminal: neither fallback engine may revive an old fire.
@@ -336,95 +338,111 @@ export const AudioSettingsProvider = ({ children }) => {
 
     const el = passthroughAudioRef.current;
 
-    // v4.104.0: direct ctx.setSinkId render first — buffered output on the sink's
-    // own clock (no live MediaStream, no srcObject swap). The "can of tuna" chop
-    // came from the old element-swap path below, which stays as fallback.
-    // v4.108.1: resume + setSinkId on EVERY fire — without this the persistent
-    // ctx renders to the default output (speakers), never Voicemeeter Input.
     try {
-      const ctx = getDirectSinkContext(entrySink);
-      await ctx.resume();
-      if (cancellation()) return cancelledResult();
-      await ctx.setSinkId(entrySink);
-      if (cancellation()) return cancelledResult();
-      const buffer = await decodeBlobOnContext(ctx, blob);
-      if (cancellation()) return cancelledResult();
-      sinkPlaybackActiveRef.current = true;
-      setSinkPlaybackActiveState(true);
-      setSinkPlaybackActive(true); // duck live mic during clip (same as before, minus swap)
-      const session = playBufferDirect(ctx, buffer, { volume, onProgress, onLevel });
-      clipPlaybackStopRef.current = session.stop;
+      // v4.104.0: direct ctx.setSinkId render first — buffered output on the sink's
+      // own clock (no live MediaStream, no srcObject swap). The "can of tuna" chop
+      // came from the old element-swap path below, which stays as fallback.
+      // v4.108.1: resume + setSinkId on EVERY fire — without this the persistent
+      // ctx renders to the default output (speakers), never Voicemeeter Input.
+      try {
+        const ctx = getDirectSinkContext(entrySink);
+        await ctx.resume();
+        if (cancellation()) return cancelledResult();
+        try {
+          await ctx.setSinkId(entrySink);
+        } catch (sinkErr) {
+          if (sinkErr?.message === 'direct_sink_unsupported') throw sinkErr;
+          catWarn('[Audio:sink] Failed to bind caller sink (stale or disconnected device):', entrySink, sinkErr);
+          logRouteEvent(ROUTE_EVENT.PLAY_FAIL, {
+            clipKey,
+            routeMode: ROUTE_MODE.DIRECT_SINK,
+            reason: 'sink_bind_failed',
+          });
+          return { ok: false, reason: 'sink_bind_failed', error: sinkErr };
+        }
+        if (cancellation()) return cancelledResult();
+        const buffer = await decodeBlobOnContext(ctx, blob);
+        if (cancellation()) return cancelledResult();
+        sinkPlaybackActiveRef.current = true;
+        setSinkPlaybackActiveState(true);
+        setSinkPlaybackActive(true); // duck live mic during clip (same as before, minus swap)
+        const session = playBufferDirect(ctx, buffer, { volume, onProgress, onLevel });
+        clipPlaybackStopRef.current = session.stop;
 
-      logRouteEvent(ROUTE_EVENT.DIRECT_INJECT, { clipKey, sinkId: selectedSinkId });
+        logRouteEvent(ROUTE_EVENT.DIRECT_INJECT, { clipKey, sinkId: selectedSinkId });
 
-      await session.promise;
-      if (cancellation()) return cancelledResult();
+        await session.promise;
+        if (cancellation()) return cancelledResult();
 
-      clipPlaybackStopRef.current = null;
-      sinkPlaybackActiveRef.current = false;
-      setSinkPlaybackActive(false);
-      logRouteEvent(ROUTE_EVENT.PLAY_END, { clipKey, routeMode: ROUTE_MODE.DIRECT_SINK });
-      return { ok: true, mode: ROUTE_MODE.DIRECT_SINK };
-    } catch (directErr) {
-      if (cancellation()) return cancelledResult();
-      // Unsupported browser, autoplay/resume rejected, or bad sinkId → fall back.
-      if (directErr?.message !== 'direct_sink_unsupported') {
+        clipPlaybackStopRef.current = null;
+        sinkPlaybackActiveRef.current = false;
+        setSinkPlaybackActive(false);
+        logRouteEvent(ROUTE_EVENT.PLAY_END, { clipKey, routeMode: ROUTE_MODE.DIRECT_SINK });
+        return { ok: true, mode: ROUTE_MODE.DIRECT_SINK };
+      } catch (directErr) {
+        if (cancellation()) return cancelledResult();
+        // Unsupported browser, autoplay/resume rejected, or bad sinkId → fall back.
+        if (directErr?.message !== 'direct_sink_unsupported') {
+          logRouteEvent(ROUTE_EVENT.PLAY_FAIL, {
+            clipKey,
+            routeMode: ROUTE_MODE.DIRECT_SINK,
+            reason: directErr?.message || 'direct_failed',
+          });
+        }
+        clipPlaybackStopRef.current = null;
+        sinkPlaybackActiveRef.current = false;
+        setSinkPlaybackActive(false);
+      }
+
+      try {
+        const { ctx, buffer } = await decodeBlobToBuffer(blob);
+        if (cancellation()) {
+          ctx.close().catch(() => {});
+          return cancelledResult();
+        }
+        sinkPlaybackActiveRef.current = true;
+        setSinkPlaybackActiveState(true);
+
+        const session = playBufferViaPassthrough(el, buffer, ctx, {
+          volume,
+          sinkId: selectedSinkId,
+          savedSrcObject: null, // v4.185.0: after the clip the sink is silent
+          onProgress,
+        });
+        clipPlaybackStopRef.current = session.stop;
+
+        logRouteEvent(ROUTE_EVENT.PASSTHROUGH_INJECT, {
+          clipKey,
+          routeMode: ROUTE_MODE.PASSTHROUGH,
+          sinkId: selectedSinkId,
+        });
+
+        await session.promise;
+        if (cancellation()) return cancelledResult();
+
+        clipPlaybackStopRef.current = null;
+        sinkPlaybackActiveRef.current = false;
+        setSinkPlaybackActiveState(false);
+        silenceSinkElement();
+        logRouteEvent(ROUTE_EVENT.PLAY_END, { clipKey, routeMode: ROUTE_MODE.PASSTHROUGH });
+        return { ok: true, mode: ROUTE_MODE.PASSTHROUGH };
+      } catch (err) {
+        if (cancellation()) return cancelledResult();
+        catError('[Audio:sink] playClipToSink failed:', err);
+        clipPlaybackStopRef.current = null;
+        sinkPlaybackActiveRef.current = false;
+        setSinkPlaybackActiveState(false);
+        silenceSinkElement();
+        const reason = err?.message === 'sink_bind_failed' ? 'sink_bind_failed' : (err?.message || 'play_failed');
         logRouteEvent(ROUTE_EVENT.PLAY_FAIL, {
           clipKey,
-          routeMode: ROUTE_MODE.DIRECT_SINK,
-          reason: directErr?.message || 'direct_failed',
+          routeMode: ROUTE_MODE.PASSTHROUGH,
+          reason,
         });
+        return { ok: false, reason, error: err, mode: ROUTE_MODE.PASSTHROUGH };
       }
-      clipPlaybackStopRef.current = null;
-      sinkPlaybackActiveRef.current = false;
-      setSinkPlaybackActive(false);
-    }
-
-    try {
-      const { ctx, buffer } = await decodeBlobToBuffer(blob);
-      if (cancellation()) {
-        ctx.close().catch(() => {});
-        return cancelledResult();
-      }
-      sinkPlaybackActiveRef.current = true;
-      setSinkPlaybackActiveState(true);
-
-      const session = playBufferViaPassthrough(el, buffer, ctx, {
-        volume,
-        sinkId: selectedSinkId,
-        savedSrcObject: null, // v4.185.0: after the clip the sink is silent
-        onProgress,
-      });
-      clipPlaybackStopRef.current = session.stop;
-
-      logRouteEvent(ROUTE_EVENT.PASSTHROUGH_INJECT, {
-        clipKey,
-        routeMode: ROUTE_MODE.PASSTHROUGH,
-        sinkId: selectedSinkId,
-      });
-
-      await session.promise;
-      if (cancellation()) return cancelledResult();
-
-      clipPlaybackStopRef.current = null;
-      sinkPlaybackActiveRef.current = false;
-      setSinkPlaybackActiveState(false);
-      silenceSinkElement();
-      logRouteEvent(ROUTE_EVENT.PLAY_END, { clipKey, routeMode: ROUTE_MODE.PASSTHROUGH });
-      return { ok: true, mode: ROUTE_MODE.PASSTHROUGH };
-    } catch (err) {
-      if (cancellation()) return cancelledResult();
-      catError('[Audio:sink] playClipToSink failed:', err);
-      clipPlaybackStopRef.current = null;
-      sinkPlaybackActiveRef.current = false;
-      setSinkPlaybackActiveState(false);
-      silenceSinkElement();
-      logRouteEvent(ROUTE_EVENT.PLAY_FAIL, {
-        clipKey,
-        routeMode: ROUTE_MODE.PASSTHROUGH,
-        reason: err?.message || 'unknown',
-      });
-      return { ok: false, reason: err?.message || 'play_failed', mode: ROUTE_MODE.PASSTHROUGH };
+    } finally {
+      releaseGuard();
     }
   }, [selectedSinkId, stopClipToSink, setSinkPlaybackActive]);
 

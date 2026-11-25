@@ -107,7 +107,25 @@ describe('soundboard recording playback buttons', () => {
     ));
     expect(bindAudioToSink).toHaveBeenCalledWith(expect.any(HTMLAudioElement), 'voicemeeter-in-1');
     expect(mediaPlay).not.toHaveBeenCalled();
-    expect(await screen.findByRole('button', { name: 'Yes, mark CALL OK' })).toBeInTheDocument();
+  });
+
+  test('ES greeting tile plays directly to caller output without CALL OK or untested notice', async () => {
+    const restore = withSlot('morning');
+    loadFile.mockImplementation(async (key) => (key === 'greeting_es_morning' ? recording : null));
+    try {
+      render(<GreetingsPanel micTestMode={false} />);
+      const tile = await screen.findByRole('button', { name: /Opener – LEP \(ES\)/ });
+      fireEvent.click(tile);
+      await waitFor(() => expect(settings.playClipToSink).toHaveBeenCalledWith(
+        recording,
+        settings.sinkVolume,
+        expect.objectContaining({ clipKey: 'greeting_es_morning' }),
+      ));
+      expect(screen.queryByText(/Untested clip/i)).not.toBeInTheDocument();
+      expect(screen.queryByText(/LOCAL ONLY/i)).not.toBeInTheDocument();
+    } finally {
+      restore();
+    }
   });
 
   test.each([true, false])('You remains local with mic mode %s', async (micTestMode) => {
@@ -123,7 +141,9 @@ describe('soundboard recording playback buttons', () => {
 
   test('soundcheck opens the saved fallback recording rather than the empty current slot', async () => {
     const restore = withSlot('afternoon');
-    loadFile.mockImplementation(async (key) => key === 'greeting_en_morning' ? recording : null);
+    loadFile.mockImplementation(async (key) => (
+      key === 'greeting_en_morning' || key === 'greeting_es_morning' ? recording : null
+    ));
     const onOpen = jest.fn();
     window.addEventListener('cat_open_greeting_editor', onOpen);
     try {
@@ -218,21 +238,16 @@ describe('v4.131.0 studio soundcheck line', () => {
     }
   });
 
-  // v4.131.0: the pill must spell out its claim (EN + ES, current slot, caller-tested).
-  test('CALL READY pill states exactly what it means', async () => {
+  test('CALL READY pill states that EN and ES greetings are recorded (no CALL OK needed)', async () => {
     const restore = withSlot('morning');
     const clip = new Blob(['greeting'], { type: 'audio/webm' });
-    localStorage.setItem('catint_manual_call_ok_v1', JSON.stringify({
-      'greeting_en|voicemeeter-in-1|': { at: 1, clipKey: 'greeting_en_morning', sinkId: 'voicemeeter-in-1', micId: '' },
-      'greeting_es|voicemeeter-in-1|': { at: 1, clipKey: 'greeting_es_morning', sinkId: 'voicemeeter-in-1', micId: '' },
-    }));
     loadFile.mockImplementation(async (key) => (
       key === 'greeting_en_morning' || key === 'greeting_es_morning' ? clip : null
     ));
     try {
       render(<GreetingsPanel micTestMode={false} />);
       const pill = await screen.findByText('CALL READY');
-      expect(pill).toHaveAttribute('title', 'EN and ES greetings for this slot have a passing caller test (CALL OK)');
+      expect(pill).toHaveAttribute('title', 'EN and ES greetings for this slot are recorded');
     } finally {
       restore();
     }

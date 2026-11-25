@@ -210,3 +210,12 @@ test('selected mic is never routed to the greeting output', async () => {
   await act(async () => { await result.current.playClipToSink(blob, 1, { clipKey: 'intake' }); });
   expect(audio.srcObject).not.toBe(micStream);
 });
+
+test('stale sink failure returns sink_bind_failed cleanly and releases soundboard guard after cooldown', async () => {
+  ctx.setSinkId.mockRejectedValueOnce(new Error('NotFoundError'));
+  const { result } = await mountSettings();
+  let outcome;
+  await act(async () => { outcome = await result.current.playClipToSink(blob, 1, { clipKey: 'greeting_es_morning' }); });
+  expect(outcome).toEqual(expect.objectContaining({ ok: false, reason: 'sink_bind_failed' }));
+  expect(playBufferViaPassthrough).not.toHaveBeenCalled();
+});

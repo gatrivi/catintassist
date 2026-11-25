@@ -18,10 +18,13 @@
  */
 import { act, renderHook } from '@testing-library/react';
 
-const session = {
+const mockSession = {
   speechAutoConnect: false,
   isActive: false,
   shiftEarEnabled: true,
+  trySpeechAutoStart: jest.fn(() => false),
+  tryAutopilotStart: jest.fn(() => false),
+  updateCaptions: jest.fn(),
 };
 
 jest.mock('../contexts/SessionContext', () => ({
@@ -32,26 +35,26 @@ jest.mock('../contexts/SessionContext', () => ({
     requestHoldIntent: jest.fn(),
     clearHoldIntent: jest.fn(),
     captions: [],
-    updateCaptions: jest.fn(),
+    updateCaptions: (...args) => mockSession.updateCaptions(...args),
     clearCaptions: jest.fn(),
     isCaptionsLoaded: true,
     get isActive() {
-      return session.isActive;
+      return mockSession.isActive;
     },
     isZombieCall: false,
     isHold: false,
     hipaaGraceActiveRef: { current: false },
     notifySpeechDuringCall: jest.fn(),
-    trySpeechAutoStart: () => false,
-    tryAutopilotStart: () => false,
+    trySpeechAutoStart: (...args) => mockSession.trySpeechAutoStart(...args),
+    tryAutopilotStart: (...args) => mockSession.tryAutopilotStart(...args),
     requestAutopilotEnd: jest.fn(),
     armAutopilotFarewell: jest.fn(),
     callAutopilotRef: { current: false },
     get speechAutoConnect() {
-      return session.speechAutoConnect;
+      return mockSession.speechAutoConnect;
     },
     get shiftEarEnabled() {
-      return session.shiftEarEnabled;
+      return mockSession.shiftEarEnabled;
     },
   }),
 }));
@@ -66,6 +69,7 @@ jest.mock('../utils/deepgramRuntimeKey', () => ({
 import { useDeepgram } from './useDeepgram';
 // The shift-ear budget knobs, so the loop test asserts against real numbers.
 import { EAR_REARM_MAX, EAR_RELEASE_IDLE_MS } from '../utils/shiftEar';
+import { beginSoundboardAudioGuard, resetSoundboardAudioGuard } from '../utils/soundboardCallGuard';
 
 const audioTrack = (over = {}) => ({
   kind: 'audio',
@@ -129,6 +133,18 @@ class FakeSocket {
   deliverMetadata() {
     this.onmessage?.({ data: JSON.stringify({ type: 'Metadata', channels: 1 }) });
   }
+
+  /** Deliver a transcript payload for testing auto-start vs live captions. */
+  deliverTranscript(transcript, { isFinal = true, confidence = 0.95 } = {}) {
+    this.onmessage?.({
+      data: JSON.stringify({
+        type: 'Results',
+        is_final: isFinal,
+        speech_final: isFinal,
+        channel: { alternatives: [{ transcript, confidence, words: [] }] },
+      }),
+    });
+  }
 }
 
 class FakeRecorder {
@@ -183,11 +199,11 @@ beforeEach(() => {
   sessionStorage.clear();
   FakeSocket.instances = [];
   FakeRecorder.instances = [];
-  session.speechAutoConnect = false;
-  session.isActive = false;
+  mockSession.speechAutoConnect = false;
+  mockSession.isActive = false;
   // Opt-in per test: the legacy cases above were written against the pre-4.171
   // behaviour (no ear at all unless auto-connect is on).
-  session.shiftEarEnabled = false;
+  mockSession.shiftEarEnabled = false;
   getDisplayMedia = jest.fn().mockResolvedValue(fakeStream());
   oldMediaDevices = Object.getOwnPropertyDescriptor(navigator, 'mediaDevices');
   Object.defineProperty(navigator, 'mediaDevices', {
@@ -242,7 +258,7 @@ const pressAndOpen = async (result) => {
 
 describe('CONNECT press vs the idle ear (v4.170.0)', () => {
   it('the ear a press replaces can no longer reset the app to disconnected', async () => {
-    session.speechAutoConnect = true;
+    mockSession.speechAutoConnect = true;
     const { result } = renderHook(() => useDeepgram());
     await pressAndOpen(result);
     expect(result.current.sttLive).toBe(true);
@@ -309,7 +325,7 @@ describe('CONNECT watchdog when our audio never starts (v4.170.0)', () => {
   // recorder — its new WebM header mid-stream makes Deepgram deaf (the
   // "every call needs ZAP" bug). A dead recorder mid-call → a FRESH pair.
   it('a recorder that dies mid-call gets a FRESH socket pair (never a 2nd WebM header)', async () => {
-    session.isActive = true;
+    mockSession.isActive = true;
     const { result } = renderHook(() => useDeepgram());
     const { fresh } = await pressAndOpen(result);
     await act(async () => {
@@ -412,7 +428,7 @@ describe('shift ear keeps one pair warm all shift (v4.172.0)', () => {
   };
 
   it('stays connected after STOP with no auto-start flag — and sends no audio', async () => {
-    session.shiftEarEnabled = true;
+    mockSession.shiftEarEnabled = true;
     const { result } = renderHook(() => useDeepgram());
     await pressAndOpen(result);
     expect(result.current.sttLive).toBe(true);
@@ -432,7 +448,7 @@ describe('shift ear keeps one pair warm all shift (v4.172.0)', () => {
   });
 
   it('re-arms a pair that dies off-call with no operator press', async () => {
-    session.shiftEarEnabled = true;
+    mockSession.shiftEarEnabled = true;
     const { result } = renderHook(() => useDeepgram());
     await pressAndOpen(result);
     await act(async () => {
@@ -458,7 +474,7 @@ describe('shift ear keeps one pair warm all shift (v4.172.0)', () => {
   });
 
   it('gives up honestly after the re-arm budget instead of looping forever', async () => {
-    session.shiftEarEnabled = true;
+    mockSession.shiftEarEnabled = true;
     const { result } = renderHook(() => useDeepgram());
     await pressAndOpen(result);
     await act(async () => {
@@ -486,7 +502,7 @@ describe('shift ear keeps one pair warm all shift (v4.172.0)', () => {
   });
 
   it('hands the pair back after an hour of silence but keeps listening', async () => {
-    session.shiftEarEnabled = true;
+    mockSession.shiftEarEnabled = true;
     const { result } = renderHook(() => useDeepgram());
     await pressAndOpen(result);
     await act(async () => {
@@ -511,7 +527,7 @@ describe('shift ear keeps one pair warm all shift (v4.172.0)', () => {
   });
 
   it('a press after a release still gets a working call pair', async () => {
-    session.shiftEarEnabled = true;
+    mockSession.shiftEarEnabled = true;
     const { result } = renderHook(() => useDeepgram());
     await pressAndOpen(result);
     await act(async () => {
@@ -543,5 +559,62 @@ describe('CONNECT waits for Deepgram to free the old pair (v4.195.0)', () => {
       jest.advanceTimersByTime(400);
     });
     expect(FakeSocket.instances.length).toBe(before + 2);
+  });
+});
+
+describe('soundboard playback call guard (v4.223.0)', () => {
+  beforeEach(() => {
+    resetSoundboardAudioGuard();
+    mockSession.isActive = false;
+    mockSession.speechAutoConnect = true;
+    mockSession.trySpeechAutoStart = jest.fn(() => false);
+    mockSession.tryAutopilotStart = jest.fn(() => false);
+    mockSession.updateCaptions = jest.fn();
+  });
+
+  afterEach(() => {
+    resetSoundboardAudioGuard();
+  });
+
+  it('suppresses trySpeechAutoStart and tryAutopilotStart off-call while soundboard audio is guarded', async () => {
+    const { result } = renderHook(() => useDeepgram());
+    const { fresh } = await pressAndOpen(result);
+    const release = beginSoundboardAudioGuard('studio_sink');
+
+    await act(async () => {
+      fresh[0].deliverTranscript('Buenos días, soy su intérprete');
+    });
+    expect(mockSession.trySpeechAutoStart).not.toHaveBeenCalled();
+    expect(mockSession.tryAutopilotStart).not.toHaveBeenCalled();
+
+    // Still suppressed during 3s tail cooldown after release
+    release();
+    await act(async () => {
+      fresh[0].deliverTranscript('call is being bridged');
+    });
+    expect(mockSession.trySpeechAutoStart).not.toHaveBeenCalled();
+    expect(mockSession.tryAutopilotStart).not.toHaveBeenCalled();
+
+    // After cooldown expires, incoming speech and autopilot call-start phrases work normally
+    await act(async () => {
+      jest.advanceTimersByTime(3100);
+      fresh[0].deliverTranscript('call is being bridged');
+    });
+    expect(mockSession.trySpeechAutoStart).toHaveBeenCalledTimes(1);
+    expect(mockSession.tryAutopilotStart).toHaveBeenCalledTimes(1);
+  });
+
+  it('does NOT drop live-call captions when a greeting is played mid-call (isActive === true)', async () => {
+    mockSession.isActive = true;
+    const { result } = renderHook(() => useDeepgram());
+    const { fresh } = await pressAndOpen(result);
+    const release = beginSoundboardAudioGuard('oncall_strip_sink');
+
+    await act(async () => {
+      fresh[0].deliverTranscript('patient speaks during greeting');
+      jest.advanceTimersByTime(500);
+    });
+    release();
+    expect(mockSession.updateCaptions).toHaveBeenCalled();
   });
 });

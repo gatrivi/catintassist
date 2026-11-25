@@ -17,6 +17,7 @@ import { analyzeClipLegibility } from '../utils/audioSelfTest';
 import { routeFamilyKey, MANUAL_CALL_OK_STORAGE, LEGACY_CALL_PATH_STORAGE } from '../utils/routeVerification';
 import { LAST_CALL_ARCHIVE_KEY } from '../utils/lastCallArchive';
 import { catWarn } from '../utils/catLog';
+import { beginSoundboardAudioGuard } from '../utils/soundboardCallGuard';
 
 const withoutKey = (store, key) => {
   const next = { ...store };
@@ -324,6 +325,10 @@ export const useGreetingRecorder = ({ selectedRecMicId, selectedMicId, onSaved }
   savedRef.current = onSaved;
 
   const release = useCallback((s) => {
+    if (s.releaseGuard) {
+      s.releaseGuard();
+      s.releaseGuard = null;
+    }
     if (s.frame != null) cancelAnimationFrame(s.frame);
     s.frame = null;
     s.stream?.getTracks().forEach((track) => track.stop());
@@ -380,7 +385,12 @@ export const useGreetingRecorder = ({ selectedRecMicId, selectedMicId, onSaved }
   const startRecording = useCallback(async (key) => {
     if (!mountedRef.current || sessionRef.current) return false;
     if (!key) { setError('Choose a greeting to record.'); return false; }
-    const s = { chunks: [], cancelled: false, stopping: false };
+    const s = {
+      chunks: [],
+      cancelled: false,
+      stopping: false,
+      releaseGuard: beginSoundboardAudioGuard('greeting_record', { ttlMs: 180_000 }),
+    };
     sessionRef.current = s;
     const current = () => mountedRef.current && !s.cancelled && sessionRef.current === s;
     setBusy(true);

@@ -24,13 +24,6 @@ import {
 } from '../utils/routeDiagnostics';
 import { analyzeClipLegibility, formatHealthDisplay, truncateDeviceLabel, isLocalOnlyPlayback, explainHealth, capSinkTestVolume } from '../utils/audioSelfTest';
 import { getScriptForClip } from '../services/soundboardMetaService';
-import {
-  buildRouteFingerprint,
-  isManualCallOk,
-  loadManualCallOk,
-  setManualCallOk,
-  warnLegacyCallPathStorage,
-} from '../utils/routeVerification';
 import { useAudioSettings } from '../contexts/AudioSettingsContext';
 import { displayDeviceName, readKnownDeviceLabels } from '../utils/audioDeviceLabels';
 // v4.114.0: AudioEditorPanel moved to GreetingEditorView (focused editor view).
@@ -39,6 +32,7 @@ import { classifyLoudness, measureChannelLoudness, measureChoppiness, classifyCh
 import { ElementHintTarget } from './ElementHint';
 // v4.131.1: slot picking is US-Pacific, shared with the on-call strip (workTime.js).
 import { getWorkSlot, nearestSlotOrder, TIME_SLOTS } from '../utils/workTime';
+import { beginSoundboardAudioGuard } from '../utils/soundboardCallGuard';
 
 const TIME_SLOT_META = {
   morning: { icon: '☀️', short: 'AM', name: 'Morning' },
@@ -55,7 +49,6 @@ const getActionSlotPills = (action, blobs) => {
     ...TIME_SLOT_META[t],
   }));
 };
-const CALL_ROUTE_MIN_SCORE = 0.5;
 
 const getActionClipKeys = (action) =>
   action.dynamic ? TIME_SLOTS.map((t) => `${action.id}_${t}`) : [action.id];
@@ -89,15 +82,8 @@ const getActionCompletion = (action, blobs) => {
   return { saved, total: keys.length, keys };
 };
 
-const isCallerReady = (score) => score !== undefined && score >= CALL_ROUTE_MIN_SCORE;
-
-const isCallPathReady = (manualCallOk, clipKey, sinkId, micId) =>
-  isManualCallOk(manualCallOk, clipKey, sinkId, micId);
-
 const ROUTE_TEST_LABELS = {
   sink_played: 'sink played',
-  manual_ok: 'CALL OK confirmed',
-  declined: 'declined',
   fail: 'fail',
 };
 
@@ -233,8 +219,6 @@ export const GreetingsPanel = ({ onEditModeChange, onExitStudio, micTestMode = f
   const [chop, setChop] = useState(() => {
     try { return JSON.parse(localStorage.getItem('catint_sb_chop')) || {}; } catch { return {}; }
   });
-  const [manualCallOk, setManualCallOkStore] = useState(() => loadManualCallOk());
-  const [pendingRouteConfirm, setPendingRouteConfirm] = useState(null);
   const [lastRouteTest, setLastRouteTest] = useState(null);
   const [routeDebugOpen, setRouteDebugOpen] = useState(false);
   const [isAnalyzing, setIsAnalyzing] = useState(null); // key of item being analyzed
@@ -272,6 +256,8 @@ export const GreetingsPanel = ({ onEditModeChange, onExitStudio, micTestMode = f
   const audioChunksRef = useRef([]);
   const animationRef = useRef(null);
   const callerRouteRef = useRef(false);
+  const playGuardRef = useRef(null);
+  const recGuardRef = useRef(null);
 
   useEffect(() => {
     // v4.131.1: Pacific slot, not the machine clock (see utils/workTime.js).
@@ -518,7 +504,6 @@ export const GreetingsPanel = ({ onEditModeChange, onExitStudio, micTestMode = f
 
   useEffect(() => {
     reloadData();
-    warnLegacyCallPathStorage();
     // Mount-only hydrate; reloadData is intentionally not a dep.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -550,41 +535,6 @@ export const GreetingsPanel = ({ onEditModeChange, onExitStudio, micTestMode = f
         : (knownGreetLabels[selectedMicId] || 'Mic gone — re-pick'),
     36,
   );
-
-  const getRouteBadge = (clipKey) => {
-    if (isManualCallOk(manualCallOk, clipKey, selectedSinkId, selectedMicId)) {
-      return {
-        className: 'sb-call-ok',
-        label: 'CALL OK ✓',
-        title: 'Remote side confirmed clean audio manually',
-      };
-    }
-    const fp = buildRouteFingerprint(clipKey, selectedSinkId, selectedMicId);
-    if (pendingRouteConfirm?.clipKey === clipKey && pendingRouteConfirm?.fingerprint === fp) {
-      return {
-        className: 'sb-sink-played',
-        label: 'SINK PLAYED',
-        title: 'Browser played into selected sink — confirm remote heard it cleanly',
-      };
-    }
-    return null;
-  };
-
-  const confirmManualCallOk = () => {
-    if (!pendingRouteConfirm) return;
-    const { clipKey } = pendingRouteConfirm;
-    setManualCallOkStore((prev) => setManualCallOk(prev, clipKey, selectedSinkId, selectedMicId));
-    try { window.dispatchEvent(new Event('catint_gates_updated')); } catch (_) {}
-    setPendingRouteConfirm(null);
-    setLastRouteTest({ clipKey, result: 'manual_ok', at: Date.now() });
-  };
-
-  const declineManualCallOk = () => {
-    if (!pendingRouteConfirm) return;
-    const { clipKey } = pendingRouteConfirm;
-    setPendingRouteConfirm(null);
-    setLastRouteTest({ clipKey, result: 'declined', at: Date.now() });
-  };
 
   useEffect(() => {
     let cancelled = false;
@@ -768,16 +718,32 @@ export const GreetingsPanel = ({ onEditModeChange, onExitStudio, micTestMode = f
         if (e.data.size > 0) audioChunksRef.current.push(e.data);
       };
       
+      const releaseRecGuard = () => {
+        if (recGuardRef.current) {
+          recGuardRef.current();
+          recGuardRef.current = null;
+        }
+      };
+
       mediaRecorder.onstop = () => {
+        releaseRecGuard();
         const audioBlob = new Blob(audioChunksRef.current, { type: mediaRecorderRef.current.mimeType || 'audio/webm' });
         handleFileUpload(key, audioBlob);
         stream.getTracks().forEach(track => track.stop());
       };
+      mediaRecorder.onerror = () => {
+        releaseRecGuard();
+      };
       
+      recGuardRef.current = beginSoundboardAudioGuard('studio_record', { ttlMs: 180_000 });
       mediaRecorder.start();
       setRecordingKey(key);
       updateLevel();
     } catch (e) {
+      if (recGuardRef.current) {
+        recGuardRef.current();
+        recGuardRef.current = null;
+      }
       // v4.103.0: name the real failure — permission vs device — so the fix is obvious.
       const micErr = e?.name === 'NotAllowedError'
         ? 'Microphone access denied. Allow mic permissions for this site.'
@@ -787,6 +753,10 @@ export const GreetingsPanel = ({ onEditModeChange, onExitStudio, micTestMode = f
   };
 
   const stopRecording = () => {
+    if (recGuardRef.current) {
+      recGuardRef.current();
+      recGuardRef.current = null;
+    }
     if (mediaRecorderRef.current && mediaRecorderRef.current.state === 'recording') {
       mediaRecorderRef.current.stop();
       setRecordingKey(null);
@@ -817,6 +787,10 @@ export const GreetingsPanel = ({ onEditModeChange, onExitStudio, micTestMode = f
     setPlaybackProgress(0);
     setRouteLive(false);
     window.__CAT_AUDIO_VOL = 0;
+    if (playGuardRef.current) {
+      playGuardRef.current();
+      playGuardRef.current = null;
+    }
     if (stopSink) {
       stopClipToSink();
       setSinkPlaybackActive(false);
@@ -827,6 +801,26 @@ export const GreetingsPanel = ({ onEditModeChange, onExitStudio, micTestMode = f
     rampCancelRef.current = null;
     if (animationRef.current) cancelAnimationFrame(animationRef.current);
   };
+
+  useEffect(() => () => {
+    playbackAttemptRef.current += 1;
+    window.__CAT_AUDIO_VOL = 0;
+    if (playGuardRef.current) {
+      playGuardRef.current();
+      playGuardRef.current = null;
+    }
+    if (recGuardRef.current) {
+      recGuardRef.current();
+      recGuardRef.current = null;
+    }
+    stopClipToSink();
+    audioRefSink.current.pause?.();
+    audioRefLocal.current.pause?.();
+    if (rampCancelRef.current) rampCancelRef.current();
+    rampCancelRef.current = null;
+    if (animationRef.current) cancelAnimationFrame(animationRef.current);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const openSettings = (focusKey = null) => {
     // Default: everything collapsed — expanding 15 sections at once was illegible
@@ -902,26 +896,13 @@ export const GreetingsPanel = ({ onEditModeChange, onExitStudio, micTestMode = f
     // Ordinary tiles and You previews keep Mic mode's local-only behavior.
     const explicitCallerTest = callerOnly && bypassGate;
     let sendToCaller = routeToVirtualMic && (explicitCallerTest || !localOnlyPlayback);
-    if (sendToCaller && !bypassGate) {
-      const score = healthScores[key];
-      const callOk = isCallPathReady(manualCallOk, key, selectedSinkId, selectedMicId);
-      // v4.103.0 user agency: a weak/failed legibility score warns but never blocks —
-      // the interpreter decides (e.g. afternoon take scored against the wrong script).
-      // CALL OK (route proven to the patient path) stays a hard gate.
-      if (!callOk) {
-        // v4.104.0: no auto-clear — a local-only fallback must never look like a
-        // caller fire. Persists until the next play attempt.
-        setSafetyNotice('📡 LOCAL ONLY — run Call Test + CALL OK to arm the patient path');
-        sendToCaller = false;
-      } else if (!isCallerReady(score)) {
-        setSafetyNotice(
-          score === undefined
-            ? '⚠ Untested clip — firing to caller anyway (health check pending)'
-            : `⚠ Legibility ${Math.round((score || 0) * 100)}% — firing anyway, your call`
-        );
-        window.setTimeout(() => setSafetyNotice(''), 4500);
-        logRouteEvent(ROUTE_EVENT.PLAY_START, { clipKey: key, healthBypass: true, score });
+    if (sendToCaller && !selectedSinkId) {
+      setSafetyNotice('⚠️ No caller output selected — pick VB out (CABLE Input / Voicemeeter Input) in header Speaker');
+      if (callerOnly) {
+        setLastRouteTest({ clipKey: key, result: 'fail', at: Date.now() });
+        return;
       }
+      sendToCaller = false;
     }
 
     // v4.128.0: anything routed to the caller is sink-only by default — a
@@ -931,6 +912,7 @@ export const GreetingsPanel = ({ onEditModeChange, onExitStudio, micTestMode = f
     let playSink = sendToCaller;
     callerRouteRef.current = playSink;
     setRouteLive(!!playSink);
+    playGuardRef.current = beginSoundboardAudioGuard(playSink ? 'studio_sink' : 'studio_local');
     const routeMode = readRouteModePreference();
     const usePassthrough = playSink && routeMode === ROUTE_MODE.PASSTHROUGH;
 
@@ -984,8 +966,6 @@ export const GreetingsPanel = ({ onEditModeChange, onExitStudio, micTestMode = f
       clearPlaybackState();
       logRouteEvent(ROUTE_EVENT.PLAY_END, { clipKey: key });
       if (wasCallTest && playSink) {
-        const fingerprint = buildRouteFingerprint(key, selectedSinkId, selectedMicId);
-        setPendingRouteConfirm({ clipKey: key, fingerprint, playedAt: Date.now() });
         setLastRouteTest({ clipKey: key, result: 'sink_played', at: Date.now() });
         // v4.107.0: success proof — the browser rendered into the sink without
         // error. If no VAIO needle moved, the picked twin is a ghost endpoint:
@@ -994,8 +974,18 @@ export const GreetingsPanel = ({ onEditModeChange, onExitStudio, micTestMode = f
         window.setTimeout(() => setSafetyNotice(''), 10000);
       }
     };
+    const onErr = () => {
+      if (ended) return;
+      ended = true;
+      clearPlaybackState();
+      if (playSink) {
+        setSafetyNotice(`⚠️ Sink play failed into ${sinkLabel || 'VB out'} — re-pick 🔊 in header, then try again`);
+      }
+    };
     audioRefLocal.current.onended = onEnd;
     audioRefSink.current.onended = onEnd;
+    audioRefLocal.current.onerror = onErr;
+    audioRefSink.current.onerror = onErr;
 
     if (animationRef.current) cancelAnimationFrame(animationRef.current);
     animationRef.current = requestAnimationFrame(trackProgress);
@@ -1026,6 +1016,11 @@ export const GreetingsPanel = ({ onEditModeChange, onExitStudio, micTestMode = f
               return;
             }
             if (!pt.ok) {
+              if (pt.reason === 'sink_bind_failed') {
+                setSafetyNotice('Caller output device could not be bound (it may have changed after reboot). Re-select your Caller Output in Audio Settings.');
+                clearPlaybackState();
+                return;
+              }
               logRouteEvent(ROUTE_EVENT.FALLBACK_DUAL, { clipKey: key, reason: pt.reason });
               const bound = await bindAudioToSink(audioRefSink.current, selectedSinkId);
               logRouteEvent(ROUTE_EVENT.SINK_BIND, { clipKey: key, ok: bound, routeMode: ROUTE_MODE.DUAL_ELEMENT });
@@ -1081,7 +1076,6 @@ export const GreetingsPanel = ({ onEditModeChange, onExitStudio, micTestMode = f
   const renderClipCard = (key, label, compact = false) => {
     const hasBlob = !!blobs[key];
     const health = getHealthMeta(healthScores[key]);
-    const routeBadge = getRouteBadge(key);
     // v4.95.3: failure needs a reason + a fix, right where you record.
     const cardHeard = heardByRobot[key];
     const cardExplain = hasBlob && health && health.label.startsWith('UNACCEPTABLE')
@@ -1106,7 +1100,7 @@ export const GreetingsPanel = ({ onEditModeChange, onExitStudio, micTestMode = f
                   ? `Robot heard: "${heardByRobot[key].text}" (${Math.round((heardByRobot[key].recall || 0) * 100)}% of script). Click to re-check.`
                   : 'Legibility check: sends clip to Deepgram and scores vs script. Click to run.'}
               >
-                <span style={{ color: health?.color || '#94a3b8' }}>{health?.label || 'UNTESTED'}</span>
+                <span style={{ color: health?.color || '#94a3b8' }}>{health?.label || 'Check'}</span>
                 <div className="sb-health-pill-bar">
                   <div className="sb-health-pill-fill" style={{ width: health?.width || '0%', backgroundColor: health?.color || '#94a3b8' }} />
                 </div>
@@ -1139,11 +1133,6 @@ export const GreetingsPanel = ({ onEditModeChange, onExitStudio, micTestMode = f
             <span className={`sb-clip-status ${hasBlob ? 'sb-clip-status--saved' : 'sb-clip-status--missing'}`}>
               {hasBlob ? 'SAVED' : 'not recorded'}
             </span>
-            {routeBadge && (
-              <span className={routeBadge.className} title={routeBadge.title}>
-                {routeBadge.label}
-              </span>
-            )}
           </div>
         </div>
 
@@ -1234,19 +1223,6 @@ export const GreetingsPanel = ({ onEditModeChange, onExitStudio, micTestMode = f
 
     return (
       <div className="sb-setup glass-panel" style={{ border: 'none' }}>
-        {pendingRouteConfirm && mode === 'settings' && (
-          <div className="sb-route-confirm">
-            <span>Did remote side hear it cleanly? ({pendingRouteConfirm.clipKey})</span>
-            <div className="sb-route-confirm-actions">
-              <button type="button" className="sb-btn sb-btn--call" onClick={confirmManualCallOk}>
-                Yes, mark CALL OK
-              </button>
-              <button type="button" className="sb-filter-chip" onClick={declineManualCallOk}>
-                No
-              </button>
-            </div>
-          </div>
-        )}
         <div className="sb-setup-head">
           <span className="sb-setup-title">⚙️ Setup Soundboard</span>
           <div className="sb-setup-actions">
@@ -1434,14 +1410,13 @@ export const GreetingsPanel = ({ onEditModeChange, onExitStudio, micTestMode = f
     const resolved = resolvePlayableClip(action, timeOfDay, blobs);
     const key = resolved.key || `greeting_${lang}_${timeOfDay}`;
     const has = !!blobs[key];
-    const ok = has && isCallPathReady(manualCallOk, key, selectedSinkId, selectedMicId);
-    return { lang, key, has, ok };
+    return { lang, key, has, ok: has };
   });
   const soundcheckTarget = soundcheck.find((s) => !s.ok) || soundcheck[0];
   const soundcheckReady = soundcheck.every((s) => s.ok);
   const soundcheckLabel = soundcheckReady
     ? `● ${TIME_SLOT_META[timeOfDay].name} set — EN ✓ ES ✓`
-    : `⚠ ${TIME_SLOT_META[timeOfDay].name}: ${soundcheck.filter((s) => !s.ok).map((s) => `${s.lang.toUpperCase()} ${s.has ? 'needs a caller test' : 'needs a clip'}`).join(' · ')}`;
+    : `⚠ ${TIME_SLOT_META[timeOfDay].name}: ${soundcheck.filter((s) => !s.ok).map((s) => `${s.lang.toUpperCase()} needs a clip`).join(' · ')}`;
   const openSoundcheck = () => window.dispatchEvent(
     new CustomEvent('cat_open_greeting_editor', { detail: { clipKey: soundcheckTarget.key } }),
   );
@@ -1483,7 +1458,7 @@ export const GreetingsPanel = ({ onEditModeChange, onExitStudio, micTestMode = f
             {soundcheckReady && !micTestMode && (
               <span
                 className="sb-ready-pill"
-                title="EN and ES greetings for this slot have a passing caller test (CALL OK)"
+                title="EN and ES greetings for this slot are recorded"
               >
                 CALL READY
               </span>
@@ -1634,11 +1609,6 @@ export const GreetingsPanel = ({ onEditModeChange, onExitStudio, micTestMode = f
           const shownLoud = hasAudio ? (loudness[activeKey] ?? loudness[healthKey]) : loudness[healthKey];
           // v4.110.0: choppiness diamond (◆ vs the round loudness ●) — green smooth, amber/orange stuttery.
           const shownChop = hasAudio ? (chop[activeKey] ?? chop[healthKey]) : chop[healthKey];
-          // v4.103.0: health no longer blocks arming — script mismatch warns on
-          // fire (user agency); only a proven route (CALL OK) arms the tile.
-          const callReady = !micTestMode
-            && isCallPathReady(manualCallOk, activeKey, selectedSinkId, selectedMicId);
-          const callerBlocked = hasAudio && !callReady && !micTestMode;
           const hasThumb = !!blobs[`url_thumb_${action.id}`];
           const bgImage = hasThumb ? `url(${blobs[`url_thumb_${action.id}`]})` : undefined;
           const isItPlaying = playingKey === activeKey;
@@ -1678,15 +1648,13 @@ export const GreetingsPanel = ({ onEditModeChange, onExitStudio, micTestMode = f
             <button
               key={action.id}
               type="button"
-              className={`sb-slot sb-slot--ready${hasThumb ? ' has-thumb' : ''}${isItPlaying ? ' is-playing' : ''}${callerBlocked ? ' is-blocked' : ''}${action.lang ? ` sb-slot--${action.lang}` : ''}`}
+              className={`sb-slot sb-slot--ready${hasThumb ? ' has-thumb' : ''}${isItPlaying ? ' is-playing' : ''}${action.lang ? ` sb-slot--${action.lang}` : ''}`}
               onClick={() => playAudioBlock(activeKey, !micTestMode, { bypassGate: false })}
               style={bgImage ? { backgroundImage: bgImage } : undefined}
               title={
                 micTestMode
                   ? `${action.label} — your speakers`
-                  : callerBlocked
-                    ? 'Local preview — open Sound check to test the caller output'
-                    : `${action.label} — fires to patient path`
+                  : `${action.label} — fires to patient path`
               }
             >
               <div className="sb-slot-overlay" />

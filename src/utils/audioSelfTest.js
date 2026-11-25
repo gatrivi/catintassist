@@ -1,4 +1,5 @@
 /** Offline audio self-test — local speakers and virtual sink route. */
+import { beginSoundboardAudioGuard } from './soundboardCallGuard';
 
 export const TEST_TONE_MS = 900;
 export const TEST_TONE_HZ = 440;
@@ -59,12 +60,14 @@ export const playTestToneLocal = async (volume = 0.6) => {
   const url = createTestToneUrl();
   const audio = new Audio(url);
   audio.volume = volume;
+  const release = beginSoundboardAudioGuard('test_tone_local');
   try {
     await audio.play();
     await new Promise((r) => setTimeout(r, TEST_TONE_MS + 80));
   } finally {
     audio.pause();
     URL.revokeObjectURL(url);
+    release();
   }
 };
 
@@ -73,15 +76,17 @@ export const playTestToneSink = async (sinkId, volume = 0.6) => {
   const url = createTestToneUrl();
   const audio = new Audio(url);
   audio.volume = volume;
-  if (audio.setSinkId) {
-    await audio.setSinkId(sinkId);
-  }
+  const release = beginSoundboardAudioGuard('test_tone_sink');
   try {
+    if (audio.setSinkId) {
+      await audio.setSinkId(sinkId);
+    }
     await audio.play();
     await new Promise((r) => setTimeout(r, TEST_TONE_MS + 80));
   } finally {
     audio.pause();
     URL.revokeObjectURL(url);
+    release();
   }
 };
 

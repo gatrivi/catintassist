@@ -128,8 +128,15 @@ export function playBufferViaPassthrough(passthroughEl, buffer, ctx, {
 
   const bindAndPlay = async () => {
     try {
-      if (sinkId && passthroughEl.setSinkId) {
-        await passthroughEl.setSinkId(sinkId);
+      if (sinkId) {
+        if (typeof passthroughEl.setSinkId !== 'function') {
+          throw new Error('sink_bind_failed');
+        }
+        try {
+          await passthroughEl.setSinkId(sinkId);
+        } catch (_) {
+          throw new Error('sink_bind_failed');
+        }
       }
       passthroughEl.srcObject = dest.stream;
       passthroughEl.volume = 1;

@@ -25,6 +25,21 @@ import { APP_VERSION } from '../constants/version';
 /** Newest first. Only the entry matching APP_VERSION is shown on load. */
 export const RELEASE_NOTES_CATALOG = [
   {
+    version: '4.223.0',
+    id: 'soundboard-no-untested-gate-and-call-guard',
+    highlightElementIds: ['opener-ready-es', 'opener-ready-en'],
+    es: {
+      title: 'Saludos listos al instante y sin disparos falsos de llamada',
+      intro: 'Los saludos grabados (EN y ES) ya suenan directo sin carteles de «sin probar» ni bloqueo CALL OK. Además, probar o grabar un saludo ya no dispara una llamada ni te saca de la mesa de sonidos.',
+      sections: [{ heading: 'Qué cambió', bullets: ['ES/EN grabados suenan al tocar; el sonido de prueba queda silenciado para la detección de llamadas (+3s de margen).'] }],
+    },
+    en: {
+      title: 'Instant greeting playback & no phantom call triggers',
+      intro: 'Recorded EN and ES greetings now play immediately without untested or CALL OK lockouts. Testing or recording a greeting also suppresses off-call speech auto-start so you stay in the soundboard.',
+      sections: [{ heading: 'What changed', bullets: ['Recorded ES/EN clips fire right away; soundboard playback/recording suppresses off-call wake (+3s tail).'] }],
+    },
+  },
+  {
     version: '4.222.0',
     id: 'live-avail-button-silence-muting',
     highlightElementIds: ['header-avail-btn'],

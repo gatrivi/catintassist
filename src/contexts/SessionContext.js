@@ -1,4 +1,5 @@
 import { catWarn, catError } from "../utils/catLog";
+import { isSoundboardAudioSuppressed } from "../utils/soundboardCallGuard";
 import React, { createContext, useContext, useState, useEffect, useRef, useCallback } from 'react';
 import { archiveAndClearNotes } from '../utils/sessionNotes';
 import { useRewardAudio } from '../hooks/useRewardAudio';
@@ -1011,6 +1012,7 @@ export const SessionProvider = ({ children }) => {
   const trySpeechAutoStart = useCallback(() => {
     // v4.92.0: call-detect toggle OFF also disables speech auto-start.
     // v4.98.0: autopilot ON takes over — only ring/bridge phrases start a call.
+    if (isSoundboardAudioSuppressed()) return false;
     if (!speechAutoConnectRef.current || !isCallDetectionEnabledRef.current || isActiveStateRef.current) return false;
     if (callAutopilotRef.current) return false;
     startSessionRef.current(false);
@@ -1046,6 +1048,7 @@ export const SessionProvider = ({ children }) => {
   const autopilotFarewellAtRef = useRef(0);
 
   const tryAutopilotStart = useCallback(() => {
+    if (isSoundboardAudioSuppressed()) return false;
     const ok = canAutopilotStart({
       enabled: callAutopilotRef.current,
       isActive: isActiveStateRef.current,

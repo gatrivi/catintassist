@@ -63,6 +63,7 @@ import {
 } from "../utils/connectEvidence";
 import { traceCaptionArrayDiff } from "../utils/vanishTrace";
 import { updateVadLoudFrames, shouldWakeFromVad, shouldSpeechAutoStart } from "../utils/idleEar";
+import { isSoundboardAudioSuppressed } from "../utils/soundboardCallGuard";
 import { createUnthrottledInterval } from "../utils/workerInterval";
 import {
   RING_TRIGGER_FRAMES,
@@ -1626,6 +1627,7 @@ export const useDeepgram = () => {
           if (isActiveLiveRef.current) {
             if (confidence > 0.4) notifySpeechDuringCall();
           } else if (
+            !isSoundboardAudioSuppressed() &&
             shouldSpeechAutoStart({
               transcript,
               isActive: isActiveLiveRef.current,
@@ -1697,7 +1699,7 @@ export const useDeepgram = () => {
           // the session. Runs BEFORE the capture gate so phrases land between
           // calls too (idle ear wakes on the announcement's speech energy).
           const lowTrans = transcript.toLowerCase();
-          if (matchCallStartPhrase(lowTrans, loadAutopilotPhrases())) {
+          if (!isSoundboardAudioSuppressed() && matchCallStartPhrase(lowTrans, loadAutopilotPhrases())) {
             if (tryAutopilotStart()) {
               shouldCaptureCaptionsRef.current = true;
               notifySpeechDuringCall();
@@ -2275,6 +2277,10 @@ export const useDeepgram = () => {
   /** VAD heard speech → audio again, on the right kind of socket. */
   const wakeFromIdleEar = useCallback(() => {
     if (!idleEarActiveRef.current) return;
+    if (isSoundboardAudioSuppressed()) {
+      sttTrace("idle ear: speech heard during soundboard audio guard — suppressed");
+      return;
+    }
     // Waking the recorder means audio leaves the machine. That is only allowed
     // under the two flags the operator actually switched on: auto-connect (the
     // wake IS the call start) or autopilot (it needs transcripts to spot the
@@ -2536,6 +2542,10 @@ export const useDeepgram = () => {
       vadLoudFramesRef.current = 0;
       const vadTick = () => {
         if (!idleEarActiveRef.current) return;
+        if (isSoundboardAudioSuppressed()) {
+          vadLoudFramesRef.current = 0;
+          return;
+        }
         try {
           // v4.136.0 self-checks: a suspended AudioContext yields silence
           // forever, and a dead track makes the ear deaf — surface both

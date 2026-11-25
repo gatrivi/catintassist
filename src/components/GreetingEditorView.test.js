@@ -86,9 +86,12 @@ describe('GreetingEditorView', () => {
     });
   });
 
-  test('record and navigation controls exist; local-only badge shows before CALL OK', async () => {
+  test('record and navigation controls exist; no LOCAL ONLY or UNTESTED labels block clips', async () => {
     renderView();
-    await screen.findByText('LOCAL ONLY');
+    await screen.findByTestId('audio-editor');
+    expect(screen.queryByText('LOCAL ONLY')).not.toBeInTheDocument();
+    expect(screen.queryByText('UNTESTED')).not.toBeInTheDocument();
+    expect(screen.getByText('Check')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /re-?record/i })).toBeInTheDocument();
     expect(screen.getByTitle('Previous greeting (←)')).toBeInTheDocument();
     expect(screen.getByTitle('Next greeting (→)')).toBeInTheDocument();
@@ -96,7 +99,7 @@ describe('GreetingEditorView', () => {
 
   test('◀ navigates to the previous clip', async () => {
     renderView();
-    await screen.findByText('LOCAL ONLY');
+    await screen.findByTestId('audio-editor');
     fireEvent.click(screen.getByTitle('Previous greeting (←)'));
     // Last clip in the index is voicemail (wraps from index 0 → end).
     expect(screen.getAllByText(/Voicemail/).length).toBeGreaterThan(0);
@@ -110,7 +113,7 @@ describe('GreetingEditorView', () => {
   test('Escape calls onExit', async () => {
     const onExit = jest.fn();
     renderView({ onExit });
-    await screen.findByText('LOCAL ONLY');
+    await screen.findByTestId('audio-editor');
     fireEvent.keyDown(window, { key: 'Escape' });
     expect(onExit).toHaveBeenCalled();
   });
@@ -139,13 +142,12 @@ describe('GreetingEditorView', () => {
     confirmSpy.mockRestore();
   });
 
-  test('a caller test that fails never offers CALL OK', async () => {
+  test('a caller test that fails surfaces an alert notice', async () => {
     SETTINGS.playClipToSink.mockResolvedValueOnce({ ok: false, reason: 'sink_bind_failed' });
     useAudioSettings.mockReturnValue({ ...SETTINGS });
     renderView({ initialClipKey: 'greeting_en_morning' });
     await screen.findByTestId('audio-editor');
     fireEvent.click(screen.getByRole('button', { name: /Caller/ }));
-    await screen.findByRole('alert');
-    expect(screen.queryByRole('button', { name: /mark CALL OK/i })).toBeNull();
+    expect(await screen.findByRole('alert')).toHaveTextContent(/Caller output device could not be bound/i);
   });
 });

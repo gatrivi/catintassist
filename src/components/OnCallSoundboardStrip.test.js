@@ -432,48 +432,23 @@ describe('nothing on the strip is ever a dead button (v4.171.0)', () => {
     }
   });
 
-  test('a gate refusal parks a chip that offers the off-call test', async () => {
+  test('ES greeting recorded without CALL OK or health score fires directly without untested warnings', async () => {
     const blob = clip();
-    loadFile.mockImplementation(async (key) => (key === 'greeting_en_morning' ? blob : null));
-    // Health is fine, but there is no CALL OK for this route.
-    localStorage.setItem('catint_audio_health', JSON.stringify({ greeting_en_morning: 0.9 }));
-    const onOpenGreetingEditor = jest.fn();
+    loadFile.mockImplementation(async (key) => (key === 'greeting_es_morning' ? blob : null));
 
     const restore = withSlot('morning');
     try {
-      await renderStrip({ onOpenGreetingEditor });
+      await renderStrip();
       expand();
-      fireEvent.click((await openers())[0]);
+      fireEvent.click((await openers())[1]);
 
-      const block = await screen.findByText(/is not verified for this route/);
-      expect(block).toBeInTheDocument();
-      expect(settings.playClipToSink).not.toHaveBeenCalled();
-
-      fireEvent.click(screen.getByRole('button', { name: 'Test it' }));
-      expect(onOpenGreetingEditor).toHaveBeenCalledWith('greeting_en_morning');
-
-      // And it can be waved away.
-      fireEvent.click(screen.getByRole('button', { name: 'Dismiss' }));
-      expect(screen.queryByText(/is not verified for this route/)).not.toBeInTheDocument();
-    } finally {
-      restore();
-    }
-  });
-
-  test('mid-call the chip says "off-call only" rather than offering a dead button', async () => {
-    const blob = clip();
-    loadFile.mockImplementation(async (key) => (key === 'greeting_en_morning' ? blob : null));
-    localStorage.setItem('catint_audio_health', JSON.stringify({ greeting_en_morning: 0.9 }));
-
-    const restore = withSlot('morning');
-    try {
-      // App passes null on a live call: there is nowhere to go.
-      await renderStrip({ onOpenGreetingEditor: null });
-      expand();
-      fireEvent.click((await openers())[0]);
-
-      expect(await screen.findByText(/off-call only/)).toBeInTheDocument();
-      expect(screen.queryByRole('button', { name: 'Test it' })).not.toBeInTheDocument();
+      await waitFor(() => expect(settings.playClipToSink).toHaveBeenCalledWith(
+        blob,
+        settings.sinkVolume,
+        expect.objectContaining({ clipKey: 'greeting_es_morning' }),
+      ));
+      expect(screen.queryByText(/is not verified for this route/i)).not.toBeInTheDocument();
+      expect(screen.queryByText(/Untested clip/i)).not.toBeInTheDocument();
     } finally {
       restore();
     }
@@ -527,22 +502,22 @@ describe('nothing on the strip is ever a dead button (v4.171.0)', () => {
 });
 
 describe('v4.189.0 opener readiness chips', () => {
-  test('partial EN + untested ES are shown at a glance, collapsed', async () => {
+  test('partial EN + partial ES are shown at a glance without CALL OK lockouts', async () => {
     const blob = clip();
     loadFile.mockImplementation(async (key) => (
       ['greeting_en_morning', 'greeting_en_afternoon', 'greeting_es_morning'].includes(key) ? blob : null
     ));
-    allowCallerFire('greeting_en_morning'); // CALL OK for EN only
     await renderStrip();
     expect(await screen.findByText('EN 2/3')).toHaveClass('is-partial');
-    expect(screen.getByText('ES 🔒')).toHaveClass('is-locked');
+    expect(screen.getByText('ES 1/3')).toHaveClass('is-partial');
+    expect(screen.queryByText('ES 🔒')).not.toBeInTheDocument();
   });
 
   test('off-call tap opens the editor on the first missing slot', async () => {
     const blob = clip();
     loadFile.mockImplementation(async (key) => (key === 'greeting_es_morning' ? blob : null));
     const onOpenGreetingEditor = jest.fn();
-    await renderStrip({ onOpenGreetingEditor, micTestMode: true });
+    await renderStrip({ onOpenGreetingEditor });
     fireEvent.click(await screen.findByText('ES 1/3'));
     expect(onOpenGreetingEditor).toHaveBeenCalledWith('greeting_es_afternoon');
   });

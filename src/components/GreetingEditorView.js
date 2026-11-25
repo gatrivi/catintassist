@@ -13,15 +13,13 @@ import { useAudioSettings } from '../contexts/AudioSettingsContext';
 import { useGreetingClip, useGreetingRecorder } from '../hooks/useGreetingClip';
 import { getScriptForClip } from '../services/soundboardMetaService';
 import { formatHealthDisplay, explainHealth, playTestToneSink, capSinkTestVolume, SINK_TEST_TONE_VOL } from '../utils/audioSelfTest';
-import {
-  loadManualCallOk, setManualCallOk, isManualCallOk, warnLegacyCallPathStorage,
-} from '../utils/routeVerification';
 import { readRouteModePreference } from '../utils/audioRoutePassthrough';
 import { readCallerMonitor } from '../utils/callerMonitor';
 import { generateObjectUrl } from '../utils/storage';
 import AudioEditorPanel from './AudioEditorPanel';
 import { APP_VERSION_LABEL } from '../constants/version';
 import { catError } from '../utils/catLog';
+import { beginSoundboardAudioGuard } from '../utils/soundboardCallGuard';
 import './GreetingEditorView.css';
 
 const SLOT_META = {
@@ -97,14 +95,10 @@ export const GreetingEditorView = ({ onExit, onOpenStudio, initialClipKey = null
   const current = clips[selIdx] || clips[0];
   const key = current?.key;
 
-  // ── Route state (CALL OK gate — family-wide, same as the panel) ────────────
-  const [manualCallOk, setManualCallOkStore] = useState(() => loadManualCallOk());
-  useEffect(() => { warnLegacyCallPathStorage(); }, []);
-  const routeOk = isManualCallOk(manualCallOk, key, selectedSinkId, selectedMicId);
-
   // ── Playback (You + Caller preview) ────────────────────────────────────────
   const localAudioRef = useRef(null);
   const sinkAudioRef = useRef(null);
+  const playGuardRef = useRef(null);
   const [playing, setPlaying] = useState(false);
   const [progress, setProgress] = useState(0);
   const rafRef = useRef(null);
@@ -112,17 +106,23 @@ export const GreetingEditorView = ({ onExit, onOpenStudio, initialClipKey = null
   const [routeLive, setRouteLive] = useState(false);
   const [notice, setNotice] = useState('');
   const [playError, setPlayError] = useState('');
-  // CALL OK is only offered after a caller test that played to the end.
-  const [pendingRouteConfirm, setPendingRouteConfirm] = useState(false);
 
   const flashNotice = useCallback((msg, ms = 5000) => {
     setNotice(msg);
     window.setTimeout(() => setNotice(''), ms);
   }, []);
 
+  const releasePlayGuard = useCallback(() => {
+    if (playGuardRef.current) {
+      playGuardRef.current();
+      playGuardRef.current = null;
+    }
+  }, []);
+
   const stopPlayback = useCallback(() => {
     if (rafRef.current) cancelAnimationFrame(rafRef.current);
     rafRef.current = null;
+    releasePlayGuard();
     localAudioRef.current?.pause();
     sinkAudioRef.current?.pause();
     if (urlRef.current) {
@@ -132,7 +132,7 @@ export const GreetingEditorView = ({ onExit, onOpenStudio, initialClipKey = null
     setPlaying(false);
     setProgress(0);
     setRouteLive(false);
-  }, []);
+  }, [releasePlayGuard]);
 
   useEffect(() => () => stopPlayback(), [stopPlayback]);
 
@@ -142,6 +142,7 @@ export const GreetingEditorView = ({ onExit, onOpenStudio, initialClipKey = null
     setPlayError('');
     if (!blob) { flashNotice('Nothing recorded yet — record or upload first.'); return; }
     stopPlayback();
+    playGuardRef.current = beginSoundboardAudioGuard(toCaller ? 'editor_caller_preview' : 'editor_local_preview');
     const url = generateObjectUrl(blob);
     urlRef.current = url;
     const localEl = localAudioRef.current;
@@ -157,12 +158,14 @@ export const GreetingEditorView = ({ onExit, onOpenStudio, initialClipKey = null
     try {
       if (toCaller && !usePassthrough && !selectedSinkId) {
         setPlayError('No caller output picked — choose 🔊 in the header, then retry.');
+        stopPlayback();
         return;
       }
       if (toCaller && !usePassthrough) {
         const bound = await sinkEl.setSinkId(selectedSinkId).then(() => true).catch(() => false);
         if (!bound) {
           setPlayError(`Could not bind ${sinkLabelShort(outputDevices, selectedSinkId)} — re-pick 🔊 in header, then retry.`);
+          stopPlayback();
           return;
         }
       }
@@ -181,7 +184,11 @@ export const GreetingEditorView = ({ onExit, onOpenStudio, initialClipKey = null
           return;
         }
         if (pt?.ok === false) {
-          setPlayError(`Caller play failed (${pt.reason || 'route'}) — re-pick 🔊 in header, retry.`);
+          setPlayError(
+            pt.reason === 'sink_bind_failed'
+              ? 'Caller output device could not be bound (it may have changed after reboot). Re-select your Caller Output in Audio Settings.'
+              : `Caller play failed (${pt.reason || 'route'}) — re-pick 🔊 in header, retry.`
+          );
           stopPlayback();
           return;
         }
@@ -193,10 +200,7 @@ export const GreetingEditorView = ({ onExit, onOpenStudio, initialClipKey = null
         if (el && Number.isFinite(el.duration) && el.duration > 0) {
           setProgress(el.currentTime / el.duration);
           if (el.ended) {
-            setPlaying(false);
-            setProgress(0);
-            // CALL OK is only offered after a test that actually reached the end.
-            if (toCaller) setPendingRouteConfirm(true);
+            stopPlayback();
             return;
           }
         }
@@ -221,21 +225,6 @@ export const GreetingEditorView = ({ onExit, onOpenStudio, initialClipKey = null
   });
   // Failures stay on screen next to the buttons that caused them.
   const failureText = clipError || recError || playError;
-
-  // ── Caller route confirm (CALL OK attestation) ─────────────────────────────
-  const confirmCallOk = useCallback(() => {
-    setManualCallOkStore(setManualCallOk(manualCallOk, key, selectedSinkId, selectedMicId));
-    window.dispatchEvent(new Event('catint_gates_updated'));
-    setPendingRouteConfirm(false);
-    flashNotice('✅ CALL OK — this greeting is armed for the patient path.', 6000);
-  }, [manualCallOk, key, selectedSinkId, selectedMicId, flashNotice]);
-  const declineCallOk = useCallback(() => {
-    setPendingRouteConfirm(false);
-    flashNotice('Marked NOT heard — re-record or re-test the route.', 6000);
-  }, [flashNotice]);
-  // Switching greeting or re-recording drops a stale ask (the tick in play()
-  // is what raises it, so a stopped/failed test can never earn CALL OK).
-  useEffect(() => { setPendingRouteConfirm(false); }, [key, recordingKey]);
 
   // ── Navigation (rail + ◀/▶ + arrow keys; Escape exits) ─────────────────────
   const move = useCallback((delta) => {
@@ -294,14 +283,6 @@ export const GreetingEditorView = ({ onExit, onOpenStudio, initialClipKey = null
         </div>
       )}
 
-      {pendingRouteConfirm && (
-        <div className="gee-notice gee-notice--ask">
-          <span>Did the remote side hear it cleanly? ({current.label})</span>
-          <button type="button" className="gee-btn gee-btn--ok" onClick={confirmCallOk}>Yes — mark CALL OK</button>
-          <button type="button" className="gee-btn" onClick={declineCallOk}>No</button>
-        </div>
-      )}
-
       <div className="gee-body">
         {/* Master rail — all families + slot variants */}
         <nav className="gee-rail" aria-label="Greeting clips">
@@ -350,9 +331,6 @@ export const GreetingEditorView = ({ onExit, onOpenStudio, initialClipKey = null
           <h2 className="gee-main-title">
             {current.label}
             {current.slot && <span className="gee-main-slot">{current.slotMeta.icon} {current.slotMeta.name}</span>}
-            <span className={`gee-route-badge ${routeOk ? 'is-ok' : 'is-warn'}`} title="Patient-path attestation">
-              {routeOk ? 'CALL OK' : 'LOCAL ONLY'}
-            </span>
           </h2>
 
           {script && (
@@ -425,7 +403,7 @@ export const GreetingEditorView = ({ onExit, onOpenStudio, initialClipKey = null
             <div className="gee-health">
               <button type="button" className="gee-pill" onClick={() => analyzeHealth(key)} disabled={isAnalyzing === key}
                 title={heard?.text ? `Robot heard: "${heard.text}" (${Math.round((heard.recall || 0) * 100)}% of script). Click to re-check.` : 'Sends clip to Deepgram, scores vs script. Click to run.'}>
-                <span style={{ color: health?.color }}>{health?.label || 'UNTESTED'}</span>
+                <span style={{ color: health?.color }}>{health?.label || 'Check'}</span>
                 <span className="gee-pill-bar"><span className="gee-pill-fill" style={{ width: health?.width || '0%', backgroundColor: health?.color || '#94a3b8' }} /></span>
               </button>
               {loud && (
@@ -438,7 +416,6 @@ export const GreetingEditorView = ({ onExit, onOpenStudio, initialClipKey = null
                   〰️ {chopV.label}
                 </span>
               )}
-              {routeOk && <span className="gee-pill is-ok">✅ CALL OK verified</span>}
             </div>
           )}
 
@@ -493,8 +470,20 @@ export const GreetingEditorView = ({ onExit, onOpenStudio, initialClipKey = null
       </div>
 
       {/* Hidden playback elements */}
-      <audio ref={localAudioRef} hidden onEnded={() => { setPlaying(false); setProgress(0); }} />
-      <audio ref={sinkAudioRef} hidden onEnded={() => setPlaying(false)} />
+      <audio
+        ref={localAudioRef}
+        hidden
+        onEnded={() => { releasePlayGuard(); setPlaying(false); setProgress(0); }}
+        onPause={() => releasePlayGuard()}
+        onError={() => stopPlayback()}
+      />
+      <audio
+        ref={sinkAudioRef}
+        hidden
+        onEnded={() => { releasePlayGuard(); setPlaying(false); }}
+        onPause={() => releasePlayGuard()}
+        onError={() => stopPlayback()}
+      />
     </div>
   );
 };

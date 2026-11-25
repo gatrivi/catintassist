@@ -12,10 +12,6 @@ import {
   MAX_GALLERY,
 } from '../utils/oncallGallery';
 import { useAudioSettings } from '../contexts/AudioSettingsContext';
-import {
-  loadManualCallOk,
-  isManualCallOk,
-} from '../utils/routeVerification';
 import { bindAudioToSink, primePlaybackElements, rampVolume } from '../utils/audioRoute';
 import { readRouteModePreference, ROUTE_MODE } from '../utils/audioRoutePassthrough';
 import { readCallerMonitor, writeCallerMonitor } from '../utils/callerMonitor';
@@ -25,8 +21,8 @@ import { logRouteEvent, ROUTE_EVENT } from '../utils/routeDiagnostics';
 import { catError } from '../utils/catLog';
 import { APP_VERSION } from '../constants/version';
 import { getWorkSlot, getSlotAuto, getWorkClockLabel, readSlotOverride, writeSlotOverride, nearestSlotOrder, TIME_SLOTS, WORK_TIMEZONE } from '../utils/workTime';
+import { beginSoundboardAudioGuard } from '../utils/soundboardCallGuard';
 
-const CALL_ROUTE_MIN_SCORE = 0.5;
 const SIZE_KEY = 'catint_oncall_sb_size';
 
 /** High-use slots for on-call strip — keeps UI compact. */
@@ -107,7 +103,6 @@ const readThumbSize = () => {
 export function OnCallSoundboardStrip({ micTestMode = false, collapsed: collapsedProp, onToggleCollapse, onOpenGreetingEditor }) {
   const {
     selectedSinkId,
-    selectedMicId,
     localVolume,
     sinkVolume,
     playClipToSink,
@@ -120,14 +115,6 @@ export function OnCallSoundboardStrip({ micTestMode = false, collapsed: collapse
   // would flash for a frame before the IndexedDB load resolves.
   const [clipsLoaded, setClipsLoaded] = useState(false);
   const [thumbs, setThumbs] = useState({});
-  const [healthScores, setHealthScores] = useState(() => {
-    try {
-      return JSON.parse(localStorage.getItem('catint_audio_health')) || {};
-    } catch {
-      return {};
-    }
-  });
-  const [manualCallOk, setManualCallOk] = useState(() => loadManualCallOk());
   // v4.131.1: the slot in use. Seeded from getWorkSlot(), so a saved manual
   // pick survives a reload and the tiles show the right recording at once.
   const [timeOfDay, setTimeOfDay] = useState(getWorkSlot);
@@ -166,6 +153,7 @@ export function OnCallSoundboardStrip({ micTestMode = false, collapsed: collapse
   const rampCancelRef = useRef(null);
   const progressRafRef = useRef(null);
   const thumbUrlsRef = useRef([]);
+  const playGuardReleaseRef = useRef(null);
 
   useEffect(() => {
     const tick = () => {
@@ -176,23 +164,6 @@ export function OnCallSoundboardStrip({ micTestMode = false, collapsed: collapse
     tick();
     const id = setInterval(tick, 60000);
     return () => clearInterval(id);
-  }, []);
-
-  // Re-read gates when Studio updates them in another view/tab, or on refocus —
-  // they were snapshotted once on mount, so a fresh CALL OK never unblocked tiles.
-  useEffect(() => {
-    const refresh = () => {
-      try { setHealthScores(JSON.parse(localStorage.getItem('catint_audio_health')) || {}); } catch { /* ignore */ }
-      setManualCallOk(loadManualCallOk());
-    };
-    window.addEventListener('storage', refresh);
-    window.addEventListener('focus', refresh);
-    window.addEventListener('catint_gates_updated', refresh);
-    return () => {
-      window.removeEventListener('storage', refresh);
-      window.removeEventListener('focus', refresh);
-      window.removeEventListener('catint_gates_updated', refresh);
-    };
   }, []);
 
   // v4.171.0: any recording or delete anywhere in the app re-scans the gallery.
@@ -266,9 +237,29 @@ export function OnCallSoundboardStrip({ micTestMode = false, collapsed: collapse
     playbackAttemptRef.current += 1;
     setPlayingKey(null);
     stopProgress();
+    if (playGuardReleaseRef.current) {
+      playGuardReleaseRef.current();
+      playGuardReleaseRef.current = null;
+    }
     if (stopSink) stopClipToSink();
     audioRefLocal.current.pause();
     audioRefSink.current.pause();
+    window.__CAT_AUDIO_VOL = 0;
+    if (rampCancelRef.current) rampCancelRef.current();
+    rampCancelRef.current = null;
+  }, [stopClipToSink]);
+
+  useEffect(() => () => {
+    playbackAttemptRef.current += 1;
+    if (progressRafRef.current) cancelAnimationFrame(progressRafRef.current);
+    progressRafRef.current = null;
+    if (playGuardReleaseRef.current) {
+      playGuardReleaseRef.current();
+      playGuardReleaseRef.current = null;
+    }
+    stopClipToSink();
+    audioRefLocal.current.pause?.();
+    audioRefSink.current.pause?.();
     window.__CAT_AUDIO_VOL = 0;
     if (rampCancelRef.current) rampCancelRef.current();
     rampCancelRef.current = null;
@@ -306,9 +297,11 @@ export function OnCallSoundboardStrip({ micTestMode = false, collapsed: collapse
     setBlockInfo(null);
 
     const attempt = ++playbackAttemptRef.current;
+    const label = slotLabelFor(slot.actionId);
     if (micTestMode) {
       const url = URL.createObjectURL(blob);
       logRouteEvent(ROUTE_EVENT.PLAY_START, { clipKey: key, routeMode: 'local_speakers', onCall: true, micTestMode: true });
+      playGuardReleaseRef.current = beginSoundboardAudioGuard('oncall_strip_local');
       setPlayingKey(key);
       progressRafRef.current = requestAnimationFrame(trackProgress);
       primePlaybackElements(audioRefLocal.current, audioRefSink.current);
@@ -320,44 +313,25 @@ export function OnCallSoundboardStrip({ micTestMode = false, collapsed: collapse
       };
       audioRefLocal.current.onended = () => {
         onEnd();
-        showSend({ phase: 'sent', label: slotLabelFor(slot.actionId), text: 'PLAYED locally ✓ (mic test)' });
+        showSend({ phase: 'sent', label, text: 'PLAYED locally ✓ (mic test)' });
+      };
+      audioRefLocal.current.onerror = () => {
+        URL.revokeObjectURL(url);
+        clearPlay();
+        failSend(label, 'local audio playback failed');
       };
       try {
         await audioRefLocal.current.play();
         rampCancelRef.current = rampVolume(audioRefLocal.current, null, localVolume, 0);
-        showSend({ phase: 'onair', label: slotLabelFor(slot.actionId), text: 'LOCAL (mic test)' });
+        showSend({ phase: 'onair', label, text: 'LOCAL (mic test)' });
       } catch (e) {
         catError('[Soundboard] Local play error:', e);
         logRouteEvent(ROUTE_EVENT.PLAY_FAIL, { clipKey: key, reason: e?.message, micTestMode: true });
+        URL.revokeObjectURL(url);
         clearPlay();
-        failSend(slotLabelFor(slot.actionId), failReason(e));
+        failSend(label, failReason(e));
       }
       return;
-    }
-
-    const score = healthScores[key];
-    const healthOk = score !== undefined && score >= CALL_ROUTE_MIN_SCORE;
-    const callOk = isManualCallOk(manualCallOk, key, selectedSinkId, selectedMicId);
-    const label = slotLabelFor(slot.actionId);
-    // v4.103.0 user agency: weak legibility warns but never blocks — the
-    // interpreter decides. CALL OK (proven route) stays a hard gate.
-    if (!callOk) {
-      // v4.171.0: re-recording a family wipes its CALL OK, so this is the most
-      // common "dead button" on a live call. Park it with a way out.
-      setBlockInfo({
-        key,
-        text: `${label} is not verified for this route (CALL OK)`,
-        fix: onOpenGreetingEditor ? 'Test it' : null,
-        hint: onOpenGreetingEditor ? null : 'off-call only',
-      });
-      return;
-    }
-    if (!healthOk) {
-      flashNotice(
-        score === undefined
-          ? '⚠ Untested clip — firing anyway (health check pending)'
-          : `⚠ Legibility ${Math.round((score || 0) * 100)}% — firing anyway, your call`
-      );
     }
 
     if (!selectedSinkId) {
@@ -378,6 +352,7 @@ export function OnCallSoundboardStrip({ micTestMode = false, collapsed: collapse
     const withMonitor = readCallerMonitor();
 
     logRouteEvent(ROUTE_EVENT.PLAY_START, { clipKey: key, routeMode, onCall: true, withMonitor });
+    playGuardReleaseRef.current = beginSoundboardAudioGuard('oncall_strip_sink');
     setPlayingKey(key);
     // v4.190.0 press proof: SENDING until the output meter hears sound.
     const t0 = performance.now();
@@ -419,6 +394,15 @@ export function OnCallSoundboardStrip({ micTestMode = false, collapsed: collapse
     };
     audioRefLocal.current.onended = onEnd;
     audioRefSink.current.onended = onEnd;
+    const onPlayErr = () => {
+      if (ended) return;
+      ended = true;
+      URL.revokeObjectURL(url);
+      clearPlay();
+      failSend(label, 'audio playback failed — check Speaker (CABLE Input)');
+    };
+    audioRefLocal.current.onerror = onPlayErr;
+    audioRefSink.current.onerror = onPlayErr;
 
     try {
       if (withMonitor) {
@@ -443,6 +427,11 @@ export function OnCallSoundboardStrip({ micTestMode = false, collapsed: collapse
           return;
         }
         if (!pt.ok) {
+          if (pt.reason === 'sink_bind_failed') {
+            clearPlay();
+            failSend(label, 'caller output unavailable (may have changed after reboot) — re-pick Speaker');
+            return;
+          }
           logRouteEvent(ROUTE_EVENT.FALLBACK_DUAL, { clipKey: key, reason: pt.reason });
           const bound = await bindAudioToSink(audioRefSink.current, selectedSinkId);
           if (bound) {
@@ -531,7 +520,7 @@ export function OnCallSoundboardStrip({ micTestMode = false, collapsed: collapse
   // missing an opener?" before you press it, not after the patient yells.
   const openerChips = OPENER_IDS.map((id) => ({
     id,
-    ...openerReadiness(id, blobs, isManualCallOk(manualCallOk, `${id}_morning`, selectedSinkId, selectedMicId), !micTestMode),
+    ...openerReadiness(id, blobs),
   }));
   // Off-call: open the editor on the first missing slot. Mid-call: just say it.
   const onOpenerChip = (chip) => {
@@ -689,16 +678,11 @@ export function OnCallSoundboardStrip({ micTestMode = false, collapsed: collapse
                 const variantUsed = slot.dynamic && key !== resolveClipKey(slot, timeOfDay)
                   ? key.slice(slot.actionId.length + 1)
                   : null;
-                const blocked = has && !micTestMode && (
-                  healthScores[key] === undefined ||
-                  healthScores[key] < CALL_ROUTE_MIN_SCORE ||
-                  !isManualCallOk(manualCallOk, key, selectedSinkId, selectedMicId)
-                );
                 return (
                   <button
                     key={key}
                     type="button"
-                    className={`on-call-sb-tile${isPlaying ? ' is-playing' : ''}${!has ? ' is-missing' : ''}${blocked ? ' is-blocked' : ''}${thumbUrl ? ' has-thumb' : ''}`}
+                    className={`on-call-sb-tile${isPlaying ? ' is-playing' : ''}${!has ? ' is-missing' : ''}${thumbUrl ? ' has-thumb' : ''}`}
                     // v4.171.0: aria-disabled, not disabled — the tap still
                     // explains itself instead of vanishing. No play path here.
                     aria-disabled={!has}
@@ -709,9 +693,7 @@ export function OnCallSoundboardStrip({ micTestMode = false, collapsed: collapse
                         ? `No ${label} recording for the ${SLOT_LABEL[timeOfDay]} slot — tap for options`
                         : micTestMode
                           ? 'Play on your speakers/headphones'
-                          : blocked
-                            ? 'Health or CALL OK gate — test off-call'
-                            : `Fire ${label} to patient path`
+                          : `Fire ${label} to patient path`
                     }
                   >
                     {isPlaying && (
